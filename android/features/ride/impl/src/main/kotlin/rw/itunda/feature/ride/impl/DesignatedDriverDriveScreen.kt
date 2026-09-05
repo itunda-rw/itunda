@@ -54,6 +54,7 @@ import rw.itunda.core.network.UpdateDesignatedDriverLocationRequest
 import rw.itunda.core.network.apiErrorCode
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
+import java.util.UUID
 
 // Split out of DesignatedDriverScreen.kt (2026-09-05) -- see that file's own doc
 // comment. The "Drive" side: registration, going online/offline, and the real
@@ -124,7 +125,7 @@ internal fun DesignatedDriverDriveContent() {
         registering = true
         coroutineScope.launch {
             try {
-                driver = NetworkClient.apiService.registerAsDesignatedDriver(RegisterDesignatedDriverRequest(licenseNumber.trim())).driver
+                driver = NetworkClient.apiService.registerAsDesignatedDriver(UUID.randomUUID().toString(), RegisterDesignatedDriverRequest(licenseNumber.trim())).driver
                 licenseNumber = ""
             } catch (e: HttpException) {
                 if (apiErrorCode(e) == "DESIGNATED_DRIVER_ALREADY_REGISTERED") {

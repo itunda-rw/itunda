@@ -3,6 +3,7 @@ package rw.itunda.agents
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -72,9 +73,29 @@ class AgentOperatorController(
         return ResponseEntity.status(status).body(body)
     }
 
+    // Real gap found 2026-09-05 (see feedback_idempotency_key_sweep memory) -- this
+    // is the exact scenario AgentReceiptAlreadyUsedException/
+    // TillReconciliationAlreadySubmittedException were already flagged as the
+    // highest-severity item in feedback_toss_error_handling's own 2026-08-30
+    // priority list for (real cash-handling, real operational confusion on a
+    // false-negative "already submitted" error), but that earlier fix (commit
+    // 5d21bc16) only taught the CLIENT to parse the real error code -- it never
+    // protected this endpoint from the underlying cause: a lost response after a
+    // successful till count would resubmit here and hit
+    // TillReconciliationAlreadySubmittedException on the retry, showing the
+    // operator a confusing conflict for a count that actually already succeeded.
+    // cash-ins/cash-outs above were already protected; this was the outlier.
     @PostMapping("/till-reconciliations")
-    fun submitTillCount(@RequestBody request: SubmitTillCountRequest, @AuthenticationPrincipal currentUser: CurrentUser) =
-        ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "reconciliation" to agentService.submitTillCount(currentUser.userId, request.countedCash)))
+    fun submitTillCount(
+        @RequestBody request: SubmitTillCountRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/agent/till-reconciliations", idempotencyKey, request) {
+            HttpStatus.CREATED.value() to mapOf("success" to true, "reconciliation" to agentService.submitTillCount(currentUser.userId, request.countedCash))
+        }
+        return ResponseEntity.status(status).body(body)
+    }
 
     private fun execute(endpoint: String, key: String, request: Any, action: () -> Map<String, Any?>): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute(endpoint, key, request) { 200 to (mapOf("success" to true) + action()) }
@@ -103,4 +124,6 @@ class AgentOperatorController(
     fun handleIdempotencyProgress(ex: IdempotencyInProgressException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENT_REQUEST_PROCESSING", ex.message ?: "Conflict"))
     @ExceptionHandler(IllegalArgumentException::class)
     fun handleInvalid(ex: IllegalArgumentException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AGENT_TRANSACTION", ex.message ?: "Bad request"))
+    @ExceptionHandler(MissingRequestHeaderException::class)
+    fun handleMissingHeader(ex: MissingRequestHeaderException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key header is required"))
 }

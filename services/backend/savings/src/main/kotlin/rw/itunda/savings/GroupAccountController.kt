@@ -48,14 +48,23 @@ class GroupAccountController(
     fun get(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true) + groupAccountService.getGroupAccount(currentUser.userId, id).toMap())
 
+    // Real gap found 2026-09-05, same class as StudentLoanController.apply's
+    // identical fix (see feedback_idempotency_key_sweep memory) -- a lost response
+    // after a successful invite would resubmit here and hit
+    // GroupAccountAlreadyMemberException on the retry. deposit/withdraw below were
+    // already protected; this create endpoint was the outlier.
     @PostMapping("/{id}/members")
     fun invite(
         @PathVariable id: String,
         @RequestBody request: InviteMemberRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val member = groupAccountService.inviteMember(currentUser.userId, id, request.phoneNumber)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "member" to member))
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/group-accounts/$id/members", idempotencyKey, request) {
+            val member = groupAccountService.inviteMember(currentUser.userId, id, request.phoneNumber)
+            HttpStatus.CREATED.value() to mapOf("success" to true, "member" to member)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @PostMapping("/{id}/deposit")

@@ -348,12 +348,15 @@ private struct DesignatedDriverDriveContent: View {
         do {
             driver = try await NetworkClient.shared.registerAsDesignatedDriver(licenseNumber: licenseNumber).driver
             licenseNumber = ""
-        } catch NetworkError.httpError(let statusCode) where statusCode == 409 {
+        } catch NetworkError.httpErrorWithMessage(let statusCode, _) where statusCode == 409 {
             // DESIGNATED_DRIVER_ALREADY_REGISTERED in practice (matches Android's
             // identical DesignatedDriverScreen.kt fix, 2026-08-15) -- a fresh
             // install/reinstall has no local memory of a prior registration, but the
             // account genuinely IS already registered. Resolve forward: load the
-            // existing profile instead of a dead-end error.
+            // existing profile instead of a dead-end error. Pattern updated
+            // 2026-09-05 to httpErrorWithMessage since registerAsDesignatedDriver
+            // switched from authenticatedPost to postP2p (see
+            // feedback_idempotency_key_sweep memory) for Idempotency-Key support.
             await loadDriver()
             licenseNumber = ""
         } catch {

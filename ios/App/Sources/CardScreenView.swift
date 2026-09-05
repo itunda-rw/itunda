@@ -229,13 +229,17 @@ struct CardScreenView: View {
                 _ = try await NetworkClient.shared.issueCard(design: design)
                 busy = false
                 load()
-            } catch let NetworkError.httpErrorWithMessage(statusCode, _) where statusCode == 409 {
+            } catch let NetworkError.httpErrorWithCode(statusCode, _, _) where statusCode == 409 {
                 // CARD_ALREADY_ISSUED in practice (matches Android's identical
                 // CardScreen.kt fix, 2026-08-15) -- the account genuinely already has
                 // a card. Resolve forward: load it instead of a dead-end error.
+                // Pattern updated 2026-09-05 to httpErrorWithCode since issueCard
+                // switched from authenticatedPostWithMessage to
+                // authenticatedPostWithCode (see feedback_idempotency_key_sweep
+                // memory) for Idempotency-Key support.
                 busy = false
                 load()
-            } catch let NetworkError.httpErrorWithMessage(_, message) {
+            } catch let NetworkError.httpErrorWithCode(_, _, message) {
                 self.error = message ?? "Could not issue a card."
                 busy = false
             } catch {

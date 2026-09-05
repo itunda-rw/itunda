@@ -35,13 +35,21 @@ class MerchantController(
     private val merchantFeeWaiverService: MerchantFeeWaiverService,
     private val merchantLoyaltyPointsService: MerchantLoyaltyPointsService,
 ) {
+    // Real gap found 2026-09-05, same class as StudentLoanController.apply's
+    // identical fix (see feedback_idempotency_key_sweep memory) -- a lost response
+    // after a successful register would resubmit here and hit
+    // MerchantAlreadyRegisteredException on the retry.
     @PostMapping("/register")
     fun register(
         @RequestBody request: RegisterMerchantRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val merchant = merchantService.register(currentUser.userId, request.businessName)
-        return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/merchant/register", idempotencyKey, request) {
+            val merchant = merchantService.register(currentUser.userId, request.businessName)
+            200 to mapOf("success" to true, "merchant" to merchant)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @GetMapping("/me")

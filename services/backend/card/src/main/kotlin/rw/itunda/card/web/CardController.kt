@@ -57,13 +57,22 @@ class CardController(
     private val cardService: CardService,
     private val idempotencyService: IdempotencyService,
 ) {
+    // Real gap found 2026-09-05, same class as StudentLoanController.apply's
+    // identical fix (see feedback_idempotency_key_sweep memory) -- a lost response
+    // after a successful issue would resubmit here and hit CardAlreadyIssuedException
+    // on the retry. charge below was already protected; this create endpoint was
+    // the outlier.
     @PostMapping("/issue")
     fun issue(
         @RequestBody(required = false) request: IssueCardRequest?,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val card = cardService.issueCard(currentUser.userId, request?.design ?: DebitCardDesign.DEFAULT)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "card" to cardService.getMyCard(currentUser.userId), "cardId" to card.id))
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/card/issue", idempotencyKey, request) {
+            val card = cardService.issueCard(currentUser.userId, request?.design ?: DebitCardDesign.DEFAULT)
+            HttpStatus.CREATED.value() to mapOf("success" to true, "card" to cardService.getMyCard(currentUser.userId), "cardId" to card.id)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @GetMapping("/my-card")

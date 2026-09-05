@@ -110,8 +110,12 @@ final class AgentNetworkClient {
         try await postWithHeader("api/v1/agent/cash-outs", body: request, header: ("Idempotency-Key", UUID().uuidString))
     }
 
+    // Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory)
+    // -- a lost response after a successful submission would previously resubmit
+    // here and hit TillReconciliationAlreadySubmittedException on the retry, a
+    // real cash-handling confusion risk (highest-priority item this thread names).
     func submitTillCount(_ request: TillCountRequest) async throws -> SuccessResponse {
-        try await post("api/v1/agent/till-reconciliations", body: request)
+        try await postWithHeader("api/v1/agent/till-reconciliations", body: request, header: ("Idempotency-Key", UUID().uuidString))
     }
 
     func registerDeviceToken(_ request: RegisterDeviceTokenRequest) async throws -> SuccessResponse {

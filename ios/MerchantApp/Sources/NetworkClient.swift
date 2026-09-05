@@ -514,8 +514,12 @@ final class MerchantNetworkClient {
         try await post("api/v1/auth/login", body: request, authenticated: false)
     }
 
+    // Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory)
+    // -- a lost response after a successful register would previously resubmit
+    // here and hit the backend's own MerchantAlreadyRegisteredException guard on
+    // retry.
     func registerMerchant(businessName: String) async throws -> MerchantResponse {
-        try await post("api/v1/merchant/register", body: RegisterMerchantRequest(businessName: businessName))
+        try await postWithHeader("api/v1/merchant/register", body: RegisterMerchantRequest(businessName: businessName), header: ("Idempotency-Key", UUID().uuidString))
     }
 
     func getMyMerchant() async throws -> MerchantResponse { try await get("api/v1/merchant/me") }
@@ -640,8 +644,12 @@ final class MerchantNetworkClient {
         return try await get("api/v1/merchant/reports/top-products", query: query)
     }
 
+    // Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory)
+    // -- a lost response after a successful open would previously resubmit here
+    // and hit the backend's own BusinessAccountAlreadyExistsException guard on
+    // retry.
     func openBusinessAccount() async throws -> BusinessAccountResponse {
-        try await post("api/v1/merchant/business-account", body: EmptyBody())
+        try await postWithHeader("api/v1/merchant/business-account", body: EmptyBody(), header: ("Idempotency-Key", UUID().uuidString))
     }
 
     func getBusinessAccount() async throws -> BusinessAccountResponse { try await get("api/v1/merchant/business-account") }

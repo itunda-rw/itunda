@@ -42,11 +42,14 @@ struct ForeignCurrencyScreenView: View {
             showingIntro = false
             selectedCurrency = nil
             await load()
-        } catch NetworkError.httpError(let statusCode) where statusCode == 409 {
+        } catch NetworkError.httpErrorWithMessage(let statusCode, _) where statusCode == 409 {
             // FOREIGN_ACCOUNT_ALREADY_EXISTS in practice (matches Android's identical
             // ForeignCurrencyScreen.kt fix, 2026-08-15) -- the account genuinely
             // already exists. Resolve forward: reload and show it instead of a
-            // dead-end error.
+            // dead-end error. Pattern updated 2026-09-05 to httpErrorWithMessage
+            // since openForeignAccount switched from authenticatedPost to postP2p
+            // (see feedback_idempotency_key_sweep memory) for Idempotency-Key
+            // support.
             showingIntro = false
             selectedCurrency = nil
             await load()

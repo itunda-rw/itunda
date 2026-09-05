@@ -35,7 +35,11 @@ interface AgentApi {
     @GET("api/v1/agent/activity") suspend fun activity(@Query("limit") limit: Int = 20): ActivityResponse
     @POST("api/v1/agent/cash-ins") suspend fun cashIn(@Header("Idempotency-Key") key: String = UUID.randomUUID().toString(), @Body request: CashInRequest): Map<String, Any?>
     @POST("api/v1/agent/cash-outs") suspend fun cashOut(@Header("Idempotency-Key") key: String = UUID.randomUUID().toString(), @Body request: CashOutRequest): Map<String, Any?>
-    @POST("api/v1/agent/till-reconciliations") suspend fun submitTillCount(@Body request: TillCountRequest): Map<String, Any?>
+    // Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory)
+    // -- a lost response after a successful submission would previously resubmit
+    // here and hit TillReconciliationAlreadySubmittedException on the retry, a
+    // real cash-handling confusion risk (highest-priority item this thread names).
+    @POST("api/v1/agent/till-reconciliations") suspend fun submitTillCount(@Header("Idempotency-Key") key: String = UUID.randomUUID().toString(), @Body request: TillCountRequest): Map<String, Any?>
 }
 
 interface AuthApi { @POST("api/v1/auth/login") suspend fun login(@Body request: LoginRequest): AuthResponse }

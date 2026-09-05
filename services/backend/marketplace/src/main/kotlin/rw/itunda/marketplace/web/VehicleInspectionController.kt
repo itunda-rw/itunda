@@ -46,13 +46,22 @@ class VehicleInspectionController(
     private val vehicleInspectionService: VehicleInspectionService,
     private val idempotencyService: IdempotencyService,
 ) {
+    // Real gap found 2026-09-05, same class as StudentLoanController.apply's
+    // identical fix (see feedback_idempotency_key_sweep memory) -- a lost response
+    // after a successful register would resubmit here and hit
+    // MechanicAlreadyRegisteredException on the retry. Booking creation below was
+    // already protected; this register endpoint was the outlier.
     @PostMapping("/mechanics/register")
     fun registerAsMechanic(
         @RequestBody request: RegisterMechanicRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val mechanic = vehicleInspectionService.registerAsMechanic(currentUser.userId, request.businessName)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "mechanic" to mechanic))
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/marketplace/inspections/mechanics/register", idempotencyKey, request) {
+            val mechanic = vehicleInspectionService.registerAsMechanic(currentUser.userId, request.businessName)
+            HttpStatus.CREATED.value() to mapOf("success" to true, "mechanic" to mechanic)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @GetMapping("/mechanics/me")

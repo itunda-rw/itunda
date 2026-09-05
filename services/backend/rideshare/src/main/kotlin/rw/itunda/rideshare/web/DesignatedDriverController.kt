@@ -56,13 +56,22 @@ class DesignatedDriverController(
     private val idempotencyService: IdempotencyService,
 ) {
 
+    // Real gap found 2026-09-05, same class as this file's own /trips fix below
+    // (see its doc comment) and StudentLoanController.apply's identical fix (see
+    // feedback_idempotency_key_sweep memory) -- a lost response after a successful
+    // register would resubmit here and hit DesignatedDriverAlreadyRegisteredException
+    // on the retry.
     @PostMapping("/drivers/register")
     fun registerDriver(
         @RequestBody request: RegisterDesignatedDriverRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val driver = designatedDriverService.register(currentUser.userId, request.licenseNumber)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "driver" to driver))
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/designated-driver/drivers/register", idempotencyKey, request) {
+            val driver = designatedDriverService.register(currentUser.userId, request.licenseNumber)
+            HttpStatus.CREATED.value() to mapOf("success" to true, "driver" to driver)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @GetMapping("/drivers/me")

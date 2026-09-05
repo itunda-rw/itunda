@@ -48,6 +48,7 @@ import rw.itunda.core.network.SetRateAlertRequest
 import rw.itunda.core.network.Account as AccountDto
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
+import java.util.UUID
 
 // Real 토스뱅크 외화통장 (foreign-currency account) equivalent (2026-07-25) -- scoped to
 // USD/EUR/GBP, the currencies real Rwandan diaspora remittance corridors (US,
@@ -100,7 +101,7 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
         openingCurrency = currency
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.openForeignAccount(OpenForeignAccountRequest(currency))
+                NetworkClient.apiService.openForeignAccount(UUID.randomUUID().toString(), OpenForeignAccountRequest(currency))
                 mode = ForeignCurrencyMode.LIST
                 selectedCurrency = null
                 refreshKey++
@@ -287,7 +288,7 @@ private fun ConvertPanel(accounts: List<AccountDto>, onConverted: () -> Unit) {
                         success = null
                         coroutineScope.launch {
                             try {
-                                val res = NetworkClient.apiService.convertCurrency(ConvertCurrencyRequest(fromCurrency, toCurrency, amount))
+                                val res = NetworkClient.apiService.convertCurrency(UUID.randomUUID().toString(), ConvertCurrencyRequest(fromCurrency, toCurrency, amount))
                                 if (res.success) {
                                     success = "Converted -- ${formatFx(res.conversion.toAmount)} $toCurrency credited."
                                     amountText = ""

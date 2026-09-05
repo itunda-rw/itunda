@@ -464,8 +464,12 @@ data class BusinessExpenseCategoryDto(val name: String, val amount: Double)
 data class BusinessExpenseSummaryResponse(val success: Boolean, val categories: List<BusinessExpenseCategoryDto>, val totalSpent: Double, val sinceMonthsAgo: Long)
 
 interface ApiService {
+    // Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory)
+    // -- a lost response after a successful register would previously resubmit
+    // here and hit the backend's own MerchantAlreadyRegisteredException guard on
+    // retry.
     @POST("api/v1/merchant/register")
-    suspend fun registerMerchant(@Body request: RegisterMerchantRequest): MerchantResponse
+    suspend fun registerMerchant(@Body request: RegisterMerchantRequest, @Header("Idempotency-Key") idempotencyKey: String = UUID.randomUUID().toString()): MerchantResponse
 
     @GET("api/v1/merchant/me")
     suspend fun getMyMerchant(): MerchantResponse
@@ -603,9 +607,12 @@ interface ApiService {
     suspend fun completeBooking(@Path("id") bookingId: String): MerchantBookingDetailResponse
 
     // Real business banking for sole proprietors (2026-07-25) -- see
-    // rw.itunda.merchant.MerchantBusinessAccountController.
+    // rw.itunda.merchant.MerchantBusinessAccountController. Idempotency-Key added
+    // 2026-09-05 (see feedback_idempotency_key_sweep memory) -- a lost response
+    // after a successful open would previously resubmit here and hit the
+    // backend's own BusinessAccountAlreadyExistsException guard on retry.
     @POST("api/v1/merchant/business-account")
-    suspend fun openBusinessAccount(): BusinessAccountResponse
+    suspend fun openBusinessAccount(@Header("Idempotency-Key") idempotencyKey: String = UUID.randomUUID().toString()): BusinessAccountResponse
 
     @GET("api/v1/merchant/business-account")
     suspend fun getBusinessAccount(): BusinessAccountResponse

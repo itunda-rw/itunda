@@ -41,9 +41,13 @@ export interface DesignatedDriver {
   createdAt: string;
 }
 
+// Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory) -- a
+// lost response after a successful register would previously resubmit here and hit
+// the backend's own DesignatedDriverAlreadyRegisteredException guard on retry.
 export const registerAsDesignatedDriver = (licenseNumber: string) =>
   apiFetch<{ success: boolean; driver: DesignatedDriver }>('/api/v1/designated-driver/drivers/register', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ licenseNumber }),
   }).then((r) => r.driver);
 

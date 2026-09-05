@@ -78,9 +78,14 @@ export const agentCashOut = (accountNumber: string, amount: number, receiptNumbe
     body: JSON.stringify({ accountNumber, amount, receiptNumber, authorizationCode }),
   });
 
+// Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory) --
+// a lost response after a successful submission would previously resubmit here
+// and hit TillReconciliationAlreadySubmittedException on the retry, a real
+// cash-handling confusion risk (highest-priority item this thread names).
 export const submitAgentTillCount = (countedCash: number) =>
   apiFetch<{ success: boolean; reconciliation: AgentTillReconciliation }>('/api/v1/agent/till-reconciliations', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ countedCash }),
   }).then((r) => r.reconciliation);
 

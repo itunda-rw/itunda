@@ -253,7 +253,7 @@ private fun InspectionMechanicContent() {
         error = null
         coroutineScope.launch {
             try {
-                profile = NetworkClient.apiService.registerAsInspectionMechanic(RegisterInspectionMechanicRequest(businessName.trim())).mechanic
+                profile = NetworkClient.apiService.registerAsInspectionMechanic(UUID.randomUUID().toString(), RegisterInspectionMechanicRequest(businessName.trim())).mechanic
                 load()
             } catch (e: HttpException) {
                 if (rw.itunda.core.network.apiErrorCode(e) == "MECHANIC_ALREADY_REGISTERED") {

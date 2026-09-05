@@ -190,7 +190,7 @@ private fun CashOperationScreen(mode: TransactionMode, onBack: () -> Unit, onCom
                     when (mode) {
                         TransactionMode.CASH_IN -> NetworkClient.agentApi.cashIn(request = CashInRequest(account.trim(), numericAmount, receipt.trim()))
                         TransactionMode.CASH_OUT -> NetworkClient.agentApi.cashOut(request = CashOutRequest(account.trim(), numericAmount, receipt.trim(), code.trim()))
-                        TransactionMode.COUNT_TILL -> NetworkClient.agentApi.submitTillCount(TillCountRequest(numericAmount))
+                        TransactionMode.COUNT_TILL -> NetworkClient.agentApi.submitTillCount(request = TillCountRequest(numericAmount))
                     }
                     successMessage = when (mode) {
                         TransactionMode.CASH_IN -> "Cash in confirmed. The customer balance has been updated."

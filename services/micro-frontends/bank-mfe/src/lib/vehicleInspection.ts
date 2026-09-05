@@ -30,9 +30,13 @@ export interface VehicleInspectionBooking {
   createdAt: string;
 }
 
+// Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory) -- a
+// lost response after a successful register would previously resubmit here and hit
+// the backend's own MechanicAlreadyRegisteredException guard on retry.
 export const registerAsMechanic = (businessName: string) =>
   apiFetch<{ success: boolean; mechanic: VehicleInspectionMechanic }>('/api/v1/marketplace/inspections/mechanics/register', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ businessName }),
   }).then((r) => r.mechanic);
 

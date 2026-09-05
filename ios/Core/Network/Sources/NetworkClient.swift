@@ -1449,8 +1449,13 @@ public struct DiscoverResponse: Decodable { public let success: Bool; public let
 extension NetworkClient {
     public func getAccounts() async throws -> AccountsResponse { try await get("api/v1/account") }
 
+    // Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory)
+    // -- a lost response after a successful open would previously resubmit here
+    // and hit the backend's own ForeignCurrencyAccountAlreadyExistsException guard
+    // on retry. Switched from the shared authenticatedPost (never widen that --
+    // ~230 other unaudited callers) to postP2p for this one call site only.
     public func openForeignAccount(_ request: OpenForeignAccountRequest) async throws -> ForeignAccountsResponse {
-        try await authenticatedPost("api/v1/account/foreign-currency/accounts", body: request)
+        try await postP2p("api/v1/account/foreign-currency/accounts", body: request, idempotencyKey: UUID().uuidString)
     }
 
     public func getForeignAccounts() async throws -> ForeignAccountsResponse { try await get("api/v1/account/foreign-currency/accounts") }
@@ -1462,8 +1467,14 @@ extension NetworkClient {
         ])
     }
 
+    // Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory)
+    // -- convert genuinely moves real money between the caller's own accounts with
+    // NO duplicate-prevention guard at all, so a lost response after a successful
+    // conversion would previously resubmit here and silently execute the SAME
+    // conversion twice. Switched from the shared authenticatedPost (never widen
+    // that -- ~230 other unaudited callers) to postP2p for this one call site only.
     public func convertCurrency(_ request: ConvertCurrencyRequest) async throws -> ConvertCurrencyResponse {
-        try await authenticatedPost("api/v1/account/foreign-currency/convert", body: request)
+        try await postP2p("api/v1/account/foreign-currency/convert", body: request, idempotencyKey: UUID().uuidString)
     }
 
     public func getMyConversions() async throws -> CurrencyConversionsResponse { try await get("api/v1/account/foreign-currency/conversions") }
@@ -1658,8 +1669,13 @@ extension NetworkClient {
 
     // Real Kakao T 대리운전 (designated driver, item 221) -- first iOS client for this
     // feature. bank-mfe/Android already have this; mirrors ApiService.kt exactly.
+    // Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory)
+    // -- a lost response after a successful register would previously resubmit
+    // here and hit the backend's own DesignatedDriverAlreadyRegisteredException
+    // guard on retry. Switched from the shared authenticatedPost (never widen that
+    // -- ~230 other unaudited callers) to postP2p for this one call site only.
     public func registerAsDesignatedDriver(licenseNumber: String) async throws -> DesignatedDriverResponse {
-        try await authenticatedPost("api/v1/designated-driver/drivers/register", body: RegisterDesignatedDriverRequest(licenseNumber: licenseNumber))
+        try await postP2p("api/v1/designated-driver/drivers/register", body: RegisterDesignatedDriverRequest(licenseNumber: licenseNumber), idempotencyKey: UUID().uuidString)
     }
 
     public func getMyDesignatedDriverProfile() async throws -> DesignatedDriverResponse { try await get("api/v1/designated-driver/drivers/me") }
@@ -1841,8 +1857,13 @@ extension NetworkClient {
     // inspection with yourself", "Only a REQUESTED booking can be accepted", and a
     // dynamic cancel message including the booking's actual current status) that
     // VehicleInspectionScreenView.swift's bare `catch {}` blocks each flattened.
+    // Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory)
+    // -- a lost response after a successful register would previously resubmit
+    // here and hit the backend's own MechanicAlreadyRegisteredException guard on
+    // retry. Switched from authenticatedPostWithMessage (no idempotency support)
+    // to postP2p, matching this file's established convention.
     public func registerAsInspectionMechanic(businessName: String) async throws -> VehicleInspectionMechanicResponse {
-        try await authenticatedPostWithMessage("api/v1/marketplace/inspections/mechanics/register", body: RegisterInspectionMechanicRequest(businessName: businessName))
+        try await postP2p("api/v1/marketplace/inspections/mechanics/register", body: RegisterInspectionMechanicRequest(businessName: businessName), idempotencyKey: UUID().uuidString)
     }
     public func getMyInspectionMechanicProfile() async throws -> VehicleInspectionMechanicOrNullResponse {
         try await get("api/v1/marketplace/inspections/mechanics/me")
@@ -2056,8 +2077,14 @@ extension NetworkClient {
         try await get("api/v1/group-accounts/\(id)")
     }
 
+    // Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory)
+    // -- a lost response after a successful invite would previously resubmit here
+    // and hit the backend's own GroupAccountAlreadyMemberException guard on retry.
+    // Purely additive (authenticatedPostWithCode's idempotencyKey param was already
+    // optional) -- doesn't change the thrown error type, so no existing catch site
+    // regresses.
     public func inviteGroupAccountMember(id: String, phoneNumber: String) async throws -> InviteMemberResponse {
-        try await authenticatedPostWithCode("api/v1/group-accounts/\(id)/members", body: InviteMemberRequest(phoneNumber: phoneNumber))
+        try await authenticatedPostWithCode("api/v1/group-accounts/\(id)/members", body: InviteMemberRequest(phoneNumber: phoneNumber), idempotencyKey: UUID().uuidString)
     }
 
     // Real gap found 2026-09-04: withdraw's real "Insufficient available balance in

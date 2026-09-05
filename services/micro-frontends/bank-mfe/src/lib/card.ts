@@ -65,9 +65,13 @@ export const DEFAULT_CARD_DESIGN = CARD_DESIGNS[0].id;
 
 export const cardDesign = (id: string): CardDesign => CARD_DESIGNS.find((d) => d.id === id) ?? CARD_DESIGNS[0];
 
+// Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory) -- a
+// lost response after a successful issue would previously resubmit here and hit the
+// backend's own CardAlreadyIssuedException guard on retry.
 export const issueCard = (design: string = DEFAULT_CARD_DESIGN) =>
   apiFetch<{ success: boolean; card: Card }>('/api/v1/card/issue', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ design }),
   }).then((r) => r.card);
 

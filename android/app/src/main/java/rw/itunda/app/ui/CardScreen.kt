@@ -116,7 +116,7 @@ fun CardScreen(onBack: () -> Unit) {
         error = null
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.issueCard(IssueCardRequest(design))
+                NetworkClient.apiService.issueCard(UUID.randomUUID().toString(), IssueCardRequest(design))
                 load()
             } catch (e: HttpException) {
                 if (apiErrorCode(e) == "CARD_ALREADY_ISSUED") {

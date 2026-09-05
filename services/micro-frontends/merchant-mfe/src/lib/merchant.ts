@@ -197,9 +197,13 @@ export const getMyMerchant = async (): Promise<Merchant | null> => {
   }
 };
 
+// Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory) -- a
+// lost response after a successful register would previously resubmit here and hit
+// the backend's own MerchantAlreadyRegisteredException guard on retry.
 export const registerMerchant = (businessName: string) =>
   apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/register', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ businessName }),
   }).then((r) => r.merchant);
 
@@ -830,8 +834,14 @@ export interface BusinessLedgerEntry {
   createdAt: string;
 }
 
+// Idempotency-Key added 2026-09-05 -- a lost response after a successful open
+// would previously resubmit here and hit the backend's own
+// BusinessAccountAlreadyExistsException guard on retry.
 export const openBusinessAccount = () =>
-  apiFetch<{ success: boolean; wallet: BusinessWallet }>('/api/v1/merchant/business-account', { method: 'POST' }).then((r) => r.wallet);
+  apiFetch<{ success: boolean; wallet: BusinessWallet }>('/api/v1/merchant/business-account', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  }).then((r) => r.wallet);
 
 export const getBusinessAccount = () =>
   apiFetch<{ success: boolean; wallet: BusinessWallet }>('/api/v1/merchant/business-account').then((r) => r.wallet);

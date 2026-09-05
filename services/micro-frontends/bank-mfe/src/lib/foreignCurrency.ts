@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Real 토스뱅크 외화통장 (foreign-currency account) equivalent (item 154) -- see the
 // backend's ForeignCurrencyAccountService.kt doc comment: scoped to USD/EUR/GBP, the
@@ -36,9 +37,13 @@ export interface CurrencyConversion {
   createdAt: string;
 }
 
+// Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory) -- a
+// lost response after a successful open would previously resubmit here and hit the
+// backend's own ForeignCurrencyAccountAlreadyExistsException guard on retry.
 export const openForeignCurrencyAccount = (currency: ForeignCurrencyCode) =>
   apiFetch<{ success: boolean; account: ForeignCurrencyAccount }>('/api/v1/account/foreign-currency/accounts', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ currency }),
   }).then((r) => r.account);
 
@@ -52,9 +57,14 @@ export const fetchExchangeRate = (from: string, to: string) =>
     `/api/v1/account/foreign-currency/rate?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
   );
 
+// Idempotency-Key added 2026-09-05 -- convert genuinely moves real money between
+// the caller's own accounts with NO duplicate-prevention guard at all, so a lost
+// response after a successful conversion would previously resubmit here and
+// silently execute the SAME conversion twice.
 export const convertCurrency = (fromCurrency: string, toCurrency: string, amount: number) =>
   apiFetch<{ success: boolean; conversion: CurrencyConversion }>('/api/v1/account/foreign-currency/convert', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ fromCurrency, toCurrency, amount }),
   }).then((r) => r.conversion);
 

@@ -104,8 +104,15 @@ extension NetworkClient {
     // remaining-limit figure, "Incorrect current password or PIN") that
     // CardScreenView.swift's bare `catch {}` blocks each flattened into one static
     // per-action string.
+    // Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory)
+    // -- a lost response after a successful issue would previously resubmit here
+    // and hit the backend's own CardAlreadyIssuedException guard on retry.
+    // authenticatedPostWithCode (not authenticatedPostWithMessage, which has no
+    // idempotency support) is this module's internal-scoped POST helper reachable
+    // from an extension file like this one -- postP2p in the main NetworkClient.swift
+    // is fileprivate to that file only.
     public func issueCard(design: String) async throws -> CardResponse {
-        try await authenticatedPostWithMessage("api/v1/card/issue", body: IssueCardRequest(design: design))
+        try await authenticatedPostWithCode("api/v1/card/issue", body: IssueCardRequest(design: design), idempotencyKey: UUID().uuidString)
     }
 
     public func getMyTransitBalance() async throws -> TransitBalanceResponse { try await get("api/v1/transit/balance") }
@@ -232,8 +239,14 @@ extension NetworkClient {
     public func agentCashOut(_ request: AgentCashOutRequest) async throws -> AgentCashResultResponse {
         try await authenticatedPost("api/v1/agent/cash-outs", body: request, idempotencyKey: UUID().uuidString)
     }
+    // Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory)
+    // -- matching agentCashIn/agentCashOut just above (authenticatedPost's
+    // idempotencyKey param was already there, just unused here). A lost response
+    // after a successful submission would previously resubmit this request and hit
+    // TillReconciliationAlreadySubmittedException on the retry, a real
+    // cash-handling confusion risk (highest-priority item this thread names).
     public func submitAgentTillCount(_ countedCash: Double) async throws -> AgentTillReconciliationResponse {
-        try await authenticatedPost("api/v1/agent/till-reconciliations", body: SubmitAgentTillCountRequest(countedCash: countedCash))
+        try await authenticatedPost("api/v1/agent/till-reconciliations", body: SubmitAgentTillCountRequest(countedCash: countedCash), idempotencyKey: UUID().uuidString)
     }
 
     // Real peer-to-peer agent float rebalancing marketplace -- see FloatMarketplaceController.kt.

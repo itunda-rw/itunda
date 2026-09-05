@@ -40,9 +40,13 @@ export const createGroupAccount = (name: string) =>
 export const fetchGroupAccount = (id: string) =>
   apiFetch<{ success: boolean } & GroupAccountDetail>(`/api/v1/group-accounts/${id}`);
 
+// Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory) -- a
+// lost response after a successful invite would previously resubmit here and hit
+// the backend's own GroupAccountAlreadyMemberException guard on retry.
 export const inviteGroupAccountMember = (id: string, phoneNumber: string) =>
   apiFetch<{ success: boolean; member: GroupAccountMember }>(`/api/v1/group-accounts/${id}/members`, {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ phoneNumber }),
   }).then((r) => r.member);
 

@@ -2654,8 +2654,12 @@ interface ApiService {
 
     // Real 토스뱅크 외화통장 (foreign-currency account) equivalent (2026-07-25) -- see
     // rw.itunda.account.web.ForeignCurrencyController.
+    // Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory)
+    // -- a lost response after a successful open would previously resubmit here
+    // and hit the backend's own ForeignCurrencyAccountAlreadyExistsException guard
+    // on retry.
     @POST("api/v1/account/foreign-currency/accounts")
-    suspend fun openForeignAccount(@Body request: OpenForeignAccountRequest): ForeignAccountResponse
+    suspend fun openForeignAccount(@Header("Idempotency-Key") idempotencyKey: String, @Body request: OpenForeignAccountRequest): ForeignAccountResponse
 
     @GET("api/v1/account/foreign-currency/accounts")
     suspend fun getForeignAccounts(): ForeignAccountsResponse
@@ -2663,8 +2667,12 @@ interface ApiService {
     @GET("api/v1/account/foreign-currency/rate")
     suspend fun getExchangeRate(@Query("from") from: String, @Query("to") to: String): ExchangeRateResponse
 
+    // Idempotency-Key added 2026-09-05 -- convert genuinely moves real money
+    // between the caller's own accounts with NO duplicate-prevention guard at all,
+    // so a lost response after a successful conversion would previously resubmit
+    // here and silently execute the SAME conversion twice.
     @POST("api/v1/account/foreign-currency/convert")
-    suspend fun convertCurrency(@Body request: ConvertCurrencyRequest): CurrencyConversionResponse
+    suspend fun convertCurrency(@Header("Idempotency-Key") idempotencyKey: String, @Body request: ConvertCurrencyRequest): CurrencyConversionResponse
 
     @GET("api/v1/account/foreign-currency/conversions")
     suspend fun getMyConversions(): CurrencyConversionsResponse
@@ -4275,8 +4283,11 @@ interface ApiService {
     @POST("api/v1/loans/postpaid-credit/repay")
     suspend fun repayPostpaidCredit(@Header("Idempotency-Key") idempotencyKey: String, @Body request: PostpaidCreditAmountRequest): PostpaidCreditActionResponse
 
+    // Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory) --
+    // a lost response after a successful issue would previously resubmit here and
+    // hit the backend's own CardAlreadyIssuedException guard on retry.
     @POST("api/v1/card/issue")
-    suspend fun issueCard(@Body request: IssueCardRequest): CardResponse
+    suspend fun issueCard(@Header("Idempotency-Key") idempotencyKey: String, @Body request: IssueCardRequest): CardResponse
 
     @GET("api/v1/card/my-card")
     suspend fun getMyCard(): CardResponse
@@ -4673,8 +4684,12 @@ interface ApiService {
 
     // Real Kakao T 대리운전 (designated driver, item 221) -- first Android client for
     // this feature. bank-mfe already has this; mirrors lib/designatedDriver.ts exactly.
+    // Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory)
+    // -- a lost response after a successful register would previously resubmit
+    // here and hit the backend's own DesignatedDriverAlreadyRegisteredException
+    // guard on retry.
     @POST("api/v1/designated-driver/drivers/register")
-    suspend fun registerAsDesignatedDriver(@Body request: RegisterDesignatedDriverRequest): DesignatedDriverResponse
+    suspend fun registerAsDesignatedDriver(@Header("Idempotency-Key") idempotencyKey: String, @Body request: RegisterDesignatedDriverRequest): DesignatedDriverResponse
 
     @GET("api/v1/designated-driver/drivers/me")
     suspend fun getMyDesignatedDriverProfile(): DesignatedDriverResponse
@@ -4841,8 +4856,12 @@ interface ApiService {
     // rw.itunda.marketplace.VehicleInspectionService's own doc comment. A buyer books
     // and 100%-prepays a real mechanic to inspect a real Marketplace used-car listing
     // before purchase. bank-mfe already has this; this is the first Android client.
+    // Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory)
+    // -- a lost response after a successful register would previously resubmit
+    // here and hit the backend's own MechanicAlreadyRegisteredException guard on
+    // retry.
     @POST("api/v1/marketplace/inspections/mechanics/register")
-    suspend fun registerAsInspectionMechanic(@Body request: RegisterInspectionMechanicRequest): VehicleInspectionMechanicResponse
+    suspend fun registerAsInspectionMechanic(@Header("Idempotency-Key") idempotencyKey: String, @Body request: RegisterInspectionMechanicRequest): VehicleInspectionMechanicResponse
 
     @GET("api/v1/marketplace/inspections/mechanics/me")
     suspend fun getMyInspectionMechanicProfile(): VehicleInspectionMechanicOrNullResponse
@@ -4934,8 +4953,11 @@ interface ApiService {
     @GET("api/v1/group-accounts/{id}")
     suspend fun getGroupAccount(@Path("id") id: String): GroupAccountDetailResponse
 
+    // Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory)
+    // -- a lost response after a successful invite would previously resubmit here
+    // and hit the backend's own GroupAccountAlreadyMemberException guard on retry.
     @POST("api/v1/group-accounts/{id}/members")
-    suspend fun inviteGroupAccountMember(@Path("id") id: String, @Body request: InviteMemberRequest): InviteMemberResponse
+    suspend fun inviteGroupAccountMember(@Path("id") id: String, @Header("Idempotency-Key") idempotencyKey: String, @Body request: InviteMemberRequest): InviteMemberResponse
 
     @POST("api/v1/group-accounts/{id}/deposit")
     suspend fun depositToGroupAccount(

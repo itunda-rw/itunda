@@ -166,7 +166,7 @@ internal fun GroupAccountDetailContent(id: String) {
         busy = true
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.inviteGroupAccountMember(id, InviteMemberRequest(phoneNumber.trim()))
+                NetworkClient.apiService.inviteGroupAccountMember(id, UUID.randomUUID().toString(), InviteMemberRequest(phoneNumber.trim()))
                 phoneNumber = ""
                 error = null
                 load()

@@ -32,10 +32,22 @@ class MerchantBusinessAccountController(
     private val merchantBusinessAccountService: MerchantBusinessAccountService,
     private val idempotencyService: IdempotencyService,
 ) {
+    // Real gap found 2026-09-05, same class as StudentLoanController.apply's
+    // identical fix (see feedback_idempotency_key_sweep memory) -- a lost response
+    // after a successful open would resubmit here and hit
+    // BusinessAccountAlreadyExistsException on the retry. move-to-business/
+    // move-to-personal below were already protected; this create endpoint was the
+    // outlier.
     @PostMapping
-    fun openBusinessAccount(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
-        val account = merchantBusinessAccountService.openBusinessAccount(currentUser.userId)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "account" to account))
+    fun openBusinessAccount(
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/merchant/business-account", idempotencyKey, currentUser.userId) {
+            val account = merchantBusinessAccountService.openBusinessAccount(currentUser.userId)
+            HttpStatus.CREATED.value() to mapOf("success" to true, "account" to account)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @GetMapping
