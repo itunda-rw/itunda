@@ -1398,6 +1398,51 @@ found (the same false-negative pattern class, in reverse, as the earlier
 RideController find) and confirmed complete via a full-backend re-audit for other
 same-path sibling groups (none found).
 
+## Merchant Products — `/api/v1/merchant/products`
+
+**Added 2026-09-05** (nineteenth documentation slice). The register-software half of
+"Toss Place" — a merchant's own catalog management. Not money-moving, no
+`Idempotency-Key` — checkout goes through `MerchantController`'s existing
+`/qr/generate`/`/card/charge`, unmodified. Confirmed by direct read of
+`MerchantProductController.kt` (13 endpoints, 12 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | `{name, price, imageUrl?, originalPrice?, description?, durationMinutes?, requiresPrepay?, stockQuantity?}` | `201 {success, product: {...}}` | `requiresPrepay` (real Kakao Hair Shop-style prepay-to-book) is only meaningful with `durationMinutes` set |
+| GET | `` (base path) | — | `{success, products: [...]}` | Merchant's own catalog |
+| PUT | `/{productId}` | same shape as create | `{success, product: {...}}` | Full replace |
+| PATCH | `/{productId}/stock` | `{stockQuantity?}` | `{success, product: {...}}` | Deliberately narrow — a cashier restocking a shelf must not accidentally re-submit or erase pricing/description/booking/discount settings |
+| PATCH | `/{productId}/surplus-deal` | `{expiresAt?, stockQuantity?}` | `{success, product: {...}}` | Real 마감할인 (closing/surplus discount) toggle — `expiresAt: null` clears it |
+| PATCH | `/{productId}/sold-out` | `{soldOut}` | `{success, product: {...}}` | Real Baemin CEO app/DoorDash-style "86" temporarily-sold-out toggle |
+| GET | `/{productId}/analytics` | — | `{success, viewCount, orderCount}` | Real Coupang WING 상품분석 (product analytics) |
+| DELETE | `/{productId}` | — | `{success, product: {...}}` | |
+| POST | `/{productId}/option-groups` | `{name, choices, required?, multiSelect?}` | `201 {success, optionGroup: {...}}` | |
+| GET | `/{productId}/option-groups` | — | `{success, optionGroups: [...]}` | Public — no ownership gate, also folded directly into Shopping's own menu-browse payload |
+| DELETE | `/{productId}/option-groups/{groupId}` | — | `{success}` | |
+| POST | `/{productId}/price-tiers` | `{tiers: [{minQuantity, unitPrice}]}` | `{success, tiers: [...]}` | Real bulk/wholesale pricing |
+| GET | `/{productId}/price-tiers` | — | `{success, tiers: [...]}` | Public — no ownership gate |
+
+Errors (all 12 real `@ExceptionHandler`s): `404 MERCHANT_NOT_FOUND`,
+`400 INVALID_PRODUCT_PRICE`, `400 INVALID_PRODUCT_IMAGE_URL`,
+`400 INVALID_PRODUCT_DISCOUNT` (server-computed from price/originalPrice, never
+trusted from the client, so this only ever fires from those two fields), `400
+INVALID_PRODUCT_DURATION`, `400 INVALID_STOCK_QUANTITY`, `400 INVALID_SURPLUS_DEAL`,
+`400 INVALID_PRICE_TIER`, `404 MERCHANT_PRODUCT_NOT_FOUND`,
+`400 INVALID_MENU_OPTION_GROUP`, `404 MENU_OPTION_GROUP_NOT_FOUND`,
+`429 RATE_LIMITED`.
+
+## Merchant Profile Views — `/api/v1/merchant/profile-views`
+
+**Added 2026-09-05, same slice.** Real 비즈프로필 (Karrot Business Profile)
+visitor-count dashboard. Confirmed by direct read of
+`MerchantProfileViewController.kt` (1 endpoint, 1 error code).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/trend?days` | — | `{success, trend: [...]}` | `days` defaults to 7 |
+
+Errors: `404 MERCHANT_NOT_FOUND`.
+
 ## Merchant Payroll — `/api/v1/merchant/payroll`
 
 **Added 2026-09-05** (was named as a real, still-open documentation gap in the Merchant
