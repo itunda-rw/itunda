@@ -473,6 +473,70 @@ Errors: `404 MOTO_OWNERSHIP_PLAN_NOT_FOUND`, `404 ACCOUNT_NOT_FOUND`,
 `409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`,
 `422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`, `429 RATE_LIMITED`.
 
+## Rides — `/api/v1/rides`
+
+**Added 2026-09-05** (tenth documentation slice — itunda's core Kakao T-style
+ride-hailing product, the single highest-value gap this standing follow-up has found:
+previously undocumented, hidden from every prior remaining-controller count by a
+prefix-matching bug in the count script itself, see `project_itunda_market_readiness`
+memory for the full account). Confirmed by direct read of `RideController.kt` (26
+endpoints, 33 `@ExceptionHandler`s, 32 unique codes — `InvalidRideDriverLocationException`
+and `InvalidRideLocationException` both map to `INVALID_LOCATION`).
+
+### Drivers
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/drivers/register` | `{licenseNumber}` | `201 {success, driver: {...}}` | |
+| GET | `/drivers/me` | — | `{success, driver: {...}}` | |
+| POST | `/drivers/availability` | `{available}` | `{success, driver: {...}}` | |
+| POST | `/drivers/location` | `{latitude, longitude}` | `{success, driver: {...}}` | |
+| POST | `/drivers/destination` | `{latitude, longitude}` | `{success, driver: {...}}` | Real Uber "Destination Filter" — biases dispatch toward trips heading the driver's own way |
+| POST | `/drivers/destination/clear` | — | `{success, driver: {...}}` | |
+| GET | `/drivers/{driverId}/reviews` | — | `{success, reviews: [...], ...pageMeta}` | |
+| GET | `/drivers/{driverId}/rating` | — | `{success, average, count}` | |
+
+### Trip lifecycle
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/trips/estimate?pickupLatitude&pickupLongitude&dropoffLatitude&dropoffLongitude` | — | `{success, estimatedFare}` | Real Uber "Upfront Fare" preview — pure computation, no side effects, no `Idempotency-Key`. Doesn't account for stops; the actual charged fare on `requestTrip` always uses full stop data regardless |
+| POST | `/trips` | `{pickupAddress, pickupLatitude, pickupLongitude, dropoffAddress, dropoffLatitude, dropoffLongitude, scheduledFor?, stops?}` (+ `Idempotency-Key`) | `201 {success, trip: {...}, stops: [...]}` | `scheduledFor` (null = ASAP) is real Kakao T 예약 호출 (scheduled ride booking); `stops` (empty = direct) is real Kakao T-style multi-stop |
+| GET | `/trips/available` | — | `{success, trips: [...]}` | Driver-side, nearest/matching offers |
+| GET | `/trips/my-trips` | — | `{success, trips: [...], ...pageMeta}` | Passenger's own trips |
+| GET | `/trips/my-driver-trips` | — | `{success, trips: [...], ...pageMeta}` | Driver's own trips |
+| GET | `/trips/my-earnings?from&to` | — | `{success, from, to, days: [...]}` | Real Uber Driver app-style earnings report. Defaults to the last 7 days when `from`/`to` are omitted |
+| POST | `/trips/{tripId}/accept` | — | `{success, trip: {...}}` | Driver accepts an offered trip |
+| POST | `/trips/{tripId}/decline` | — | `{success, trip: {...}}` | |
+| POST | `/trips/{tripId}/start` | `{pin}` | `{success, trip: {...}}` | Real Uber "Verify Your Ride" PIN — driver enters the PIN the passenger tells them verbally at pickup |
+| GET | `/trips/{tripId}/pin` | — | `{success, pin}` | Passenger-only — the driver never sees this through any other endpoint |
+| POST | `/trips/{tripId}/share` | `{conversationId}` | `201 {success, message: {...}}` | Real Uber "Share Trip Status" — posts a live-status message into an existing chat conversation |
+| POST | `/trips/{tripId}/send-status` | — | `{success, sentCount}` | Real Uber "Send Status" — fans the trip's live status out to every one of the caller's Trusted Contacts (see the Ride Trusted Contacts section below) in one tap |
+| GET | `/trips/{tripId}/stops` | — | `{success, stops: [...]}` | Real Kakao T-style multi-stop rides |
+| POST | `/trips/{tripId}/stops/arrive` | — | `{success, stop: {...}}` | Marks the next unvisited stop arrived |
+| POST | `/trips/{tripId}/complete` | — | `{success, trip: {...}}` | |
+| POST | `/trips/{tripId}/tip` | `{amount}` (+ `Idempotency-Key`) | `{success, trip: {...}}` | Real Uber post-trip tipping — a real account-to-account transfer, never safe to silently retry |
+| POST | `/trips/{tripId}/cancel` | — | `{success, trip: {...}}` | |
+| POST | `/trips/{tripId}/review` | `{rating, comment?}` | `201 {success, review: {...}}` | Real Kakao T-style post-trip driver rating |
+
+### Errors (complete — all 33 `@ExceptionHandler`s in `RideController.kt`, 32 unique codes)
+
+`409 RIDE_DRIVER_ALREADY_REGISTERED`, `404 ACCOUNT_NOT_FOUND`,
+`404 RIDE_DRIVER_NOT_REGISTERED`, `400 INVALID_LOCATION` (shared by the driver-location
+and trip-location validators), `400 INVALID_LICENSE_NUMBER`,
+`429 DESTINATION_FILTER_LIMIT_EXCEEDED`, `400 SELF_TRIP_NOT_ALLOWED`,
+`400 INVALID_SCHEDULED_TIME`, `400 INVALID_RATING`, `409 RIDE_TRIP_NOT_YET_COMPLETED`,
+`409 RIDE_TRIP_ALREADY_REVIEWED`, `400 TOO_MANY_STOPS`, `409 NO_REMAINING_STOPS`,
+`404 RIDE_TRIP_NOT_FOUND`, `404 CONVERSATION_NOT_FOUND`,
+`409 RIDE_TRIP_ALREADY_CLAIMED`, `409 RIDE_DRIVER_ALREADY_ON_TRIP`,
+`409 RIDE_DRIVER_NOT_AVAILABLE`, `409 INVALID_RIDE_STATUS_TRANSITION`,
+`400 INCORRECT_RIDE_PIN`, `409 NO_ACTIVE_OFFER`, `400 INVALID_EARNINGS_RANGE`,
+`409 RIDE_TRIP_NOT_COMPLETED`, `409 RIDE_TRIP_ALREADY_TIPPED`,
+`400 RIDE_TRIP_TIP_WINDOW_EXPIRED`, `400 INVALID_TIP_AMOUNT`,
+`400 INVALID_DATE_FORMAT` (`my-earnings` `from`/`to` not `YYYY-MM-DD`),
+`422 INSUFFICIENT_FUNDS`, `429 RATE_LIMITED`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`.
+
 ## Designated Driver — `/api/v1/designated-driver`
 
 **Added 2026-09-05.** Real Kakao T 대리운전 (designated driver) — a driver comes to
@@ -507,11 +571,10 @@ Errors: `409 DESIGNATED_DRIVER_ALREADY_REGISTERED`, `404 ACCOUNT_NOT_FOUND`,
 
 **Added 2026-09-05, same slice.** Real Uber Safety "Trusted Contacts" — a persistent
 contact list set up once, distinct from the main `RideController`'s own per-trip
-"Send Status" share (`/api/v1/rides/trips/{tripId}/send-status`, not yet documented on
-this page — `RideController.kt` itself remains a real, sizeable documentation gap not
-attempted in this slice). Extracted into its own controller once `RideController.kt`
-first crossed the file-size-lint guideline. Confirmed by direct read of
-`RideTrustedContactController.kt` (3 endpoints, 5 error codes, all unique).
+`POST /trips/{tripId}/send-status` (see the Rides section above). Extracted into its
+own controller once `RideController.kt` first crossed the file-size-lint guideline.
+Confirmed by direct read of `RideTrustedContactController.kt` (3 endpoints, 5 error
+codes, all unique).
 
 | Method | Path | Body | Success | Notes |
 |---|---|---|---|---|
