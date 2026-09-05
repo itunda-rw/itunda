@@ -904,6 +904,147 @@ from "doesn't exist" purely from the response body, even though both already ret
 handlers were removed entirely, and every membership/organizer check in
 `IkiminaService.kt` now throws the same `IkiminaNotFoundException` instead.
 
+## Group Accounts — `/api/v1/group-accounts`
+
+**Added 2026-09-05** (fifteenth documentation slice — the rest of the Savings
+product family). A shared account with a real KakaoBank 회비 (dues) management
+layer — organizer invites members, everyone can deposit/withdraw, the organizer can
+set a recurring dues amount and remind unpaid members. Confirmed by direct read of
+`GroupAccountController.kt` (9 endpoints, 13 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | `{name}` | `201 {success, groupAccount: {...}}` | |
+| GET | `` (base path) | — | `{success, groupAccounts: [...]}` | |
+| GET | `/{id}` | — | `{success, groupAccount: {...}, balance, members: [...]}` | |
+| POST | `/{id}/members` | `{phoneNumber}` (+ `Idempotency-Key`) | `201 {success, member: {...}}` | Real gap fixed 2026-09-05 — a lost response after a successful invite would resubmit and hit `ALREADY_MEMBER` on retry; `deposit`/`withdraw` were already protected, this was the outlier |
+| POST | `/{id}/deposit` | `{amount}` (+ `Idempotency-Key`) | `{success, groupAccount: {...}, balance, members: [...]}` | |
+| POST | `/{id}/withdraw` | `{amount}` (+ `Idempotency-Key`) | `{success, groupAccount: {...}, balance, members: [...]}` | |
+| PUT | `/{id}/dues` | `{amount}` | `{success, groupAccount: {...}}` | Real KakaoBank 회비 (dues) management. `amount: null` clears the recurring dues requirement |
+| GET | `/{id}/dues` | — | `{success, dues: {...}}` | |
+| POST | `/{id}/dues/remind` | — | `{success, remindedCount}` | |
+
+Errors (all 13 real `@ExceptionHandler`s): `404 GROUP_ACCOUNT_NOT_FOUND` (also covers
+"not a member/owner" — same IDOR fix class as Ikimina/Community/Jobs above),
+`400 INVALID_GROUP_ACCOUNT_NAME`, `404 RECIPIENT_NOT_FOUND`, `409 ALREADY_MEMBER`,
+`409 GROUP_ACCOUNT_FULL`, `404 ACCOUNT_NOT_FOUND`, `422 INSUFFICIENT_FUNDS`,
+`403 ACCOUNT_FROZEN`, `429 RATE_LIMITED`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`,
+`400 INVALID_REQUEST` (bare `IllegalArgumentException` fallback).
+
+## Grow31 Savings — `/api/v1/grow31-savings`
+
+**Added 2026-09-05, same slice.** A 31-day fixed daily-deposit plan with a streak
+bonus for completing every day — cancelling early forfeits the streak bonus but still
+pays out principal and base-rate interest. Confirmed by direct read of
+`Grow31SavingsController.kt` (8 endpoints, 14 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/plans` | `{name, dailyAmount}` (+ `Idempotency-Key`) | `201 {success, plan: {...}}` | |
+| GET | `/plans` | — | `{success, plans: [...]}` | |
+| GET | `/plans/{id}` | — | `{success, plan: {...}, accountBalance, deposits: [...]}` | |
+| GET | `/plans/{id}/transactions` | — | `{success, transactions: [...]}` | |
+| POST | `/plans/{id}/deposit-today` | — (+ `Idempotency-Key`) | `{success, plan: {...}, accountBalance, deposits: [...]}` | |
+| POST | `/plans/{id}/cancel` | — (+ `Idempotency-Key`) | `{success, message, plan: {...}, accountBalance, deposits: [...]}` | Streak bonus forfeited; principal and base-rate interest still paid out |
+| POST | `/plans/{id}/withdraw` | — (+ `Idempotency-Key`) | `{success, message, plan: {...}, accountBalance, deposits: [...]}` | Matured plans only |
+| POST | `/process-due` | — | `{success, processed}` | ADMIN only — demo/ops convenience exposing the real `@Scheduled` maturity sweep, so a real 31-day maturity can be verified without waiting real wall-clock days |
+
+Errors (all 14 real `@ExceptionHandler`s): `404 GROW31_PLAN_NOT_FOUND`,
+`400 INVALID_AMOUNT`, `400 INVALID_NAME`, `409 GROW31_PLAN_NOT_ACTIVE`,
+`409 GROW31_PLAN_NOT_MATURED`, `409 GROW31_PLAN_ALREADY_WITHDRAWN`,
+`409 ALREADY_DEPOSITED_TODAY`, `404 ACCOUNT_NOT_FOUND`, `422 INSUFFICIENT_FUNDS`,
+`403 ACCOUNT_FROZEN`, `429 RATE_LIMITED`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`.
+
+## Round-Up — `/api/v1/savings/round-up`
+
+**Added 2026-09-05, same slice.** Real round-up auto-saving settings — the actual
+round-up itself fires from inside `P2pService.sendDirect`'s own real
+`Idempotency-Key`-protected transfer, so this settings endpoint doesn't need one of
+its own. Confirmed by direct read of `RoundUpController.kt` (2 endpoints, 5 error
+codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `` (base path) | — | `{success, settings: {...}}` | |
+| POST | `` (base path) | `{enabled, roundToNearest, targetGoalId?, targetStockId?}` | `{success, settings: {...}}` | Exactly one of `targetGoalId`/`targetStockId` when `enabled` — round-up spare change into either a Savings goal or a stock purchase |
+
+Errors (all 5 real `@ExceptionHandler`s): `400 INVALID_ROUND_UP_INCREMENT`,
+`400 ROUND_UP_TARGET_REQUIRED`, `400 ROUND_UP_SINGLE_TARGET_REQUIRED`,
+`404 GOAL_NOT_FOUND`, `404 STOCK_NOT_FOUND`.
+
+## SACCO — `/api/v1/sacco`
+
+**Added 2026-09-05, same slice.** Real Umurenge SACCO-style shares & dividends —
+Rwanda's real 416-sector government-backed cooperative savings model, genuinely
+distinct from every Toss/Kakao/Naver/Coupang-sourced feature in this backend and from
+Ikimina (a rotating-pot ROSCA, a different real Rwandan savings model entirely).
+Confirmed by direct read of `SaccoController.kt` (4 endpoints, 9 error codes, all
+unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/shares/buy` | `{amount}` (+ `Idempotency-Key`) | `{success, shareholding, currentValue}` | |
+| POST | `/shares/redeem` | `{amount}` (+ `Idempotency-Key`) | `{success, shareholding, currentValue}` | |
+| GET | `/shares/me` | — | `{success, shareholding, currentValue}` | Both `null` if the caller has never bought shares |
+| GET | `/dividends/me` | — | `{success, payouts: [...]}` | |
+
+Errors (all 9 real `@ExceptionHandler`s): `404 ACCOUNT_NOT_FOUND`,
+`404 SACCO_NO_SHAREHOLDING`, `422 SACCO_INSUFFICIENT_SHARES`,
+`422 SACCO_NO_SHARES_OUTSTANDING`, `429 RATE_LIMITED`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`, `400 INVALID_REQUEST` (bare
+`IllegalArgumentException` fallback).
+
+## Upfront-Interest Deposits — `/api/v1/upfront-deposits`
+
+**Added 2026-09-05, same slice.** Real Toss Bank 먼저 이자받는 정기예금 (interest-
+paid-upfront term deposit) equivalent — the full interest amount pays out to the
+caller's main account immediately at open, with principal locked for 12 months.
+Confirmed by direct read of `UpfrontInterestDepositController.kt` (5 endpoints, 11
+error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | `{principal}` (+ `Idempotency-Key`) | `201 {success, deposit: {...}, message}` | |
+| GET | `` (base path) | — | `{success, deposits: [...]}` | |
+| GET | `/{id}/transactions` | — | `{success, transactions: [...]}` | |
+| POST | `/{id}/withdraw` | — (+ `Idempotency-Key`) | `{success, deposit: {...}, message}` | Matured deposits only |
+| POST | `/process-due` | — | `{success, processed}` | ADMIN only — demo/ops convenience exposing the real `@Scheduled` maturity sweep |
+
+Errors (all 11 real `@ExceptionHandler`s): `404 UPFRONT_DEPOSIT_NOT_FOUND`,
+`400 INVALID_AMOUNT`, `409 UPFRONT_DEPOSIT_NOT_MATURED`,
+`409 UPFRONT_DEPOSIT_ALREADY_WITHDRAWN`, `404 ACCOUNT_NOT_FOUND`,
+`422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`, `429 RATE_LIMITED`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`.
+
+## Weekly Savings — `/api/v1/weekly-savings`
+
+**Added 2026-09-05, same slice.** A 26-week savings plan with a rising per-week
+deposit amount (`escalationRate` above `baseWeeklyAmount`) and the same streak-bonus-
+on-completion/forfeit-on-early-cancel shape as Grow31 above. Confirmed by direct read
+of `WeeklySavingsController.kt` (7 endpoints, 14 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/plans` | `{name, baseWeeklyAmount, escalationRate}` (+ `Idempotency-Key`) | `201 {success, plan: {...}}` | |
+| GET | `/plans` | — | `{success, plans: [...]}` | |
+| GET | `/plans/{id}` | — | `{success, plan: {...}, accountBalance, installments: [...]}` | |
+| GET | `/plans/{id}/transactions` | — | `{success, transactions: [...]}` | |
+| POST | `/plans/{id}/cancel` | — (+ `Idempotency-Key`) | `{success, message, plan: {...}, accountBalance, installments: [...]}` | Streak bonus forfeited; principal and base-rate interest still paid out |
+| POST | `/plans/{id}/withdraw` | — (+ `Idempotency-Key`) | `{success, message, plan: {...}, accountBalance, installments: [...]}` | Matured plans only |
+| POST | `/process-due` | — | `{success, processed}` | ADMIN only — demo/ops convenience exposing the real `@Scheduled` weekly-installment sweep, network-wide (not per-user-scoped) |
+
+Errors (all 14 real `@ExceptionHandler`s): `404 WEEKLY_PLAN_NOT_FOUND`,
+`400 INVALID_ESCALATION_RATE`, `400 INVALID_AMOUNT`, `400 INVALID_NAME`,
+`409 WEEKLY_PLAN_NOT_ACTIVE`, `409 WEEKLY_PLAN_NOT_MATURED`,
+`409 WEEKLY_PLAN_ALREADY_WITHDRAWN`, `404 ACCOUNT_NOT_FOUND`,
+`422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`, `429 RATE_LIMITED`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`.
+
 ## Stocks — `/api/v1/stocks`
 
 | Method | Path | Body | Success | Notes |
