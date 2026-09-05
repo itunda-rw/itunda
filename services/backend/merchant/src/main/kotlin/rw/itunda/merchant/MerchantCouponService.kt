@@ -11,6 +11,7 @@ import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantCouponRedemptionRepository
 import rw.itunda.core.repository.MerchantCouponRepository
+import rw.itunda.core.pricing.ReminderWindows
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
@@ -51,12 +52,11 @@ class MerchantCouponService(
         // itunda's own honest scoping choice -- see MerchantCoupon.kt's own doc comment.
         const val REGULAR_CUSTOMER_THRESHOLD = 3L
 
-        // Real merchant-console expiry-reminder window -- see
-        // MerchantCoupon.expiryReminderSentAt's own doc comment for the real sourcing.
-        // A coupon's real lifespan is typically much shorter than an insurance policy or
-        // certificate, so a shorter honest window (itunda's own scoping choice, no exact
-        // real number was published) than InsurancePolicy's 30 days/Certificate's 60.
-        val EXPIRY_REMINDER_WINDOW: Duration = Duration.ofDays(3)
+        // Consolidated 2026-09-06 into core/pricing/ReminderWindows -- see its own doc
+        // comment. A coupon's real lifespan is typically much shorter than an insurance
+        // policy or certificate, so a shorter honest window than InsurancePolicy's
+        // 30 days/Certificate's 60 -- those stay their own separate constants.
+        val EXPIRY_REMINDER_WINDOW: Duration = ReminderWindows.PRE_EXPIRY_REMINDER_WINDOW
     }
 
     private fun getMyMerchant(ownerUserId: String) =

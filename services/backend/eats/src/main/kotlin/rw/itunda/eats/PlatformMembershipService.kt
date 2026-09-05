@@ -12,6 +12,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PlatformMembershipRepository
+import rw.itunda.core.pricing.ReminderWindows
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
@@ -43,8 +44,8 @@ class PlatformMembershipService(
             90 to BigDecimal("6500"),
         )
 
-        // Same real window EatsMembershipService.REMINDER_WINDOW already established.
-        val REMINDER_WINDOW: Duration = Duration.ofDays(3)
+        // Consolidated 2026-09-06 into core/pricing/ReminderWindows -- see its own doc comment.
+        val REMINDER_WINDOW: Duration = ReminderWindows.PRE_EXPIRY_REMINDER_WINDOW
     }
 
     @Transactional

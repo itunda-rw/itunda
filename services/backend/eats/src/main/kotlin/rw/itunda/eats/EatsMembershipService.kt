@@ -12,6 +12,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.EatsMembershipRepository
 import rw.itunda.core.repository.NotificationRepository
+import rw.itunda.core.pricing.ReminderWindows
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
@@ -44,9 +45,8 @@ class EatsMembershipService(
             90 to BigDecimal("4000"),
         )
 
-        // Same 3-day window MerchantCouponService.EXPIRY_REMINDER_WINDOW already
-        // established for a paid perk about to lapse.
-        val REMINDER_WINDOW: Duration = Duration.ofDays(3)
+        // Consolidated 2026-09-06 into core/pricing/ReminderWindows -- see its own doc comment.
+        val REMINDER_WINDOW: Duration = ReminderWindows.PRE_EXPIRY_REMINDER_WINDOW
     }
 
     @Transactional

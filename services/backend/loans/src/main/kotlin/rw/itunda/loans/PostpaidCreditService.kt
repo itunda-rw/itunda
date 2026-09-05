@@ -12,6 +12,7 @@ import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.pricing.ReminderWindows
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PostpaidCreditLineRepository
 import rw.itunda.core.repository.AccountRepository
@@ -76,10 +77,9 @@ class PostpaidCreditService(
         // approaching) push -- both real products notify a few days ahead of the real
         // settlement date, distinct from (and strictly earlier than)
         // PostpaidCreditAccrualScheduler's own late-fee accrual, which only ever fires
-        // AFTER cycleDueAt has already passed. Same real 3-day window this codebase's
-        // other pre-deadline reminders (VupLoanService.getLoansDueSoonForReminder,
-        // MerchantCouponService.EXPIRY_REMINDER_WINDOW) already use.
-        val PAYMENT_REMINDER_WINDOW: Duration = Duration.ofDays(3)
+        // AFTER cycleDueAt has already passed. Consolidated 2026-09-06 into
+        // core/pricing/ReminderWindows -- see its own doc comment.
+        val PAYMENT_REMINDER_WINDOW: Duration = ReminderWindows.PRE_EXPIRY_REMINDER_WINDOW
     }
 
     private fun tierLimit(score: Int): BigDecimal =
