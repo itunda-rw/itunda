@@ -392,16 +392,12 @@ private struct WeeklySavingsDetailContent: View {
     }
 }
 
-// Reuses the ISO8601DateFormatter(withFractionalSeconds:) convenience initializer
-// TalkScreen.swift's GiftBubble already established for parsing this same backend's
-// java.time.Instant JSON strings, which may or may not carry a fractional-seconds
-// component.
-private func formatDate(_ iso: String) -> String {
-    let date = ISO8601DateFormatter(withFractionalSeconds: true).date(from: iso) ?? ISO8601DateFormatter(withFractionalSeconds: false).date(from: iso)
-    guard let date else { return iso }
-    let display = DateFormatter()
-    display.dateStyle = .medium
-    display.timeStyle = .none
-    return display.string(from: date)
-}
+// Real fix (2026-09-05, duplicated-helper sweep follow-up): this used to be the one
+// out of 34 real "next-due-date"-shaped displays across Android+iOS (Harvest Advance
+// repayment, Sacco, Subscriptions next-charge, Android's own sibling
+// WeeklySavingsScreen.kt formatWeeklyDate, etc.) that reformatted into a locale
+// "medium" style ("Sep 5, 2026") instead of the plain yyyy-MM-dd every other one
+// uses -- an isolated inconsistency, not an intentional different treatment for this
+// specific field. Aligned to the same real established convention.
+private func formatDate(_ iso: String) -> String { String(iso.prefix(10)) }
 
