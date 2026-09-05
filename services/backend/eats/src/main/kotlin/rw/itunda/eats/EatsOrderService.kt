@@ -119,10 +119,8 @@ class EatsOrderService(
         // not an open-ended future date. See placeOrder's own doc comment.
         val SCHEDULED_ORDER_MAX_WINDOW: java.time.Duration = java.time.Duration.ofDays(2)
 
-        // Real Uber Eats post-delivery tip window -- matches RideTripService.TIP_WINDOW's
-        // own real 30-day rule exactly, same real product/team, same rail. See
-        // tipRider's own doc comment.
-        val TIP_WINDOW: java.time.Duration = java.time.Duration.ofDays(30)
+        // Consolidated 2026-09-06 into core/pricing/TipPolicy -- see its own doc comment.
+        val TIP_WINDOW: java.time.Duration = rw.itunda.core.pricing.TipPolicy.TIP_WINDOW
 
         // Real exclusive accept window for automatic dispatch -- see
         // dispatchToNextCandidate's own doc comment for the full account. Long enough

@@ -36,6 +36,7 @@ import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.AccountRepository
 import rw.itunda.messaging.MessagingService
 import rw.itunda.core.pricing.PlatformFees
+import rw.itunda.core.pricing.TipPolicy
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -143,11 +144,11 @@ class RideTripService(
         // currently-live cap on extra waypoints between pickup and dropoff.
         const val MAX_STOPS = 3
 
-        // Real Uber post-trip tipping window (uber.com/us/en/ride/how-it-works/tips):
-        // "you have 30 days to add a tip in the app." itunda's real trip has no separate
-        // completedAt column -- updatedAt is only ever touched again after COMPLETED by
-        // a tip itself, so it's the honest real completion timestamp to measure from.
-        val TIP_WINDOW: Duration = Duration.ofDays(30)
+        // Consolidated 2026-09-06 into core/pricing/TipPolicy -- see its own doc
+        // comment. itunda's real trip has no separate completedAt column -- updatedAt
+        // is only ever touched again after COMPLETED by a tip itself, so it's the
+        // honest real completion timestamp to measure from.
+        val TIP_WINDOW: Duration = TipPolicy.TIP_WINDOW
 
         // Real Uber cancellation-fee policy
         // (help.uber.com/riders/article/cancellation-fees-explained): "for most economy
