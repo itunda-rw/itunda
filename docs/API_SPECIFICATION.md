@@ -1044,6 +1044,126 @@ No auth required on either route (no `@AuthenticationPrincipal` in the controlle
 
 Errors: `400 INVALID_REQUEST`.
 
+## Messaging (1:1 chat) — `/api/v1/messages`
+
+**Added 2026-09-05** (eighth documentation slice — the largest single gap closed so
+far: itunda Talk's core 1:1 chat, previously entirely undocumented despite being the
+foundation the Gifts/Gift-Vouchers/Emoticons sections above already reference by
+`conversationId`). Real KakaoTalk-parity messaging — threads, reactions, pinning,
+forwarding, search, presence, and per-conversation quiet/archive/pin-to-top/favorite
+preferences. Confirmed by direct read of `MessagingController.kt` (25 endpoints, 18
+`@ExceptionHandler`s, 15 unique codes — `EMPTY_MESSAGE`/`MESSAGE_NOT_FOUND`/
+`MESSAGE_TOO_LONG` are each mapped by 2 handlers, once for this controller's own
+1:1-message exceptions and once for the group-message exceptions that can surface here
+when forwarding INTO a group).
+
+### Conversations
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/conversations` | `{phoneNumber?, otherUserId?}` | `{success, conversation: {...}}` | Exactly one of the two must be set; `phoneNumber` is the real human-friendly entry point |
+| GET | `/conversations?archived` | — | `{success, conversations: [...], ...pageMeta}` | |
+| GET | `/contacts` | — | `{success, contacts: [...]}` | Talk-specific contact list, distinct from `/api/v1/contacts` above |
+| GET | `/contacts/birthdays-today` | — | `{success, contacts: [...]}` | Real KakaoTalk "오늘의 생일" (Today's Birthday) |
+| POST | `/conversations/{conversationId}/block` | — | `{success}` | |
+| DELETE | `/conversations/{conversationId}/block` | — | `{success}` | |
+| POST | `/conversations/{conversationId}/quiet` | `{quiet}` | `{success, quiet}` | |
+| GET | `/conversations/{conversationId}/quiet` | — | `{success, quiet}` | |
+| POST | `/conversations/{conversationId}/archive` | `{archived}` | `{success, archived}` | Real recoverable archive |
+| GET | `/conversations/{conversationId}/archive` | — | `{success, archived}` | |
+| POST | `/conversations/{conversationId}/pin-to-top` | `{pinned}` | `{success, pinned}` | Real KakaoTalk 채팅방 상단 고정 (pin chat room to top) — distinct from pinning a MESSAGE below |
+| GET | `/conversations/{conversationId}/pin-to-top` | — | `{success, pinned}` | |
+| POST | `/conversations/{conversationId}/favorite` | `{favorite}` | `{success, favorite}` | |
+| GET | `/conversations/{conversationId}/favorite` | — | `{success, favorite}` | |
+| GET | `/presence?userIds` | — | `{success, presence}` | Real online/offline presence for any set of user ids, not just conversation partners |
+
+### Messages
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/conversations/{conversationId}/messages` | — | `{success, messages: [...], ...pageMeta}` | Each message enriched with `reactions`, `replyCount`, `imageUrl`, `emoticonId`, `forwardedFromMessageId`, `forwardedFromType` — a deleted message's `body` is replaced with `"This message was deleted"` server-side |
+| GET | `/conversations/{conversationId}/messages/{messageId}/thread` | — | `{success, messages: [...]}` | Root message first, then every direct reply oldest-first |
+| GET | `/conversations/{conversationId}/messages/search?query` | — | `{success, messages: [...], ...pageMeta}` | |
+| POST | `/conversations/{conversationId}/messages` | `{body, replyToMessageId?, imageUrl?}` | `201 {success, message: {...}}` | |
+| DELETE | `/conversations/{conversationId}/messages/{messageId}` | — | `{success}` | |
+| POST | `/messages/{messageId}/reactions` | `{emoji}` | `{success, reactions}` | Real toggle — tapping an already-active reaction removes it, not a separate add/remove pair |
+| POST | `/messages/{messageId}/forward` | `{destinationType: "DIRECT" \| "GROUP", destinationId}` | `201 {success, message: {...}, destinationType}` | |
+| POST | `/conversations/{conversationId}/pin/{messageId}` | — | `{success}` | Pins a MESSAGE inside the room |
+| DELETE | `/conversations/{conversationId}/pin` | — | `{success}` | |
+| GET | `/conversations/{conversationId}/pin` | — | `{success, message}` | |
+
+### Errors (complete — all 18 `@ExceptionHandler`s in `MessagingController.kt`, 15 unique codes)
+
+`404 RECIPIENT_NOT_FOUND`, `400 RECIPIENT_REQUIRED`, `400 SELF_CONVERSATION_NOT_ALLOWED`,
+`404 CONVERSATION_NOT_FOUND`, `400 EMPTY_MESSAGE`, `400 MESSAGE_TOO_LONG`,
+`400 INVALID_MESSAGE_IMAGE`, `429 RATE_LIMITED`, `404 MESSAGE_NOT_FOUND`,
+`400 INVALID_REACTION`, `403 CONVERSATION_BLOCKED`, `400 INVALID_MESSAGE_SEARCH`,
+`403 MESSAGE_DELETE_FORBIDDEN`, `400 INVALID_FORWARD_DESTINATION`,
+`404 GROUP_NOT_FOUND` (only surfaces when forwarding a 1:1 message INTO a group and the
+target group doesn't exist — the 3 codes above it are similarly shared with
+`GroupMessagingController`'s own exceptions for the same reason).
+
+## Group Messaging — `/api/v1/messages/groups`
+
+**Added 2026-09-05, same slice.** Real KakaoTalk-parity group chat — named groups (by
+user id or phone number), KakaoTalk 오픈채팅-style open groups joined by code,
+announcements, polls, and the same reaction/pin/thread/forward feature set 1:1
+messaging above has. Confirmed by direct read of `GroupMessagingController.kt` (23
+endpoints, 26 `@ExceptionHandler`s, 23 unique codes — same 3-code sharing pattern with
+`MessagingController` as above, in reverse: `EMPTY_MESSAGE`/`MESSAGE_NOT_FOUND`/
+`MESSAGE_TOO_LONG` each have a group-specific handler AND a 1:1-message handler for
+when a GROUP message is forwarded INTO a 1:1 conversation).
+
+### Groups
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | `{name, memberUserIds?, memberPhoneNumbers?}` | `201 {success, group: {...}}` | `memberPhoneNumbers` is the real human-friendly entry point; takes precedence over `memberUserIds` if both are given |
+| POST | `/open` | `{name}` | `201 {success, group: {...}}` | Real KakaoTalk 오픈채팅-style open group — anyone with the join code can join |
+| POST | `/join` | `{joinCode}` | `{success, group: {...}}` | |
+| GET | `` (base path) | — | `{success, groups: [...], ...pageMeta}` | Caller's own groups |
+| GET | `/{groupId}/members` | — | `{success, members: [...]}` | Real resolved display names, not just raw user ids |
+| POST | `/{groupId}/members` | `{userId}` | `{success, group: {...}}` | |
+| DELETE | `/{groupId}/members/me` | — | `{success}` | Leave the group |
+| POST | `/{groupId}/photo` | `{photoUrl}` | `{success, group: {...}}` | |
+| POST | `/{groupId}/description` | `{description}` | `{success, group: {...}}` | |
+
+### Messages, announcements, polls
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/{groupId}/messages` | — | `{success, messages: [...], ...pageMeta}` | Each message additionally enriched with `unreadCount` (real Kakao-style per-message read-receipt countdown) and `mentionedUserIds`, beyond the same fields 1:1 messages carry |
+| GET | `/{groupId}/messages/{messageId}/thread` | — | `{success, messages: [...]}` | |
+| POST | `/{groupId}/messages` | `{body, replyToMessageId?, imageUrl?}` | `201 {success, message: {...}}` | |
+| DELETE | `/{groupId}/messages/{messageId}` | — | `{success}` | |
+| POST | `/messages/{groupMessageId}/reactions` | `{emoji}` | `{success, reactions}` | |
+| POST | `/messages/{messageId}/forward` | `{destinationType: "DIRECT" \| "GROUP", destinationId}` | `201 {success, message: {...}, destinationType}` | |
+| POST | `/{groupId}/pin/{messageId}` | — | `{success}` | |
+| DELETE | `/{groupId}/pin` | — | `{success}` | |
+| GET | `/{groupId}/pin` | — | `{success, message}` | |
+| POST | `/{groupId}/announcement` | `{body}` | `201 {success, announcement: {...}}` | One active announcement at a time — posting a new one replaces the old |
+| GET | `/{groupId}/announcement` | — | `{success, announcement}` | |
+| POST | `/{groupId}/polls` | `{question, options, allowMultiple?, closesAt?}` | `201 {success, poll: {...}}` | |
+| GET | `/{groupId}/polls` | — | `{success, polls: [...]}` | |
+| POST | `/{groupId}/polls/{pollId}/vote` | `{optionId}` | `{success, poll: {...}}` | |
+
+### Errors (complete — all 26 `@ExceptionHandler`s in `GroupMessagingController.kt`, 23 unique codes)
+
+`404 GROUP_NOT_FOUND`, `400 GROUP_NAME_REQUIRED`, `400 GROUP_NAME_TOO_LONG`,
+`400 GROUP_PHOTO_URL_TOO_LONG`, `400 GROUP_DESCRIPTION_TOO_LONG`,
+`400 GROUP_NEEDS_MORE_MEMBERS`, `404 MEMBER_NOT_FOUND`, `409 ALREADY_MEMBER`,
+`404 INVALID_GROUP_JOIN_CODE`, `400 EMPTY_MESSAGE`, `400 MESSAGE_TOO_LONG`,
+`400 INVALID_MESSAGE_IMAGE`, `429 RATE_LIMITED`, `404 MESSAGE_NOT_FOUND`,
+`403 MESSAGE_DELETE_FORBIDDEN`, `400 INVALID_REACTION`,
+`400 INVALID_FORWARD_DESTINATION`, `404 CONVERSATION_NOT_FOUND`,
+`403 CONVERSATION_BLOCKED` (the last 4 shared with `MessagingController`'s own
+exceptions — same reasoning as above, in reverse), `400 INVALID_ANNOUNCEMENT`,
+`400 INVALID_POLL`, `404 POLL_NOT_FOUND`, `404 POLL_OPTION_NOT_FOUND`.
+
+Reused as the underlying implementation of both `POST /api/v1/split-bills/direct/
+{otherUserId}` (via `getOrCreateDirectSplitGroup`) and `POST /api/v1/community/posts/
+{postId}/finalize-group-buy` — see the Split Bills and Community sections above.
+
 ## Support — `/api/v1/support`
 
 Built and live-verified 2026-07-13, closing a false "real" claim
