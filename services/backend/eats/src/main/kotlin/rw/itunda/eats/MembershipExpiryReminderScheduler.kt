@@ -24,6 +24,13 @@ import org.springframework.stereotype.Component
  * `processDue` is also exposed as a manually-triggerable endpoint
  * (`EatsController.processMembershipExpiryReminders`) for verifying a real reminder
  * window without waiting real wall-clock days for one to actually arrive.
+ *
+ * Real gap found 2026-09-06 (concurrency-audit continuation, same "scheduler
+ * transaction-poisoning" class already fixed on several money-moving schedulers):
+ * neither loop below had per-item try/catch, so a genuine failure sending ONE
+ * reminder used to propagate uncaught, silently skip every OTHER due reminder in
+ * the SAME type's loop, and (for a failure in the Eats Club loop specifically)
+ * stop the platform-membership loop from ever running at all that tick.
  */
 @Component
 class MembershipExpiryReminderScheduler(
@@ -38,18 +45,29 @@ class MembershipExpiryReminderScheduler(
     }
 
     fun processDue(): Int {
+        var sentCount = 0
         val dueEatsMemberships = eatsMembershipService.getMembershipsDueForExpiryReminder()
         for (membership in dueEatsMemberships) {
-            eatsMembershipService.sendExpiryReminder(membership.id)
-            log.info("Sent expiry reminder for Eats Club membership {}", membership.id)
+            try {
+                eatsMembershipService.sendExpiryReminder(membership.id)
+                log.info("Sent expiry reminder for Eats Club membership {}", membership.id)
+                sentCount++
+            } catch (e: Exception) {
+                log.error("Eats Club expiry reminder failed for membership {}", membership.id, e)
+            }
         }
 
         val duePlatformMemberships = platformMembershipService.getMembershipsDueForExpiryReminder()
         for (membership in duePlatformMemberships) {
-            platformMembershipService.sendExpiryReminder(membership.id)
-            log.info("Sent expiry reminder for platform membership {}", membership.id)
+            try {
+                platformMembershipService.sendExpiryReminder(membership.id)
+                log.info("Sent expiry reminder for platform membership {}", membership.id)
+                sentCount++
+            } catch (e: Exception) {
+                log.error("Platform membership expiry reminder failed for membership {}", membership.id, e)
+            }
         }
 
-        return dueEatsMemberships.size + duePlatformMemberships.size
+        return sentCount
     }
 }

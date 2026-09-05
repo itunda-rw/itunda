@@ -11,6 +11,12 @@ import org.springframework.stereotype.Component
  * SavingsMaturityReminderScheduler's own doc comment already establishes; `processDue`
  * is also exposed as a manually-triggerable endpoint for verifying a real renewal
  * window without waiting real wall-clock days for one to actually arrive.
+ *
+ * Real gap found 2026-09-06 (concurrency-audit continuation, same "scheduler
+ * transaction-poisoning" class already fixed on several other schedulers): this
+ * loop had zero per-policy try/catch, so a genuine failure sending ONE renewal
+ * reminder used to propagate uncaught and silently skip every OTHER due policy in
+ * the same tick.
  */
 @Component
 class InsurancePolicyRenewalReminderScheduler(private val insuranceService: InsuranceService) {
@@ -23,10 +29,16 @@ class InsurancePolicyRenewalReminderScheduler(private val insuranceService: Insu
 
     fun processDue(): Int {
         val due = insuranceService.getPoliciesDueForRenewalReminder()
+        var sentCount = 0
         for (policy in due) {
-            insuranceService.sendRenewalReminder(policy.id)
-            log.info("Sent renewal reminder for insurance policy {}", policy.id)
+            try {
+                insuranceService.sendRenewalReminder(policy.id)
+                log.info("Sent renewal reminder for insurance policy {}", policy.id)
+                sentCount++
+            } catch (e: Exception) {
+                log.error("Insurance renewal reminder failed for policy {}", policy.id, e)
+            }
         }
-        return due.size
+        return sentCount
     }
 }
