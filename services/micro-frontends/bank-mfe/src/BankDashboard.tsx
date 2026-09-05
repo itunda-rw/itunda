@@ -4562,7 +4562,20 @@ function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => voi
     setError(null);
     setNeedsDeviceVerification(false);
     try {
-      await depositToGoal(goal.id, Number(amount));
+      const result = await depositToGoal(goal.id, Number(amount));
+      // Real Toss UX-writing "Find Hidden Emotion" principle (toss.tech/article/
+      // 8-writing-principles-of-toss, their own example: a congratulatory message
+      // when a loan is fully paid off, not just a transaction confirmation) --
+      // itunda already does this for loan payoff (LoansView.tsx's payoffMessage,
+      // "one less thing to carry"), and the backend already fires a push
+      // notification on goal completion (SavingsService.notifyGoalCompleted), but
+      // the person actually watching THIS screen at the exact moment they hit
+      // their target saw nothing beyond a small "· Completed" tag they'd only
+      // notice on a later visit. Detects the active->completed transition from
+      // the deposit response itself, not a guess from the pre-call goal prop.
+      if (goal.status !== 'completed' && result.goal.status === 'completed') {
+        showToast(`You did it — "${goal.name}" is fully funded! 🎉`);
+      }
       setAmount('');
       setMode('closed');
       onChanged();

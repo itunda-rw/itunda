@@ -18,6 +18,19 @@ enum MoneyActionResult {
     // failure, since the caller has a real, actionable next step (re-enter password,
     // then retry). Mirrors Android's MoneyActionResult.DeviceNotVerified exactly.
     case deviceNotVerified
+    // Added 2026-09-05 (real Toss UX-writing "Find Hidden Emotion" principle,
+    // toss.tech/article/8-writing-principles-of-toss -- their own example: a
+    // congratulatory message when a loan is fully paid off, not just a
+    // transaction confirmation) -- only ever returned by
+    // TransferViewModel.depositToSavingsGoal when a deposit's response reports
+    // the goal as newly completed (not when it was already completed before this
+    // deposit). A dedicated new case rather than a new associated value on
+    // .success, since Swift enum cases can't default associated values -- this
+    // way the other 6 real .success(...) construction sites don't need touching,
+    // only the switches that must stay exhaustive over this enum do (mirrors the
+    // already-documented "handled only because MoneyActionResult is a shared
+    // enum" pattern TransferFlowContainer.swift's own .queued case establishes).
+    case goalDepositCompleted(String)
 }
 
 /// Real direct P2P push-transfer + savings deposit/claim -- mirrors Android's
@@ -115,9 +128,12 @@ final class TransferViewModel: ObservableObject {
     /// action type at all, and a retried offline send should surface its own real
     /// error/idempotent-replay rather than being silently re-attempted later against
     /// whatever the sender's balance happens to be by then.
-    func depositToSavingsGoal(goalId: String, amountRwf: Int) async -> MoneyActionResult {
+    func depositToSavingsGoal(goalId: String, amountRwf: Int, wasAlreadyCompleted: Bool = false, goalName: String = "") async -> MoneyActionResult {
         do {
             let response = try await NetworkClient.shared.depositToGoal(goalId: goalId, amount: Double(amountRwf))
+            if !wasAlreadyCompleted, response.goal.status == "completed" {
+                return .goalDepositCompleted("You did it — \"\(goalName)\" is fully funded! 🎉")
+            }
             return .success(response.message, fraudWarnings: [])
         } catch NetworkError.deviceNotVerified {
             return .deviceNotVerified

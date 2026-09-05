@@ -12,6 +12,13 @@ struct SavingsFlowContainer: View {
     // Real offline queueing (2026-07-13) -- distinct from errorMessage (red) since
     // this isn't an error, it's confirmation the deposit was saved for later.
     @State private var queuedMessage: String?
+    // Real Toss UX-writing "Find Hidden Emotion" moment (2026-09-05) -- see
+    // MoneyActionResult.goalDepositCompleted's own doc comment. Mirrors
+    // queuedMessage's exact shape (brief inline text, then close) rather than
+    // building a full IdsCelebrationScreen route for savings -- that
+    // infrastructure doesn't exist for any savings action on iOS yet (unlike
+    // Android's SavingsFlowStep.Success), and this is a proportionate first slice.
+    @State private var celebrationMessage: String?
     // Real device binding step-up (2026-07-21 port) -- see DeviceStepUpView's own doc
     // comment for the full account.
     @State private var showDeviceStepUp = false
@@ -28,7 +35,7 @@ struct SavingsFlowContainer: View {
     var body: some View {
         VStack(spacing: 0) {
             switch step {
-            case .deposit(let goalId, let goalName):
+            case .deposit(let goalId, let goalName, let wasAlreadyCompleted):
                 SavingsAmountScreen(
                     goalName: goalName,
                     mode: .deposit,
@@ -39,7 +46,7 @@ struct SavingsFlowContainer: View {
                         pendingAmountRwf = amountRwf
                         Task { @MainActor in
                             isSubmitting = true
-                            let result = await viewModel.depositToSavingsGoal(goalId: goalId, amountRwf: amountRwf)
+                            let result = await viewModel.depositToSavingsGoal(goalId: goalId, amountRwf: amountRwf, wasAlreadyCompleted: wasAlreadyCompleted, goalName: goalName)
                             isSubmitting = false
                             handle(result)
                         }
@@ -100,6 +107,13 @@ struct SavingsFlowContainer: View {
                     .padding(.horizontal, 24)
                     .padding(.top, 8)
             }
+            if let celebrationMessage {
+                Text(celebrationMessage)
+                    .font(IDS.scaledFont(size: 15, weight: .bold, relativeTo: .subheadline))
+                    .foregroundColor(IDS.Colors.textPrimary)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 8)
+            }
         }
         // Defensive, matching TransferFlowContainer.swift's real fix (2026-07-12) --
         // this container isn't reachable via the exact same keyboard-focus-then-step-
@@ -127,6 +141,9 @@ struct SavingsFlowContainer: View {
         case .queued(let message):
             queuedMessage = message
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { onDone() }
+        case .goalDepositCompleted(let message):
+            celebrationMessage = message
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { onDone() }
         case .failure(let message): errorMessage = message
         case .deviceNotVerified:
             deviceStepUpError = nil
@@ -146,8 +163,8 @@ struct SavingsFlowContainer: View {
                 isSubmitting = true
                 let retryResult: MoneyActionResult
                 switch step {
-                case .deposit(let goalId, _):
-                    retryResult = await viewModel.depositToSavingsGoal(goalId: goalId, amountRwf: pendingAmountRwf)
+                case .deposit(let goalId, let goalName, let wasAlreadyCompleted):
+                    retryResult = await viewModel.depositToSavingsGoal(goalId: goalId, amountRwf: pendingAmountRwf, wasAlreadyCompleted: wasAlreadyCompleted, goalName: goalName)
                 case .withdraw(let goalId, _, _):
                     retryResult = await viewModel.withdrawFromSavingsGoal(goalId: goalId, amountRwf: pendingAmountRwf)
                 case .claimInterest:
@@ -155,10 +172,18 @@ struct SavingsFlowContainer: View {
                 }
                 isSubmitting = false
                 if case .success = retryResult { onDone() }
+                else if case .goalDepositCompleted(let message) = retryResult {
+                    celebrationMessage = message
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { onDone() }
+                }
                 else if case .failure(let message) = retryResult { errorMessage = message }
             case .failure(let message):
                 deviceStepUpError = message
-            case .queued, .deviceNotVerified:
+            // verifyDevice never actually returns .goalDepositCompleted -- only
+            // depositToSavingsGoal does -- handled only because MoneyActionResult
+            // is a shared enum, same reasoning TransferFlowContainer.swift's own
+            // .queued case already establishes.
+            case .queued, .deviceNotVerified, .goalDepositCompleted:
                 break
             }
         }

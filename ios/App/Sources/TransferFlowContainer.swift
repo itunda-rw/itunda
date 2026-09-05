@@ -296,7 +296,11 @@ struct TransferFlowContainer: View {
                 }
             case .failure(let message):
                 deviceStepUpError = message
-            case .queued, .deviceNotVerified:
+            // sendTransfer/sendGift never actually return .goalDepositCompleted --
+            // only TransferViewModel.depositToSavingsGoal does -- handled only
+            // because MoneyActionResult is a shared enum, same reasoning as
+            // .queued just below.
+            case .queued, .deviceNotVerified, .goalDepositCompleted:
                 break
             }
         }
@@ -355,6 +359,13 @@ struct TransferFlowContainer: View {
                 case .deviceNotVerified:
                     deviceStepUpError = nil
                     showDeviceStepUp = true
+                // sendTransfer/sendGift never actually return
+                // .goalDepositCompleted -- only
+                // TransferViewModel.depositToSavingsGoal does -- handled only
+                // because MoneyActionResult is a shared enum, same reasoning as
+                // .queued just above.
+                case .goalDepositCompleted:
+                    break
                 }
             }
         }

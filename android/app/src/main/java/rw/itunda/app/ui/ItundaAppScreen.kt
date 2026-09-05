@@ -383,7 +383,15 @@ private fun TransferSuccessScreen(amountRwf: Long, recipientLabel: String, fraud
 
 /** Real savings deposit/claim flow (2026-07-12) -- see SavingsAmountScreen.kt. */
 private sealed class SavingsFlowStep : java.io.Serializable {
-    data class Deposit(val goalId: String, val goalName: String) : SavingsFlowStep()
+    // wasAlreadyCompleted added 2026-09-05 (real Toss UX-writing "Find Hidden
+    // Emotion" principle, toss.tech/article/8-writing-principles-of-toss -- see
+    // MoneyActionResult.Success's own goalCompleted doc comment) -- the goal's
+    // pre-deposit completion state, captured at the moment this step is created
+    // (both call sites already have currentAmount/targetAmount in scope), so the
+    // deposit-success handler can distinguish a genuine active->completed
+    // transition from a redundant deposit into an already-completed goal.
+    // Defaults to false so a caller with no goal data in scope is unaffected.
+    data class Deposit(val goalId: String, val goalName: String, val wasAlreadyCompleted: Boolean = false) : SavingsFlowStep()
     // Real gap found live (2026-08-31, direct user re-reference of the real Toss
     // "얼마나 꺼낼까요?" (withdraw) screenshot) -- see backend SavingsService
     // .withdrawFromGoal's own doc comment for the full account.
@@ -395,6 +403,10 @@ private sealed class SavingsFlowStep : java.io.Serializable {
     // celebratory = true only for claimed interest -- real earned money, matches
     // Toss's own confetti-for-positive-moments example; a routine deposit into a goal
     // you set up yourself isn't that same kind of surprise-and-delight moment.
+    // Extended 2026-09-05: a deposit that pushes the goal to completion IS that
+    // same kind of moment (matches this app's own LoansView-equivalent loan-payoff
+    // precedent) -- see the two deposit-success handlers below for the actual
+    // celebratory = result.goalCompleted && !wasAlreadyCompleted check.
     data class Success(val headline: String, val message: String, val celebratory: Boolean) : SavingsFlowStep()
 }
 
@@ -928,7 +940,18 @@ fun ItundaAppScreen(
                             when (val result = viewModel.depositToSavingsGoal(savingsStep.goalId, amountRwf)) {
                                 is rw.itunda.core.network.MoneyActionResult.Success -> {
                                     isSavingsSubmitting = false
-                                    savingsFlowStep = SavingsFlowStep.Success("%,d RWF saved".format(amountRwf), result.message, celebratory = false)
+                                    // Real Toss UX-writing "Find Hidden Emotion" principle
+                                    // (toss.tech/article/8-writing-principles-of-toss) --
+                                    // see MoneyActionResult.Success's own goalCompleted doc
+                                    // comment. Only a genuine active->completed transition
+                                    // is celebratory, not a redundant deposit into an
+                                    // already-completed goal.
+                                    val justCompleted = result.goalCompleted && !savingsStep.wasAlreadyCompleted
+                                    savingsFlowStep = if (justCompleted) {
+                                        SavingsFlowStep.Success("You did it! 🎉", "\"${savingsStep.goalName}\" is fully funded.", celebratory = true)
+                                    } else {
+                                        SavingsFlowStep.Success("%,d RWF saved".format(amountRwf), result.message, celebratory = false)
+                                    }
                                 }
                                 // Real offline queueing (2026-07-13, see
                                 // MainViewModel.depositToSavingsGoal): the deposit was
@@ -954,7 +977,16 @@ fun ItundaAppScreen(
                                         val retryResult = viewModel.depositToSavingsGoal(savingsStep.goalId, amountRwf)
                                         isSavingsSubmitting = false
                                         when (retryResult) {
-                                            is rw.itunda.core.network.MoneyActionResult.Success -> savingsFlowStep = SavingsFlowStep.Success("%,d RWF saved".format(amountRwf), retryResult.message, celebratory = false)
+                                            is rw.itunda.core.network.MoneyActionResult.Success -> {
+                                                // Same "Find Hidden Emotion" logic as the
+                                                // primary success path above.
+                                                val justCompleted = retryResult.goalCompleted && !savingsStep.wasAlreadyCompleted
+                                                savingsFlowStep = if (justCompleted) {
+                                                    SavingsFlowStep.Success("You did it! 🎉", "\"${savingsStep.goalName}\" is fully funded.", celebratory = true)
+                                                } else {
+                                                    SavingsFlowStep.Success("%,d RWF saved".format(amountRwf), retryResult.message, celebratory = false)
+                                                }
+                                            }
                                             is rw.itunda.core.network.MoneyActionResult.Queued -> {
                                                 savingsFlowStep = null
                                                 rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, retryResult.message)
@@ -1585,7 +1617,10 @@ fun ItundaAppScreen(
                         secondaryStatValue = "%,.0f RWF".format(target.targetAmount),
                         fetchTransactions = { rw.itunda.core.network.NetworkClient.apiService.getSavingsGoalTransactions(target.id).transactions },
                         fillLabel = "Deposit",
-                        onFill = { bucketDetailTarget = null; savingsFlowStep = SavingsFlowStep.Deposit(target.id, target.name) },
+                        onFill = {
+                            bucketDetailTarget = null
+                            savingsFlowStep = SavingsFlowStep.Deposit(target.id, target.name, wasAlreadyCompleted = target.currentAmount >= target.targetAmount)
+                        },
                         withdrawLabel = "Withdraw",
                         onWithdraw = if (target.currentAmount > 0) {
                             { bucketDetailTarget = null; savingsFlowStep = SavingsFlowStep.Withdraw(target.id, target.name, target.currentAmount) }

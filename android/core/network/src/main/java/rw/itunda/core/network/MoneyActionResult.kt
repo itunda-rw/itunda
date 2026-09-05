@@ -17,7 +17,16 @@ sealed interface MoneyActionResult {
     // sendDirect's own response. Defaults to empty so every other Success(...)
     // caller (savings deposits/claims, which never carry a fraud warning) is
     // completely unaffected.
-    data class Success(val message: String, val fraudWarnings: List<String> = emptyList()) : MoneyActionResult
+    // goalCompleted added 2026-09-05 (see feedback_idempotency_key_sweep-adjacent
+    // UX-writing audit, project_itunda_product_feel memory) -- carries whether
+    // this specific deposit's response reported the goal as SavingsGoalStatus
+    // .completed, so depositToSavingsGoal's caller can tell a genuine
+    // active->completed transition (the ItundaAppScreen.kt deposit-success
+    // handler still needs to compare against the goal's own pre-call status,
+    // since this alone doesn't distinguish "just completed" from "already was
+    // completed" -- see SavingsFlowStep.Deposit's own wasAlreadyCompleted field).
+    // Defaults to false so every other Success(...) caller is unaffected.
+    data class Success(val message: String, val fraudWarnings: List<String> = emptyList(), val goalCompleted: Boolean = false) : MoneyActionResult
     data class Queued(val message: String) : MoneyActionResult
     data class Failure(val message: String) : MoneyActionResult
     // Real device binding (2026-07-21 port) -- a real 403 DEVICE_NOT_VERIFIED (this

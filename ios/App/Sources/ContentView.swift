@@ -45,7 +45,15 @@ func scaledFont(size: CGFloat, weight: UIFont.Weight, relativeTo style: UIFont.T
 // comment on the TabView for the current rationale).
 /// Real savings deposit/claim flow (2026-07-12) -- see SavingsFlowContainer.swift.
 enum SavingsFlowStep: Identifiable {
-    case deposit(goalId: String, goalName: String)
+    // wasAlreadyCompleted added 2026-09-05 (real Toss UX-writing "Find Hidden
+    // Emotion" principle, toss.tech/article/8-writing-principles-of-toss --
+    // matches Android's identical SavingsFlowStep.Deposit fix, see
+    // MoneyActionResult.goalDepositCompleted's own doc comment) -- the goal's
+    // pre-deposit completion state, captured when this step is created (the one
+    // construction site already has currentAmount/targetAmount in scope), so the
+    // deposit result handler can tell a genuine active->completed transition from
+    // a redundant deposit into an already-completed goal.
+    case deposit(goalId: String, goalName: String, wasAlreadyCompleted: Bool)
     // Real gap found live (2026-08-31, direct user re-reference of the real Toss
     // "얼마나 꺼낼까요?" (withdraw) screenshot) -- see backend SavingsService
     // .withdrawFromGoal's own doc comment for the full account.
@@ -54,7 +62,7 @@ enum SavingsFlowStep: Identifiable {
 
     var id: String {
         switch self {
-        case .deposit(let goalId, _): return "deposit-\(goalId)"
+        case .deposit(let goalId, _, _): return "deposit-\(goalId)"
         case .withdraw(let goalId, _, _): return "withdraw-\(goalId)"
         case .claimInterest: return "claim"
         }
@@ -348,7 +356,7 @@ struct ContentView: View {
                             secondaryStatValue: "\(formatAmount(Int(targetAmount))) RWF",
                             fetchTransactions: { try await NetworkClient.shared.getSavingsGoalTransactions(goalId: id).transactions },
                             fillLabel: "Deposit",
-                            onFill: { bucketDetailTarget = nil; savingsFlowStep = .deposit(goalId: id, goalName: name) },
+                            onFill: { bucketDetailTarget = nil; savingsFlowStep = .deposit(goalId: id, goalName: name, wasAlreadyCompleted: currentAmount >= targetAmount) },
                             withdrawLabel: currentAmount > 0 ? "Withdraw" : nil,
                             onWithdraw: currentAmount > 0 ? { bucketDetailTarget = nil; savingsFlowStep = .withdraw(goalId: id, goalName: name, currentAmount: currentAmount) } : nil,
                             onBack: { bucketDetailTarget = nil }
