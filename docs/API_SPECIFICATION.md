@@ -121,21 +121,83 @@ misrepresent this as more integrated than it honestly is.
 Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s QR Pay row. The first
 real wallet-to-wallet money movement in this backend where both sides are known itunda users
 (the existing `wallet/transfer/*` flow always routes through the simulated external rail, even
-recipient-to-recipient — see that row for the full account).
+recipient-to-recipient — see that row for the full account). **Fully re-documented 2026-09-05**
+(this section previously covered only 3 of the controller's 10 real endpoints and 8 of its 16
+real error codes) — read directly from `P2pController.kt`.
 
 | Method | Path | Body | Success | Notes |
 |---|---|---|---|---|
-| POST | `/request` | `{amount, description}` | `201` `{success, request}` | Creates a real `PENDING` request, 15-minute expiry (same convention as merchant QR) |
+| GET | `/transfer-limit` | — | `{success, perTransferLimit, dailyLimit, remainingToday}` | Real Toss Bank "Transfer limit" row — surfaces the flat per-transfer/daily caps proactively instead of only reactively as a decline |
+| POST | `/request` | `{amount, description}` | `201 {success, request: {...}}` | Creates a real `PENDING` request, 15-minute expiry (same convention as merchant QR) |
 | GET | `/requests` | — | `{success, requests: [...]}` | Caller's own requests, most recent first |
-| POST | `/pay/{requestId}` | — (+ `Idempotency-Key`) | `{success, message, transaction, newBalance}` | Direct `WALLET`→`WALLET` ledger pair, no fee. `newBalance` is the payer's own wallet balance after payment |
+| POST | `/pay/{requestId}` | — (+ `Idempotency-Key`) | `{success, message, transaction, newBalance}` | Direct `WALLET`→`WALLET` ledger pair, no fee |
+| GET | `/recipient?identifier` | — | `{success, recipient: {...}}` | Real Toss/Kakao Bank-style recipient-name confirmation ("받는분 성함 확인") — resolves a phone/account number to a real display name BEFORE the sender confirms the send, catching a mistyped digit before money moves. Read-only, no `Idempotency-Key` |
+| POST | `/send` | `{recipient, amount, description?, fromAccountId?}` (+ `Idempotency-Key`) | `{success, message, transaction, newBalance, fraudWarnings: [...]}` | Real direct push-transfer, no pre-existing request needed. `fraudWarnings` are real Toss "Fraud Suspicion Siren" (사기의심 사이렌) friendly strings (new recipient / high value / velocity) — purely informational, the transfer has already completed by the time they're returned |
+| POST | `/send-to-family` | `{childUserId, amount, description?}` (+ `Idempotency-Key`) | `{success, message, transaction, newBalance}` | Real Naver Pay 가족 공유 자산 관리 (family shared asset management) — instant transfer to a linked family member, gated by the real `FamilySpendLimitExceededException` (guardian-set daily cap) |
+| POST | `/send-delayed` | `{recipient, amount, description?}` (+ `Idempotency-Key`) | `201 {success, message, transfer: {...}}` | Real Korean 지연이체서비스 (Delayed Transfer Service) — an opt-in alternative to `/send` that holds the money for a real window instead of landing instantly, so a transfer made under phishing pressure (or a fat-fingered recipient) can still be cancelled |
+| GET | `/delayed-transfers` | — | `{success, transfers: [...]}` | |
+| POST | `/delayed-transfers/{transferId}/cancel` | — | `{success, message, transfer: {...}}` | Refunds the held amount back to the sender immediately. No `Idempotency-Key` — a retried cancel of an already-cancelled transfer just gets a real 409, never double-refunds |
 
-Errors: `404 P2P_REQUEST_NOT_FOUND`, `409 P2P_REQUEST_NOT_PAYABLE` (already paid, or expired —
-a real request past its `expiresAt` gets marked `EXPIRED` on the attempt, not silently allowed),
+Errors (all 16 real `@ExceptionHandler`s): `404 P2P_DELAYED_TRANSFER_NOT_FOUND`,
+`409 P2P_DELAYED_TRANSFER_NOT_CANCELLABLE`, `404 P2P_REQUEST_NOT_FOUND`,
+`409 P2P_REQUEST_NOT_PAYABLE` (already paid, or expired — a real request past its
+`expiresAt` gets marked `EXPIRED` on the attempt, not silently allowed),
 `400 SELF_PAYMENT_NOT_ALLOWED`, `404 ACCOUNT_NOT_FOUND`, `422 INSUFFICIENT_FUNDS`,
+`403 ACCOUNT_FROZEN`, `403 FAMILY_SPEND_LIMIT_EXCEEDED`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`, `429 RATE_LIMITED`,
+`404 P2P_RECIPIENT_NOT_FOUND`, `400 INVALID_AMOUNT`, `422 P2P_TRANSFER_LIMIT_EXCEEDED`.
+**Corrected 2026-09-04** — real code is `ACCOUNT_NOT_FOUND` (confirmed via
+`P2pController.kt`'s own `@ExceptionHandler` list), `WALLET_NOT_FOUND` does not exist.
+
+## Auto-Transfers — `/api/v1/p2p/auto-transfers`
+
+**Added 2026-09-05.** Real Toss Bank 자동이체 (auto-transfer) equivalent — a recurring
+transfer rule, executed later by a scheduler reusing `P2pService.sendDirect` unmodified,
+not a separate payment rail.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | `{recipient, amount, frequency, dayOfWeek?, dayOfMonth?, description?}` (+ `Idempotency-Key`) | `201 {success, autoTransfer: {...}}` | `frequency` is `WEEKLY`/`MONTHLY`-shaped (`AutoTransferFrequency`). Idempotency-Key added after a real gap: a retry here doesn't double-charge immediately (money only moves later when the scheduler processes a due row), but would silently create a SECOND active recurring rule — a duplicate charge every period going forward, not just once |
+| GET | `` (base path) | — | `{success, autoTransfers: [...]}` | |
+| POST | `/{id}/pause` | — | `{success, autoTransfer: {...}}` | |
+| POST | `/{id}/resume` | — | `{success, autoTransfer: {...}}` | |
+| DELETE | `/{id}` | — | `{success, autoTransfer: {...}}` | |
+
+Errors: `404 AUTO_TRANSFER_NOT_FOUND`, `400 INVALID_SCHEDULE`, `404 P2P_RECIPIENT_NOT_FOUND`,
+`400 SELF_PAYMENT_NOT_ALLOWED`, `404 ACCOUNT_NOT_FOUND`, `400 INVALID_AMOUNT`,
+`422 INSUFFICIENT_FUNDS`, `429 RATE_LIMITED`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`.
+
+## Scheduled Transfers — `/api/v1/p2p/scheduled-transfers`
+
+**Added 2026-09-05.** Real Toss 예약송금 (scheduled/reserved ONE-TIME transfer) — distinct
+from Auto-Transfers above (recurring); also executed later via `P2pService.sendDirect`.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | `{recipient, amount, scheduledDate, description?}` (+ `Idempotency-Key`) | `201 {success, scheduledTransfer: {...}}` | |
+| GET | `` (base path) | — | `{success, scheduledTransfers: [...]}` | |
+| POST | `/{id}/cancel` | — | `{success, scheduledTransfer: {...}}` | |
+
+Errors: `404 SCHEDULED_TRANSFER_NOT_FOUND`, `409 SCHEDULED_TRANSFER_NOT_PENDING`,
+`400 INVALID_SCHEDULED_DATE`, `404 P2P_RECIPIENT_NOT_FOUND`, `400 SELF_PAYMENT_NOT_ALLOWED`,
+`404 ACCOUNT_NOT_FOUND`, `400 INVALID_AMOUNT`, `422 INSUFFICIENT_FUNDS`, `429 RATE_LIMITED`,
 `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
-`400 IDEMPOTENCY_KEY_REQUIRED`. **Corrected 2026-09-04** — real code is
-`ACCOUNT_NOT_FOUND` (confirmed via `P2pController.kt`'s own `@ExceptionHandler`
-list), `WALLET_NOT_FOUND` does not exist.
+`400 IDEMPOTENCY_KEY_REQUIRED`.
+
+## Scam Reports — `/api/v1/p2p/scam-reports`
+
+**Added 2026-09-05.** Real Toss 사기계좌 조회 (fraud-account lookup before transfer)-style
+scam reporting — lets any user flag a phone/account identifier as a scam, and lets a SENDER
+check that flag before transferring to it.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | `{identifier, reason}` | `201 {success, report: {...}}` | |
+| GET | `/check?identifier` | — | `{success, result}` | Public — no auth-scoped filtering, checked before a transfer commits |
+| GET | `/mine` | — | `{success, reports: [...]}` | Caller's own submitted reports |
+
+Errors: `400 INVALID_SCAM_REPORT`, `409 SCAM_REPORT_ALREADY_EXISTS`, `429 RATE_LIMITED`.
 
 ## Account — `/api/v1/account`
 
