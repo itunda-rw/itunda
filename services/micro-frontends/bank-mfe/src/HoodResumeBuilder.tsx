@@ -138,15 +138,21 @@ function ResumeExperienceSection({ experiences, onChanged }: { experiences: Resu
             <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600 }}>{exp.role} · {exp.company}</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-600)' }}>{exp.period}</p>
           </div>
-          <button className="itunda-btn itunda-btn-secondary" style={{ padding: '4px 10px' }} onClick={() => removeResumeExperience(exp.id).then(onChanged).catch(() => {})}>Remove</button>
+          {/* Real gap found 2026-09-05: this used to silently swallow a failed
+              remove with .catch(() => {}) -- a click that did nothing, no error,
+              same "silence, not vagueness" bug class already fixed elsewhere this
+              session. Routes through the section's own error state (moved below,
+              outside the add-form's own conditional, so it's visible regardless of
+              whether that form is open). */}
+          <button className="itunda-btn itunda-btn-secondary" style={{ padding: '4px 10px' }} onClick={() => removeResumeExperience(exp.id).then(() => { setError(null); onChanged(); }).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not remove this.'))}>Remove</button>
         </div>
       ))}
+      {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {adding && (
         <>
           <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company" style={inputStyle} />
           <input value={role} onChange={(e) => setRole(e.target.value)} placeholder="Role" style={inputStyle} />
           <input value={period} onChange={(e) => setPeriod(e.target.value)} placeholder="Period (e.g. 2023 – present)" style={inputStyle} />
-          {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
           <button className="itunda-btn itunda-btn-primary" style={{ width: 'fit-content' }} onClick={handleAdd}>Save</button>
         </>
       )}
@@ -179,14 +185,14 @@ function ResumeEducationSection({ educations, onChanged }: { educations: ResumeE
       {educations.map((edu) => (
         <div key={edu.id} style={{ display: 'flex', justifyContent: 'space-between' }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{[edu.school, edu.degree].filter(Boolean).join(' · ')}</p>
-          <button className="itunda-btn itunda-btn-secondary" style={{ padding: '4px 10px' }} onClick={() => removeResumeEducation(edu.id).then(onChanged).catch(() => {})}>Remove</button>
+          <button className="itunda-btn itunda-btn-secondary" style={{ padding: '4px 10px' }} onClick={() => removeResumeEducation(edu.id).then(() => { setError(null); onChanged(); }).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not remove this.'))}>Remove</button>
         </div>
       ))}
+      {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {adding && (
         <>
           <input value={school} onChange={(e) => setSchool(e.target.value)} placeholder="School" style={inputStyle} />
           <input value={degree} onChange={(e) => setDegree(e.target.value)} placeholder="Degree (optional)" style={inputStyle} />
-          {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
           <button className="itunda-btn itunda-btn-primary" style={{ width: 'fit-content' }} onClick={handleAdd}>Save</button>
         </>
       )}
@@ -218,13 +224,13 @@ function ResumeCertificationSection({ certifications, onChanged }: { certificati
       {certifications.map((cert) => (
         <div key={cert.id} style={{ display: 'flex', justifyContent: 'space-between' }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{cert.name}</p>
-          <button className="itunda-btn itunda-btn-secondary" style={{ padding: '4px 10px' }} onClick={() => removeResumeCertification(cert.id).then(onChanged).catch(() => {})}>Remove</button>
+          <button className="itunda-btn itunda-btn-secondary" style={{ padding: '4px 10px' }} onClick={() => removeResumeCertification(cert.id).then(() => { setError(null); onChanged(); }).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not remove this.'))}>Remove</button>
         </div>
       ))}
+      {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {adding && (
         <>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Certification name" style={inputStyle} />
-          {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
           <button className="itunda-btn itunda-btn-primary" style={{ width: 'fit-content' }} onClick={handleAdd}>Save</button>
         </>
       )}
