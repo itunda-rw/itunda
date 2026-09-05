@@ -43,6 +43,7 @@ class PremiumFundNotFoundException(message: String) : RuntimeException(message)
 class PremiumFundAlreadyExistsException(message: String) : RuntimeException(message)
 class PremiumFundNotActiveException(message: String) : RuntimeException(message)
 class InvalidPremiumFundAmountException(message: String) : RuntimeException(message)
+class InvalidClaimDecisionReasonException(message: String) : RuntimeException(message)
 
 @Service
 class InsuranceService(
@@ -192,6 +193,12 @@ class InsuranceService(
         val claim = insuranceClaimRepository.findById(claimId).orElseThrow { ClaimNotFoundException("Claim not found") }
         if (claim.status != InsuranceClaimStatus.SUBMITTED) {
             throw ClaimNotPendingException("Claim is already ${claim.status}")
+        }
+        // InsuranceClaim.decisionReason has no explicit @Column length (255 default)
+        // and is written verbatim from a reviewer's free-text input -- same missing-
+        // bound bug class as the 2026-09-05 sweep, just an admin-facing input.
+        if (reason != null && reason.length > 255) {
+            throw InvalidClaimDecisionReasonException("Decision reason must be 255 characters or fewer")
         }
 
         if (approve) {

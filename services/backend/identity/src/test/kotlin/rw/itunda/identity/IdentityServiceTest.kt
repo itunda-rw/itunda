@@ -368,6 +368,17 @@ class IdentityServiceTest : BehaviorSpec({
                 verify(exactly = 1) { pushNotificationService.sendToUser("user_4", any(), any(), any()) }
             }
         }
+
+        When("rejecting with a reason over 255 characters") {
+            Then("it throws InvalidDecisionReasonException before ever saving") {
+                try {
+                    service.decide("kyc_3", "admin_1", approve = false, reason = "x".repeat(256))
+                    error("expected InvalidDecisionReasonException")
+                } catch (e: InvalidDecisionReasonException) {
+                    verify(exactly = 0) { kycSubmissionRepository.save(any()) }
+                }
+            }
+        }
     }
 
     Given("a submission that was already decided") {

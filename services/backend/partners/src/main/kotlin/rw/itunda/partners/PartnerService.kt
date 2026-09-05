@@ -25,6 +25,7 @@ class InvalidPermissionScopeException(message: String) : RuntimeException(messag
 class PartnerMiniAppNotFoundException(message: String) : RuntimeException(message)
 class PartnerMiniAppNotPendingException(message: String) : RuntimeException(message)
 class InvalidMiniAppSubmissionException(message: String) : RuntimeException(message)
+class InvalidMiniAppDecisionReasonException(message: String) : RuntimeException(message)
 
 /**
  * The real scopes a partner mini-app can request review for -- deliberately a small,
@@ -151,6 +152,12 @@ class PartnerService(
             .orElseThrow { PartnerMiniAppNotFoundException("Mini-app submission not found") }
         if (miniApp.status != PartnerMiniAppStatus.PENDING) {
             throw PartnerMiniAppNotPendingException("Submission is already ${miniApp.status}")
+        }
+        // PartnerMiniApp.decisionReason has no explicit @Column length (255 default)
+        // and is written verbatim from a reviewer's free-text input -- same missing-
+        // bound bug class as the 2026-09-05 sweep, just an admin-facing input.
+        if (reason != null && reason.length > 255) {
+            throw InvalidMiniAppDecisionReasonException("Decision reason must be 255 characters or fewer")
         }
         miniApp.status = if (approve) PartnerMiniAppStatus.APPROVED else PartnerMiniAppStatus.REJECTED
         miniApp.reviewedBy = reviewerId

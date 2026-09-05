@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
+import rw.itunda.realestate.InvalidOwnershipDecisionReasonException
 import rw.itunda.realestate.PropertyOwnershipService
 import rw.itunda.realestate.PropertyOwnershipSubmissionNotFoundException
 import rw.itunda.realestate.PropertyOwnershipSubmissionNotPendingException
@@ -51,4 +52,8 @@ class PropertyOwnershipAdminController(private val propertyOwnershipService: Pro
     @ExceptionHandler(PropertyOwnershipSubmissionNotPendingException::class)
     fun handleNotPending(ex: PropertyOwnershipSubmissionNotPendingException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("PROPERTY_OWNERSHIP_SUBMISSION_NOT_PENDING", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(InvalidOwnershipDecisionReasonException::class)
+    fun handleInvalidDecisionReason(ex: InvalidOwnershipDecisionReasonException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_DECISION_REASON", ex.message ?: "Invalid decision reason"))
 }

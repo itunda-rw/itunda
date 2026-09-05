@@ -297,6 +297,18 @@ class InsuranceServiceTest : BehaviorSpec({
                 verify(exactly = 1) { pushNotificationService.sendToUser("user_1", "Claim rejected", any(), mapOf("claimId" to "claim_2")) }
             }
         }
+
+        When("rejecting with a reason over 255 characters") {
+            Then("it throws InvalidClaimDecisionReasonException before ever saving or touching the ledger") {
+                try {
+                    service.decideClaim("claim_2", "admin_1", approve = false, reason = "x".repeat(256))
+                    error("expected InvalidClaimDecisionReasonException")
+                } catch (e: InvalidClaimDecisionReasonException) {
+                    verify(exactly = 0) { insuranceClaimRepository.save(any()) }
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
     }
 
     Given("a claim decision made while still inside its own real transaction") {

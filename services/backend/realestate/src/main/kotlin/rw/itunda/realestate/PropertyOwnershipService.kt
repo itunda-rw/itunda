@@ -19,6 +19,7 @@ import java.util.UUID
 class PropertyOwnershipSubmissionAlreadyPendingException(message: String) : RuntimeException(message)
 class PropertyOwnershipSubmissionNotFoundException(message: String) : RuntimeException(message)
 class PropertyOwnershipSubmissionNotPendingException(message: String) : RuntimeException(message)
+class InvalidOwnershipDecisionReasonException(message: String) : RuntimeException(message)
 
 /**
  * Real ownership verification (2026-07-25) -- see `PropertyOwnershipSubmission`'s own doc
@@ -82,6 +83,13 @@ class PropertyOwnershipService(
             .orElseThrow { PropertyOwnershipSubmissionNotFoundException("Submission not found") }
         if (submission.status != "PENDING") {
             throw PropertyOwnershipSubmissionNotPendingException("Submission is already ${submission.status}")
+        }
+        // PropertyOwnershipSubmission.decisionReason has no explicit @Column length
+        // (255 default) and is written verbatim from a reviewer's free-text input --
+        // same missing-bound bug class as the 2026-09-05 sweep, just an admin-facing
+        // input.
+        if (reason != null && reason.length > 255) {
+            throw InvalidOwnershipDecisionReasonException("Decision reason must be 255 characters or fewer")
         }
         submission.status = if (approve) "VERIFIED" else "REJECTED"
         submission.reviewedBy = reviewerId

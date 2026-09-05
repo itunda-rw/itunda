@@ -127,4 +127,26 @@ class PropertyOwnershipServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("an ADMIN rejecting with a reason over 255 characters") {
+        val submissionRepository = mockk<PropertyOwnershipSubmissionRepository>()
+        val listingRepository = mockk<PropertyListingRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = PropertyOwnershipService(submissionRepository, listingRepository, notificationRepository, pushNotificationService)
+
+        every { submissionRepository.findById("property_ownership_1") } returns Optional.of(submission())
+
+        When("rejecting it") {
+            Then("it throws InvalidOwnershipDecisionReasonException before ever saving or notifying") {
+                try {
+                    service.decide("property_ownership_1", "admin_1", approve = false, reason = "x".repeat(256))
+                    error("expected InvalidOwnershipDecisionReasonException")
+                } catch (e: InvalidOwnershipDecisionReasonException) {
+                    verify(exactly = 0) { submissionRepository.save(any()) }
+                    verify(exactly = 0) { notificationRepository.save(any()) }
+                }
+            }
+        }
+    }
 })

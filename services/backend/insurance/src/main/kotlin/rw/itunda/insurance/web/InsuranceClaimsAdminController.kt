@@ -16,6 +16,7 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.insurance.ClaimNotFoundException
 import rw.itunda.insurance.ClaimNotPendingException
 import rw.itunda.insurance.InsuranceService
+import rw.itunda.insurance.InvalidClaimDecisionReasonException
 import rw.itunda.insurance.NoAccountException
 
 data class DecideClaimRequest(val approve: Boolean, val reason: String? = null)
@@ -55,4 +56,8 @@ class InsuranceClaimsAdminController(private val insuranceService: InsuranceServ
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
+
+    @ExceptionHandler(InvalidClaimDecisionReasonException::class)
+    fun handleInvalidDecisionReason(ex: InvalidClaimDecisionReasonException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_DECISION_REASON", ex.message ?: "Invalid decision reason"))
 }

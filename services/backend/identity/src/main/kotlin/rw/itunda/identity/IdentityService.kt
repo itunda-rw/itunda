@@ -23,6 +23,7 @@ class SubmissionAlreadyPendingException(message: String) : RuntimeException(mess
 class SubmissionNotFoundException(message: String) : RuntimeException(message)
 class SubmissionNotPendingException(message: String) : RuntimeException(message)
 class IdentityUserNotFoundException(message: String) : RuntimeException(message)
+class InvalidDecisionReasonException(message: String) : RuntimeException(message)
 
 private const val BUSINESS_TIN_DOCUMENT_TYPE = "BUSINESS_TIN"
 
@@ -115,6 +116,13 @@ class IdentityService(
             .orElseThrow { SubmissionNotFoundException("Submission not found") }
         if (submission.status != "PENDING") {
             throw SubmissionNotPendingException("Submission is already ${submission.status}")
+        }
+        // KycSubmission.decisionReason has no explicit @Column length (255 default) and
+        // is written verbatim from a reviewer's free-text input -- same missing-bound
+        // bug class as the 2026-09-05 sweep, just an admin-facing input rather than a
+        // concatenation.
+        if (reason != null && reason.length > 255) {
+            throw InvalidDecisionReasonException("Decision reason must be 255 characters or fewer")
         }
 
         submission.status = if (approve) "VERIFIED" else "REJECTED"

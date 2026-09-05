@@ -207,6 +207,23 @@ class PartnerServiceTest : BehaviorSpec({
             }
         }
 
+        When("rejecting with a reason over 255 characters") {
+            val pendingYetAgain = PartnerMiniApp(
+                id = "partner_app_4", partnerId = "partner_1", name = "Verbose App", description = "desc",
+                bundleUrl = "https://verbose.example.com/bundle.js", permissions = "", status = PartnerMiniAppStatus.PENDING,
+            )
+            every { partnerMiniAppRepository.findById("partner_app_4") } returns Optional.of(pendingYetAgain)
+
+            Then("it throws InvalidMiniAppDecisionReasonException before ever saving") {
+                try {
+                    service.decide("partner_app_4", "admin_1", approve = false, reason = "x".repeat(256))
+                    error("expected InvalidMiniAppDecisionReasonException")
+                } catch (e: InvalidMiniAppDecisionReasonException) {
+                    verify(exactly = 0) { partnerMiniAppRepository.save(any()) }
+                }
+            }
+        }
+
         When("trying to decide an already-decided submission") {
             val alreadyDecided = PartnerMiniApp(
                 id = "partner_app_3", partnerId = "partner_1", name = "x", description = "y",
