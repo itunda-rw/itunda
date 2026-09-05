@@ -630,6 +630,32 @@ minor inconsistency — every other controller on this page maps this same code 
 page this is `422`), `429 RATE_LIMITED`, `409 IDEMPOTENCY_KEY_CONFLICT`,
 `409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`.
 
+## Transit — `/api/v1/transit`
+
+**Added 2026-09-05, same slice.** Real Kigali GTFS-transit fare card — top up a
+balance, tap to pay a fare (or have an agent collect it via the rider's own
+customer-payment code, the same real primitive `POST /api/v1/moto-fare/collect`
+reuses). Confirmed by direct read of `TransitController.kt` (5 endpoints, 14 error
+codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/balance` | — | `{success, balance}` | |
+| GET | `/trips?page&size` | — | `{success, trips: [...], totalElements, totalPages}` | `size` capped at 100 |
+| POST | `/topup` | `{amount}` (+ `Idempotency-Key`) | `{success, balance}` | |
+| POST | `/tap` | `{operator, fare}` (+ `Idempotency-Key`) | `201 {success, trip: {...}, balance}` | |
+| POST | `/tap-by-code` | `{code, operator, fare}` (+ `Idempotency-Key`) | `201 {success, collected: {...}}` | Real "agent collects a fare via a rider's presented code" flow — `code` is the same `CustomerPaymentCode` any user's "My payment code" screen shows |
+
+Errors (all 14 real `@ExceptionHandler`s): `404 TRANSIT_CODE_NOT_FOUND`,
+`409 TRANSIT_CODE_NOT_PAYABLE`, `400 TRANSIT_SELF_COLLECTION`,
+`404 TRANSIT_NO_ACCOUNT`, `400 INVALID_AMOUNT`, `400 INVALID_TRANSIT_OPERATOR`,
+`400 INVALID_TRANSIT_FARE`, `409 TRANSIT_INSUFFICIENT_BALANCE`,
+`409 ACCOUNT_FROZEN` (same real inconsistency as Moto Fare above — every other
+controller on this page maps this code to `403`), `409 INSUFFICIENT_FUNDS` (same
+inconsistency — elsewhere on this page this is `422`), `429 RATE_LIMITED`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`.
+
 ## Designated Driver — `/api/v1/designated-driver`
 
 **Added 2026-09-05.** Real Kakao T 대리운전 (designated driver) — a driver comes to
@@ -756,6 +782,28 @@ identical review-ownership check), `409 REVIEW_ALREADY_SUBMITTED`,
 `404 ESCROW_NOT_FOUND`, `409 INVALID_ESCROW_STATUS`, `400 INVALID_DISPUTE_REASON`,
 `422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`, `409 IDEMPOTENCY_KEY_CONFLICT`,
 `409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`.
+
+## Uploads — `/api/v1` (`UploadController`)
+
+**Added 2026-09-05, same slice.** Real, minimal photo upload — every "photo"/"image"
+field elsewhere in this backend (`Merchant.photoUrl`, `MerchantProduct.imageUrl`,
+`User.profilePhotoUrl`, Marketplace listing photos) was previously a paste-your-own-
+externally-hosted-URL string with no actual storage layer; this closes that gap with
+real local-disk storage on the single cluster node, served back out under this same
+`/api/v1` path. Deliberately not S3/MinIO/a CDN — a plain validated-and-bounded local
+directory is the honest, lean choice for a single-node deployment. Confirmed by
+direct read of `UploadController.kt` (1 endpoint, 2 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/uploads` | multipart form field `file` | `201 {success, url}` | Max 5MB; JPEG/PNG/WebP only; rate-limited to 20 uploads/hour per user. `url` is a real `/api/v1/uploads/{filename}` path any other field can be set to |
+
+Errors (both real `@ExceptionHandler`s): `400 INVALID_UPLOAD` (empty file, over the
+size limit, or an unsupported content type), `429 RATE_LIMITED`. **Real gap found and
+fixed 2026-09-05** (this documentation pass): the rate-limit check above already
+threw `RateLimitExceededException` on the 21st upload/hour, but this controller had
+never registered a handler for it — an unhandled exception (a generic 500) instead
+of this same clean 429 every other rate-limited endpoint in this backend returns.
 
 ## Keyword Alerts — `/api/v1/marketplace/keyword-alerts`
 
@@ -1190,6 +1238,34 @@ with their own `PREMIUM_FUND_NOT_FOUND`/`PREMIUM_FUND_ALREADY_EXISTS`/
 Errors: `404 CLAIM_NOT_FOUND`, `409 CLAIM_NOT_PENDING` (already decided), `404 ACCOUNT_NOT_FOUND`,
 `422 INSUFFICIENT_FUNDS`. **Corrected 2026-09-04** — real code is `ACCOUNT_NOT_FOUND`,
 not `WALLET_NOT_FOUND` (doesn't exist; confirmed via `InsuranceClaimsAdminController.kt`).
+
+## Crop Weather-Index Insurance — `/api/v1/insurance/crop-index`
+
+**Added 2026-09-05** (twenty-third documentation slice). Real Rwanda NAIS-style
+parametric crop weather-index insurance — a genuinely different product shape from
+`InsuranceController` above (claims-based): here, a season's real rainfall index is
+published once by an admin, and every enrolled policy for that district/season
+either automatically pays out or doesn't, based on the published index — no
+individual claim filing at all. Confirmed by direct read of
+`WeatherIndexInsuranceController.kt` (7 endpoints, 12 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/catalog` | — | `{success, catalog: {...}}` | |
+| POST | `/policies` | `{cropType, district, season, insuredAmount}` (+ `Idempotency-Key`) | `201 {success, policy: {...}}` | |
+| GET | `/policies` | — | `{success, policies: [...]}` | |
+| GET | `/policies/{id}` | — | `{success, policy: {...}}` | |
+| POST | `/policies/{id}/cancel` | — (+ `Idempotency-Key`) | `{success, policy: {...}}` | |
+| POST | `/districts/{district}/seasons/{season}/index` | `{rainfallIndexPercent, droughtThresholdPercent}` | `201 {success, index: {...}}` | ADMIN only. Deliberately NOT `Idempotency-Key`-protected — a one-time, admin-transcribed real fact, guarded instead by a real DB-unique constraint on `(district, season)`, not a retryable client action |
+| GET | `/districts/{district}/seasons/{season}/index` | — | `{success, index}` | Public — `index: null` (not an error) before one has been published yet |
+
+Errors (all 12 real `@ExceptionHandler`s): `404 WEATHER_INDEX_POLICY_NOT_FOUND`,
+`409 WEATHER_INDEX_POLICY_NOT_CANCELLABLE`,
+`409 SEASON_RAINFALL_INDEX_ALREADY_PUBLISHED`, `400 INVALID_WEATHER_INDEX_ENROLLMENT`,
+`404 ACCOUNT_NOT_FOUND`, `422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`, `429 RATE_LIMITED`, `400 INVALID_REQUEST` (bare
+`IllegalArgumentException` fallback).
 
 ## Merchant — `/api/v1/merchant`
 
@@ -1940,6 +2016,23 @@ exist). All 5 catalog tasks
 (`task_first_transfer`, `task_first_bill`, `task_savings_goal`, `task_referral`,
 `task_profile`) are real-activity-verified as of 2026-07-17 — see the Auth section above for
 the `profile/photo` and `profile/verify-email` endpoints `task_profile` checks.
+
+## Shopping Points — `/api/v1/shopping/points`
+
+**Added 2026-09-05, same slice.** Real Toss Shopping 포인트 및 쿠폰받기 (get points
+and coupons) daily-mission row, plus a stated-odds spin reward. Naturally idempotent
+— each mission only ever credits once, checked against a real stored flag — so no
+`Idempotency-Key`, same convention `RewardsController.reportSteps` already uses.
+Confirmed by direct read of `ShoppingMissionController.kt` (2 endpoints, 2 real
+`ApiError`-shaped codes).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `` (base path) | — | `{success, missions: [...], spinOutcomes: [...]}` | `spinOutcomes` states the real odds up front (item 248 discipline), not just discovered after a spin |
+| POST | `/missions/{type}/complete` | — | `{success, type, amountEarned, newAccountBalance}` | A real, deliberately-noted inconsistency: an unrecognized `type` returns `404 {"success": false, "error": "Unknown mission type"}`, NOT the shared `ApiError{code, message}` shape every other error on this page uses |
+
+Errors (both real `@ExceptionHandler`s): `409 MISSION_ALREADY_COMPLETED`,
+`404 ACCOUNT_NOT_FOUND`.
 
 ## Notifications — `/api/v1/notifications`
 

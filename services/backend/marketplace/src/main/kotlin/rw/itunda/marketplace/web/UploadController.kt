@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
@@ -82,4 +83,12 @@ class UploadController(
     @ExceptionHandler(InvalidUploadException::class)
     fun handleInvalid(ex: InvalidUploadException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_UPLOAD", ex.message ?: "Bad request"))
+
+    // Real gap found 2026-09-05 (documentation pass): rateLimiter.checkLimit above
+    // throws this on the 21st upload/hour, but no handler existed -- an unhandled
+    // exception (a generic 500) instead of the same clean 429 every other rate-
+    // limited endpoint in this backend returns.
+    @ExceptionHandler(RateLimitExceededException::class)
+    fun handleRateLimit(ex: RateLimitExceededException) =
+        ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
 }
