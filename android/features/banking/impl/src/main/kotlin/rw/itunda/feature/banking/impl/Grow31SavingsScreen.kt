@@ -1,4 +1,4 @@
-package rw.itunda.app.ui
+package rw.itunda.feature.banking.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Divider
-import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,8 +37,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
-import rw.itunda.core.network.CreateGrow31SavingsPlanRequest
-import rw.itunda.core.network.Grow31SavingsDepositDto
 import rw.itunda.core.network.Grow31SavingsPlanDetailResponse
 import rw.itunda.core.network.Grow31SavingsPlanDto
 import rw.itunda.core.network.NetworkClient
@@ -49,7 +46,6 @@ import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
 import java.io.IOException
-import java.math.BigDecimal
 import java.util.UUID
 
 // Real Toss Bank 키워봐요 31일적금 (Grow-it 31-day savings) UI (2026-08-12) -- direct
@@ -201,69 +197,6 @@ private fun Grow31ProgressBar(progress: Float) {
                 .clip(RoundedCornerShape(4.dp)).background(Ids.colors.brand),
         )
     }
-}
-
-@Composable
-private fun Grow31CreateContent(onCreated: () -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var dailyAmount by remember { mutableStateOf("") }
-    var submitting by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    val coroutineScope = rememberCoroutineScope()
-
-    fun submit() {
-        val amountBd = dailyAmount.trim().toBigDecimalOrNull()
-        if (name.isBlank()) {
-            error = "Give your plan a name."
-            return
-        }
-        if (amountBd == null || amountBd <= BigDecimal.ZERO) {
-            error = "Enter a real daily amount."
-            return
-        }
-        submitting = true
-        coroutineScope.launch {
-            try {
-                val idempotencyKey = UUID.randomUUID().toString()
-                val request = CreateGrow31SavingsPlanRequest(name = name.trim(), dailyAmount = amountBd)
-                NetworkClient.apiService.createGrow31SavingsPlan(idempotencyKey, request)
-                error = null
-                onCreated()
-                rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, "31-day plan started.")
-            } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
-            } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
-            } finally {
-                submitting = false
-            }
-        }
-    }
-
-    rw.itunda.core.designsystem.components.FixedBottomCta(
-        content = {
-            Text(
-                "Pick a small amount you can realistically save every single day for $TERM_DAYS days. Miss a day and " +
-                    "your streak resets -- but your longest streak still locks in a bonus rate at maturity, up to +10% " +
-                    "for a full unbroken run.",
-                color = Ids.colors.textSecondary, fontSize = 13.sp,
-            )
-            IdsTextField(value = name, onValueChange = { name = it }, label = "Plan name", modifier = Modifier.fillMaxWidth())
-            Text("Daily amount", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            rw.itunda.core.designsystem.components.AmountKeypadInput(
-                digits = dailyAmount, onDigitsChange = { dailyAmount = it },
-                quickAmounts = listOf(500L, 1_000L),
-            )
-            error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
-        },
-        cta = {
-            rw.itunda.core.designsystem.components.IdsButton(
-                text = if (submitting) "Working…" else "Start plan",
-                onClick = { submit() },
-                enabled = !submitting,
-            )
-        },
-    )
 }
 
 @Composable

@@ -1,4 +1,4 @@
-package rw.itunda.app.ui
+package rw.itunda.feature.banking.impl
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
