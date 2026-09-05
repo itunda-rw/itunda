@@ -42,6 +42,7 @@ import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.trust.TrustScoreService
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
+import rw.itunda.core.pricing.PlatformFees
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -111,10 +112,8 @@ class MarketplaceService(
         // Haversine ranking rather than risking an oversized request.
         private const val MAX_OSRM_TABLE_CANDIDATES = 100
 
-        // Same real 1.5% fee-schedule reasoning OrderService.feeRate/EatsOrderService
-        // .platformFeeRate already use -- reused rather than inventing a different
-        // number for what is, underneath, the same kind of real paid-safety-service fee.
-        val ESCROW_FEE_RATE = BigDecimal("0.015")
+        // Consolidated 2026-09-06 into core/pricing/PlatformFees -- see its own doc comment.
+        val ESCROW_FEE_RATE = PlatformFees.PLATFORM_FEE_RATE
 
         // Real flat-fee sponsored-placement tiers (2026-07-25), matching Baemin's own
         // real 울트라콜 mechanic (a flat fee per real time slot) rather than Coupang's

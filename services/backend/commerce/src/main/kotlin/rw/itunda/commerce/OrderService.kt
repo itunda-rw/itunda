@@ -35,6 +35,7 @@ import rw.itunda.core.repository.ProductPriceTierRepository
 import rw.itunda.core.repository.RiderRepository
 import rw.itunda.core.repository.TimeDealRepository
 import rw.itunda.core.repository.TransactionRepository
+import rw.itunda.core.pricing.PlatformFees
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -92,11 +93,8 @@ class OrderService(
 ) {
     private val logger = LoggerFactory.getLogger(OrderService::class.java)
 
-    // Same real Toss Payments fee-schedule reasoning MerchantService.feeRate's own
-    // comment gives -- one flat rate in the middle of Toss's published 0.8%-1.8% range,
-    // reused rather than inventing a second number for what is, underneath, the same
-    // kind of account-to-account merchant collection.
-    private val feeRate = BigDecimal("0.015")
+    // Consolidated 2026-09-06 into core/pricing/PlatformFees -- see its own doc comment.
+    private val feeRate = PlatformFees.PLATFORM_FEE_RATE
 
     private val statusOrder = listOf(OrderStatus.PLACED, OrderStatus.PACKED, OrderStatus.SHIPPED, OrderStatus.DELIVERED)
 

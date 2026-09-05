@@ -30,6 +30,7 @@ import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
+import rw.itunda.core.pricing.PlatformFees
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -85,10 +86,8 @@ class DineInOrderService(
     private val logger = LoggerFactory.getLogger(DineInOrderService::class.java)
 
     companion object {
-        // Same 1.5% Toss Payments fee-schedule reasoning OrderService.feeRate/
-        // EatsOrderService.platformFeeRate already give -- reused rather than inventing a
-        // fourth number.
-        private val PLATFORM_FEE_RATE = BigDecimal("0.015")
+        // Consolidated 2026-09-06 into core/pricing/PlatformFees -- see its own doc comment.
+        private val PLATFORM_FEE_RATE = PlatformFees.PLATFORM_FEE_RATE
 
         private val restaurantStatusOrder = listOf(
             DineInOrderStatus.PLACED, DineInOrderStatus.ACCEPTED, DineInOrderStatus.PREPARING, DineInOrderStatus.SERVED,

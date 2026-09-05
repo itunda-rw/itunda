@@ -35,6 +35,7 @@ import rw.itunda.core.repository.RideTripStopRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.AccountRepository
 import rw.itunda.messaging.MessagingService
+import rw.itunda.core.pricing.PlatformFees
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -107,7 +108,8 @@ class RideTripService(
     private val osrmRoutingClient: OsrmRoutingClient,
 ) {
     companion object {
-        private val platformFeeRate = BigDecimal("0.015")
+        // Consolidated 2026-09-06 into core/pricing/PlatformFees -- see its own doc comment.
+        private val platformFeeRate = PlatformFees.PLATFORM_FEE_RATE
 
         // itunda's own honest fare-structure choice -- Kakao Mobility's own page
         // explicitly discloses no fare/surge pricing mechanics to reuse. Reuses the

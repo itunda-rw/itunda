@@ -21,6 +21,7 @@ import rw.itunda.core.repository.ExchangeRateAlertRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.account.AccountNumberGenerator
+import rw.itunda.core.pricing.PlatformFees
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
@@ -73,12 +74,11 @@ class ForeignCurrencyAccountService(
     companion object {
         val SUPPORTED_CURRENCIES = setOf("USD", "EUR", "GBP")
 
-        // Same 1.5% fee-schedule reasoning OrderService.feeRate/EatsOrderService
-        // .platformFeeRate already use, reused rather than inventing a different
-        // number. A real forex spread (the customer's effective rate is this much
+        // Consolidated 2026-09-06 into core/pricing/PlatformFees -- see its own doc
+        // comment. A real forex spread (the customer's effective rate is this much
         // worse than the live mid-market rate), the same mechanic every real consumer
         // FX product uses -- not a flat fee.
-        val MARGIN_RATE = BigDecimal("0.015")
+        val MARGIN_RATE = PlatformFees.PLATFORM_FEE_RATE
     }
 
     private fun getMainAccount(userId: String) =

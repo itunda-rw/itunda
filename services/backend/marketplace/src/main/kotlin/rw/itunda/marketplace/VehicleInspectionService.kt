@@ -19,6 +19,7 @@ import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.VehicleInspectionBookingRepository
 import rw.itunda.core.repository.VehicleInspectionMechanicRepository
 import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.pricing.PlatformFees
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -49,9 +50,8 @@ class VehicleInspectionService(
     private val rateLimiter: RateLimiter,
 ) {
     companion object {
-        // Same real 1.5% fee-schedule reasoning MarketplaceService.ESCROW_FEE_RATE/
-        // OrderService.feeRate already establish -- reused, not reinvented.
-        private val PLATFORM_FEE_RATE = BigDecimal("0.015")
+        // Consolidated 2026-09-06 into core/pricing/PlatformFees -- see its own doc comment.
+        private val PLATFORM_FEE_RATE = PlatformFees.PLATFORM_FEE_RATE
     }
 
     /** Any itunda user can register, no admin approval gate -- same real light

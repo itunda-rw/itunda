@@ -22,6 +22,7 @@ import rw.itunda.core.repository.DesignatedDriverRepository
 import rw.itunda.core.repository.DesignatedDriverTripRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.pricing.PlatformFees
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -60,13 +61,15 @@ class DesignatedDriverService(
     private val rateLimiter: RateLimiter,
 ) {
     companion object {
+        // Consolidated 2026-09-06 into core/pricing/PlatformFees -- see its own doc comment.
+        private val platformFeeRate = PlatformFees.PLATFORM_FEE_RATE
+
         // itunda's own honest fare-structure choice, same reasoning RideTripService's
         // own doc comment gives for its fare constants -- no real 대리운전 fare
         // schedule to source (pricing varies live by demand/distance/time-of-day in
         // the real market), reuses the same real per-km rate RideTripService already
         // establishes rather than inventing a second one, with a higher base fare
         // reflecting a real designated-driver call-out's higher flag-fall cost.
-        private val platformFeeRate = BigDecimal("0.015")
         private val baseFare = BigDecimal("3000")
         private val perKmRate = BigDecimal("250")
         private val minFare = BigDecimal("4000")

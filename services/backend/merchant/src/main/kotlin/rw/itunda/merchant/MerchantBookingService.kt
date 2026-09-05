@@ -33,6 +33,7 @@ import java.math.RoundingMode
 import java.time.DayOfWeek
 import java.time.Duration
 import java.time.Instant
+import rw.itunda.core.pricing.PlatformFees
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -76,10 +77,8 @@ class MerchantBookingService(
     private val autoTopUpService: rw.itunda.account.AutoTopUpService,
 ) {
     companion object {
-        // Same real fee rate MerchantService.feeRate/MarketplaceService.ESCROW_FEE_RATE
-        // already established for a real held-then-released payment -- not a new number
-        // invented for this feature.
-        val DEPOSIT_FEE_RATE: BigDecimal = BigDecimal("0.015")
+        // Consolidated 2026-09-06 into core/pricing/PlatformFees -- see its own doc comment.
+        val DEPOSIT_FEE_RATE: BigDecimal = PlatformFees.PLATFORM_FEE_RATE
     }
 
     private fun getMyMerchant(ownerUserId: String) =

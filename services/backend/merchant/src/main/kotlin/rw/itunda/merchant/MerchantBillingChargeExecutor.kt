@@ -17,6 +17,7 @@ import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.Account
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.pricing.PlatformFees
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
@@ -51,10 +52,8 @@ class MerchantBillingChargeExecutor(
 ) {
     private val log = LoggerFactory.getLogger(MerchantBillingChargeExecutor::class.java)
 
-    // Same real Toss Payments fee-schedule reasoning MerchantService.feeRate's own
-    // comment gives -- one flat rate in the middle of the published range, the same
-    // real account-to-account collection underneath, just recurring.
-    private val feeRate = BigDecimal("0.015")
+    // Consolidated 2026-09-06 into core/pricing/PlatformFees -- see its own doc comment.
+    private val feeRate = PlatformFees.PLATFORM_FEE_RATE
 
     /**
      * The one real charge attempt shared by both callers -- throws honestly

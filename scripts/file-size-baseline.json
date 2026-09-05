@@ -63,7 +63,7 @@
   "services/backend/p2p/src/test/kotlin/rw/itunda/p2p/P2pServiceTest.kt": 985,
   "services/backend/realestate/src/test/kotlin/rw/itunda/realestate/PropertyListingServiceTest.kt": 572,
   "services/backend/rewards/src/test/kotlin/rw/itunda/rewards/RewardsServiceTest.kt": 559,
-  "services/backend/rideshare/src/main/kotlin/rw/itunda/rideshare/RideTripService.kt": 925,
+  "services/backend/rideshare/src/main/kotlin/rw/itunda/rideshare/RideTripService.kt": 927,
   "services/backend/rideshare/src/test/kotlin/rw/itunda/rideshare/RideTripServiceTest.kt": 1138,
   "services/backend/splitbill/src/main/kotlin/rw/itunda/splitbill/SplitBillService.kt": 501,
   "services/backend/splitbill/src/test/kotlin/rw/itunda/splitbill/SplitBillServiceTest.kt": 552,

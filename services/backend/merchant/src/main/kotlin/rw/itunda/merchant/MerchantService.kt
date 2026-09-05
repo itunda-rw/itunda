@@ -30,6 +30,7 @@ import rw.itunda.core.repository.PaymentIntentRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.AccountRepository
 import org.slf4j.LoggerFactory
+import rw.itunda.core.pricing.PlatformFees
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.net.URI
@@ -81,13 +82,9 @@ class MerchantService(
     // expire mid-handoff. itunda's own chosen policy, not a claimed real KakaoPay/
     // Toss Pay figure this project has no way to verify.
     private val customerCodeValidity: Duration = Duration.ofMinutes(2)
-    // Toss Payments' real published fee schedule tiers account-based payments
-    // ("Toss Pay") at 0.8%-1.8% depending on merchant volume (see
-    // docs/TOSS_ARCHITECTURE_FACTS.md's Toss Payments SDK research). No tiering
-    // system exists here yet, so a single flat rate in the middle of that real
-    // range is used rather than inventing a number the way the old
-    // MERCHANT_SERVICES.md spec's "QR payments: 1.5%" did independently.
-    private val feeRate = BigDecimal("0.015")
+    // Consolidated 2026-09-06 into core/pricing/PlatformFees -- see its own doc
+    // comment for the full sourced account (Toss Payments 0.8%-1.8% real fee schedule).
+    private val feeRate = PlatformFees.PLATFORM_FEE_RATE
 
     // Real Toss Bank/Toss Pay separation follow-up (2026-08-21, direct user
     // confirmation) -- a real, pre-existing gap noticed while fixing the "My code"

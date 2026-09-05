@@ -24,6 +24,7 @@ import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.AccountRepository
 import rw.itunda.messaging.MessagingService
+import rw.itunda.core.pricing.PlatformFees
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -66,11 +67,10 @@ class GiftVoucherService(
     private val fraudRuleEngine: FraudRuleEngine,
     private val autoTopUpService: rw.itunda.account.AutoTopUpService,
 ) {
-    // Same real Toss Payments fee-schedule reasoning MerchantService.feeRate's own
-    // comment gives -- one flat rate in the middle of the published range, charged at
-    // real redemption time (when itunda's product/service is actually delivered to the
-    // merchant), not at purchase time.
-    private val feeRate = BigDecimal("0.015")
+    // Consolidated 2026-09-06 into core/pricing/PlatformFees -- see its own doc comment.
+    // Charged at real redemption time (when itunda's product/service is actually
+    // delivered to the merchant), not at purchase time.
+    private val feeRate = PlatformFees.PLATFORM_FEE_RATE
 
     @Transactional
     fun purchaseVoucher(

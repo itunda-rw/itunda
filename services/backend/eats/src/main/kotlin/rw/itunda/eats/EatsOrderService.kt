@@ -43,6 +43,7 @@ import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.RiderRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.pricing.PlatformFees
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -157,10 +158,8 @@ class EatsOrderService(
         val DELIVERY_ABANDONMENT_TIMEOUT: Duration = Duration.ofMinutes(60)
     }
 
-    // Same 1.5% Toss Payments fee-schedule reasoning OrderService.feeRate/
-    // MerchantService.feeRate already give -- reused rather than inventing a third number
-    // for what is, underneath, the same kind of account-to-account merchant collection.
-    private val platformFeeRate = BigDecimal("0.015")
+    // Consolidated 2026-09-06 into core/pricing/PlatformFees -- see its own doc comment.
+    private val platformFeeRate = PlatformFees.PLATFORM_FEE_RATE
 
     // Real distance-based delivery fee (2026-07-18), computed from GeoUtils.haversineKm
     // when both the restaurant and the buyer's delivery point have real coordinates --
