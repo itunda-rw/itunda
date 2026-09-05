@@ -55,7 +55,18 @@ class PayAccountBackfillRunner(
                     id = "account_${UUID.randomUUID()}",
                     userId = user.id,
                     accountNumber = accountNumberGenerator.generate(2024100000L),
-                    accountName = "${user.firstName}'s itunda Pay Money",
+                    // Real gap found 2026-09-05: this reads firstName from a
+                    // PRE-EXISTING user row, so AuthService.register's own firstName
+                    // length bound (added this same session) can't protect a user who
+                    // registered before that fix shipped -- a legacy firstName between
+                    // 236 and 255 characters would still overflow this real
+                    // Hibernate-default-255 accountName column once "'s itunda Pay
+                    // Money" (19 chars) is appended. Truncating rather than skipping:
+                    // this is a one-time batch backfill, and a user missing their PAY
+                    // account entirely (skipped) is a worse real outcome than a
+                    // truncated display name for what's realistically dummy/seed data
+                    // anyway.
+                    accountName = "${user.firstName.take(236)}'s itunda Pay Money",
                     type = AccountType.PAY,
                     balance = BigDecimal.ZERO,
                     availableBalance = BigDecimal.ZERO,

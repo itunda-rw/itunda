@@ -24,10 +24,10 @@ class PayAccountBackfillRunnerTest {
     private val accountNumberGenerator = mock(AccountNumberGenerator::class.java)
     private val runner = PayAccountBackfillRunner(userRepository, accountRepository, accountNumberGenerator)
 
-    private fun user(id: String) = User(
+    private fun user(id: String, firstName: String = "Test") = User(
         id = id,
         phoneNumber = "+25078800$id",
-        firstName = "Test",
+        firstName = firstName,
         lastName = "User",
         passwordHash = "hash",
         createdAt = Instant.now(),
@@ -62,6 +62,24 @@ class PayAccountBackfillRunnerTest {
 
         verify(accountRepository, times(1)).findByUserIdInAndType(listOf("user_1"), AccountType.PAY)
         verifyNoMoreInteractions(accountRepository)
+    }
+
+    @Test
+    fun `truncates a real legacy firstName so accountName never overflows its own 255-char column`() {
+        // Real gap this covers: a user who registered BEFORE AuthService.register's own
+        // firstName length fix (this same session) could have a firstName up to 255
+        // characters -- long enough to overflow accountName's own 255-char column once
+        // "'s itunda Pay Money" (19 chars) is appended.
+        val legacyUser = user("user_3", firstName = "x".repeat(250))
+        `when`(userRepository.findAll()).thenReturn(listOf(legacyUser))
+        `when`(accountRepository.findByUserIdInAndType(listOf("user_3"), AccountType.PAY)).thenReturn(emptyList())
+        `when`(accountNumberGenerator.generate(2024100000L)).thenReturn("2024100002")
+
+        runner.run()
+
+        val captor = ArgumentCaptor.forClass(Account::class.java)
+        verify(accountRepository, times(1)).save(captor.capture())
+        assertEquals(236 + "'s itunda Pay Money".length, captor.value.accountName.length)
     }
 
     @Test
