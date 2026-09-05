@@ -1,5 +1,6 @@
 package rw.itunda.feature.banking.impl
 
+import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.BucketTransactionRow
@@ -149,7 +150,7 @@ private fun WeeklySavingsPlanRow(plan: WeeklySavingsPlanDto, onClick: () -> Unit
             Text(plan.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Text(planStatusLabel(plan), color = planStatusColor(plan), fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
-        Text("${formatMoneyWeekly(plan.currentAmount)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+        Text("${formatMoney(plan.currentAmount)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 22.sp)
         Text("Week ${plan.weeksElapsed.coerceAtMost(TERM_WEEKS)}/$TERM_WEEKS", color = Ids.colors.textSecondary, fontSize = 12.sp)
         Spacer(modifier = Modifier.height(8.dp))
         WeeklyProgressBar(progress = plan.weeksElapsed.toFloat() / TERM_WEEKS.toFloat())
@@ -266,9 +267,9 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
 
     withdrawSuccess?.let { (totalSaved, interestPaid) ->
         rw.itunda.core.designsystem.components.IdsCelebrationScreen(
-            headline = "${formatMoneyWeekly(totalSaved)} RWF saved",
+            headline = "${formatMoney(totalSaved)} RWF saved",
             message = if (interestPaid > 0.0) {
-                "26-week challenge complete -- ${formatMoneyWeekly(interestPaid)} RWF bonus interest is in your account."
+                "26-week challenge complete -- ${formatMoney(interestPaid)} RWF bonus interest is in your account."
             } else {
                 "26-week challenge complete -- moved to your main account."
             },
@@ -294,7 +295,7 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
                     // this detail screen's own main content (docs/UI_UX_GUIDELINES.md §10).
                     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
                         Text(plan.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text("${formatMoneyWeekly(current.accountBalance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                        Text("${formatMoney(current.accountBalance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
                         Text("Account balance", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         Spacer(modifier = Modifier.height(12.dp))
                         WeeklyProgressBar(progress = plan.weeksElapsed.toFloat() / TERM_WEEKS.toFloat())
@@ -321,7 +322,7 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
                         }
                         plan.totalInterestPaid?.let {
                             Spacer(modifier = Modifier.height(6.dp))
-                            Text("Total interest paid: ${formatMoneyWeekly(it)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                            Text("Total interest paid: ${formatMoney(it)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         }
                     }
                 }
@@ -396,7 +397,3 @@ private fun formatWeeklyDate(iso: String): String = try {
     iso.take(10)
 }
 
-private fun formatMoneyWeekly(value: Double): String {
-    val rounded = Math.round(value * 100.0) / 100.0
-    return if (rounded == Math.floor(rounded)) "%,d".format(rounded.toLong()) else "%,.2f".format(rounded)
-}

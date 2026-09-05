@@ -33,6 +33,7 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.AmountKeypadInput
 import rw.itunda.core.designsystem.components.DeviceStepUpHost
+import rw.itunda.core.designsystem.components.formatMoney
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsTextField
@@ -241,7 +242,7 @@ internal fun GroupAccountDetailContent(id: String) {
             Column {
                     Text(current.groupAccount.name, color = Ids.colors.textSecondary, fontSize = 13.sp)
                     val animatedBalance = rememberCountUp(current.balance.toDouble())
-                    Text("${formatMoneyGroup(BigDecimal.valueOf(animatedBalance))} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                    Text("${formatMoney(BigDecimal.valueOf(animatedBalance))} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
                     Text("${current.members.size} member${if (current.members.size == 1) "" else "s"}", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }
         }
@@ -298,12 +299,12 @@ internal fun GroupAccountDetailContent(id: String) {
                         currentDues.duesAmount == null -> Text("The organizer hasn't set a monthly dues amount.", color = Ids.colors.textSecondary, fontSize = 13.sp)
                         else -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             val duesAmount = currentDues.duesAmount!!
-                            Text("${formatMoneyGroup(duesAmount)} RWF / month · ${currentDues.cycleMonth}", fontSize = 13.sp)
+                            Text("${formatMoney(duesAmount)} RWF / month · ${currentDues.cycleMonth}", fontSize = 13.sp)
                             currentDues.members.forEach { m ->
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Text("${m.firstName} ${m.lastName}${if (m.userId == myUserId) " (you)" else ""}", fontSize = 13.sp)
                                     Text(
-                                        if (m.paid) "✓ Paid" else "${formatMoneyGroup(m.contributedAmount)} / ${formatMoneyGroup(duesAmount)}",
+                                        if (m.paid) "✓ Paid" else "${formatMoney(m.contributedAmount)} / ${formatMoney(duesAmount)}",
                                         color = if (m.paid) Ids.colors.success else Ids.colors.textSecondary,
                                         fontWeight = if (m.paid) FontWeight.Bold else FontWeight.Normal, fontSize = 13.sp,
                                     )

@@ -1,5 +1,6 @@
 package rw.itunda.app.ui
 
+import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -404,12 +405,8 @@ private fun BikeRentalSessionCard(session: BikeRentalSessionDto) {
             Text("${session.durationMinutes ?: 0} min ride", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             val fare = session.totalFare
             if (fare != null) {
-                Text("${formatMoneyBike(fare)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                Text("${formatMoney(fare)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }
     }
 }
 
-private fun formatMoneyBike(value: java.math.BigDecimal): String {
-    val rounded = value.stripTrailingZeros()
-    return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
-}

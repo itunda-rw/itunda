@@ -1,5 +1,6 @@
 package rw.itunda.app.ui
 
+import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -191,7 +192,7 @@ private fun BusRideContent() {
                             Text("Departs ${trip.departureTime.take(16).replace("T", " ")}", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                         Text(
-                            "${formatMoneyBus(trip.farePerSeat)} RWF/seat · ${trip.availableSeats} seat(s) left",
+                            "${formatMoney(trip.farePerSeat)} RWF/seat · ${trip.availableSeats} seat(s) left",
                             color = Ids.colors.textSecondary, fontSize = 12.sp,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -216,7 +217,7 @@ private fun BusRideContent() {
                 ) {
                         Column {
                             Text("${booking.seatCount} seat(s)", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text("${formatMoneyBus(booking.totalFare)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                            Text("${formatMoney(booking.totalFare)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         }
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
@@ -343,7 +344,7 @@ private fun BusOperateContent() {
                             Text("Departs ${trip.departureTime.take(16).replace("T", " ")}", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                         Text(
-                            "${trip.availableSeats}/${trip.totalSeats} seats left · ${formatMoneyBus(trip.farePerSeat)} RWF/seat",
+                            "${trip.availableSeats}/${trip.totalSeats} seats left · ${formatMoney(trip.farePerSeat)} RWF/seat",
                             color = Ids.colors.textSecondary, fontSize = 12.sp,
                         )
                         Box(
@@ -372,7 +373,7 @@ private fun BusOperateContent() {
                                                 color = Ids.colors.textSecondary, fontSize = 12.sp,
                                             )
                                             Text(
-                                                if (b.status == "CANCELLED") "Cancelled" else "${formatMoneyBus(b.totalFare)} RWF",
+                                                if (b.status == "CANCELLED") "Cancelled" else "${formatMoney(b.totalFare)} RWF",
                                                 color = if (b.status == "CANCELLED") Ids.colors.textSecondary else Ids.colors.textPrimary,
                                                 fontWeight = FontWeight.Bold, fontSize = 12.sp,
                                             )
@@ -387,7 +388,3 @@ private fun BusOperateContent() {
     }
 }
 
-private fun formatMoneyBus(value: BigDecimal): String {
-    val rounded = value.stripTrailingZeros()
-    return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
-}

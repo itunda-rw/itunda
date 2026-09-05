@@ -1,5 +1,6 @@
 package rw.itunda.app.ui
 
+import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -150,8 +151,8 @@ fun SaccoScreen(onBack: () -> Unit) {
                 // Real fix (flat-design sweep): dropped the Card wrapper.
                 Column {
                         Text("Shares held", color = Ids.colors.textSecondary, fontSize = 13.sp)
-                        Text("${formatMoneySacco(sharesHeld ?: BigDecimal.ZERO)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
-                        Text("Total contributed: ${formatMoneySacco(totalContributed ?: BigDecimal.ZERO)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                        Text("${formatMoney(sharesHeld ?: BigDecimal.ZERO)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                        Text("Total contributed: ${formatMoney(totalContributed ?: BigDecimal.ZERO)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
                 }
             }
             item {
@@ -189,7 +190,7 @@ fun SaccoScreen(onBack: () -> Unit) {
                     // Real fix (flat-design sweep): dropped the per-row Card.
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(d.createdAt.take(10), color = Ids.colors.textSecondary, fontSize = 12.sp)
-                            Text("+${formatMoneySacco(d.amount)} RWF", color = Ids.colors.success, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("+${formatMoney(d.amount)} RWF", color = Ids.colors.success, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
                 }
             }
@@ -198,7 +199,3 @@ fun SaccoScreen(onBack: () -> Unit) {
     }
 }
 
-private fun formatMoneySacco(value: BigDecimal): String {
-    val rounded = value.stripTrailingZeros()
-    return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
-}

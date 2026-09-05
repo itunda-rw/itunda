@@ -1,5 +1,6 @@
 package rw.itunda.app.ui
 
+import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -835,13 +836,13 @@ private fun RideDriverContent() {
                                     }
                                     Column {
                                         Text("Gross fare", color = Ids.colors.textSecondary, fontSize = 11.sp)
-                                        // Real fix (2026-08-26, same comma-formatting sweep as formatMoneyRide's own
+                                        // Real fix (2026-08-26, same comma-formatting sweep as formatMoney's own
                                         // doc comment) -- was raw BigDecimal interpolation with no formatting at all.
-                                        Text("${formatMoneyRide(weekEarnings.sumOf { it.grossFare })} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                        Text("${formatMoney(weekEarnings.sumOf { it.grossFare })} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                                     }
                                     Column {
                                         Text("Net earnings", color = Ids.colors.textSecondary, fontSize = 11.sp)
-                                        Text("${formatMoneyRide(weekEarnings.sumOf { it.netEarnings })} RWF", color = Ids.colors.success, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                        Text("${formatMoney(weekEarnings.sumOf { it.netEarnings })} RWF", color = Ids.colors.success, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                                     }
                                 }
                         }

@@ -1,5 +1,6 @@
 package rw.itunda.app.ui
 
+import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -210,7 +211,7 @@ private fun ParkingFindContent() {
                 // Real fix (flat-design sweep): dropped the per-row Card.
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(spot.address, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text("${formatMoneyParking(spot.hourlyRate)} RWF / hour", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                        Text("${formatMoney(spot.hourlyRate)} RWF / hour", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                 .pressScaleClickable(enabled = busySpotId != spot.id) { startSession(spot.id) }.padding(vertical = 12.dp),
@@ -338,7 +339,7 @@ private fun ParkingMineContent() {
                                     .pressScaleClickable(enabled = busySpotId != spot.id) { toggleAvailable(spot) }.padding(horizontal = 14.dp, vertical = 10.dp),
                             ) { Text(if (spot.available) "Available" else "Unavailable", color = if (spot.available) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
-                        Text("${formatMoneyParking(spot.hourlyRate)} RWF / hour", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                        Text("${formatMoney(spot.hourlyRate)} RWF / hour", color = Ids.colors.textSecondary, fontSize = 12.sp)
                 }
             }
         }
@@ -353,12 +354,8 @@ private fun ParkingSessionCard(session: ParkingSessionDto) {
             Text("${session.durationMinutes ?: 0} min parked", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             val fare = session.totalFare
             if (fare != null) {
-                Text("${formatMoneyParking(fare)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                Text("${formatMoney(fare)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }
     }
 }
 
-private fun formatMoneyParking(value: BigDecimal): String {
-    val rounded = value.stripTrailingZeros()
-    return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
-}

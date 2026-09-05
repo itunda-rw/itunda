@@ -1,5 +1,6 @@
 package rw.itunda.app.ui
 
+import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -219,7 +220,7 @@ internal fun RideTripCard(trip: RideTripDto, stops: List<RideTripStopDto>? = nul
                     fontSize = 12.sp,
                     modifier = Modifier.alpha(pulseAlpha),
                 )
-                Text("${formatMoneyRide(trip.fare)} RWF · ${"%.1f".format(trip.distanceKm)} km", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                Text("${formatMoney(trip.fare)} RWF · ${"%.1f".format(trip.distanceKm)} km", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }
             action?.let {
                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(4.dp))
@@ -302,10 +303,6 @@ internal fun rideTripStatusColor(status: String): Color = when (status) {
     else -> Ids.colors.brand
 }
 
-internal fun formatMoneyRide(value: java.math.BigDecimal): String {
-    val rounded = value.stripTrailingZeros()
-    return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
-}
 
 // Real Uber post-trip tipping -- ported from bank-mfe (2026-09-03), see
 // RideTripDto.tipAmount's own doc comment. Same real device step-up pattern every

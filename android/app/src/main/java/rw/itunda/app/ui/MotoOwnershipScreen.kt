@@ -1,5 +1,6 @@
 package rw.itunda.app.ui
 
+import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -241,7 +242,7 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                             IdsTextField(value = bikePrice, onValueChange = { bikePrice = it }, label = "Bike price (RWF, 300,000-2,500,000)", modifier = Modifier.fillMaxWidth())
                             IdsTextField(value = dailyContribution, onValueChange = { dailyContribution = it }, label = "Daily contribution (RWF)", modifier = Modifier.fillMaxWidth())
                             previewDownPayment?.let {
-                                Text("Down payment target (30%): ${formatMoneyMoto(it)} RWF", color = Ids.colors.textSecondary, fontSize = 11.sp)
+                                Text("Down payment target (30%): ${formatMoney(it)} RWF", color = Ids.colors.textSecondary, fontSize = 11.sp)
                             }
                             Box(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
@@ -269,12 +270,12 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                     } else 0.0
                     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("${formatMoneyMoto(plan.bikePrice)} RWF bike", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text("${formatMoney(plan.bikePrice)} RWF bike", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 Text(plan.status, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                             }
                             if (plan.status == "SAVING") {
                                 Text(
-                                    "Saved ${formatMoneyMoto(plan.savedAmount)} / ${formatMoneyMoto(plan.downPaymentTarget)} RWF down payment",
+                                    "Saved ${formatMoney(plan.savedAmount)} / ${formatMoney(plan.downPaymentTarget)} RWF down payment",
                                     color = Ids.colors.textSecondary, fontSize = 11.sp,
                                 )
                                 Box(
@@ -302,7 +303,7 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                                 }
                                 if (plan.savedAmount >= plan.downPaymentTarget) {
                                     Text(
-                                        "This releases your full ${formatMoneyMoto(plan.bikePrice)} RWF bike price to your account (your saved down payment plus a new unsecured loan for the rest) -- itunda cannot repossess the bike if you stop repaying.",
+                                        "This releases your full ${formatMoney(plan.bikePrice)} RWF bike price to your account (your saved down payment plus a new unsecured loan for the rest) -- itunda cannot repossess the bike if you stop repaying.",
                                         color = Ids.colors.textSecondary, fontSize = 10.sp,
                                     )
                                     Box(
@@ -314,7 +315,7 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                                 }
                             }
                             if (plan.status == "LOAN_ACTIVE") {
-                                Text("Loan outstanding: ${formatMoneyMoto(plan.loanOutstanding)} RWF", color = Ids.colors.textSecondary, fontSize = 11.sp)
+                                Text("Loan outstanding: ${formatMoney(plan.loanOutstanding)} RWF", color = Ids.colors.textSecondary, fontSize = 11.sp)
                                 IdsTextField(value = repayAmounts[plan.id] ?: "", onValueChange = { repayAmounts = repayAmounts + (plan.id to it) }, label = "Repayment amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
                                 Box(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
@@ -335,7 +336,3 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
     }
 }
 
-private fun formatMoneyMoto(value: BigDecimal): String {
-    val rounded = value.stripTrailingZeros()
-    return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
-}

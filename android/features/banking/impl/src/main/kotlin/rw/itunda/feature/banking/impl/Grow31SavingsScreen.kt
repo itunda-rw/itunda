@@ -1,5 +1,6 @@
 package rw.itunda.feature.banking.impl
 
+import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -147,7 +148,7 @@ private fun Grow31PlanRow(plan: Grow31SavingsPlanDto, onClick: () -> Unit) {
             Text(plan.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Text(grow31StatusLabel(plan), color = grow31StatusColor(plan), fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
-        Text("${formatMoneyGrow31(plan.totalSaved)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+        Text("${formatMoney(plan.totalSaved)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 22.sp)
         Text("Day ${plan.daysElapsed.coerceAtMost(TERM_DAYS)}/$TERM_DAYS -- streak ${plan.currentStreak}", color = Ids.colors.textSecondary, fontSize = 12.sp)
         Spacer(modifier = Modifier.height(8.dp))
         Grow31ProgressBar(progress = plan.daysElapsed.toFloat() / TERM_DAYS.toFloat())
@@ -303,9 +304,9 @@ private fun Grow31DetailContent(planId: String, onChanged: () -> Unit) {
 
     withdrawSuccess?.let { (totalSaved, interestPaid) ->
         rw.itunda.core.designsystem.components.IdsCelebrationScreen(
-            headline = "${formatMoneyGrow31(totalSaved)} RWF saved",
+            headline = "${formatMoney(totalSaved)} RWF saved",
             message = if (interestPaid > 0.0) {
-                "31-day challenge complete -- ${formatMoneyGrow31(interestPaid)} RWF bonus interest is in your account."
+                "31-day challenge complete -- ${formatMoney(interestPaid)} RWF bonus interest is in your account."
             } else {
                 "31-day challenge complete -- moved to your main account."
             },
@@ -333,7 +334,7 @@ private fun Grow31DetailContent(planId: String, onChanged: () -> Unit) {
                     // this detail screen's own main content (docs/UI_UX_GUIDELINES.md §10).
                     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
                         Text(plan.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text("${formatMoneyGrow31(current.accountBalance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                        Text("${formatMoney(current.accountBalance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
                         Text("Account balance", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         Spacer(modifier = Modifier.height(12.dp))
                         Grow31ProgressBar(progress = plan.daysElapsed.toFloat() / TERM_DAYS.toFloat())
@@ -356,7 +357,7 @@ private fun Grow31DetailContent(planId: String, onChanged: () -> Unit) {
                         )
                         plan.totalInterestPaid?.let {
                             Spacer(modifier = Modifier.height(6.dp))
-                            Text("Total interest paid: ${formatMoneyGrow31(it)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                            Text("Total interest paid: ${formatMoney(it)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         }
                     }
                 }
@@ -364,7 +365,7 @@ private fun Grow31DetailContent(planId: String, onChanged: () -> Unit) {
                 item {
                     when {
                         plan.status == "ACTIVE" && !alreadyDepositedToday && !confirmingCancel -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ActionButtonGrow31("Save today (+${formatMoneyGrow31(plan.dailyAmount)} RWF)", color = Ids.colors.brand, enabled = !submitting) { depositToday() }
+                            ActionButtonGrow31("Save today (+${formatMoney(plan.dailyAmount)} RWF)", color = Ids.colors.brand, enabled = !submitting) { depositToday() }
                             ActionButtonGrow31("Cancel plan (early withdrawal)", color = Ids.colors.danger, enabled = !submitting) { confirmingCancel = true }
                         }
                         plan.status == "ACTIVE" && alreadyDepositedToday && !confirmingCancel -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -429,7 +430,3 @@ private fun ActionButtonGrow31(label: String, color: Color, enabled: Boolean, on
     }
 }
 
-private fun formatMoneyGrow31(value: Double): String {
-    val rounded = Math.round(value * 100.0) / 100.0
-    return if (rounded == Math.floor(rounded)) "%,d".format(rounded.toLong()) else "%,.2f".format(rounded)
-}

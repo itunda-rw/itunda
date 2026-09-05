@@ -1,5 +1,6 @@
 package rw.itunda.app.ui
 
+import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -115,7 +116,7 @@ fun RequestMoneyScreen(onBack: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                             Column {
-                                Text("${formatMoneyRequest(req.amount.toDouble())} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                Text("${formatMoney(req.amount.toDouble())} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                                 if (req.description.isNotBlank()) Text(req.description, color = Ids.colors.textSecondary, fontSize = 12.sp)
                             }
                             Text(
@@ -235,7 +236,3 @@ private fun PayRequestCard(onPaid: () -> Unit) {
     )
 }
 
-private fun formatMoneyRequest(value: Double): String {
-    val rounded = Math.round(value * 100.0) / 100.0
-    return if (rounded == Math.floor(rounded)) "%,d".format(rounded.toLong()) else "%,.2f".format(rounded)
-}

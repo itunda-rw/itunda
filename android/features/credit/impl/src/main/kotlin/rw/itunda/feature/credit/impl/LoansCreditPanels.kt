@@ -1,6 +1,7 @@
 package rw.itunda.feature.credit.impl
 
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.formatMoney
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsSegmentedControl
@@ -128,8 +129,8 @@ internal fun OverdraftPanel() {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Text("Overdraft line", style = MaterialTheme.typography.titleMedium)
-            Text("Drawn: ${formatMoneyLoans(current.drawnBalance)} of ${formatMoneyLoans(current.creditLimit)} RWF", style = MaterialTheme.typography.bodyMedium)
-            Text("Available to draw: ${formatMoneyLoans(availableCredit)} RWF · ${current.interestRate}% annual, interest only on what's drawn", style = MaterialTheme.typography.bodySmall)
+            Text("Drawn: ${formatMoney(current.drawnBalance)} of ${formatMoney(current.creditLimit)} RWF", style = MaterialTheme.typography.bodyMedium)
+            Text("Available to draw: ${formatMoney(availableCredit)} RWF · ${current.interestRate}% annual, interest only on what's drawn", style = MaterialTheme.typography.bodySmall)
             notice?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall) }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Spacer(Modifier.height(8.dp))
@@ -149,7 +150,7 @@ internal fun OverdraftPanel() {
                             val res = NetworkClient.apiService.drawOverdraft(UUID.randomUUID().toString(), OverdraftAmountRequest(amount))
                             account = current.copy(drawnBalance = res.drawnBalance)
                             drawAmount = ""
-                            notice = "Drew ${formatMoneyLoans(res.amount)} RWF -- ${formatMoneyLoans(res.availableCredit)} RWF still available."
+                            notice = "Drew ${formatMoney(res.amount)} RWF -- ${formatMoney(res.availableCredit)} RWF still available."
                         } catch (e: HttpException) {
                             error = superAppErrorMessage(e)
                         } catch (e: IOException) {
@@ -176,7 +177,7 @@ internal fun OverdraftPanel() {
                             val res = NetworkClient.apiService.repayOverdraft(UUID.randomUUID().toString(), OverdraftAmountRequest(amount))
                             account = current.copy(drawnBalance = res.drawnBalance)
                             repayAmount = ""
-                            notice = "Repaid ${formatMoneyLoans(res.amount)} RWF -- ${formatMoneyLoans(res.availableCredit)} RWF now available."
+                            notice = "Repaid ${formatMoney(res.amount)} RWF -- ${formatMoney(res.availableCredit)} RWF now available."
                         } catch (e: HttpException) {
                             error = superAppErrorMessage(e)
                         } catch (e: IOException) {
@@ -256,8 +257,8 @@ internal fun PostpaidCreditPanel() {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Text("Postpaid credit", style = MaterialTheme.typography.titleMedium)
-            Text("Owed: ${formatMoneyLoans(current.currentBalance)} of ${formatMoneyLoans(current.creditLimit)} RWF", style = MaterialTheme.typography.bodyMedium)
-            Text("Available: ${formatMoneyLoans(availableCredit)} RWF · interest-free if repaid within 30 days", style = MaterialTheme.typography.bodySmall)
+            Text("Owed: ${formatMoney(current.currentBalance)} of ${formatMoney(current.creditLimit)} RWF", style = MaterialTheme.typography.bodyMedium)
+            Text("Available: ${formatMoney(availableCredit)} RWF · interest-free if repaid within 30 days", style = MaterialTheme.typography.bodySmall)
             if (suspended) {
                 Text("Suspended -- repay your overdue balance to keep spending.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
@@ -280,7 +281,7 @@ internal fun PostpaidCreditPanel() {
                             val res = NetworkClient.apiService.spendPostpaidCredit(UUID.randomUUID().toString(), PostpaidCreditAmountRequest(amount))
                             line = current.copy(currentBalance = res.currentBalance)
                             spendAmount = ""
-                            notice = "Added ${formatMoneyLoans(res.amount)} RWF to your account -- ${formatMoneyLoans(res.availableCredit)} RWF still available."
+                            notice = "Added ${formatMoney(res.amount)} RWF to your account -- ${formatMoney(res.availableCredit)} RWF still available."
                         } catch (e: HttpException) {
                             error = superAppErrorMessage(e)
                         } catch (e: IOException) {
@@ -307,7 +308,7 @@ internal fun PostpaidCreditPanel() {
                             val res = NetworkClient.apiService.repayPostpaidCredit(UUID.randomUUID().toString(), PostpaidCreditAmountRequest(amount))
                             line = current.copy(currentBalance = res.currentBalance, status = if (res.currentBalance <= BigDecimal.ZERO) "ACTIVE" else current.status)
                             repayAmount = ""
-                            notice = "Repaid ${formatMoneyLoans(res.amount)} RWF -- ${formatMoneyLoans(res.availableCredit)} RWF now available."
+                            notice = "Repaid ${formatMoney(res.amount)} RWF -- ${formatMoney(res.availableCredit)} RWF now available."
                         } catch (e: HttpException) {
                             error = superAppErrorMessage(e)
                         } catch (e: IOException) {

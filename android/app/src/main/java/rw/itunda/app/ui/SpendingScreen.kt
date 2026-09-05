@@ -1,5 +1,6 @@
 package rw.itunda.app.ui
 
+import rw.itunda.core.designsystem.components.formatMoney
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -78,7 +79,7 @@ fun SpendingScreen(onBack: () -> Unit) {
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp)) {
                             Text("Total spent, all time", style = MaterialTheme.typography.labelMedium)
-                            Text("${formatMoneySpending(current.totalSpent)} RWF", style = MaterialTheme.typography.headlineMedium)
+                            Text("${formatMoney(current.totalSpent)} RWF", style = MaterialTheme.typography.headlineMedium)
                             Text(
                                 "Real, ledger-based -- what every account debit actually paid for.",
                                 style = MaterialTheme.typography.bodySmall,
@@ -96,7 +97,7 @@ fun SpendingScreen(onBack: () -> Unit) {
                             Column(Modifier.padding(16.dp)) {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Text(category.name, style = MaterialTheme.typography.bodyLarge)
-                                    Text("${formatMoneySpending(category.amount)} RWF", style = MaterialTheme.typography.bodyLarge)
+                                    Text("${formatMoney(category.amount)} RWF", style = MaterialTheme.typography.bodyLarge)
                                 }
                                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(6.dp))
                                 val fraction = (category.amount.toDouble() / maxAmount.toDouble()).coerceIn(0.0, 1.0)
@@ -177,7 +178,7 @@ private fun BudgetCard(budget: BudgetViewDto) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(budget.category ?: "Overall spending", style = MaterialTheme.typography.bodyLarge)
                 Text(
-                    "${formatMoneySpending(budget.spent)} / ${formatMoneySpending(budget.monthlyLimit)} RWF",
+                    "${formatMoney(budget.spent)} / ${formatMoney(budget.monthlyLimit)} RWF",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
@@ -238,7 +239,3 @@ private fun SetBudgetForm(categories: List<SpendingCategoryDto>, onSet: (String?
     }
 }
 
-private fun formatMoneySpending(value: BigDecimal): String {
-    val rounded = value.stripTrailingZeros()
-    return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
-}

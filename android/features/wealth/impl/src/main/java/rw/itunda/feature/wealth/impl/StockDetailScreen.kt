@@ -1,5 +1,6 @@
 package rw.itunda.feature.wealth.impl
 
+import rw.itunda.core.designsystem.components.formatMoney
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box

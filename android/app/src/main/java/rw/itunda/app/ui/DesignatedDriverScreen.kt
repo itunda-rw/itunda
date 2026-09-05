@@ -1,5 +1,6 @@
 package rw.itunda.app.ui
 
+import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -492,7 +493,7 @@ private fun DesignatedDriverTripCard(trip: DesignatedDriverTripDto, action: (@Co
                     fontSize = 12.sp,
                     modifier = Modifier.alpha(pulseAlpha),
                 )
-                Text("${formatMoneyDesignatedDriver(trip.fare)} RWF · ${"%.1f".format(trip.distanceKm)} km", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                Text("${formatMoney(trip.fare)} RWF · ${"%.1f".format(trip.distanceKm)} km", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }
             action?.let {
                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(4.dp))
@@ -517,7 +518,3 @@ private fun designatedDriverStatusColor(status: String): Color = when (status) {
     else -> Ids.colors.brand
 }
 
-private fun formatMoneyDesignatedDriver(value: java.math.BigDecimal): String {
-    val rounded = value.stripTrailingZeros()
-    return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
-}

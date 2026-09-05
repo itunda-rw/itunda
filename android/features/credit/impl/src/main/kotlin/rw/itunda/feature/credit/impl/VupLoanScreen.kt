@@ -1,5 +1,6 @@
 package rw.itunda.feature.credit.impl
 
+import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -46,7 +47,6 @@ import rw.itunda.core.network.VupLoanDto
 import rw.itunda.core.network.VupLoanEligibilityResponse
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
-import java.math.BigDecimal
 import java.util.UUID
 import rw.itunda.core.designsystem.components.EmptyState
 
@@ -246,11 +246,11 @@ fun VupLoanScreen(onBack: () -> Unit) {
                 else -> items(loans!!, key = { it.id }) { loan ->
                     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("${formatMoneyVup(loan.principalAmount)} RWF · ${loan.purpose}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("${formatMoney(loan.principalAmount)} RWF · ${loan.purpose}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             Text(loan.status, color = if (loan.status == "OVERDUE") Ids.colors.danger else Ids.colors.textSecondary, fontSize = 12.sp)
                         }
                         Text(
-                            "Outstanding: ${formatMoneyVup(loan.outstandingPrincipal)} RWF" + (loan.dueDate?.let { " · Due ${it.take(10)}" } ?: ""),
+                            "Outstanding: ${formatMoney(loan.outstandingPrincipal)} RWF" + (loan.dueDate?.let { " · Due ${it.take(10)}" } ?: ""),
                             color = Ids.colors.textSecondary, fontSize = 11.sp,
                         )
                         if (loan.status == "REQUESTED") {
@@ -286,7 +286,3 @@ fun VupLoanScreen(onBack: () -> Unit) {
     }
 }
 
-private fun formatMoneyVup(value: BigDecimal): String {
-    val rounded = value.stripTrailingZeros()
-    return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
-}

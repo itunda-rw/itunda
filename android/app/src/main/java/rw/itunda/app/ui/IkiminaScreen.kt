@@ -1,5 +1,7 @@
 package rw.itunda.app.ui
 
+import rw.itunda.core.designsystem.components.formatMoney
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -366,7 +368,7 @@ private fun IkiminaDetailContent(id: String) {
         coroutineScope.launch {
             try {
                 val result = NetworkClient.apiService.triggerIkiminaPayout(id, UUID.randomUUID().toString())
-                payoutMessage = "${formatMoneyGroup(result.amount)} RWF paid out for round ${result.ikimina.currentRound - 1}."
+                payoutMessage = "${formatMoney(result.amount)} RWF paid out for round ${result.ikimina.currentRound - 1}."
                 error = null
                 load()
             } catch (e: HttpException) {
@@ -389,11 +391,11 @@ private fun IkiminaDetailContent(id: String) {
             Column {
                     Text(current.ikimina.name, color = Ids.colors.textSecondary, fontSize = 13.sp)
                     val animatedBalance = rememberCountUp(current.balance.toDouble())
-                    Text("${formatMoneyGroup(java.math.BigDecimal.valueOf(animatedBalance))} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                    Text("${formatMoney(java.math.BigDecimal.valueOf(animatedBalance))} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
                     Text(
                         when (current.ikimina.status) {
                             "FORMING" -> "Forming · ${current.members.size} member${if (current.members.size == 1) "" else "s"}"
-                            "ACTIVE" -> "Round ${current.ikimina.currentRound} · pot ${formatMoneyGroup(pot)} RWF"
+                            "ACTIVE" -> "Round ${current.ikimina.currentRound} · pot ${formatMoney(pot)} RWF"
                             else -> "Completed"
                         },
                         color = Ids.colors.textSecondary, fontSize = 12.sp,
@@ -453,7 +455,7 @@ private fun IkiminaDetailContent(id: String) {
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                if (iContributed) "✓ You've contributed this round" else if (busy) "…" else "Contribute ${formatMoneyGroup(current.ikimina.contributionAmount)} RWF",
+                                if (iContributed) "✓ You've contributed this round" else if (busy) "…" else "Contribute ${formatMoney(current.ikimina.contributionAmount)} RWF",
                                 color = if (iContributed) Ids.colors.textPrimary else Color.White, fontWeight = FontWeight.Bold,
                             )
                         }
@@ -473,7 +475,3 @@ private fun IkiminaDetailContent(id: String) {
     }
 }
 
-private fun formatMoneyGroup(value: java.math.BigDecimal): String {
-    val rounded = value.stripTrailingZeros()
-    return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
-}

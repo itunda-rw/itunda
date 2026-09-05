@@ -1,5 +1,6 @@
 package rw.itunda.feature.credit.impl
 
+import rw.itunda.core.designsystem.components.formatMoney
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonVariant
@@ -72,10 +73,6 @@ private enum class LoansMode { OFFERS, MY_LOANS, OVERDRAFT, POSTPAID_CREDIT }
 // thousands-separator grouping and currency-prefix ordering ("RWF 500000"), missed by
 // the earlier app-wide formatMoneyX() comma-grouping sweep because it never called a
 // formatter at all -- see [[project_itunda_money_formatting_sweep]].
-internal fun formatMoneyLoans(value: BigDecimal): String {
-    val rounded = value.stripTrailingZeros()
-    return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
-}
 
 @Composable
 fun LoansScreen(onBack: () -> Unit) {
@@ -306,7 +303,7 @@ private fun OfferCard(offer: LoanOfferDto, busy: Boolean, isBestRate: Boolean = 
             }
             Text(offer.name, style = MaterialTheme.typography.titleMedium)
             Text(offer.lenderName, style = MaterialTheme.typography.bodySmall)
-            Text("Up to ${formatMoneyLoans(offer.maxAmount)} RWF · ${offer.interestRate}% · ${offer.term}", style = MaterialTheme.typography.bodyMedium)
+            Text("Up to ${formatMoney(offer.maxAmount)} RWF · ${offer.interestRate}% · ${offer.term}", style = MaterialTheme.typography.bodyMedium)
             Text(offer.requirements, style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(8.dp))
             IdsTextField(value = amountText, onValueChange = { amountText = it }, label = "Amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
@@ -333,8 +330,8 @@ private fun MyLoanCard(
     onRefinance: () -> Unit,
 ) = Card(Modifier.fillMaxWidth()) {
     Column(Modifier.padding(16.dp)) {
-        Text("${formatMoneyLoans(loan.principal)} RWF loan", style = MaterialTheme.typography.titleMedium)
-        Text("Outstanding: ${formatMoneyLoans(loan.outstanding)} RWF", style = MaterialTheme.typography.bodyMedium)
+        Text("${formatMoney(loan.principal)} RWF loan", style = MaterialTheme.typography.titleMedium)
+        Text("Outstanding: ${formatMoney(loan.outstanding)} RWF", style = MaterialTheme.typography.bodyMedium)
         Text("Status: ${loan.status} · ${loan.interestRate}%", style = MaterialTheme.typography.bodySmall)
         if (loan.status == "ACTIVE") {
             Spacer(Modifier.height(8.dp))

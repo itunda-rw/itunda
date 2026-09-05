@@ -1,5 +1,6 @@
 package rw.itunda.app.ui
 
+import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -157,7 +158,7 @@ fun YouthAccountScreen(onBack: () -> Unit) {
         BucketDetailScreen(
             title = "Youth Account",
             subtitle = acct.accountNumber,
-            balanceText = "${formatMoneyMini(acct.balance)} RWF",
+            balanceText = "${formatMoney(acct.balance)} RWF",
             fetchTransactions = {
                 val txs = NetworkClient.apiService.getAccountTransactionHistory(acct.id).transactions
                     .sortedByDescending { it.createdAt }
@@ -235,7 +236,7 @@ fun YouthAccountScreen(onBack: () -> Unit) {
                                 .pressScaleClickable(onClick = { showHistory = true }),
                         ) {
                             val animatedBalance = rememberCountUp(account?.balance ?: 0.0)
-                            Text("${formatMoneyMini(animatedBalance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                            Text("${formatMoney(animatedBalance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
                             Text(account?.accountNumber ?: "", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         }
                     }
@@ -266,7 +267,3 @@ private fun YouthAccountActionButton(label: String, enabled: Boolean, onClick: (
     }
 }
 
-private fun formatMoneyMini(value: Double): String {
-    val rounded = Math.round(value * 100.0) / 100.0
-    return if (rounded == Math.floor(rounded)) "%,d".format(rounded.toLong()) else "%,.2f".format(rounded)
-}

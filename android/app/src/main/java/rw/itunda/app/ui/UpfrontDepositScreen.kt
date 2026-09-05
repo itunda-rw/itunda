@@ -1,5 +1,6 @@
 package rw.itunda.app.ui
 
+import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -148,10 +149,10 @@ private fun UpfrontDepositRow(deposit: UpfrontDepositDto, onChanged: () -> Unit)
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("${formatMoneyUpfront(deposit.principal)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+            Text("${formatMoney(deposit.principal)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
             Text(depositStatusLabel(deposit), color = depositStatusColor(deposit), fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
-        Text("Interest paid upfront: ${formatMoneyUpfront(deposit.interestPaid)} RWF at ${deposit.interestRate}%/yr", color = Ids.colors.success, fontSize = 13.sp)
+        Text("Interest paid upfront: ${formatMoney(deposit.interestPaid)} RWF at ${deposit.interestRate}%/yr", color = Ids.colors.success, fontSize = 13.sp)
         Text(
             if (deposit.status == "ACTIVE") "Locked until ${formatUpfrontDate(deposit.maturesAt)}" else "Matured ${formatUpfrontDate(deposit.maturesAt)}",
             color = Ids.colors.textSecondary, fontSize = 12.sp,
@@ -270,7 +271,7 @@ private fun UpfrontDepositCreateContent(onCreated: () -> Unit) {
             quickAmounts = listOf(10_000L, 100_000L),
         )
         previewInterest?.let {
-            Text("You'll receive ${formatMoneyUpfront(it.toDouble())} RWF immediately", color = Ids.colors.success, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Text("You'll receive ${formatMoney(it.toDouble())} RWF immediately", color = Ids.colors.success, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         }
         Spacer(modifier = Modifier.weight(1f))
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
@@ -292,7 +293,3 @@ private fun formatUpfrontDate(iso: String): String = try {
     iso.take(10)
 }
 
-private fun formatMoneyUpfront(value: Double): String {
-    val rounded = Math.round(value * 100.0) / 100.0
-    return if (rounded == Math.floor(rounded)) "%,d".format(rounded.toLong()) else "%,.2f".format(rounded)
-}

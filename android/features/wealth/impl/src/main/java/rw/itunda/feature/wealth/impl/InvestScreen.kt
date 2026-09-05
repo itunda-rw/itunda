@@ -1,5 +1,6 @@
 package rw.itunda.feature.wealth.impl
 
+import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -233,7 +234,3 @@ internal fun StockRow(stock: StockDto, isWatched: Boolean, onClick: () -> Unit) 
     }
 }
 
-internal fun formatMoney(value: Double): String {
-    val rounded = Math.round(value * 100.0) / 100.0
-    return if (rounded == Math.floor(rounded)) "%,d".format(rounded.toLong()) else "%,.2f".format(rounded)
-}

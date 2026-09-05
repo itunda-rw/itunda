@@ -1,5 +1,7 @@
 package rw.itunda.feature.banking.impl
 
+import rw.itunda.core.designsystem.components.formatMoney
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -37,7 +39,6 @@ import rw.itunda.core.network.GroupAccountDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
-import java.math.BigDecimal
 
 // Real Kakao Bank 모임통장 (group/shared account) equivalent -- first Android client for
 // this feature (item 104, found via a fresh matrix scan for still-open "zero client on
@@ -152,7 +153,7 @@ private fun GroupAccountListContent(refreshKey: Int, onOpen: (String) -> Unit) {
                 Column(modifier = Modifier.fillMaxWidth().pressScaleClickable { onOpen(account.id) }) {
                         Text(account.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         account.monthlyDuesAmount?.let {
-                            Text("${formatMoneyGroup(it)} RWF / month dues", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                            Text("${formatMoney(it)} RWF / month dues", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         }
                 }
             }
@@ -160,7 +161,3 @@ private fun GroupAccountListContent(refreshKey: Int, onOpen: (String) -> Unit) {
     }
 }
 
-internal fun formatMoneyGroup(value: BigDecimal): String {
-    val rounded = value.stripTrailingZeros()
-    return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
-}

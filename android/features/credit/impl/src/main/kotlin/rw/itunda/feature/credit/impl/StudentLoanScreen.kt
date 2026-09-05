@@ -1,5 +1,6 @@
 package rw.itunda.feature.credit.impl
 
+import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -47,7 +48,6 @@ import rw.itunda.core.network.StudentLoanDto
 import rw.itunda.core.network.StudentLoanSuggestedPaymentResponse
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
-import java.math.BigDecimal
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
@@ -252,11 +252,11 @@ fun StudentLoanScreen(onBack: () -> Unit) {
                 else -> items(loans!!, key = { it.id }) { loan ->
                     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("${formatMoneyStudentLoan(loan.principalAmount)} RWF · ${loan.level}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text("${formatMoney(loan.principalAmount)} RWF · ${loan.level}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 Text(loan.status, color = if (loan.status == "OVERDUE") Ids.colors.danger else Ids.colors.brand, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                             Text(
-                                "Outstanding: ${formatMoneyStudentLoan(loan.outstandingBalance)} RWF" +
+                                "Outstanding: ${formatMoney(loan.outstandingBalance)} RWF" +
                                     (loan.graceEndsAt?.let { " · Grace ends ${it.take(10)}" } ?: ""),
                                 color = Ids.colors.textSecondary, fontSize = 11.sp,
                             )
@@ -283,7 +283,7 @@ fun StudentLoanScreen(onBack: () -> Unit) {
                             if (loan.status == "REPAYING" || loan.status == "OVERDUE") {
                                 suggested[loan.id]?.let { s ->
                                     Text(
-                                        "Suggested: ${formatMoneyStudentLoan(s.suggestedMonthlyPayment)} RWF/mo · ${s.note}",
+                                        "Suggested: ${formatMoney(s.suggestedMonthlyPayment)} RWF/mo · ${s.note}",
                                         color = Ids.colors.textSecondary, fontSize = 11.sp,
                                     )
                                 }
@@ -304,7 +304,3 @@ fun StudentLoanScreen(onBack: () -> Unit) {
     }
 }
 
-private fun formatMoneyStudentLoan(value: BigDecimal): String {
-    val rounded = value.stripTrailingZeros()
-    return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
-}

@@ -1,5 +1,6 @@
 package rw.itunda.app.ui
 
+import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -48,7 +49,6 @@ import rw.itunda.core.network.RepayAdvanceRequest
 import rw.itunda.core.network.RequestAdvanceRequest
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
-import java.math.BigDecimal
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
@@ -301,7 +301,7 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                 else -> items(advances!!, key = { it.id }) { a ->
                     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("${formatMoneyHarvest(a.principalAmount)} RWF · ${a.purpose}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("${formatMoney(a.principalAmount)} RWF · ${a.purpose}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             Text(a.status, color = Ids.colors.textSecondary, fontSize = 12.sp)
                         }
                         Text("Repay by ${a.repaymentDueDate.take(10)}", color = Ids.colors.textSecondary, fontSize = 11.sp)
@@ -319,7 +319,7 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                                     .pressScaleClickable(enabled = !busy) { repayInFull(a) }
                                     .padding(vertical = 12.dp),
                                 contentAlignment = Alignment.Center,
-                            ) { Text(if (busy) "…" else "Repay in full (${formatMoneyHarvest(a.principalAmount)} RWF)", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                            ) { Text(if (busy) "…" else "Repay in full (${formatMoney(a.principalAmount)} RWF)", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                         }
                     }
                     Divider(color = Ids.colors.divider, thickness = 0.5.dp)
@@ -330,7 +330,3 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
     }
 }
 
-private fun formatMoneyHarvest(value: BigDecimal): String {
-    val rounded = value.stripTrailingZeros()
-    return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
-}
