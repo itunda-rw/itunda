@@ -8,8 +8,11 @@ import io.mockk.mockk
 import io.mockk.verify
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.domain.AutoTransfer
 import rw.itunda.core.domain.AutoTransferFrequency
+import rw.itunda.core.domain.User
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.AutoTransferRepository
@@ -83,6 +86,34 @@ class AutoTransferServiceTest : BehaviorSpec({
                 transfer.lastFailureReason shouldBe null
                 transfer.executionCount shouldBe 1
                 verify(exactly = 0) { notificationRepository.save(any()) }
+            }
+        }
+    }
+
+    Given("creating an auto-transfer whose recipient has a real long firstName+lastName") {
+        val autoTransferRepository = mockk<AutoTransferRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val userRepository = mockk<UserRepository>()
+        val p2pService = mockk<P2pService>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = AutoTransferService(autoTransferRepository, accountRepository, userRepository, p2pService, rateLimiter, notificationRepository, pushNotificationService)
+
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns
+            Account(id = "account_1", userId = "user_1", accountNumber = "1", accountName = "x", type = AccountType.MAIN, balance = BigDecimal("500000"), availableBalance = BigDecimal("500000"))
+        every { userRepository.findByPhoneNumber("+250788555666") } returns null
+        every { accountRepository.findByAccountNumber("+250788555666") } returns
+            Account(id = "account_recipient", userId = "recipient_1", accountNumber = "+250788555666", accountName = "y", type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO)
+        every { userRepository.findById("recipient_1") } returns
+            java.util.Optional.of(User(id = "recipient_1", phoneNumber = "+250788999888", firstName = "x".repeat(234), lastName = "y".repeat(255), passwordHash = "hash"))
+        every { autoTransferRepository.save(any()) } answers { firstArg() }
+
+        When("create runs") {
+            val created = service.create("user_1", "+250788555666", BigDecimal("5000"), AutoTransferFrequency.WEEKLY, 1, null, "")
+
+            Then("the cached recipientName is truncated to the real 255-char safe bound, not the naive 490") {
+                created.recipientName.length shouldBe 255
             }
         }
     }

@@ -73,7 +73,11 @@ class AutoTransferService(
         if (recipientAccount.userId == userId) {
             throw P2pSelfPaymentException("Auto-transfers need a different recipient -- you can't send to yourself")
         }
-        val recipientDisplayName = userRepository.findById(recipientAccount.userId).map { "${it.firstName} ${it.lastName}" }.orElse(trimmedIdentifier)
+        // Real gap found 2026-09-05: AutoTransfer.recipientName has no explicit @Column
+        // length (255 default), but firstName (up to 234 chars) + " " + lastName (up to
+        // 255) can combine to ~490 -- see PayrollService.employeeDisplayName's own
+        // comment for the full derivation of this same live (not just legacy-data) gap.
+        val recipientDisplayName = userRepository.findById(recipientAccount.userId).map { "${it.firstName} ${it.lastName}".take(255) }.orElse(trimmedIdentifier)
 
         val nextExecutionAt = when (frequency) {
             AutoTransferFrequency.WEEKLY -> {

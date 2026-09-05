@@ -72,6 +72,21 @@ class ScheduledTransferServiceTest : BehaviorSpec({
             }
         }
 
+        When("the recipient has a real long firstName+lastName") {
+            val longRecipient = User(id = "recipient_2", phoneNumber = "+250788000003", firstName = "x".repeat(234), lastName = "y".repeat(255), passwordHash = "x")
+            every { accountRepository.findByUserIdAndType("sender_1", AccountType.MAIN) } returns senderAccount
+            every { userRepository.findByPhoneNumber("+250788000003") } returns longRecipient
+            every { accountRepository.findByUserIdAndType("recipient_2", AccountType.MAIN) } returns account("account_recipient_2", "recipient_2")
+            every { userRepository.findById("recipient_2") } returns Optional.of(longRecipient)
+
+            val futureDate = LocalDate.now(ZoneOffset.UTC).plusDays(5)
+            val result = service.create("sender_1", "+250788000003", BigDecimal("10000"), futureDate, "Rent")
+
+            Then("the cached recipientName is truncated to the real 255-char safe bound, not the naive 490") {
+                result.recipientName.length shouldBe 255
+            }
+        }
+
         When("the scheduled date is today or in the past") {
             Then("today is rejected -- a real 1회 scheduled transfer only ever runs on a genuine future date") {
                 try {
