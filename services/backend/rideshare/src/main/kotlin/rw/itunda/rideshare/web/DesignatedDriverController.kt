@@ -139,9 +139,24 @@ class DesignatedDriverController(
         return ResponseEntity.ok(mapOf("success" to true, "trips" to page.content) + pageMeta(page))
     }
 
+    // Real gap found 2026-09-05 (feedback_idempotency_key_sweep re-audit, same class
+    // as RideController.acceptTrip/EatsController.claimDelivery's identical fixes) --
+    // DesignatedDriverService.acceptTrip guards on trip.status != REQUESTED
+    // (DesignatedDriverTripAlreadyClaimedException). After a successful accept, the
+    // trip's own status is now ACCEPTED, so a lost-response retry from the SAME
+    // driver used to hit this exact guard with a confusing "no longer available"
+    // message for an accept that actually just succeeded.
     @PostMapping("/trips/{tripId}/accept")
-    fun acceptTrip(@PathVariable tripId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "trip" to designatedDriverService.acceptTrip(currentUser.userId, tripId)))
+    fun acceptTrip(
+        @PathVariable tripId: String,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/designated-driver/trips/$tripId/accept", idempotencyKey, currentUser.userId) {
+            200 to mapOf("success" to true, "trip" to designatedDriverService.acceptTrip(currentUser.userId, tripId))
+        }
+        return ResponseEntity.status(status).body(body)
+    }
 
     @PostMapping("/trips/{tripId}/start-driving")
     fun startDriving(@PathVariable tripId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =

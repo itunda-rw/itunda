@@ -253,7 +253,7 @@ internal fun DesignatedDriverDriveContent() {
                         DesignatedDriverTripCard(trip) {
                             Box(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                    .pressScaleClickable(enabled = busyTripId != trip.id) { act(trip.id) { id -> NetworkClient.apiService.acceptDesignatedDriverTrip(id).trip } }
+                                    .pressScaleClickable(enabled = busyTripId != trip.id) { act(trip.id) { id -> NetworkClient.apiService.acceptDesignatedDriverTrip(id, java.util.UUID.randomUUID().toString()).trip } }
                                     .padding(vertical = 12.dp),
                                 contentAlignment = Alignment.Center,
                             ) { Text(if (busyTripId == trip.id) "…" else "Accept", color = Color.White, fontWeight = FontWeight.Bold) }

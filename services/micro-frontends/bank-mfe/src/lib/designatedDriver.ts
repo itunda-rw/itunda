@@ -90,7 +90,10 @@ export const fetchMyDesignatedDriverDriverTrips = () =>
   apiFetch<{ success: boolean; trips: DesignatedDriverTrip[] }>('/api/v1/designated-driver/trips/my-driver-trips?size=20').then((r) => r.trips);
 
 export const acceptDesignatedDriverTrip = (tripId: string) =>
-  apiFetch<{ success: boolean; trip: DesignatedDriverTrip }>(`/api/v1/designated-driver/trips/${tripId}/accept`, { method: 'POST' }).then((r) => r.trip);
+  apiFetch<{ success: boolean; trip: DesignatedDriverTrip }>(`/api/v1/designated-driver/trips/${tripId}/accept`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  }).then((r) => r.trip);
 
 export const startDesignatedDriverTrip = (tripId: string) =>
   apiFetch<{ success: boolean; trip: DesignatedDriverTrip }>(`/api/v1/designated-driver/trips/${tripId}/start-driving`, { method: 'POST' }).then((r) => r.trip);

@@ -4718,7 +4718,10 @@ interface ApiService {
     suspend fun getMyDesignatedDriverDriverTrips(): DesignatedDriverTripsResponse
 
     @POST("api/v1/designated-driver/trips/{tripId}/accept")
-    suspend fun acceptDesignatedDriverTrip(@Path("tripId") tripId: String): DesignatedDriverTripResponse
+    suspend fun acceptDesignatedDriverTrip(
+        @Path("tripId") tripId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): DesignatedDriverTripResponse
 
     @POST("api/v1/designated-driver/trips/{tripId}/start-driving")
     suspend fun startDesignatedDriverTrip(@Path("tripId") tripId: String): DesignatedDriverTripResponse

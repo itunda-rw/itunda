@@ -1717,7 +1717,7 @@ extension NetworkClient {
     public func getMyDesignatedDriverDriverTrips() async throws -> DesignatedDriverTripsResponse { try await get("api/v1/designated-driver/trips/my-driver-trips") }
 
     public func acceptDesignatedDriverTrip(id: String) async throws -> DesignatedDriverTripResponse {
-        try await authenticatedPost("api/v1/designated-driver/trips/\(id)/accept", body: EmptyBody())
+        try await authenticatedPost("api/v1/designated-driver/trips/\(id)/accept", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
     public func startDesignatedDriverTrip(id: String) async throws -> DesignatedDriverTripResponse {
         try await authenticatedPost("api/v1/designated-driver/trips/\(id)/start-driving", body: EmptyBody())
