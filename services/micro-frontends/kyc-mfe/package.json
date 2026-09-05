@@ -11,12 +11,9 @@
   },
   "dependencies": {
     "@itunda/design-tokens": "workspace:*",
-    "@toss/use-funnel": "^1.4.2",
-    "es-toolkit": "^1.49.0",
     "overlay-kit": "^1.9.0",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "react-query": "^3.39.3"
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
     "@originjs/vite-plugin-federation": "^1.4.1",
