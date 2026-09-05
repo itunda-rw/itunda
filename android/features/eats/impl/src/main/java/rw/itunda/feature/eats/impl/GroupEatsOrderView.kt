@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import kotlinx.coroutines.launch
 import rw.itunda.core.designsystem.components.CameraQrScanner
 import rw.itunda.core.designsystem.components.IdsButton
@@ -228,7 +229,7 @@ internal fun GroupEatsOrderView(restaurants: List<ShoppingMerchantDto>?) {
             Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
                 Text("Order placed", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Text(
-                    "Real order #${placedOrder!!.id.takeLast(8)} placed for ${"%,.0f".format(placedOrder!!.totalAmount)} RWF. Every other participant with items in the cart has been sent a real Dutch-pay request via Split Bill.",
+                    "Real order #${placedOrder!!.id.takeLast(8)} placed for ${String.format(Locale.US, "%,.0f", placedOrder!!.totalAmount)} RWF. Every other participant with items in the cart has been sent a real Dutch-pay request via Split Bill.",
                     color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp),
                 )
             }
@@ -268,7 +269,7 @@ internal fun GroupEatsOrderView(restaurants: List<ShoppingMerchantDto>?) {
                     ) {
                         Column(Modifier.weight(1f)) {
                             Text(item.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            Text("${"%,.0f".format(item.price)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                            Text("${String.format(Locale.US, "%,.0f", item.price)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         }
                         Text(
                             "Add", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp,
@@ -296,21 +297,21 @@ internal fun GroupEatsOrderView(restaurants: List<ShoppingMerchantDto>?) {
 
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    "Everyone's items -- ${"%,.0f".format(detail?.grandTotal ?: 0.0)} RWF total",
+                    "Everyone's items -- ${String.format(Locale.US, "%,.0f", detail?.grandTotal ?: 0.0)} RWF total",
                     color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp,
                 )
                 Spacer(Modifier.height(8.dp))
                 (detail?.participants ?: emptyList()).forEach { p ->
                     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                         Text(
-                            "${if (p.userId == order?.hostUserId) "Host" else "Participant"} -- ${"%,.0f".format(p.subtotal)} RWF",
+                            "${if (p.userId == order?.hostUserId) "Host" else "Participant"} -- ${String.format(Locale.US, "%,.0f", p.subtotal)} RWF",
                             color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp,
                         )
                         if (p.items.isEmpty()) {
                             Text("No items yet", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         } else {
                             p.items.forEach { i ->
-                                Text("${i.quantity}x ${i.productName} -- ${"%,.0f".format(i.lineTotal)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                                Text("${i.quantity}x ${i.productName} -- ${String.format(Locale.US, "%,.0f", i.lineTotal)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
                             }
                         }
                     }

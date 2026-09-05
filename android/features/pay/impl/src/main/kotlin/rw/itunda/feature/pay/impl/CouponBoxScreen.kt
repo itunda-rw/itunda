@@ -33,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import rw.itunda.feature.pay.impl.R
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.IdsButton
@@ -135,7 +136,7 @@ fun CouponBoxScreen(onBack: () -> Unit, onBrowseMerchants: () -> Unit) {
                 items(redemptions!!, key = { it.id }) { redemption ->
                     Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(redemption.redeemedAt.take(10), color = Ids.colors.textSecondary, fontSize = 13.sp)
-                        Text("-%,.0f RWF".format(redemption.discountAmount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text(String.format(Locale.US, "-%,.0f RWF", redemption.discountAmount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
                 }
             }
@@ -144,4 +145,4 @@ fun CouponBoxScreen(onBack: () -> Unit, onBrowseMerchants: () -> Unit) {
 }
 
 private fun couponDiscountLabel(discountType: String, discountValue: java.math.BigDecimal): String =
-    if (discountType == "PERCENT") "$discountValue% off" else "%,.0f RWF off".format(discountValue)
+    if (discountType == "PERCENT") "$discountValue% off" else String.format(Locale.US, "%,.0f RWF off", discountValue)

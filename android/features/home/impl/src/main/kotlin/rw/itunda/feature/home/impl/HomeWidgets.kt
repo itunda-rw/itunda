@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.components.rememberCountUp
 import rw.itunda.core.designsystem.theme.Ids
@@ -96,7 +97,7 @@ internal fun HomeSearchResultRow(result: rw.itunda.core.network.ProductSearchRes
             Text(result.name, color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
             Text(result.merchantName, color = Ids.colors.textTertiary, fontSize = 12.sp)
         }
-        Text("%,.0f RWF".format(result.price), color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text(String.format(Locale.US, "%,.0f RWF", result.price), color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -119,7 +120,7 @@ internal fun HomeMarketWidgetRow(
             ) {
                 Text(stringResource(R.string.bank_account_account), color = Ids.colors.textSecondary, fontSize = 12.sp)
                 val animatedBalance = rememberCountUp(primaryAccount.balance)
-                Text("%,.0f ${primaryAccount.currency}".format(animatedBalance), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(String.format(Locale.US, "%,.0f ${primaryAccount.currency}", animatedBalance), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
         stocks.forEach { stock ->
@@ -133,7 +134,7 @@ internal fun HomeMarketWidgetRow(
                     .padding(14.dp),
             ) {
                 Text(stock.symbol, color = Ids.colors.textSecondary, fontSize = 12.sp, maxLines = 1)
-                Text("%,.0f".format(stock.price), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(String.format(Locale.US, "%,.0f", stock.price), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Text(
                     "${if (positive) "▲" else "▼"} ${"%.2f".format(kotlin.math.abs(stock.changePercent))}%",
                     color = if (positive) Ids.colors.brand else Ids.colors.danger, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
@@ -163,7 +164,7 @@ internal fun HomeTrendingGrid(listings: List<rw.itunda.core.network.ListingDto>,
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(listing.title, color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                        Text("%,.0f RWF".format(listing.price), color = Ids.colors.textSecondary, fontSize = 12.sp)
+                        Text(String.format(Locale.US, "%,.0f RWF", listing.price), color = Ids.colors.textSecondary, fontSize = 12.sp)
                     }
                 }
                 if (row.size == 1) Spacer(modifier = Modifier.weight(1f))

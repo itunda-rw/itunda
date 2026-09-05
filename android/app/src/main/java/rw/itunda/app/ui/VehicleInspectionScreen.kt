@@ -2,6 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -206,7 +207,7 @@ private fun InspectionBuyerContent() {
                 // Real fix (flat-design sweep): dropped the per-row Card.
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Listing ${b.listingId}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        Text("${"%,.0f".format(b.fee)} RWF · ${b.status}", fontSize = 12.sp, color = Ids.colors.textSecondary)
+                        Text("${String.format(Locale.US, "%,.0f", b.fee)} RWF · ${b.status}", fontSize = 12.sp, color = Ids.colors.textSecondary)
                         b.findings?.let { Text(it, fontSize = 13.sp) }
                         if (b.status == "REQUESTED" || b.status == "ACCEPTED") {
                             Row(
@@ -369,7 +370,7 @@ private fun InspectionMechanicContent() {
                 // Real fix (flat-design sweep): dropped the per-row Card.
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("Listing ${b.listingId}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        Text("${"%,.0f".format(b.fee)} RWF · ${b.status}", fontSize = 12.sp, color = Ids.colors.textSecondary)
+                        Text("${String.format(Locale.US, "%,.0f", b.fee)} RWF · ${b.status}", fontSize = 12.sp, color = Ids.colors.textSecondary)
                         if (b.status == "REQUESTED") {
                             Row(
                                 modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.brand)

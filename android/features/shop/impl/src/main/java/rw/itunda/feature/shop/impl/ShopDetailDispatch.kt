@@ -3,6 +3,7 @@ package rw.itunda.feature.shop.impl
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshots.SnapshotStateMap
+import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
@@ -189,7 +190,7 @@ internal fun completeShopMission(
     coroutineScope.launch {
         try {
             val res = NetworkClient.apiService.completeShoppingMission(type, java.util.UUID.randomUUID().toString())
-            onFeedback("+%,.0f RWF".format(res.amountEarned))
+            onFeedback(String.format(Locale.US, "+%,.0f RWF", res.amountEarned))
             onCompleted()
         } catch (e: HttpException) {
             onFeedback(superAppErrorMessage(e))

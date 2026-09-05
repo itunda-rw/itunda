@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.EmptyState
@@ -65,7 +66,7 @@ internal fun CommerceOrderRow(order: OrderDto, action: (@Composable () -> Unit)?
                 Text(COMMERCE_STATUS_LABEL[order.status] ?: order.status, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 Text(order.deliveryAddress, color = Ids.colors.textSecondary, fontSize = 12.sp)
             }
-            Text("%,.0f RWF".format(order.totalAmount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(String.format(Locale.US, "%,.0f RWF", order.totalAmount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         }
         action?.invoke()
     }
@@ -116,7 +117,7 @@ internal fun ProductWishlistView(onRemoved: () -> Unit) {
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(f.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            Text("${f.businessName} · %,.0f RWF".format(f.price), color = Ids.colors.textSecondary, fontSize = 13.sp)
+                            Text(String.format(Locale.US, "${f.businessName} · %,.0f RWF", f.price), color = Ids.colors.textSecondary, fontSize = 13.sp)
                             // Real Naver Shopping price-drop alert (item 227) -- see
                             // FavoriteProductDto's own doc comment.
                             if (f.priceDropped) {

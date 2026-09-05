@@ -1,6 +1,7 @@
 package rw.itunda.rider.ui
 
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -327,7 +328,7 @@ fun RiderHomeScreen(
                     val deliveredCount = eatsList.orEmpty().count { it.status == "DELIVERED" } + commerceList.orEmpty().count { it.status == "DELIVERED" }
                     if (deliveredCount > 0) {
                         Text(
-                            "Recent earnings: ${"%,.0f".format(deliveredEatsFees)} RWF (${deliveredCount} deliveries)",
+                            "Recent earnings: ${String.format(Locale.US, "%,.0f", deliveredEatsFees)} RWF (${deliveredCount} deliveries)",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
@@ -406,14 +407,14 @@ private fun RiderDeliveryRow(
                 }
                 when (delivery) {
                     is RiderDelivery.Eats -> Text(
-                        "${"%,.0f".format(delivery.order.deliveryFee)} RWF",
+                        "${String.format(Locale.US, "%,.0f", delivery.order.deliveryFee)} RWF",
                         fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary,
                     )
                     // Commerce's Order entity models no separate rider-payout field --
                     // showing the real order total rather than fabricating a delivery-fee
                     // figure the backend doesn't compute.
                     is RiderDelivery.Commerce -> Text(
-                        "${"%,.0f".format(delivery.order.totalAmount)} RWF order",
+                        "${String.format(Locale.US, "%,.0f", delivery.order.totalAmount)} RWF order",
                         fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary,
                     )
                 }

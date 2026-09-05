@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import java.util.Locale
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsButton
 import androidx.compose.material3.Card
@@ -86,7 +87,7 @@ fun CommerceDeliveryDetailScreen(initialOrder: CommerceOrderDto, onBack: () -> U
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                     Text("Order total", fontWeight = FontWeight.Bold)
-                    Text("${"%,.0f".format(order.totalAmount)} RWF", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text("${String.format(Locale.US, "%,.0f", order.totalAmount)} RWF", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
             }
         }

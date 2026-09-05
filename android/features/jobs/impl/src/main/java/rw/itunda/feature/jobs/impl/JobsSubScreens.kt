@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -113,7 +114,7 @@ internal fun JobPostWishlistView(onRemoved: () -> Unit) {
                 Row(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(favorite.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
-                        Text("${favorite.category} · %,.0f RWF".format(favorite.payAmount), color = Ids.colors.textSecondary, fontSize = 12.sp)
+                        Text(String.format(Locale.US, "${favorite.category} · %,.0f RWF", favorite.payAmount), color = Ids.colors.textSecondary, fontSize = 12.sp)
                     }
                     Text("Remove", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.pressScaleClickable(enabled = removingId == null) {
                         removingId = favorite.jobPostId

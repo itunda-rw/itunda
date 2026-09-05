@@ -38,6 +38,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import kotlinx.coroutines.launch
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.theme.Ids
@@ -121,11 +122,11 @@ fun HomeTab(
         val trendingIds = trendingListings.map { it.id }.toSet()
         feedEntries = (
             (listings.filter { it.id !in trendingIds }).map {
-                HomeFeedEntry(it.id, "marketplace", it.title, "%,.0f RWF".format(it.price), it.createdAt, it.photoUrl)
+                HomeFeedEntry(it.id, "marketplace", it.title, String.format(Locale.US, "%,.0f RWF", it.price), it.createdAt, it.photoUrl)
             } +
             posts.map { HomeFeedEntry(it.id, "community", it.title, it.body.take(80), it.createdAt) } +
-            jobs.map { HomeFeedEntry(it.id, "jobs", it.title, "${it.payType} · %,.0f RWF".format(it.payAmount), it.createdAt) } +
-            properties.map { HomeFeedEntry(it.id, "property", it.title, "%,.0f RWF".format(it.price), it.createdAt) }
+            jobs.map { HomeFeedEntry(it.id, "jobs", it.title, String.format(Locale.US, "${it.payType} · %,.0f RWF", it.payAmount), it.createdAt) } +
+            properties.map { HomeFeedEntry(it.id, "property", it.title, String.format(Locale.US, "%,.0f RWF", it.price), it.createdAt) }
         ).sortedByDescending { it.createdAt }.take(30)
     }
     // Real blended "universal search" (2026-08-14, direct user reference: real Naver
@@ -150,7 +151,7 @@ fun HomeTab(
         searchScope.launch {
             marketplaceResults = try {
                 rw.itunda.core.network.NetworkClient.apiService.searchListings(query).listings.map {
-                    HomeFeedEntry(it.id, "marketplace", it.title, "%,.0f RWF".format(it.price), it.createdAt, it.photoUrl)
+                    HomeFeedEntry(it.id, "marketplace", it.title, String.format(Locale.US, "%,.0f RWF", it.price), it.createdAt, it.photoUrl)
                 }
             } catch (_: Exception) { emptyList() }
         }
@@ -164,14 +165,14 @@ fun HomeTab(
         searchScope.launch {
             jobResults = try {
                 rw.itunda.core.network.NetworkClient.apiService.searchJobPosts(query).posts.map {
-                    HomeFeedEntry(it.id, "jobs", it.title, "${it.payType} · %,.0f RWF".format(it.payAmount), it.createdAt)
+                    HomeFeedEntry(it.id, "jobs", it.title, String.format(Locale.US, "${it.payType} · %,.0f RWF", it.payAmount), it.createdAt)
                 }
             } catch (_: Exception) { emptyList() }
         }
         searchScope.launch {
             propertyResults = try {
                 rw.itunda.core.network.NetworkClient.apiService.searchPropertyListings(query).listings.map {
-                    HomeFeedEntry(it.id, "property", it.title, "%,.0f RWF".format(it.price), it.createdAt)
+                    HomeFeedEntry(it.id, "property", it.title, String.format(Locale.US, "%,.0f RWF", it.price), it.createdAt)
                 }
             } catch (_: Exception) { emptyList() }
         }

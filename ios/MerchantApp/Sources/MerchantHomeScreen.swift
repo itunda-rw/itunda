@@ -460,6 +460,7 @@ struct MerchantStatusBadge: View {
 
 func formattedRWF(_ amount: Double) -> String {
     let formatter = NumberFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
     formatter.numberStyle = .decimal
     formatter.maximumFractionDigits = 0
     formatter.groupingSeparator = ","

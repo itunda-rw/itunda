@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import java.util.Locale
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
@@ -133,7 +134,7 @@ private fun AuthorizationCard(
     onCancel: () -> Unit,
 ) = Card(Modifier.fillMaxWidth()) {
     Column(Modifier.padding(16.dp)) {
-        Text("${"%,.0f".format(authorization.amount)} RWF", style = MaterialTheme.typography.titleLarge)
+        Text("${String.format(Locale.US, "%,.0f", authorization.amount)} RWF", style = MaterialTheme.typography.titleLarge)
         if (authorization.status == "ACTIVE") {
             Text("Withdrawal code", style = MaterialTheme.typography.labelMedium)
             Text(authorization.code, style = MaterialTheme.typography.headlineSmall)

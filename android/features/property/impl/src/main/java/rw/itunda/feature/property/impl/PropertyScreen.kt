@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -592,7 +593,7 @@ private fun PropertyListingCard(
         onSuccess = { lat, lng -> myLocation = lat to lng; showRoute = true },
         onError = { error = it },
     )
-    val priceLabel = "%,.0f RWF".format(listing.price) + if (listing.listingType == "RENT") "/mo" else ""
+    val priceLabel = String.format(Locale.US, "%,.0f RWF", listing.price) + if (listing.listingType == "RENT") "/mo" else ""
     val details = listOfNotNull(
         listing.bedrooms?.let { "$it bd" },
         listing.sizeSqm?.let { "${it} m²" },

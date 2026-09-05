@@ -2,6 +2,7 @@ package rw.itunda.feature.maps.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -137,7 +138,7 @@ internal fun MerchantBookingFlowView(
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
         BackTopBar("Book ${service.name}", onBack)
         Text(
-            "${service.name} · ${service.durationMinutes} min · %,.0f RWF".format(service.price),
+            String.format(Locale.US, "${service.name} · ${service.durationMinutes} min · %,.0f RWF", service.price),
             color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
         )
         MerchantBookingInfoSection(merchant.merchantId)
@@ -275,7 +276,7 @@ internal fun MerchantBookingInfoSection(merchantId: String) {
                         c.description?.let { Text(it, color = Ids.colors.textSecondary, fontSize = 11.sp) }
                     }
                     Text(
-                        if (c.discountType == "PERCENT") "${c.discountValue}% off" else "%,.0f RWF off".format(c.discountValue),
+                        if (c.discountType == "PERCENT") "${c.discountValue}% off" else String.format(Locale.US, "%,.0f RWF off", c.discountValue),
                         color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp,
                     )
                 }

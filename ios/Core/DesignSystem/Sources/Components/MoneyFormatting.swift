@@ -12,6 +12,7 @@ import Foundation
 public func formatMoney(_ value: Double) -> String {
     let rounded = (value * 100).rounded() / 100
     let formatter = NumberFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
     formatter.numberStyle = .decimal
     formatter.groupingSeparator = ","
     formatter.usesGroupingSeparator = true
@@ -30,7 +31,21 @@ public func formatMoney(_ value: Double) -> String {
 // the one-liner Number-based formatter it left alone.
 public func formatAmount(_ value: Int) -> String {
     let formatter = NumberFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
     formatter.numberStyle = .decimal
     formatter.groupingSeparator = ","
     return formatter.string(from: NSNumber(value: value)) ?? "0"
 }
+
+// Real gap found 2026-09-06, same class as the web `.toLocaleString()` bug and
+// Android's `String.format` bug fixed the same session: neither formatter above
+// pinned `.locale`, so `NumberFormatter` fell back to the DEVICE's own current
+// locale for everything except the explicitly-forced `groupingSeparator` --
+// including the DECIMAL separator, which on a French/Kinyarwanda device is also a
+// comma. Verified live (Swift, `NumberFormatter` with `locale = Locale(identifier:
+// "fr_FR")`): the decimal branch of `formatMoney` produced "10,346,50" for
+// 10346.50 -- genuinely ambiguous output, not just a different-but-consistent
+// separator, since the same "," character means two different things in one
+// string. Fixed by pinning `formatter.locale = Locale(identifier: "en_US_POSIX")`
+// on both formatters below, so a device's own language/region setting can never
+// again change how money renders.

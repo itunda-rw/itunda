@@ -1,6 +1,7 @@
 package rw.itunda.feature.shop.impl
 
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -109,7 +110,7 @@ internal fun ShoppingBannerCarousel(banners: List<rw.itunda.core.network.TimeDea
                         }
                         Text("⏰ $countdown left", color = Ids.colors.danger, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         Text(v.productName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 2)
-                        Text("%,.0f RWF".format(v.deal.dealPrice), color = Ids.colors.textPrimary, fontSize = 15.sp)
+                        Text(String.format(Locale.US, "%,.0f RWF", v.deal.dealPrice), color = Ids.colors.textPrimary, fontSize = 15.sp)
                         Text(v.businessName, color = Ids.colors.textSecondary, fontSize = 12.sp)
                     }
                     ProductImageThumb(v.productImageUrl, size = 96.dp, corner = 12.dp)
@@ -185,9 +186,9 @@ internal fun ShoppingPointsRow(
                         // Real, stated odds for SPIN (item 248 discipline) -- shows the
                         // real min-max range up front rather than a hidden mechanic.
                         val rewardText = if (m.type == "SPIN" && spinOutcomes.isNotEmpty()) {
-                            "+%,.0f~%,.0f".format(spinOutcomes.minOf { it.amount }, spinOutcomes.maxOf { it.amount })
+                            String.format(Locale.US, "+%,.0f~%,.0f", spinOutcomes.minOf { it.amount }, spinOutcomes.maxOf { it.amount })
                         } else {
-                            "+%,.0f".format(m.rewardAmount)
+                            String.format(Locale.US, "+%,.0f", m.rewardAmount)
                         }
                         Text(rewardText, color = Ids.colors.brand, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                     }
@@ -256,7 +257,7 @@ internal fun RecommendedForYouGrid(
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(d.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 2)
                     Row(verticalAlignment = Alignment.Bottom) {
-                        Text("%,.0f RWF".format(d.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(String.format(Locale.US, "%,.0f RWF", d.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         // Real strikethrough original price (2026-08-25, matches the
                         // Toss Shopping reference) -- only shown when the merchant
                         // actually set a higher originalPrice, same field the discount
@@ -265,7 +266,7 @@ internal fun RecommendedForYouGrid(
                         if (originalPrice != null && originalPrice > d.price) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                "%,.0f RWF".format(originalPrice),
+                                String.format(Locale.US, "%,.0f RWF", originalPrice),
                                 color = Ids.colors.textTertiary,
                                 fontSize = 11.sp,
                                 textDecoration = TextDecoration.LineThrough,
@@ -293,7 +294,7 @@ internal fun RecommendedForYouGrid(
                     )
                     // Real cashback (ShoppingCashbackService's own published flat rate)
                     // -- matches the "Earn up to ₩X" real reference row exactly, in RWF.
-                    Text("Earn up to %,.0f RWF".format(d.price * 0.01), color = Ids.colors.brand, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    Text(String.format(Locale.US, "Earn up to %,.0f RWF", d.price * 0.01), color = Ids.colors.brand, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -430,16 +431,16 @@ internal fun ProductPriceRow(p: MerchantProductDto) {
                 fontSize = 13.sp,
             )
             Spacer(modifier = Modifier.width(4.dp))
-            Text("%,.0f RWF".format(p.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            Text(String.format(Locale.US, "%,.0f RWF", p.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
         }
         Text(
-            "%,.0f RWF".format(p.originalPrice),
+            String.format(Locale.US, "%,.0f RWF", p.originalPrice),
             color = Ids.colors.textSecondary,
             fontSize = 11.sp,
             textDecoration = TextDecoration.LineThrough,
         )
     } else {
-        Text("%,.0f RWF".format(p.price), color = Ids.colors.textSecondary, fontSize = 13.sp)
+        Text(String.format(Locale.US, "%,.0f RWF", p.price), color = Ids.colors.textSecondary, fontSize = 13.sp)
     }
     // Real bulk/wholesale pricing (2026-07-25) -- closes the gap named in Baemin's own
     // real 배민상회 B2B supplies marketplace research. Shows the best (highest-quantity)
@@ -447,7 +448,7 @@ internal fun ProductPriceRow(p: MerchantProductDto) {
     // server-side from the real ordered quantity, never trusted from this display.
     p.priceTiers.maxByOrNull { it.minQuantity }?.let { bestTier ->
         Text(
-            "Buy ${bestTier.minQuantity}+ for %,.0f RWF each".format(bestTier.unitPrice),
+            String.format(Locale.US, "Buy ${bestTier.minQuantity}+ for %,.0f RWF each", bestTier.unitPrice),
             color = Ids.colors.success, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
         )
     }
@@ -457,4 +458,4 @@ internal fun ProductPriceRow(p: MerchantProductDto) {
 // Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
 // convention -- comma thousands-separator for every whole-number RWF amount --
 // never reached this file). Same shape BikeRentalScreen.kt/BusScreen.kt already use.
-private fun formatMoneyShopBrowse(value: Number): String = "%,d".format(value.toLong())
+private fun formatMoneyShopBrowse(value: Number): String = String.format(Locale.US, "%,d", value.toLong())

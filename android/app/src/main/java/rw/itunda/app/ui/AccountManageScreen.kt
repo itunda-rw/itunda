@@ -27,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import rw.itunda.app.R
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.components.FlatRow
@@ -231,9 +232,9 @@ private fun TransferLimitScreen(onBack: () -> Unit) {
             error -> Text(stringResource(R.string.transfer_limit_error), color = Ids.colors.danger, fontSize = 13.sp, modifier = Modifier.padding(vertical = 12.dp))
             current == null -> Text(stringResource(R.string.transfer_limit_loading), color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(vertical = 12.dp))
             else -> {
-                ManageDetailRow(stringResource(R.string.transfer_limit_per_transfer), "%,.0f RWF".format(current.perTransferLimit))
-                ManageDetailRow(stringResource(R.string.transfer_limit_daily), "%,.0f RWF".format(current.dailyLimit))
-                ManageDetailRow(stringResource(R.string.transfer_limit_remaining_today), "%,.0f RWF".format(current.remainingToday), Ids.colors.textBrand)
+                ManageDetailRow(stringResource(R.string.transfer_limit_per_transfer), String.format(Locale.US, "%,.0f RWF", current.perTransferLimit))
+                ManageDetailRow(stringResource(R.string.transfer_limit_daily), String.format(Locale.US, "%,.0f RWF", current.dailyLimit))
+                ManageDetailRow(stringResource(R.string.transfer_limit_remaining_today), String.format(Locale.US, "%,.0f RWF", current.remainingToday), Ids.colors.textBrand)
             }
         }
     }

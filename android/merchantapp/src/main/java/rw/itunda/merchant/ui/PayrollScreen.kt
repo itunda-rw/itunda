@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import java.util.Locale
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
@@ -146,7 +147,7 @@ private fun PayrollRunRow(run: PayrollRunDto, expanded: Boolean, onToggle: () ->
             Column {
                 Text(run.createdAt.take(10), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    "${run.employeeCount} employees paid · ${"%,.0f".format(run.totalAmount)} RWF",
+                    "${run.employeeCount} employees paid · ${String.format(Locale.US, "%,.0f", run.totalAmount)} RWF",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -164,7 +165,7 @@ private fun PayrollRunRow(run: PayrollRunDto, expanded: Boolean, onToggle: () ->
                 payslips?.forEach { p ->
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(p.employeeName, style = MaterialTheme.typography.bodySmall)
-                        Text("${"%,.0f".format(p.amount)} RWF", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                        Text("${String.format(Locale.US, "%,.0f", p.amount)} RWF", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
@@ -280,7 +281,7 @@ private fun RosterHeaderCard(
             }
             runError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             IdsButton(
-                text = if (running) "Running…" else "Run payroll (${"%,.0f".format(total)} RWF)",
+                text = if (running) "Running…" else "Run payroll (${String.format(Locale.US, "%,.0f", total)} RWF)",
                 enabled = !running && roster.isNotEmpty(),
                 onClick = { runPayroll() },
             )
@@ -301,7 +302,7 @@ private fun EmployeeRow(employee: PayrollEmployeeDto, onChanged: () -> Unit) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Text(employee.employeeName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-                Text("${"%,.0f".format(employee.salaryAmount)} RWF", style = MaterialTheme.typography.bodyMedium)
+                Text("${String.format(Locale.US, "%,.0f", employee.salaryAmount)} RWF", style = MaterialTheme.typography.bodyMedium)
             }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             IdsButton(
@@ -332,13 +333,13 @@ private fun EmployeeRow(employee: PayrollEmployeeDto, onChanged: () -> Unit) {
 private fun PayrollRunConfirmation(result: PayrollRunResponse, onDone: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Payroll paid", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
-        Text("${"%,.0f".format(result.totalAmount)} RWF", style = MaterialTheme.typography.headlineMedium)
+        Text("${String.format(Locale.US, "%,.0f", result.totalAmount)} RWF", style = MaterialTheme.typography.headlineMedium)
         Text("${result.employeeCount} employees paid", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         LazyColumn(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             items(result.payslips) { p ->
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(p.employeeName, style = MaterialTheme.typography.bodySmall)
-                    Text("${"%,.0f".format(p.amount)} RWF", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                    Text("${String.format(Locale.US, "%,.0f", p.amount)} RWF", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }

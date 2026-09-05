@@ -1,6 +1,7 @@
 package rw.itunda.feature.eats.impl
 
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -467,7 +468,7 @@ internal fun TipRiderPrompt(orderId: String, onTipped: () -> Unit) {
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("%,d".format(preset), color = if (selected) Color.White else Ids.colors.textSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(String.format(Locale.US, "%,d", preset), color = if (selected) Color.White else Ids.colors.textSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
             }
         }

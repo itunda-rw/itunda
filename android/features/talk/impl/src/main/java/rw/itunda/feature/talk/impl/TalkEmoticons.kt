@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import coil.compose.AsyncImage
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -97,7 +98,7 @@ internal fun GiftVoucherComposerPanel(onSent: () -> Unit, onCancel: () -> Unit) 
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
-                    "${currentSelected.name} · ${currentSelected.merchantName} · %,.0f RWF".format(currentSelected.price),
+                    String.format(Locale.US, "${currentSelected.name} · ${currentSelected.merchantName} · %,.0f RWF", currentSelected.price),
                     fontSize = 13.sp, color = Ids.colors.textPrimary,
                 )
                 TextButton(onClick = { selected = null }) { Text("Change", fontSize = 12.sp, color = Ids.colors.brand) }
@@ -141,7 +142,7 @@ internal fun GiftVoucherComposerPanel(onSent: () -> Unit, onCancel: () -> Unit) 
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Text("${p.name} · ${p.merchantName}", fontSize = 13.sp, color = Ids.colors.textPrimary)
-                                Text("%,.0f RWF".format(p.price), fontSize = 13.sp, color = Ids.colors.textPrimary)
+                                Text(String.format(Locale.US, "%,.0f RWF", p.price), fontSize = 13.sp, color = Ids.colors.textPrimary)
                             }
                         }
                     }
@@ -299,7 +300,7 @@ internal fun EmoticonStoreDialog(onDismiss: () -> Unit) {
                                 AsyncImage(model = pack.thumbnailUrl, contentDescription = "", modifier = Modifier.size(48.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(pack.title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Ids.colors.textPrimary)
-                                    Text("${pack.artistName} · %,.0f RWF".format(pack.price), fontSize = 12.sp, color = Ids.colors.textSecondary)
+                                    Text(String.format(Locale.US, "${pack.artistName} · %,.0f RWF", pack.price), fontSize = 12.sp, color = Ids.colors.textSecondary)
                                 }
                                 OfferActionButton(if (owned) "Owned" else if (busyPackId == pack.id) "…" else "Buy") {
                                     if (owned || busyPackId != null) return@OfferActionButton

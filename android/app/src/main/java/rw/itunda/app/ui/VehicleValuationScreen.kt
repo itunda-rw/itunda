@@ -2,6 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -213,8 +214,8 @@ fun VehicleValuationScreen(onBack: () -> Unit) {
                                     Text("${v.modelYear} ${v.make} ${v.model}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                     Text(
                                         buildString {
-                                            append("${"%,d".format(v.mileageKm)} km")
-                                            valuation?.let { append(" · ${it.ageYears} ${if (it.ageYears == 1) "year" else "years"} old · expected ${"%,d".format(it.expectedMileageKm)} km") }
+                                            append("${String.format(Locale.US, "%,d", v.mileageKm)} km")
+                                            valuation?.let { append(" · ${it.ageYears} ${if (it.ageYears == 1) "year" else "years"} old · expected ${String.format(Locale.US, "%,d", it.expectedMileageKm)} km") }
                                         },
                                         color = Ids.colors.textSecondary, fontSize = 12.sp,
                                     )
@@ -232,10 +233,10 @@ fun VehicleValuationScreen(onBack: () -> Unit) {
                             }
                             if (valuation != null) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Text("Now: ${"%,.0f".format(valuation.currentEstimatedValue)}", color = Ids.colors.textPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                    Text("+1y: ${"%,.0f".format(valuation.estimatedValueIn1Year)}", color = Ids.colors.textSecondary, fontSize = 11.sp)
-                                    Text("+2y: ${"%,.0f".format(valuation.estimatedValueIn2Years)}", color = Ids.colors.textSecondary, fontSize = 11.sp)
-                                    Text("+3y: ${"%,.0f".format(valuation.estimatedValueIn3Years)}", color = Ids.colors.textSecondary, fontSize = 11.sp)
+                                    Text("Now: ${String.format(Locale.US, "%,.0f", valuation.currentEstimatedValue)}", color = Ids.colors.textPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    Text("+1y: ${String.format(Locale.US, "%,.0f", valuation.estimatedValueIn1Year)}", color = Ids.colors.textSecondary, fontSize = 11.sp)
+                                    Text("+2y: ${String.format(Locale.US, "%,.0f", valuation.estimatedValueIn2Years)}", color = Ids.colors.textSecondary, fontSize = 11.sp)
+                                    Text("+3y: ${String.format(Locale.US, "%,.0f", valuation.estimatedValueIn3Years)}", color = Ids.colors.textSecondary, fontSize = 11.sp)
                                 }
                             }
                     }

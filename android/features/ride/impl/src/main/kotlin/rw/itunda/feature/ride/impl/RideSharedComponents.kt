@@ -1,5 +1,6 @@
 package rw.itunda.feature.ride.impl
 
+import java.util.Locale
 import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.RepeatMode
@@ -370,7 +371,7 @@ internal fun TipDriverPrompt(tripId: String, onTipped: () -> Unit) {
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("%,d".format(preset), color = if (selected) Color.White else Ids.colors.textSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(String.format(Locale.US, "%,d", preset), color = if (selected) Color.White else Ids.colors.textSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
             }
         }

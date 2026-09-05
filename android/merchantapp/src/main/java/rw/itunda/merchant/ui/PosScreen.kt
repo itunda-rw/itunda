@@ -1,6 +1,7 @@
 package rw.itunda.merchant.ui
 
 import androidx.compose.foundation.Image
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -108,14 +109,14 @@ fun PosTab() {
                     cart.forEach { line ->
                         Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                             Text("${line.quantity}x ${line.product.name}", style = MaterialTheme.typography.bodySmall)
-                            Text("${"%,.0f".format(line.product.price * line.quantity)} RWF", style = MaterialTheme.typography.bodySmall)
+                            Text("${String.format(Locale.US, "%,.0f", line.product.price * line.quantity)} RWF", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
                 Spacer(modifier = Modifier.padding(top = 8.dp))
                 Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                     Text("Total", fontWeight = FontWeight.Bold)
-                    Text("${"%,.0f".format(total)} RWF", fontWeight = FontWeight.Bold)
+                    Text("${String.format(Locale.US, "%,.0f", total)} RWF", fontWeight = FontWeight.Bold)
                 }
                 Spacer(modifier = Modifier.padding(top = 8.dp))
                 IdsButton(text = "Checkout", enabled = cart.isNotEmpty(), onClick = { checkingOut = true })
@@ -136,7 +137,7 @@ private fun ProductGrid(products: List<MerchantProductDto>, onAdd: (MerchantProd
             Card(modifier = Modifier.fillMaxWidth().pressScaleClickable(enabled = !soldOut) { onAdd(product) }) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Text(product.name, fontWeight = FontWeight.Bold)
-                    Text("${"%,.0f".format(product.price)} RWF", style = MaterialTheme.typography.bodySmall)
+                    Text("${String.format(Locale.US, "%,.0f", product.price)} RWF", style = MaterialTheme.typography.bodySmall)
                     Text(
                         when (product.stockQuantity) {
                             null -> "Unlimited stock"
@@ -166,7 +167,7 @@ private fun CheckoutView(total: Double, description: String, onDone: () -> Unit,
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Checkout", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text("${"%,.0f".format(total)} RWF", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text("${String.format(Locale.US, "%,.0f", total)} RWF", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.padding(top = 16.dp))
 
@@ -210,7 +211,7 @@ private fun ScanCustomerCheckout(amount: Double, onDone: () -> Unit) {
     val currentResult = result
     if (currentResult != null) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-            Text("Payment received — ${"%,.0f".format(currentResult.amount)} RWF", fontWeight = FontWeight.Bold)
+            Text("Payment received — ${String.format(Locale.US, "%,.0f", currentResult.amount)} RWF", fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.padding(top = 12.dp))
             IdsButton(text = "Done — new sale", onClick = onDone)
         }
@@ -249,7 +250,7 @@ private fun ScanCustomerCheckout(amount: Double, onDone: () -> Unit) {
     LaunchedEffect(code) { charge() }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        Text(if (charging) "Charging ${"%,.0f".format(amount)} RWF…" else "Code scanned", fontWeight = FontWeight.Bold)
+        Text(if (charging) "Charging ${String.format(Locale.US, "%,.0f", amount)} RWF…" else "Code scanned", fontWeight = FontWeight.Bold)
         error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
     }
 }
@@ -366,7 +367,7 @@ private fun CardCheckout(amount: Double, description: String, onDone: () -> Unit
         }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         IdsButton(
-            text = if (submitting) "Charging…" else "Charge ${"%,.0f".format(amount)} RWF",
+            text = if (submitting) "Charging…" else "Charge ${String.format(Locale.US, "%,.0f", amount)} RWF",
             enabled = !submitting,
             onClick = { charge() },
         )

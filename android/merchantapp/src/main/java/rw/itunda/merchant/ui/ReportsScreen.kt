@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import java.util.Locale
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.network.ReportDayDto
 import rw.itunda.merchant.network.TopSellingProductDto
@@ -107,10 +108,10 @@ fun ReportsTab() {
                     Text(day.date, fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                         Text("${day.collectionCount} sales", style = MaterialTheme.typography.bodySmall)
-                        Text("${"%,.0f".format(day.netAmount)} RWF net", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                        Text("${String.format(Locale.US, "%,.0f", day.netAmount)} RWF net", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                     }
                     Text(
-                        "Gross ${"%,.0f".format(day.grossAmount)} RWF · Fees ${"%,.0f".format(day.fees)} RWF",
+                        "Gross ${String.format(Locale.US, "%,.0f", day.grossAmount)} RWF · Fees ${String.format(Locale.US, "%,.0f", day.fees)} RWF",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -142,7 +143,7 @@ fun ReportsTab() {
                             Text(product.productName, fontWeight = FontWeight.Bold)
                             Text("${product.unitsSold} sold", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Text("${"%,.0f".format(product.revenue)} RWF", fontWeight = FontWeight.Bold)
+                        Text("${String.format(Locale.US, "%,.0f", product.revenue)} RWF", fontWeight = FontWeight.Bold)
                     }
                 }
             }

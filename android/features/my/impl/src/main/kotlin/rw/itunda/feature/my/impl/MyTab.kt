@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.FlatRow
 import rw.itunda.core.designsystem.components.FlatSection
@@ -109,7 +110,7 @@ fun MyTab(
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("Total earned", color = Ids.colors.textSecondary, fontSize = 13.sp)
-                        Text("${"%,.0f".format(totalEarned)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text("${String.format(Locale.US, "%,.0f", totalEarned)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
                 }
             }
@@ -125,7 +126,7 @@ fun MyTab(
                         Text("Shop order", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                         Text(order.status, color = Ids.colors.textSecondary, fontSize = 13.sp)
                     }
-                    Text("%,.0f RWF".format(order.totalAmount), color = Ids.colors.textPrimary, fontSize = 15.sp)
+                    Text(String.format(Locale.US, "%,.0f RWF", order.totalAmount), color = Ids.colors.textPrimary, fontSize = 15.sp)
                 }
             }
             items(eatsOrders.take(3), key = { it.id }) { order ->
@@ -137,7 +138,7 @@ fun MyTab(
                         Text("Eats order", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                         Text(order.status, color = Ids.colors.textSecondary, fontSize = 13.sp)
                     }
-                    Text("%,.0f RWF".format(order.totalAmount), color = Ids.colors.textPrimary, fontSize = 15.sp)
+                    Text(String.format(Locale.US, "%,.0f RWF", order.totalAmount), color = Ids.colors.textPrimary, fontSize = 15.sp)
                 }
             }
         }

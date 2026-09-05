@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import java.io.IOException
+import java.util.Locale
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -112,7 +113,7 @@ internal fun ListingWishlistView(onRemoved: () -> Unit) {
                 ) {
                     Column {
                         Text(f.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text("${f.category} · %,.0f RWF".format(f.price), color = Ids.colors.textSecondary, fontSize = 13.sp)
+                        Text(String.format(Locale.US, "${f.category} · %,.0f RWF", f.price), color = Ids.colors.textSecondary, fontSize = 13.sp)
                     }
                     ListingActionButton(if (removingId == f.listingId) "Removing…" else "Remove", removingId == f.listingId) {
                         removingId = f.listingId

@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import coil.compose.AsyncImage
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -185,7 +186,7 @@ internal fun OfferBubble(offer: OfferBubbleData, isMine: Boolean, currentUserId:
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 MoneyBagGlyph(size = 16.dp)
-                Text("%,.0f RWF".format(offer.amount), color = if (isMine) Color.White else Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(String.format(Locale.US, "%,.0f RWF", offer.amount), color = if (isMine) Color.White else Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
             Text(statusLabel, color = if (isMine) Color.White.copy(alpha = 0.85f) else Ids.colors.textSecondary, fontSize = 12.sp)
             if (canRespond && !countering) {
@@ -254,7 +255,7 @@ internal fun GiftBubble(gift: GiftDto, isMine: Boolean, currentUserId: String?, 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 GiftThemeGlyph(gift.theme, size = 18.dp)
                 Text(
-                    "${themeText?.let { "$it " } ?: ""}%,.0f RWF".format(gift.amount),
+                    "${themeText?.let { "$it " } ?: ""}" + String.format(Locale.US, "%,.0f RWF", gift.amount),
                     color = if (isMine) Color.White else Ids.colors.textPrimary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
@@ -299,7 +300,7 @@ internal fun GiftVoucherBubble(voucher: GiftVoucherDto, isMine: Boolean, onExten
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                "🎟️ ${voucher.productNameSnapshot ?: "%,.0f RWF voucher".format(voucher.amount)}",
+                "🎟️ ${voucher.productNameSnapshot ?: String.format(Locale.US, "%,.0f RWF voucher", voucher.amount)}",
                 color = if (isMine) Color.White else Ids.colors.textPrimary,
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp,

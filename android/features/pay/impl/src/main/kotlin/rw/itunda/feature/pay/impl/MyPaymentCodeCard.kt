@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -265,8 +266,8 @@ internal fun MyPaymentCodeCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         "${selectedAccount.currency} ${
-                            if (selectedAccount.currency == "RWF") "%,.0f".format(selectedAccount.availableBalance)
-                            else "%,.2f".format(selectedAccount.availableBalance)
+                            if (selectedAccount.currency == "RWF") String.format(Locale.US, "%,.0f", selectedAccount.availableBalance)
+                            else String.format(Locale.US, "%,.2f", selectedAccount.availableBalance)
                         }",
                         color = IdsColors.Gray900, fontWeight = FontWeight.Bold, fontSize = 15.sp,
                     )

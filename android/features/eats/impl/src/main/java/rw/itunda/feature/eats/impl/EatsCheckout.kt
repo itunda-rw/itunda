@@ -2,6 +2,7 @@ package rw.itunda.feature.eats.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -143,14 +144,14 @@ internal fun EatsCheckoutView(
             items(lines, key = { (p, line) -> eatsCartKey(p.id, line.choiceIds) }) { (p, line) ->
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("${p.name}${eatsOptionsSummary(p, line.choiceIds)} x${line.quantity}", color = Ids.colors.textPrimary, fontSize = 14.sp)
-                    Text("%,.0f RWF".format(eatsLineUnitPrice(p, line.choiceIds) * line.quantity), color = Ids.colors.textPrimary, fontSize = 14.sp)
+                    Text(String.format(Locale.US, "%,.0f RWF", eatsLineUnitPrice(p, line.choiceIds) * line.quantity), color = Ids.colors.textPrimary, fontSize = 14.sp)
                 }
             }
             item { Divider(color = Ids.colors.divider, modifier = Modifier.padding(vertical = 10.dp)) }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("Subtotal", color = Ids.colors.textPrimary, fontSize = 14.sp)
-                    Text("%,.0f RWF".format(total), color = Ids.colors.textPrimary, fontSize = 14.sp)
+                    Text(String.format(Locale.US, "%,.0f RWF", total), color = Ids.colors.textPrimary, fontSize = 14.sp)
                 }
             }
             item { Spacer(modifier = Modifier.height(14.dp)) }
@@ -279,11 +280,11 @@ internal fun EatsOrderConfirmationView(order: EatsOrderDto, onDone: () -> Unit) 
         title = { Text("Order placed") },
         text = {
             Column {
-                Text("%,.0f RWF".format(order.totalAmount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Text(String.format(Locale.US, "%,.0f RWF", order.totalAmount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                 // Real Baemin-style tiered order-amount promotion (2026-08-16) -- see
                 // EatsPromotionCalculator's own doc comment on the backend.
                 if (order.promotionDiscount > 0) {
-                    Text("%,.0f RWF off, on us".format(order.promotionDiscount), color = Ids.colors.success, fontSize = 12.sp)
+                    Text(String.format(Locale.US, "%,.0f RWF off, on us", order.promotionDiscount), color = Ids.colors.success, fontSize = 12.sp)
                 }
                 Spacer(modifier = Modifier.height(6.dp))
                 Text("Delivering to ${order.deliveryAddress}", color = Ids.colors.textSecondary, fontSize = 13.sp)
@@ -300,7 +301,7 @@ internal fun DineInOrderConfirmationView(order: DineInOrderDto, onDone: () -> Un
         title = { Text("Order placed") },
         text = {
             Column {
-                Text("%,.0f RWF".format(order.totalAmount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Text(String.format(Locale.US, "%,.0f RWF", order.totalAmount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                 Spacer(modifier = Modifier.height(6.dp))
                 Text("Table ${order.tableNumber} -- the kitchen has your order", color = Ids.colors.textSecondary, fontSize = 13.sp)
             }

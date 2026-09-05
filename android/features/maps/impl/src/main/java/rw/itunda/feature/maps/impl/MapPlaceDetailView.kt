@@ -244,11 +244,11 @@ internal fun PlaceDetailAndRouteView(
                             val original = product.originalPrice
                             if (original != null && original > product.price) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text("${"%,.0f".format(original)} RWF", fontSize = 11.sp, color = Ids.colors.textTertiary, textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)
-                                    Text("${"%,.0f".format(product.price)} RWF", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.danger)
+                                    Text("${String.format(java.util.Locale.US, "%,.0f", original)} RWF", fontSize = 11.sp, color = Ids.colors.textTertiary, textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)
+                                    Text("${String.format(java.util.Locale.US, "%,.0f", product.price)} RWF", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.danger)
                                 }
                             } else {
-                                Text("${"%,.0f".format(product.price)} RWF", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+                                Text("${String.format(java.util.Locale.US, "%,.0f", product.price)} RWF", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
                             }
                         }
                         // Real bookable-service entry point (moved here 2026-08-25 from
@@ -343,7 +343,7 @@ internal fun PlaceDetailAndRouteView(
                     }
                     val valueLine = listOfNotNull(
                         "${matchedMerchant.cashbackRate} cashback",
-                        matchedMerchant.minOrderAmount?.let { "Min. ${"%,.0f".format(it)} RWF" },
+                        matchedMerchant.minOrderAmount?.let { "Min. ${String.format(java.util.Locale.US, "%,.0f", it)} RWF" },
                     ).joinToString(" · ")
                     Text(valueLine, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand)
                     val openingHours = matchedMerchant.openingHours

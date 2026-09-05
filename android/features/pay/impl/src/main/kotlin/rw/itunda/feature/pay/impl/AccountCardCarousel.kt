@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import rw.itunda.core.designsystem.components.BankCardChip
 import rw.itunda.core.designsystem.components.CardContactlessGlyph
 import rw.itunda.core.designsystem.theme.Ids
@@ -111,7 +112,7 @@ fun AccountCardCarousel(
                         )
                         Text(
                             "${w.currency} ${
-                                if (w.currency == "RWF") "%,.0f".format(w.availableBalance) else "%,.2f".format(w.availableBalance)
+                                if (w.currency == "RWF") String.format(Locale.US, "%,.0f", w.availableBalance) else String.format(Locale.US, "%,.2f", w.availableBalance)
                             }",
                             color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold, fontSize = 19.sp,
                         )

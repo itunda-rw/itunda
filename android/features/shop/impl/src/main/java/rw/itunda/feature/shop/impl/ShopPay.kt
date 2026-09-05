@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -199,9 +200,9 @@ fun PayAMerchantSection(
         Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Payment complete", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Text(result.merchantName, color = Ids.colors.textPrimary, fontSize = 14.sp)
-            Text("%,.0f RWF".format(result.amount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+            Text(String.format(Locale.US, "%,.0f RWF", result.amount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
             if (result.cashbackEarned > java.math.BigDecimal.ZERO) {
-                Text("+ %,.0f RWF cashback".format(result.cashbackEarned), color = Ids.colors.brand, fontSize = 13.sp)
+                Text(String.format(Locale.US, "+ %,.0f RWF cashback", result.cashbackEarned), color = Ids.colors.brand, fontSize = 13.sp)
             }
             ListingActionButtonShop("Done", false) { paymentResult = null }
         }
@@ -304,7 +305,7 @@ private fun FacePaySettingsCard(enrolled: Boolean?, onChanged: () -> Unit) {
 }
 
 internal fun couponDiscountLabel(c: MerchantCouponPreviewDto): String =
-    if (c.discountType == "PERCENT") "${c.discountValue}% off" else "%,.0f RWF off".format(c.discountValue)
+    if (c.discountType == "PERCENT") "${c.discountValue}% off" else String.format(Locale.US, "%,.0f RWF off", c.discountValue)
 
 /**
  * Real coupon-preview-before-pay (item 149/146) -- closes the deliberate scope-down

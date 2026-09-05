@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import java.util.Locale
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import androidx.compose.material3.Card
@@ -142,7 +143,7 @@ private fun DineInOrdersQueue() {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                         DineInStatusBadge(order.status)
-                        Text("${"%,.0f".format(order.totalAmount)} RWF", fontWeight = FontWeight.Bold)
+                        Text("${String.format(Locale.US, "%,.0f", order.totalAmount)} RWF", fontWeight = FontWeight.Bold)
                     }
                     Text("Table ${order.tableNumber}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                     order.notes?.takeIf { it.isNotBlank() }?.let {

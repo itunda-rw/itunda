@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import java.util.Locale
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
@@ -154,7 +155,7 @@ private fun PlanRow(plan: MerchantBillingPlanDto, onChanged: () -> Unit) {
             }
             plan.description?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             Text(
-                "${"%,.0f".format(plan.amount)} RWF every ${plan.intervalDays} day${if (plan.intervalDays == 1) "" else "s"}",
+                "${String.format(Locale.US, "%,.0f", plan.amount)} RWF every ${plan.intervalDays} day${if (plan.intervalDays == 1) "" else "s"}",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }

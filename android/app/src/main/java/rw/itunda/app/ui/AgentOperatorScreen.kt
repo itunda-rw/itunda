@@ -1,5 +1,6 @@
 package rw.itunda.app.ui
 
+import java.util.Locale
 import rw.itunda.core.designsystem.components.BackTopBar
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -144,13 +145,13 @@ fun AgentOperatorScreen(onBack: () -> Unit) {
                     }
                 }
                 item {
-                    CashInCard(onSubmitted = { result -> message = "Cash in accepted — new customer balance ${"%,.0f".format(result)} RWF"; load() }, onError = { error = it })
+                    CashInCard(onSubmitted = { result -> message = "Cash in accepted — new customer balance ${String.format(Locale.US, "%,.0f", result)} RWF"; load() }, onError = { error = it })
                 }
                 item {
-                    CashOutCard(onSubmitted = { result -> message = "Cash out paid — new customer balance ${"%,.0f".format(result)} RWF"; load() }, onError = { error = it })
+                    CashOutCard(onSubmitted = { result -> message = "Cash out paid — new customer balance ${String.format(Locale.US, "%,.0f", result)} RWF"; load() }, onError = { error = it })
                 }
                 item {
-                    TillCountCard(onSubmitted = { variance, status -> message = "Till count submitted — variance ${"%,.0f".format(variance)} RWF ($status)"; load() }, onError = { error = it })
+                    TillCountCard(onSubmitted = { variance, status -> message = "Till count submitted — variance ${String.format(Locale.US, "%,.0f", variance)} RWF ($status)"; load() }, onError = { error = it })
                 }
                 item { Text("Recent activity", style = MaterialTheme.typography.titleMedium) }
                 if (activity.isEmpty()) {
@@ -160,7 +161,7 @@ fun AgentOperatorScreen(onBack: () -> Unit) {
                     Card(Modifier.fillMaxWidth()) {
                         Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(if (a.type == "CASH_IN") "↓ Cash in · ${a.receiptNumber}" else "↑ Cash out · ${a.receiptNumber}")
-                            Text("${"%,.0f".format(a.amount)} RWF")
+                            Text("${String.format(Locale.US, "%,.0f", a.amount)} RWF")
                         }
                     }
                 }
@@ -174,14 +175,14 @@ private fun TillSummaryCard(till: AgentTillSnapshotDto) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Text(till.agentName, style = MaterialTheme.typography.labelMedium)
-            Text("${"%,.0f".format(till.expectedCash)} RWF expected in till", style = MaterialTheme.typography.headlineSmall)
+            Text("${String.format(Locale.US, "%,.0f", till.expectedCash)} RWF expected in till", style = MaterialTheme.typography.headlineSmall)
             Text(
-                "Today: ${"%,.0f".format(till.todayCashIn)} RWF in · ${"%,.0f".format(till.todayCashOut)} RWF out",
+                "Today: ${String.format(Locale.US, "%,.0f", till.todayCashIn)} RWF in · ${String.format(Locale.US, "%,.0f", till.todayCashOut)} RWF out",
                 style = MaterialTheme.typography.bodySmall,
             )
             till.reconciliation?.let {
                 Text(
-                    "Last count: ${"%,.0f".format(it.countedCash)} RWF (${it.status}, variance ${"%,.0f".format(it.variance)})",
+                    "Last count: ${String.format(Locale.US, "%,.0f", it.countedCash)} RWF (${it.status}, variance ${String.format(Locale.US, "%,.0f", it.variance)})",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }

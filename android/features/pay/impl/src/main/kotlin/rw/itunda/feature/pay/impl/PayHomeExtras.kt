@@ -1,6 +1,7 @@
 package rw.itunda.feature.pay.impl
 
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.components.ledgerRowIcon
 import androidx.compose.foundation.layout.Arrangement
@@ -201,12 +202,12 @@ fun RewardsSummaryRow(rewardsTotal: Double, payBalance: Double?) {
             // raw Int-to-string interpolation with no thousands separator; this session's
             // own first pass at this fix wrongly flipped it TO currency-prefix instead,
             // corrected here alongside the same app-wide currency-prefix sweep.
-            Text("%,.0f RWF".format(rewardsTotal), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+            Text(String.format(Locale.US, "%,.0f RWF", rewardsTotal), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
         }
         if (payBalance != null) {
             Column(horizontalAlignment = Alignment.End) {
                 Text("itunda Pay balance", fontSize = 13.sp, color = Ids.colors.textSecondary)
-                Text("%,.0f RWF".format(payBalance), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+                Text(String.format(Locale.US, "%,.0f RWF", payBalance), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
             }
         }
     }
@@ -241,7 +242,7 @@ fun PaymentHistorySection(transactions: List<TransactionDto>) {
                     }
                     // Real fix (2026-08-26) -- same comma-formatting + currency-order
                     // correction as RewardsSummaryRow's own doc comment above.
-                    Text("%,.0f RWF".format(tx.amount), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
+                    Text(String.format(Locale.US, "%,.0f RWF", tx.amount), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
                 }
                 if (index != transactions.take(5).lastIndex) {
                     HorizontalDivider(color = Ids.colors.divider)
@@ -273,7 +274,7 @@ fun RewardsPreviewSection(tasks: List<RewardTaskDto>, claimingId: String?, onCla
                     Text(task.subtitle, fontSize = 12.sp, color = Ids.colors.textSecondary)
                 }
                 IdsButton(
-                    if (claimingId == task.id) "…" else "+%,.0f RWF".format(task.rewardAmount),
+                    if (claimingId == task.id) "…" else String.format(Locale.US, "+%,.0f RWF", task.rewardAmount),
                     onClick = { onClaim(task.id) },
                     enabled = claimingId == null,
                     variant = IdsButtonVariant.Tinted,

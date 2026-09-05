@@ -360,13 +360,13 @@ private fun TransferSuccessScreen(amountRwf: Long, recipientLabel: String, fraud
     // own affiliate-link share), not something invented for this screen.
     val shareContext = androidx.compose.ui.platform.LocalContext.current
     rw.itunda.core.designsystem.components.IdsCelebrationScreen(
-        headline = "%,d RWF sent".format(amountRwf),
+        headline = String.format(java.util.Locale.US, "%,d RWF sent", amountRwf),
         message = "",
         recipientLabel = recipientLabel,
         onShare = {
             val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                 type = "text/plain"
-                putExtra(android.content.Intent.EXTRA_TEXT, "Sent %,d RWF to %s via itunda".format(amountRwf, recipientLabel))
+                putExtra(android.content.Intent.EXTRA_TEXT, String.format(java.util.Locale.US, "Sent %,d RWF to %s via itunda", amountRwf, recipientLabel))
             }
             shareContext.startActivity(android.content.Intent.createChooser(intent, "Share"))
         },
@@ -959,7 +959,7 @@ fun ItundaAppScreen(
                                             celebratory = true,
                                         )
                                     } else {
-                                        SavingsFlowStep.Success(savingsContext.getString(R.string.savings_amount_saved, "%,d".format(amountRwf)), result.message, celebratory = false)
+                                        SavingsFlowStep.Success(savingsContext.getString(R.string.savings_amount_saved, String.format(java.util.Locale.US, "%,d", amountRwf)), result.message, celebratory = false)
                                     }
                                 }
                                 // Real offline queueing (2026-07-13, see
@@ -997,7 +997,7 @@ fun ItundaAppScreen(
                                                         celebratory = true,
                                                     )
                                                 } else {
-                                                    SavingsFlowStep.Success(savingsContext.getString(R.string.savings_amount_saved, "%,d".format(amountRwf)), retryResult.message, celebratory = false)
+                                                    SavingsFlowStep.Success(savingsContext.getString(R.string.savings_amount_saved, String.format(java.util.Locale.US, "%,d", amountRwf)), retryResult.message, celebratory = false)
                                                 }
                                             }
                                             is rw.itunda.core.network.MoneyActionResult.Queued -> {
@@ -1026,7 +1026,7 @@ fun ItundaAppScreen(
                             when (val result = viewModel.withdrawFromSavingsGoal(savingsStep.goalId, amountRwf)) {
                                 is rw.itunda.core.network.MoneyActionResult.Success -> {
                                     isSavingsSubmitting = false
-                                    savingsFlowStep = SavingsFlowStep.Success(savingsContext.getString(R.string.savings_amount_withdrawn, "%,d".format(amountRwf)), result.message, celebratory = false)
+                                    savingsFlowStep = SavingsFlowStep.Success(savingsContext.getString(R.string.savings_amount_withdrawn, String.format(java.util.Locale.US, "%,d", amountRwf)), result.message, celebratory = false)
                                 }
                                 is rw.itunda.core.network.MoneyActionResult.Queued -> {
                                     // withdrawFromSavingsGoal never actually returns
@@ -1048,7 +1048,7 @@ fun ItundaAppScreen(
                                         val retryResult = viewModel.withdrawFromSavingsGoal(savingsStep.goalId, amountRwf)
                                         isSavingsSubmitting = false
                                         when (retryResult) {
-                                            is rw.itunda.core.network.MoneyActionResult.Success -> savingsFlowStep = SavingsFlowStep.Success(savingsContext.getString(R.string.savings_amount_withdrawn, "%,d".format(amountRwf)), retryResult.message, celebratory = false)
+                                            is rw.itunda.core.network.MoneyActionResult.Success -> savingsFlowStep = SavingsFlowStep.Success(savingsContext.getString(R.string.savings_amount_withdrawn, String.format(java.util.Locale.US, "%,d", amountRwf)), retryResult.message, celebratory = false)
                                             is rw.itunda.core.network.MoneyActionResult.Failure -> savingsError = retryResult.message
                                             else -> {}
                                         }
@@ -1612,9 +1612,9 @@ fun ItundaAppScreen(
                     BucketDetailScreen(
                         title = "Interest Jar",
                         subtitle = "Safe Box",
-                        balanceText = "%,.0f RWF".format(jar?.balance ?: 0.0),
+                        balanceText = String.format(java.util.Locale.US, "%,.0f RWF", jar?.balance ?: 0.0),
                         secondaryStatLabel = "Earned all-time",
-                        secondaryStatValue = "%,.0f RWF".format(jar?.earnedTotal ?: 0.0),
+                        secondaryStatValue = String.format(java.util.Locale.US, "%,.0f RWF", jar?.earnedTotal ?: 0.0),
                         fetchTransactions = { rw.itunda.core.network.NetworkClient.apiService.getInterestJarTransactions().transactions },
                         fillLabel = if ((jar?.earnedThisMonth ?: 0.0) > 0.0) "Get interest" else null,
                         onFill = if ((jar?.earnedThisMonth ?: 0.0) > 0.0) {
@@ -1627,9 +1627,9 @@ fun ItundaAppScreen(
                     BucketDetailScreen(
                         title = target.name,
                         subtitle = "Savings Goal",
-                        balanceText = "%,.0f RWF".format(target.currentAmount),
+                        balanceText = String.format(java.util.Locale.US, "%,.0f RWF", target.currentAmount),
                         secondaryStatLabel = "Target",
-                        secondaryStatValue = "%,.0f RWF".format(target.targetAmount),
+                        secondaryStatValue = String.format(java.util.Locale.US, "%,.0f RWF", target.targetAmount),
                         fetchTransactions = { rw.itunda.core.network.NetworkClient.apiService.getSavingsGoalTransactions(target.id).transactions },
                         fillLabel = "Deposit",
                         onFill = {
@@ -2103,7 +2103,7 @@ private fun AccountDetailScreen(
                         )
                     }
                     val animatedBalance = rememberCountUp(balance)
-                    Text("%,.0f $currency".format(animatedBalance), style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
+                    Text(String.format(java.util.Locale.US, "%,.0f $currency", animatedBalance), style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
                 }
             }
             val earnedThisMonth = interestJar?.earnedThisMonth ?: 0.0
@@ -2123,7 +2123,7 @@ private fun AccountDetailScreen(
                         // ("Interest ₩7") -- a label plus the amount together, not
                         // the bare number this rendered as before.
                         Text(
-                            "${stringResource(R.string.account_detail_interest_prefix)} %,.0f $currency".format(earnedThisMonth),
+                            String.format(java.util.Locale.US, "${stringResource(R.string.account_detail_interest_prefix)} %,.0f $currency", earnedThisMonth),
                             color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.weight(1f),
                         )
@@ -2217,7 +2217,7 @@ private fun TransactionDetailScreen(
     onBack: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
-    val amountText = "${if (isOutgoing) "-" else "+"}%,.0f $currency".format(transaction.amount)
+    val amountText = "${if (isOutgoing) "-" else "+"}" + String.format(java.util.Locale.US, "%,.0f $currency", transaction.amount)
     val amountColor = if (isOutgoing) Ids.colors.textPrimary else Ids.colors.brand
     val (rowIcon, rowIconColor) = ledgerRowIcon(transaction)
 
@@ -2246,9 +2246,9 @@ private fun TransactionDetailScreen(
             TransactionDetailRow("Type", transactionTypeLabel(transaction.type))
             TransactionDetailRow("Status", transaction.status.lowercase().replaceFirstChar { it.uppercase() })
             TransactionDetailRow("Date & time", ledgerFullDateTime(transaction.createdAt))
-            TransactionDetailRow("Balance after", "%,.0f $currency".format(afterBalance))
+            TransactionDetailRow("Balance after", String.format(java.util.Locale.US, "%,.0f $currency", afterBalance))
             if (transaction.fee > 0.0) {
-                TransactionDetailRow("Fee", "%,.0f $currency".format(transaction.fee))
+                TransactionDetailRow("Fee", String.format(java.util.Locale.US, "%,.0f $currency", transaction.fee))
             }
         }
     }

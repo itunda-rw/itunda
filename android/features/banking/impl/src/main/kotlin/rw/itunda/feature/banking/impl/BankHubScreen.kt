@@ -47,6 +47,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import kotlinx.coroutines.launch
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -184,7 +185,7 @@ fun BankHubScreen(
                             Spacer(modifier = Modifier.height(4.dp))
                             val animatedBalance = rememberCountUp(primaryAccount!!.balance)
                             Text(
-                                "%,.0f ${primaryAccount!!.currency}".format(animatedBalance),
+                                String.format(Locale.US, "%,.0f ${primaryAccount!!.currency}", animatedBalance),
                                 fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary,
                             )
                         }
@@ -204,7 +205,7 @@ fun BankHubScreen(
                         Text(stringResource(R.string.pay_title), fontSize = 14.sp, color = Ids.colors.textSecondary)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                "%,.0f ${payAccount!!.currency}".format(payAccount!!.balance),
+                                String.format(Locale.US, "%,.0f ${payAccount!!.currency}", payAccount!!.balance),
                                 fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textSecondary,
                             )
                             Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(14.dp))
@@ -245,7 +246,7 @@ fun BankHubScreen(
                 val roundUpSetUp = stringResource(R.string.home_round_up_set_up)
                 val interestJarLabel = stringResource(R.string.home_interest_jar)
                 val roundUpTitle = stringResource(R.string.home_round_up_title)
-                val roundUpRoundingText = roundUpSettings?.roundToNearest?.let { stringResource(R.string.home_round_up_rounding, "%,.0f".format(it)) }
+                val roundUpRoundingText = roundUpSettings?.roundToNearest?.let { stringResource(R.string.home_round_up_rounding, String.format(Locale.US, "%,.0f", it)) }
                 val savingsProgressPattern = stringResource(R.string.home_savings_progress)
                 val savingsProgressByDatePattern = stringResource(R.string.home_savings_progress_by_date)
                 ShellSection(
@@ -259,12 +260,12 @@ fun BankHubScreen(
                                         stringResource(
                                             R.string.home_interest_jar_rate_subtitle_total,
                                             "%.1f".format(jar.rate),
-                                            "%,.0f".format(jar.earnedTotal),
+                                            String.format(Locale.US, "%,.0f", jar.earnedTotal),
                                         )
                                     } else {
                                         stringResource(R.string.home_interest_jar_rate_subtitle, "%.1f".format(jar.rate))
                                     },
-                                    "%,.0f RWF".format(jar.earnedThisMonth),
+                                    String.format(Locale.US, "%,.0f RWF", jar.earnedThisMonth),
                                     Icons.Outlined.Savings,
                                     AccentOrange,
                                     onClick = { onOpenBucketDetail(BucketDetailTarget.InterestJar) },
@@ -282,11 +283,11 @@ fun BankHubScreen(
                                     (
                                         goal.targetDate?.takeIf { it.isNotBlank() }?.let { date ->
                                             savingsProgressByDatePattern.format(
-                                                "%,.0f".format(goal.currentAmount),
-                                                "%,.0f".format(goal.targetAmount),
+                                                String.format(Locale.US, "%,.0f", goal.currentAmount),
+                                                String.format(Locale.US, "%,.0f", goal.targetAmount),
                                                 date.take(10),
                                             )
-                                        } ?: savingsProgressPattern.format("%,.0f".format(goal.currentAmount), "%,.0f".format(goal.targetAmount))
+                                        } ?: savingsProgressPattern.format(String.format(Locale.US, "%,.0f", goal.currentAmount), String.format(Locale.US, "%,.0f", goal.targetAmount))
                                     ) + if (completed) " · Completed 🎉" else "",
                                     "$progressPercent%",
                                     Icons.Outlined.Savings,
@@ -351,7 +352,7 @@ fun BankHubScreen(
                         if ((spendingInsight?.totalSpent?.toDouble() ?: 0.0) > 0.0) {
                             add(
                                 ShellRow(
-                                    "%,.0f RWF".format(spendingInsight?.totalSpent?.toDouble() ?: 0.0),
+                                    String.format(Locale.US, "%,.0f RWF", spendingInsight?.totalSpent?.toDouble() ?: 0.0),
                                     if (spendingTopCategory != null) stringResource(R.string.home_spent_period_category, spendingTopCategory.name) else stringResource(R.string.home_spent_period),
                                     ">",
                                     Icons.Outlined.PieChart,
@@ -386,11 +387,11 @@ fun BankHubScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                             Text(stringResource(R.string.bank_deposit_protection_covered), color = Ids.colors.textSecondary, fontSize = 13.sp)
-                            Text("%,.0f RWF".format(dp.yourCoveredBalance), color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            Text(String.format(Locale.US, "%,.0f RWF", dp.yourCoveredBalance), color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                         }
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(stringResource(R.string.bank_deposit_protection_cap, "%,.0f".format(dp.coverageCapPerUser)), color = Ids.colors.textTertiary, fontSize = 11.sp)
-                        Text(stringResource(R.string.bank_deposit_protection_reserve, "%,.0f".format(dp.fundReserveBalance)), color = Ids.colors.textTertiary, fontSize = 11.sp)
+                        Text(stringResource(R.string.bank_deposit_protection_cap, String.format(Locale.US, "%,.0f", dp.coverageCapPerUser)), color = Ids.colors.textTertiary, fontSize = 11.sp)
+                        Text(stringResource(R.string.bank_deposit_protection_reserve, String.format(Locale.US, "%,.0f", dp.fundReserveBalance)), color = Ids.colors.textTertiary, fontSize = 11.sp)
                     }
                 }
             }

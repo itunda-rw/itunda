@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import java.util.Locale
 import rw.itunda.core.designsystem.components.IdsButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -156,11 +157,11 @@ fun VendorCashAdvanceTab(merchantId: String) {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("You're eligible for", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("${"%,.0f".format(currentOffer.offerAmount)} RWF", style = MaterialTheme.typography.headlineSmall)
+                    Text("${String.format(Locale.US, "%,.0f", currentOffer.offerAmount)} RWF", style = MaterialTheme.typography.headlineSmall)
                     Text(
-                        "One-time fee: ${"%,.0f".format(currentOffer.feeAmount)} RWF -- itunda then collects ${currentOffer.collectionRatePercent}% of your " +
-                            "real daily itunda-collected sales here until ${"%,.0f".format((currentOffer.offerAmount ?: java.math.BigDecimal.ZERO) + (currentOffer.feeAmount ?: java.math.BigDecimal.ZERO))} RWF " +
-                            "is repaid. Based on your real average of ${"%,.0f".format(currentOffer.averageDailySettlement)} RWF/day over your last ${currentOffer.tradingDays} real trading days.",
+                        "One-time fee: ${String.format(Locale.US, "%,.0f", currentOffer.feeAmount)} RWF -- itunda then collects ${currentOffer.collectionRatePercent}% of your " +
+                            "real daily itunda-collected sales here until ${String.format(Locale.US, "%,.0f", (currentOffer.offerAmount ?: java.math.BigDecimal.ZERO) + (currentOffer.feeAmount ?: java.math.BigDecimal.ZERO))} RWF " +
+                            "is repaid. Based on your real average of ${String.format(Locale.US, "%,.0f", currentOffer.averageDailySettlement)} RWF/day over your last ${currentOffer.tradingDays} real trading days.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -185,7 +186,7 @@ fun VendorCashAdvanceTab(merchantId: String) {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        "Your ${"%,.0f".format(currentAdvance.principalAmount)} RWF advance was approved and is ready to disburse to your account.",
+                        "Your ${String.format(Locale.US, "%,.0f", currentAdvance.principalAmount)} RWF advance was approved and is ready to disburse to your account.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -198,7 +199,7 @@ fun VendorCashAdvanceTab(merchantId: String) {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Remaining owed", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("${"%,.0f".format(currentAdvance.remainingOwed)} RWF", style = MaterialTheme.typography.headlineSmall)
+                    Text("${String.format(Locale.US, "%,.0f", currentAdvance.remainingOwed)} RWF", style = MaterialTheme.typography.headlineSmall)
                     val progress = if (currentAdvance.totalOwed.signum() > 0) {
                         ((currentAdvance.totalOwed - currentAdvance.remainingOwed) / currentAdvance.totalOwed).toFloat().coerceIn(0f, 1f)
                     } else 0f
@@ -212,7 +213,7 @@ fun VendorCashAdvanceTab(merchantId: String) {
                         )
                     }
                     Text(
-                        "of ${"%,.0f".format(currentAdvance.totalOwed)} RWF total owed -- ${currentAdvance.collectionRatePercent}% of your real daily " +
+                        "of ${String.format(Locale.US, "%,.0f", currentAdvance.totalOwed)} RWF total owed -- ${currentAdvance.collectionRatePercent}% of your real daily " +
                             "itunda sales is collected automatically" +
                             (currentAdvance.lastCollectionAt?.let { ", last collected ${it.take(10)}" } ?: "") + ".",
                         style = MaterialTheme.typography.bodySmall,

@@ -38,6 +38,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import rw.itunda.core.designsystem.components.IdsIconButton
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
@@ -158,7 +159,7 @@ private fun AccountSwitcherSheet(onDismiss: () -> Unit, onOpenOverview: () -> Un
                         Column(modifier = Modifier.weight(1f)) {
                             Text("${account.provider} · ${account.externalAccountNumberMasked}", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                             Text(
-                                account.demoBalance?.let { "${account.demoBalanceCurrency ?: "RWF"} %,.0f (Demo)".format(it) } ?: stringResource(R.string.home_demo_balance_unavailable),
+                                account.demoBalance?.let { "${account.demoBalanceCurrency ?: "RWF"} " + String.format(Locale.US, "%,.0f (Demo)", it) } ?: stringResource(R.string.home_demo_balance_unavailable),
                                 color = Ids.colors.textSecondary, fontSize = 12.sp,
                             )
                         }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import java.util.Locale
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.MaterialTheme
@@ -78,7 +79,7 @@ fun VoucherRedeemTab() {
         Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(24.dp)) {
             Text("Voucher redeemed", fontWeight = FontWeight.Bold)
             Text(
-                redeemed.productNameSnapshot ?: "%,.0f RWF".format(redeemed.amount),
+                redeemed.productNameSnapshot ?: String.format(Locale.US, "%,.0f RWF", redeemed.amount),
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),

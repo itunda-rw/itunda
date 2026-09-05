@@ -23,6 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import rw.itunda.feature.pay.impl.R
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
@@ -107,7 +108,7 @@ fun PayFundingSourcePicker(
                     ) {
                         Column {
                             Text(accountLabel(account), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text("${account.currency} %,.0f".format(account.balance), color = Ids.colors.textSecondary, fontSize = 12.sp)
+                            Text(String.format(Locale.US, "${account.currency} %,.0f", account.balance), color = Ids.colors.textSecondary, fontSize = 12.sp)
                         }
                         Text("✓", color = Ids.colors.brand, fontWeight = FontWeight.Bold)
                     }
@@ -120,7 +121,7 @@ fun PayFundingSourcePicker(
                         ) {
                             Column {
                                 Text(accountLabel(account), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Text("${account.currency} %,.0f".format(account.balance), color = Ids.colors.textSecondary, fontSize = 12.sp)
+                                Text(String.format(Locale.US, "${account.currency} %,.0f", account.balance), color = Ids.colors.textSecondary, fontSize = 12.sp)
                             }
                             if (account.id == selectedAccountId) Text("✓", color = Ids.colors.brand, fontWeight = FontWeight.Bold)
                         }

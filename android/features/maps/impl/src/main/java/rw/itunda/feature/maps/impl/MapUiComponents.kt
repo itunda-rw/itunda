@@ -2,6 +2,7 @@ package rw.itunda.feature.maps.impl
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -62,7 +63,7 @@ internal fun BusTripResultsView(placeName: String, busSearching: Boolean, busTri
                 ) {
                     Text("${trip.origin} → ${trip.destination}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
                     Text(
-                        "Scheduled · ${trip.departureTime.take(16).replace("T", " ")} · ${trip.availableSeats} seat(s) left · %,.0f RWF/seat".format(trip.farePerSeat),
+                        "Scheduled · ${trip.departureTime.take(16).replace("T", " ")} · ${trip.availableSeats} seat(s) left · " + String.format(Locale.US, "%,.0f RWF/seat", trip.farePerSeat),
                         fontSize = 12.sp, color = Ids.colors.textSecondary,
                     )
                 }

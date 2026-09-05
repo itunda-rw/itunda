@@ -2,6 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -92,7 +93,7 @@ fun SubscriptionsScreen(onBack: () -> Unit) {
                     // Real fix (flat-design sweep): dropped the Card wrapper.
                     Column {
                             Text("Estimated monthly total", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                            Text("${"%,.0f".format(estimatedMonthlyTotal)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+                            Text("${String.format(Locale.US, "%,.0f", estimatedMonthlyTotal)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 24.sp)
                             Text("Detected from your own real payment history, not a linked-card feed.", color = Ids.colors.textSecondary, fontSize = 12.sp)
                     }
                 }
@@ -114,10 +115,10 @@ fun SubscriptionsScreen(onBack: () -> Unit) {
                                     )
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
-                                    Text("${"%,.0f".format(s.amount)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    Text("${String.format(Locale.US, "%,.0f", s.amount)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                     val previous = s.previousAmount
                                     if (s.priceIncreased && previous != null) {
-                                        Text("↑ from ${"%,.0f".format(previous)} RWF", color = Ids.colors.danger, fontSize = 11.sp)
+                                        Text("↑ from ${String.format(Locale.US, "%,.0f", previous)} RWF", color = Ids.colors.danger, fontSize = 11.sp)
                                     }
                                 }
                         }

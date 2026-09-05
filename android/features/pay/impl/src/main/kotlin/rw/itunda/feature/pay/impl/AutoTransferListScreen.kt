@@ -1,6 +1,7 @@
 package rw.itunda.feature.pay.impl
 
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -151,7 +152,7 @@ private fun AutoTransferCard(autoTransfer: AutoTransferDto, onTogglePause: () ->
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(autoTransfer.recipientName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Text("%,.0f RWF".format(autoTransfer.amount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(String.format(Locale.US, "%,.0f RWF", autoTransfer.amount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         }
         val cadence = when (autoTransfer.frequency) {
             AutoTransferFrequency.WEEKLY -> "Weekly"

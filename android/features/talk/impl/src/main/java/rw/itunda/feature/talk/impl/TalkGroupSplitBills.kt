@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import coil.compose.AsyncImage
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
@@ -313,7 +314,7 @@ internal fun GroupSplitBillsView(
                         Text(entry.splitBill.description, fontWeight = FontWeight.SemiBold)
                         val roundLabel = if (entry.splitBill.currentRound > 1) " · Round ${entry.splitBill.currentRound}" else ""
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text("Total ${"%,.0f".format(entry.splitBill.totalAmount)} RWF · ${entry.splitBill.status}", fontSize = 13.sp, color = Ids.colors.textSecondary)
+                            Text("Total ${String.format(Locale.US, "%,.0f", entry.splitBill.totalAmount)} RWF · ${entry.splitBill.status}", fontSize = 13.sp, color = Ids.colors.textSecondary)
                             if (entry.splitBill.mode == "LADDER") {
                                 Text(" ·", fontSize = 13.sp, color = Ids.colors.textSecondary)
                                 DiceGlyph(size = 11.dp)
@@ -323,7 +324,7 @@ internal fun GroupSplitBillsView(
                         }
                         entry.participants.forEach { participant ->
                             val name = members.find { it.userId == participant.userId }?.name ?: participant.userId.take(8)
-                            Text("$name: ${"%,.0f".format(participant.shareAmount)} RWF (${participant.status})", fontSize = 13.sp)
+                            Text("$name: ${String.format(Locale.US, "%,.0f", participant.shareAmount)} RWF (${participant.status})", fontSize = 13.sp)
                         }
                         entry.splitBill.receiptImageUrl?.let { url ->
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -334,7 +335,7 @@ internal fun GroupSplitBillsView(
                         if (myShare != null && myShare.status == "PENDING") {
                             Spacer(modifier = Modifier.height(8.dp))
                             IdsButton(
-                                text = if (busyId == entry.splitBill.id) "Paying…" else "Pay my share (${"%,.0f".format(myShare.shareAmount)} RWF)",
+                                text = if (busyId == entry.splitBill.id) "Paying…" else "Pay my share (${String.format(Locale.US, "%,.0f", myShare.shareAmount)} RWF)",
                                 enabled = busyId == null,
                                 onClick = {
                                     busyId = entry.splitBill.id

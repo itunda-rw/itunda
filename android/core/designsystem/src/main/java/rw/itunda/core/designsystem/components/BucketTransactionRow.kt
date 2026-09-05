@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import rw.itunda.core.designsystem.theme.AccentIndigo
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.BucketTransactionDto
@@ -55,10 +56,10 @@ fun BucketTransactionRow(tx: BucketTransactionDto) {
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(
-                "${if (tx.isCredit) "+" else "-"}%,.0f".format(tx.amount),
+                "${if (tx.isCredit) "+" else "-"}" + String.format(Locale.US, "%,.0f", tx.amount),
                 fontSize = 14.sp, fontWeight = FontWeight.Bold, color = if (tx.isCredit) AccentIndigo else Ids.colors.textPrimary,
             )
-            Text("%,.0f".format(tx.balanceAfter), fontSize = 11.sp, color = Ids.colors.textTertiary, modifier = Modifier.padding(top = 2.dp))
+            Text(String.format(Locale.US, "%,.0f", tx.balanceAfter), fontSize = 11.sp, color = Ids.colors.textTertiary, modifier = Modifier.padding(top = 2.dp))
         }
     }
 }

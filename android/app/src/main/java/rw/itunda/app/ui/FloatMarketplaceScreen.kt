@@ -1,5 +1,6 @@
 package rw.itunda.app.ui
 
+import java.util.Locale
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
 import androidx.activity.compose.BackHandler
@@ -161,7 +162,7 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
             items(myListings, key = { it.id }) { l ->
                 Card(Modifier.fillMaxWidth()) {
                     Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("${"%,.0f".format(l.amount)} RWF offered · ${"%,.0f".format(l.claimedAmount)} claimed · ${l.status}", style = MaterialTheme.typography.bodySmall)
+                        Text("${String.format(Locale.US, "%,.0f", l.amount)} RWF offered · ${String.format(Locale.US, "%,.0f", l.claimedAmount)} claimed · ${l.status}", style = MaterialTheme.typography.bodySmall)
                         if (l.status == "OPEN") {
                             IdsButton(
                                 text = "Cancel",
@@ -196,7 +197,7 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
             items(incomingRequests, key = { it.id }) { r ->
                 Card(Modifier.fillMaxWidth()) {
                     Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("${"%,.0f".format(r.amount)} RWF · ${r.status}", style = MaterialTheme.typography.bodySmall)
+                        Text("${String.format(Locale.US, "%,.0f", r.amount)} RWF · ${r.status}", style = MaterialTheme.typography.bodySmall)
                         if (r.status == "REQUESTED") {
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 IdsButton(
@@ -253,7 +254,7 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
             }
             items(myRequests, key = { it.id }) { r ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("${"%,.0f".format(r.amount)} RWF", style = MaterialTheme.typography.bodySmall)
+                    Text("${String.format(Locale.US, "%,.0f", r.amount)} RWF", style = MaterialTheme.typography.bodySmall)
                     Text(r.status, style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -291,7 +292,7 @@ private fun NearbyListingRow(listing: NearbyFloatListingDto, busy: Boolean, onRe
     Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("${listing.agentDisplayName} · ${"%.1f".format(listing.distanceKm)} km", style = MaterialTheme.typography.bodySmall)
-            Text("${"%,.0f".format(listing.remainingAmount)} RWF available", style = MaterialTheme.typography.bodySmall)
+            Text("${String.format(Locale.US, "%,.0f", listing.remainingAmount)} RWF available", style = MaterialTheme.typography.bodySmall)
         }
         Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount to request", isAmount = true, modifier = Modifier.fillMaxWidth().padding(end = 8.dp))

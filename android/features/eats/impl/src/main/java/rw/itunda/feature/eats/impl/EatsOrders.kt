@@ -1,6 +1,7 @@
 package rw.itunda.feature.eats.impl
 
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -72,7 +73,7 @@ internal fun EatsOrderRow(
                     Text(EATS_STATUS_LABEL[order.status] ?: order.status, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     Text(order.deliveryAddress, color = Ids.colors.textSecondary, fontSize = 12.sp)
                 }
-                Text("%,.0f RWF".format(order.totalAmount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(String.format(Locale.US, "%,.0f RWF", order.totalAmount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
             if (order.status != "DELIVERED" && order.status != "CANCELLED") {
                 // A PICKUP order's deliveryLatitude/Longitude are unconditionally null
@@ -289,7 +290,7 @@ internal fun MyDineInOrdersView() {
                     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Table ${o.tableNumber}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text("%,.0f RWF".format(o.totalAmount), color = Ids.colors.textPrimary, fontSize = 14.sp)
+                            Text(String.format(Locale.US, "%,.0f RWF", o.totalAmount), color = Ids.colors.textPrimary, fontSize = 14.sp)
                         }
                         Text(DINE_IN_STATUS_LABEL[o.status] ?: o.status, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
                         if (o.status == "PLACED") {

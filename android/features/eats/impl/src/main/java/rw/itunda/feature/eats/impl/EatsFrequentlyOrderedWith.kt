@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.FrequentlyOrderedWithItemDto
@@ -51,7 +52,7 @@ internal fun EatsFrequentlyOrderedWith(productId: String, onAdd: (FrequentlyOrde
                     Column(modifier = Modifier.padding(10.dp)) {
                         MenuItemThumb(item.imageUrl, size = 80.dp)
                         Text(item.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
-                        Text("%,.0f RWF".format(item.price), color = Ids.colors.textSecondary, fontSize = 12.sp)
+                        Text(String.format(Locale.US, "%,.0f RWF", item.price), color = Ids.colors.textSecondary, fontSize = 12.sp)
                         Row(
                             modifier = Modifier.padding(top = 6.dp).pressScaleClickable(enabled = item.stockQuantity != 0) { onAdd(item) },
                         ) {

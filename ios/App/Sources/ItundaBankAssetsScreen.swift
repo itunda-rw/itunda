@@ -185,6 +185,7 @@ struct ItundaBankAssetsScreen: View {
 
 private func formatBankAssetAmount(_ value: Double) -> String {
     let formatter = NumberFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
     formatter.numberStyle = .decimal
     formatter.groupingSeparator = ","
     formatter.maximumFractionDigits = 0

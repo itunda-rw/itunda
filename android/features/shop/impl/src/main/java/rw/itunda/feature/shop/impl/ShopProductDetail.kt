@@ -2,6 +2,7 @@ package rw.itunda.feature.shop.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -269,7 +270,7 @@ internal fun MultiCartView(
                         lines.forEach { line ->
                             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("${line.product.name} x${line.quantity}", color = Ids.colors.textPrimary, fontSize = 13.sp)
-                                Text("%,.0f RWF".format(line.product.price * line.quantity), color = Ids.colors.textPrimary, fontSize = 13.sp)
+                                Text(String.format(Locale.US, "%,.0f RWF", line.product.price * line.quantity), color = Ids.colors.textPrimary, fontSize = 13.sp)
                             }
                         }
                     }
@@ -279,7 +280,7 @@ internal fun MultiCartView(
                 Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface).padding(16.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("Total (${groups.size} order${if (groups.size == 1) "" else "s"})", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text("%,.0f RWF".format(grandTotal), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(String.format(Locale.US, "%,.0f RWF", grandTotal), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                     Spacer(modifier = Modifier.height(14.dp))
                     IdsTextField(
@@ -347,7 +348,7 @@ internal fun MultiCartResultsView(results: List<CommerceCheckoutResult>, onDone:
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(r.businessName, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                         if (r.order != null) {
-                            Text("%,.0f RWF — placed".format(r.order.totalAmount), color = Ids.colors.success, fontSize = 13.sp)
+                            Text(String.format(Locale.US, "%,.0f RWF — placed", r.order.totalAmount), color = Ids.colors.success, fontSize = 13.sp)
                         } else {
                             Text(r.error ?: "Failed", color = Ids.colors.danger, fontSize = 13.sp)
                         }

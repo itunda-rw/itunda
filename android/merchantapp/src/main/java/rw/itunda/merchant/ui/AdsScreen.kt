@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import java.util.Locale
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsSegmentedControl
 import androidx.compose.material3.Card
@@ -206,4 +207,4 @@ private fun CreateOrExtendAdCard(onCreated: () -> Unit) {
 // Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
 // convention -- comma thousands-separator for every whole-number RWF amount --
 // never reached the merchantapp module at all).
-private fun formatMoneyAds(value: Int): String = "%,d".format(value)
+private fun formatMoneyAds(value: Int): String = String.format(Locale.US, "%,d", value)

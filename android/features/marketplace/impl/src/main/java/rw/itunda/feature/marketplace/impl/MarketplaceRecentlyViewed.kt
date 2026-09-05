@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.itundaface.ClockGlyph
 import rw.itunda.core.designsystem.theme.Ids
@@ -77,7 +78,7 @@ internal fun RecentlyViewedListingsRail(items: List<RecentlyViewedListingDto>, o
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(rv.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, maxLines = 2)
-                    Text("%,.0f RWF".format(rv.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(String.format(Locale.US, "%,.0f RWF", rv.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
             }
         }

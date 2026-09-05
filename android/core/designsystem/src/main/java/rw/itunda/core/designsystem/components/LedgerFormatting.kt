@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.AccentIndigo
 import rw.itunda.core.designsystem.theme.AccentTeal
@@ -55,7 +56,7 @@ import rw.itunda.core.designsystem.theme.AccentOrange
 // comment) and adds that second line.
 @Composable
 fun AccountLedgerRow(transaction: rw.itunda.core.network.TransactionDto, isOutgoing: Boolean, afterBalance: Double, currency: String, isScrollTouched: Boolean = false, onClick: () -> Unit = {}) {
-    val amountText = "${if (isOutgoing) "-" else "+"}%,.0f $currency".format(transaction.amount)
+    val amountText = "${if (isOutgoing) "-" else "+"}" + String.format(Locale.US, "%,.0f $currency", transaction.amount)
     val amountColor = if (isOutgoing) Ids.colors.textPrimary else Ids.colors.brand
     val (rowIcon, rowIconColor) = ledgerRowIcon(transaction)
     Row(
@@ -78,7 +79,7 @@ fun AccountLedgerRow(transaction: rw.itunda.core.network.TransactionDto, isOutgo
         Spacer(modifier = Modifier.width(8.dp))
         Column(horizontalAlignment = Alignment.End) {
             Text(amountText, color = amountColor, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-            Text("%,.0f $currency".format(afterBalance), color = Ids.colors.textTertiary, fontSize = 12.sp)
+            Text(String.format(Locale.US, "%,.0f $currency", afterBalance), color = Ids.colors.textTertiary, fontSize = 12.sp)
         }
     }
 }

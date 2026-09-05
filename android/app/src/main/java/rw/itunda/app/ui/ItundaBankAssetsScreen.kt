@@ -28,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import rw.itunda.app.R
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
@@ -102,32 +103,32 @@ fun ItundaBankAssetsScreen(onBack: () -> Unit) {
         val backToList = { openRow = null }
         when (row) {
             is BankAssetRow.InterestJarRow -> BucketDetailScreen(
-                title = "Interest Jar", subtitle = "Safe Box", balanceText = "%,.0f RWF".format(row.jar.balance),
+                title = "Interest Jar", subtitle = "Safe Box", balanceText = String.format(Locale.US, "%,.0f RWF", row.jar.balance),
                 fetchTransactions = { NetworkClient.apiService.getInterestJarTransactions().transactions },
                 onBack = backToList,
             )
             is BankAssetRow.GoalRow -> BucketDetailScreen(
-                title = row.goal.name, subtitle = "Savings Goal", balanceText = "%,.0f RWF".format(row.goal.currentAmount),
+                title = row.goal.name, subtitle = "Savings Goal", balanceText = String.format(Locale.US, "%,.0f RWF", row.goal.currentAmount),
                 fetchTransactions = { NetworkClient.apiService.getSavingsGoalTransactions(row.goal.id).transactions },
                 onBack = backToList,
             )
             is BankAssetRow.WeeklyRow -> BucketDetailScreen(
-                title = row.plan.name, subtitle = "26-Week Savings", balanceText = "%,.0f RWF".format(row.plan.currentAmount),
+                title = row.plan.name, subtitle = "26-Week Savings", balanceText = String.format(Locale.US, "%,.0f RWF", row.plan.currentAmount),
                 fetchTransactions = { NetworkClient.apiService.getWeeklySavingsPlanTransactions(row.plan.id).transactions },
                 onBack = backToList,
             )
             is BankAssetRow.Grow31Row -> BucketDetailScreen(
-                title = row.plan.name, subtitle = "31-Day Savings", balanceText = "%,.0f RWF".format(row.plan.totalSaved),
+                title = row.plan.name, subtitle = "31-Day Savings", balanceText = String.format(Locale.US, "%,.0f RWF", row.plan.totalSaved),
                 fetchTransactions = { NetworkClient.apiService.getGrow31SavingsPlanTransactions(row.plan.id).transactions },
                 onBack = backToList,
             )
             is BankAssetRow.UpfrontRow -> BucketDetailScreen(
-                title = "12-Month Deposit", subtitle = "Upfront Interest Deposit", balanceText = "%,.0f RWF".format(row.deposit.principal),
+                title = "12-Month Deposit", subtitle = "Upfront Interest Deposit", balanceText = String.format(Locale.US, "%,.0f RWF", row.deposit.principal),
                 fetchTransactions = { NetworkClient.apiService.getUpfrontDepositTransactions(row.deposit.id).transactions },
                 onBack = backToList,
             )
             is BankAssetRow.YouthRow -> BucketDetailScreen(
-                title = "Youth Account", subtitle = row.account.accountNumber, balanceText = "%,.0f RWF".format(row.account.balance),
+                title = "Youth Account", subtitle = row.account.accountNumber, balanceText = String.format(Locale.US, "%,.0f RWF", row.account.balance),
                 fetchTransactions = {
                     val txs = NetworkClient.apiService.getAccountTransactionHistory(row.account.id).transactions.sortedByDescending { it.createdAt }
                     var runningBalance = row.account.balance
@@ -172,7 +173,7 @@ fun ItundaBankAssetsScreen(onBack: () -> Unit) {
                         horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
                     ) {
                         Text(row.label(), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
-                        Text("%,.0f RWF".format(row.balance()), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+                        Text(String.format(Locale.US, "%,.0f RWF", row.balance()), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
                     }
                 }
             }

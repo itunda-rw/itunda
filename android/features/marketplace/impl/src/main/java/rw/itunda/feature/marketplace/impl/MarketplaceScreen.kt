@@ -7,6 +7,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.components.trackScrollPressedKey
 import androidx.compose.foundation.verticalScroll
@@ -862,7 +863,7 @@ private fun ListingRow(
                     if (listing.price <= 0.0) {
                         Text("Free 🧡", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     } else {
-                        Text("%,.0f RWF".format(listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text(String.format(Locale.US, "%,.0f RWF", listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     }
                 }
             }
@@ -1068,7 +1069,7 @@ private fun ListingDetailScreen(
             if (listing.price <= 0.0) {
                 Text("Free 🧡", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 24.sp)
             } else {
-                Text("%,.0f RWF".format(listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+                Text(String.format(Locale.US, "%,.0f RWF", listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 24.sp)
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
                 WishlistHeart(
@@ -1179,7 +1180,7 @@ private fun ListingDetailScreen(
                     Text("Boost this listing to the top of search results", color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         tiers.toSortedMap(compareBy { it.toInt() }).forEach { (days, price) ->
-                            ListingActionButton(if (boosting) "…" else "${days}d · %,.0f RWF".format(price), boosting, filled = true) {
+                            ListingActionButton(if (boosting) "…" else String.format(Locale.US, "${days}d · %,.0f RWF", price), boosting, filled = true) {
                                 boosting = true
                                 error = null
                                 coroutineScope.launch {

@@ -1,6 +1,7 @@
 package rw.itunda.feature.shop.impl
 
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -202,7 +203,7 @@ internal fun BillingPlanRow(plan: MerchantBillingPlanDto, subscription: Merchant
             Column(modifier = Modifier.weight(1f)) {
                 Text(plan.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 Text(
-                    "%,.0f RWF every ${plan.intervalDays} days".format(plan.amount),
+                    String.format(Locale.US, "%,.0f RWF every ${plan.intervalDays} days", plan.amount),
                     color = Ids.colors.textSecondary, fontSize = 12.sp,
                 )
                 plan.description?.takeIf { it.isNotBlank() }?.let { Text(it, color = Ids.colors.textSecondary, fontSize = 11.sp) }

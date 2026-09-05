@@ -1,6 +1,7 @@
 package rw.itunda.feature.eats.impl
 
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -128,7 +129,7 @@ internal fun PlatformMembershipCard() {
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                if (busy) "…" else "${tier.days} days -- %,d RWF".format(tier.priceRwf),
+                                if (busy) "…" else String.format(Locale.US, "${tier.days} days -- %,d RWF", tier.priceRwf),
                                 color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp,
                             )
                         }
@@ -213,7 +214,7 @@ internal fun EatsMembershipCard() {
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                if (busy) "…" else "${tier.days} days -- %,d RWF".format(tier.priceRwf),
+                                if (busy) "…" else String.format(Locale.US, "${tier.days} days -- %,d RWF", tier.priceRwf),
                                 color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp,
                             )
                         }

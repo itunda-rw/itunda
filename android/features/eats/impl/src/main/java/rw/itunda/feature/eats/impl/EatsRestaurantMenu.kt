@@ -2,6 +2,7 @@ package rw.itunda.feature.eats.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -158,12 +159,12 @@ internal fun RestaurantMenuView(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(p.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("%,.0f RWF".format(p.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text(String.format(Locale.US, "%,.0f RWF", p.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                     val originalPrice = p.originalPrice
                                     if (originalPrice != null && originalPrice > p.price) {
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text(
-                                            "%,.0f RWF".format(originalPrice),
+                                            String.format(Locale.US, "%,.0f RWF", originalPrice),
                                             color = Ids.colors.textTertiary,
                                             fontSize = 11.sp,
                                             textDecoration = TextDecoration.LineThrough,
@@ -230,7 +231,7 @@ internal fun RestaurantMenuView(
                                                         androidx.compose.material3.RadioButton(selected = selected, onClick = { toggle() })
                                                     }
                                                     Text(
-                                                        choice.name + if (choice.priceDelta > 0) " (+%,.0f RWF)".format(choice.priceDelta) else "",
+                                                        choice.name + if (choice.priceDelta > 0) String.format(Locale.US, " (+%,.0f RWF)", choice.priceDelta) else "",
                                                         color = Ids.colors.textPrimary, fontSize = 13.sp,
                                                     )
                                                 }
@@ -276,11 +277,11 @@ internal fun RestaurantMenuView(
                     Row(verticalAlignment = Alignment.Bottom) {
                         if (cartOriginalSubtotal > cartSubtotal) {
                             Text(
-                                "%,.0f RWF".format(cartOriginalSubtotal), color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp,
+                                String.format(Locale.US, "%,.0f RWF", cartOriginalSubtotal), color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp,
                                 textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough, modifier = Modifier.padding(end = 6.dp),
                             )
                         }
-                        Text("%,.0f RWF".format(cartSubtotal), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(String.format(Locale.US, "%,.0f RWF", cartSubtotal), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                 }
             }

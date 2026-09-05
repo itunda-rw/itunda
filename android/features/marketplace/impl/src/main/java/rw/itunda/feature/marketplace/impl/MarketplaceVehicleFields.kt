@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
@@ -124,4 +125,4 @@ private fun VehicleInfoRow(label: String, value: String) {
 // Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
 // convention -- comma thousands-separator for every whole-number RWF amount --
 // never reached this file). Same shape BikeRentalScreen.kt/BusScreen.kt already use.
-private fun formatMoneyVehicle(value: Number): String = "%,d".format(value.toLong())
+private fun formatMoneyVehicle(value: Number): String = String.format(Locale.US, "%,d", value.toLong())

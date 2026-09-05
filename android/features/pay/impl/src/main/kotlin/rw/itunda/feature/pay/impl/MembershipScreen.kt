@@ -32,6 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import rw.itunda.feature.pay.impl.R
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
@@ -107,7 +108,7 @@ fun MembershipScreen(onBack: () -> Unit, onOpenPayMoney: () -> Unit, onOpenRewar
         LazyColumn(modifier = Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal)) {
             item {
                 Text(stringResource(R.string.pay_membership_total), color = Ids.colors.textSecondary, fontSize = 13.sp)
-                Text("%,.0f RWF".format((rewardsTotal ?: 0.0) + (payBalance ?: 0.0)), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 32.sp)
+                Text(String.format(Locale.US, "%,.0f RWF", (rewardsTotal ?: 0.0) + (payBalance ?: 0.0)), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 32.sp)
                 Spacer(Modifier.height(20.dp))
             }
             item {
@@ -116,7 +117,7 @@ fun MembershipScreen(onBack: () -> Unit, onOpenPayMoney: () -> Unit, onOpenRewar
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(stringResource(R.string.pay_membership_available_points), color = Ids.colors.textPrimary, fontSize = 14.sp)
-                    Text("%,.0f RWF".format(rewardsTotal ?: 0.0), color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(String.format(Locale.US, "%,.0f RWF", rewardsTotal ?: 0.0), color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
             }
             item {
@@ -125,7 +126,7 @@ fun MembershipScreen(onBack: () -> Unit, onOpenPayMoney: () -> Unit, onOpenRewar
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(stringResource(R.string.pay_membership_pay_money), color = Ids.colors.textPrimary, fontSize = 14.sp)
-                    Text("%,.0f RWF".format(payBalance ?: 0.0), color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(String.format(Locale.US, "%,.0f RWF", payBalance ?: 0.0), color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
             }
             val balances = loyaltyBalances ?: emptyList()
@@ -137,7 +138,7 @@ fun MembershipScreen(onBack: () -> Unit, onOpenPayMoney: () -> Unit, onOpenRewar
                 items(balances, key = { it.merchantId }) { balance ->
                     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(balance.merchantName, color = Ids.colors.textPrimary, fontSize = 13.sp)
-                        Text("%,.0f".format(balance.pointBalance), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text(String.format(Locale.US, "%,.0f", balance.pointBalance), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
                 }
             }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import java.util.Locale
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -120,10 +121,10 @@ internal fun ProductRow(product: MerchantProductDto, activeDeal: TimeDealViewDto
             ) {
                 Column {
                     Text(product.name, fontWeight = FontWeight.Bold)
-                    val priceLine = "${"%,.0f".format(product.price)} RWF" + (product.durationMinutes?.let { " · ${it} min booking" } ?: "")
+                    val priceLine = "${String.format(Locale.US, "%,.0f", product.price)} RWF" + (product.durationMinutes?.let { " · ${it} min booking" } ?: "")
                     Text(priceLine, style = MaterialTheme.typography.bodySmall)
                     product.originalPrice?.let { original ->
-                        Text("Was ${"%,.0f".format(original)} RWF · ${product.discountPercent ?: 0}% off", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                        Text("Was ${String.format(Locale.US, "%,.0f", original)} RWF · ${product.discountPercent ?: 0}% off", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                     }
                     product.description?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     Text(
@@ -249,7 +250,7 @@ internal fun ProductRow(product: MerchantProductDto, activeDeal: TimeDealViewDto
                     if (activeDeal != null) {
                         val deal = activeDeal.deal
                         Text(
-                            "Running: ${"%,.0f".format(deal.dealPrice)} RWF (was ${"%,.0f".format(deal.originalPrice)}), ${deal.remainingQuantity}/${deal.totalQuantity} left, ends ${deal.endsAt}",
+                            "Running: ${String.format(Locale.US, "%,.0f", deal.dealPrice)} RWF (was ${String.format(Locale.US, "%,.0f", deal.originalPrice)}), ${deal.remainingQuantity}/${deal.totalQuantity} left, ends ${deal.endsAt}",
                             style = MaterialTheme.typography.bodySmall,
                         )
                         androidx.compose.material3.Button(
@@ -278,7 +279,7 @@ internal fun ProductRow(product: MerchantProductDto, activeDeal: TimeDealViewDto
                         )
                         IdsTextField(
                             value = dealPrice, onValueChange = { dealPrice = it },
-                            label = "Deal price (RWF, must be less than ${"%,.0f".format(product.price)})",
+                            label = "Deal price (RWF, must be less than ${String.format(Locale.US, "%,.0f", product.price)})",
                             modifier = Modifier.fillMaxWidth(),
                         )
                         IdsTextField(value = dealQuantity, onValueChange = { dealQuantity = it }, label = "Total quantity", modifier = Modifier.fillMaxWidth())
@@ -387,7 +388,7 @@ internal fun ProductRow(product: MerchantProductDto, activeDeal: TimeDealViewDto
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(group.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
                                     Text(
-                                        group.choices.joinToString(", ") { c -> if (c.priceDelta > 0) "${c.name} (+${"%,.0f".format(c.priceDelta)} RWF)" else c.name },
+                                        group.choices.joinToString(", ") { c -> if (c.priceDelta > 0) "${c.name} (+${String.format(Locale.US, "%,.0f", c.priceDelta)} RWF)" else c.name },
                                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }

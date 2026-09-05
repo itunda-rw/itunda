@@ -1,5 +1,6 @@
 package rw.itunda.feature.credit.impl
 
+import java.util.Locale
 import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -219,7 +220,7 @@ fun VupLoanScreen(onBack: () -> Unit) {
                             }
                             IdsTextField(
                                 value = amount, onValueChange = { amount = it },
-                                label = "Loan amount (RWF, up to ${"%,.0f".format(eligibilityNow.maxAmount)})",
+                                label = "Loan amount (RWF, up to ${String.format(Locale.US, "%,.0f", eligibilityNow.maxAmount)})",
                                 isAmount = true,
                                 modifier = Modifier.fillMaxWidth(),
                             )

@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import kotlinx.coroutines.launch
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
@@ -288,7 +289,7 @@ fun PayTab(
             ) {
                 Text(stringResource(R.string.pay_points_pay_money_row), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("%,.0f RWF".format(rewardsTotal + (accounts.find { it.type == "PAY" }?.balance ?: 0.0)), color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(String.format(Locale.US, "%,.0f RWF", rewardsTotal + (accounts.find { it.type == "PAY" }?.balance ?: 0.0)), color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     Icon(IdsIcons.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp), tint = Ids.colors.textSecondary)
                 }
             }

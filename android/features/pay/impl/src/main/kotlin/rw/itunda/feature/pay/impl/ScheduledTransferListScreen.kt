@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import kotlinx.coroutines.launch
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsButton
@@ -129,7 +130,7 @@ private fun ScheduledTransferCard(transfer: ScheduledTransferDto, onCancel: () -
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(transfer.recipientName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Text("%,.0f RWF".format(transfer.amount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(String.format(Locale.US, "%,.0f RWF", transfer.amount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         }
         Text("Sends ${transfer.scheduledDate}", color = Ids.colors.textSecondary, fontSize = 12.sp)
         Text(transfer.status, color = if (transfer.status == "FAILED") Ids.colors.danger else Ids.colors.textTertiary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)

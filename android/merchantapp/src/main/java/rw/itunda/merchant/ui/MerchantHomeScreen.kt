@@ -1,5 +1,6 @@
 package rw.itunda.merchant.ui
 
+import java.util.Locale
 import rw.itunda.core.designsystem.components.IdsTextField
 
 import androidx.compose.foundation.background
@@ -182,7 +183,7 @@ private fun OrdersTab() {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                         StatusBadge(order.status)
-                        Text("${"%,.0f".format(order.totalAmount)} RWF", fontWeight = FontWeight.Bold)
+                        Text("${String.format(Locale.US, "%,.0f", order.totalAmount)} RWF", fontWeight = FontWeight.Bold)
                     }
                     Text(order.deliveryAddress, style = MaterialTheme.typography.bodySmall)
                     order.deliveryNotes?.takeIf { it.isNotBlank() }?.let {

@@ -2,6 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -279,7 +280,7 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
                                 Text(
-                                    c.link.dailySpendLimit?.let { "Daily limit: ${"%,.0f".format(it)} RWF" } ?: "No daily spend limit set",
+                                    c.link.dailySpendLimit?.let { "Daily limit: ${String.format(Locale.US, "%,.0f", it)} RWF" } ?: "No daily spend limit set",
                                     color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f),
                                 )
                                 Text(
@@ -310,12 +311,12 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                             if (openOverviewFor == c.link.childUserId) {
                                 val o = overview
                                 if (o != null && o.childUserId == c.link.childUserId) {
-                                    Text("Balance: ${"%,.0f".format(o.accountBalance)} RWF", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Text("Balance: ${String.format(Locale.US, "%,.0f", o.accountBalance)} RWF", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                     if (o.recentTransactions.isEmpty()) {
                                         Text("No transactions yet.", color = Ids.colors.textSecondary, fontSize = 12.sp)
                                     } else {
                                         o.recentTransactions.take(5).forEach { t ->
-                                            Text("${t.description} · ${"%,.0f".format(t.amount)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                                            Text("${t.description} · ${String.format(Locale.US, "%,.0f", t.amount)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
                                         }
                                     }
                                     // Real Naver Pay "family shared asset management" --

@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
@@ -266,4 +267,4 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
 // Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
 // convention -- comma thousands-separator for every whole-number RWF amount --
 // never reached this file). Same shape BikeRentalScreen.kt/BusScreen.kt already use.
-private fun formatMoneyTransit(value: Number): String = "%,d".format(value.toLong())
+private fun formatMoneyTransit(value: Number): String = String.format(Locale.US, "%,d", value.toLong())

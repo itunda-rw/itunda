@@ -213,6 +213,7 @@ final class BankViewModel: ObservableObject {
 
     private func formatAmount(_ value: Double, currency: String) -> String {
         let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.numberStyle = .decimal
         formatter.maximumFractionDigits = 0
         formatter.groupingSeparator = ","

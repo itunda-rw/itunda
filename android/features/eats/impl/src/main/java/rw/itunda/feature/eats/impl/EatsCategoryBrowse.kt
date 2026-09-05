@@ -1,6 +1,7 @@
 package rw.itunda.feature.eats.impl
 
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -329,4 +330,4 @@ internal fun eatsLineUnitPrice(item: MerchantProductDto, choiceIds: List<String>
 // Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
 // convention -- comma thousands-separator for every whole-number RWF amount --
 // never reached this file). Same shape BikeRentalScreen.kt/BusScreen.kt already use.
-private fun formatMoneyEatsCategory(value: Number): String = "%,d".format(value.toLong())
+private fun formatMoneyEatsCategory(value: Number): String = String.format(Locale.US, "%,d", value.toLong())

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import java.util.Locale
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
@@ -177,7 +178,7 @@ private fun CouponRow(coupon: MerchantCouponDto, onChanged: () -> Unit) {
             coupon.description?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             Text(
                 buildString {
-                    append(if (coupon.discountType == "PERCENT") "${coupon.discountValue}% off" else "${"%,.0f".format(coupon.discountValue)} RWF off")
+                    append(if (coupon.discountType == "PERCENT") "${coupon.discountValue}% off" else "${String.format(Locale.US, "%,.0f", coupon.discountValue)} RWF off")
                     if (coupon.regularsOnly) append(" · Regulars only")
                     coupon.expiresAt?.let { append(" · Expires ${it.take(10)}") }
                 },

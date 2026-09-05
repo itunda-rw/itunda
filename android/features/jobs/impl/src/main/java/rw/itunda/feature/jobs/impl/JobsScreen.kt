@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -459,7 +460,7 @@ private fun JobPostCard(
         onSuccess = { lat, lng -> myLocation = lat to lng; showRoute = true },
         onError = { error = it },
     )
-    val payLabel = "%,.0f RWF".format(post.payAmount) + if (post.payType == "HOURLY") "/hr" else ""
+    val payLabel = String.format(Locale.US, "%,.0f RWF", post.payAmount) + if (post.payType == "HOURLY") "/hr" else ""
 
     // Real optional worker identification at mark-filled time (2026-07-24) -- see
     // backend JobPostService.markFilled's own doc comment. Confirm with a phone

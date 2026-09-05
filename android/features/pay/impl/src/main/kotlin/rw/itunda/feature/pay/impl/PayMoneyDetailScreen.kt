@@ -2,6 +2,7 @@ package rw.itunda.feature.pay.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.components.rememberCountUp
 import rw.itunda.core.designsystem.components.AccountLedgerRow
@@ -113,7 +114,7 @@ internal fun PayMoneyDetailScreen(
                 Column(modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)) {
                     Text(stringResource(R.string.pay_money_detail_title), fontSize = 13.sp, color = Ids.colors.textSecondary)
                     val animatedBalance = rememberCountUp(account.balance)
-                    Text("%,.0f ${account.currency}".format(animatedBalance), style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
+                    Text(String.format(Locale.US, "%,.0f ${account.currency}", animatedBalance), style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
                 }
             }
             item {

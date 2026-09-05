@@ -3,6 +3,7 @@ package rw.itunda.feature.shop.impl
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.components.trackScrollPressedKey
 import androidx.compose.foundation.horizontalScroll
@@ -684,7 +685,7 @@ fun CommerceShopContent(
                                     if (r.isBestSeller) ShopBestSellerBadge()
                                 }
                             }
-                            Text("%,.0f RWF".format(r.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(String.format(Locale.US, "%,.0f RWF", r.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
                     }
                 }
@@ -743,7 +744,7 @@ fun CommerceShopContent(
                                     if (discountPercent != null && discountPercent > 0) {
                                         Text("$discountPercent% off", color = Ids.colors.danger, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                                     }
-                                    Text("%,.0f RWF".format(rv.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    Text(String.format(Locale.US, "%,.0f RWF", rv.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 }
                             }
                         }
@@ -778,7 +779,7 @@ fun CommerceShopContent(
                                     if (discountPercent != null && discountPercent > 0) {
                                         Text("$discountPercent% off", color = Ids.colors.danger, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                                     }
-                                    Text("%,.0f RWF".format(d.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    Text(String.format(Locale.US, "%,.0f RWF", d.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                     Text(d.stockQuantity?.let { if (it == 0) "Out of stock" else "$it available" } ?: "Available", color = if (d.stockQuantity == 0) Ids.colors.danger else Ids.colors.textSecondary, fontSize = 10.sp)
                                 }
                             }
@@ -815,7 +816,7 @@ fun CommerceShopContent(
                                     }
                                     Spacer(modifier = Modifier.height(6.dp))
                                     Text(v.productName, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, maxLines = 2)
-                                    Text("%,.0f RWF".format(v.deal.dealPrice), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    Text(String.format(Locale.US, "%,.0f RWF", v.deal.dealPrice), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                         StatusBadge(formatTimeDealCountdown(v.deal.endsAt), filled = false, tint = Ids.colors.brand)
                                         if (v.deal.remainingQuantity <= 3) {

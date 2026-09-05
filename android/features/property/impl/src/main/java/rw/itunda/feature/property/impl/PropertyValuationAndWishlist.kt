@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -167,9 +168,9 @@ internal fun PropertyValuationCard(propertyTypes: List<PropertyTypeDto>) {
                 Column(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(12.dp),
                 ) {
-                    Text("%,.0f RWF".format(est.estimatedValue), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+                    Text(String.format(Locale.US, "%,.0f RWF", est.estimatedValue), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 24.sp)
                     Text(
-                        "Based on ${est.comparableCount} comparable listings within ${est.radiusKm.toInt()} km (%,.0f RWF/sqm avg)".format(est.averagePricePerSqm),
+                        String.format(Locale.US, "Based on ${est.comparableCount} comparable listings within ${est.radiusKm.toInt()} km (%,.0f RWF/sqm avg)", est.averagePricePerSqm),
                         color = Ids.colors.textSecondary, fontSize = 12.sp,
                     )
                 }
@@ -185,5 +186,5 @@ internal fun PropertyWishlistView(onRemoved: () -> Unit) {
     // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card -- an
     // entity list a user manages (saved properties), no divider, matching
     // GroupAccountScreen's precedent (docs/UI_UX_GUIDELINES.md §10).
-    when { error != null -> ErrorCard(error!!, onRetry = ::load); favorites == null -> SkeletonBlock(); favorites!!.isEmpty() -> EmptyState("No saved properties yet — tap ♡ on a property to keep it here.", icon = Icons.Outlined.FavoriteBorder); else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { favorites!!.forEach { f -> Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(f.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold); Text("${f.listingType} · %,.0f RWF".format(f.price), color = Ids.colors.textSecondary, fontSize = 12.sp) }; Text("Remove", color = Ids.colors.textPrimary, modifier = Modifier.pressScaleClickable { scope.launch { try { NetworkClient.apiService.removePropertyListingFavorite(f.propertyListingId); favorites = favorites!!.filterNot { it.propertyListingId == f.propertyListingId }; onRemoved() } catch (e: Exception) { error = "Couldn't remove this saved property. Check your connection and try again." } } }) } } } }
+    when { error != null -> ErrorCard(error!!, onRetry = ::load); favorites == null -> SkeletonBlock(); favorites!!.isEmpty() -> EmptyState("No saved properties yet — tap ♡ on a property to keep it here.", icon = Icons.Outlined.FavoriteBorder); else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { favorites!!.forEach { f -> Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(f.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold); Text(String.format(Locale.US, "${f.listingType} · %,.0f RWF", f.price), color = Ids.colors.textSecondary, fontSize = 12.sp) }; Text("Remove", color = Ids.colors.textPrimary, modifier = Modifier.pressScaleClickable { scope.launch { try { NetworkClient.apiService.removePropertyListingFavorite(f.propertyListingId); favorites = favorites!!.filterNot { it.propertyListingId == f.propertyListingId }; onRemoved() } catch (e: Exception) { error = "Couldn't remove this saved property. Check your connection and try again." } } }) } } } }
 }

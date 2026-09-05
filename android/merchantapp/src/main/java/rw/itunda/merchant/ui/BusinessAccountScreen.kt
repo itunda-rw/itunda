@@ -203,7 +203,7 @@ fun BusinessAccountTab() {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Business balance", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("${"%,.0f".format(current.balance)} RWF", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text("${String.format(java.util.Locale.US, "%,.0f", current.balance)} RWF", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     Text(current.accountNumber, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -255,7 +255,7 @@ fun BusinessAccountTab() {
                             Text(entry.createdAt.take(10), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Text(
-                            "${if (entry.direction == "CREDIT") "+" else "-"}${"%,.0f".format(entry.amount)} RWF",
+                            "${if (entry.direction == "CREDIT") "+" else "-"}${String.format(java.util.Locale.US, "%,.0f", entry.amount)} RWF",
                             fontWeight = FontWeight.Bold,
                         )
                     }
@@ -302,14 +302,14 @@ private fun BusinessExpenseSummaryCard() {
                     Text("No business spending yet.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 current != null -> {
-                    Text("${"%,.0f".format(current.totalSpent)} RWF total", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text("${String.format(java.util.Locale.US, "%,.0f", current.totalSpent)} RWF total", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                     current.categories.forEach { cat ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Text(cat.name, style = MaterialTheme.typography.bodyMedium)
-                            Text("${"%,.0f".format(cat.amount)} RWF", style = MaterialTheme.typography.bodyMedium)
+                            Text("${String.format(java.util.Locale.US, "%,.0f", cat.amount)} RWF", style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
