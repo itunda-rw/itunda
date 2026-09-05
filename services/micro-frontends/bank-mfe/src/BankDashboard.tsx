@@ -1156,12 +1156,20 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
   const mainAccount = accounts.find((a) => a.type === 'MAIN');
 
   const handleFacePayToggle = async () => {
+    const wasEnrolled = facePayEnrolled;
     setFacePayBusy(true);
     try {
       if (facePayEnrolled) await revokeFacePay(); else await enrollFacePay();
       setFacePayEnrolled((v) => !v);
     } catch {
-      // Non-critical -- the row just keeps showing the last-known enrollment state.
+      // Real gap found 2026-09-05 (Android's sibling ShopPay.kt Face Pay toggle was
+      // already fixed to surface a real failure message -- this was silent, which is
+      // worse: a security-relevant biometric-payment enrollment failing with zero
+      // feedback could leave the user believing FacePay is on/off when it isn't).
+      // The row's own enrollment state is untouched on failure (setFacePayEnrolled
+      // above only runs after a successful await), so this toast is purely
+      // informational, not correcting a false UI state.
+      showToast(wasEnrolled ? "Couldn't turn off FacePay. Try again." : "Couldn't enroll in FacePay. Try again.");
     } finally {
       setFacePayBusy(false);
     }
