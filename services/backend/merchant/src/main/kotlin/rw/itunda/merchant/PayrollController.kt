@@ -27,8 +27,16 @@ data class AddPayrollEmployeeRequest(val phoneNumber: String, val salaryAmount: 
 /**
  * Real B2B payroll endpoints -- see PayrollService's own doc comment for why this needs
  * no external credentials, unlike the rest of docs/TOSS_PARITY_MATRIX.md's blocked
- * Merchant-row gaps. Roster reads/writes aren't money-moving (no Idempotency-Key);
- * runPayroll is (same convention as /collect, /card/charge).
+ * Merchant-row gaps. runPayroll is real money movement (same convention as /collect,
+ * /card/charge).
+ *
+ * Correction, 2026-09-05 (see feedback_idempotency_key_sweep memory): the "roster
+ * writes aren't money-moving, no Idempotency-Key" reasoning this comment used to give
+ * for addEmployee missed the real risk -- PayrollService.addEmployee is guarded by
+ * EmployeeAlreadyOnRosterException, so a lost-response retry hits that guard
+ * regardless of whether money moved; the uniqueness constraint, not money movement,
+ * is what a retry can trip. Same recurring flaw this sweep already found and fixed
+ * on ForeignCurrencyController/MotoOwnershipController/others.
  */
 @RestController
 @RequestMapping("/api/v1/merchant/payroll")
@@ -39,10 +47,14 @@ class PayrollController(
     @PostMapping("/employees")
     fun addEmployee(
         @RequestBody request: AddPayrollEmployeeRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val employee = payrollService.addEmployee(currentUser.userId, request.phoneNumber, request.salaryAmount)
-        return ResponseEntity.ok(mapOf("success" to true, "employee" to employee))
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/merchant/payroll/employees", idempotencyKey, request) {
+            val employee = payrollService.addEmployee(currentUser.userId, request.phoneNumber, request.salaryAmount)
+            200 to mapOf("success" to true, "employee" to employee)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @GetMapping("/employees")

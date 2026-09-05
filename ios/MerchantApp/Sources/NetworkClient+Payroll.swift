@@ -57,7 +57,7 @@ extension MerchantNetworkClient {
     // Real B2B payroll -- see PayrollController.kt's own doc comment. merchant-mfe/
     // Android already have this; this is the first iOS client.
     func addPayrollEmployee(_ request: AddPayrollEmployeeRequest) async throws -> PayrollEmployeeResponse {
-        try await post("api/v1/merchant/payroll/employees", body: request)
+        try await postWithHeader("api/v1/merchant/payroll/employees", body: request, header: ("Idempotency-Key", UUID().uuidString))
     }
     func getPayrollRoster() async throws -> PayrollRosterResponse { try await get("api/v1/merchant/payroll/employees") }
     func removePayrollEmployee(_ employeeId: String) async throws -> PayrollEmployeeResponse {

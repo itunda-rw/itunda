@@ -749,7 +749,10 @@ interface ApiService {
     // Real B2B payroll -- see PayrollController.kt's own doc comment. merchant-mfe
     // already has this; this is the first native client (Android/iOS).
     @POST("api/v1/merchant/payroll/employees")
-    suspend fun addPayrollEmployee(@Body request: AddPayrollEmployeeRequest): PayrollEmployeeResponse
+    suspend fun addPayrollEmployee(
+        @Body request: AddPayrollEmployeeRequest,
+        @Header("Idempotency-Key") idempotencyKey: String = UUID.randomUUID().toString(),
+    ): PayrollEmployeeResponse
 
     @GET("api/v1/merchant/payroll/employees")
     suspend fun getPayrollRoster(): PayrollRosterResponse

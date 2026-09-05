@@ -574,6 +574,7 @@ export const getMyIdentitySubmissions = () =>
 export const addPayrollEmployee = (phoneNumber: string, salaryAmount: number) =>
   apiFetch<{ success: boolean; employee: PayrollEmployee }>('/api/v1/merchant/payroll/employees', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ phoneNumber, salaryAmount }),
   }).then((r) => r.employee);
 
