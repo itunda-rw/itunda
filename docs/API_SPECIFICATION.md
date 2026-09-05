@@ -729,6 +729,153 @@ no employees), `404 PAYROLL_ROSTER_ENTRY_NOT_FOUND`, `404 PAYROLL_RUN_NOT_FOUND`
 `400 IDEMPOTENCY_KEY_REQUIRED`, `422 INSUFFICIENT_FUNDS` (the merchant's own account
 can't cover the full run), `403 ACCOUNT_FROZEN`.
 
+## Eats — `/api/v1/eats`
+
+**Added 2026-09-05** (part of the standing "~66 remaining undocumented controllers"
+follow-up). Real Baemin/Coupang Eats-style food ordering + delivery. Restaurant
+browsing/menus deliberately reuse the existing `GET /api/v1/shopping/merchants` and
+`GET /api/v1/shopping/merchants/{id}/products` endpoints (a restaurant IS a `Merchant`,
+a menu item IS a `MerchantProduct`) — there is no separate catalog-browsing endpoint
+here. Every endpoint below is confirmed by direct read of `EatsController.kt` (40
+endpoints, 57 error codes).
+
+### Browsing, memberships, riders
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/dishes?category&maxBudget&sortBy` | — | `{success, dishes: [...], ...pageMeta}` | Real Coupang Eats-style dish grid across all restaurants, not scoped to one merchant |
+| POST | `/platform-membership/subscribe` | `{days}` (+ `Idempotency-Key`) | `{success, membership: {...}}` | Real Coupang 와우 (Wow)-style unconditional delivery-fee waiver, platform-wide — distinct from the per-restaurant membership below |
+| GET | `/platform-membership/me` | — | `{success, membership: {...}}` | |
+| POST | `/membership/subscribe` | `{days}` (+ `Idempotency-Key`) | `{success, membership: {...}}` | Real Baemin Club (배민클럽)-style free-delivery membership, per restaurant |
+| GET | `/membership/me` | — | `{success, membership: {...}}` | |
+| POST | `/membership/process-expiry-reminders` | — | `{success, processed}` | ADMIN only — manual trigger for the expiry-reminder scheduler, fires system-wide for every user's expiring memberships |
+| POST | `/riders/register` | — | `201 {success, rider: {...}}` | |
+| GET | `/riders/me` | — | `{success, rider: {...}}` | |
+| POST | `/riders/availability` | `{available}` | `{success, rider: {...}}` | |
+| POST | `/riders/location` | `{latitude, longitude}` | `{success, rider: {...}}` | Backs real nearest-first ranking on `/orders/available` |
+| GET | `/riders/{riderId}/rating` | — | `{success, average, count}` | |
+
+### Orders
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/orders` | `{restaurantId, items, deliveryAddress?, deliveryLatitude?, deliveryLongitude?, deliveryNotes?, fulfillmentType?, scheduledFor?}` (+ `Idempotency-Key`) | `201 {success, order: {...}, items: [...]}` | `fulfillmentType` defaults to `DELIVERY`; a `PICKUP` order needs no delivery address. `scheduledFor` (null = ASAP) is a real 배달의민족 예약주문 (scheduled ordering) time |
+| GET | `/geocode/search?q` | — | `{success, suggestions: [...]}` | Real address-search autocomplete backed by itunda's self-hosted Nominatim |
+| GET | `/orders/my-orders` | — | `{success, orders: [...], ...pageMeta}` | Buyer's own orders. Each order is enriched with `riderName`/`estimatedArrivalMinutes`, resolved at the controller layer |
+| GET | `/orders/restaurant-orders` | — | `{success, orders: [...], ...pageMeta}` | Restaurant owner's incoming orders |
+| GET | `/orders/rider-deliveries` | — | `{success, orders: [...], ...pageMeta}` | Rider's own delivery history |
+| GET | `/orders/available` | — | `{success, orders: [...], ...pageMeta}` | Deliveries an available rider can claim, nearest-first |
+| GET | `/orders/{orderId}` | — | `{success, order: {...}, items: [...]}` | |
+| GET | `/orders/{orderId}/rider-location` | — | `{success, available, location}` | `available: false` (not an error) is the honest response before a rider has been assigned or shared a location yet |
+| POST | `/orders/{orderId}/contact-restaurant` | — | `{success, conversation: {...}}` | Real Uber Eats-style "Live Order Chat" — opens/reuses a real messaging conversation with the restaurant owner |
+| POST | `/orders/{orderId}/status` | `{status, deliveryPhotoUrl?}` | `{success, order: {...}}` | Restaurant-side status transition |
+| POST | `/orders/{orderId}/items/{itemId}/unavailable` | — | `{success, order: {...}}` | Real DoorDash/Uber Eats-style "Item Unavailable" flow |
+| POST | `/orders/{orderId}/complete-pickup` | — | `{success, order: {...}}` | Real Baemin-style 포장주문 (Pickup) terminal transition |
+| POST | `/orders/{orderId}/cancel` | — | `{success, order: {...}}` | Buyer or restaurant, `PLACED` orders only — refunds automatically |
+| POST | `/orders/{orderId}/claim` | — | `{success, order: {...}}` | Rider claims an available delivery |
+| POST | `/orders/{orderId}/decline` | — | `{success, order: {...}}` | Only the rider currently holding the exclusive offer can decline it |
+| POST | `/orders/{orderId}/rider-status` | `{status, deliveryPhotoUrl?}` | `{success, order: {...}}` | Rider-side status transition; `deliveryPhotoUrl` is a real 안심배달 (safe/contactless delivery) proof photo, meaningful only when `status` is `DELIVERED` |
+| POST | `/orders/process-abandoned-deliveries` | — | `{success, processedCount, orders: [...]}` | ADMIN only — manual trigger for the abandoned-delivery scheduler; force-cancels and refunds |
+| POST | `/orders/{orderId}/tip` | `{amount}` (+ `Idempotency-Key`) | `{success, order: {...}}` | Real post-delivery tip, Idempotency-Key required since 2026-09-03 (a legitimate retry must not double-tip) |
+
+### Reviews & favorites
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/orders/{orderId}/review` | `{restaurantRating, restaurantComment?, riderRating?, riderComment?, photoUrl?, goodPoints?}` | `201 {success, review: {...}}` | `riderRating` is nullable — a `PICKUP` order has no rider to rate |
+| POST | `/reviews/{reviewId}/reply` | `{reply}` | `{success, review: {...}}` | Restaurant owner's reply to a review |
+| GET | `/restaurants/{restaurantId}/reviews` | — | `{success, reviews: [...], ...pageMeta}` | |
+| POST | `/reviews/{reviewId}/helpful` | — | `{success, helpful}` | Real Baemin/Coupang-style "도움돼요" (helpful) idempotent toggle |
+| POST | `/reviews/{reviewId}/report` | `{reason, details?}` | `201 {success, report: {...}}` | Real 배달의민족 리뷰 신고하기 (report a review) |
+| GET | `/restaurants/{restaurantId}/rating` | — | `{success, average, count}` | |
+| GET | `/restaurants/{restaurantId}/good-points` | — | `{success, counts, goodPointOptions}` | `goodPointOptions` is the real, fixed vocab clients render the review pill-picker from — never invented client-side |
+| POST | `/restaurants/{restaurantId}/favorite` | — | `201 {success, favorite: {...}}` | Idempotent — adding an already-favorited restaurant just returns the existing row |
+| DELETE | `/restaurants/{restaurantId}/favorite` | — | `{success}` | Idempotent — removing a non-favorited restaurant is not an error |
+| GET | `/favorites` | — | `{success, favorites: [...], ...pageMeta}` | |
+| POST | `/favorites/share` | `{conversationId}` | `201 {success, message: {...}}` | Real Baemin-style 찜 리스트 공유하기 (share favorites list) into an existing chat |
+
+### Errors (complete — all 57 `@ExceptionHandler`s in `EatsController.kt`)
+
+`400 NO_FAVORITES_TO_SHARE`, `404 CONVERSATION_NOT_FOUND`, `404 RESTAURANT_NOT_FOUND`,
+`404 RESTAURANT_ACCOUNT_NOT_FOUND`, `404 ACCOUNT_NOT_FOUND` (buyer, membership, and
+platform-membership account-not-found all share this one code), `400
+INVALID_MEMBERSHIP_DURATION` (both membership and platform-membership durations share
+this code), `400 EMPTY_ORDER`, `400 INVALID_DELIVERY_ADDRESS`, `400
+INVALID_COORDINATES`, `400 INVALID_DELIVERY_NOTES`, `400 INVALID_QUANTITY`, `404
+MENU_ITEM_NOT_FOUND`, `409 MENU_ITEM_SOLD_OUT`, `409 SURPLUS_DEAL_EXPIRED`, `422
+MISSING_REQUIRED_MENU_OPTION`, `400 INVALID_MENU_OPTION_SELECTION`, `400
+SELF_ORDER_NOT_ALLOWED`, `400 RESTAURANT_NOT_ACCEPTING_ORDERS`, `404 ORDER_NOT_FOUND`,
+`409 ORDER_NOT_DELIVERED`, `409 ORDER_ALREADY_TIPPED`, `400 ORDER_TIP_WINDOW_EXPIRED`,
+`400 INVALID_TIP_AMOUNT`, `400 ORDER_NO_RIDER`, `400 CANNOT_MESSAGE_OWN_RESTAURANT`,
+`409 ORDER_NOT_YET_DELIVERED`, `409 ORDER_ALREADY_REVIEWED`, `400 INVALID_RATING`,
+`404 REVIEW_NOT_FOUND`, `400 INVALID_REVIEW_REPLY`, `400 OWN_REVIEW_REPORT`, `409
+REVIEW_ALREADY_REPORTED`, `422 SCHEDULED_ORDERS_NOT_SUPPORTED`, `400
+INVALID_SCHEDULED_ORDER_TIME`, `422 MIN_ORDER_AMOUNT_NOT_MET`, `422
+INVALID_ORDER_CHARGE`, `409 INVALID_ORDER_STATUS_TRANSITION`, `404
+ORDER_ITEM_NOT_FOUND`, `409 ORDER_ITEM_ALREADY_UNAVAILABLE`, `422 CANNOT_EMPTY_ORDER`,
+`409 RIDER_ALREADY_REGISTERED`, `404 RIDER_NOT_REGISTERED`, `404
+RIDER_ACCOUNT_NOT_FOUND`, `400 INVALID_RIDER_LOCATION`, `409 RIDER_NOT_AVAILABLE`,
+`409 DELIVERY_ALREADY_CLAIMED`, `409 RIDER_ALREADY_ON_DELIVERY`, `409
+NO_ACTIVE_OFFER`, `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`, `422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`, `429
+RATE_LIMITED`.
+
+## Eats Dine-In — `/api/v1/eats/dine-in`
+
+**Added 2026-09-05.** Real 배민오더-style table/QR in-store ordering — restaurant
+browsing/menus reuse the same Shopping catalog endpoints Eats itself does. A separate
+domain from delivery/pickup Eats orders above (its own `DineInOrder` entity, its own
+`DineInOrderStatus` lifecycle), not a variant of it. Confirmed by direct read of
+`DineInOrderController.kt` (6 endpoints, 20 error codes).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/orders` | `{restaurantId, tableNumber, items, notes?}` (+ `Idempotency-Key`) | `201 {success, order: {...}, items: [...]}` | |
+| GET | `/orders/my-orders` | — | `{success, orders: [...], ...pageMeta}` | |
+| GET | `/orders/restaurant-orders` | — | `{success, orders: [...], ...pageMeta}` | |
+| GET | `/orders/{orderId}` | — | `{success, order: {...}, items: [...]}` | |
+| POST | `/orders/{orderId}/status` | `{status}` | `{success, order: {...}}` | |
+| POST | `/orders/{orderId}/cancel` | — | `{success, order: {...}}` | |
+
+Errors (all 20 real `@ExceptionHandler`s in `DineInOrderController.kt`):
+`404 RESTAURANT_NOT_FOUND`, `404 RESTAURANT_ACCOUNT_NOT_FOUND`, `404 ACCOUNT_NOT_FOUND`,
+`400 EMPTY_ORDER`, `400 RESTAURANT_NOT_ACCEPTING_ORDERS`, `400 INVALID_TABLE_NUMBER`,
+`400 INVALID_QUANTITY`, `404 MENU_ITEM_NOT_FOUND`, `409 MENU_ITEM_SOLD_OUT`,
+`409 SURPLUS_DEAL_EXPIRED`, `422 MISSING_REQUIRED_MENU_OPTION`,
+`400 INVALID_MENU_OPTION_SELECTION`, `400 SELF_ORDER_NOT_ALLOWED`,
+`404 ORDER_NOT_FOUND`, `409 INVALID_ORDER_STATUS_TRANSITION`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`, `422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`.
+
+## Eats Group Orders — `/api/v1/eats/group-orders`
+
+**Added 2026-09-05.** Real 배달의민족 함께주문 (Baemin "Together Order") — a
+pre-checkout shared-cart layer in front of the existing, unchanged
+`POST /api/v1/eats/orders`; `finalize` below is the only endpoint that actually places
+a real order and moves money. Confirmed by direct read of `GroupEatsOrderController.kt`
+(6 endpoints, 22 error codes).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | `{restaurantId, deliveryAddress?, deliveryLatitude?, deliveryLongitude?, fulfillmentType?}` | `201 {success, groupOrder: {...}}` | Creates the group order and returns a real join code |
+| POST | `/join` | `{joinCode}` | `{success, groupOrder: {...}}` | |
+| GET | `/{groupOrderId}` | — | `{success, groupOrder: {...}, grandTotal, participants: [...]}` | Each participant's own subtotal and item lines |
+| POST | `/{groupOrderId}/items` | `{items}` | `{success, groupOrder: {...}, grandTotal, participants: [...]}` | Sets (replaces) the calling participant's own item list; returns the same shape as `GET /{groupOrderId}` |
+| POST | `/{groupOrderId}/finalize` | — (+ `Idempotency-Key`) | `201 {success, order: {...}, items: [...]}` | Host-only. Places one real combined order via the unchanged `EatsOrderService.placeOrder`, then posts real split-bill requests to every participant — money-moving, so `Idempotency-Key` is required |
+| POST | `/{groupOrderId}/cancel` | — | `{success, groupOrder: {...}}` | Host-only |
+
+Errors (all 22 real `@ExceptionHandler`s in `GroupEatsOrderController.kt`):
+`404 GROUP_ORDER_NOT_FOUND`, `409 GROUP_ORDER_NOT_OPEN`, `403 NOT_GROUP_ORDER_HOST`,
+`400 GROUP_ORDER_EMPTY`, `404 INVALID_JOIN_CODE`, `404 RESTAURANT_NOT_FOUND`,
+`404 RESTAURANT_ACCOUNT_NOT_FOUND`, `404 ACCOUNT_NOT_FOUND`,
+`400 INVALID_DELIVERY_ADDRESS`, `400 INVALID_COORDINATES`, `400 INVALID_QUANTITY`,
+`404 MENU_ITEM_NOT_FOUND`, `422 MIN_ORDER_AMOUNT_NOT_MET`, `400 SELF_ORDER_NOT_ALLOWED`,
+`422 MISSING_REQUIRED_MENU_OPTION`, `400 INVALID_MENU_OPTION_SELECTION`,
+`400 EMPTY_ORDER`, `400 INSUFFICIENT_FUNDS` (note: `400`, not the `422` every other
+Eats/DineIn controller above uses for this same code — a real, minor inconsistency,
+not yet unified), `403 ACCOUNT_FROZEN`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `429 RATE_LIMITED`.
+
 ## Face Pay — `/api/v1/facepay`
 
 Built and live-verified 2026-07-13, closing docs/TOSS_PARITY_MATRIX.md's Face Pay row —
