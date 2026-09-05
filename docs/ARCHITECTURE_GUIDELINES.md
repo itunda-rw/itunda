@@ -29,6 +29,22 @@ against each other — don't chase one at the expense of the others:
   "DRY" fix that merges two superficially-similar-but-semantically-separate flows into one
   shared function is itself the anti-pattern, not an improvement.
 
+  **How to tell the difference before merging (2026-09-05, real dated finding)**: a
+  repo-wide sweep for duplicated small formatter helpers (`formatMoney*`/`formatAmount`)
+  found 21 copies on Android, 74 definitions across 74 files on iOS, and 5 on the backend
+  — genuinely the SAME concept (format a money amount with thousands separators),
+  confirmed by extracting and diffing every body first, not by name alone. Those were
+  safe to consolidate (see `MoneyFormatting.kt`/`MoneyFormatting.swift` in each
+  platform's designsystem module) because the bodies were identical or trivially,
+  behaviorally-identically different (e.g. `.rounded(.down)` vs `.rounded(.towardZero)`,
+  inert for the always-positive real values here). The same sweep correctly left
+  `BankViewModel.swift`'s `formatAmount(Double, currency:)` and
+  `ForeignCurrencyAccountService`'s currency-whitelist checks alone — different real
+  shape, not the same concept wearing a similar name. **The rule: diff the actual
+  bodies before merging, every time** — matching names is a lead to investigate, never
+  sufficient justification on its own; identical/near-identical bodies solving the
+  identical problem is what makes a merge safe, not a shared name.
+
 **Enforced today**: `no-nested-ternary` is a real, live `oxlint` rule (`warn`, CI-safe) in
 every workspace's `.oxlintrc.json` — 163 pre-existing violations in bank-mfe are a tracked
 backlog, not yet fixed. Before proposing a NEW lint rule, verify it actually fires (`yarn
