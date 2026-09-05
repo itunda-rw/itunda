@@ -306,7 +306,7 @@ private fun IkiminaDetailContent(id: String) {
         busy = true
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.inviteIkiminaMember(id, InviteIkiminaMemberRequest(phoneNumber.trim()))
+                NetworkClient.apiService.inviteIkiminaMember(id, InviteIkiminaMemberRequest(phoneNumber.trim()), java.util.UUID.randomUUID().toString())
                 phoneNumber = ""
                 error = null
                 load()

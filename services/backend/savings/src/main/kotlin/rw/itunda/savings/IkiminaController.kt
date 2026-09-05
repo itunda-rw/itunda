@@ -46,14 +46,22 @@ class IkiminaController(
     fun get(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true) + ikiminaService.getIkimina(currentUser.userId, id).toMap())
 
+    // Real gap found 2026-09-05 (feedback_idempotency_key_sweep re-audit, same class
+    // as GroupAccountController.invite's identical fix) -- a lost response after a
+    // successful invite would resubmit here and hit IkiminaAlreadyMemberException on
+    // the retry. contribute/payout below were already protected; this was the outlier.
     @PostMapping("/{id}/members")
     fun invite(
         @PathVariable id: String,
         @RequestBody request: InviteIkiminaMemberRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val member = ikiminaService.inviteMember(currentUser.userId, id, request.phoneNumber)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "member" to member))
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/ikiminas/$id/members", idempotencyKey, request) {
+            val member = ikiminaService.inviteMember(currentUser.userId, id, request.phoneNumber)
+            HttpStatus.CREATED.value() to mapOf("success" to true, "member" to member)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @PostMapping("/{id}/start")

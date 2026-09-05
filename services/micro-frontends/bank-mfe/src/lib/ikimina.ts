@@ -67,6 +67,7 @@ export const fetchIkimina = (id: string) =>
 export const inviteIkiminaMember = (id: string, phoneNumber: string) =>
   apiFetch<{ success: boolean; member: IkiminaMember }>(`/api/v1/ikiminas/${id}/members`, {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ phoneNumber }),
   }).then((r) => r.member);
 

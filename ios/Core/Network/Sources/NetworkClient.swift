@@ -2132,7 +2132,7 @@ extension NetworkClient {
     public func getIkimina(id: String) async throws -> IkiminaDetailResponse { try await get("api/v1/ikiminas/\(id)") }
 
     public func inviteIkiminaMember(id: String, phoneNumber: String) async throws -> InviteIkiminaMemberResponse {
-        try await authenticatedPostWithCode("api/v1/ikiminas/\(id)/members", body: InviteIkiminaMemberRequest(phoneNumber: phoneNumber))
+        try await authenticatedPostWithCode("api/v1/ikiminas/\(id)/members", body: InviteIkiminaMemberRequest(phoneNumber: phoneNumber), idempotencyKey: UUID().uuidString)
     }
 
     public func startIkiminaCycle(id: String) async throws -> CreateIkiminaResponse {

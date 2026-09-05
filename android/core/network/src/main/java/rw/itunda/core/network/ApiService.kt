@@ -4995,7 +4995,11 @@ interface ApiService {
     suspend fun getIkimina(@Path("id") id: String): IkiminaDetailResponse
 
     @POST("api/v1/ikiminas/{id}/members")
-    suspend fun inviteIkiminaMember(@Path("id") id: String, @Body request: InviteIkiminaMemberRequest): InviteIkiminaMemberResponse
+    suspend fun inviteIkiminaMember(
+        @Path("id") id: String,
+        @Body request: InviteIkiminaMemberRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): InviteIkiminaMemberResponse
 
     @POST("api/v1/ikiminas/{id}/start")
     suspend fun startIkiminaCycle(@Path("id") id: String): CreateIkiminaResponse
