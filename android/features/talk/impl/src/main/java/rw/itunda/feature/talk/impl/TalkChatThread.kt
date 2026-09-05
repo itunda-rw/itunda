@@ -406,7 +406,7 @@ internal fun ChatThreadView(
                         onExtendVoucher = { voucherId ->
                             coroutineScope.launch {
                                 try {
-                                    NetworkClient.apiService.extendGiftVoucherExpiry(voucherId)
+                                    NetworkClient.apiService.extendGiftVoucherExpiry(voucherId, java.util.UUID.randomUUID().toString())
                                     loadVouchers()
                                 } catch (_: Exception) {
                                     error = "Couldn't extend this voucher. Try again."

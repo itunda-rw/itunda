@@ -6236,7 +6236,7 @@ extension NetworkClient {
     }
 
     public func extendGiftVoucherExpiry(voucherId: String) async throws -> GiftVoucherResponse {
-        try await authenticatedPostWithCode("api/v1/gift-vouchers/\(voucherId)/extend", body: EmptyBody())
+        try await authenticatedPostWithCode("api/v1/gift-vouchers/\(voucherId)/extend", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     // Real Naver Smart Store-style "알림받기" (follow a store) -- first iOS client for

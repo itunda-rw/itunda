@@ -97,12 +97,22 @@ class GiftVoucherController(
     ): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "vouchers" to giftVoucherService.getVouchersForConversation(currentUser.userId, conversationId)))
 
+    // Real gap found 2026-09-05 (feedback_idempotency_key_sweep re-audit) -- a lost
+    // response after a successful extend would resubmit here and hit
+    // GiftVoucherAlreadyExtendedException on the retry, a confusing conflict for an
+    // extension that actually already succeeded. redeem below was already
+    // protected; this was the outlier.
     @PostMapping("/{id}/extend")
     fun extendExpiry(
         @PathVariable id: String,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
-    ): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "voucher" to giftVoucherService.extendExpiry(currentUser.userId, id)))
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/gift-vouchers/$id/extend", idempotencyKey, id) {
+            200 to mapOf("success" to true, "voucher" to giftVoucherService.extendExpiry(currentUser.userId, id))
+        }
+        return ResponseEntity.status(status).body(body)
+    }
 
     // Real merchant-side redemption -- see GiftVoucherService.redeemVoucher's own doc
     // comment for why this is merchant-authenticated, not recipient self-serve.

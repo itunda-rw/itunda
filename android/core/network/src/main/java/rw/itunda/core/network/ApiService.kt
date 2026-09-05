@@ -3756,7 +3756,7 @@ interface ApiService {
     suspend fun getGiftVouchersForConversation(@Path("id") conversationId: String): GiftVouchersResponse
 
     @POST("api/v1/gift-vouchers/{id}/extend")
-    suspend fun extendGiftVoucherExpiry(@Path("id") voucherId: String): GiftVoucherResponse
+    suspend fun extendGiftVoucherExpiry(@Path("id") voucherId: String, @Header("Idempotency-Key") idempotencyKey: String): GiftVoucherResponse
 
     // Real Naver Smart Store-style "알림받기" (follow a store) -- first Android client
     // for this feature (item 117, found via a content-grep sweep: bank-mfe has it,

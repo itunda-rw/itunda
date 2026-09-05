@@ -44,7 +44,10 @@ export const fetchGiftVouchersForConversation = (conversationId: string) =>
   apiFetch<{ success: boolean; vouchers: GiftVoucher[] }>(`/api/v1/gift-vouchers/conversations/${conversationId}`).then((r) => r.vouchers);
 
 export const extendGiftVoucherExpiry = (voucherId: string) =>
-  apiFetch<{ success: boolean; voucher: GiftVoucher }>(`/api/v1/gift-vouchers/${voucherId}/extend`, { method: 'POST' }).then((r) => r.voucher);
+  apiFetch<{ success: boolean; voucher: GiftVoucher }>(`/api/v1/gift-vouchers/${voucherId}/extend`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  }).then((r) => r.voucher);
 
 // Real merchant-side redemption UI (2026-08-16) -- the terminal step of this feature
 // had zero client anywhere: a recipient could receive a voucher but no merchant could
