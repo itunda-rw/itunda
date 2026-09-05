@@ -1629,30 +1629,6 @@ const RAW_RUNTIME_STATE =
         ],\
         "linkType": "SOFT"\
       }],\
-      ["virtual:f2b1ccb8b9acc48436883e48d4c567d45a523bbb4764678b88c1fb0887225707a80d07513d0183e1f15498925175cf38296edca83ab0431ed824b72f53538625#npm:11.18.2", {\
-        "packageLocation": "./.yarn/__virtual__/framer-motion-virtual-f6392b0a1e/2/.yarn/berry/cache/framer-motion-npm-11.18.2-badab02ede-10c0.zip/node_modules/framer-motion/",\
-        "packageDependencies": [\
-          ["@emotion/is-prop-valid", null],\
-          ["@types/emotion__is-prop-valid", null],\
-          ["@types/react", "npm:19.2.17"],\
-          ["@types/react-dom", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:19.2.3"],\
-          ["framer-motion", "virtual:f2b1ccb8b9acc48436883e48d4c567d45a523bbb4764678b88c1fb0887225707a80d07513d0183e1f15498925175cf38296edca83ab0431ed824b72f53538625#npm:11.18.2"],\
-          ["motion-dom", "npm:11.18.1"],\
-          ["motion-utils", "npm:11.18.1"],\
-          ["react", "npm:19.2.7"],\
-          ["react-dom", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:19.2.7"],\
-          ["tslib", "npm:2.8.1"]\
-        ],\
-        "packagePeers": [\
-          "@emotion/is-prop-valid",\
-          "@types/emotion__is-prop-valid",\
-          "@types/react-dom",\
-          "@types/react",\
-          "react-dom",\
-          "react"\
-        ],\
-        "linkType": "HARD"\
-      }],\
       ["virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:11.18.2", {\
         "packageLocation": "./.yarn/__virtual__/framer-motion-virtual-1277f38795/2/.yarn/berry/cache/framer-motion-npm-11.18.2-badab02ede-10c0.zip/node_modules/framer-motion/",\
         "packageDependencies": [\
@@ -2389,7 +2365,6 @@ const RAW_RUNTIME_STATE =
           ["@types/react", "npm:19.2.17"],\
           ["@types/react-dom", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:19.2.3"],\
           ["@vitejs/plugin-react", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:6.0.3"],\
-          ["es-toolkit", "npm:1.49.0"],\
           ["maplibre-gl", "npm:4.7.1"],\
           ["maps-mfe", "workspace:services/micro-frontends/maps-mfe"],\
           ["oxlint", "virtual:b8ff5402e982b8ed9596db3ac35c94f3ce99202243034da986f5ead687ac240a0f7cc0d2349ef0d4a8db361a93ff6303b573638f1423c9aee0e1f39970e14466#npm:1.73.0"],\
@@ -2440,7 +2415,6 @@ const RAW_RUNTIME_STATE =
           ["@types/react", "npm:19.2.17"],\
           ["@types/react-dom", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:19.2.3"],\
           ["@vitejs/plugin-react", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:6.0.3"],\
-          ["framer-motion", "virtual:f2b1ccb8b9acc48436883e48d4c567d45a523bbb4764678b88c1fb0887225707a80d07513d0183e1f15498925175cf38296edca83ab0431ed824b72f53538625#npm:11.18.2"],\
           ["lucide-react", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:0.454.0"],\
           ["merchant-mfe", "workspace:services/micro-frontends/merchant-mfe"],\
           ["overlay-kit", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:1.9.0"],\
@@ -2677,7 +2651,6 @@ const RAW_RUNTIME_STATE =
           ["@types/react", "npm:19.2.17"],\
           ["@types/react-dom", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:19.2.3"],\
           ["@vitejs/plugin-react", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:6.0.3"],\
-          ["framer-motion", "virtual:f2b1ccb8b9acc48436883e48d4c567d45a523bbb4764678b88c1fb0887225707a80d07513d0183e1f15498925175cf38296edca83ab0431ed824b72f53538625#npm:11.18.2"],\
           ["lucide-react", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:0.454.0"],\
           ["ops-mfe", "workspace:services/micro-frontends/ops-mfe"],\
           ["overlay-kit", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:1.9.0"],\
