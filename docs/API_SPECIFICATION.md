@@ -78,6 +78,21 @@ an invalid referral code fails loudly rather than silently registering with no a
 `400 NO_EMAIL_ON_FILE`, `409 EMAIL_ALREADY_VERIFIED`, `400 INVALID_VERIFICATION_TOKEN` (bogus,
 expired, already-used, or belongs to a different user — profile endpoints only).
 
+## USSD — `/api/v1/ussd`
+
+**Added 2026-09-05, same slice.** Real USSD basic-banking access — a feature-phone
+entry point alongside the app, for a real Africa's Talking-style USSD gateway to call
+server-to-server. Confirmed by direct read of `UssdController.kt` (2 endpoints, 3
+error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/session` (form-encoded, `text/plain` response) | form fields `sessionId`, `phoneNumber`, `text?` | plain-text `CON ...` (more menu) or `END ...` (session done) | Called by the gateway itself, not a logged-in itunda user — `permitAll`'d in `SecurityConfig`. Gated instead by an `X-Ussd-Gateway-Secret` header, compared with `MessageDigest.isEqual` (constant-time — a real fix, 2026-09-04, for a plain `!=` string-compare timing side-channel). Empty `gatewaySecret` (the dev/CI default) disables the check entirely; a real deployment sets `USSD_GATEWAY_SECRET` |
+| POST | `/pin` | `{pin}` | `201 {success}` | Sets the caller's own USSD PIN, over the normal authenticated JWT gate (not the gateway-secret one above) |
+
+Errors (all 3 real `@ExceptionHandler`s): `400 INVALID_PIN`,
+`401 USSD_GATEWAY_UNAUTHORIZED`, `429 RATE_LIMITED`.
+
 ## Overview — `/api/v1/overview`
 
 Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s Account aggregation
@@ -487,6 +502,26 @@ Errors: `409 DESIGNATED_DRIVER_ALREADY_REGISTERED`, `404 ACCOUNT_NOT_FOUND`,
 `409 INVALID_DESIGNATED_DRIVER_STATUS_TRANSITION`, `422 INSUFFICIENT_FUNDS`,
 `429 RATE_LIMITED`, `409 IDEMPOTENCY_KEY_CONFLICT`,
 `409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`.
+
+## Ride Trusted Contacts — `/api/v1/rides/trusted-contacts`
+
+**Added 2026-09-05, same slice.** Real Uber Safety "Trusted Contacts" — a persistent
+contact list set up once, distinct from the main `RideController`'s own per-trip
+"Send Status" share (`/api/v1/rides/trips/{tripId}/send-status`, not yet documented on
+this page — `RideController.kt` itself remains a real, sizeable documentation gap not
+attempted in this slice). Extracted into its own controller once `RideController.kt`
+first crossed the file-size-lint guideline. Confirmed by direct read of
+`RideTrustedContactController.kt` (3 endpoints, 5 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `` (base path) | — | `{success, contacts: [...]}` | |
+| POST | `` (base path) | `{phoneNumber, name}` | `201 {success, contact: {...}}` | Capped at a small fixed maximum (see `TOO_MANY_TRUSTED_CONTACTS` below) |
+| DELETE | `/{contactId}` | — | `{success}` | |
+
+Errors (all 5 real `@ExceptionHandler`s): `404 TRUSTED_CONTACT_NOT_FOUND`,
+`404 TRUSTED_CONTACT_RECIPIENT_NOT_FOUND`, `400 CANNOT_ADD_SELF_AS_TRUSTED_CONTACT`,
+`409 TRUSTED_CONTACT_ALREADY_ADDED`, `409 TOO_MANY_TRUSTED_CONTACTS`.
 
 ## Vehicle Inspections — `/api/v1/marketplace/inspections`
 
@@ -1026,6 +1061,20 @@ As of 2026-07-13, real budget-threshold alerts (`BUDGET_NEAR`/`BUDGET_OVER`, see
 below) are the only thing in this backend that actually writes to this table outside of demo
 seed data.
 
+## Device Tokens — `/api/v1/notifications/device-tokens`
+
+**Added 2026-09-05, same slice.** Real push-notification device-token registration.
+Confirmed by direct read of `DeviceTokenController.kt` (2 endpoints, no
+`@ExceptionHandler`s of its own).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | `{platform, token}` | `201 {success, deviceToken: {...}}` | Not `Idempotency-Key`-protected — a real client-generated `token` is already its own natural idempotency key (a unique DB constraint on `token` makes a repeat call a real no-op upsert, never a duplicate row). Re-registering an existing token under a different caller overwrites `userId` — a deliberate device-handoff behavior, not a bug |
+| DELETE | `/{token}` | — | `{success}` | Silently no-ops if the token doesn't exist or belongs to a different user — never leaks which |
+
+No documented error codes — every real failure mode here degrades to a silent no-op by
+design rather than a thrown exception.
+
 ## Discover — `/api/v1/discover`
 
 | Method | Path | Notes |
@@ -1329,6 +1378,31 @@ read of `ResumeController.kt` (9 endpoints, 2 error codes).
 | DELETE | `/certification/{certificationId}` | — | `{success}` | |
 
 Errors (both real `@ExceptionHandler`s): `400 INVALID_RESUME`, `404 RESUME_ENTRY_NOT_FOUND`.
+
+## Knowledge — `/api/v1/knowledge`
+
+**Added 2026-09-05** (ninth documentation slice). Real Naver 지식iN (Knowledge iN)-style
+open-topic community Q&A — post a question, others answer, the asker adopts one
+answer which counts toward the answerer's reputation. Confirmed by direct read of
+`KnowledgeController.kt` (10 endpoints, 7 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/categories` | — | `{success, categories: [...]}` | |
+| POST | `/questions` | `{category, title, body}` | `201 {success, question: {...}}` | |
+| GET | `/questions?category` | — | `{success, questions: [...], ...pageMeta}` | |
+| GET | `/questions/my-questions` | — | `{success, questions: [...], ...pageMeta}` | |
+| GET | `/answers/my-answers` | — | `{success, answers: [...], ...pageMeta}` | |
+| GET | `/reputation/me` | — | `{success, adoptedAnswerCount}` | |
+| GET | `/questions/{questionId}` | — | `{success, question: {...}}` | |
+| GET | `/questions/{questionId}/answers` | — | `{success, answers: [...]}` | |
+| POST | `/questions/{questionId}/answers` | `{body}` | `201 {success, answer: {...}}` | |
+| POST | `/questions/{questionId}/answers/{answerId}/adopt` | — | `{success, answer: {...}}` | Question-asker-only. One adopted answer per question |
+
+Errors (all 7 real `@ExceptionHandler`s): `400 INVALID_KNOWLEDGE_QUESTION`,
+`400 INVALID_KNOWLEDGE_ANSWER`, `404 KNOWLEDGE_QUESTION_NOT_FOUND`,
+`404 KNOWLEDGE_ANSWER_NOT_FOUND`, `400 KNOWLEDGE_ANSWER_NOT_FOR_QUESTION`,
+`409 KNOWLEDGE_QUESTION_ALREADY_HAS_ADOPTED_ANSWER`, `429 RATE_LIMITED`.
 
 ## Family Link — `/api/v1/family`
 
