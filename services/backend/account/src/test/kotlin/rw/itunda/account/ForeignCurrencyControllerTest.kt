@@ -8,6 +8,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import org.springframework.http.HttpStatus
+import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.CurrencyConversion
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.security.CurrentUser
@@ -26,6 +27,57 @@ import java.math.BigDecimal
 class ForeignCurrencyControllerTest : BehaviorSpec({
 
     val currentUser = CurrentUser(userId = "user_1")
+
+    Given("a first-time open-foreign-account request") {
+        val service = mockk<ForeignCurrencyAccountService>()
+        val idempotencyService = mockk<IdempotencyService>()
+        val controller = ForeignCurrencyController(service, idempotencyService)
+
+        val account = mockk<Account>(relaxed = true)
+        every { service.openAccount("user_1", "USD") } returns account
+
+        val actionSlot = slot<() -> Pair<Int, Map<String, Any?>>>()
+        every {
+            idempotencyService.replayOrExecute(
+                "POST /api/v1/account/foreign-currency/accounts",
+                "key-1",
+                any(),
+                capture(actionSlot),
+            )
+        } answers { actionSlot.captured.invoke() }
+
+        When("opening the account") {
+            val response = controller.openAccount(OpenForeignAccountRequest("USD"), "key-1", currentUser)
+
+            Then("it routes through the real idempotency service, keyed to this exact route") {
+                verify(exactly = 1) {
+                    idempotencyService.replayOrExecute("POST /api/v1/account/foreign-currency/accounts", "key-1", any(), any())
+                }
+                verify(exactly = 1) { service.openAccount("user_1", "USD") }
+                response.statusCode shouldBe HttpStatus.CREATED
+                response.body?.get("account") shouldBe account
+            }
+        }
+    }
+
+    Given("a retried open-foreign-account request using the same Idempotency-Key as a completed one") {
+        val service = mockk<ForeignCurrencyAccountService>()
+        val idempotencyService = mockk<IdempotencyService>()
+        val controller = ForeignCurrencyController(service, idempotencyService)
+
+        every {
+            idempotencyService.replayOrExecute("POST /api/v1/account/foreign-currency/accounts", "key-1", any(), any())
+        } returns (201 to mapOf("success" to true, "account" to "cached-result"))
+
+        When("retrying with the same key") {
+            val response = controller.openAccount(OpenForeignAccountRequest("USD"), "key-1", currentUser)
+
+            Then("the cached response is returned and the account is never opened again") {
+                response.body?.get("account") shouldBe "cached-result"
+                verify(exactly = 0) { service.openAccount(any(), any()) }
+            }
+        }
+    }
 
     Given("a first-time currency conversion request") {
         val service = mockk<ForeignCurrencyAccountService>()
