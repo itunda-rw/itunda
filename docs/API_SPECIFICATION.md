@@ -173,6 +173,63 @@ Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
 (the simulated provider connector declined the rail), `400 INVALID_REQUEST`,
 `429 RATE_LIMITED`.
 
+## Foreign Currency — `/api/v1/account/foreign-currency`
+
+**Added 2026-09-05.** Real 토스뱅크 외화통장 (foreign-currency account) equivalent —
+see `ForeignCurrencyAccountService`'s own doc comment. Scoped to USD/EUR/GBP. A
+conversion moves real money entirely between the caller's OWN RWF and foreign-
+currency accounts at a real live mid-market rate plus a transparent 1.5% margin —
+not a cross-border receiving/SWIFT rail.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/accounts` | `{currency}` (+ `Idempotency-Key`) | `201 {success, account: {...}}` | |
+| GET | `/accounts` | — | `{success, accounts: [...]}` | |
+| GET | `/rate?from&to` | — | `{success, from, to, rate}` | Real live mid-market rate, before itunda's own margin |
+| POST | `/convert` | `{fromCurrency, toCurrency, amount}` (+ `Idempotency-Key`) | `201 {success, conversion: {...}}` | |
+| GET | `/conversions` | — (paginated) | `{success, conversions: [...], ...page meta}` | |
+| POST | `/rate-alert` | `{fromCurrency, toCurrency, targetRate, direction}` | `{success, alert: {...}}` | `direction` is `ABOVE`/`BELOW` |
+| DELETE | `/rate-alert?fromCurrency&toCurrency` | — | `{success}` | |
+| GET | `/rate-alerts` | — | `{success, alerts: [...]}` | |
+
+Errors: `400 UNSUPPORTED_CURRENCY`, `409 FOREIGN_ACCOUNT_ALREADY_EXISTS`,
+`404 FOREIGN_ACCOUNT_NOT_FOUND`, `400 INVALID_CONVERSION`,
+`503 EXCHANGE_RATE_UNAVAILABLE`, `400 INVALID_RATE_ALERT`,
+`404 RATE_ALERT_NOT_FOUND`, `404 ACCOUNT_NOT_FOUND`, `422 INSUFFICIENT_FUNDS`,
+`403 ACCOUNT_FROZEN`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`.
+
+## Debit Card — `/api/v1/card`
+
+**Added 2026-09-05.** Real itunda debit-card issuance and management.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/issue` | `{design?}` (+ `Idempotency-Key`) | `201 {success, card: {...}, cardId}` | `design` optional, defaults to `DebitCardDesign.DEFAULT` |
+| GET | `/my-card` | — | `{success, card: {...}}` | |
+| GET | `/transactions?page&size` | — | `{success, transactions: [...], totalElements, totalPages}` | `size` capped to 100 |
+| PUT | `/limits` | `{dailyLimit, monthlyLimit}` | `{success, card: {...}}` | |
+| POST | `/freeze` | — | `{success, card: {...}}` | |
+| POST | `/unfreeze` | — | `{success, card: {...}}` | |
+| POST | `/report-lost` | — | `{success, card: {...}}` | |
+| POST | `/close` | — | `{success, card: {...}}` | |
+| POST | `/reissue` | — | `{success, card: {...}}` | |
+| PUT | `/pin` | `{newPin, currentCredential}` | `{success, card: {...}}` | |
+| POST | `/charge` | `{amount, merchantName}` (+ `Idempotency-Key`) | `201 {success, transaction: {...}, card: {...}}` | |
+
+Errors: `409 CARD_ALREADY_ISSUED`, `404 CARD_NOT_FOUND`, `404 CARD_NO_ACCOUNT`,
+`409 CARD_FROZEN`, `400 INVALID_CARD_LIMIT`, `400 INVALID_CARD_DESIGN`,
+`409 CARD_LOST`, `409 CARD_CLOSED`, `409 CARD_NOT_ELIGIBLE_FOR_REISSUE`,
+`400 INVALID_CARD_PIN`, `403 INCORRECT_CREDENTIAL`, `400 INVALID_AMOUNT`,
+`409 CARD_DAILY_LIMIT_EXCEEDED`, `409 CARD_MONTHLY_LIMIT_EXCEEDED`,
+`409 ACCOUNT_FROZEN`, `409 INSUFFICIENT_FUNDS`, `429 RATE_LIMITED`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`. **Real, worth-knowing inconsistency**:
+`ACCOUNT_FROZEN`/`INSUFFICIENT_FUNDS` are both status 409 here specifically —
+every other controller in this API gives them their own distinct statuses instead
+(forbidden/unprocessable respectively — see the Merchant/Loans/VUP/etc. sections
+above). Not yet unified.
+
 ## Bills — `/api/v1/bills`
 
 | Method | Path | Body | Success | Notes |
@@ -338,6 +395,64 @@ Errors: `404 MOTO_OWNERSHIP_PLAN_NOT_FOUND`, `404 ACCOUNT_NOT_FOUND`,
 `409 DOWN_PAYMENT_NOT_MET`, `409 IDEMPOTENCY_KEY_CONFLICT`,
 `409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`,
 `422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`, `429 RATE_LIMITED`.
+
+## Designated Driver — `/api/v1/designated-driver`
+
+**Added 2026-09-05.** Real Kakao T 대리운전 (designated driver) — a driver comes to
+where the customer's OWN car is parked and drives them + their car home, distinct
+from `/api/v1/rides` (a driver's own vehicle). `/api/v1/rides` itself remains
+undocumented on this page — a real, separate gap, not fixed this pass.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/drivers/register` | `{licenseNumber}` (+ `Idempotency-Key`) | `201 {success, driver: {...}}` | |
+| GET | `/drivers/me` | — | `{success, driver: {...}}` | |
+| POST | `/drivers/availability` | `{available}` | `{success, driver: {...}}` | |
+| POST | `/drivers/location` | `{latitude, longitude}` | `{success, driver: {...}}` | |
+| POST | `/trips` | `{pickupAddress, pickupLatitude, pickupLongitude, dropoffAddress, dropoffLatitude, dropoffLongitude, vehicleMake, vehicleModel, vehiclePlate}` (+ `Idempotency-Key`) | `201 {success, trip: {...}}` | Idempotency-Key required since 2026-08-02 — this creates a brand-new trip row with a real fare hold on every call and has no "customer already has an active trip" guard, so an unprotected retry would hold the fare twice |
+| GET | `/trips/available` | — | `{success, trips: [...]}` | |
+| GET | `/trips/my-trips` | — (paginated) | `{success, trips: [...], ...page meta}` | As the customer |
+| GET | `/trips/my-driver-trips` | — (paginated) | `{success, trips: [...], ...page meta}` | As the driver |
+| POST | `/trips/{tripId}/accept` | — | `{success, trip: {...}}` | |
+| POST | `/trips/{tripId}/start-driving` | — | `{success, trip: {...}}` | |
+| POST | `/trips/{tripId}/complete` | — | `{success, trip: {...}}` | |
+| POST | `/trips/{tripId}/cancel` | — | `{success, trip: {...}}` | |
+
+Errors: `409 DESIGNATED_DRIVER_ALREADY_REGISTERED`, `404 ACCOUNT_NOT_FOUND`,
+`404 DESIGNATED_DRIVER_NOT_REGISTERED`, `400 INVALID_LOCATION`,
+`400 SELF_TRIP_NOT_ALLOWED`, `404 DESIGNATED_DRIVER_TRIP_NOT_FOUND`,
+`409 DESIGNATED_DRIVER_TRIP_ALREADY_CLAIMED`,
+`409 INVALID_DESIGNATED_DRIVER_STATUS_TRANSITION`, `422 INSUFFICIENT_FUNDS`,
+`429 RATE_LIMITED`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`.
+
+## Vehicle Inspections — `/api/v1/marketplace/inspections`
+
+**Added 2026-09-05.** Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection
+accompaniment) — a buyer books an independent mechanic to inspect a car listed on
+`/api/v1/marketplace` (itself still undocumented on this page — a real, separate gap)
+before purchase.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/mechanics/register` | `{businessName}` (+ `Idempotency-Key`) | `201 {success, mechanic: {...}}` | |
+| GET | `/mechanics/me` | — | `{success, mechanic: {...}}` | |
+| GET | `/mechanics` | — | `{success, mechanics: [...]}` | Public — every available mechanic |
+| POST | `/mechanics/availability` | `{available}` | `{success, mechanic: {...}}` | |
+| POST | `` (base path) | `{listingId, mechanicId, fee, scheduledFor}` (+ `Idempotency-Key`) | `201 {success, booking: {...}}` | |
+| GET | `/my-bookings` | — | `{success, bookings: [...]}` | As the buyer |
+| GET | `/my-mechanic-bookings` | — | `{success, bookings: [...]}` | As the mechanic |
+| POST | `/{bookingId}/accept` | — | `{success, booking: {...}}` | |
+| POST | `/{bookingId}/complete` | `{findings?}` | `{success, booking: {...}}` | |
+| POST | `/{bookingId}/cancel` | — | `{success, booking: {...}}` | |
+
+Errors: `409 MECHANIC_ALREADY_REGISTERED`, `404 MECHANIC_NOT_REGISTERED`,
+`404 ACCOUNT_NOT_FOUND` (both the mechanic's and the buyer's own account map to this
+same code), `400 INVALID_AMOUNT`, `404 LISTING_NOT_FOUND`,
+`400 SELF_INSPECTION_NOT_ALLOWED`, `404 INSPECTION_BOOKING_NOT_FOUND`,
+`409 INVALID_INSPECTION_STATUS_TRANSITION`, `422 INSUFFICIENT_FUNDS`,
+`403 ACCOUNT_FROZEN`, `429 RATE_LIMITED`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`.
 
 ## Credit Score — `/api/v1/credit-score`
 
