@@ -241,15 +241,6 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
-    // Real session storage for the login flow (2026-07-11): access/refresh tokens are
-    // real bearer credentials, not app preferences -- EncryptedSharedPreferences, not
-    // plain SharedPreferences. See network/TokenStore.kt.
-    implementation("androidx.security:security-crypto:1.1.0-alpha06")
-
-    // Real self-hosted Rwanda map (2026-07-19) -- itunda's own MapLibre GL tile server
-    // (see docs/TOSS_PARITY_MATRIX.md's Maps row), not Google Maps. Plain Maven Central
-    // coordinate, no new repository needed (already declared in settings.gradle.kts).
-    implementation("org.maplibre.gl:android-sdk:13.3.1")
     // Real "my location" blue dot (2026-07-19) -- FusedLocationProviderClient, the
     // standard modern Android location API (battery-efficient, real GPS/network fusion).
     // `google()` is already a declared repository for this project.
@@ -347,11 +338,6 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.google.code.gson:gson:2.10.1")
-    // Real customer-presented payment code QR/barcode rendering (2026-08-11, barcode
-    // added item 242) -- ZXing core only, same as merchantapp's own QR generation
-    // (QrCodeUtil.kt).
-    implementation("com.google.zxing:core:3.5.3")
-
     // Real instrumented UI tests (2026-07-11) -- androidx.compose.ui.test reads the
     // same semantics tree TalkBack does, so this is a real live accessibility check
     // against a real emulator, not a static-analysis proxy for one. See
