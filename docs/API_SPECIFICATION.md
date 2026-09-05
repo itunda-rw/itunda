@@ -1145,12 +1145,12 @@ subset previously documented.
 **Real coverage gap found and closed 2026-09-05**: `/api/v1/merchant` is shared, verbatim,
 by 8 OTHER `@RestController` classes beyond `MerchantController.kt` itself
 (`MerchantAdController`/`MerchantCouponController`/`MerchantFollowController`/
-`MerchantDiscoveryController`/`MerchantUpdateController` documented immediately below;
-`MerchantBillingController`/`MerchantBookingController`/`MerchantBookingReviewController`
-tracked as a remaining follow-up) — this section's own path-based header made every one
-of them look "already documented" to a naive prefix-matching audit, the same false-
-negative class already found once for `RideController`/`RideTrustedContactController`
-above, just in the opposite direction (siblings sharing one exact path, not a parent/
+`MerchantDiscoveryController`/`MerchantUpdateController`/`MerchantBillingController`/
+`MerchantBookingController`/`MerchantBookingReviewController`, all documented in their
+own sections below) — this section's own path-based header made every one of them
+look "already documented" to a naive prefix-matching audit, the same false-negative
+class already found once for `RideController`/`RideTrustedContactController` above,
+just in the opposite direction (siblings sharing one exact path, not a parent/
 child prefix pair).
 
 ### Registration & profile
@@ -1313,6 +1313,90 @@ endpoints, 4 error codes, all unique).
 
 Errors (all 4 real `@ExceptionHandler`s): `404 MERCHANT_NOT_FOUND`,
 `404 MERCHANT_UPDATE_NOT_FOUND`, `400 INVALID_MERCHANT_UPDATE`, `429 RATE_LIMITED`.
+
+## Merchant Billing — `/api/v1/merchant` (`MerchantBillingController`)
+
+**Added 2026-09-05, later same day** (the last 3 of the 8 Merchant sibling
+controllers, closing this gap completely). Real Kakao Pay 정기결제/Toss Payments
+billing-key-style recurring merchant billing — a merchant defines a plan, a customer
+subscribes, and the recurring charge itself happens elsewhere (this controller only
+manages plans/subscriptions, not the charge-execution scheduler). Confirmed by direct
+read of `MerchantBillingController.kt` (7 endpoints, 11 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/billing-plans` | `{name, description?, amount, intervalDays}` (+ `Idempotency-Key`) | `201 {success, plan: {...}}` | |
+| GET | `/billing-plans` | — | `{success, plans: [...]}` | Merchant's own plans |
+| POST | `/billing-plans/{planId}/deactivate` | — | `{success, plan: {...}}` | |
+| GET | `/{merchantId}/billing-plans` | — | `{success, plans: [...]}` | Customer-facing |
+| POST | `/billing-plans/{planId}/subscribe` | — (+ `Idempotency-Key`) | `201 {success, subscription: {...}}` | |
+| GET | `/billing-subscriptions/my` | — | `{success, subscriptions: [...]}` | Customer's own subscriptions |
+| POST | `/billing-subscriptions/{subscriptionId}/cancel` | — | `{success, subscription: {...}}` | |
+
+Errors (all 11 real `@ExceptionHandler`s): `404 MERCHANT_NOT_FOUND`,
+`400 INVALID_BILLING_PLAN`, `404 BILLING_PLAN_NOT_FOUND`,
+`404 BILLING_SUBSCRIPTION_NOT_FOUND`, `400 SELF_SUBSCRIPTION_NOT_ALLOWED`,
+`422 INSUFFICIENT_FUNDS`, `404 ACCOUNT_NOT_FOUND`, `429 RATE_LIMITED`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`.
+
+## Merchant Booking — `/api/v1/merchant` (`MerchantBookingController`)
+
+**Added 2026-09-05, same batch.** Real local-business appointment booking (hair
+salons, clinics, etc.) with a real Kakao Hair Shop-style prepay-to-book deposit for
+any service the merchant marks `requiresPrepay` (see `MerchantProductController`,
+not yet documented). Confirmed by direct read of `MerchantBookingController.kt` (12
+endpoints, 13 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/booking/availability` | `{windows: [{dayOfWeek, startTime, endTime}]}` | `{success, windows: [...]}` | Merchant sets their own recurring weekly availability — full replace |
+| GET | `/booking/availability` | — | `{success, windows: [...]}` | |
+| GET | `/{merchantId}/booking-availability` | — | `{success, windows: [...]}` | Customer-facing |
+| GET | `/{merchantId}/booking-slots?serviceId&date` | — | `{success, slots: [...]}` | |
+| POST | `/bookings` | `{merchantId, serviceId, date, startTime, notes?}` (+ `Idempotency-Key`) | `201 {success, booking: {...}}` | Real fix, 2026-08-02: this became money-moving the moment prepay-to-book shipped (conditionally holds a real deposit), so it needed the `Idempotency-Key` it was originally missing |
+| GET | `/bookings/my-bookings` | — | `{success, bookings: [...], ...pageMeta}` | Customer's own bookings |
+| GET | `/bookings/merchant-bookings` | — | `{success, bookings: [...], ...pageMeta}` | Merchant's incoming bookings |
+| POST | `/bookings/{bookingId}/respond` | `{confirm}` | `{success, booking: {...}}` | Merchant-only |
+| POST | `/bookings/{bookingId}/complete` | — | `{success, booking: {...}}` | |
+| POST | `/bookings/{bookingId}/cancel` | — | `{success, booking: {...}}` | |
+| GET | `/bookings/{bookingId}/deposit` | — | `{success, deposit: {...}}` | Only meaningful for `requiresPrepay` services |
+| POST | `/bookings/process-no-shows` | — | `{success, processedCount, bookings: [...]}` | ADMIN only — manual trigger for the no-show sweep, network-wide |
+
+Errors (all 13 real `@ExceptionHandler`s): `404 MERCHANT_NOT_FOUND`,
+`400 INVALID_AVAILABILITY_WINDOW`, `400 SERVICE_NOT_BOOKABLE`,
+`400 INVALID_BOOKING_SLOT`, `409 SLOT_NO_LONGER_AVAILABLE`, `404 SERVICE_NOT_FOUND`,
+`404 BOOKING_NOT_FOUND`, `409 INVALID_BOOKING_STATUS_TRANSITION`,
+`422 INSUFFICIENT_FUNDS` (real fix, 2026-07-25 — a customer without enough balance
+for a prepay deposit previously got a raw unhandled 500, not this real error, since
+this controller had never registered a handler for the same exception
+`MerchantController.collect` already handles), `404 ACCOUNT_NOT_FOUND`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`.
+
+## Merchant Booking Reviews — `/api/v1/merchant` (`MerchantBookingReviewController`)
+
+**Added 2026-09-05, same batch — the last of the 8 Merchant siblings.** Real post-
+appointment reviews plus owner-side reply, the review counterpart to Merchant
+Booking above. Not money-moving, no `Idempotency-Key`. Confirmed by direct read of
+`MerchantBookingReviewController.kt` (4 endpoints, 6 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/bookings/{bookingId}/review` | `{rating, comment?}` | `201 {success, review: {...}}` | Completed bookings only |
+| GET | `/{merchantId}/reviews` | — | `{success, reviews: [...], rating, ...pageMeta}` | |
+| GET | `/reviews/my-reviews` | — | `{success, reviews: [...], ...pageMeta}` | |
+| POST | `/reviews/{reviewId}/reply` | `{reply}` | `{success, review: {...}}` | Merchant owner's reply |
+
+Errors (all 6 real `@ExceptionHandler`s): `404 MERCHANT_NOT_FOUND`,
+`400 INVALID_RATING`, `409 BOOKING_NOT_COMPLETED`, `409 BOOKING_ALREADY_REVIEWED`,
+`404 REVIEW_NOT_FOUND`, `400 INVALID_REVIEW_REPLY`.
+
+**All 8 controllers sharing `/api/v1/merchant` are now fully documented.** See the
+note atop the main Merchant section above for the full account of how this gap was
+found (the same false-negative pattern class, in reverse, as the earlier
+RideController find) and confirmed complete via a full-backend re-audit for other
+same-path sibling groups (none found).
 
 ## Merchant Payroll — `/api/v1/merchant/payroll`
 
