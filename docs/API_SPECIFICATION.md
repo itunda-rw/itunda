@@ -1002,6 +1002,156 @@ Real itunda-defined SLA (not a sourced Toss number — Toss doesn't publish one)
 `ACCOUNT_TAKEOVER`, 48 hours for `PAYMENT_DISPUTE`, 72 hours for `GENERAL`. Errors:
 `404 TRANSACTION_NOT_FOUND`, `403 TRANSACTION_NOT_OWNED`.
 
+## Community — `/api/v1/community`
+
+**Added 2026-09-05** (fifth documentation slice — part of the standing "remaining
+undocumented controllers" follow-up). Real 당근마켓 동네생활 (Karrot "neighborhood life")
+community board: posts, 당근모임-style meetups with recurring sessions and check-in,
+and 같이사요 (group-buy) finalization into a real `SplitBill`. Confirmed by direct read
+of `CommunityController.kt` (22 endpoints, 21 error codes).
+
+### Posts
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/categories` | — | `{success, categories: [...]}` | |
+| GET | `/topics` | — | `{success, topics: [...]}` | Real 동네생활 topic-chip filter row |
+| POST | `/posts` | `{category, title, body, latitude?, longitude?, eventDate?, capacity?, topic?}` | `201 {success, post: {...}}` | `eventDate`/`capacity` are ignored unless `category == "meetup"` |
+| GET | `/meetups/upcoming` | — | `{success, posts: [...], joinedCounts, ...pageMeta}` | Real 당근모임-style "upcoming meetups" browse across all neighborhoods |
+| GET | `/posts?category&topic` | — | `{success, posts: [...], joinedCounts, ...pageMeta}` | |
+| GET | `/posts/nearby?latitude&longitude&radiusKm` | — | `{success, posts: [...], joinedCounts, ...pageMeta}` | `radiusKm` defaults to 5.0 |
+| GET | `/posts/my-neighborhood?category` | — | `{success, posts: [...], joinedCounts, ...pageMeta}` | Real hyperlocal "my neighborhood" browse |
+| GET | `/posts/search?q` | — | `{success, posts: [...], joinedCounts, ...pageMeta}` | Real relevance-ranked search |
+| GET | `/my-posts` | — | `{success, posts: [...], joinedCounts, ...pageMeta}` | |
+| GET | `/posts/{postId}` | — | `{success, post: {...}, authorName, likedByMe}` | |
+| DELETE | `/posts/{postId}` | — | `{success, post: {...}}` | |
+| GET | `/posts/{postId}/comments` | — | `{success, comments: [...], ...pageMeta}` | Each comment enriched with `authorName` |
+| POST | `/posts/{postId}/comments` | `{body}` | `201 {success, comment: {...}}` | |
+| POST | `/notification-preference` | `{enabled}` | `{success, commentNotificationsEnabled}` | Real Karrot 동네생활 "새 댓글 알림 끄기" (turn off new-comment notifications) |
+| GET | `/notification-preference` | — | `{success, commentNotificationsEnabled}` | |
+| POST | `/posts/{postId}/like` | — | `{success, liked}` | Idempotent toggle |
+
+Reporting a post moved to the unified `POST /api/v1/hood/reports` (`HoodReportController`,
+not yet documented on this page) — this section deliberately has no separate report
+endpoint of its own, per the controller's own doc comment on why the old path was retired.
+
+### Meetups & group-buy
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/posts/{postId}/join` | — | `{success, groupId}` | Real 같이해요 (join-together) explicit 참여하기 tap |
+| POST | `/posts/{postId}/sessions` | `{dates}` | `201 {success, sessions: [...]}` | Real 당근모임 recurring schedule — organizer only |
+| GET | `/posts/{postId}/sessions` | — | `{success, sessions: [...]}` | |
+| POST | `/sessions/{sessionId}/check-in` | — | `201 {success, attendance: {...}}` | |
+| GET | `/sessions/{sessionId}/attendance` | — | `{success, attendance: [...]}` | Membership-checked — a non-member gets `404 SESSION_NOT_FOUND`, not `403`, so a stranger can't use the status code to distinguish "exists, you're not in it" from "doesn't exist" |
+| POST | `/posts/{postId}/finalize-group-buy` | `{totalAmount, description}` (+ `Idempotency-Key`) | `201 {success, splitBill: {...}, participants: [...]}` | Real 당근마켓 같이사요 (Karrot "Let's Buy Together") — creates a real `SplitBill` via the same underlying service `SplitBillController.createSplitBill` uses; `Idempotency-Key` required so a retried request can't create a second real split bill for the same purchase |
+
+### Errors (complete — all 21 `@ExceptionHandler`s in `CommunityController.kt`)
+
+`400 COMMUNITY_MEETUP_JOIN_INVALID`, `404 COMMUNITY_POST_NOT_FOUND`,
+`400 INVALID_COMMUNITY_POST`, `400 INVALID_COMMUNITY_COMMENT`,
+`400 INVALID_COORDINATES`, `429 RATE_LIMITED`, `400 NEIGHBORHOOD_NOT_SET`,
+`400 INVALID_MEETUP`, `409 MEETUP_FULL`, `400 INVALID_MEETUP_SCHEDULE`,
+`404 MEETUP_SESSION_NOT_FOUND`, `409 ALREADY_CHECKED_IN`, `404 SESSION_NOT_FOUND`
+(the membership-gate IDOR fix noted above), `400 INVALID_GROUP_BUY_FINALIZE`,
+`400 INVALID_AMOUNT` and `400 DESCRIPTION_REQUIRED` (both surfaced from the shared
+`SplitBillService.createSplitBill` this endpoint calls into), `409
+IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`, `400 NEEDS_PARTICIPANTS`,
+`400 PARTICIPANT_NOT_GROUP_MEMBER` (the latter two also from the shared split-bill
+service).
+
+## Neighborhood Reviews — `/api/v1/community/neighborhoods`
+
+**Added 2026-09-05, same slice.** Real 살아본 후기 (Karrot "lived here" reviews) — a
+separate, small controller, not folded into `CommunityController` above. Confirmed by
+direct read of `NeighborhoodReviewController.kt` (2 endpoints, 3 error codes).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/{neighborhood}/reviews` | — | `{success, reviews: [...]}` | Public — no auth required |
+| POST | `/{neighborhood}/reviews` | `{residencyYears?, body}` | `201 {success, review: {...}}` | One review per user per neighborhood |
+
+Errors (all 3 real `@ExceptionHandler`s): `400 INVALID_NEIGHBORHOOD_REVIEW`,
+`409 NEIGHBORHOOD_REVIEW_ALREADY_SUBMITTED`, `429 RATE_LIMITED`.
+
+## Jobs — `/api/v1/jobs`
+
+**Added 2026-09-05, same slice.** Real 당근알바-style local job board — structured
+applications, post-transaction reviews (shared `HoodReviewService`, asymmetric
+public/private visibility), and a real job-post wishlist. Confirmed by direct read of
+`JobPostController.kt` (21 endpoints, 18 `@ExceptionHandler`s, 16 unique codes —
+`JOB_POST_NOT_FOUND` is shared by 3 distinct exceptions: the post itself not existing,
+a stale favorite pointing at a removed post, and a review-lookup miss).
+
+### Posts
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/categories` | — | `{success, categories: [...]}` | |
+| POST | `/posts` | `{category, title, description, payType, payAmount, latitude?, longitude?}` | `201 {success, post: {...}}` | |
+| GET | `/posts?category` | — | `{success, posts: [...], trustScores, ...pageMeta}` | `trustScores` is a real Karrot-Score-style trust badge, batch-resolved per poster in one query |
+| GET | `/posts/nearby?latitude&longitude&radiusKm` | — | `{success, posts: [...], trustScores, ...pageMeta}` | `radiusKm` defaults to 5.0 |
+| GET | `/posts/my-neighborhood?category` | — | `{success, posts: [...], trustScores, ...pageMeta}` | |
+| GET | `/posts/search?q` | — | `{success, posts: [...], trustScores, ...pageMeta}` | |
+| GET | `/my-posts` | — | `{success, posts: [...], trustScores, ...pageMeta}` | |
+| GET | `/my-worked-posts` | — | `{success, posts: [...], trustScores, ...pageMeta}` | Real "Jobs I did" history |
+| GET | `/posts/{jobPostId}` | — | `{success, post: {...}, posterTrustScore}` | Public — no auth required |
+| POST | `/posts/{jobPostId}/mark-filled` | `{workerPhoneNumber?}` | `{success, post: {...}}` | Notifies everyone who favorited this post that it's closed |
+| DELETE | `/posts/{jobPostId}` | — | `{success, post: {...}}` | Same closure notification as `mark-filled` |
+| POST | `/posts/{jobPostId}/contact-poster` | — | `{success, conversation: {...}}` | |
+
+### Applications
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/posts/{jobPostId}/apply` | `{message}` | `201 {success, application: {...}}` | Real structured application, replacing an informal "just message the poster" flow |
+| GET | `/posts/{jobPostId}/applications` | — | `{success, applications: [...], ...pageMeta}` | Poster-only |
+| GET | `/my-applications` | — | `{success, applications: [...], ...pageMeta}` | Applicant's own applications |
+| POST | `/applications/{applicationId}/respond` | `{accept}` | `{success, application: {...}, conversation: {...}}` | Accepting opens a real conversation (returned inline); declining does not |
+
+### Reviews & favorites
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/posts/{jobPostId}/review` | `{goodPoints?, uncomfortablePoints?}` | `201 {success, review: {...}}` | Shared `HoodReviewService` — asymmetric public/private visibility, same as other Hood-transaction reviews |
+| GET | `/posts/{jobPostId}/review` | — | `{success, reviews: [...]}` | |
+| POST | `/posts/{jobPostId}/favorite` | — | `201 {success, favorite: {...}}` | |
+| DELETE | `/posts/{jobPostId}/favorite` | — | `{success}` | |
+| GET | `/posts/favorites` | — | `{success, favorites: [...], ...pageMeta}` | |
+
+### Errors (complete — all 18 `@ExceptionHandler`s in `JobPostController.kt`)
+
+`404 JOB_POST_NOT_FOUND` (shared by 3 exceptions — see note above), `400
+INVALID_JOB_POST`, `409 JOB_POST_NOT_OPEN`, `400 OWN_JOB_POST`, `400
+INVALID_COORDINATES`, `429 RATE_LIMITED`, `400 NEIGHBORHOOD_NOT_SET`, `404
+WORKER_NOT_FOUND`, `409 REVIEW_TRANSACTION_NOT_COMPLETED`, `400
+REVIEW_NO_COUNTERPARTY`, `404 REVIEW_NOT_PARTY` (IDOR fix, 2026-08-30 — was `403`,
+which let a stranger with a real `transactionId` distinguish "exists, you weren't a
+party" from "doesn't exist" by status code alone), `409 REVIEW_ALREADY_SUBMITTED`,
+`400 INVALID_JOB_APPLICATION`, `409 JOB_APPLICATION_ALREADY_PENDING`, `404
+JOB_APPLICATION_NOT_FOUND`, `409 JOB_APPLICATION_NOT_PENDING`.
+
+## Résumé — `/api/v1/jobs/resume`
+
+**Added 2026-09-05, same slice.** Real 이력서 (Karrot 당근알바-style résumé) builder —
+a separate controller from job posts above, one résumé per user. Confirmed by direct
+read of `ResumeController.kt` (9 endpoints, 2 error codes).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/strengths` | — | `{success, strengths: [...]}` | The fixed vocab the client's strengths picker renders from |
+| GET | `` (base path) | — | `{success, resume, experiences: [...], educations: [...], certifications: [...], completionPercent}` | |
+| PUT | `` (base path) | `{selfIntro?, strengths?, additionalInfo?}` | `{success, resume: {...}}` | Full-replace on the profile fields only — experience/education/certification entries are managed by their own endpoints below |
+| POST | `/experience` | `{company, role, period, description?}` | `201 {success, experience: {...}}` | |
+| DELETE | `/experience/{experienceId}` | — | `{success}` | |
+| POST | `/education` | `{school, degree?, major?}` | `201 {success, education: {...}}` | |
+| DELETE | `/education/{educationId}` | — | `{success}` | |
+| POST | `/certification` | `{name, issuedDate?}` | `201 {success, certification: {...}}` | |
+| DELETE | `/certification/{certificationId}` | — | `{success}` | |
+
+Errors (both real `@ExceptionHandler`s): `400 INVALID_RESUME`, `404 RESUME_ENTRY_NOT_FOUND`.
+
 ## Offline actions — `/api/v1/actions`
 
 Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s Offline row for the full
