@@ -10,6 +10,7 @@ import rw.itunda.core.domain.Listing
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.KeywordAlertQuietHoursRepository
 import rw.itunda.core.repository.KeywordAlertRepository
+import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
@@ -61,6 +62,8 @@ class KeywordAlertService(
     private val keywordAlertQuietHoursRepository: KeywordAlertQuietHoursRepository,
     private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(KeywordAlertService::class.java)
+
     companion object {
         // Real, sourced cap -- Karrot's own official FAQ names exactly 30 keywords per
         // real user.
@@ -156,6 +159,7 @@ class KeywordAlertService(
         } catch (e: Exception) {
             // Real, non-critical -- a keyword-alert push failure must never make a real
             // listing creation look like it failed.
+            log.warn("Failed to notify keyword-alert subscribers for listing {}", listing.id, e)
         }
     }
 }

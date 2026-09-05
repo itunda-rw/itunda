@@ -19,6 +19,7 @@ import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
+import org.slf4j.LoggerFactory
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
@@ -44,6 +45,8 @@ class InterestJarService(
     private val pushNotificationService: PushNotificationService,
     private val ledgerEntryRepository: LedgerEntryRepository,
 ) {
+    private val log = LoggerFactory.getLogger(InterestJarService::class.java)
+
     fun getInterestJar(userId: String) = interestJarRepository.findById(userId).orElseThrow { NoInterestJarException("No interest jar found for this account") }
 
     fun getInterestJarTransactions(userId: String): List<BucketTransactionDto> {
@@ -159,6 +162,7 @@ class InterestJarService(
             sendFirstInterestAccrualPushAfterCommit(jar.userId, title, body, jar.accountId)
         } catch (e: Exception) {
             // Non-critical -- the real interest accrual already succeeded.
+            log.warn("Failed to notify user {} of first interest accrual", jar.userId, e)
         }
     }
 

@@ -11,6 +11,7 @@ import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.ProductInquiryRepository
+import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.util.UUID
 
@@ -31,6 +32,8 @@ class ProductInquiryService(
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(ProductInquiryService::class.java)
+
     @Transactional
     fun askQuestion(buyerId: String, productId: String, question: String): ProductInquiry {
         val trimmedQuestion = question.trim()
@@ -70,6 +73,7 @@ class ProductInquiryService(
             }
         } catch (e: Exception) {
             // Non-critical -- the real question was already saved successfully.
+            log.warn("Failed to notify merchant of new product inquiry {}", saved.id, e)
         }
 
         return saved

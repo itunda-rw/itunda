@@ -370,6 +370,7 @@ class SavingsService(
             sendGoalCompletedPushAfterCommit(goal.userId, title, body, goal.id)
         } catch (e: Exception) {
             // Non-critical -- the real deposit/auto-contribution already succeeded.
+            log.warn("Failed to notify savings goal {} completed", goal.id, e)
         }
     }
 

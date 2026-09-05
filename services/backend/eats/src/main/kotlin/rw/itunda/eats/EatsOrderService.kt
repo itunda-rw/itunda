@@ -624,6 +624,7 @@ class EatsOrderService(
             sendNewOrderPushAfterCommit(restaurant.ownerUserId, title, body, order.id)
         } catch (e: Exception) {
             // Non-critical -- the real order already completed and succeeded.
+            logger.warn("Failed to notify restaurant of new order {}", order.id, e)
         }
         notifyRestaurantWebhook(order, restaurant)
 

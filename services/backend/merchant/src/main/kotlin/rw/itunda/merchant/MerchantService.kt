@@ -29,6 +29,7 @@ import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PaymentIntentRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.AccountRepository
+import org.slf4j.LoggerFactory
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.net.URI
@@ -72,6 +73,8 @@ class MerchantService(
     private val merchantLoyaltyPointsService: MerchantLoyaltyPointsService,
     private val autoTopUpService: rw.itunda.account.AutoTopUpService,
 ) {
+    private val log = LoggerFactory.getLogger(MerchantService::class.java)
+
     // Real customer-presented code lifetime (2026-08-11) -- short enough that a
     // screenshotted/shoulder-surfed code is only exploitable for a couple minutes,
     // long enough that a customer handing their phone to a cashier doesn't have it
@@ -698,6 +701,7 @@ class MerchantService(
             sendPaymentReceivedPushAfterCommit(merchant.ownerUserId, title, body, chargeAmount, payerUserId)
         } catch (e: Exception) {
             // Non-critical -- the real payment already completed and succeeded.
+            log.warn("Failed to notify merchant {} of payment received", merchant.id, e)
         }
 
         val resultMap = mapOf(
@@ -895,6 +899,7 @@ class MerchantService(
             sendPaymentReceivedPushAfterCommit(merchant.ownerUserId, title, body, amount, payerUserId)
         } catch (e: Exception) {
             // Non-critical -- the real payment already completed and succeeded.
+            log.warn("Failed to notify merchant {} of payment received", merchant.id, e)
         }
 
         val resultMap = mapOf(
@@ -927,8 +932,9 @@ class MerchantService(
         val send = {
             try {
                 pushNotificationService.sendToUser(ownerUserId, title, body, mapOf("amount" to amount.toString(), "payerId" to payerUserId))
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // A mobile delivery failure must not affect an already-committed payment.
+                log.warn("Failed to send payment-received push to user {}", ownerUserId, e)
             }
         }
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {

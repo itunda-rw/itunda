@@ -17,6 +17,7 @@ import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.LoanAccountRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.AccountRepository
+import org.slf4j.LoggerFactory
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -57,6 +58,8 @@ class LoansService(
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(LoansService::class.java)
+
     fun getOffers(lenderId: String? = null) = if (lenderId == null) LoanCatalog.offers else LoanCatalog.findByLender(lenderId)
 
     fun getLenders() = LenderCatalog.lenders
@@ -188,6 +191,7 @@ class LoansService(
             sendLoanPaidOffPushAfterCommit(loan.userId, title, body, loan.id)
         } catch (e: Exception) {
             // Non-critical -- the real repayment already succeeded.
+            log.warn("Failed to notify loan {} paid off", loan.id, e)
         }
     }
 

@@ -112,6 +112,7 @@ class MerchantBillingChargeExecutor(
             sendChargedPushAfterCommit(subscription.customerId, title, body, subscription.id)
         } catch (e: Exception) {
             // Non-critical -- the real charge already completed and succeeded.
+            log.warn("Failed to notify customer of subscription charge {}", subscription.id, e)
         }
     }
 

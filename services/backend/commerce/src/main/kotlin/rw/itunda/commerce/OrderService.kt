@@ -334,6 +334,7 @@ class OrderService(
             sendNewOrderPushAfterCommit(merchant.ownerUserId, title, body, order.id)
         } catch (e: Exception) {
             // Non-critical -- the real order already completed and succeeded.
+            logger.warn("Failed to notify merchant of new order {}", order.id, e)
         }
         notifyMerchantWebhook(order, merchant)
 

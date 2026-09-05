@@ -24,6 +24,7 @@ import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.account.AccountNumberGenerator
+import org.slf4j.LoggerFactory
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -75,6 +76,8 @@ class IkiminaService(
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(IkiminaService::class.java)
+
     @Transactional
     fun createIkimina(organizerId: String, name: String, contributionAmount: BigDecimal, cycleFrequencyDays: Int, memberCap: Int): Ikimina {
         rateLimiter.checkLimit("ikimina:create:$organizerId", limit = 10, window = Duration.ofHours(1))
@@ -298,6 +301,7 @@ class IkiminaService(
             sendAfterCommit { pushNotificationService.sendToUser(recipientUserId, title, body, mapOf("amount" to amount.toString()), type = "IKIMINA_PAYOUT_RECEIVED") }
         } catch (e: Exception) {
             // Non-critical -- the real payout already succeeded.
+            log.warn("Failed to notify user {} of Ikimina payout", recipientUserId, e)
         }
     }
 
@@ -322,6 +326,7 @@ class IkiminaService(
             } catch (e: Exception) {
                 // Non-critical, per-member -- one member's notification failure must
                 // never block the others from being notified.
+                log.warn("Failed to notify member {} of Ikimina cycle completion", member.userId, e)
             }
         }
     }

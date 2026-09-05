@@ -9,6 +9,7 @@ import rw.itunda.core.domain.JobPostFavorite
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.JobPostFavoriteRepository
 import rw.itunda.core.repository.JobPostRepository
+import org.slf4j.LoggerFactory
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -44,6 +45,8 @@ class JobPostFavoriteService(
     private val jobPostRepository: JobPostRepository,
     private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(JobPostFavoriteService::class.java)
+
     @Transactional
     fun addFavorite(userId: String, jobPostId: String): JobPostFavorite {
         jobPostRepository.findById(jobPostId).orElseThrow { FavoriteJobPostNotFoundException("Job post not found") }
@@ -86,6 +89,7 @@ class JobPostFavoriteService(
         } catch (e: Exception) {
             // Real, non-critical -- a job-closed push failure must never make the real
             // markFilled/removePost action itself look like it failed.
+            log.warn("Failed to notify favoriters of job post {} closure", jobPost.id, e)
         }
     }
 

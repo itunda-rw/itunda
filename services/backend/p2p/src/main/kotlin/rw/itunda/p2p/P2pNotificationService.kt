@@ -8,6 +8,7 @@ import rw.itunda.core.domain.Notification
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
+import org.slf4j.LoggerFactory
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -23,6 +24,8 @@ class P2pNotificationService(
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(P2pNotificationService::class.java)
+
     // Real-time "money received" notification (2026-07-22) -- modeled on one of Toss
     // Bank's most iconic, signature UX elements: an instant in-app notification the
     // moment money arrives (real Toss shows "OOO님이 5,000원을 보냈어요" -- "OOO sent you
@@ -69,6 +72,7 @@ class P2pNotificationService(
             sendMoneyReceivedPushAfterCommit(recipientUserId, title, body, amount, senderUserId)
         } catch (e: Exception) {
             // Non-critical -- the real transfer already completed and succeeded.
+            log.warn("Failed to notify user {} of money received", recipientUserId, e)
         }
     }
 
@@ -136,6 +140,7 @@ class P2pNotificationService(
             sendMoneySentPushAfterCommit(senderUserId, title, body, amount, recipientUserId)
         } catch (e: Exception) {
             // Non-critical -- the real transfer already completed and succeeded.
+            log.warn("Failed to notify user {} of money sent", senderUserId, e)
         }
     }
 
