@@ -107,6 +107,9 @@ class WeeklySavingsController(
     @ExceptionHandler(WeeklyPlanInvalidAmountException::class)
     fun handleInvalidAmount(ex: WeeklyPlanInvalidAmountException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AMOUNT", ex.message ?: "Invalid request"))
 
+    @ExceptionHandler(InvalidWeeklyPlanNameException::class)
+    fun handleInvalidName(ex: InvalidWeeklyPlanNameException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_NAME", ex.message ?: "Invalid request"))
+
     @ExceptionHandler(WeeklyPlanNotActiveException::class)
     fun handleNotActive(ex: WeeklyPlanNotActiveException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("WEEKLY_PLAN_NOT_ACTIVE", ex.message ?: "Conflict"))
 

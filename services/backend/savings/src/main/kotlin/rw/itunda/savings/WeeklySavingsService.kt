@@ -37,6 +37,7 @@ class WeeklyPlanInvalidAmountException(message: String) : RuntimeException(messa
 class WeeklyPlanNotActiveException(message: String) : RuntimeException(message)
 class WeeklyPlanNotMaturedException(message: String) : RuntimeException(message)
 class WeeklyPlanAlreadyWithdrawnException(message: String) : RuntimeException(message)
+class InvalidWeeklyPlanNameException(message: String) : RuntimeException(message)
 
 data class WeeklySavingsPlanView(val plan: WeeklySavingsPlan, val accountBalance: BigDecimal, val installments: List<WeeklySavingsInstallment>)
 
@@ -89,6 +90,14 @@ class WeeklySavingsService(
 
     @Transactional
     fun createPlan(userId: String, name: String, baseWeeklyAmount: BigDecimal, escalationRate: BigDecimal): WeeklySavingsPlan {
+        // Real gap found 2026-09-05, same shape as GroupAccountService
+        // .createGroupAccount's own fix: name is concatenated into the settlement
+        // Account's own accountName ("$name (26-Week Savings)", 18 extra chars), whose
+        // column has no explicit length (Hibernate's 255 default) -- 237 (255 - 18) is
+        // the real safe bound, not WeeklySavingsPlan.name's own (unenforced) 255.
+        if (name.isBlank() || name.length > 237) {
+            throw InvalidWeeklyPlanNameException("Plan name must be between 1 and 237 characters")
+        }
         // Real anti-spam limit, added from day one -- same class of free-row-creation
         // endpoint the 2026-07-19 sweep found missing across P2P/Savings/Marketplace.
         rateLimiter.checkLimit("weekly-savings:create:$userId", limit = 10, window = Duration.ofHours(1))

@@ -86,6 +86,26 @@ class IkiminaServiceTest : BehaviorSpec({
                 result.currentRound shouldBe 1
             }
         }
+
+    }
+
+    Given("an organizer providing a name that would overflow the settlement account's own accountName once \" (Ikimina)\" is appended") {
+        val ikiminaRepository = mockk<IkiminaRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val userRepository = mockk<UserRepository>()
+        val service = newService(ikiminaRepository = ikiminaRepository, accountRepository = accountRepository, userRepository = userRepository)
+        every { userRepository.findById("org_2") } returns Optional.of(user("org_2"))
+
+        When("the organizer tries to create it") {
+            Then("it rejects at the real 245-char safe bound, not Ikimina.name's own (unenforced) 255") {
+                try {
+                    service.createIkimina("org_2", "x".repeat(246), BigDecimal("5000"), 7, 10)
+                    error("expected IllegalArgumentException")
+                } catch (e: IllegalArgumentException) {
+                    verify(exactly = 0) { ikiminaRepository.save(any()) }
+                }
+            }
+        }
     }
 
     Given("a FORMING ikimina an organizer wants to invite a new member into") {

@@ -208,6 +208,17 @@ class AuthServiceTest : BehaviorSpec({
             }
         }
 
+        When("registering with a first name between 235 and 255 characters -- fits User.firstName's own column but would overflow accountName once a suffix like \"'s Investment Account\" is appended") {
+            Then("it throws InvalidNameException at the real 234-char safe bound, not the naive 255") {
+                try {
+                    service.register(RegisterRequest("+250788000036", null, "x".repeat(240), "B", "123456", acceptedTermsIds = requiredTermsIds))
+                    error("expected InvalidNameException")
+                } catch (e: InvalidNameException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+
         When("registering with an email that isn't shaped like one") {
             every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
             every { userRepository.existsByPhoneNumber("+250788000031") } returns false

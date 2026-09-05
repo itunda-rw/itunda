@@ -114,6 +114,9 @@ class Grow31SavingsController(
     @ExceptionHandler(Grow31PlanInvalidAmountException::class)
     fun handleInvalidAmount(ex: Grow31PlanInvalidAmountException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AMOUNT", ex.message ?: "Invalid request"))
 
+    @ExceptionHandler(InvalidGrow31PlanNameException::class)
+    fun handleInvalidName(ex: InvalidGrow31PlanNameException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_NAME", ex.message ?: "Invalid request"))
+
     @ExceptionHandler(Grow31PlanNotActiveException::class)
     fun handleNotActive(ex: Grow31PlanNotActiveException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("GROW31_PLAN_NOT_ACTIVE", ex.message ?: "Conflict"))
 

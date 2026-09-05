@@ -69,8 +69,19 @@ class AuthService(
         // the same systematic sweep that fixed the identical gap across Commerce/Eats/
         // Marketplace/Jobs/RealEstate/Community/Messaging/Maps the same day") -- this
         // backend's own registration endpoint was the one real gap that sweep missed.
-        if (request.firstName.isBlank() || request.firstName.length > 255) {
-            throw InvalidNameException("First name must be between 1 and 255 characters")
+        //
+        // Self-correction, same pass: 255 alone is the WRONG bound for firstName --
+        // this method concatenates it into 4 different real Account.accountName values
+        // below ("${user.firstName}'s Main Account" / "...itunda Pay Money" /
+        // "...Savings Account" / "...Investment Account"), and accountName's own
+        // column has no explicit length either (same 255 default). The longest suffix,
+        // "'s Investment Account", is 21 characters -- a firstName right at 255 would
+        // fit User.firstName but overflow accountName by up to 21 characters, the exact
+        // same concatenation-overflow shape GroupAccountService.createGroupAccount's own
+        // fix just closed. 234 (255 - 21) is the real safe bound, not the naive 255 this
+        // fix originally shipped with in this same pass.
+        if (request.firstName.isBlank() || request.firstName.length > 234) {
+            throw InvalidNameException("First name must be between 1 and 234 characters")
         }
         if (request.lastName.isBlank() || request.lastName.length > 255) {
             throw InvalidNameException("Last name must be between 1 and 255 characters")

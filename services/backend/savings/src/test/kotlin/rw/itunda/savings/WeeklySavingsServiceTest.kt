@@ -137,6 +137,29 @@ class WeeklySavingsServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        When("the plan name is blank") {
+            Then("it throws InvalidWeeklyPlanNameException before ever spending a rate-limit attempt") {
+                try {
+                    svc.createPlan("user_1", "   ", BigDecimal("10000"), BigDecimal("0.10"))
+                    error("expected InvalidWeeklyPlanNameException")
+                } catch (e: InvalidWeeklyPlanNameException) {
+                    verify(exactly = 0) { rateLimiter.checkLimit(any(), any(), any()) }
+                    verify(exactly = 0) { planRepository.save(any()) }
+                }
+            }
+        }
+
+        When("the plan name would overflow the settlement account's own accountName once \" (26-Week Savings)\" is appended") {
+            Then("it throws InvalidWeeklyPlanNameException at the real 237-char safe bound, not the naive 255") {
+                try {
+                    svc.createPlan("user_1", "x".repeat(238), BigDecimal("10000"), BigDecimal("0.10"))
+                    error("expected InvalidWeeklyPlanNameException")
+                } catch (e: InvalidWeeklyPlanNameException) {
+                    verify(exactly = 0) { planRepository.save(any()) }
+                }
+            }
+        }
     }
 
     Given("processing a due weekly installment with sufficient funds") {

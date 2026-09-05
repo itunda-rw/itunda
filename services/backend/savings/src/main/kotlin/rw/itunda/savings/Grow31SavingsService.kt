@@ -35,6 +35,7 @@ class Grow31PlanNotActiveException(message: String) : RuntimeException(message)
 class Grow31PlanNotMaturedException(message: String) : RuntimeException(message)
 class Grow31PlanAlreadyWithdrawnException(message: String) : RuntimeException(message)
 class Grow31AlreadyDepositedTodayException(message: String) : RuntimeException(message)
+class InvalidGrow31PlanNameException(message: String) : RuntimeException(message)
 
 data class Grow31SavingsPlanView(val plan: Grow31SavingsPlan, val accountBalance: BigDecimal, val deposits: List<Grow31SavingsDeposit>)
 
@@ -83,6 +84,13 @@ class Grow31SavingsService(
 
     @Transactional
     fun createPlan(userId: String, name: String, dailyAmount: BigDecimal): Grow31SavingsPlan {
+        // Real gap found 2026-09-05, same shape as WeeklySavingsService.createPlan's
+        // own fix: name is concatenated into the settlement Account's own accountName
+        // ("$name (31-Day Savings)", 17 extra chars) -- 238 (255 - 17) is the real safe
+        // bound, not Grow31SavingsPlan.name's own (unenforced) 255.
+        if (name.isBlank() || name.length > 238) {
+            throw InvalidGrow31PlanNameException("Plan name must be between 1 and 238 characters")
+        }
         // Real anti-spam limit, same convention as WeeklySavingsService.createPlan/
         // SavingsService.createGoal.
         rateLimiter.checkLimit("grow31-savings:create:$userId", limit = 10, window = Duration.ofHours(1))

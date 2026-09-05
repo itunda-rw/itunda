@@ -79,6 +79,11 @@ class IkiminaService(
     fun createIkimina(organizerId: String, name: String, contributionAmount: BigDecimal, cycleFrequencyDays: Int, memberCap: Int): Ikimina {
         rateLimiter.checkLimit("ikimina:create:$organizerId", limit = 10, window = Duration.ofHours(1))
         require(name.trim().isNotEmpty()) { "Name is required" }
+        // Real gap found 2026-09-05, same shape as WeeklySavingsService/
+        // Grow31SavingsService's own fixes: name is concatenated into the settlement
+        // Account's own accountName ("$name (Ikimina)", 10 extra chars) -- 245
+        // (255 - 10) is the real safe bound, not Ikimina.name's own (unenforced) 255.
+        require(name.length <= 245) { "Name must be 245 characters or fewer" }
         require(contributionAmount > BigDecimal.ZERO) { "Contribution amount must be greater than zero" }
         require(cycleFrequencyDays > 0) { "Cycle frequency must be greater than zero days" }
         require(memberCap in MIN_MEMBERS_TO_START..MAX_MEMBERS) { "Member cap must be between $MIN_MEMBERS_TO_START and $MAX_MEMBERS" }
