@@ -559,6 +559,43 @@ insufficient funds. There is no API endpoint for this — it's a background job,
 `docs/TOSS_PARITY_MATRIX.md`'s Savings row for the full account, including a real scheduler
 thread-starvation bug found and fixed alongside it.
 
+## Ikimina — `/api/v1/ikiminas`
+
+**Added 2026-09-05** (seventh documentation slice). Real ikimina — Rwanda's own
+rotating savings & credit association, genuinely distinct from every Toss/Kakao/
+Naver/Coupang-sourced feature in this backend, not a localization of a foreign
+product. An organizer creates a group, invites members by phone, starts a cycle, and
+each round every member contributes; the round's full pot pays out automatically to
+that round's recipient the moment the last member contributes. Confirmed by direct
+read of `IkiminaController.kt` (7 endpoints, 15 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | `{name, contributionAmount, cycleFrequencyDays, memberCap}` | `201 {success, ikimina: {...}}` | |
+| GET | `` (base path) | — | `{success, ikiminas: [...]}` | Caller's own ikiminas (organizer or member) |
+| GET | `/{id}` | — | `{success, ikimina: {...}, balance, members: [...], currentRoundContributions}` | |
+| POST | `/{id}/members` | `{phoneNumber}` | `201 {success, member: {...}}` | Organizer-only invite |
+| POST | `/{id}/start` | — | `{success, ikimina: {...}}` | Organizer-only — begins the first contribution round |
+| POST | `/{id}/contribute` | — (+ `Idempotency-Key`) | `{success, ikimina: {...}, payout}` | `payout` is `null` on every contribution except the one that completes the round — that one auto-triggers the payout in the same call |
+| POST | `/{id}/payout` | — (+ `Idempotency-Key`) | `{success, ikimina: {...}, recipientUserId, amount}` | Manual fallback trigger for the same auto-payout `contribute` above already does when it completes a round |
+
+### Errors (complete — all 15 `@ExceptionHandler`s in `IkiminaController.kt`)
+
+`404 IKIMINA_NOT_FOUND` (also covers "not a member"/"not the organizer" — see below),
+`404 RECIPIENT_NOT_FOUND`, `409 ALREADY_MEMBER`, `409 IKIMINA_FULL`,
+`404 ACCOUNT_NOT_FOUND`, `409 IKIMINA_NOT_FORMING`, `409 IKIMINA_NOT_ACTIVE`,
+`400 TOO_FEW_MEMBERS`, `409 ALREADY_CONTRIBUTED`, `422 CONTRIBUTIONS_INCOMPLETE`,
+`429 RATE_LIMITED`, `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`, `400 INVALID_REQUEST` (bare `IllegalArgumentException`
+fallback).
+
+**Real IDOR fix, 2026-09-04** (noted in the controller's own comment): a stranger
+probing `ikiminaId` values could distinguish "exists, you're not a member/organizer"
+from "doesn't exist" purely from the response body, even though both already returned
+404 — `IkiminaNotMemberException`/`IkiminaNotOrganizerException` and their dedicated
+handlers were removed entirely, and every membership/organizer check in
+`IkiminaService.kt` now throws the same `IkiminaNotFoundException` instead.
+
 ## Stocks — `/api/v1/stocks`
 
 | Method | Path | Body | Success | Notes |
@@ -914,6 +951,27 @@ full account of what this closes and what's still blocked (real NIDA/vendor veri
 
 Errors: `409 KYC_SUBMISSION_ALREADY_PENDING`.
 
+## Certificate — `/api/v1/certificate`
+
+**Added 2026-09-05, same slice.** Real Korean-style electronic-certificate (공동인증서)
+issuance — a real, itunda-issued key pair the private half of which is shown exactly
+once and never persisted server-side; the public half backs signature verification
+that any third party (with or without an itunda account) can check. Confirmed by
+direct read of `CertificateController.kt` (6 endpoints, 5 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/issue` | — | `201 {success, certificate: {...}, privateKey}` | `privateKey` is returned exactly once — this backend never persists it and can never show it again |
+| GET | `/me` | — | `{success, certificate: {...}}` | |
+| POST | `/revoke` | — | `{success, certificate: {...}}` | |
+| GET | `/status/{serialNumber}` | — | `{success, certificate: {...}}` | Public — no auth required. Real CRL/OCSP-style status check |
+| POST | `/verify` | `{serialNumber, payload, signature}` | `{success, signatureValid, certificateStatus, userId, serialNumber}` | Public — no auth required. Real asymmetric-signature verification never needs a secret credential, and a third party checking a document someone else signed has no itunda account of their own — both this and `/status` are explicitly `permitAll`'d, a real bug fix (both were initially left behind the default JWT gate, 401ing the exact callers they're meant to serve) |
+| POST | `/process-renewal-reminders` | — | `{success, processed}` | ADMIN only — manual trigger for the renewal-reminder scheduler, fires system-wide |
+
+Errors (all 5 real `@ExceptionHandler`s): `404 USER_NOT_FOUND`,
+`403 KYC_REQUIRED`, `404 NO_ACTIVE_CERTIFICATE`, `404 CERTIFICATE_NOT_FOUND`,
+`429 RATE_LIMITED`.
+
 ## Compliance — `/api/v1/system/compliance` (ADMIN role only)
 
 Mapped under the `system` path prefix specifically so it inherits the existing
@@ -1246,6 +1304,44 @@ Errors (all 10 real `@ExceptionHandler`s): `404 EMOTICON_PACK_NOT_FOUND`,
 `403 EMOTICON_PACK_NOT_OWNED`, `404 ACCOUNT_NOT_FOUND`,
 `404 GIFT_RECIPIENT_NOT_FOUND`, `400 GIFT_TO_SELF`, `422 INSUFFICIENT_FUNDS`,
 `403 ACCOUNT_FROZEN`, `429 RATE_LIMITED`.
+
+## Split Bills — `/api/v1/split-bills`
+
+**Added 2026-09-05, same slice.** Real KakaoPay-style 정산하기 (settlement/split-bill),
+chat-embedded in an existing group conversation or a fixed 1:1 direct split (which
+resolves or creates a hidden 2-person group behind the scenes, then runs the identical
+logic the named-group path uses). Includes a real KakaoPay 사다리타기 (ladder-game)
+random-split mode. Confirmed by direct read of `SplitBillController.kt` (8 endpoints,
+19 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/conversations/{groupConversationId}` | `{totalAmount, description, participantUserIds, mode?, ladderVarianceLevel?}` (+ `Idempotency-Key`) | `201 {success, splitBill: {...}, participants: [...]}` | `mode` defaults to `EVEN`; `ladderVarianceLevel` only matters for the ladder-game mode |
+| POST | `/direct/{otherUserId}` | `{totalAmount, description, mode?, ladderVarianceLevel?}` (+ `Idempotency-Key`) | `201 {success, splitBill: {...}, participants: [...]}` | No `participantUserIds` — the other person is fixed by the path variable |
+| GET | `/direct/{otherUserId}` | — | `{success, splitBills: [...]}` | Read-only counterpart to the POST above — never creates a hidden group; empty list if the two people have never split a bill |
+| GET | `/{id}` | — | `{success, splitBill: {...}, participants: [...]}` | |
+| GET | `/conversations/{groupConversationId}` | — | `{success, splitBills: [...]}` | |
+| POST | `/{id}/receipt` | `{imageUrl}` | `{success, splitBill: {...}}` | Not money-moving, no `Idempotency-Key` |
+| POST | `/{id}/next-round` | — | `{success, splitBill: {...}}` | Real up-to-5 settlement-round escalation. Not money-moving, no `Idempotency-Key` |
+| POST | `/{id}/pay` | — (+ `Idempotency-Key`) | `{success, participant: {...}}` | Pays the caller's own share |
+
+### Errors (complete — all 19 `@ExceptionHandler`s in `SplitBillController.kt`)
+
+`400 GROUP_NEEDS_MORE_MEMBERS`, `404 MEMBER_NOT_FOUND` (both surfaced from the shared
+`GroupMessagingService.getOrCreateDirectSplitGroup` the direct-split path calls into),
+`404 SPLIT_BILL_NOT_FOUND`, `400 INVALID_AMOUNT`, `400 DESCRIPTION_REQUIRED`,
+`400 SPLIT_BILL_NEEDS_PARTICIPANTS`, `400 INVALID_LADDER_VARIANCE_LEVEL`,
+`400 INVALID_RECEIPT_URL`, `400 PARTICIPANT_NOT_GROUP_MEMBER`,
+`409 SPLIT_BILL_SHARE_ALREADY_PAID`, `404 ACCOUNT_NOT_FOUND`,
+`409 SPLIT_BILL_ALREADY_SETTLED`, `409 SPLIT_BILL_NO_PENDING_PARTICIPANTS`,
+`409 SPLIT_BILL_MAX_ROUNDS_REACHED`, `422 INSUFFICIENT_FUNDS`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`, `429 RATE_LIMITED`.
+
+Reused as the underlying implementation of `POST /api/v1/community/posts/{postId}
+/finalize-group-buy` (see the Community section above) — that endpoint's own
+`INVALID_AMOUNT`/`DESCRIPTION_REQUIRED`/`SPLIT_BILL_NEEDS_PARTICIPANTS`/
+`PARTICIPANT_NOT_GROUP_MEMBER` handlers exist because this same service can throw them.
 
 ## Offline actions — `/api/v1/actions`
 
