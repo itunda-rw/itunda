@@ -2258,8 +2258,13 @@ extension NetworkClient {
         try await postP2p("api/v1/loans/student/\(loanId)/disburse", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
+    // Idempotency-Key added 2026-09-05 -- a lost response after a successful
+    // declare-graduated would previously resubmit here and hit the backend's own
+    // StudentLoanNotDisbursedException (the loan is no longer DISBURSED) on
+    // retry. Switched from authenticatedPostWithMessage (no idempotency support)
+    // to postP2p, matching this file's established convention.
     public func declareStudentLoanGraduated(loanId: String) async throws -> StudentLoanResponse {
-        try await authenticatedPostWithMessage("api/v1/loans/student/\(loanId)/declare-graduated", body: EmptyBody())
+        try await postP2p("api/v1/loans/student/\(loanId)/declare-graduated", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     public func repayStudentLoan(loanId: String, amount: Double) async throws -> StudentLoanResponse {

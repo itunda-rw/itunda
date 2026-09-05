@@ -59,9 +59,13 @@ export const disburseStudentLoan = (loanId: string) =>
     headers: { 'Idempotency-Key': randomUUID() },
   }).then((r) => r.loan);
 
+// Idempotency-Key added 2026-09-05 -- a lost response after a successful
+// declare-graduated would previously resubmit here and hit the backend's own
+// StudentLoanNotDisbursedException (the loan is no longer DISBURSED) on retry.
 export const declareGraduated = (loanId: string) =>
   apiFetch<{ success: boolean; loan: StudentLoan }>(`/api/v1/loans/student/${loanId}/declare-graduated`, {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
   }).then((r) => r.loan);
 
 export const repayStudentLoan = (loanId: string, amount: number) =>

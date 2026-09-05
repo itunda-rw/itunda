@@ -82,10 +82,24 @@ class StudentLoanController(
         return ResponseEntity.status(status).body(body)
     }
 
+    // Real gap found 2026-09-05 (see feedback_idempotency_key_sweep memory's own
+    // disclosed-not-fixed note on this exact endpoint) -- a retry after a
+    // successful declare-graduated (lost response) would hit
+    // StudentLoanNotDisbursedException since the loan is no longer DISBURSED.
+    // Lower-frequency/lower-stakes than the 5 originally-fixed endpoints (a
+    // one-time-per-loan lifecycle transition, not a hot financial action), but
+    // cheap enough to close now that the pattern's already established here.
     @PostMapping("/{loanId}/declare-graduated")
-    fun declareGraduated(@PathVariable loanId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
-        val loan = studentLoanService.declareGraduated(currentUser.userId, loanId)
-        return ResponseEntity.ok(mapOf("success" to true, "loan" to loan))
+    fun declareGraduated(
+        @PathVariable loanId: String,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/loans/student/$loanId/declare-graduated", idempotencyKey, currentUser.userId) {
+            val loan = studentLoanService.declareGraduated(currentUser.userId, loanId)
+            200 to mapOf("success" to true, "loan" to loan)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @PostMapping("/{loanId}/repay")

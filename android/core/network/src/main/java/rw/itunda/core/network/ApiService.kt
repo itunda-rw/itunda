@@ -5102,7 +5102,10 @@ interface ApiService {
     suspend fun disburseStudentLoan(@Path("loanId") loanId: String, @Header("Idempotency-Key") idempotencyKey: String): StudentLoanResponse
 
     @POST("api/v1/loans/student/{loanId}/declare-graduated")
-    suspend fun declareStudentLoanGraduated(@Path("loanId") loanId: String): StudentLoanResponse
+    // Idempotency-Key added 2026-09-05 -- a lost response after a successful
+    // declare-graduated would previously resubmit here and hit the backend's own
+    // StudentLoanNotDisbursedException (the loan is no longer DISBURSED) on retry.
+    suspend fun declareStudentLoanGraduated(@Path("loanId") loanId: String, @Header("Idempotency-Key") idempotencyKey: String): StudentLoanResponse
 
     @POST("api/v1/loans/student/{loanId}/repay")
     suspend fun repayStudentLoan(@Path("loanId") loanId: String, @Body request: RepayStudentLoanRequest, @Header("Idempotency-Key") idempotencyKey: String): StudentLoanResponse

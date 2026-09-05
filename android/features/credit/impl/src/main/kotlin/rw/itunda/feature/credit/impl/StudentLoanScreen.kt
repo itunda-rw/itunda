@@ -154,7 +154,7 @@ fun StudentLoanScreen(onBack: () -> Unit) {
         busyId = loanId
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.declareStudentLoanGraduated(loanId)
+                NetworkClient.apiService.declareStudentLoanGraduated(loanId, UUID.randomUUID().toString())
                 error = null
                 load()
             } catch (e: HttpException) {
