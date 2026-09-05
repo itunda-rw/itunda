@@ -1254,9 +1254,12 @@ with their own `PREMIUM_FUND_NOT_FOUND`/`PREMIUM_FUND_ALREADY_EXISTS`/
 | GET | `/queue` | — | `{success, queue: [...]}` | All `SUBMITTED` claims, oldest first |
 | POST | `/{claimId}/decide` | `{approve, reason?}` | `{success, claim}` | On `approve: true`, really pays out from a new `insurance_claims_expense` ledger account straight into the claimant's wallet — confirmed live, balance moved by the exact claim amount |
 
-Errors: `404 CLAIM_NOT_FOUND`, `409 CLAIM_NOT_PENDING` (already decided), `404 ACCOUNT_NOT_FOUND`,
-`422 INSUFFICIENT_FUNDS`. **Corrected 2026-09-04** — real code is `ACCOUNT_NOT_FOUND`,
-not `WALLET_NOT_FOUND` (doesn't exist; confirmed via `InsuranceClaimsAdminController.kt`).
+Errors (complete — all 5 real `@ExceptionHandler`s in `InsuranceClaimsAdminController.kt`):
+`404 CLAIM_NOT_FOUND`, `409 CLAIM_NOT_PENDING` (already decided), `404 ACCOUNT_NOT_FOUND`,
+`422 INSUFFICIENT_FUNDS`, `400 INVALID_DECISION_REASON` (added 2026-09-05 — a real
+handler this section had never listed). **Corrected 2026-09-04** — real code is
+`ACCOUNT_NOT_FOUND`, not `WALLET_NOT_FOUND` (doesn't exist; confirmed via
+`InsuranceClaimsAdminController.kt`).
 
 ## Crop Weather-Index Insurance — `/api/v1/insurance/crop-index`
 
@@ -2967,15 +2970,17 @@ Unlike the stubs above, this one is genuinely real end to end. Built and live-ve
 
 | Method | Path | Body | Success | Notes |
 |---|---|---|---|---|
-| GET | `/queue` | — | `{success, queue: [...]}` | All unreviewed flags, oldest first |
-| POST | `/{flagId}/decide` | `{decision: "CLEARED" \| "CONFIRMED"}` | `{success, flag}` | Blocks re-deciding an already-reviewed flag |
+| GET | `/queue` | — | `{success, queue: [...], summary, activePolicy, ...pageMeta}` | All unreviewed flags, oldest first. `summary`/`activePolicy` added since this section was first written — real, not yet individually documented here |
+| POST | `/{flagId}/decide` | `{decision: "CLEARED" \| "CONFIRMED", reviewNote?}` | `{success, flag}` | Blocks re-deciding an already-reviewed flag. `reviewNote` added since this section was first written |
 
 Flags are raised by `FraudRuleEngine` (lives in `:core`, called from P2P, wallet transfer, and
 merchant collection as of 2026-07-13 — every real money-moving flow in this backend except
 bills/loans/stocks/savings/insurance, which don't move money between two itunda users) and
 never block a transaction — review-only by design. Rules: `HIGH_VALUE` (≥100,000 RWF),
 `VELOCITY` (3+ outgoing transactions in 5 minutes), `NEW_RECIPIENT` (first-ever payment to that
-recipient). Errors: `404 FRAUD_FLAG_NOT_FOUND`, `409 FRAUD_FLAG_ALREADY_REVIEWED`.
+recipient). Errors (complete — all 3 real `@ExceptionHandler`s in `FraudController.kt`,
+`FRAUD_REVIEW_NOTE_INVALID` added 2026-09-05, a real handler this section had never listed):
+`404 FRAUD_FLAG_NOT_FOUND`, `409 FRAUD_FLAG_ALREADY_REVIEWED`, `400 FRAUD_REVIEW_NOTE_INVALID`.
 
 ### Support review — `/api/v1/system/support` (ADMIN role only)
 
@@ -3011,6 +3016,122 @@ an already-`OPEN` rail is suppressed, not duplicated). Errors: `404 INCIDENT_NOT
 unmatched-provider rail produced 2 real declines and a real persisted `OPEN` incident; a
 non-admin token real-403s on resolve, the admin resolve real-200s, resolving again real-409s,
 resolving an unknown id real-404s.
+
+### Hood report review — `/api/v1/system/hood-reports` (ADMIN role only)
+
+**Added 2026-09-05** (twenty-sixth documentation slice — the final push through the
+remaining ADMIN-only moderation queues). A second, distinct `@RestController` class
+(`HoodReportAdminController`) living in the same file as the user-facing Hood Report
+endpoint below — a real gap this session's own controller-counting method had never
+caught, since it assumed one `@RestController` per file. Confirmed by direct read of
+`HoodReportController.kt`'s second class (3 endpoints, 2 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `` (base path) | — | `{success, reports: [...], ...pageMeta}` | |
+| POST | `/{id}/resolve` | — | `{success, report: {...}}` | |
+| POST | `/{id}/remove-target` | — | `{success, report: {...}}` | Removes the reported post/comment/etc. itself |
+
+Errors: `404 HOOD_REPORT_NOT_FOUND`, `404 HOOD_REPORT_TARGET_NOT_FOUND`.
+
+### Marketplace escrow disputes — `/api/v1/system/marketplace-escrow` (ADMIN role only)
+
+**Added 2026-09-05, same slice.** Resolves a disputed Marketplace escrow (see the
+Marketplace section above) by releasing funds to the seller or refunding the buyer.
+Confirmed by direct read of `MarketplaceEscrowAdminController.kt` (2 endpoints, 2
+error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/disputes` | — | `{success, disputes: [...]}` | |
+| POST | `/{escrowId}/resolve` | `{release}` | `{success, escrow: {...}}` | `release: true` pays the seller; `false` refunds the buyer |
+
+Errors: `404 ESCROW_NOT_FOUND`, `409 INVALID_ESCROW_STATUS`.
+
+### Merchant moderation — `/api/v1/system/merchants` (ADMIN role only)
+
+**Added 2026-09-05, same slice.** Real merchant-directory moderation — before this
+existed, there was no way anywhere in the app to take a merchant out of public
+browse once created. Confirmed by direct read of
+`MerchantModerationAdminController.kt` (3 endpoints, 1 error code).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/uncategorized?` | — | `{success, merchants: [...], ...pageMeta}` | Real moderation queue — "`ACTIVE` with no category" is the real signal a merchant needs review |
+| POST | `/{merchantId}/suspend` | — | `{success, status}` | |
+| POST | `/{merchantId}/reactivate` | — | `{success, status}` | |
+
+Errors: `404 MERCHANT_NOT_FOUND`.
+
+### Property ownership verification — `/api/v1/system/property-verification` (ADMIN role only)
+
+**Added 2026-09-05, same slice.** Reviews the ownership-verification document a
+lister submits via `POST /api/v1/realestate/listings/{propertyListingId}
+/verify-ownership` (see Property Listings above). Confirmed by direct read of
+`PropertyOwnershipAdminController.kt` (2 endpoints, 3 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/queue` | — | `{success, queue: [...], ...pageMeta}` | |
+| POST | `/{submissionId}/decide` | `{approve, reason?}` | `{success, submission: {...}}` | |
+
+Errors (all 3 real `@ExceptionHandler`s): `404 PROPERTY_OWNERSHIP_SUBMISSION_NOT_FOUND`,
+`409 PROPERTY_OWNERSHIP_SUBMISSION_NOT_PENDING`, `400 INVALID_DECISION_REASON`.
+
+### Transit GTFS import — `/api/v1/system/transit` (ADMIN role only)
+
+**Added 2026-09-05, same slice.** A real, one-time (re-runnable) fetch-and-replace
+import of the real Kigali GTFS feed backing Maps' own transit directions — not a
+live per-request call. Confirmed by direct read of `TransitGtfsAdminController.kt`
+(1 endpoint, 1 error code).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/import-gtfs` | — | `{success, imported}` | |
+
+Errors: `502 TRANSIT_GTFS_FETCH_FAILED`.
+
+### AI summary generation (Eats & Hood) — `/api/v1/system/ai-summaries`, `/api/v1/system/hood-ai-summaries` (ADMIN role only)
+
+**Added 2026-09-05, same slice.** Two near-identical manual-trigger endpoints
+(`AiSummaryAdminController`, `HoodAiSummaryAdminController`) for their respective
+`AiSummaryService`/`HoodAiSummaryService` batch jobs, alongside each service's own
+automatic daily scheduler — useful for a first, deliberately-supervised run right
+after the real llama-server instance is deployed. Neither controller has an
+`@ExceptionHandler` of its own.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/api/v1/system/ai-summaries/generate?limit` | — | `{success, generated}` | Eats restaurant summaries. `limit` defaults to 20 |
+| POST | `/api/v1/system/hood-ai-summaries/generate?limit` | — | `{success, generated}` | Community/Hood post summaries. `limit` defaults to 20 |
+
+## Chat Reports — `/api/v1/chat/reports`
+
+**Added 2026-09-05, same slice.** Real 1:1-message reporting inside Talk. Confirmed
+by direct read of `ChatReportController.kt` (1 endpoint, 2 error codes, all unique —
+one handler method covers 2 distinct exception types, both mapping to the same
+not-found code).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | `{messageId, reason}` | `201 {success, report: {...}}` | |
+
+Errors: `404 CHAT_MESSAGE_NOT_FOUND` (covers both a nonexistent message and a
+message the caller isn't allowed to report), `409 CHAT_REPORT_ALREADY_OPEN`.
+
+## Hood Reports — `/api/v1/hood/reports`
+
+**Added 2026-09-05, same slice.** The unified, cross-vertical reporting endpoint
+Community/Marketplace/Jobs listings all retired their own separate report endpoints
+in favor of (see those sections above). Reviewed via the ADMIN-only queue documented
+above. Confirmed by direct read of `HoodReportController.kt`'s first class (1
+endpoint, 2 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | `{targetType, targetId, reason}` | `201 {success, report: {...}}` | `targetType` is which vertical the report targets (a post, listing, job, etc.) |
+
+Errors: `409 HOOD_REPORT_ALREADY_OPEN`, `404 HOOD_REPORT_TARGET_NOT_FOUND`.
 
 ## What does not exist (previously implied real, or plausible-sounding, but absent)
 
