@@ -1152,6 +1152,101 @@ read of `ResumeController.kt` (9 endpoints, 2 error codes).
 
 Errors (both real `@ExceptionHandler`s): `400 INVALID_RESUME`, `404 RESUME_ENTRY_NOT_FOUND`.
 
+## Family Link — `/api/v1/family`
+
+**Added 2026-09-05** (sixth documentation slice). Real Toss 유스 (Toss Youth)-style
+guardian-child account link — a guardian invites a child by phone number, the child
+accepts, and the guardian gets a real per-day spend-limit control over the child's
+account. Confirmed by direct read of `FamilyLinkController.kt` (8 endpoints, 9 error
+codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/invite` | `{childPhoneNumber}` | `201 {success, link: {...}}` | |
+| GET | `/invites` | — | `{success, invites: [...]}` | Invites the caller has received AS a child |
+| POST | `/invites/{id}/respond` | `{accept}` | `{success, link: {...}}` | |
+| GET | `/children` | — | `{success, children: [...]}` | Guardian's own linked children |
+| GET | `/guardians` | — | `{success, guardians: [...]}` | Child's own linked guardians |
+| GET | `/children/{childUserId}/overview` | — | `{success, overview: {...}}` | Guardian-only, ownership-checked |
+| POST | `/children/{childUserId}/spend-limit` | `{dailySpendLimit}` | `{success, link: {...}}` | Not money-moving itself — no `Idempotency-Key`. `dailySpendLimit: null` removes the limit |
+| POST | `/links/{id}/revoke` | — | `{success, link: {...}}` | Either party can revoke |
+
+Errors (all 9 real `@ExceptionHandler`s): `404 FAMILY_LINK_NOT_FOUND`,
+`404 FAMILY_LINK_ACCOUNT_NOT_FOUND`, `400 SELF_LINK_NOT_ALLOWED`,
+`409 FAMILY_LINK_ALREADY_EXISTS`, `409 FAMILY_LINK_NOT_PENDING`,
+`409 FAMILY_LINK_NOT_ACTIVE`, `403 FAMILY_LINK_UNAUTHORIZED`,
+`400 INVALID_SPEND_LIMIT`, `429 RATE_LIMITED`.
+
+## Gifts — `/api/v1/gifts`
+
+**Added 2026-09-05, same slice.** Real KakaoTalk-style 선물하기 money gift — send a
+real ledger transfer as a "gift" a recipient must actively claim (unclaimed gifts
+expire and refund automatically; see `GiftService`'s own doc comment). Confirmed by
+direct read of `GiftController.kt` (5 endpoints, 13 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | `{recipientPhoneNumber, amount, note?, theme?}` (+ `Idempotency-Key`) | `201 {success, gift: {...}}` | |
+| POST | `/conversations/{conversationId}` | `{amount, note?, theme?}` (+ `Idempotency-Key`) | `201 {success, gift: {...}}` | Real chat-embedded gift — recipient resolved as "whichever participant isn't me", no phone number re-entry |
+| GET | `/{id}` | — | `{success, gift: {...}}` | |
+| GET | `/conversations/{conversationId}` | — | `{success, gifts: [...]}` | |
+| POST | `/{id}/claim` | — (+ `Idempotency-Key`) | `{success, gift: {...}}` | |
+
+Errors (all 13 real `@ExceptionHandler`s): `404 GIFT_NOT_FOUND`,
+`409 GIFT_ALREADY_RESOLVED`, `409 GIFT_EXPIRED`, `403 NOT_GIFT_RECIPIENT`,
+`400 SELF_GIFT_NOT_ALLOWED`, `404 ACCOUNT_NOT_FOUND`, `404 GIFT_RECIPIENT_NOT_FOUND`,
+`400 INVALID_AMOUNT`, `422 INSUFFICIENT_FUNDS`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`,
+`429 RATE_LIMITED`.
+
+## Gift Vouchers — `/api/v1/gift-vouchers`
+
+**Added 2026-09-05, same slice.** Real KakaoTalk-style 선물하기 기프티콘 (mobile gift
+voucher) — buy a specific merchant product (or a cash amount) as a redeemable voucher
+for another user; redemption is merchant-authenticated, not recipient self-serve.
+Confirmed by direct read of `GiftVoucherController.kt` (6 endpoints, 17 error codes,
+all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/process-expiry-reminders` | — | `{success, processed}` | ADMIN only — manual trigger for the expiry-reminder scheduler, fires system-wide |
+| POST | `` (base path) | `{recipientPhoneNumber, merchantId, merchantProductId?, amount?}` (+ `Idempotency-Key`) | `201 {success, voucher: {...}}` | |
+| GET | `/{id}` | — | `{success, voucher: {...}}` | |
+| GET | `/conversations/{conversationId}` | — | `{success, vouchers: [...]}` | |
+| POST | `/{id}/extend` | — | `{success, voucher: {...}}` | Not money-moving, no `Idempotency-Key` — a legitimate retry after this call already succeeded hits `GIFT_VOUCHER_ALREADY_EXTENDED` and shows a scary-looking error even though the extension already happened; a known, deliberately deferred gap (see `feedback_toss_error_handling.md`'s AlreadyX audit) |
+| POST | `/{id}/redeem` | — (+ `Idempotency-Key`) | `{success, voucher: {...}}` | Merchant-authenticated, not the recipient |
+
+Errors (all 17 real `@ExceptionHandler`s): `404 GIFT_VOUCHER_NOT_FOUND`,
+`409 GIFT_VOUCHER_NOT_ACTIVE`, `409 GIFT_VOUCHER_EXPIRED`, `400 SELF_GIFT_NOT_ALLOWED`,
+`404 ACCOUNT_NOT_FOUND`, `404 GIFT_VOUCHER_RECIPIENT_NOT_FOUND`, `400 INVALID_AMOUNT`,
+`404 MERCHANT_NOT_FOUND`, `404 PRODUCT_NOT_FOUND`, `409 PRODUCT_OUT_OF_STOCK`,
+`422 GIFT_VOUCHER_NOT_EXTENDABLE`, `409 GIFT_VOUCHER_ALREADY_EXTENDED`,
+`422 INSUFFICIENT_FUNDS`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`,
+`429 RATE_LIMITED`.
+
+## Emoticons — `/api/v1/emoticons`
+
+**Added 2026-09-05, same slice.** Real KakaoTalk Emoticon Store — buy or gift a pack,
+then send an owned emoticon into a 1:1 or group chat. Confirmed by direct read of
+`EmoticonController.kt` (7 endpoints, 10 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/packs` | — | `{success, packs: [...]}` | Public catalog — no auth required |
+| GET | `/packs/{packId}` | — | `{success, emoticons: [...]}` | |
+| GET | `/packs/owned` | — | `{success, packs: [...]}` | |
+| POST | `/packs/{packId}/purchase` | — | `201 {success, ownedPack: {...}}` | Not money-moving-idempotent-protected — a genuine gap flagged separately (`EMOTICON_PACK_ALREADY_OWNED` already resolves forward on the reachable clients, see `feedback_toss_error_handling.md`) |
+| POST | `/packs/{packId}/gift` | `{recipientPhoneNumber}` | `201 {success, giftedPack: {...}}` | Recipient identified by phone number, same convention `P2pController.send` uses |
+| POST | `/conversations/{conversationId}/send` | `{emoticonId}` | `201 {success, message: {...}}` | |
+| POST | `/groups/{groupId}/send` | `{emoticonId}` | `201 {success, message: {...}}` | |
+
+Errors (all 10 real `@ExceptionHandler`s): `404 EMOTICON_PACK_NOT_FOUND`,
+`404 EMOTICON_NOT_FOUND`, `409 EMOTICON_PACK_ALREADY_OWNED`,
+`403 EMOTICON_PACK_NOT_OWNED`, `404 ACCOUNT_NOT_FOUND`,
+`404 GIFT_RECIPIENT_NOT_FOUND`, `400 GIFT_TO_SELF`, `422 INSUFFICIENT_FUNDS`,
+`403 ACCOUNT_FROZEN`, `429 RATE_LIMITED`.
+
 ## Offline actions — `/api/v1/actions`
 
 Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s Offline row for the full
