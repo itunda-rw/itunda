@@ -109,7 +109,7 @@ fun DeliveryDetailScreen(orderId: String, onBack: () -> Unit) {
                 }
                 current.distanceKm?.let {
                     Spacer(modifier = Modifier.height(6.dp))
-                    Text("${"%.1f".format(it)} km", style = MaterialTheme.typography.bodyMedium)
+                    Text("${String.format(Locale.US, "%.1f", it)} km", style = MaterialTheme.typography.bodyMedium)
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {

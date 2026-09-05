@@ -1,5 +1,6 @@
 package rw.itunda.feature.banking.impl
 
+import java.util.Locale
 import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -155,7 +156,7 @@ private fun Grow31PlanRow(plan: Grow31SavingsPlanDto, onClick: () -> Unit) {
         Spacer(modifier = Modifier.height(8.dp))
         val bonus = grow31BonusRateForStreak(plan.longestStreak)
         Text(
-            if (bonus > 0.0) "Longest streak ${plan.longestStreak} days -- +${"%.0f".format(bonus)}% bonus locked in so far" else "Save today to start your streak",
+            if (bonus > 0.0) "Longest streak ${plan.longestStreak} days -- +${String.format(Locale.US, "%.0f", bonus)}% bonus locked in so far" else "Save today to start your streak",
             color = if (bonus > 0.0) Ids.colors.success else Ids.colors.textSecondary,
             fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
         )
@@ -348,7 +349,7 @@ private fun Grow31DetailContent(planId: String, onChanged: () -> Unit) {
                         val bonus = grow31BonusRateForStreak(plan.longestStreak)
                         Text(
                             if (bonus > 0.0) {
-                                "+${"%.0f".format(bonus)}% bonus locked in on top of the ${"%.1f".format(plan.baseRate)}% base rate"
+                                "+${String.format(Locale.US, "%.0f", bonus)}% bonus locked in on top of the ${String.format(Locale.US, "%.1f", plan.baseRate)}% base rate"
                             } else {
                                 "Save 3 days in a row to unlock your first bonus tier"
                             },

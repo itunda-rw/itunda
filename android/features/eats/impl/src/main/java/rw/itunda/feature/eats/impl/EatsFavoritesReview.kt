@@ -196,7 +196,7 @@ internal fun RestaurantRatingBadge(restaurantId: String) {
             ) {
                 Icon(IdsIcons.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("%.1f (%d)".format(r.average ?: 0.0, r.count), color = Ids.colors.textSecondary, fontSize = 13.sp)
+                Text(String.format(Locale.US, "%.1f (%d)", r.average ?: 0.0, r.count), color = Ids.colors.textSecondary, fontSize = 13.sp)
             }
             if (open) {
                 val list = reviews

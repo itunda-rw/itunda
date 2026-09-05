@@ -1392,7 +1392,7 @@ fun MapScreen(
                         when {
                             measurePoints.isEmpty() -> "Tap the map to add 2–7 stops"
                             measurePoints.size == 1 -> "Add 1 more stop to route it"
-                            else -> "${measurePoints.size} stops · ${"%.2f".format(measureTotalKm)} km straight-line"
+                            else -> "${measurePoints.size} stops · ${String.format(java.util.Locale.US, "%.2f", measureTotalKm)} km straight-line"
                         },
                         fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Ids.colors.textPrimary,
                     )

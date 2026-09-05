@@ -157,9 +157,9 @@ private fun CreateOrExtendAdCard(onCreated: () -> Unit) {
             Text("Run a local ad", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             IdsTextField(value = title, onValueChange = { title = it }, label = "Title", modifier = Modifier.fillMaxWidth())
             IdsTextField(value = description, onValueChange = { description = it }, label = "Description (optional)", modifier = Modifier.fillMaxWidth())
-            Text("Radius: ${if (radiusMeters >= 1000) "%.1fkm".format(radiusMeters / 1000.0) else "${radiusMeters}m"}", style = MaterialTheme.typography.bodySmall)
+            Text("Radius: ${if (radiusMeters >= 1000) String.format(Locale.US, "%.1fkm", radiusMeters / 1000.0) else "${radiusMeters}m"}", style = MaterialTheme.typography.bodySmall)
             IdsSegmentedControl(
-                options = listOf(300, 700, 1000, 1500).map { r -> r to (if (r >= 1000) "%.1fkm".format(r / 1000.0) else "${r}m") },
+                options = listOf(300, 700, 1000, 1500).map { r -> r to (if (r >= 1000) String.format(Locale.US, "%.1fkm", r / 1000.0) else "${r}m") },
                 selected = radiusMeters,
                 onSelect = { radiusMeters = it },
             )

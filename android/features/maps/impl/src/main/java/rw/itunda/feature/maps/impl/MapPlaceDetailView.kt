@@ -137,7 +137,7 @@ internal fun PlaceDetailAndRouteView(
                     // Real "share this place" (2026-07-22) -- ported from bank-mfe's own
                     // real Web Share/clipboard action. Plain name+coordinate text via
                     // Android's native share sheet, not a link into itunda's own domain.
-                    val text = "${place.displayName} (${"%.6f".format(place.latitude)}, ${"%.6f".format(place.longitude)})"
+                    val text = "${place.displayName} (${String.format(java.util.Locale.US, "%.6f", place.latitude)}, ${String.format(java.util.Locale.US, "%.6f", place.longitude)})"
                     val intent = Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
                         putExtra(Intent.EXTRA_TEXT, text)
@@ -331,11 +331,11 @@ internal fun PlaceDetailAndRouteView(
                     val glanceLine = listOfNotNull(
                         matchedMerchant.category,
                         matchedMerchant.rating?.let { r ->
-                            "⭐ ${"%.1f".format(r)}" + if (matchedMerchant.reviewCount > 0) " (${matchedMerchant.reviewCount})" else ""
+                            "⭐ ${String.format(java.util.Locale.US, "%.1f", r)}" + if (matchedMerchant.reviewCount > 0) " (${matchedMerchant.reviewCount})" else ""
                         },
                         matchedMerchant.distanceKm?.let { d ->
                             val eta = matchedMerchant.deliveryTimeMinutes?.let { " · ~$it min" } ?: ""
-                            "${"%.1f".format(d)} km$eta"
+                            "${String.format(java.util.Locale.US, "%.1f", d)} km$eta"
                         },
                     ).joinToString(" · ")
                     if (glanceLine.isNotEmpty()) {

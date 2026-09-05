@@ -91,7 +91,7 @@ internal fun TransitJourneyResultsView(journeys: List<TransitJourneyDto>?, trans
                     modifier = Modifier.fillMaxWidth().background(Ids.colors.surfaceSoft, RoundedCornerShape(10.dp)).padding(12.dp),
                 ) {
                     Text(
-                        "🚶 ${"%.1f".format(journey.walkToOriginStopKm)} km → 🚌 $routeLabel → 🚶 ${"%.1f".format(journey.walkFromDestinationStopKm)} km",
+                        "🚶 ${String.format(Locale.US, "%.1f", journey.walkToOriginStopKm)} km → 🚌 $routeLabel → 🚶 ${String.format(Locale.US, "%.1f", journey.walkFromDestinationStopKm)} km",
                         fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary,
                     )
                     Text(

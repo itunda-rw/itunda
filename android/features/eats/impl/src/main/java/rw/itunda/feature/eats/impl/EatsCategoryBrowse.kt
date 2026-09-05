@@ -197,12 +197,12 @@ internal fun RestaurantCard(m: ShoppingMerchantDto, isFavorite: Boolean, favorit
                         if (m.rating != null) {
                             Icon(IdsIcons.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(12.dp))
                             Spacer(modifier = Modifier.width(2.dp))
-                            Text("%.1f (%d)".format(m.rating, m.reviewCount), color = Ids.colors.textSecondary, fontSize = 12.sp)
+                            Text(String.format(Locale.US, "%.1f (%d)", m.rating, m.reviewCount), color = Ids.colors.textSecondary, fontSize = 12.sp)
                             Spacer(modifier = Modifier.width(6.dp))
                         }
                         Text(
                             listOfNotNull(
-                                m.distanceKm?.let { "%.1f km".format(it) },
+                                m.distanceKm?.let { String.format(Locale.US, "%.1f km", it) },
                                 m.deliveryTimeMinutes?.let { "~$it min" },
                                 m.minOrderAmount?.let { "Min ${formatMoneyEatsCategory(it)} RWF" },
                             ).joinToString(" · "),

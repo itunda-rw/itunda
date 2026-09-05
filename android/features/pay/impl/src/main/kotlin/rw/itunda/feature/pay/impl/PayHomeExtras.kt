@@ -137,7 +137,7 @@ fun NearbyMerchantsDialog(merchants: List<rw.itunda.core.network.NearbyMerchantD
                         Text(merchant.businessName, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
                         Text(merchant.category ?: "Merchant", fontSize = 12.sp, color = Ids.colors.textSecondary)
                     }
-                    Text("${"%.1f".format(merchant.distanceKm)} km", fontSize = 13.sp, color = Ids.colors.textSecondary)
+                    Text("${String.format(Locale.US, "%.1f", merchant.distanceKm)} km", fontSize = 13.sp, color = Ids.colors.textSecondary)
                 }
                 if (index != merchants.take(20).lastIndex) {
                     HorizontalDivider(color = Ids.colors.divider)

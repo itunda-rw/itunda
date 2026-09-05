@@ -1,5 +1,6 @@
 package rw.itunda.account
 
+import java.util.Locale
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
@@ -270,7 +271,7 @@ class ForeignCurrencyAccountService(
         if (!crossed) return
 
         val title = "${alert.fromCurrency}/${alert.toCurrency} hit your target rate"
-        val body = "${alert.fromCurrency}/${alert.toCurrency} is now ${"%.6f".format(currentRate)} (target: ${alert.targetRate})"
+        val body = "${alert.fromCurrency}/${alert.toCurrency} is now ${String.format(Locale.US, "%.6f", currentRate)} (target: ${alert.targetRate})"
         notificationRepository.save(
             Notification(
                 id = "notif_${UUID.randomUUID()}", userId = alert.userId, type = "EXCHANGE_RATE_ALERT",

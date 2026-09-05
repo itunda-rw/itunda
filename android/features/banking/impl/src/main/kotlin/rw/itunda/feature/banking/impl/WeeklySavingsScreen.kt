@@ -1,5 +1,6 @@
 package rw.itunda.feature.banking.impl
 
+import java.util.Locale
 import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -307,11 +308,11 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
                         Spacer(modifier = Modifier.height(10.dp))
                         Text(
                             if (plan.streakBroken) {
-                                "Streak broken -- bonus rate (+${"%.1f".format(plan.bonusRate)}%) forfeited, " +
-                                    "base rate ${"%.1f".format(plan.baseRate)}% still applies"
+                                "Streak broken -- bonus rate (+${String.format(Locale.US, "%.1f", plan.bonusRate)}%) forfeited, " +
+                                    "base rate ${String.format(Locale.US, "%.1f", plan.baseRate)}% still applies"
                             } else {
-                                "On streak -- an unbroken run to maturity earns +${"%.1f".format(plan.bonusRate)}% bonus " +
-                                    "on top of the ${"%.1f".format(plan.baseRate)}% base rate"
+                                "On streak -- an unbroken run to maturity earns +${String.format(Locale.US, "%.1f", plan.bonusRate)}% bonus " +
+                                    "on top of the ${String.format(Locale.US, "%.1f", plan.baseRate)}% base rate"
                             },
                             color = if (plan.streakBroken) Ids.colors.danger else Ids.colors.success,
                             fontSize = 13.sp, fontWeight = FontWeight.SemiBold,

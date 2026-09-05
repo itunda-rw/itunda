@@ -259,11 +259,11 @@ fun BankHubScreen(
                                     if (jar.earnedTotal > 0.0) {
                                         stringResource(
                                             R.string.home_interest_jar_rate_subtitle_total,
-                                            "%.1f".format(jar.rate),
+                                            String.format(Locale.US, "%.1f", jar.rate),
                                             String.format(Locale.US, "%,.0f", jar.earnedTotal),
                                         )
                                     } else {
-                                        stringResource(R.string.home_interest_jar_rate_subtitle, "%.1f".format(jar.rate))
+                                        stringResource(R.string.home_interest_jar_rate_subtitle, String.format(Locale.US, "%.1f", jar.rate))
                                     },
                                     String.format(Locale.US, "%,.0f RWF", jar.earnedThisMonth),
                                     Icons.Outlined.Savings,

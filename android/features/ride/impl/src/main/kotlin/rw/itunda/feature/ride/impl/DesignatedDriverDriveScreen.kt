@@ -6,6 +6,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -303,7 +304,7 @@ internal fun DesignatedDriverTripCard(trip: DesignatedDriverTripDto, action: (@C
                     fontSize = 12.sp,
                     modifier = Modifier.alpha(pulseAlpha),
                 )
-                Text("${formatMoney(trip.fare)} RWF · ${"%.1f".format(trip.distanceKm)} km", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                Text("${formatMoney(trip.fare)} RWF · ${String.format(Locale.US, "%.1f", trip.distanceKm)} km", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }
             action?.let {
                 Spacer(modifier = Modifier.height(4.dp))

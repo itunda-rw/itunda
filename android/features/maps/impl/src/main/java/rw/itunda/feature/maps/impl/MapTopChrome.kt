@@ -1,6 +1,7 @@
 package rw.itunda.feature.maps.impl
 
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.itundaface.PlaceGlyph
 import androidx.compose.foundation.horizontalScroll
@@ -205,7 +206,7 @@ internal fun MapTopChrome(
                                 .padding(10.dp),
                         ) {
                             Text(splitPlaceName(place.displayName).first, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                            Text("%.1f km".format(place.distanceKm), fontSize = 11.sp, color = Ids.colors.textSecondary, modifier = Modifier.padding(top = 2.dp))
+                            Text(String.format(Locale.US, "%.1f km", place.distanceKm), fontSize = 11.sp, color = Ids.colors.textSecondary, modifier = Modifier.padding(top = 2.dp))
                         }
                     }
                 }

@@ -700,7 +700,7 @@ private fun haversineKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double):
 }
 
 private fun formatDistanceKm(km: Double): String =
-    if (km < 1.0) "${(km * 1000).toInt()}m" else "%.1fkm".format(km)
+    if (km < 1.0) "${(km * 1000).toInt()}m" else String.format(Locale.US, "%.1fkm", km)
 
 @Composable
 // Real seller-paid sponsored placement (2026-07-25) -- see backend

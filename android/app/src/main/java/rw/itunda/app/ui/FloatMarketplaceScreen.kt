@@ -291,7 +291,7 @@ private fun NearbyListingRow(listing: NearbyFloatListingDto, busy: Boolean, onRe
     var amount by remember { mutableStateOf("") }
     Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("${listing.agentDisplayName} · ${"%.1f".format(listing.distanceKm)} km", style = MaterialTheme.typography.bodySmall)
+            Text("${listing.agentDisplayName} · ${String.format(Locale.US, "%.1f", listing.distanceKm)} km", style = MaterialTheme.typography.bodySmall)
             Text("${String.format(Locale.US, "%,.0f", listing.remainingAmount)} RWF available", style = MaterialTheme.typography.bodySmall)
         }
         Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

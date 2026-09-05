@@ -221,7 +221,7 @@ internal fun RideTripCard(trip: RideTripDto, stops: List<RideTripStopDto>? = nul
                     fontSize = 12.sp,
                     modifier = Modifier.alpha(pulseAlpha),
                 )
-                Text("${formatMoney(trip.fare)} RWF · ${"%.1f".format(trip.distanceKm)} km", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                Text("${formatMoney(trip.fare)} RWF · ${String.format(Locale.US, "%.1f", trip.distanceKm)} km", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }
             action?.let {
                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(4.dp))
@@ -251,7 +251,7 @@ internal fun DriverRatingSection(driverId: String) {
 
     Column(modifier = Modifier.padding(top = 8.dp)) {
         Text(
-            "★ %.1f".format(r.average ?: 0.0) + " (${r.count} rating${if (r.count == 1L) "" else "s"}) ${if (expanded) "▲" else "▼"}",
+            String.format(Locale.US, "★ %.1f", r.average ?: 0.0) + " (${r.count} rating${if (r.count == 1L) "" else "s"}) ${if (expanded) "▲" else "▼"}",
             color = androidx.compose.ui.graphics.Color(0xFFFFC107), fontWeight = FontWeight.Bold, fontSize = 12.sp,
             modifier = Modifier.pressScaleClickable {
                 expanded = !expanded

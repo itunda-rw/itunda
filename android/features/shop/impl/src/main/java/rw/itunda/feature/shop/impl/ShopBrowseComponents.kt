@@ -277,7 +277,7 @@ internal fun RecommendedForYouGrid(
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 1.dp)) {
                             Icon(IdsIcons.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(12.dp))
                             Spacer(modifier = Modifier.width(2.dp))
-                            Text("%.1f (%d)".format(d.rating, d.reviewCount), color = Ids.colors.textSecondary, fontSize = 11.sp)
+                            Text(String.format(Locale.US, "%.1f (%d)", d.rating, d.reviewCount), color = Ids.colors.textSecondary, fontSize = 11.sp)
                         }
                     }
                     // Real "Best seller" badge (2026-08-28) -- see ShopSellerContactPicker.kt's
@@ -367,12 +367,12 @@ internal fun StoreCard(m: ShoppingMerchantDto, onOpen: () -> Unit, isScrollTouch
                         if (m.rating != null) {
                             Icon(IdsIcons.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(12.dp))
                             Spacer(modifier = Modifier.width(2.dp))
-                            Text("%.1f (%d)".format(m.rating, m.reviewCount), color = Ids.colors.textSecondary, fontSize = 12.sp)
+                            Text(String.format(Locale.US, "%.1f (%d)", m.rating, m.reviewCount), color = Ids.colors.textSecondary, fontSize = 12.sp)
                             Spacer(modifier = Modifier.width(6.dp))
                         }
                         Text(
                             listOfNotNull(
-                                m.distanceKm?.let { "%.1f km".format(it) },
+                                m.distanceKm?.let { String.format(Locale.US, "%.1f km", it) },
                                 m.deliveryTimeMinutes?.let { "~$it min" },
                                 m.minOrderAmount?.let { "Min ${formatMoneyShopBrowse(it)} RWF" },
                             ).joinToString(" · "),

@@ -3,6 +3,7 @@ package rw.itunda.feature.maps.impl
 import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -109,7 +110,7 @@ internal fun AroundYouSection(
                         color = Ids.colors.textPrimary,
                     )
                     Text(
-                        listOfNotNull(nearbyAddress, "${"%.1f".format(nearby.distanceKm)} km").joinToString(" · "),
+                        listOfNotNull(nearbyAddress, "${String.format(Locale.US, "%.1f", nearby.distanceKm)} km").joinToString(" · "),
                         fontSize = 11.sp,
                         color = Ids.colors.textSecondary,
                         maxLines = 1,

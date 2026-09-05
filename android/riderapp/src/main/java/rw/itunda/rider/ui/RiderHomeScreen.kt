@@ -186,7 +186,7 @@ fun RiderHomeScreen(
                 )
                 rating?.average?.let { avg ->
                     Text(
-                        "⭐ %.1f (%d)".format(avg, rating?.count ?: 0),
+                        String.format(Locale.US, "⭐ %.1f (%d)", avg, rating?.count ?: 0),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -422,7 +422,7 @@ private fun RiderDeliveryRow(
             Text(delivery.deliveryAddress, style = MaterialTheme.typography.bodySmall)
             if (delivery is RiderDelivery.Eats) {
                 delivery.order.distanceKm?.let {
-                    Text("${"%.1f".format(it)} km away", style = MaterialTheme.typography.bodySmall)
+                    Text("${String.format(Locale.US, "%.1f", it)} km away", style = MaterialTheme.typography.bodySmall)
                 }
             }
             StatusBadge(delivery.status)

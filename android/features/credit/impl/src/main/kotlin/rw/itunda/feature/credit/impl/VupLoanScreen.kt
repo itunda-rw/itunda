@@ -187,7 +187,7 @@ fun VupLoanScreen(onBack: () -> Unit) {
                     // a lone form section on this screen (docs/UI_UX_GUIDELINES.md §10).
                     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            "${(eligibilityNow.interestRate * 100).let { "%.0f".format(it) }}% interest · Ubudehe categories ${eligibilityNow.minUbudeheCategory}-${eligibilityNow.maxUbudeheCategory} only",
+                            "${(eligibilityNow.interestRate * 100).let { String.format(Locale.US, "%.0f", it) }}% interest · Ubudehe categories ${eligibilityNow.minUbudeheCategory}-${eligibilityNow.maxUbudeheCategory} only",
                             color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp,
                         )
                         if (!eligibilityNow.canApply) {

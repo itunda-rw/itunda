@@ -136,7 +136,7 @@ internal fun HomeMarketWidgetRow(
                 Text(stock.symbol, color = Ids.colors.textSecondary, fontSize = 12.sp, maxLines = 1)
                 Text(String.format(Locale.US, "%,.0f", stock.price), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    "${if (positive) "▲" else "▼"} ${"%.2f".format(kotlin.math.abs(stock.changePercent))}%",
+                    "${if (positive) "▲" else "▼"} ${String.format(Locale.US, "%.2f", kotlin.math.abs(stock.changePercent))}%",
                     color = if (positive) Ids.colors.brand else Ids.colors.danger, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
                 )
             }

@@ -17,6 +17,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -215,7 +216,7 @@ internal fun ItineraryBuilderCard(
             val itineraryRoute = route.takeIf { showingItineraryRoute }
             if (itineraryRoute != null) {
                 Text(
-                    "${if (travelMode == "DRIVING") "🚗" else "🚶"} ${"%.1f".format(itineraryRoute.route.distanceKm)} km · ${itineraryRoute.route.durationMinutes.toInt()} min by real road",
+                    "${if (travelMode == "DRIVING") "🚗" else "🚶"} ${String.format(Locale.US, "%.1f", itineraryRoute.route.distanceKm)} km · ${itineraryRoute.route.durationMinutes.toInt()} min by real road",
                     fontSize = 13.sp,
                     color = Ids.colors.textSecondary,
                 )

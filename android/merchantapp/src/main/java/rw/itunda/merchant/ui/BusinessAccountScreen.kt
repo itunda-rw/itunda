@@ -578,8 +578,8 @@ private fun ApiIntegrationCard() {
 private fun StoreSettingsCard(merchant: MerchantDto, onUpdated: (MerchantDto) -> Unit) {
     var category by remember(merchant.id) { mutableStateOf(merchant.category ?: "") }
     var photoUrl by remember(merchant.id) { mutableStateOf(merchant.photoUrl ?: "") }
-    var minOrderAmount by remember(merchant.id) { mutableStateOf(merchant.minOrderAmount?.let { "%.0f".format(it) } ?: "") }
-    var cashbackPercent by remember(merchant.id) { mutableStateOf(merchant.cashbackRate?.let { "%.1f".format(it * 100) } ?: "") }
+    var minOrderAmount by remember(merchant.id) { mutableStateOf(merchant.minOrderAmount?.let { String.format(java.util.Locale.US, "%.0f", it) } ?: "") }
+    var cashbackPercent by remember(merchant.id) { mutableStateOf(merchant.cashbackRate?.let { String.format(java.util.Locale.US, "%.1f", it * 100) } ?: "") }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var saved by remember { mutableStateOf(false) }

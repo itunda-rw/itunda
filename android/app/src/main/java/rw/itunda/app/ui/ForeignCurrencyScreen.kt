@@ -2,6 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.components.rememberCountUp
 import androidx.compose.foundation.layout.Arrangement
@@ -267,7 +268,7 @@ private fun ConvertPanel(accounts: List<AccountDto>, onConverted: () -> Unit) {
             }
             IdsTextField(value = amountText, onValueChange = { amountText = it }, label = "Amount ($fromCurrency)", modifier = Modifier.fillMaxWidth())
             rate?.let { r ->
-                Text("Live rate: 1 $fromCurrency = ${"%.4f".format(r)} $toCurrency", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                Text("Live rate: 1 $fromCurrency = ${String.format(Locale.US, "%.4f", r)} $toCurrency", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }
             previewAmount?.let {
                 Text("You'll receive ~${formatFx(it)} $toCurrency (after itunda's 1.5% fee)", color = Ids.colors.success, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
@@ -422,5 +423,5 @@ private fun RateAlertsPanel(accounts: List<AccountDto>, alerts: List<ExchangeRat
 
 private fun formatFx(value: Double): String {
     val rounded = Math.round(value * 100.0) / 100.0
-    return if (rounded == Math.floor(rounded)) rounded.toLong().toString() else "%.2f".format(rounded)
+    return if (rounded == Math.floor(rounded)) rounded.toLong().toString() else String.format(Locale.US, "%.2f", rounded)
 }

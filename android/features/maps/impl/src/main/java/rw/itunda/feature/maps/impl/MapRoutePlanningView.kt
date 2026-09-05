@@ -1,6 +1,7 @@
 package rw.itunda.feature.maps.impl
 
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -117,7 +118,7 @@ internal fun RoutePlanningView(
             TransitJourneyResultsView(transitJourneys, transitSearching)
         } else {
             Text(
-                "${travelModeIcon(travelMode)} ${"%.1f".format(currentRoute.route.distanceKm)} km · ${currentRoute.route.durationMinutes.toInt()} min by real road, via itunda's own self-hosted OSRM",
+                "${travelModeIcon(travelMode)} ${String.format(Locale.US, "%.1f", currentRoute.route.distanceKm)} km · ${currentRoute.route.durationMinutes.toInt()} min by real road, via itunda's own self-hosted OSRM",
                 fontSize = 13.sp, color = Ids.colors.textSecondary,
                 modifier = Modifier.padding(top = 8.dp),
             )
@@ -137,7 +138,7 @@ internal fun RoutePlanningView(
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                "Route ${i + 1} · ${"%.1f".format(alt.distanceKm)}km · ${alt.durationMinutes.toInt()}min",
+                                "Route ${i + 1} · ${String.format(Locale.US, "%.1f", alt.distanceKm)}km · ${alt.durationMinutes.toInt()}min",
                                 fontSize = 11.sp, fontWeight = FontWeight.Bold,
                                 color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textSecondary,
                             )
@@ -203,7 +204,7 @@ internal fun RoutePlanningView(
                     color = androidx.compose.ui.graphics.Color.White,
                 )
                 Text(
-                    "Step ${stepIdx + 1} of ${steps.size} · ${"%.1f".format(remainingKm)} km remaining",
+                    "Step ${stepIdx + 1} of ${steps.size} · ${String.format(Locale.US, "%.1f", remainingKm)} km remaining",
                     fontSize = 12.sp,
                     color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f),
                     modifier = Modifier.padding(top = 4.dp),

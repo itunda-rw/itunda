@@ -1,5 +1,6 @@
 package rw.itunda.feature.wealth.impl
 
+import java.util.Locale
 import rw.itunda.core.designsystem.components.formatMoney
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -200,7 +201,7 @@ internal fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: (
                 contentDescription = null, tint = if (positive) Ids.colors.success else Ids.colors.danger, modifier = Modifier.size(16.dp),
             )
             Text(
-                "${if (positive) "+" else ""}${formatMoney(stock.change)} (${if (positive) "+" else ""}${"%.2f".format(stock.changePercent)}%) today",
+                "${if (positive) "+" else ""}${formatMoney(stock.change)} (${if (positive) "+" else ""}${String.format(Locale.US, "%.2f", stock.changePercent)}%) today",
                 color = if (positive) Ids.colors.success else Ids.colors.danger, fontSize = 14.sp, fontWeight = FontWeight.Bold,
             )
         }

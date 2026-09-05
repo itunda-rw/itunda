@@ -1,6 +1,7 @@
 package rw.itunda.feature.ride.impl
 
 import androidx.compose.foundation.background
+import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -325,7 +326,7 @@ internal fun RideDriverContent() {
                                 val rating = driverRating
                                 if (rating != null && rating.count > 0) {
                                     Text(
-                                        "★ ${"%.1f".format(rating.average ?: 0.0)} (${rating.count} rating${if (rating.count == 1L) "" else "s"})",
+                                        "★ ${String.format(Locale.US, "%.1f", rating.average ?: 0.0)} (${rating.count} rating${if (rating.count == 1L) "" else "s"})",
                                         color = Color(0xFFFFC107), fontWeight = FontWeight.Bold, fontSize = 12.sp,
                                     )
                                 }

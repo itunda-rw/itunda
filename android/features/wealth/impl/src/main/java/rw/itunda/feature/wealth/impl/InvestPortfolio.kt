@@ -1,5 +1,6 @@
 package rw.itunda.feature.wealth.impl
 
+import java.util.Locale
 import rw.itunda.core.designsystem.components.formatMoney
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -87,7 +88,7 @@ internal fun PortfolioContent() {
                     Text("Total value", color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     Text("${formatMoney(p.totalValue)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 26.sp)
                     Text(
-                        "${if (positive) "+" else ""}${formatMoney(p.totalReturn)} RWF (${if (positive) "+" else ""}${"%.2f".format(p.totalReturnPercent)}%)",
+                        "${if (positive) "+" else ""}${formatMoney(p.totalReturn)} RWF (${if (positive) "+" else ""}${String.format(Locale.US, "%.2f", p.totalReturnPercent)}%)",
                         color = if (positive) Ids.colors.success else Ids.colors.danger, fontSize = 14.sp, fontWeight = FontWeight.Bold,
                     )
                     if (!history.isNullOrEmpty()) {
@@ -193,7 +194,7 @@ private fun HoldingRow(holding: StockHoldingDto) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("${holding.shares} shares @ ${formatMoney(holding.avgPrice)} avg", color = Ids.colors.textSecondary, fontSize = 12.sp)
             Text(
-                "${if (positive) "+" else ""}${"%.2f".format(holding.`return`)}%",
+                "${if (positive) "+" else ""}${String.format(Locale.US, "%.2f", holding.`return`)}%",
                 color = if (positive) Ids.colors.success else Ids.colors.danger, fontSize = 12.sp, fontWeight = FontWeight.Bold,
             )
         }

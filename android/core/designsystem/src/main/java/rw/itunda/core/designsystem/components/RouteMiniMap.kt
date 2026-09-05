@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import java.util.Locale
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -188,7 +189,7 @@ fun RouteMiniMap(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double,
         val min = durationMinutes
         if (km != null && min != null) {
             Text(
-                "🚗 ${"%.1f".format(km)} km · ${min.toInt()} min by real road, via itunda's own self-hosted OSRM",
+                "🚗 ${String.format(Locale.US, "%.1f", km)} km · ${min.toInt()} min by real road, via itunda's own self-hosted OSRM",
                 fontSize = 12.sp, color = Ids.colors.textSecondary,
             )
         }

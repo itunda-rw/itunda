@@ -710,7 +710,7 @@ fun CommerceShopContent(
                                     Text(a.ad.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                     Text(a.businessName, color = Ids.colors.textSecondary, fontSize = 12.sp)
                                     a.ad.description?.takeIf { it.isNotBlank() }?.let { Text(it, color = Ids.colors.textSecondary, fontSize = 11.sp) }
-                                    Text("%.1f km away".format(a.distanceKm), color = Ids.colors.brand, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
+                                    Text(String.format(Locale.US, "%.1f km away", a.distanceKm), color = Ids.colors.brand, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
                                 }
                             }
                         }
