@@ -354,7 +354,7 @@ fun RiderHomeScreen(
                                                 onOpenDelivery(delivery.id)
                                             }
                                             is RiderDelivery.Commerce -> {
-                                                val claimed = NetworkClient.apiService.claimCommerceDelivery(delivery.id).order
+                                                val claimed = NetworkClient.apiService.claimCommerceDelivery(delivery.id, java.util.UUID.randomUUID().toString()).order
                                                 refreshDeliveries()
                                                 onOpenCommerceDelivery(claimed)
                                             }

@@ -199,7 +199,9 @@ final class RiderNetworkClient {
         try await get("api/v1/orders/my-deliveries", query: [URLQueryItem(name: "size", value: "50")])
     }
 
-    func claimCommerceDelivery(_ orderId: String) async throws -> CommerceOrderDetailResponse { try await postEmpty("api/v1/orders/\(orderId)/claim-delivery") }
+    func claimCommerceDelivery(_ orderId: String) async throws -> CommerceOrderDetailResponse {
+        try await postEmpty("api/v1/orders/\(orderId)/claim-delivery", idempotencyKey: UUID().uuidString)
+    }
 
     func completeCommerceDelivery(_ orderId: String) async throws -> CommerceOrderDetailResponse { try await postEmpty("api/v1/orders/\(orderId)/complete-delivery") }
 

@@ -171,7 +171,7 @@ interface ApiService {
     suspend fun getMyCommerceDeliveries(@Query("size") size: Int = 50): CommerceOrdersResponse
 
     @POST("api/v1/orders/{id}/claim-delivery")
-    suspend fun claimCommerceDelivery(@Path("id") orderId: String): CommerceOrderDetailResponse
+    suspend fun claimCommerceDelivery(@Path("id") orderId: String, @Header("Idempotency-Key") idempotencyKey: String): CommerceOrderDetailResponse
 
     @POST("api/v1/orders/{id}/complete-delivery")
     suspend fun completeCommerceDelivery(@Path("id") orderId: String): CommerceOrderDetailResponse
