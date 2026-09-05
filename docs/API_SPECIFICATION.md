@@ -3137,10 +3137,15 @@ Errors: `409 HOOD_REPORT_ALREADY_OPEN`, `404 HOOD_REPORT_TARGET_NOT_FOUND`.
 
 Grepped for directly, confirmed absent as of 2026-07-13:
 
-- **Any `/users/*` or `/analytics/*` route** (both were invented in the previous version of
-  this document). Profile lives at `GET /api/v1/auth/profile`; there is no spending-analytics
-  endpoint at all yet (`docs/TOSS_PARITY_MATRIX.md`'s Spending row: `demo`, categorization is
-  still target).
+- **Any `/users/*` route** (invented in a previous version of this document). Profile
+  lives at `GET /api/v1/auth/profile`; there is no spending-analytics endpoint at all
+  yet (`docs/TOSS_PARITY_MATRIX.md`'s Spending row: `demo`, categorization is still
+  target). **Corrected 2026-09-05** — `/api/v1/analytics/*` was also claimed absent
+  here, but a real, minimal `AnalyticsController` does exist (see the Analytics
+  section above) — it's a small, closed-vocabulary product-event recorder plus an
+  ADMIN-only usage summary, not the user-facing spending-analytics feature this bullet
+  originally meant to describe as missing. The spending-analytics gap itself is still
+  real; only this bullet's blanket "no `/analytics/*` route at all" claim was wrong.
 - ~~Webhooks for anything other than merchant collection.~~ **Stale as of 2026-08-30** — real
   as of 2026-07-13 was `POST /api/v1/merchant/webhook-url` + `PAYMENT_STATUS_CHANGED`/
   `CANCEL_STATUS_CHANGED` delivery on collection/cancel (Merchant section). Since then, the
