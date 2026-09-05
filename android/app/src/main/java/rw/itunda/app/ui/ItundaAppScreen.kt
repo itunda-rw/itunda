@@ -922,6 +922,11 @@ fun ItundaAppScreen(
         }
 
         val savingsStep = savingsFlowStep
+        // stringResource(...) can't be called from inside coroutineScope.launch below
+        // (not a @Composable call site) -- captured here and resolved via
+        // Context.getString(...) instead, same established pattern OverviewScreen.kt's
+        // own catch blocks already use.
+        val savingsContext = androidx.compose.ui.platform.LocalContext.current
         var isSavingsSubmitting by remember { mutableStateOf(false) }
         var savingsError by remember { mutableStateOf<String?>(null) }
         val availableBalanceForSavings by viewModel.primaryAccount.collectAsState()
@@ -948,9 +953,13 @@ fun ItundaAppScreen(
                                     // already-completed goal.
                                     val justCompleted = result.goalCompleted && !savingsStep.wasAlreadyCompleted
                                     savingsFlowStep = if (justCompleted) {
-                                        SavingsFlowStep.Success("You did it! 🎉", "\"${savingsStep.goalName}\" is fully funded.", celebratory = true)
+                                        SavingsFlowStep.Success(
+                                            savingsContext.getString(R.string.savings_goal_completed_title),
+                                            savingsContext.getString(R.string.savings_goal_completed_message, savingsStep.goalName),
+                                            celebratory = true,
+                                        )
                                     } else {
-                                        SavingsFlowStep.Success("%,d RWF saved".format(amountRwf), result.message, celebratory = false)
+                                        SavingsFlowStep.Success(savingsContext.getString(R.string.savings_amount_saved, "%,d".format(amountRwf)), result.message, celebratory = false)
                                     }
                                 }
                                 // Real offline queueing (2026-07-13, see
@@ -982,9 +991,13 @@ fun ItundaAppScreen(
                                                 // primary success path above.
                                                 val justCompleted = retryResult.goalCompleted && !savingsStep.wasAlreadyCompleted
                                                 savingsFlowStep = if (justCompleted) {
-                                                    SavingsFlowStep.Success("You did it! 🎉", "\"${savingsStep.goalName}\" is fully funded.", celebratory = true)
+                                                    SavingsFlowStep.Success(
+                                                        savingsContext.getString(R.string.savings_goal_completed_title),
+                                                        savingsContext.getString(R.string.savings_goal_completed_message, savingsStep.goalName),
+                                                        celebratory = true,
+                                                    )
                                                 } else {
-                                                    SavingsFlowStep.Success("%,d RWF saved".format(amountRwf), retryResult.message, celebratory = false)
+                                                    SavingsFlowStep.Success(savingsContext.getString(R.string.savings_amount_saved, "%,d".format(amountRwf)), retryResult.message, celebratory = false)
                                                 }
                                             }
                                             is rw.itunda.core.network.MoneyActionResult.Queued -> {
@@ -1013,7 +1026,7 @@ fun ItundaAppScreen(
                             when (val result = viewModel.withdrawFromSavingsGoal(savingsStep.goalId, amountRwf)) {
                                 is rw.itunda.core.network.MoneyActionResult.Success -> {
                                     isSavingsSubmitting = false
-                                    savingsFlowStep = SavingsFlowStep.Success("%,d RWF withdrawn".format(amountRwf), result.message, celebratory = false)
+                                    savingsFlowStep = SavingsFlowStep.Success(savingsContext.getString(R.string.savings_amount_withdrawn, "%,d".format(amountRwf)), result.message, celebratory = false)
                                 }
                                 is rw.itunda.core.network.MoneyActionResult.Queued -> {
                                     // withdrawFromSavingsGoal never actually returns
@@ -1035,7 +1048,7 @@ fun ItundaAppScreen(
                                         val retryResult = viewModel.withdrawFromSavingsGoal(savingsStep.goalId, amountRwf)
                                         isSavingsSubmitting = false
                                         when (retryResult) {
-                                            is rw.itunda.core.network.MoneyActionResult.Success -> savingsFlowStep = SavingsFlowStep.Success("%,d RWF withdrawn".format(amountRwf), retryResult.message, celebratory = false)
+                                            is rw.itunda.core.network.MoneyActionResult.Success -> savingsFlowStep = SavingsFlowStep.Success(savingsContext.getString(R.string.savings_amount_withdrawn, "%,d".format(amountRwf)), retryResult.message, celebratory = false)
                                             is rw.itunda.core.network.MoneyActionResult.Failure -> savingsError = retryResult.message
                                             else -> {}
                                         }
@@ -1061,7 +1074,7 @@ fun ItundaAppScreen(
                                     // celebratory = true -- real earned money, matches
                                     // Toss's own confetti-for-positive-moments example
                                     // (see IdsCelebrationScreen's own doc comment).
-                                    savingsFlowStep = SavingsFlowStep.Success("Interest claimed", result.message, celebratory = true)
+                                    savingsFlowStep = SavingsFlowStep.Success(savingsContext.getString(R.string.savings_interest_claimed), result.message, celebratory = true)
                                 }
                                 // claimInterest never actually returns Queued (only
                                 // SAVINGS_DEPOSIT is queued) -- handled only because
@@ -1081,7 +1094,7 @@ fun ItundaAppScreen(
                                         isSavingsSubmitting = true
                                         val retryResult = viewModel.claimInterest()
                                         isSavingsSubmitting = false
-                                        if (retryResult is rw.itunda.core.network.MoneyActionResult.Success) savingsFlowStep = SavingsFlowStep.Success("Interest claimed", retryResult.message, celebratory = true)
+                                        if (retryResult is rw.itunda.core.network.MoneyActionResult.Success) savingsFlowStep = SavingsFlowStep.Success(savingsContext.getString(R.string.savings_interest_claimed), retryResult.message, celebratory = true)
                                         else if (retryResult is rw.itunda.core.network.MoneyActionResult.Failure) savingsError = retryResult.message
                                     }
                                     showDeviceStepUp = true

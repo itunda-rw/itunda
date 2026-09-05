@@ -82,6 +82,11 @@
     <string name="overview_tax_summary">%1$d paiement(s) d\'impôt, %2$s RWF payés</string>
     <string name="overview_points_summary">%1$s RWF de récompenses gagnées</string>
     <string name="overview_pay_money_balance">Solde Pay Money : %1$s RWF</string>
+    <string name="savings_goal_completed_title">Vous l\'avez fait ! 🎉</string>
+    <string name="savings_goal_completed_message">« %1$s » est entièrement financé.</string>
+    <string name="savings_amount_saved">%1$s RWF épargnés</string>
+    <string name="savings_amount_withdrawn">%1$s RWF retirés</string>
+    <string name="savings_interest_claimed">Intérêts réclamés</string>
     <string name="overview_teaser_cards">Pas encore de carte</string>
     <string name="overview_teaser_cards_cta">Obtenir une carte</string>
     <string name="overview_teaser_loans">Pas encore de prêt</string>

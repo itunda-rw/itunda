@@ -81,6 +81,11 @@
     <string name="overview_tax_summary">Kwishyura umusoro %1$d, RWF %2$s yishyuwe</string>
     <string name="overview_points_summary">RWF %1$s y\'ibihembo byabonetse</string>
     <string name="overview_pay_money_balance">Amafaranga ya Pay Money: RWF %1$s</string>
+    <string name="savings_goal_completed_title">Wabigezeho! 🎉</string>
+    <string name="savings_goal_completed_message">\"%1$s\" yuzuye burundu.</string>
+    <string name="savings_amount_saved">RWF %1$s zabitswe</string>
+    <string name="savings_amount_withdrawn">RWF %1$s zavanywemo</string>
+    <string name="savings_interest_claimed">Inyungu yabonetse</string>
     <string name="overview_teaser_cards">Nta karita ufite</string>
     <string name="overview_teaser_cards_cta">Bona ikarita</string>
     <string name="overview_teaser_loans">Nta nguzanyo ufite</string>

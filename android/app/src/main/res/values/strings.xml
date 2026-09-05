@@ -107,6 +107,14 @@
     <string name="overview_tax_summary">%1$d tax payment(s), RWF %2$s paid</string>
     <string name="overview_points_summary">RWF %1$s rewards earned</string>
     <string name="overview_pay_money_balance">Pay Money balance: RWF %1$s</string>
+    <!-- Real gap found 2026-09-05: SavingsFlowStep.Success's own headline/message pair
+         (ItundaAppScreen.kt) was hardcoded English at every construction site, never
+         routed through string resources at all. Closed here. -->
+    <string name="savings_goal_completed_title">You did it! 🎉</string>
+    <string name="savings_goal_completed_message">\"%1$s\" is fully funded.</string>
+    <string name="savings_amount_saved">%1$s RWF saved</string>
+    <string name="savings_amount_withdrawn">%1$s RWF withdrawn</string>
+    <string name="savings_interest_claimed">Interest claimed</string>
     <string name="overview_teaser_cards">No card yet</string>
     <string name="overview_teaser_cards_cta">Get a card</string>
     <string name="overview_teaser_loans">No loans yet</string>
