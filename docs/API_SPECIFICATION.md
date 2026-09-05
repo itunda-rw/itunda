@@ -960,6 +960,78 @@ no employees), `404 PAYROLL_ROSTER_ENTRY_NOT_FOUND`, `404 PAYROLL_RUN_NOT_FOUND`
 `400 IDEMPOTENCY_KEY_REQUIRED`, `422 INSUFFICIENT_FUNDS` (the merchant's own account
 can't cover the full run), `403 ACCOUNT_FROZEN`.
 
+## Shopping — `/api/v1/shopping`
+
+**Added 2026-09-05** (twelfth documentation slice). The real "browse partner
+merchants" half of Coupang/Toss-style shopping — itunda's own registered Merchant
+directory doubles as the shopping catalog (no external merchant-partnership network
+exists to draw a separate one from). Restaurant browsing for Eats also reuses these
+same endpoints (see the Eats section above) — there is no duplicate catalog surface.
+Confirmed by direct read of `ShoppingController.kt` (10 endpoints, 3 error codes, all
+unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/products/{productId}` | — | `{success, product: {...}}` | Real Coupang WING 상품분석 (product analytics) view trigger |
+| GET | `/products/{productId}/frequently-ordered-with` | — | `{success, products: [...]}` | Real co-occurrence cross-sell — honestly empty when no pair clears the minimum real order-count bar, never padded |
+| GET | `/merchants?category&businessType&q&buyerLat&buyerLng&sortBy` | — | `{success, merchants: [...], ...pageMeta}` | Also backs Eats' own restaurant browse (pass `businessType=RESTAURANT`). `sortBy` includes a real "fastest delivery" option |
+| GET | `/merchants/categories?businessType` | — | `{success, categories: [...]}` | Derived from real merchant data, not a hardcoded list |
+| GET | `/merchants/{merchantId}/products` | — | `{success, merchant: {...}, products: [...]}` | Public, read-only per-merchant catalog. Each product enriched with `optionGroups`/`priceTiers`/`isBestSeller`/`soldOut` |
+| GET | `/products/search?q&businessType` | — | `{success, products: [...], ...pageMeta}` | Real relevance-ranked full-text search (MySQL BOOLEAN MODE, AND-of-terms, prefix matching), falling back to plain `LIKE` for queries under 3 characters (FULLTEXT's structural minimum token size) |
+| GET | `/products/deals` | — | `{success, products: [...], ...pageMeta}` | Real discount-ranked rail |
+| GET | `/products/surplus-deals` | — | `{success, products: [...], ...pageMeta}` | Real 마감할인 (closing/surplus discount) rail — genuinely time-boxed, still-in-stock items only, soonest-to-expire first. Each product carries `surplusExpiresAt` for a real countdown |
+| GET | `/membership-day` | — | `{success, isMembershipDay, multiplier}` | Real Naver Pay 멤버십 데이 (Membership Day) cashback-boost status — single source of truth so no client banner can drift from what actually gets applied server-side |
+| POST | `/merchants/{merchantId}/contact-seller` | — | `{success, conversation: {...}}` | |
+
+Errors (all 3 real `@ExceptionHandler`s): `404 MERCHANT_NOT_FOUND`, `400 OWN_MERCHANT`,
+`404 MERCHANT_PRODUCT_NOT_FOUND`.
+
+## Product Subscriptions — `/api/v1/product-subscriptions`
+
+**Added 2026-09-05, same slice.** Real Coupang 정기배송 (subscribe & save)-style
+recurring product delivery. Confirmed by direct read of
+`ProductSubscriptionController.kt` (7 endpoints, 15 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | `{merchantId, productId, quantity, intervalDays, deliveryAddress}` (+ `Idempotency-Key`) | `201 {success, subscription: {...}}` | |
+| GET | `` (base path) | — | `{success, subscriptions: [...]}` | |
+| POST | `/{id}/pause` | — | `{success, subscription: {...}}` | |
+| POST | `/{id}/resume` | — | `{success, subscription: {...}}` | |
+| POST | `/{id}/cancel` | — | `{success, subscription: {...}}` | |
+| POST | `/{id}/skip-next` | — | `{success, subscription: {...}}` | Real Coupang 정기배송 "건너뛰기" (skip next delivery) |
+| POST | `/{id}/update` | `{quantity?, intervalDays?}` | `{success, subscription: {...}}` | Real Coupang 정기배송 수량/주기 변경 (change quantity/interval) |
+
+Errors (all 15 real `@ExceptionHandler`s, one shared across 2 exception classes):
+`404 PRODUCT_SUBSCRIPTION_NOT_FOUND`, `404 PRODUCT_NOT_FOUND`,
+`400 INVALID_PRODUCT_SUBSCRIPTION`, `404 MERCHANT_NOT_FOUND`,
+`400 SELF_ORDER_NOT_ALLOWED`, `400 EMPTY_ORDER`, `400 INVALID_DELIVERY_ADDRESS`,
+`400 INVALID_QUANTITY`, `422 MIN_ORDER_AMOUNT_NOT_MET`,
+`404 ACCOUNT_NOT_FOUND` (one handler covers both `BuyerNoAccountException` and
+`MerchantNoAccountException`), `422 INSUFFICIENT_FUNDS`, `429 RATE_LIMITED`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`.
+
+## Time Deals — `/api/v1/time-deals`
+
+**Added 2026-09-05, same slice.** Real Coupang 타임특가 (Time Deal) — a merchant runs
+a time-boxed discount on one of their own products; a real Toss Shopping-style banner
+carousel reuses this same active-deal data rather than a separate fabricated CMS.
+Confirmed by direct read of `TimeDealController.kt` (6 endpoints, 4 error codes, all
+unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | `{productId, dealPrice, totalQuantity, startsAt, endsAt}` | `201 {success, deal: {...}}` | Not `Idempotency-Key`-protected |
+| GET | `` (base path) | — | `{success, deals: [...], ...pageMeta}` | |
+| GET | `/banners` | — | `{success, banners: [...]}` | |
+| GET | `/mine` | — | `{success, deals: [...], ...pageMeta}` | Merchant's own deals |
+| GET | `/{dealId}` | — | `{success, deal: {...}}` | |
+| POST | `/{dealId}/end` | — | `{success, deal: {...}}` | |
+
+Errors (all 4 real `@ExceptionHandler`s): `404 MERCHANT_NOT_FOUND`,
+`404 PRODUCT_NOT_FOUND`, `404 TIME_DEAL_NOT_FOUND`, `400 INVALID_TIME_DEAL`.
+
 ## Eats — `/api/v1/eats`
 
 **Added 2026-09-05** (part of the standing "~66 remaining undocumented controllers"
@@ -1371,6 +1443,34 @@ exceptions — same reasoning as above, in reverse), `400 INVALID_ANNOUNCEMENT`,
 Reused as the underlying implementation of both `POST /api/v1/split-bills/direct/
 {otherUserId}` (via `getOrCreateDirectSplitGroup`) and `POST /api/v1/community/posts/
 {postId}/finalize-group-buy` — see the Split Bills and Community sections above.
+
+## AI Chat — `/api/v1/talk/ai-chat`
+
+**Added 2026-09-05, same slice.** Real AI chatbot channel inside Talk, a third
+conversation type alongside 1:1 and group chat above. Confirmed by direct read of
+`AiChatController.kt` (2 endpoints, 1 real `ApiError`-shaped code).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/messages` | `{text}` | `201 {success, message: {...}, reply: {...}}` | |
+| GET | `/messages` | — | `{success, messages: [...], ...pageMeta}` | |
+
+Errors: `429 RATE_LIMITED`, plus a real, deliberately-noted inconsistency — a busy/
+overloaded AI backend returns `429 {"success": false, "reason": "busy"}`, NOT the
+shared `ApiError{code, message}` shape every other error on this page uses. A client
+checking for a `code` field on this specific 429 will find none.
+
+## Service Channel — `/api/v1/talk/service-channel`
+
+**Added 2026-09-05, same slice.** Real itunda service channel — a read-only system
+message thread inside Talk (marking a bubble read reuses the existing
+`POST /api/v1/notifications/{id}/read` endpoint unchanged, not a new one).
+Confirmed by direct read of `ServiceChannelController.kt` (1 endpoint, no
+`@ExceptionHandler`s of its own).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `` (base path) | — | `{success, bubbles: [...], ...pageMeta}` | |
 
 ## Support — `/api/v1/support`
 
