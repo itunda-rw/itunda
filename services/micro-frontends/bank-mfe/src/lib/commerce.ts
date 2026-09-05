@@ -157,6 +157,7 @@ export interface OrderReturnRequestDto {
 export const requestOrderReturn = (orderId: string, type: OrderReturnType, reasonCode: string, reasonNote?: string) =>
   apiFetch<{ success: boolean; returnRequest: OrderReturnRequestDto }>(`/api/v1/orders/${orderId}/return`, {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ type, reasonCode, reasonNote }),
   }).then((r) => r.returnRequest);
 
@@ -169,6 +170,7 @@ export const fetchMerchantReturnQueue = () =>
 export const decideOrderReturn = (returnRequestId: string, approve: boolean) =>
   apiFetch<{ success: boolean; returnRequest: OrderReturnRequestDto }>(`/api/v1/orders/returns/${returnRequestId}/decide`, {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ approve }),
   }).then((r) => r.returnRequest);
 

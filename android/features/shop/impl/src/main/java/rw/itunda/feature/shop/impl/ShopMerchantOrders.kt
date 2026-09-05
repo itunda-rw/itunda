@@ -177,7 +177,7 @@ internal fun MerchantReturnQueueView() {
         error = null
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.decideOrderReturn(id, DecideOrderReturnRequest(approve))
+                NetworkClient.apiService.decideOrderReturn(id, DecideOrderReturnRequest(approve), java.util.UUID.randomUUID().toString())
                 load()
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)

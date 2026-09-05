@@ -207,14 +207,22 @@ class OrderController(
     // Real post-delivery Return & Exchange requests (2026-07-26) -- see
     // OrderReturnService's own doc comment for the full account, including why this is
     // genuinely distinct from cancelOrder above.
+    // Real gap found 2026-09-05 (feedback_idempotency_key_sweep re-audit) -- guarded
+    // by ReturnAlreadyRequestedException, with no Idempotency-Key protection. A
+    // lost-response retry after a successful request used to hit a confusing
+    // conflict for a return that actually already got requested.
     @PostMapping("/{orderId}/return")
     fun requestReturn(
         @PathVariable orderId: String,
         @RequestBody request: RequestReturnRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val returnRequest = orderReturnService.requestReturn(currentUser.userId, orderId, request.type, request.reasonCode, request.reasonNote)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "returnRequest" to returnRequest))
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/orders/$orderId/return", idempotencyKey, request) {
+            val returnRequest = orderReturnService.requestReturn(currentUser.userId, orderId, request.type, request.reasonCode, request.reasonNote)
+            HttpStatus.CREATED.value() to mapOf("success" to true, "returnRequest" to returnRequest)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @GetMapping("/returns/my-requests")
@@ -235,14 +243,21 @@ class OrderController(
         return ResponseEntity.ok(mapOf("success" to true, "returnRequests" to page.content) + pageMeta(page))
     }
 
+    // Real gap found 2026-09-05 (feedback_idempotency_key_sweep re-audit) -- decide
+    // is real money movement on approve (a real refund reversal of the original
+    // order's ledger entries) guarded by ReturnRequestAlreadyDecidedException, with
+    // no Idempotency-Key protection.
     @PostMapping("/returns/{returnRequestId}/decide")
     fun decideReturnRequest(
         @PathVariable returnRequestId: String,
         @RequestBody request: DecideReturnRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val returnRequest = orderReturnService.decide(currentUser.userId, returnRequestId, request.approve)
-        return ResponseEntity.ok(mapOf("success" to true, "returnRequest" to returnRequest))
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/orders/returns/$returnRequestId/decide", idempotencyKey, request) {
+            200 to mapOf("success" to true, "returnRequest" to orderReturnService.decide(currentUser.userId, returnRequestId, request.approve))
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     // Real post-delivery product reviews (2026-07-20) -- see ProductReviewService's own

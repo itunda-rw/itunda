@@ -14,6 +14,8 @@ import rw.itunda.commerce.ProductInquiryService
 import rw.itunda.commerce.ProductReviewService
 import rw.itunda.commerce.OrderReturnService
 import rw.itunda.core.domain.Order
+import rw.itunda.core.domain.OrderReturnRequest
+import rw.itunda.core.domain.OrderReturnType
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.security.CurrentUser
 
@@ -83,6 +85,121 @@ class OrderControllerTest : BehaviorSpec({
             Then("the cached response is returned and the delivery is never claimed again") {
                 response.body?.get("order") shouldBe "cached-result"
                 verify(exactly = 0) { orderService.claimDelivery(any(), any()) }
+            }
+        }
+    }
+
+    // Real gap found and fixed 2026-09-05 (feedback_idempotency_key_sweep re-audit):
+    // requestReturn was guarded by ReturnAlreadyRequestedException with no
+    // Idempotency-Key protection -- a lost-response retry after a successful request
+    // used to hit a confusing conflict for a return that actually already got
+    // requested.
+    Given("a first-time return request") {
+        val orderReturnService = mockk<OrderReturnService>()
+        val idempotencyService = mockk<IdempotencyService>()
+        val controller = OrderController(
+            mockk(relaxed = true), idempotencyService, mockk(relaxed = true), mockk(relaxed = true), orderReturnService, mockk(relaxed = true),
+        )
+
+        val returnRequest = mockk<OrderReturnRequest>(relaxed = true)
+        every { orderReturnService.requestReturn("user_1", "order_1", OrderReturnType.RETURN, "damaged", "It arrived broken") } returns returnRequest
+
+        val actionSlot = slot<() -> Pair<Int, Map<String, Any?>>>()
+        every {
+            idempotencyService.replayOrExecute("POST /api/v1/orders/order_1/return", "key-1", any(), capture(actionSlot))
+        } answers { actionSlot.captured.invoke() }
+
+        When("requesting the return") {
+            val response = controller.requestReturn(
+                "order_1",
+                RequestReturnRequest(OrderReturnType.RETURN, "damaged", "It arrived broken"),
+                "key-1",
+                CurrentUser(userId = "user_1"),
+            )
+
+            Then("it routes through the real idempotency service, keyed to this exact route") {
+                verify(exactly = 1) { idempotencyService.replayOrExecute("POST /api/v1/orders/order_1/return", "key-1", any(), any()) }
+                verify(exactly = 1) { orderReturnService.requestReturn("user_1", "order_1", OrderReturnType.RETURN, "damaged", "It arrived broken") }
+                response.statusCode shouldBe HttpStatus.CREATED
+                response.body?.get("returnRequest") shouldBe returnRequest
+            }
+        }
+    }
+
+    Given("a retried return request using the same Idempotency-Key as a completed one") {
+        val orderReturnService = mockk<OrderReturnService>()
+        val idempotencyService = mockk<IdempotencyService>()
+        val controller = OrderController(
+            mockk(relaxed = true), idempotencyService, mockk(relaxed = true), mockk(relaxed = true), orderReturnService, mockk(relaxed = true),
+        )
+
+        every {
+            idempotencyService.replayOrExecute("POST /api/v1/orders/order_1/return", "key-1", any(), any())
+        } returns (201 to mapOf("success" to true, "returnRequest" to "cached-result"))
+
+        When("retrying with the same key") {
+            val response = controller.requestReturn(
+                "order_1",
+                RequestReturnRequest(OrderReturnType.RETURN, "damaged", "It arrived broken"),
+                "key-1",
+                CurrentUser(userId = "user_1"),
+            )
+
+            Then("the cached response is returned and the return is never requested again") {
+                response.body?.get("returnRequest") shouldBe "cached-result"
+                verify(exactly = 0) { orderReturnService.requestReturn(any(), any(), any(), any(), any()) }
+            }
+        }
+    }
+
+    // Real gap found and fixed 2026-09-05 (feedback_idempotency_key_sweep re-audit):
+    // decideReturnRequest is real money movement on approve (a refund reversal of
+    // the original order's ledger entries) guarded by
+    // ReturnRequestAlreadyDecidedException, with no Idempotency-Key protection.
+    Given("a first-time return decision") {
+        val orderReturnService = mockk<OrderReturnService>()
+        val idempotencyService = mockk<IdempotencyService>()
+        val controller = OrderController(
+            mockk(relaxed = true), idempotencyService, mockk(relaxed = true), mockk(relaxed = true), orderReturnService, mockk(relaxed = true),
+        )
+
+        val returnRequest = mockk<OrderReturnRequest>(relaxed = true)
+        every { orderReturnService.decide("merchant_1", "return_1", true) } returns returnRequest
+
+        val actionSlot = slot<() -> Pair<Int, Map<String, Any?>>>()
+        every {
+            idempotencyService.replayOrExecute("POST /api/v1/orders/returns/return_1/decide", "key-1", any(), capture(actionSlot))
+        } answers { actionSlot.captured.invoke() }
+
+        When("deciding the return") {
+            val response = controller.decideReturnRequest("return_1", DecideReturnRequest(true), "key-1", CurrentUser(userId = "merchant_1"))
+
+            Then("it routes through the real idempotency service, keyed to this exact route") {
+                verify(exactly = 1) { idempotencyService.replayOrExecute("POST /api/v1/orders/returns/return_1/decide", "key-1", any(), any()) }
+                verify(exactly = 1) { orderReturnService.decide("merchant_1", "return_1", true) }
+                response.statusCode shouldBe HttpStatus.OK
+                response.body?.get("returnRequest") shouldBe returnRequest
+            }
+        }
+    }
+
+    Given("a retried return decision using the same Idempotency-Key as a completed one") {
+        val orderReturnService = mockk<OrderReturnService>()
+        val idempotencyService = mockk<IdempotencyService>()
+        val controller = OrderController(
+            mockk(relaxed = true), idempotencyService, mockk(relaxed = true), mockk(relaxed = true), orderReturnService, mockk(relaxed = true),
+        )
+
+        every {
+            idempotencyService.replayOrExecute("POST /api/v1/orders/returns/return_1/decide", "key-1", any(), any())
+        } returns (200 to mapOf("success" to true, "returnRequest" to "cached-result"))
+
+        When("retrying with the same key") {
+            val response = controller.decideReturnRequest("return_1", DecideReturnRequest(true), "key-1", CurrentUser(userId = "merchant_1"))
+
+            Then("the cached response is returned and the return is never decided again") {
+                response.body?.get("returnRequest") shouldBe "cached-result"
+                verify(exactly = 0) { orderReturnService.decide(any(), any(), any()) }
             }
         }
     }

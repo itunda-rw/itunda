@@ -3901,7 +3901,7 @@ interface ApiService {
     suspend fun getMerchantReturnQueue(): OrderReturnRequestsResponse
 
     @POST("api/v1/orders/returns/{returnRequestId}/decide")
-    suspend fun decideOrderReturn(@Path("returnRequestId") returnRequestId: String, @Body request: DecideOrderReturnRequest): OrderReturnRequestResponse
+    suspend fun decideOrderReturn(@Path("returnRequestId") returnRequestId: String, @Body request: DecideOrderReturnRequest, @Header("Idempotency-Key") idempotencyKey: String): OrderReturnRequestResponse
 
     // Real live rider-location tracking for Commerce orders (item 230) -- found via a
     // defined-but-uncalled-endpoint sweep: mirrors getEatsRiderLocation exactly (same
@@ -3934,7 +3934,7 @@ interface ApiService {
     // approved RETURN triggers a real refund via reversed ledger legs, an approved
     // EXCHANGE moves no money. Merchant-side approve/reject queue closed item 234 above.
     @POST("api/v1/orders/{orderId}/return")
-    suspend fun requestOrderReturn(@Path("orderId") orderId: String, @Body request: RequestOrderReturnRequest): OrderReturnRequestResponse
+    suspend fun requestOrderReturn(@Path("orderId") orderId: String, @Body request: RequestOrderReturnRequest, @Header("Idempotency-Key") idempotencyKey: String): OrderReturnRequestResponse
 
     @GET("api/v1/orders/returns/my-requests")
     suspend fun getMyReturnRequests(): OrderReturnRequestsResponse

@@ -6343,7 +6343,7 @@ extension NetworkClient {
     // actively WRONG for a return-window-expired response, which has nothing to do
     // with funds.
     public func requestOrderReturn(orderId: String, type: String, reasonCode: String, reasonNote: String?) async throws -> OrderReturnRequestResponse {
-        try await authenticatedPostWithMessage("api/v1/orders/\(orderId)/return", body: RequestOrderReturnRequest(type: type, reasonCode: reasonCode, reasonNote: reasonNote))
+        try await postP2p("api/v1/orders/\(orderId)/return", body: RequestOrderReturnRequest(type: type, reasonCode: reasonCode, reasonNote: reasonNote), idempotencyKey: UUID().uuidString)
     }
 
     public func getMyReturnRequests() async throws -> OrderReturnRequestsResponse {
@@ -6367,7 +6367,7 @@ extension NetworkClient {
     }
 
     public func decideOrderReturn(_ returnRequestId: String, approve: Bool) async throws -> OrderReturnRequestResponse {
-        try await authenticatedPost("api/v1/orders/returns/\(returnRequestId)/decide", body: DecideOrderReturnRequest(approve: approve))
+        try await authenticatedPost("api/v1/orders/returns/\(returnRequestId)/decide", body: DecideOrderReturnRequest(approve: approve), idempotencyKey: UUID().uuidString)
     }
 
     public func getProductRating(_ productId: String) async throws -> ProductRatingResponse {

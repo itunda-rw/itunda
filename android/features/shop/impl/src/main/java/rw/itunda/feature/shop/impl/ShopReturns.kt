@@ -123,7 +123,7 @@ internal fun ReturnExchangeAction(orderId: String) {
                         error = null
                         coroutineScope.launch {
                             try {
-                                NetworkClient.apiService.requestOrderReturn(orderId, RequestOrderReturnRequest(type, reasonCode, note.trim().ifBlank { null }))
+                                NetworkClient.apiService.requestOrderReturn(orderId, RequestOrderReturnRequest(type, reasonCode, note.trim().ifBlank { null }), java.util.UUID.randomUUID().toString())
                                 done = true
                             } catch (e: HttpException) {
                                 error = superAppErrorMessage(e)
