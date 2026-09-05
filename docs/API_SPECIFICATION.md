@@ -1142,6 +1142,17 @@ beyond what's listed here" gap this section's own 2026-09-04 note flagged) — e
 by direct read of the controller source, not inferred from the pattern of the core-flow
 subset previously documented.
 
+**Real coverage gap found and closed 2026-09-05**: `/api/v1/merchant` is shared, verbatim,
+by 8 OTHER `@RestController` classes beyond `MerchantController.kt` itself
+(`MerchantAdController`/`MerchantCouponController`/`MerchantFollowController`/
+`MerchantDiscoveryController`/`MerchantUpdateController` documented immediately below;
+`MerchantBillingController`/`MerchantBookingController`/`MerchantBookingReviewController`
+tracked as a remaining follow-up) — this section's own path-based header made every one
+of them look "already documented" to a naive prefix-matching audit, the same false-
+negative class already found once for `RideController`/`RideTrustedContactController`
+above, just in the opposite direction (siblings sharing one exact path, not a parent/
+child prefix pair).
+
 ### Registration & profile
 
 | Method | Path | Body | Success | Notes |
@@ -1215,6 +1226,93 @@ subset previously documented.
 (doesn't exist). No POS/card processing (beyond the demo `card/charge` above) — see
 `docs/TOSS_PARITY_MATRIX.md`'s Merchant row. B2B payroll lives at a separate
 `PayrollController`, documented immediately below.
+
+## Merchant Ads — `/api/v1/merchant` (`MerchantAdController`)
+
+**Added 2026-09-05** (seventeenth documentation slice — the first of the 5 Merchant
+sibling controllers named above). Real radius-targeted local business ads — creating
+or extending an ad is a real payment (`fee_revenue`), so it's `Idempotency-Key`-gated.
+Confirmed by direct read of `MerchantAdController.kt` (3 endpoints, 10 error codes,
+all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/ads` | `{title, description?, radiusMeters, days}` (+ `Idempotency-Key`) | `201 {success, ad: {...}}` | Creates or extends the caller's one ad |
+| GET | `/ads/me` | — | `{success, ad: {...}}` | |
+| GET | `/ads/nearby?latitude&longitude` | — | `{success, ads: [...]}` | |
+
+Errors (all 10 real `@ExceptionHandler`s): `404 MERCHANT_NOT_FOUND`,
+`400 MERCHANT_LOCATION_REQUIRED`, `400 INVALID_AD_TITLE`, `400 INVALID_AD_RADIUS`,
+`400 INVALID_AD_DURATION`, `400 INVALID_COORDINATE`, `404 ACCOUNT_NOT_FOUND`,
+`422 INSUFFICIENT_FUNDS`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`.
+
+## Merchant Coupons — `/api/v1/merchant` (`MerchantCouponController`)
+
+**Added 2026-09-05, same slice.** Real merchant coupons with 단골 (regulars-only)
+loyalty gating, plus a customer-facing "Coupon box" browse and Store-points loyalty
+balances. Creation/management isn't money-moving itself (no `Idempotency-Key`) —
+actual redemption happens inside `MerchantController.collect`, which already requires
+one. Confirmed by direct read of `MerchantCouponController.kt` (8 endpoints, 3 error
+codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/coupons/process-expiry-reminders` | — | `{success, processed}` | ADMIN only — manual trigger for the expiry-reminder scheduler, fires system-wide |
+| POST | `/coupons` | `{title, description?, discountType, discountValue, regularsOnly?, expiresAt?}` | `201 {success, coupon: {...}}` | |
+| GET | `/coupons` | — | `{success, coupons: [...]}` | Merchant's own issued coupons |
+| POST | `/coupons/{couponId}/deactivate` | — | `{success, coupon: {...}}` | |
+| GET | `/{merchantId}/coupons` | — | `{success, coupons: [...]}` | Customer-facing — coupons available to the caller at this specific merchant |
+| GET | `/coupons/browse` | — | `{success, coupons: [...]}` | Real "Coupon box" browse across all merchants |
+| GET | `/coupons/my-redemptions` | — | `{success, redemptions: [...]}` | |
+| GET | `/loyalty/my-balances` | — | `{success, balances: [...], total}` | Real Membership-screen "Store points" row |
+
+Errors (all 3 real `@ExceptionHandler`s): `404 MERCHANT_NOT_FOUND`,
+`400 INVALID_COUPON`, `404 COUPON_NOT_FOUND`.
+
+## Merchant Follow — `/api/v1/merchant` (`MerchantFollowController`)
+
+**Added 2026-09-05, same slice.** Real Naver Smart Store-style 알림받기 (follow a
+store) — followers can be broadcast a message from the merchant. Confirmed by direct
+read of `MerchantFollowController.kt` (5 endpoints, 3 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/{merchantId}/follow` | — | `201 {success, follow: {...}}` | |
+| DELETE | `/{merchantId}/follow` | — | `{success}` | |
+| GET | `/follows` | — | `{success, follows: [...], ...pageMeta}` | Caller's own followed merchants |
+| GET | `/followers/count` | — | `{success, count}` | Merchant's own follower count |
+| POST | `/followers/broadcast` | `{title, body}` | `{success, recipientCount}` | Merchant-only |
+
+Errors (all 3 real `@ExceptionHandler`s): `404 MERCHANT_NOT_FOUND`,
+`400 INVALID_BROADCAST`, `429 RATE_LIMITED`.
+
+## Merchant Discovery — `/api/v1/merchant` (`MerchantDiscoveryController`)
+
+**Added 2026-09-05, same slice.** Customer-facing "stores near me" — mirrors
+`AgentDiscoveryController` exactly. Confirmed by direct read of
+`MerchantDiscoveryController.kt` (1 endpoint, 1 error code).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/nearby?latitude&longitude&radiusKm` | — | `{success, merchants: [...]}` | `radiusKm` defaults to 5 |
+
+Errors: `400 INVALID_MERCHANT_SEARCH` (bare `IllegalArgumentException` fallback).
+
+## Merchant Updates — `/api/v1/merchant` (`MerchantUpdateController`)
+
+**Added 2026-09-05, same slice.** Real business news/updates feed a merchant posts to
+their own storefront. Confirmed by direct read of `MerchantUpdateController.kt` (3
+endpoints, 4 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/updates` | `{label, title, body, periodStart?, periodEnd?}` | `201 {success, update: {...}}` | |
+| GET | `/{merchantId}/updates` | — | `{success, updates: [...]}` | |
+| POST | `/updates/{updateId}/like` | — | `{success, liked}` | Idempotent toggle |
+
+Errors (all 4 real `@ExceptionHandler`s): `404 MERCHANT_NOT_FOUND`,
+`404 MERCHANT_UPDATE_NOT_FOUND`, `400 INVALID_MERCHANT_UPDATE`, `429 RATE_LIMITED`.
 
 ## Merchant Payroll — `/api/v1/merchant/payroll`
 
