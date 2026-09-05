@@ -34,10 +34,21 @@ class VupLoanController(
     private val vupLoanService: VupLoanService,
     private val idempotencyService: IdempotencyService,
 ) {
+    // Real gap found 2026-09-05, same class as StudentLoanController's identical fix
+    // (see its own doc comment) -- a lost response after a successful apply would
+    // resubmit here and hit VupLoanAlreadyActiveException on the retry. disburse/
+    // repay below were already protected; this create endpoint was the outlier.
     @PostMapping("/apply")
-    fun apply(@RequestBody request: ApplyForVupLoanRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
-        val loan = vupLoanService.applyForLoan(currentUser.userId, request.declaredUbudeheCategory, request.purpose, request.amount)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "loan" to loan))
+    fun apply(
+        @RequestBody request: ApplyForVupLoanRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/loans/vup/apply", idempotencyKey, request) {
+            val loan = vupLoanService.applyForLoan(currentUser.userId, request.declaredUbudeheCategory, request.purpose, request.amount)
+            HttpStatus.CREATED.value() to mapOf("success" to true, "loan" to loan)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @PostMapping("/{loanId}/disburse")

@@ -106,7 +106,7 @@ fun VupLoanScreen(onBack: () -> Unit) {
         busyId = "apply"
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.applyForVupLoan(ApplyForVupLoanRequest(category, purpose, value))
+                NetworkClient.apiService.applyForVupLoan(ApplyForVupLoanRequest(category, purpose, value), UUID.randomUUID().toString())
                 amount = ""
                 error = null
                 load()

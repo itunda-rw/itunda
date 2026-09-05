@@ -37,9 +37,14 @@ export interface VupLoanEligibility {
   maxAmount: number;
 }
 
+// Idempotency-Key added 2026-09-05 -- matching disburseVupLoan/repayVupLoan below, a
+// lost response after a successful apply would previously resubmit here and hit the
+// backend's own VupLoanAlreadyActiveException guard on retry (see
+// VupLoanController.apply's own doc comment for the full real gap).
 export const applyForVupLoan = (declaredUbudeheCategory: number, purpose: VupLoanPurpose, amount: number) =>
   apiFetch<{ success: boolean; loan: VupLoan }>('/api/v1/loans/vup/apply', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ declaredUbudeheCategory, purpose, amount }),
   }).then((r) => r.loan);
 

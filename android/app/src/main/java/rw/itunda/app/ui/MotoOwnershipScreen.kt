@@ -108,7 +108,7 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
         busyId = "create"
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.createMotoOwnershipPlan(CreateMotoOwnershipPlanRequest(priceValue, contributionValue))
+                NetworkClient.apiService.createMotoOwnershipPlan(CreateMotoOwnershipPlanRequest(priceValue, contributionValue), UUID.randomUUID().toString())
                 bikePrice = ""
                 dailyContribution = ""
                 error = null

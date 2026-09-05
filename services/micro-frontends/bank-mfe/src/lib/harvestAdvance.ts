@@ -55,11 +55,18 @@ export const joinCooperative = (cooperativeId: string) =>
 export const fetchMyCooperativeMemberships = () =>
   apiFetch<{ success: boolean; memberships: CooperativeMembership[] }>('/api/v1/cooperatives/my-memberships').then((r) => r.memberships);
 
+// Idempotency-Key added 2026-09-05 -- matching disburseHarvestAdvance/
+// repayHarvestAdvance below. Worse than a mere confusing-error risk without it:
+// CooperativeService.requestAdvance has no "already pending" guard at all, so a
+// lost response after a successful request would previously resubmit here and
+// silently create a SECOND harvest advance (see CooperativeController.requestAdvance's
+// own doc comment for the full real gap).
 export const requestHarvestAdvance = (
   membershipId: string, principalAmount: number, purpose: string, expectedHarvestDate: string,
 ) =>
   apiFetch<{ success: boolean; advance: HarvestAdvance }>('/api/v1/cooperatives/advances', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ membershipId, principalAmount, purpose, expectedHarvestDate }),
   }).then((r) => r.advance);
 

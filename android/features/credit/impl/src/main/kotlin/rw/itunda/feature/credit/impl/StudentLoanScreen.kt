@@ -120,7 +120,7 @@ fun StudentLoanScreen(onBack: () -> Unit) {
         coroutineScope.launch {
             try {
                 val graduationDate = Instant.now().plus(years * 365, ChronoUnit.DAYS).toString().take(10)
-                NetworkClient.apiService.applyForStudentLoan(ApplyForStudentLoanRequest(level, incomeValue, amountValue, graduationDate))
+                NetworkClient.apiService.applyForStudentLoan(ApplyForStudentLoanRequest(level, incomeValue, amountValue, graduationDate), UUID.randomUUID().toString())
                 income = ""; amount = ""; yearsToGraduation = ""
                 load()
             } catch (e: HttpException) {

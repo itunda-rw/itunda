@@ -165,6 +165,7 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                 val harvestDate = Instant.now().plus(months * 30, ChronoUnit.DAYS)
                 NetworkClient.apiService.requestHarvestAdvance(
                     RequestAdvanceRequest(membershipId, amount, advancePurpose, harvestDate.toString()),
+                    UUID.randomUUID().toString(),
                 )
                 advanceAmount = ""
                 harvestMonthsAway = ""

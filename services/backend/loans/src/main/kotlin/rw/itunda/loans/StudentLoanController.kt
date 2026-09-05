@@ -42,12 +42,31 @@ class StudentLoanController(
     private val idempotencyService: IdempotencyService,
     private val studentLoanGraceEndReminderScheduler: StudentLoanGraceEndReminderScheduler,
 ) {
+    // Real gap found 2026-09-05 (matching the exact "AlreadyX guard with no
+    // idempotency-key protection" bug class first found in EatsOrderService's
+    // tipRider, see feedback_toss_error_handling's own note on that fix): a lost
+    // response after a successful apply (client timeout, retry before the button
+    // disables) would resubmit here, and StudentLoanService.applyForLoan's own
+    // StudentLoanAlreadyActiveException guard would fire on the retry -- a confusing
+    // "you already have an active loan" error for someone whose FIRST application
+    // actually just succeeded. disburse/repay below were already correctly
+    // protected; this create endpoint was the one outlier, matching the dominant
+    // convention every other loans/* controller's own apply/open endpoint already
+    // follows (LoansController.apply, LoansController's overdraft/open and
+    // postpaid-credit/apply).
     @PostMapping("/apply")
-    fun apply(@RequestBody request: ApplyForStudentLoanRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
-        val loan = studentLoanService.applyForLoan(
-            currentUser.userId, request.level, request.declaredAnnualHouseholdIncome, request.amount, request.expectedGraduationDate,
-        )
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "loan" to loan))
+    fun apply(
+        @RequestBody request: ApplyForStudentLoanRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/loans/student/apply", idempotencyKey, request) {
+            val loan = studentLoanService.applyForLoan(
+                currentUser.userId, request.level, request.declaredAnnualHouseholdIncome, request.amount, request.expectedGraduationDate,
+            )
+            HttpStatus.CREATED.value() to mapOf("success" to true, "loan" to loan)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @PostMapping("/{loanId}/disburse")

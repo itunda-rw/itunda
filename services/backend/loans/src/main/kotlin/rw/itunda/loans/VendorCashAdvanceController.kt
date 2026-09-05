@@ -40,10 +40,22 @@ class VendorCashAdvanceController(
     fun getOffer(@RequestParam merchantId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true) + vendorCashAdvanceService.getOffer(currentUser.userId, merchantId))
 
+    // Real gap found 2026-09-05, same class as StudentLoanController's identical fix
+    // (see its own doc comment) -- a lost response after a successful apply would
+    // resubmit here and hit VendorCashAdvanceAlreadyActiveException on the retry.
+    // disburse/repay-early below were already protected; this create endpoint was
+    // the outlier.
     @PostMapping("/apply")
-    fun apply(@RequestBody request: ApplyForVendorCashAdvanceRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
-        val advance = vendorCashAdvanceService.applyForAdvance(currentUser.userId, request.merchantId)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "advance" to advance))
+    fun apply(
+        @RequestBody request: ApplyForVendorCashAdvanceRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/vendor-advance/apply", idempotencyKey, request) {
+            val advance = vendorCashAdvanceService.applyForAdvance(currentUser.userId, request.merchantId)
+            HttpStatus.CREATED.value() to mapOf("success" to true, "advance" to advance)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @PostMapping("/{advanceId}/disburse")

@@ -37,6 +37,10 @@ export interface StudentLoanSuggestedPayment {
   note: string;
 }
 
+// Idempotency-Key added 2026-09-05 -- matching disburseStudentLoan/repayStudentLoan
+// below, a lost response after a successful apply would previously resubmit here
+// and hit the backend's own StudentLoanAlreadyActiveException guard on retry (see
+// StudentLoanController.apply's own doc comment for the full real gap).
 export const applyForStudentLoan = (
   level: StudentLoanLevel,
   declaredAnnualHouseholdIncome: number,
@@ -45,6 +49,7 @@ export const applyForStudentLoan = (
 ) =>
   apiFetch<{ success: boolean; loan: StudentLoan }>('/api/v1/loans/student/apply', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ level, declaredAnnualHouseholdIncome, amount, expectedGraduationDate }),
   }).then((r) => r.loan);
 

@@ -651,13 +651,18 @@ final class MerchantNetworkClient {
     // Real Isoko ("market" in Kinyarwanda) Vendor Cash Advance -- see
     // VendorCashAdvanceDto's own doc comment. merchant-mfe/Android already have this;
     // this is the first iOS MerchantApp client, found while confirming that gap on
-    // this platform specifically (2026-08-05). No Idempotency-Key on apply (row
-    // creation only, money only moves at disburse); disburse/repay-early both need one.
+    // this platform specifically (2026-08-05).
+    // Correction, 2026-09-05: the "no Idempotency-Key on apply, row creation only"
+    // reasoning missed the actual risk -- VendorCashAdvanceService.applyForAdvance's
+    // own VendorCashAdvanceAlreadyActiveException guard fires on a legitimate
+    // lost-response retry regardless of whether money moved yet (see
+    // VendorCashAdvanceController.apply's own doc comment for the full gap) -- now
+    // protected, same convention as disburse/repay-early below.
     func getVendorCashAdvanceOffer(merchantId: String) async throws -> VendorCashAdvanceOfferResponse {
         try await get("api/v1/vendor-advance/offer", query: [URLQueryItem(name: "merchantId", value: merchantId)])
     }
     func applyForVendorCashAdvance(merchantId: String) async throws -> VendorCashAdvanceResponse {
-        try await post("api/v1/vendor-advance/apply", body: ApplyForVendorCashAdvanceRequest(merchantId: merchantId))
+        try await postWithHeader("api/v1/vendor-advance/apply", body: ApplyForVendorCashAdvanceRequest(merchantId: merchantId), header: ("Idempotency-Key", UUID().uuidString))
     }
     func disburseVendorCashAdvance(_ advanceId: String) async throws -> VendorCashAdvanceResponse {
         try await postWithHeader("api/v1/vendor-advance/\(advanceId)/disburse", body: EmptyBody(), header: ("Idempotency-Key", UUID().uuidString))

@@ -42,11 +42,18 @@ export interface VendorCashAdvanceOffer {
 export const getVendorCashAdvanceOffer = (merchantId: string) =>
   apiFetch<{ success: boolean } & VendorCashAdvanceOffer>(`/api/v1/vendor-advance/offer?merchantId=${encodeURIComponent(merchantId)}`);
 
-// No Idempotency-Key -- row creation only, mirrors VupLoanService.applyForLoan's own
-// contract (money only moves at disburse).
+// Correction, 2026-09-05: the "row creation only, money only moves at disburse"
+// reasoning above missed the actual risk -- VendorCashAdvanceService.applyForAdvance
+// has a VendorCashAdvanceAlreadyActiveException guard, so a lost response after a
+// successful apply would resubmit here and hit that guard on retry, showing the
+// merchant a confusing "already active" error for an application that actually just
+// succeeded. The cited VupLoanService.applyForLoan precedent had the identical gap
+// and has now been fixed the same way (see VendorCashAdvanceController.apply's own
+// doc comment) -- added Idempotency-Key here to match.
 export const applyForVendorCashAdvance = (merchantId: string) =>
   apiFetch<{ success: boolean; advance: VendorCashAdvance }>('/api/v1/vendor-advance/apply', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ merchantId }),
   }).then((r) => r.advance);
 

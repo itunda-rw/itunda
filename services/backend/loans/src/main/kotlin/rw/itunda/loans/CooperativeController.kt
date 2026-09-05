@@ -55,12 +55,26 @@ class CooperativeController(
     fun getCooperativeOverview(@PathVariable cooperativeId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true) + cooperativeService.getCooperativeOverview(currentUser.userId, cooperativeId))
 
+    // Real gap found 2026-09-05, same class as StudentLoanController's identical fix
+    // (see its own doc comment) -- worse here than the sibling loan/apply fixes:
+    // CooperativeService.requestAdvance has NO "already have a pending advance"
+    // guard at all, so a lost-response retry wouldn't just show a confusing error,
+    // it would silently create a SECOND harvest advance for the same membership.
+    // disburse/repay below were already protected; this create endpoint was the
+    // outlier.
     @PostMapping("/advances")
-    fun requestAdvance(@RequestBody request: RequestAdvanceRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
-        val advance = cooperativeService.requestAdvance(
-            currentUser.userId, request.membershipId, request.principalAmount, request.purpose, request.expectedHarvestDate,
-        )
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "advance" to advance))
+    fun requestAdvance(
+        @RequestBody request: RequestAdvanceRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/cooperatives/advances", idempotencyKey, request) {
+            val advance = cooperativeService.requestAdvance(
+                currentUser.userId, request.membershipId, request.principalAmount, request.purpose, request.expectedHarvestDate,
+            )
+            HttpStatus.CREATED.value() to mapOf("success" to true, "advance" to advance)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @PostMapping("/advances/{advanceId}/disburse")

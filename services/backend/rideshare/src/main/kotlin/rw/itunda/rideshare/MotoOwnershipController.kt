@@ -35,10 +35,26 @@ class MotoOwnershipController(
     private val motoOwnershipService: MotoOwnershipService,
     private val idempotencyService: IdempotencyService,
 ) {
+    // Real gap found 2026-09-05, same class as StudentLoanController.apply's
+    // identical fix (see its own doc comment) -- the "not money movement" reasoning
+    // this endpoint (and the loans/vup, loans/student, vendor-advance, cooperatives/
+    // advances siblings) previously relied on to skip Idempotency-Key missed the
+    // actual risk: MotoOwnershipService.createPlan's own MotoOwnershipPlanAlreadyActiveException
+    // guard would fire on a legitimate lost-response retry, not because money moved,
+    // but because "only one active plan" is a real uniqueness constraint a retry can
+    // spuriously trip. contribute/cancel/convert-to-loan/repay below were already
+    // protected; this create endpoint was the outlier.
     @PostMapping("/plans")
-    fun createPlan(@RequestBody request: CreateMotoOwnershipPlanRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
-        val plan = motoOwnershipService.createPlan(currentUser.userId, request.bikePrice, request.dailyContribution)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "plan" to plan))
+    fun createPlan(
+        @RequestBody request: CreateMotoOwnershipPlanRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/moto-ownership/plans", idempotencyKey, request) {
+            val plan = motoOwnershipService.createPlan(currentUser.userId, request.bikePrice, request.dailyContribution)
+            HttpStatus.CREATED.value() to mapOf("success" to true, "plan" to plan)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @PostMapping("/plans/{planId}/contribute")

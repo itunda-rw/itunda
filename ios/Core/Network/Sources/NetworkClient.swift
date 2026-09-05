@@ -2147,10 +2147,19 @@ extension NetworkClient {
 
     public func getMyCooperativeMemberships() async throws -> CooperativeMembershipsResponse { try await get("api/v1/cooperatives/my-memberships") }
 
+    // Idempotency-Key added 2026-09-05 -- matching disburseHarvestAdvance/
+    // repayHarvestAdvance below. Worse than a mere confusing-error risk without it:
+    // CooperativeService.requestAdvance has no "already pending" guard at all, so a
+    // lost response after a successful request would previously resubmit here and
+    // silently create a SECOND harvest advance (see CooperativeController
+    // .requestAdvance's own doc comment for the full real gap). postP2p (not just
+    // its P2P-transfer origin) is this file's established idempotency-key + real-
+    // message POST path, already reused below for disburse/repay.
     public func requestHarvestAdvance(membershipId: String, principalAmount: Double, purpose: String, expectedHarvestDate: String) async throws -> HarvestAdvanceResponse {
-        try await authenticatedPost(
+        try await postP2p(
             "api/v1/cooperatives/advances",
             body: RequestAdvanceRequest(membershipId: membershipId, principalAmount: principalAmount, purpose: purpose, expectedHarvestDate: expectedHarvestDate),
+            idempotencyKey: UUID().uuidString,
         )
     }
 
@@ -2165,16 +2174,21 @@ extension NetworkClient {
     public func getMyHarvestAdvances() async throws -> HarvestAdvancesResponse { try await get("api/v1/cooperatives/advances/my-advances") }
 
     // Real Rwanda VUP (Vision 2020 Umurenge Programme) Financial Services means-tested
-    // microloan -- see VupLoanDto's own doc comment. No Idempotency-Key on apply (not
-    // money movement itself, matching the backend's own contract); disburse/repay both
-    // require one, same convention as every other money-moving call in this file.
+    // microloan -- see VupLoanDto's own doc comment.
     // Real gap found 2026-09-04: VupLoanService has real, actionable messages
     // ("VUP Financial Services targets Ubudehe categories X-Y; category Z is not
     // eligible", dynamic amount bound, "already have an active VUP loan", status-
     // gated disburse/repay) that VupLoanScreenView.swift's 3 bare `catch {}` blocks
     // each flattened into one static per-action string.
+    // Correction, 2026-09-05: the "no Idempotency-Key on apply, not money movement"
+    // reasoning this used to carry missed the actual risk -- VupLoanService
+    // .applyForLoan's own VupLoanAlreadyActiveException guard fires on a legitimate
+    // lost-response retry regardless of whether money moved yet (see
+    // VupLoanController.apply's own doc comment for the full gap). Switched from
+    // authenticatedPostWithMessage (no idempotency support) to postP2p, same
+    // convention already used below for disburse/repay.
     public func applyForVupLoan(declaredUbudeheCategory: Int, purpose: String, amount: Double) async throws -> VupLoanResponse {
-        try await authenticatedPostWithMessage("api/v1/loans/vup/apply", body: ApplyForVupLoanRequest(declaredUbudeheCategory: declaredUbudeheCategory, purpose: purpose, amount: amount))
+        try await postP2p("api/v1/loans/vup/apply", body: ApplyForVupLoanRequest(declaredUbudeheCategory: declaredUbudeheCategory, purpose: purpose, amount: amount), idempotencyKey: UUID().uuidString)
     }
 
     public func disburseVupLoan(loanId: String) async throws -> VupLoanResponse {
@@ -2190,17 +2204,21 @@ extension NetworkClient {
     public func getVupLoanEligibility() async throws -> VupLoanEligibilityResponse { try await get("api/v1/loans/vup/eligibility") }
 
     // Real BRD higher-education student loan -- see StudentLoanDto's own doc comment.
-    // No Idempotency-Key on apply/declareGraduated (neither is money movement itself,
-    // matching the backend's own contract); disburse/repay both require one, same
-    // convention as every other money-moving call in this file.
     // Real gap found 2026-09-04: StudentLoanService has genuinely specific, actionable
     // real messages ("You already have an active student loan -- repay it before
     // applying for another", "Amount must be between 1 and $MAX RWF", "Only a
     // REQUESTED loan can be disbursed", "repayment can't start before the grace
     // period ends") that StudentLoanScreenView.swift's 4 bare `catch {}` blocks
     // each flattened into one static per-action string, losing all of this.
+    // Correction, 2026-09-05: apply is now Idempotency-Key protected (postP2p,
+    // matching disburse/repay below) -- same reasoning correction as
+    // applyForVupLoan above, a lost-response retry hits
+    // StudentLoanAlreadyActiveException regardless of whether money moved yet.
+    // declareGraduated below has the same class of gap (a retry after success hits
+    // StudentLoanNotDisbursedException) but is lower-frequency/lower-stakes -- a
+    // disclosed, not-yet-fixed follow-up.
     public func applyForStudentLoan(level: String, declaredAnnualHouseholdIncome: Double, amount: Double, expectedGraduationDate: String) async throws -> StudentLoanResponse {
-        try await authenticatedPostWithMessage("api/v1/loans/student/apply", body: ApplyForStudentLoanRequest(level: level, declaredAnnualHouseholdIncome: declaredAnnualHouseholdIncome, amount: amount, expectedGraduationDate: expectedGraduationDate))
+        try await postP2p("api/v1/loans/student/apply", body: ApplyForStudentLoanRequest(level: level, declaredAnnualHouseholdIncome: declaredAnnualHouseholdIncome, amount: amount, expectedGraduationDate: expectedGraduationDate), idempotencyKey: UUID().uuidString)
     }
 
     public func disburseStudentLoan(loanId: String) async throws -> StudentLoanResponse {
@@ -2222,18 +2240,22 @@ extension NetworkClient {
     public func getVupLoan(loanId: String) async throws -> VupLoanResponse { try await get("api/v1/loans/vup/\(loanId)") }
 
     // Real Rwanda moto-taxi ownership savings-to-loan plan -- see
-    // MotoOwnershipPlanDto's own doc comment. No Idempotency-Key on create (not
-    // money movement itself, matching the backend's own contract); contribute/
-    // cancel/convert-to-loan/repay all require one, same convention as every other
-    // money-moving call in this file.
+    // MotoOwnershipPlanDto's own doc comment.
     // Real gap found 2026-09-04: MotoOwnershipService has genuinely rich, actionable
     // real messages across all 5 actions ("You already have an active moto-taxi
     // ownership plan -- complete or cancel it before starting another", dynamic
     // bike-price bounds, "the down payment target ($X) has not been met yet", "Only
     // a SAVING/LOAN_ACTIVE plan can be...") that MotoOwnershipScreenView.swift's 5
     // bare `catch {}` blocks each flattened into one static per-action string.
+    // Correction, 2026-09-05: the "no Idempotency-Key on create, not money movement"
+    // reasoning this used to carry missed the actual risk -- MotoOwnershipService
+    // .createPlan's own MotoOwnershipPlanAlreadyActiveException guard fires on a
+    // legitimate lost-response retry regardless of whether money moved yet (see
+    // MotoOwnershipController.createPlan's own doc comment for the full gap).
+    // Switched to postP2p, same convention already used below for contribute/
+    // cancel/convert-to-loan/repay.
     public func createMotoOwnershipPlan(bikePrice: Double, dailyContribution: Double) async throws -> MotoOwnershipPlanResponse {
-        try await authenticatedPostWithMessage("api/v1/moto-ownership/plans", body: CreateMotoOwnershipPlanRequest(bikePrice: bikePrice, dailyContribution: dailyContribution))
+        try await postP2p("api/v1/moto-ownership/plans", body: CreateMotoOwnershipPlanRequest(bikePrice: bikePrice, dailyContribution: dailyContribution), idempotencyKey: UUID().uuidString)
     }
 
     public func contributeToMotoOwnershipPlan(planId: String, amount: Double) async throws -> MotoOwnershipPlanResponse {

@@ -5019,8 +5019,13 @@ interface ApiService {
     @GET("api/v1/cooperatives/{cooperativeId}/overview")
     suspend fun getCooperativeOverview(@Path("cooperativeId") cooperativeId: String): CooperativeOverviewResponse
 
+    // Idempotency-Key added 2026-09-05 -- matching disburse/repay below. Worse than a
+    // mere confusing-error risk without it: CooperativeService.requestAdvance has no
+    // "already pending" guard at all, so a lost response after a successful request
+    // would previously resubmit here and silently create a SECOND harvest advance
+    // (see CooperativeController.requestAdvance's own doc comment for the full gap).
     @POST("api/v1/cooperatives/advances")
-    suspend fun requestHarvestAdvance(@Body request: RequestAdvanceRequest): HarvestAdvanceResponse
+    suspend fun requestHarvestAdvance(@Body request: RequestAdvanceRequest, @Header("Idempotency-Key") idempotencyKey: String): HarvestAdvanceResponse
 
     @POST("api/v1/cooperatives/advances/{advanceId}/disburse")
     suspend fun disburseHarvestAdvance(@Path("advanceId") advanceId: String, @Header("Idempotency-Key") idempotencyKey: String): HarvestAdvanceResponse
@@ -5035,11 +5040,14 @@ interface ApiService {
     suspend fun getMyHarvestAdvances(): HarvestAdvancesResponse
 
     // Real Rwanda VUP (Vision 2020 Umurenge Programme) Financial Services means-tested
-    // microloan -- see VupLoanDto's own doc comment. No Idempotency-Key on apply (not
-    // money movement itself, matching the backend's own contract); disburse/repay both
-    // require one, same convention as every other money-moving call in this file.
+    // microloan -- see VupLoanDto's own doc comment. Correction, 2026-09-05: the
+    // "no Idempotency-Key on apply, not money movement" reasoning below missed the
+    // actual risk -- VupLoanService.applyForLoan's own VupLoanAlreadyActiveException
+    // guard fires on a legitimate lost-response retry regardless of whether money
+    // moved yet (see VupLoanController.apply's own doc comment for the full gap) --
+    // now protected, same convention as every other money-moving call in this file.
     @POST("api/v1/loans/vup/apply")
-    suspend fun applyForVupLoan(@Body request: ApplyForVupLoanRequest): VupLoanResponse
+    suspend fun applyForVupLoan(@Body request: ApplyForVupLoanRequest, @Header("Idempotency-Key") idempotencyKey: String): VupLoanResponse
 
     @POST("api/v1/loans/vup/{loanId}/disburse")
     suspend fun disburseVupLoan(@Path("loanId") loanId: String, @Header("Idempotency-Key") idempotencyKey: String): VupLoanResponse
@@ -5057,12 +5065,16 @@ interface ApiService {
     suspend fun getVupLoan(@Path("loanId") loanId: String): VupLoanResponse
 
     // Real Rwanda BRD (Development Bank of Rwanda) higher-education student loan --
-    // see StudentLoanDto's own doc comment. bank-mfe shipped first (lib/studentLoan.ts);
-    // this is the first native client. No Idempotency-Key on apply/declare-graduated
-    // (not money movement); disburse/repay both require one, matching every other
-    // money-moving call in this file.
+    // see StudentLoanDto's own doc comment. Correction, 2026-09-05: apply is now
+    // Idempotency-Key protected, same reasoning correction as applyForVupLoan above
+    // (a lost-response retry hits StudentLoanAlreadyActiveException regardless of
+    // whether money moved yet). declare-graduated below has the same class of gap
+    // (a retry after success hits StudentLoanNotDisbursedException, since the loan
+    // is no longer DISBURSED) but is lower-frequency/lower-stakes -- a disclosed,
+    // not-yet-fixed follow-up, not addressed in this pass. disburse/repay both
+    // require Idempotency-Key, matching every other money-moving call in this file.
     @POST("api/v1/loans/student/apply")
-    suspend fun applyForStudentLoan(@Body request: ApplyForStudentLoanRequest): StudentLoanResponse
+    suspend fun applyForStudentLoan(@Body request: ApplyForStudentLoanRequest, @Header("Idempotency-Key") idempotencyKey: String): StudentLoanResponse
 
     @POST("api/v1/loans/student/{loanId}/disburse")
     suspend fun disburseStudentLoan(@Path("loanId") loanId: String, @Header("Idempotency-Key") idempotencyKey: String): StudentLoanResponse
@@ -5080,12 +5092,15 @@ interface ApiService {
     suspend fun getStudentLoanSuggestedPayment(@Path("loanId") loanId: String): StudentLoanSuggestedPaymentResponse
 
     // Real Rwanda moto-taxi ownership savings-to-loan plan -- see
-    // MotoOwnershipPlanDto's own doc comment for the full sourced account. No
-    // Idempotency-Key on create (not money movement itself, matching the backend's
-    // own contract); contribute/cancel/convert-to-loan/repay all require one, same
-    // convention as every other money-moving call in this file.
+    // MotoOwnershipPlanDto's own doc comment for the full sourced account.
+    // Correction, 2026-09-05: the "no Idempotency-Key on create, not money movement"
+    // reasoning missed the actual risk -- MotoOwnershipService.createPlan's own
+    // MotoOwnershipPlanAlreadyActiveException guard fires on a legitimate
+    // lost-response retry regardless of whether money moved yet (see
+    // MotoOwnershipController.createPlan's own doc comment for the full gap) -- now
+    // protected, same convention as every other money-moving call in this file.
     @POST("api/v1/moto-ownership/plans")
-    suspend fun createMotoOwnershipPlan(@Body request: CreateMotoOwnershipPlanRequest): MotoOwnershipPlanResponse
+    suspend fun createMotoOwnershipPlan(@Body request: CreateMotoOwnershipPlanRequest, @Header("Idempotency-Key") idempotencyKey: String): MotoOwnershipPlanResponse
 
     @POST("api/v1/moto-ownership/plans/{planId}/contribute")
     suspend fun contributeToMotoOwnershipPlan(@Path("planId") planId: String, @Body request: ContributeToMotoOwnershipPlanRequest, @Header("Idempotency-Key") idempotencyKey: String): MotoOwnershipPlanResponse
