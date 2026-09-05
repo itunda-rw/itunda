@@ -2420,6 +2420,94 @@ Reused as the underlying implementation of `POST /api/v1/community/posts/{postId
 `INVALID_AMOUNT`/`DESCRIPTION_REQUIRED`/`SPLIT_BILL_NEEDS_PARTICIPANTS`/
 `PARTICIPANT_NOT_GROUP_MEMBER` handlers exist because this same service can throw them.
 
+## Partners — `/api/v1/partners`
+
+**Added 2026-09-05** (twentieth documentation slice — itunda's third-party developer
+platform: register, get an API key, submit a mini-app for review). Mapped outside
+`/api/v1/system/**` since a partner authenticates with its own real API key (checked
+inside `PartnerService.resolvePartner` for every endpoint but `/register`), not an
+itunda-user JWT — `permitAll` at the Spring Security layer. Confirmed by direct read
+of `PartnerController.kt` (4 endpoints, 9 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/register` | `{companyName, contactEmail}` | `201 {success, partner: {...}, apiKey}` | `apiKey` is shown exactly once |
+| POST | `/mini-apps` | `{name, description, iconUrl?, bundleUrl, permissions}` header `X-Api-Key` | `201 {success, miniApp: {...}}` | |
+| GET | `/mini-apps` | — header `X-Api-Key` | `{success, miniApps: [...]}` | Partner's own submitted mini-apps |
+| GET | `/permissions` | — | `{success, permissions: [...]}` | The real, fixed allowed-permission vocab a submission's own `permissions` must be drawn from |
+
+Errors (all 9 real `@ExceptionHandler`s): `409 PARTNER_EMAIL_ALREADY_REGISTERED`,
+`400 INVALID_EMAIL`, `401 INVALID_API_KEY`, `403 PARTNER_SUSPENDED`,
+`400 INVALID_PERMISSION_SCOPE`, `400 INVALID_MINI_APP_SUBMISSION`,
+`401 API_KEY_REQUIRED`, `429 RATE_LIMITED`, `400 INVALID_DECISION_REASON` (surfaces
+here even though the decide action itself lives on Partner Admin below, since both
+share this controller's exception-handling scope).
+
+## Partner Identity — `/api/v1/partners/identity`
+
+**Added 2026-09-05, same slice.** The partner-facing side of "verify/sign in with
+itunda" — a partner creates a verification request, hands the user a real
+`itunda://verify/{requestId}` deep link, and polls for the result. Same
+`X-Api-Key`-authenticated, `permitAll`-at-Spring-Security shape as Partners above.
+Confirmed by direct read of `PartnerIdentityController.kt` (3 endpoints, 5 error
+codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/requests` | — header `X-Api-Key` | `201 {success, requestId, verifyUrl, expiresAt}` | |
+| GET | `/requests/{requestId}` | — header `X-Api-Key` | `{success, status}` or `{success, status, identity: {...}, signature}` | `identity`/`signature` are only ever present once a real user has approved — never returned for PENDING/DECLINED/EXPIRED |
+| GET | `/public-key` | — | `{success, algorithm: "Ed25519", publicKey}` | Lets a partner verify `signature` above independently |
+
+Errors (all 5 real `@ExceptionHandler`s): `404 VERIFICATION_REQUEST_NOT_FOUND`,
+`401 INVALID_API_KEY`, `403 PARTNER_SUSPENDED`, `401 API_KEY_REQUIRED`,
+`429 RATE_LIMITED`.
+
+## Partner Review — `/api/v1/system/partners` (ADMIN role only)
+
+**Added 2026-09-05, same slice.** The ADMIN-only review queue for partner mini-app
+submissions — mapped under `/api/v1/system/partners` specifically so it inherits
+`SecurityConfig`'s existing `hasRole("ADMIN")` rule on the system path prefix, same
+convention `ComplianceController`'s own KYC/KYB queue already establishes. Confirmed
+by direct read of `PartnerAdminController.kt` (2 endpoints, 2 error codes, all
+unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/queue` | — | `{success, queue: [...], ...pageMeta}` | Pending mini-app submissions |
+| POST | `/{miniAppId}/decide` | `{approve, reason?}` | `{success, miniApp: {...}}` | |
+
+Errors: `404 PARTNER_MINI_APP_NOT_FOUND`, `409 PARTNER_MINI_APP_NOT_PENDING`.
+
+## Mini-App Catalog — `/api/v1/mini-apps`
+
+**Added 2026-09-05, same slice.** The real "app store" surface every itunda client
+fetches to know which approved third-party mini-apps are available — normal
+itunda-user JWT gate (no ADMIN role needed), distinct from both `/api/v1/partners/**`
+(partner-authenticated) and `/api/v1/system/partners/**` (ADMIN-only review) above.
+Confirmed by direct read of `MiniAppCatalogController.kt` (1 endpoint, no
+`@ExceptionHandler`s of its own).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/catalog` | — | `{success, miniApps: [...], ...pageMeta}` | |
+
+## Identity Verification — `/api/v1/identity/verification`
+
+**Added 2026-09-05, same slice.** The real, informed-consent user-facing side of
+"verify/sign in with itunda" — reached via the `itunda://verify/{requestId}` deep
+link Partner Identity above hands to a partner. Normal itunda-user JWT gate.
+Confirmed by direct read of `IdentityVerificationController.kt` (3 endpoints, 3
+error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/{requestId}` | — | `{success, partnerName, status, expiresAt, requestedFields: [...]}` | `requestedFields` is a fixed v1 list (name, phone, ID-verification status, date of birth) — every request asks for the same full scope, not yet per-partner configurable |
+| POST | `/{requestId}/approve` | — | `{success}` | |
+| POST | `/{requestId}/decline` | — | `{success}` | |
+
+Errors (all 3 real `@ExceptionHandler`s): `404 VERIFICATION_REQUEST_NOT_FOUND`,
+`409 VERIFICATION_REQUEST_NOT_PENDING`, `404 USER_NOT_FOUND`.
+
 ## Offline actions — `/api/v1/actions`
 
 Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s Offline row for the full
