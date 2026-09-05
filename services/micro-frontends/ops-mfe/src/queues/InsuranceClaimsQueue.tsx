@@ -1,18 +1,23 @@
 import { useState } from 'react';
 import { useQueue } from '../hooks/useQueue';
 import { decideInsuranceClaim, fetchInsuranceClaimsQueue, type InsuranceClaim } from '../lib/queues';
+import { ApiError } from '../lib/api';
 import { QueueEmpty, QueueError, QueueHeader, QueueSkeleton } from '../QueueState';
 
 function InsuranceClaimCard({ claim, onDecided }: { claim: InsuranceClaim; onDecided: () => void }) {
   const [pending, setPending] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const approve = async () => {
     setPending(true);
+    setError(null);
     try {
       await decideInsuranceClaim(claim.id, true);
       onDecided();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not approve this claim.');
     } finally {
       setPending(false);
     }
@@ -20,9 +25,12 @@ function InsuranceClaimCard({ claim, onDecided }: { claim: InsuranceClaim; onDec
 
   const reject = async () => {
     setPending(true);
+    setError(null);
     try {
       await decideInsuranceClaim(claim.id, false, reason || undefined);
       onDecided();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not reject this claim.');
     } finally {
       setPending(false);
     }
@@ -52,6 +60,8 @@ function InsuranceClaimCard({ claim, onDecided }: { claim: InsuranceClaim; onDec
           style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', resize: 'vertical' }}
         />
       )}
+
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
 
       <div style={{ display: 'flex', gap: '8px' }}>
         {!rejecting ? (

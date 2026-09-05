@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { usePagedQueue } from '../hooks/useQueue';
 import { decidePartnerMiniApp, fetchPartnersQueue, type PartnerMiniAppSubmission } from '../lib/queues';
+import { ApiError } from '../lib/api';
 import { QueueEmpty, QueueError, QueueHeader, QueueLoadMore, QueueSkeleton } from '../QueueState';
 
 // Real third-party mini-app review queue -- closes the "allow partners to build apps
@@ -12,12 +13,16 @@ function PartnerMiniAppCard({ submission, onDecided }: { submission: PartnerMini
   const [pending, setPending] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const approve = async () => {
     setPending(true);
+    setError(null);
     try {
       await decidePartnerMiniApp(submission.id, true);
       onDecided();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not approve this mini-app.');
     } finally {
       setPending(false);
     }
@@ -25,9 +30,12 @@ function PartnerMiniAppCard({ submission, onDecided }: { submission: PartnerMini
 
   const reject = async () => {
     setPending(true);
+    setError(null);
     try {
       await decidePartnerMiniApp(submission.id, false, reason || undefined);
       onDecided();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not reject this mini-app.');
     } finally {
       setPending(false);
     }
@@ -71,6 +79,8 @@ function PartnerMiniAppCard({ submission, onDecided }: { submission: PartnerMini
           style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', resize: 'vertical' }}
         />
       )}
+
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
 
       <div style={{ display: 'flex', gap: '8px' }}>
         {!rejecting ? (

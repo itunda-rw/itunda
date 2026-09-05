@@ -1,18 +1,23 @@
 import { useState } from 'react';
 import { usePagedQueue } from '../hooks/useQueue';
 import { decidePropertyOwnership, fetchPropertyOwnershipQueue, type PropertyOwnershipSubmission } from '../lib/queues';
+import { ApiError } from '../lib/api';
 import { QueueEmpty, QueueError, QueueHeader, QueueLoadMore, QueueSkeleton } from '../QueueState';
 
 function PropertyOwnershipCard({ submission, onDecided }: { submission: PropertyOwnershipSubmission; onDecided: () => void }) {
   const [pending, setPending] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const approve = async () => {
     setPending(true);
+    setError(null);
     try {
       await decidePropertyOwnership(submission.id, true);
       onDecided();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not approve this submission.');
     } finally {
       setPending(false);
     }
@@ -20,9 +25,12 @@ function PropertyOwnershipCard({ submission, onDecided }: { submission: Property
 
   const reject = async () => {
     setPending(true);
+    setError(null);
     try {
       await decidePropertyOwnership(submission.id, false, reason || undefined);
       onDecided();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not reject this submission.');
     } finally {
       setPending(false);
     }
@@ -50,6 +58,8 @@ function PropertyOwnershipCard({ submission, onDecided }: { submission: Property
           style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', resize: 'vertical' }}
         />
       )}
+
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
 
       <div style={{ display: 'flex', gap: '8px' }}>
         {!rejecting ? (

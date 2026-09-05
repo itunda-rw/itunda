@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { usePagedQueue } from '../hooks/useQueue';
 import { decideFraud, fetchFraudQueue, type FraudFlag } from '../lib/queues';
+import { ApiError } from '../lib/api';
 import { QueueEmpty, QueueError, QueueHeader, QueueLoadMore, QueueSkeleton } from '../QueueState';
 
 const RULE_LABEL: Record<FraudFlag['rule'], string> = {
@@ -11,12 +12,16 @@ const RULE_LABEL: Record<FraudFlag['rule'], string> = {
 
 function FraudCard({ flag, onDecided }: { flag: FraudFlag; onDecided: (id: string) => void }) {
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const decide = async (decision: 'CLEARED' | 'CONFIRMED') => {
     setPending(true);
+    setError(null);
     try {
       await decideFraud(flag.id, decision);
       onDecided(flag.id);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not decide this flag.');
     } finally {
       setPending(false);
     }
@@ -49,6 +54,7 @@ function FraudCard({ flag, onDecided }: { flag: FraudFlag; onDecided: (id: strin
       <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
         User {flag.userId} · Transaction {flag.transactionId} · Flagged {new Date(flag.createdAt).toLocaleString()}
       </p>
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '8px' }}>
         <button
           className="itunda-btn itunda-btn-secondary"

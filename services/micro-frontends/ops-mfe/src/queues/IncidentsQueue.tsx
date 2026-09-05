@@ -2,17 +2,22 @@ import { useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { useQueue } from '../hooks/useQueue';
 import { fetchIncidents, resolveIncident, type Incident } from '../lib/queues';
+import { ApiError } from '../lib/api';
 import { QueueEmpty, QueueError, QueueHeader, QueueSkeleton } from '../QueueState';
 
 function IncidentCard({ incident, onResolved }: { incident: Incident; onResolved: () => void }) {
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const isOpen = incident.status === 'OPEN';
 
   const resolve = async () => {
     setPending(true);
+    setError(null);
     try {
       await resolveIncident(incident.id);
       onResolved();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not resolve this incident.');
     } finally {
       setPending(false);
     }
@@ -41,6 +46,7 @@ function IncidentCard({ incident, onResolved }: { incident: Incident; onResolved
           {incident.failureCount} failures · Opened {new Date(incident.openedAt).toLocaleString()}
           {incident.resolvedAt && ` · Resolved ${new Date(incident.resolvedAt).toLocaleString()}`}
         </p>
+        {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       </div>
       {isOpen ? (
         <button className="itunda-btn itunda-btn-primary" style={{ padding: '10px 18px', gap: '6px' }} disabled={pending} onClick={resolve}>

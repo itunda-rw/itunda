@@ -1,16 +1,21 @@
 import { useState } from 'react';
 import { useQueue } from '../hooks/useQueue';
 import { fetchMarketplaceEscrowDisputes, resolveMarketplaceEscrowDispute, type MarketplaceEscrowDispute } from '../lib/queues';
+import { ApiError } from '../lib/api';
 import { QueueEmpty, QueueError, QueueHeader, QueueSkeleton } from '../QueueState';
 
 function DisputeCard({ dispute, onResolved }: { dispute: MarketplaceEscrowDispute; onResolved: () => void }) {
   const [pending, setPending] = useState<'release' | 'refund' | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const resolve = async (release: boolean) => {
     setPending(release ? 'release' : 'refund');
+    setError(null);
     try {
       await resolveMarketplaceEscrowDispute(dispute.id, release);
       onResolved();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not resolve this dispute.');
     } finally {
       setPending(null);
     }
@@ -37,6 +42,7 @@ function DisputeCard({ dispute, onResolved }: { dispute: MarketplaceEscrowDisput
       <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
         Disputed {new Date(dispute.updatedAt).toLocaleString()} · Escrow fee {dispute.fee.toLocaleString()} RWF
       </p>
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '8px' }}>
         <button
           className="itunda-btn itunda-btn-secondary"
