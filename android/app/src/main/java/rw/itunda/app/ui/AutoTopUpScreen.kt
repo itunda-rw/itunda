@@ -137,7 +137,7 @@ fun AutoTopUpScreen(onBack: () -> Unit) {
                                 .pressScaleClickable {
                                     coroutineScope.launch {
                                         try {
-                                            NetworkClient.apiService.triggerAutoTopUp(id)
+                                            NetworkClient.apiService.triggerAutoTopUp(id, java.util.UUID.randomUUID().toString())
                                             refreshKey++
                                         } catch (e: HttpException) {
                                             error = superAppErrorMessage(e)

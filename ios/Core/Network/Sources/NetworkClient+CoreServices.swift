@@ -42,7 +42,7 @@ extension NetworkClient {
     }
 
     public func triggerAutoTopUp(accountId: String) async throws -> TriggerAutoTopUpResponse {
-        try await authenticatedPostWithMessage("api/v1/account/\(accountId)/auto-topup/trigger", body: EmptyRequest())
+        try await authenticatedPostWithCode("api/v1/account/\(accountId)/auto-topup/trigger", body: EmptyRequest(), idempotencyKey: UUID().uuidString)
     }
 
     public func getLoanOffers(lenderId: String? = nil) async throws -> LoanOffersResponse {

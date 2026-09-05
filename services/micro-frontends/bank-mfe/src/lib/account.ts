@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Field shapes match services/backend's real domain entities exactly (Account,
 // Transaction) -- see AccountController.kt, the source of truth this talks to.
@@ -168,4 +169,7 @@ export const configureAutoTopUp = (
   }).then((r) => r.setting);
 
 export const triggerAutoTopUp = (accountId: string) =>
-  apiFetch<{ success: boolean; triggered: boolean; reason: string }>(`/api/v1/account/${accountId}/auto-topup/trigger`, { method: 'POST' });
+  apiFetch<{ success: boolean; triggered: boolean; reason: string }>(`/api/v1/account/${accountId}/auto-topup/trigger`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  });

@@ -2650,7 +2650,7 @@ interface ApiService {
     suspend fun configureAutoTopUp(@Path("accountId") accountId: String, @Body request: ConfigureAutoTopUpRequest): GetAutoTopUpSettingResponse
 
     @POST("api/v1/account/{accountId}/auto-topup/trigger")
-    suspend fun triggerAutoTopUp(@Path("accountId") accountId: String): TriggerAutoTopUpResponse
+    suspend fun triggerAutoTopUp(@Path("accountId") accountId: String, @Header("Idempotency-Key") idempotencyKey: String): TriggerAutoTopUpResponse
 
     // Real 토스뱅크 외화통장 (foreign-currency account) equivalent (2026-07-25) -- see
     // rw.itunda.account.web.ForeignCurrencyController.

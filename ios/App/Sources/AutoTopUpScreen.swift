@@ -85,7 +85,7 @@ struct AutoTopUpScreenView: View {
                                     do {
                                         _ = try await NetworkClient.shared.triggerAutoTopUp(accountId: accountId)
                                         refreshKey += 1
-                                    } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+                                    } catch let NetworkError.httpErrorWithCode(statusCode, _, message) {
                                         error = message ?? TalkScreen.errorMessage(statusCode)
                                     } catch {
                                         self.error = "Couldn't reach itunda. Check your connection and try again."
