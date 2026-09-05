@@ -66,6 +66,18 @@ class PayrollService(
     private val transactionRepository: TransactionRepository,
     private val fraudRuleEngine: FraudRuleEngine,
 ) {
+    // Real gap found 2026-09-05: PayrollEmployee.employeeName has no explicit @Column
+    // length (Hibernate's 255 default), but firstName (bounded 234 chars by
+    // AuthService.register) and lastName (bounded 255, not concatenated anywhere at
+    // registration time) can combine to ~490 chars once joined with a space here --
+    // nearly double employeeName's own column capacity, for a user who could register
+    // TODAY, not just legacy data. Truncating rather than rejecting the addEmployee
+    // call: the employee's own registered name isn't this merchant's call to reject,
+    // and a truncated payroll-roster display name is a far better outcome than a raw
+    // STRICT_TRANS_TABLES 500 on an otherwise-valid payroll action.
+    private fun employeeDisplayName(firstName: String, lastName: String) =
+        "$firstName $lastName".take(255)
+
     private fun getMyMerchant(ownerUserId: String) =
         merchantRepository.findByOwnerUserId(ownerUserId)
             ?: throw MerchantNotFoundException("This account is not registered as a merchant")
@@ -99,7 +111,7 @@ class PayrollService(
             }
             existing.active = true
             existing.salaryAmount = salaryAmount
-            existing.employeeName = "${employeeUser.firstName} ${employeeUser.lastName}"
+            existing.employeeName = employeeDisplayName(employeeUser.firstName, employeeUser.lastName)
             return payrollEmployeeRepository.save(existing)
         }
 
@@ -107,7 +119,7 @@ class PayrollService(
             id = "payroll_emp_${UUID.randomUUID()}",
             merchantId = merchant.id,
             employeeUserId = employeeUser.id,
-            employeeName = "${employeeUser.firstName} ${employeeUser.lastName}",
+            employeeName = employeeDisplayName(employeeUser.firstName, employeeUser.lastName),
             salaryAmount = salaryAmount,
         )
         return payrollEmployeeRepository.save(employee)

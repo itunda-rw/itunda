@@ -145,6 +145,20 @@ class PayrollServiceTest : BehaviorSpec({
             }
         }
 
+        When("the employee's own firstName+lastName would overflow employeeName's own 255-char column once joined with a space") {
+            val longFirst = "x".repeat(234)
+            val longLast = "y".repeat(255)
+            every { userRepository.findByPhoneNumber("+250788333444") } returns user("emp_2", "+250788333444", longFirst, longLast)
+            every { payrollEmployeeRepository.findByMerchantIdAndEmployeeUserId("merchant_1", "emp_2") } returns null
+            every { accountRepository.findByUserIdAndType("emp_2", AccountType.MAIN) } returns account("account_emp_2", "emp_2")
+
+            val result = service.addEmployee("owner_1", "+250788333444", BigDecimal("150000"))
+
+            Then("the stored employeeName is truncated to the real 255-char safe bound, not the naive 490") {
+                result.employeeName.length shouldBe 255
+            }
+        }
+
         When("the salary amount is zero or negative") {
             Then("it's rejected before any lookup runs") {
                 try {
