@@ -250,6 +250,25 @@ Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
 (the simulated provider connector declined the rail), `400 INVALID_REQUEST`,
 `429 RATE_LIMITED`.
 
+## Youth Account — `/api/v1/account/youth`
+
+**Added 2026-09-05** (twenty-fourth documentation slice). Real KakaoBank mini-style
+capped starter account, age-gated with a real daily/monthly/total-balance cap.
+Confirmed by direct read of `YouthAccountController.kt` (2 endpoints, 11 error
+codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/open` | — | `201 {success, account: {...}}` | |
+| POST | `/deposit` | `{amount}` (+ `Idempotency-Key`) | `{success, ...}` | Real bug fixed 2026-08-05: previously had no `Idempotency-Key`, so a network-timeout retry could deposit the same money twice — the daily/monthly caps only caught this by accident, if the retried amount happened to push a running total over a threshold |
+
+Errors (all 11 real `@ExceptionHandler`s): `404 ACCOUNT_NOT_FOUND`,
+`400 INVALID_AMOUNT`, `422 YOUTH_ACCOUNT_BALANCE_CAP_EXCEEDED`,
+`422 YOUTH_ACCOUNT_DAILY_LIMIT_EXCEEDED`, `422 YOUTH_ACCOUNT_MONTHLY_LIMIT_EXCEEDED`,
+`422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`,
+`422 YOUTH_ACCOUNT_BIRTH_DATE_REQUIRED`, `422 YOUTH_ACCOUNT_AGE_INELIGIBLE`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`.
+
 ## Foreign Currency — `/api/v1/account/foreign-currency`
 
 **Added 2026-09-05.** Real 토스뱅크 외화통장 (foreign-currency account) equivalent —
@@ -2722,6 +2741,105 @@ error codes, all unique).
 
 Errors (all 3 real `@ExceptionHandler`s): `404 VERIFICATION_REQUEST_NOT_FOUND`,
 `409 VERIFICATION_REQUEST_NOT_PENDING`, `404 USER_NOT_FOUND`.
+
+## Agent Discovery — `/api/v1/agents`
+
+**Added 2026-09-05, same slice** (the itunda cash-agent network — a real Kenyan
+M-Pesa-agent-style cash-in/cash-out network, physical agents who convert cash to/from
+wallet balance). Customer-facing "find a cash point near me". Confirmed by direct
+read of `AgentDiscoveryController.kt` (1 endpoint, 1 error code).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/nearby?latitude&longitude&radiusKm` | — | `{success, agents: [...]}` | `radiusKm` defaults to 5 |
+
+Errors: `400 INVALID_AGENT_SEARCH` (bare `IllegalArgumentException` fallback).
+
+## Agent Operator — `/api/v1/agent`
+
+**Added 2026-09-05, same slice.** Store-facing API for a real agent's assigned
+operator — the operator's own JWT determines which agent they act for; no endpoint
+accepts a caller-supplied agent id. Confirmed by direct read of
+`AgentOperatorController.kt` (7 endpoints, 12 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/me` | — | `{success, operator: {...}}` | |
+| POST | `/location` | `{latitude, longitude}` | `{success, agent: {...}}` | Real gap fixed 2026-08-16 — the customer-facing "nearby agents" feature already depended on this data, but no real agent had any way to actually report it |
+| GET | `/till` | — | `{success, till: {...}}` | |
+| GET | `/activity?limit` | — | `{success, activity: [...]}` | `limit` defaults to 30 |
+| POST | `/cash-ins` | `{accountNumber, amount, receiptNumber}` (+ `Idempotency-Key`) | `{success, ...}` | A customer deposits cash with the agent, who credits the customer's wallet |
+| POST | `/cash-outs` | `{accountNumber, amount, receiptNumber, authorizationCode}` (+ `Idempotency-Key`) | `{success, ...}` | A customer withdraws cash from the agent, who debits the customer's wallet. `authorizationCode` is the same real code `POST /api/v1/account/agent-withdrawal-authorizations` generates (see the Account section above) |
+| POST | `/till-reconciliations` | `{countedCash}` (+ `Idempotency-Key`) | `201 {success, reconciliation: {...}}` | Real gap fixed 2026-09-05 — the highest-severity item in this backend's own Toss-error-handling audit: a lost response after a successful till count previously resubmitted here and hit `TILL_COUNT_ALREADY_SUBMITTED` on retry, showing the operator a confusing conflict for a count that had actually already succeeded |
+
+Errors (all 12 real `@ExceptionHandler`s): `403 AGENT_OPERATOR_NOT_AUTHORIZED`,
+`404 AGENT_NOT_FOUND`, `409 AGENT_SUSPENDED`, `409 CASH_RECEIPT_ALREADY_USED`,
+`422 AGENT_DAILY_LIMIT_EXCEEDED`, `422 AGENT_INSUFFICIENT_CASH`,
+`422 WITHDRAWAL_AUTHORIZATION_INVALID`, `409 TILL_COUNT_ALREADY_SUBMITTED`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 INVALID_AGENT_TRANSACTION` (bare `IllegalArgumentException` fallback),
+`400 IDEMPOTENCY_KEY_REQUIRED`.
+
+## Agent Administration — `/api/v1/system/agents` (ADMIN role only)
+
+**Added 2026-09-05, same slice.** ADMIN-operated agent-network management —
+registration, status, operator assignment, float funding, and till reconciliation,
+until the separate agent-staff authentication flow this controller's own doc comment
+names is introduced. Confirmed by direct read of `AgentAdminController.kt` (13
+endpoints, 10 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `` (base path) | — | `{success, agents: [...]}` | |
+| POST | `` (base path) | `{displayName, dailyCashInLimit, dailyCashOutLimit}` | `201 {success, agent: {...}}` | |
+| POST | `/{agentId}/status` | `{status}` | `{success, agent: {...}}` | |
+| GET | `/{agentId}/operators` | — | `{success, operators: [...]}` | |
+| POST | `/{agentId}/operators` | `{userId}` | `201 {success, operator: {...}}` | |
+| POST | `/{agentId}/location` | `{latitude, longitude}` | `{success, agent: {...}}` | |
+| POST | `/{agentId}/operators/{userId}/status` | `{isActive}` | `{success, operator: {...}}` | |
+| POST | `/{agentId}/float` | `{amount, reference}` (+ `Idempotency-Key`) | `{success, ...}` | Real money movement — funds the agent's own till |
+| GET | `/till-reconciliations/pending` | — | `{success, reconciliations: [...]}` | |
+| GET | `/till-reconciliations?from&to` | — | `{success, report: {...}}` | |
+| POST | `/till-reconciliations/{id}/resolve` | `{note}` | `{success, reconciliation: {...}}` | |
+| POST | `/{agentId}/cash-ins` | `{accountNumber, amount, receiptNumber}` (+ `Idempotency-Key`) | `{success, ...}` | Admin-initiated equivalent of Agent Operator's own `/cash-ins` |
+| POST | `/{agentId}/cash-outs` | `{accountNumber, amount, receiptNumber, authorizationCode}` (+ `Idempotency-Key`) | `{success, ...}` | |
+
+Errors (all 10 real `@ExceptionHandler`s): `404 AGENT_NOT_FOUND`,
+`409 AGENT_SUSPENDED`, `409 CASH_RECEIPT_ALREADY_USED`,
+`422 AGENT_DAILY_LIMIT_EXCEEDED`, `422 AGENT_INSUFFICIENT_CASH`,
+`409 AGENT_OPERATOR_ALREADY_ASSIGNED`, `404 TILL_RECONCILIATION_NOT_FOUND`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 INVALID_CASH_IN` (bare `IllegalArgumentException` fallback).
+
+## Float Marketplace — `/api/v1/float-marketplace`
+
+**Added 2026-09-05, same slice.** Real peer-to-peer agent float rebalancing — an
+agent short on cash (or long on wallet float) posts a listing, another agent fills
+it, real money moves between their two tills. Every endpoint requires a normal
+operator JWT and derives the caller's own agent identity server-side — no endpoint
+accepts a caller-supplied agent id, so there's no ownership parameter to spoof.
+Confirmed by direct read of `FloatMarketplaceController.kt` (9 endpoints, 12 error
+codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/listings` | `{amount}` | `201 {success, listing: {...}}` | |
+| GET | `/listings/nearby?latitude&longitude&radiusKm` | — | `{success, listings: [...]}` | `radiusKm` defaults to 20 |
+| GET | `/listings/mine` | — | `{success, listings: [...]}` | |
+| POST | `/listings/{listingId}/cancel` | — | `{success, listing: {...}}` | |
+| POST | `/listings/{listingId}/requests` | `{amount}` | `201 {success, request: {...}}` | |
+| GET | `/requests/mine` | — | `{success, requests: [...]}` | |
+| GET | `/requests/incoming` | — | `{success, requests: [...]}` | |
+| POST | `/requests/{requestId}/accept` | — (+ `Idempotency-Key`) | `{success, request: {...}}` | Real money movement between the two agents' tills |
+| POST | `/requests/{requestId}/decline` | — | `{success, request: {...}}` | |
+
+Errors (all 12 real `@ExceptionHandler`s): `403 AGENT_OPERATOR_NOT_AUTHORIZED`,
+`409 AGENT_SUSPENDED`, `404 FLOAT_LISTING_NOT_FOUND`,
+`404 FLOAT_TRANSFER_REQUEST_NOT_FOUND`, `409 FLOAT_LISTING_NOT_OPEN`,
+`422 FLOAT_LISTING_INSUFFICIENT_REMAINING`, `409 FLOAT_TRANSFER_REQUEST_NOT_PENDING`,
+`400 FLOAT_SELF_TRANSFER`, `422 FLOAT_LISTING_INSUFFICIENT_CASH`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 INVALID_FLOAT_MARKETPLACE_REQUEST` (bare `IllegalArgumentException` fallback).
 
 ## Offline actions — `/api/v1/actions`
 
