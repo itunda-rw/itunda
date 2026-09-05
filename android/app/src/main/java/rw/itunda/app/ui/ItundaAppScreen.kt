@@ -190,7 +190,10 @@ import rw.itunda.feature.banking.impl.GroupAccountScreen
 import rw.itunda.feature.banking.impl.Grow31SavingsScreen
 import rw.itunda.feature.banking.impl.WeeklySavingsScreen
 import rw.itunda.feature.home.impl.HomeTab
+import rw.itunda.feature.pay.impl.AutoTransferListScreen
 import rw.itunda.feature.pay.impl.PayTab
+import rw.itunda.feature.pay.impl.ScheduledTransferListScreen
+import rw.itunda.feature.pay.impl.TransferHubScreen
 import rw.itunda.feature.menu.impl.MenuScreen
 import rw.itunda.feature.my.impl.MyTab
 import rw.itunda.feature.wealth.impl.InvestScreen
