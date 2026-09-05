@@ -95,7 +95,7 @@ keep both in sync when adding a new one.
   root's rules): `no-nested-ternary` is `warn` repo-wide.
 - `scripts/accessibility-lint.py`: real accessibility checks on changed web files.
 - `scripts/file-size-lint.py`: the "everything in one file" guardrail — freezes every
-  currently-oversized file (`scripts/file-size-baseline.json`, 81 files across web/
+  currently-oversized file (`scripts/file-size-baseline.json`, 79 files across web/
   Android/iOS, `BankDashboard.tsx` and `MapsScreen.kt`/`HoodScreen.swift`/`ShopScreen.kt`
   among them) at its recorded line count; fails if a baselined file grows past it, or if
   any new file crosses 500 lines. Never bump the baseline just to make a red run green —

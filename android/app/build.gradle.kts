@@ -277,6 +277,7 @@ dependencies {
     implementation(project(":features:marketplace:impl"))
     implementation(project(":features:jobs:impl"))
     implementation(project(":features:property:impl"))
+    implementation(project(":features:ride:impl"))
     implementation(project(":features:community:impl"))
     implementation(project(":features:shop:impl"))
     implementation(project(":features:eats:impl"))

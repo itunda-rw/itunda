@@ -1,4 +1,4 @@
-package rw.itunda.app.ui
+package rw.itunda.feature.ride.impl
 
 import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler

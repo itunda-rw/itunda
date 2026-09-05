@@ -149,6 +149,15 @@ include(":features:property:api")
 include(":features:property:impl")
 include(":features:property:testing")
 
+// Real screen-extraction phase (2026-09-05) -- RideScreen/DesignatedDriverScreen were
+// the last remaining oversized :app screens with no existing Feature module to reuse
+// (unlike WeeklySavings/Grow31/GroupAccount -> :features:banking:impl and
+// TransferHub -> :features:pay:impl, done the same day). First-of-its-kind module,
+// same scaffolding shape as every other Feature.
+include(":features:ride:api")
+include(":features:ride:impl")
+include(":features:ride:testing")
+
 include(":features:community:api")
 include(":features:community:impl")
 include(":features:community:testing")
