@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Real Toss Shopping "포인트 및 쿠폰받기" (get points and coupons) daily mission row --
 // see backend ShoppingMissionService.kt's own doc comment: every mission pays real RWF
@@ -33,5 +34,5 @@ export const fetchShoppingMissionStatus = () =>
 export const completeShoppingMission = (type: string) =>
   apiFetch<{ success: boolean; type: string; amountEarned: number; newAccountBalance: number }>(
     `/api/v1/shopping/points/missions/${type}/complete`,
-    { method: 'POST' },
+    { method: 'POST', headers: { 'Idempotency-Key': randomUUID() } },
   );

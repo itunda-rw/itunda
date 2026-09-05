@@ -188,7 +188,7 @@ internal fun completeShopMission(
     onBusyTypeChanged(type)
     coroutineScope.launch {
         try {
-            val res = NetworkClient.apiService.completeShoppingMission(type)
+            val res = NetworkClient.apiService.completeShoppingMission(type, java.util.UUID.randomUUID().toString())
             onFeedback("+%,.0f RWF".format(res.amountEarned))
             onCompleted()
         } catch (e: HttpException) {

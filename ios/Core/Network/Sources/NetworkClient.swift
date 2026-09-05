@@ -5926,7 +5926,7 @@ extension NetworkClient {
     public func getShoppingMissions() async throws -> ShoppingMissionsResponse { try await get("api/v1/shopping/points") }
 
     public func completeShoppingMission(type: String) async throws -> MissionCompleteResponse {
-        try await authenticatedPost("api/v1/shopping/points/missions/\(type)/complete", body: EmptyBody())
+        try await authenticatedPost("api/v1/shopping/points/missions/\(type)/complete", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     // Real Coupang Eats-style dish grid (itunda Eats redesign, 2026-08-28) -- see

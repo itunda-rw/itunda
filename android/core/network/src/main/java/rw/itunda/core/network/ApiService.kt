@@ -3706,7 +3706,7 @@ interface ApiService {
     suspend fun getShoppingMissions(): ShoppingMissionsResponse
 
     @POST("api/v1/shopping/points/missions/{type}/complete")
-    suspend fun completeShoppingMission(@Path("type") type: String): MissionCompleteResponse
+    suspend fun completeShoppingMission(@Path("type") type: String, @Header("Idempotency-Key") idempotencyKey: String): MissionCompleteResponse
 
     // Real Naver Pay 멤버십 데이 (Membership Day) cashback boost -- see
     // rw.itunda.merchant.ShoppingCashbackService's own doc comment. bank-mfe already has
