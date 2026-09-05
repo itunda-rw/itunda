@@ -3229,10 +3229,10 @@ interface ApiService {
     suspend fun getOwnedEmoticonPacks(): OwnedEmoticonPacksResponse
 
     @POST("api/v1/emoticons/packs/{packId}/purchase")
-    suspend fun purchaseEmoticonPack(@Path("packId") packId: String): OwnedEmoticonPackResponse
+    suspend fun purchaseEmoticonPack(@Path("packId") packId: String, @Header("Idempotency-Key") idempotencyKey: String): OwnedEmoticonPackResponse
 
     @POST("api/v1/emoticons/packs/{packId}/gift")
-    suspend fun giftEmoticonPack(@Path("packId") packId: String, @Body request: GiftEmoticonPackRequest): GiftedEmoticonPackResponse
+    suspend fun giftEmoticonPack(@Path("packId") packId: String, @Body request: GiftEmoticonPackRequest, @Header("Idempotency-Key") idempotencyKey: String): GiftedEmoticonPackResponse
 
     @POST("api/v1/emoticons/conversations/{id}/send")
     suspend fun sendEmoticon(@Path("id") conversationId: String, @Body request: SendEmoticonRequest): MessageResponse

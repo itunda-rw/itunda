@@ -3,14 +3,19 @@ package rw.itunda.messaging.web
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.core.idempotency.IdempotencyConflictException
+import rw.itunda.core.idempotency.IdempotencyInProgressException
+import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.messaging.EmoticonGiftRecipientNotFoundException
@@ -30,7 +35,10 @@ data class GiftEmoticonPackRequest(val recipientPhoneNumber: String)
 // Real KakaoTalk Emoticon Store -- see EmoticonService's own doc comment.
 @RestController
 @RequestMapping("/api/v1/emoticons")
-class EmoticonController(private val emoticonService: EmoticonService) {
+class EmoticonController(
+    private val emoticonService: EmoticonService,
+    private val idempotencyService: IdempotencyService,
+) {
 
     @GetMapping("/packs")
     fun listPacks() = ResponseEntity.ok(mapOf("success" to true, "packs" to emoticonService.listPacks()))
@@ -43,23 +51,39 @@ class EmoticonController(private val emoticonService: EmoticonService) {
     fun listOwnedPacks(@AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true, "packs" to emoticonService.listOwnedPacks(currentUser.userId)))
 
+    // Real gap found 2026-09-05 (feedback_idempotency_key_sweep re-audit) -- this
+    // whole controller had NO Idempotency-Key infrastructure at all, despite both
+    // purchasePack and giftPack being real money-moving purchases guarded by
+    // EmoticonPackAlreadyOwnedException. A lost-response retry after a successful
+    // purchase used to hit a confusing conflict for a purchase that already
+    // succeeded.
     @PostMapping("/packs/{packId}/purchase")
-    fun purchasePack(@PathVariable packId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
-        val owned = emoticonService.purchasePack(currentUser.userId, packId)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "ownedPack" to owned))
+    fun purchasePack(
+        @PathVariable packId: String,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/emoticons/packs/$packId/purchase", idempotencyKey, currentUser.userId) {
+            HttpStatus.CREATED.value() to mapOf("success" to true, "ownedPack" to emoticonService.purchasePack(currentUser.userId, packId))
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     // Real gifting-a-pack-to-another-user (2026-07-28) -- see EmoticonService's own doc
     // comment. Recipient identified by phone number, same convention P2pController's own
-    // /send already establishes.
+    // /send already establishes. Same Idempotency-Key gap as purchasePack above -- fixed
+    // 2026-09-05.
     @PostMapping("/packs/{packId}/gift")
     fun giftPack(
         @PathVariable packId: String,
         @RequestBody request: GiftEmoticonPackRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val gifted = emoticonService.giftPack(currentUser.userId, request.recipientPhoneNumber, packId)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "giftedPack" to gifted))
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/emoticons/packs/$packId/gift", idempotencyKey, request) {
+            HttpStatus.CREATED.value() to mapOf("success" to true, "giftedPack" to emoticonService.giftPack(currentUser.userId, request.recipientPhoneNumber, packId))
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     // Send an owned emoticon into a real 1:1 conversation, same path family as
@@ -124,4 +148,16 @@ class EmoticonController(private val emoticonService: EmoticonService) {
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =
         ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
+
+    @ExceptionHandler(IdempotencyConflictException::class)
+    fun handleIdempotencyConflict(ex: IdempotencyConflictException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENCY_KEY_CONFLICT", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(IdempotencyInProgressException::class)
+    fun handleIdempotencyInProgress(ex: IdempotencyInProgressException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENT_REQUEST_PROCESSING", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(MissingRequestHeaderException::class)
+    fun handleMissingHeader(ex: MissingRequestHeaderException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key header is required"))
 }

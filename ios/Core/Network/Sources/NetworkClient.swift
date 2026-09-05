@@ -5533,11 +5533,11 @@ extension NetworkClient {
     public func getOwnedEmoticonPacks() async throws -> OwnedEmoticonPacksResponse { try await get("api/v1/emoticons/packs/owned") }
 
     public func purchaseEmoticonPack(packId: String) async throws -> OwnedEmoticonPackResponse {
-        try await authenticatedPost("api/v1/emoticons/packs/\(packId)/purchase", body: EmptyBody())
+        try await authenticatedPost("api/v1/emoticons/packs/\(packId)/purchase", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     public func giftEmoticonPack(packId: String, recipientPhoneNumber: String) async throws -> GiftedEmoticonPackResponse {
-        try await authenticatedPost("api/v1/emoticons/packs/\(packId)/gift", body: GiftEmoticonPackRequest(recipientPhoneNumber: recipientPhoneNumber))
+        try await authenticatedPost("api/v1/emoticons/packs/\(packId)/gift", body: GiftEmoticonPackRequest(recipientPhoneNumber: recipientPhoneNumber), idempotencyKey: UUID().uuidString)
     }
 
     public func sendEmoticon(conversationId: String, emoticonId: String) async throws -> MessageResponse {

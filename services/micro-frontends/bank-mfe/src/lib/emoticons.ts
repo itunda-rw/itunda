@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Real KakaoTalk Emoticon Store (item 133) -- see backend Emoticon.kt's own doc
 // comment: a real purchasable sticker-pack catalog (buy once, own it, same model
@@ -42,11 +43,15 @@ export const fetchOwnedEmoticonPacks = () =>
   apiFetch<{ success: boolean; packs: OwnedEmoticonPack[] }>('/api/v1/emoticons/packs/owned').then((r) => r.packs);
 
 export const purchaseEmoticonPack = (packId: string) =>
-  apiFetch<{ success: boolean; ownedPack: OwnedEmoticonPack }>(`/api/v1/emoticons/packs/${packId}/purchase`, { method: 'POST' });
+  apiFetch<{ success: boolean; ownedPack: OwnedEmoticonPack }>(`/api/v1/emoticons/packs/${packId}/purchase`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  });
 
 export const giftEmoticonPack = (packId: string, recipientPhoneNumber: string) =>
   apiFetch<{ success: boolean; giftedPack: OwnedEmoticonPack }>(`/api/v1/emoticons/packs/${packId}/gift`, {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ recipientPhoneNumber }),
   });
 

@@ -307,7 +307,7 @@ internal fun EmoticonStoreDialog(onDismiss: () -> Unit) {
                                     error = null
                                     coroutineScope.launch {
                                         try {
-                                            NetworkClient.apiService.purchaseEmoticonPack(pack.id)
+                                            NetworkClient.apiService.purchaseEmoticonPack(pack.id, java.util.UUID.randomUUID().toString())
                                             load()
                                         } catch (e: retrofit2.HttpException) {
                                             if (e.code() == 409) load() else error = superAppErrorMessage(e)
@@ -336,7 +336,7 @@ internal fun EmoticonStoreDialog(onDismiss: () -> Unit) {
                                         message = null
                                         coroutineScope.launch {
                                             try {
-                                                NetworkClient.apiService.giftEmoticonPack(pack.id, GiftEmoticonPackRequest(giftPhone.trim()))
+                                                NetworkClient.apiService.giftEmoticonPack(pack.id, GiftEmoticonPackRequest(giftPhone.trim()), java.util.UUID.randomUUID().toString())
                                                 message = "Pack gifted!"
                                                 giftingPackId = null
                                                 giftPhone = ""
