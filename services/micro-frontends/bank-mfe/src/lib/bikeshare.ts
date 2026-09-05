@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Real Kakao T 바이크 (Kakao T BikeAsset, rw.itunda.rideshare, item 222) -- see the
 // backend's BikeAssetRentalService doc comment for the full sourced account. Real
@@ -66,12 +67,14 @@ export const fetchNearbyBikeAssets = (latitude: number, longitude: number, radiu
 export const startBikeAssetRental = (bikeId: string, startLatitude: number, startLongitude: number) =>
   apiFetch<{ success: boolean; rental: BikeAssetRentalSession }>('/api/v1/bikeshare/rentals', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ bikeId, startLatitude, startLongitude }),
   }).then((r) => r.rental);
 
 export const endBikeAssetRental = (sessionId: string, endLatitude: number, endLongitude: number) =>
   apiFetch<{ success: boolean; rental: BikeAssetRentalSession }>(`/api/v1/bikeshare/rentals/${sessionId}/end`, {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ endLatitude, endLongitude }),
   }).then((r) => r.rental);
 

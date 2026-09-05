@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Real Kakao T 주차 (Kakao T Parking, rw.itunda.rideshare, item 223) -- see the
 // backend's ParkingService doc comment for the full sourced account. Real
@@ -57,11 +58,15 @@ export const fetchNearbyParkingSpots = (latitude: number, longitude: number, rad
 export const startParkingSession = (spotId: string) =>
   apiFetch<{ success: boolean; session: ParkingSession }>('/api/v1/parking/sessions', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ spotId }),
   }).then((r) => r.session);
 
 export const endParkingSession = (sessionId: string) =>
-  apiFetch<{ success: boolean; session: ParkingSession }>(`/api/v1/parking/sessions/${sessionId}/end`, { method: 'POST' }).then((r) => r.session);
+  apiFetch<{ success: boolean; session: ParkingSession }>(`/api/v1/parking/sessions/${sessionId}/end`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  }).then((r) => r.session);
 
 export const fetchMyParkingHistory = () =>
   apiFetch<{ success: boolean; sessions: ParkingSession[] }>('/api/v1/parking/sessions/my-history?size=20').then((r) => r.sessions);

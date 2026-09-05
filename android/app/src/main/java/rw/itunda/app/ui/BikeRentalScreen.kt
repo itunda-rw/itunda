@@ -147,7 +147,7 @@ private fun BikeRentContent() {
         error = null
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.startBikeRental(StartBikeRentalRequest(bikeId, la, lo))
+                NetworkClient.apiService.startBikeRental(StartBikeRentalRequest(bikeId, la, lo), java.util.UUID.randomUUID().toString())
                 loadHistory()
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
@@ -170,7 +170,7 @@ private fun BikeRentContent() {
         error = null
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.endBikeRental(sessionId, EndBikeRentalRequest(la, lo))
+                NetworkClient.apiService.endBikeRental(sessionId, EndBikeRentalRequest(la, lo), java.util.UUID.randomUUID().toString())
                 loadHistory()
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)

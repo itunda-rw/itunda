@@ -1754,11 +1754,11 @@ extension NetworkClient {
     }
 
     public func startBikeRental(bikeId: String, startLatitude: Double, startLongitude: Double) async throws -> BikeRentalResponse {
-        try await authenticatedPost("api/v1/bikeshare/rentals", body: StartBikeRentalRequest(bikeId: bikeId, startLatitude: startLatitude, startLongitude: startLongitude))
+        try await authenticatedPost("api/v1/bikeshare/rentals", body: StartBikeRentalRequest(bikeId: bikeId, startLatitude: startLatitude, startLongitude: startLongitude), idempotencyKey: UUID().uuidString)
     }
 
     public func endBikeRental(sessionId: String, endLatitude: Double, endLongitude: Double) async throws -> BikeRentalResponse {
-        try await authenticatedPost("api/v1/bikeshare/rentals/\(sessionId)/end", body: EndBikeRentalRequest(endLatitude: endLatitude, endLongitude: endLongitude))
+        try await authenticatedPost("api/v1/bikeshare/rentals/\(sessionId)/end", body: EndBikeRentalRequest(endLatitude: endLatitude, endLongitude: endLongitude), idempotencyKey: UUID().uuidString)
     }
 
     public func getMyBikeRentalHistory() async throws -> BikeRentalsResponse { try await get("api/v1/bikeshare/rentals/my-history") }
@@ -1784,11 +1784,11 @@ extension NetworkClient {
     }
 
     public func startParkingSession(spotId: String) async throws -> ParkingSessionResponse {
-        try await authenticatedPost("api/v1/parking/sessions", body: StartParkingSessionRequest(spotId: spotId))
+        try await authenticatedPost("api/v1/parking/sessions", body: StartParkingSessionRequest(spotId: spotId), idempotencyKey: UUID().uuidString)
     }
 
     public func endParkingSession(sessionId: String) async throws -> ParkingSessionResponse {
-        try await authenticatedPost("api/v1/parking/sessions/\(sessionId)/end", body: EmptyBody())
+        try await authenticatedPost("api/v1/parking/sessions/\(sessionId)/end", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     public func getMyParkingHistory() async throws -> ParkingSessionsResponse { try await get("api/v1/parking/sessions/my-history") }

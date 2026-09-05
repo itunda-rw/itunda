@@ -6,16 +6,21 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.domain.BikeType
+import rw.itunda.core.idempotency.IdempotencyConflictException
+import rw.itunda.core.idempotency.IdempotencyInProgressException
+import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
@@ -39,7 +44,10 @@ data class EndBikeRentalRequest(val endLatitude: Double, val endLongitude: Doubl
 // full sourced account. Normal itunda-user JWT gate.
 @RestController
 @RequestMapping("/api/v1/bikeshare")
-class BikeRentalController(private val bikeRentalService: BikeRentalService) {
+class BikeRentalController(
+    private val bikeRentalService: BikeRentalService,
+    private val idempotencyService: IdempotencyService,
+) {
 
     @PostMapping("/bikes")
     fun registerBike(@RequestBody request: RegisterBikeRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
@@ -75,19 +83,44 @@ class BikeRentalController(private val bikeRentalService: BikeRentalService) {
     ): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "bikes" to bikeRentalService.getNearbyBikes(latitude, longitude, radiusKm)))
 
+    // Real gap found 2026-09-05 (feedback_idempotency_key_sweep re-audit, same
+    // "claim" bug shape as RideController.acceptTrip/EatsController.claimDelivery)
+    // -- this whole controller had NO Idempotency-Key infrastructure at all.
+    // startRental marks the bike unavailable and creates the ACTIVE session BEFORE
+    // returning, so after a successful start a lost-response retry from the SAME
+    // rider used to hit BikeNotAvailableException("This bike is already rented")
+    // for a start that actually just succeeded.
     @PostMapping("/rentals")
-    fun startRental(@RequestBody request: StartBikeRentalRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
-        val session = bikeRentalService.startRental(currentUser.userId, request.bikeId, request.startLatitude, request.startLongitude)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "rental" to session))
+    fun startRental(
+        @RequestBody request: StartBikeRentalRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/bikeshare/rentals", idempotencyKey, request) {
+            val session = bikeRentalService.startRental(currentUser.userId, request.bikeId, request.startLatitude, request.startLongitude)
+            HttpStatus.CREATED.value() to mapOf("success" to true, "rental" to session)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
+    // Real gap found 2026-09-05 (feedback_idempotency_key_sweep re-audit) -- endRental
+    // is real money movement (settleRental charges the rider a real fare based on
+    // duration) guarded by BikeRentalAlreadyEndedException, with the same
+    // no-Idempotency-Key gap as startRental above: a lost-response retry after a
+    // successful end used to hit a confusing conflict for an end that already
+    // succeeded.
     @PostMapping("/rentals/{sessionId}/end")
     fun endRental(
         @PathVariable sessionId: String,
         @RequestBody request: EndBikeRentalRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
-    ): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "rental" to bikeRentalService.endRental(currentUser.userId, sessionId, request.endLatitude, request.endLongitude)))
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/bikeshare/rentals/$sessionId/end", idempotencyKey, request) {
+            200 to mapOf("success" to true, "rental" to bikeRentalService.endRental(currentUser.userId, sessionId, request.endLatitude, request.endLongitude))
+        }
+        return ResponseEntity.status(status).body(body)
+    }
 
     // Real manual trigger for `BikeRentalAbandonedSessionScheduler`'s own real 60-second
     // cron -- same "let a coordinator/admin fire the real due sweep on demand rather
@@ -137,4 +170,13 @@ class BikeRentalController(private val bikeRentalService: BikeRentalService) {
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
+
+    @ExceptionHandler(IdempotencyConflictException::class)
+    fun handleIdempotencyConflict(ex: IdempotencyConflictException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENCY_KEY_CONFLICT", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(IdempotencyInProgressException::class)
+    fun handleIdempotencyInProgress(ex: IdempotencyInProgressException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENT_REQUEST_PROCESSING", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(MissingRequestHeaderException::class)
+    fun handleMissingHeader(ex: MissingRequestHeaderException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key header is required"))
 }

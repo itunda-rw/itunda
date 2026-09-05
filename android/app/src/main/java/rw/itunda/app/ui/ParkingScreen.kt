@@ -145,7 +145,7 @@ private fun ParkingFindContent() {
         error = null
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.startParkingSession(StartParkingSessionRequest(spotId))
+                NetworkClient.apiService.startParkingSession(StartParkingSessionRequest(spotId), java.util.UUID.randomUUID().toString())
                 loadHistory()
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
@@ -162,7 +162,7 @@ private fun ParkingFindContent() {
         error = null
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.endParkingSession(sessionId)
+                NetworkClient.apiService.endParkingSession(sessionId, java.util.UUID.randomUUID().toString())
                 loadHistory()
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)

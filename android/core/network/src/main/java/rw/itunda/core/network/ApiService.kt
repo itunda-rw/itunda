@@ -4756,10 +4756,10 @@ interface ApiService {
     ): BikesResponse
 
     @POST("api/v1/bikeshare/rentals")
-    suspend fun startBikeRental(@Body request: StartBikeRentalRequest): BikeRentalResponse
+    suspend fun startBikeRental(@Body request: StartBikeRentalRequest, @Header("Idempotency-Key") idempotencyKey: String): BikeRentalResponse
 
     @POST("api/v1/bikeshare/rentals/{sessionId}/end")
-    suspend fun endBikeRental(@Path("sessionId") sessionId: String, @Body request: EndBikeRentalRequest): BikeRentalResponse
+    suspend fun endBikeRental(@Path("sessionId") sessionId: String, @Body request: EndBikeRentalRequest, @Header("Idempotency-Key") idempotencyKey: String): BikeRentalResponse
 
     @GET("api/v1/bikeshare/rentals/my-history")
     suspend fun getMyBikeRentalHistory(): BikeRentalsResponse
@@ -4785,10 +4785,10 @@ interface ApiService {
     ): ParkingSpotsResponse
 
     @POST("api/v1/parking/sessions")
-    suspend fun startParkingSession(@Body request: StartParkingSessionRequest): ParkingSessionResponse
+    suspend fun startParkingSession(@Body request: StartParkingSessionRequest, @Header("Idempotency-Key") idempotencyKey: String): ParkingSessionResponse
 
     @POST("api/v1/parking/sessions/{sessionId}/end")
-    suspend fun endParkingSession(@Path("sessionId") sessionId: String): ParkingSessionResponse
+    suspend fun endParkingSession(@Path("sessionId") sessionId: String, @Header("Idempotency-Key") idempotencyKey: String): ParkingSessionResponse
 
     @GET("api/v1/parking/sessions/my-history")
     suspend fun getMyParkingHistory(): ParkingSessionsResponse
