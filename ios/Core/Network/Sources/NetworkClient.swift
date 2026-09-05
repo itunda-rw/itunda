@@ -658,7 +658,22 @@ public final class NetworkClient {
         let (data, response) = try await dataWithRefresh(for: urlRequest)
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         guard (200...299).contains(httpResponse.statusCode) else {
-            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
+            // Real gap found 2026-09-05 (checking whether today's own new
+            // INVALID_PHONE_NUMBER/INVALID_EMAIL/INVALID_NAME 400s on
+            // AuthService.register would actually reach the user): this helper only
+            // ever threw the bare, message-less NetworkError.httpError, so
+            // SessionManager.runAuthCall's catch fell back to httpErrorMessage's
+            // generic per-status-code bucket for every register/login 4xx --
+            // Android's equivalent path already parses the real backend message via
+            // apiErrorMessage, so this was iOS-only. Safe to widen this helper itself
+            // (unlike authenticatedPost's 230+ callers) since sendRequest is private
+            // and used only by this file's 6 unauthenticated /api/v1/auth/* calls --
+            // same additive httpErrorWithMessage precedent as postP2p/
+            // authenticatedPostWithMessage above, just applied to the shared helper
+            // instead of a dedicated new one, because the caller set is already this
+            // narrow.
+            let message = try? decoder.decode(ApiErrorBody.self, from: data).message
+            throw NetworkError.httpErrorWithMessage(statusCode: httpResponse.statusCode, message: message ?? nil)
         }
         return data
     }

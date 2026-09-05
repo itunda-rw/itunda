@@ -170,8 +170,15 @@ final class SessionManager: ObservableObject {
             }
             await registerDeviceToken()
             return .success
-        } catch let NetworkError.httpError(statusCode) {
-            return .failure(message: httpErrorMessage(statusCode))
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            // Real gap found 2026-09-05: NetworkClient's sendRequest (used by
+            // login/register) now carries the real backend message (see its own doc
+            // comment), so a 400 like INVALID_PHONE_NUMBER/INVALID_EMAIL/INVALID_NAME
+            // shows the actual, actionable text instead of falling through to
+            // httpErrorMessage's generic per-status bucket below -- that bucket is
+            // kept as the fallback for the 401/409/429 cases the backend doesn't (or
+            // shouldn't) need to send prose for.
+            return .failure(message: message ?? httpErrorMessage(statusCode))
         } catch {
             return .failure(message: "Couldn't reach itunda. Check your connection and try again.")
         }
