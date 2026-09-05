@@ -22,6 +22,7 @@ import rw.itunda.core.repository.DesignatedDriverRepository
 import rw.itunda.core.repository.DesignatedDriverTripRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.pricing.CancellationPolicy
 import rw.itunda.core.pricing.PlatformFees
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -74,15 +75,13 @@ class DesignatedDriverService(
         private val perKmRate = BigDecimal("250")
         private val minFare = BigDecimal("4000")
 
-        // Real Uber cancellation-fee policy
-        // (help.uber.com/riders/article/cancellation-fees-explained), ported from
-        // `RideTripService`'s own identical constants -- see that class's own doc
-        // comment for the full sourced account. A REQUESTED trip (no driver has
-        // committed yet) always refunds in full, unchanged. An ACCEPTED trip cancelled
-        // within this grace period of driverAcceptedAt also refunds in full; past it,
-        // CANCELLATION_FEE is carved out of the refund and paid straight to the
-        // driver's settlement account to compensate them for committing to the job.
-        val CANCELLATION_FEE_GRACE_PERIOD: Duration = Duration.ofMinutes(2)
+        // Consolidated 2026-09-06 into core/pricing/CancellationPolicy -- see its own
+        // doc comment. A REQUESTED trip (no driver has committed yet) always refunds in
+        // full, unchanged. An ACCEPTED trip cancelled within this grace period of
+        // driverAcceptedAt also refunds in full; past it, CANCELLATION_FEE is carved
+        // out of the refund and paid straight to the driver's settlement account to
+        // compensate them for committing to the job.
+        val CANCELLATION_FEE_GRACE_PERIOD: Duration = CancellationPolicy.CANCELLATION_FEE_GRACE_PERIOD
         val CANCELLATION_FEE = baseFare
     }
 

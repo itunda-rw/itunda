@@ -35,6 +35,7 @@ import rw.itunda.core.repository.RideTripStopRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.AccountRepository
 import rw.itunda.messaging.MessagingService
+import rw.itunda.core.pricing.CancellationPolicy
 import rw.itunda.core.pricing.PlatformFees
 import rw.itunda.core.pricing.TipPolicy
 import java.math.BigDecimal
@@ -150,13 +151,8 @@ class RideTripService(
         // honest real completion timestamp to measure from.
         val TIP_WINDOW: Duration = TipPolicy.TIP_WINDOW
 
-        // Real Uber cancellation-fee policy
-        // (help.uber.com/riders/article/cancellation-fees-explained): "for most economy
-        // ride types... fees may be charged if you cancel 2+ minutes after requesting"
-        // once matched with a driver -- itunda's one real ride type maps to Uber's
-        // economy tier, so the real 2-minute figure applies directly, not an invented
-        // one.
-        val CANCELLATION_FEE_GRACE_PERIOD: Duration = Duration.ofMinutes(2)
+        // Consolidated 2026-09-06 into core/pricing/CancellationPolicy -- see its own doc comment.
+        val CANCELLATION_FEE_GRACE_PERIOD: Duration = CancellationPolicy.CANCELLATION_FEE_GRACE_PERIOD
 
         // Real Uber policy states the fee "pay[s] drivers for the time and effort they
         // spend getting to your location" but publishes no fixed real number (it "varies
