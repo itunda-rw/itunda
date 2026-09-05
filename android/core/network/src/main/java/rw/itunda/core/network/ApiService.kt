@@ -4486,7 +4486,7 @@ interface ApiService {
     suspend fun getDirectSplitBills(@Path("otherUserId") otherUserId: String): SplitBillsForGroupResponse
 
     @POST("api/v1/split-bills/{id}/next-round")
-    suspend fun requestSplitBillNextRound(@Path("id") splitBillId: String): SplitBillOnlyResponse
+    suspend fun requestSplitBillNextRound(@Path("id") splitBillId: String, @Header("Idempotency-Key") idempotencyKey: String): SplitBillOnlyResponse
 
     @GET("api/v1/contacts")
     suspend fun getContacts(): ContactsResponse

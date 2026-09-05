@@ -363,7 +363,7 @@ internal fun DirectSplitBillsView(
                                     busyId = entry.splitBill.id
                                     coroutineScope.launch {
                                         try {
-                                            NetworkClient.apiService.requestSplitBillNextRound(entry.splitBill.id)
+                                            NetworkClient.apiService.requestSplitBillNextRound(entry.splitBill.id, java.util.UUID.randomUUID().toString())
                                             refresh()
                                         } catch (e: HttpException) {
                                             error = superAppErrorMessage(e)

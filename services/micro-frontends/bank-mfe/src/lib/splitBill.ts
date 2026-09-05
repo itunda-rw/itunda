@@ -89,6 +89,7 @@ export const attachSplitBillReceipt = (splitBillId: string, imageUrl: string) =>
 export const requestSplitBillNextRound = (splitBillId: string) =>
   apiFetch<{ success: boolean; splitBill: SplitBill }>(`/api/v1/split-bills/${splitBillId}/next-round`, {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
   }).then((r) => r.splitBill);
 
 // Real read-only counterpart to createDirectSplitBill above -- see backend

@@ -156,15 +156,25 @@ class SplitBillController(private val splitBillService: SplitBillService, privat
     }
 
     // Real up-to-5 settlement-round escalation (2026-07-28) -- see
-    // SplitBillService.requestNextRound's own doc comment. Not money-moving, no
-    // Idempotency-Key requirement, same discipline attachReceipt above establishes.
+    // SplitBillService.requestNextRound's own doc comment.
+    // Correction, 2026-09-05 (see feedback_idempotency_key_sweep memory): the "not
+    // money-moving, no Idempotency-Key requirement" reasoning this used to give
+    // missed the real risk -- unlike a guarded AlreadyX endpoint, requestNextRound
+    // has NO guard against a duplicate resubmit at all: it unconditionally
+    // increments currentRound and sends another group reminder message every time
+    // it's called, so a lost-response retry would silently burn an extra
+    // settlement round and spam a duplicate reminder, eventually capped only by
+    // MAX_ROUNDS.
     @PostMapping("/{id}/next-round")
     fun requestNextRound(
         @PathVariable id: String,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val splitBill = splitBillService.requestNextRound(currentUser.userId, id)
-        return ResponseEntity.ok(mapOf("success" to true, "splitBill" to splitBill))
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/split-bills/$id/next-round", idempotencyKey, currentUser.userId) {
+            200 to mapOf("success" to true, "splitBill" to splitBillService.requestNextRound(currentUser.userId, id))
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @PostMapping("/{id}/pay")

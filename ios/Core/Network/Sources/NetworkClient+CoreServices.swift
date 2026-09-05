@@ -376,7 +376,7 @@ extension NetworkClient {
     }
 
     public func requestSplitBillNextRound(splitBillId: String) async throws -> SplitBillOnlyResponse {
-        try await authenticatedPostWithMessage("api/v1/split-bills/\(splitBillId)/next-round", body: EmptyRequest())
+        try await authenticatedPostWithCode("api/v1/split-bills/\(splitBillId)/next-round", body: EmptyRequest(), idempotencyKey: UUID().uuidString)
     }
 
     public func getContacts() async throws -> ContactsResponse { try await get("api/v1/contacts") }

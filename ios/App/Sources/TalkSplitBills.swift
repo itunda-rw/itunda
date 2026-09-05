@@ -215,7 +215,7 @@ struct GroupSplitBillsView: View {
         do {
             _ = try await NetworkClient.shared.requestSplitBillNextRound(splitBillId: splitBillId)
             await refresh()
-        } catch let NetworkError.httpErrorWithMessage(_, message) {
+        } catch let NetworkError.httpErrorWithCode(_, _, message) {
             self.error = message ?? "Could not start the next settlement round."
         } catch { self.error = "Could not start the next settlement round." }
     }
@@ -416,7 +416,7 @@ struct DirectSplitBillsView: View {
         do {
             _ = try await NetworkClient.shared.requestSplitBillNextRound(splitBillId: splitBillId)
             await refresh()
-        } catch let NetworkError.httpErrorWithMessage(_, message) {
+        } catch let NetworkError.httpErrorWithCode(_, _, message) {
             self.error = message ?? "Could not start the next settlement round."
         } catch { self.error = "Could not start the next settlement round." }
     }
