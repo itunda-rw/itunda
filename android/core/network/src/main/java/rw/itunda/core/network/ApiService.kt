@@ -5489,7 +5489,13 @@ data class IkiminaMemberDto(
 )
 data class IkiminaContributionStatusDto(val userId: String, val contributed: Boolean)
 data class CreateIkiminaRequest(val name: String, val contributionAmount: java.math.BigDecimal, val cycleFrequencyDays: Int, val memberCap: Int)
-data class CreateIkiminaResponse(val success: Boolean, val ikimina: IkiminaDto)
+// payout added 2026-09-05 -- IkiminaService.contributeThisRound's own doc comment:
+// a contribution that completes the round auto-triggers the payout in the same
+// call, non-null ONLY on the one contribution that completes a round. Nullable
+// with a default so createIkimina/startIkiminaCycle (which reuse this same
+// response shape but never send this field) are unaffected.
+data class IkiminaPayoutInfo(val ikimina: IkiminaDto, val recipientUserId: String, val amount: java.math.BigDecimal)
+data class CreateIkiminaResponse(val success: Boolean, val ikimina: IkiminaDto, val payout: IkiminaPayoutInfo? = null)
 data class IkiminasResponse(val success: Boolean, val ikiminas: List<IkiminaDto>)
 data class IkiminaDetailResponse(
     val success: Boolean, val ikimina: IkiminaDto, val balance: java.math.BigDecimal,

@@ -347,9 +347,17 @@ private fun IkiminaDetailContent(id: String) {
 
     fun contribute() {
         busy = true
+        payoutMessage = null
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.contributeToIkimina(id, UUID.randomUUID().toString())
+                val result = NetworkClient.apiService.contributeToIkimina(id, UUID.randomUUID().toString())
+                // Real gap found 2026-09-05 (matches bank-mfe's own already-correct
+                // handleContribute) -- this contribution may have just completed the
+                // round, in which case the backend already auto-triggered the payout
+                // (see IkiminaService.contributeThisRound's own doc comment); this
+                // used to discard the response entirely, silently leaving the member
+                // to wonder why the round advanced with no visible payout.
+                result.payout?.let { payoutMessage = "${formatMoney(it.amount)} RWF paid out for round ${it.ikimina.currentRound - 1}." }
                 error = null
                 load()
             } catch (e: HttpException) {

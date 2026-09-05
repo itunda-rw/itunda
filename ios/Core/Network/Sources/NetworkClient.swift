@@ -223,7 +223,13 @@ public struct IkiminaMemberDto: Decodable {
 }
 public struct IkiminaContributionStatusDto: Decodable { public let userId: String; public let contributed: Bool }
 public struct CreateIkiminaRequest: Encodable { public let name: String; public let contributionAmount: Double; public let cycleFrequencyDays: Int; public let memberCap: Int }
-public struct CreateIkiminaResponse: Decodable { public let success: Bool; public let ikimina: IkiminaDto }
+// payout added 2026-09-05 -- IkiminaService.contributeThisRound's own doc comment:
+// a contribution that completes the round auto-triggers the payout in the same
+// call, non-nil ONLY on the one contribution that completes a round. Optional so
+// createIkimina/startIkiminaCycle (which reuse this same response shape but never
+// send this field) are unaffected.
+public struct IkiminaPayoutInfo: Decodable { public let ikimina: IkiminaDto; public let recipientUserId: String; public let amount: Double }
+public struct CreateIkiminaResponse: Decodable { public let success: Bool; public let ikimina: IkiminaDto; public let payout: IkiminaPayoutInfo? }
 public struct IkiminasResponse: Decodable { public let success: Bool; public let ikiminas: [IkiminaDto] }
 public struct IkiminaDetailResponse: Decodable {
     public let success: Bool

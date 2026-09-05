@@ -376,8 +376,19 @@ private struct IkiminaDetailContent: View {
 
     private func contribute() async {
         busy = true
+        payoutMessage = nil
         do {
-            _ = try await NetworkClient.shared.contributeToIkimina(id: id)
+            let result = try await NetworkClient.shared.contributeToIkimina(id: id)
+            // Real gap found 2026-09-05 (matches bank-mfe's own already-correct
+            // handleContribute, and Android's identical IkiminaScreen.kt fix) --
+            // this contribution may have just completed the round, in which case
+            // the backend already auto-triggered the payout (see
+            // IkiminaService.contributeThisRound's own doc comment); this used to
+            // discard the response entirely, silently leaving the member to
+            // wonder why the round advanced with no visible payout.
+            if let payout = result.payout {
+                payoutMessage = "\(formatMoney(payout.amount)) RWF paid out for round \(payout.ikimina.currentRound - 1)."
+            }
             error = nil
             await load()
         } catch let NetworkError.httpErrorWithCode(_, code, _) where code == "ALREADY_CONTRIBUTED" {
