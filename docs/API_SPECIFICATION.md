@@ -1908,6 +1908,70 @@ Confirmed by direct read of `DeviceTokenController.kt` (2 endpoints, no
 No documented error codes — every real failure mode here degrades to a silent no-op by
 design rather than a thrown exception.
 
+## Maps — `/api/v1/maps`
+
+**Added 2026-09-05** (twenty-first documentation slice — itunda's self-hosted maps
+stack: search, directions, place details, bookmarks with Naver Map-style public
+folders, and Kakao Map-style live "Friend Location" sharing). Confirmed by direct
+read of `MapsController.kt` (26 endpoints, 18 `@ExceptionHandler`s, 17 unique codes —
+`InvalidLiveLocationCoordinateException` and `InvalidMapsCoordinateException` both
+map to `INVALID_COORDINATES`).
+
+### Search, directions, places
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/places/{merchantId}` | — | `{success, place: {...}}` | Real consolidated place-detail endpoint |
+| GET | `/search?q` | — | `{success, results: [...]}` | |
+| GET | `/weather` | — | `{success, weather}` | Real Kigali weather chip; `weather: null` (not an error) when genuinely unavailable |
+| GET | `/reverse?lat&lng` | — | `{success, placeName}` | |
+| GET | `/directions?fromLat&fromLng&toLat&toLng&mode` | — | `{success, route: {...}}` | `mode` defaults to `DRIVING`; an unrecognized value real-400s via Spring's own enum-conversion failure, not a silent fallback |
+| GET | `/directions/transit?fromLat&fromLng&toLat&toLng` | — | `{success, journeys: [...]}` | Real Kigali GTFS-based transit journeys; an empty list (never an error) means no direct transit option was found |
+| POST | `/directions/itinerary` | `{waypoints: [{latitude, longitude}], mode?}` | `{success, route: {...}}` | A deliberately bounded 2–7 stop itinerary, POST rather than encoding an ordered array into query params |
+| GET | `/directions/alternatives?fromLat&fromLng&toLat&toLng&mode` | — | `{success, routes: [...]}` | Separate from `/directions` since that endpoint's single-`route` response shape is already depended on unchanged by every existing caller |
+| GET | `/categories` | — | `{success, categories: [...]}` | |
+| GET | `/nearby?category&lat&lng&radiusKm` | — | `{success, places: [...]}` | `radiusKm` defaults to 2.0 |
+| GET | `/around-me?lat&lng&radiusKm` | — | `{success, places: [...]}` | Real "Smart Around"-style default state — 2 of Naver Map's real 5 sections, an honest scope, not a fabricated 5-for-5 |
+| GET | `/trending?days&limit` | — | `{success, places: [...]}` | `days` defaults to 7, `limit` to 10 |
+
+### Bookmarks
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/bookmarks` | `{displayName, latitude, longitude, folderName?, color?}` | `{success, bookmark: {...}}` | |
+| PATCH | `/bookmarks?lat&lng` | `{folderName, color}` | `{success, bookmark: {...}}` | Real "move to folder" — keyed by `(lat, lng)` query params, the same real key `DELETE /bookmarks` already uses |
+| DELETE | `/bookmarks?lat&lng` | — | `{success}` | |
+| GET | `/bookmarks` | — | `{success, bookmarks: [...]}` | |
+| PATCH | `/bookmarks/folder-visibility` | `{folderName, isPublic}` | `{success, updatedCount}` | Real Naver Map-style public/private folder |
+| GET | `/shared/{userId}/{folderName}` | — | `{success, bookmarks: [...]}` | Deliberately unauthenticated — `permitAll`'d under this one specific sub-path so the rest of `/api/v1/maps/**` stays gated |
+| POST | `/shared/{userId}/{folderName}/subscribe` | — | `{success, copiedCount}` | Real Kakao Map-style 구독 (subscribe) — authenticated, since unlike viewing a share link this writes real bookmark rows into the caller's own account |
+
+### Live location sharing
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/location-share` | `{recipientPhoneNumber, durationHours?}` | `{success, share: {...}}` | Real Kakao Map 친구위치 (Friend Location). `durationHours` defaults to 1 |
+| POST | `/location-share/{id}/update-location` | `{latitude, longitude}` | `{success, updatedShareCount}` | `id` is accepted for shape symmetry, but one push actually fans out to every one of the caller's active shares at once, not just this one |
+| POST | `/location-share/{id}/extend` | `{additionalHours?}` | `{success, share: {...}}` | `additionalHours` defaults to 1 |
+| POST | `/location-share/{id}/stop` | — | `{success}` | |
+| GET | `/location-share/mine` | — | `{success, shares: [...]}` | Caller's own active shares as sharer |
+| GET | `/location-share/shared-with-me` | — | `{success, shares: [...]}` | |
+| GET | `/location-share/{id}` | — | `{success, share: {...}}` | Recipient-side poll — periodically refreshed by the client, not a persistent push channel |
+
+### Errors (complete — all 18 `@ExceptionHandler`s in `MapsController.kt`, 17 unique codes)
+
+`404 LOCATION_SHARE_NOT_FOUND`, `400 SELF_LOCATION_SHARE_NOT_ALLOWED`,
+`404 LOCATION_SHARE_RECIPIENT_NOT_FOUND`, `400 TOO_MANY_ACTIVE_LOCATION_SHARES`,
+`400 INVALID_LOCATION_SHARE_DURATION`, `410 LOCATION_SHARE_ENDED`,
+`400 INVALID_COORDINATES` (shared by the live-location and general-maps coordinate
+validators), `404 MERCHANT_NOT_FOUND`, `400 INVALID_ITINERARY`,
+`400 INVALID_CATEGORY`, `400 INVALID_BOOKMARK_NAME`, `400 INVALID_BOOKMARK_FOLDER`,
+`400 INVALID_BOOKMARK_COLOR`, `404 BOOKMARK_NOT_FOUND`, `404 ROUTE_NOT_FOUND`,
+`400 INVALID_TRAVEL_MODE` (a real `MethodArgumentTypeMismatchException` — an
+unrecognized `mode` value fails Spring's own enum conversion before the controller
+method body runs, mapped to this backend's own consistent `ApiError` shape rather
+than Spring's default generic error body), `429 RATE_LIMITED`.
+
 ## Discover — `/api/v1/discover`
 
 | Method | Path | Notes |
