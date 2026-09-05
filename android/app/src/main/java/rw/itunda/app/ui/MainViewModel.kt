@@ -553,6 +553,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _devices = MutableStateFlow<List<rw.itunda.core.network.TrustedDeviceDto>>(emptyList())
     val devices: StateFlow<List<rw.itunda.core.network.TrustedDeviceDto>> = _devices
 
+    // Real gap found 2026-09-05 (matches iOS's identical same-day fix in
+    // SettingsViewModel.swift/DeviceListScreen.swift, and web's HoodResumeBuilder.tsx
+    // fix earlier this session) -- revokeDevice used to silently discard a failed
+    // revoke. Unlike fetchDevices below, this IS a security-relevant action (removing
+    // a device's ability to send money), so a failure needs real, visible feedback.
+    private val _deviceError = MutableStateFlow<String?>(null)
+    val deviceError: StateFlow<String?> = _deviceError
+
     // Real self-service device management (2026-07-21 port) -- backs a Devices list
     // in Settings, same real control Toss's own security settings page offers.
     suspend fun fetchDevices() {
@@ -567,9 +575,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun revokeDevice(deviceId: String) {
         try {
             NetworkClient.authApi.revokeDevice(deviceId)
+            _deviceError.value = null
             fetchDevices()
-        } catch (_: Exception) {
-            // Best-effort, same reasoning as fetchDevices above.
+        } catch (e: Exception) {
+            _deviceError.value = "Couldn't remove this device. Try again."
         }
     }
 

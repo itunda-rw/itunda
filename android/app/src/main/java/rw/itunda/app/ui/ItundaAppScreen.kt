@@ -1595,10 +1595,12 @@ fun ItundaAppScreen(
         if (showDeviceList) {
             BackHandler { showDeviceList = false }
             val devices by viewModel.devices.collectAsState()
+            val deviceError by viewModel.deviceError.collectAsState()
             DeviceListScreen(
                 devices = devices,
                 onRevoke = { deviceId -> viewModel.revokeDeviceFromSettings(deviceId) },
                 onBack = { showDeviceList = false },
+                error = deviceError,
             )
             return@IdsTheme
         }

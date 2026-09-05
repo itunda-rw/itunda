@@ -83,6 +83,7 @@ fun SettingsScreen(
     val profile by viewModel.profile.collectAsState()
     val unreadCount by viewModel.unreadNotificationCount.collectAsState()
     val devices by viewModel.devices.collectAsState()
+    val deviceError by viewModel.deviceError.collectAsState()
     val baseContext = LocalContext.current
     val locale by AppLocalePreference.locale.collectAsState()
 
@@ -126,6 +127,7 @@ fun SettingsScreen(
             devices = devices,
             onRevoke = { deviceId -> viewModel.revokeDeviceFromSettings(deviceId) },
             onBack = { showDeviceList = false },
+            error = deviceError,
         )
         return
     }
@@ -612,9 +614,15 @@ fun SettingsScreen(
 // GET/POST/DELETE /api/v1/auth/devices-backed data and DeviceRow as before, just
 // reached via "Services logged in with Toss" instead of dumped inline.
 @Composable
-internal fun DeviceListScreen(devices: List<rw.itunda.core.network.TrustedDeviceDto>, onRevoke: (String) -> Unit, onBack: () -> Unit) {
+internal fun DeviceListScreen(
+    devices: List<rw.itunda.core.network.TrustedDeviceDto>,
+    onRevoke: (String) -> Unit,
+    onBack: () -> Unit,
+    error: String? = null,
+) {
     Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
         SettingsSubScreenHeader(stringResource(R.string.settings_devices), onBack)
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)) }
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
             contentPadding = PaddingValues(vertical = 12.dp),

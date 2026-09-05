@@ -167,14 +167,22 @@ private fun ResumeExperienceSection(experiences: List<ResumeExperienceDto>, onCh
                     Text("${exp.role} · ${exp.company}", color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     Text(exp.period, color = Ids.colors.textSecondary, fontSize = 12.sp)
                 }
-                TextButton(onClick = { coroutineScope.launch { try { NetworkClient.hoodApi.removeResumeExperience(exp.id); onChanged() } catch (e: Exception) { /* best-effort */ } } }) { Text("Remove") }
+                TextButton(onClick = {
+                    coroutineScope.launch {
+                        try {
+                            NetworkClient.hoodApi.removeResumeExperience(exp.id)
+                            error = null
+                            onChanged()
+                        } catch (e: Exception) { error = "Couldn't remove this. Try again." }
+                    }
+                }) { Text("Remove") }
             }
         }
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         if (adding) {
             IdsTextField(value = company, onValueChange = { company = it }, label = "Company", singleLine = true, modifier = Modifier.fillMaxWidth())
             IdsTextField(value = role, onValueChange = { role = it }, label = "Role", singleLine = true, modifier = Modifier.fillMaxWidth())
             IdsTextField(value = period, onValueChange = { period = it }, label = "Period (e.g. 2023 – present)", singleLine = true, modifier = Modifier.fillMaxWidth())
-            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             TextButton(onClick = {
                 coroutineScope.launch {
                     try {
@@ -204,13 +212,21 @@ private fun ResumeEducationSection(educations: List<ResumeEducationDto>, onChang
         educations.forEach { edu ->
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(listOfNotNull(edu.school, edu.degree).joinToString(" · "), color = Ids.colors.textPrimary, fontSize = 13.sp)
-                TextButton(onClick = { coroutineScope.launch { try { NetworkClient.hoodApi.removeResumeEducation(edu.id); onChanged() } catch (e: Exception) { /* best-effort */ } } }) { Text("Remove") }
+                TextButton(onClick = {
+                    coroutineScope.launch {
+                        try {
+                            NetworkClient.hoodApi.removeResumeEducation(edu.id)
+                            error = null
+                            onChanged()
+                        } catch (e: Exception) { error = "Couldn't remove this. Try again." }
+                    }
+                }) { Text("Remove") }
             }
         }
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         if (adding) {
             IdsTextField(value = school, onValueChange = { school = it }, label = "School", singleLine = true, modifier = Modifier.fillMaxWidth())
             IdsTextField(value = degree, onValueChange = { degree = it }, label = "Degree (optional)", singleLine = true, modifier = Modifier.fillMaxWidth())
-            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             TextButton(onClick = {
                 coroutineScope.launch {
                     try {
@@ -239,12 +255,20 @@ private fun ResumeCertificationSection(certifications: List<ResumeCertificationD
         certifications.forEach { cert ->
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(cert.name, color = Ids.colors.textPrimary, fontSize = 13.sp)
-                TextButton(onClick = { coroutineScope.launch { try { NetworkClient.hoodApi.removeResumeCertification(cert.id); onChanged() } catch (e: Exception) { /* best-effort */ } } }) { Text("Remove") }
+                TextButton(onClick = {
+                    coroutineScope.launch {
+                        try {
+                            NetworkClient.hoodApi.removeResumeCertification(cert.id)
+                            error = null
+                            onChanged()
+                        } catch (e: Exception) { error = "Couldn't remove this. Try again." }
+                    }
+                }) { Text("Remove") }
             }
         }
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         if (adding) {
             IdsTextField(value = name, onValueChange = { name = it }, label = "Certification name", singleLine = true, modifier = Modifier.fillMaxWidth())
-            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             TextButton(onClick = {
                 coroutineScope.launch {
                     try {
