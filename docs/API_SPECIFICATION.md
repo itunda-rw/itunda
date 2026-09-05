@@ -323,28 +323,86 @@ not `WALLET_NOT_FOUND` (doesn't exist; confirmed via `InsuranceClaimsAdminContro
 
 ## Merchant — `/api/v1/merchant`
 
+**Fully re-documented 2026-09-05** (closing the "25+ more `@ExceptionHandler`s exist
+beyond what's listed here" gap this section's own 2026-09-04 note flagged) — every real
+`@GetMapping`/`@PostMapping` and every real `@ExceptionHandler` in
+`MerchantController.kt` is now listed below (32 endpoints, 38 error codes), confirmed
+by direct read of the controller source, not inferred from the pattern of the core-flow
+subset previously documented.
+
+### Registration & profile
+
 | Method | Path | Body | Success | Notes |
 |---|---|---|---|---|
-| POST | `/register` | `{businessName}` | `{success, merchant: {...}}` | No KYB/business verification — accepts any authenticated user |
+| POST | `/register` | `{businessName}` (+ `Idempotency-Key`) | `{success, merchant: {...}}` | No KYB/business verification — accepts any authenticated user |
 | GET | `/me` | — | `{success, merchant: {...}}` | |
-| POST | `/webhook-url` | `{webhookUrl}` | `{success, merchant: {...}}` | Built and live-verified 2026-07-13. Registers the URL `collect`/Commerce order updates/`/api/v1/pay/*` deliver events to |
-| POST | `/webhook-secret/generate` | — | `{success, webhookSecret}` | Real, added 2026-08-30. `whsec_`-prefixed, shown exactly once, stored in plaintext (itunda re-signs every future delivery with it, unlike the one-way-hashed API key). Every webhook delivery to this merchant's `webhookUrl` carries an `X-Itunda-Signature: HMAC-SHA256(rawBody, secret)` header once generated — see `docs/PAYMENTS.md`'s Webhooks section for the full receiver-side verification contract |
-| POST | `/qr/generate` | `{amount, description}` | `{success, paymentIntent: {...}}` | |
-| POST | `/collect/{intentId}` | (+ `Idempotency-Key`) | `{success, ...}` | Ownership-checked, ledger-backed, real 1.5% fee split. On success, if the merchant has a `webhookUrl`, delivers a real `PAYMENT_STATUS_CHANGED` HTTP POST (Toss Payments' documented shape). Real persistent retry as of 2026-07-13 (7 attempts, 1/4/16/64/256/1024/4096-minute schedule, matching Toss's own documented retry policy exactly) — failure never blocks or rolls back the payment, see `docs/TOSS_PARITY_MATRIX.md`'s Merchant row |
+| POST | `/fee-waiver/apply` | — | `{success, merchant: {...}}` | Real Naver Pay 영세 가맹점 수수료 지원 (small-merchant fee-waiver support) |
+| POST | `/api-key/generate` | — | `{success, apiKey}` | Real "Pay with itunda" external checkout key — shown exactly once, only its hash is stored afterward |
+| POST | `/location` | `{latitude, longitude}` | `{success, merchant: {...}}` | |
+| POST | `/category` | `{category}` | `{success, merchant: {...}}` | |
+| POST | `/cashback-rate` | `{rate}` | `{success, merchant: {...}}` | Real Naver Pay-style boosted-cashback opt-in |
+| POST | `/eats-membership-participation` | `{participates}` | `{success, merchant: {...}}` | Real Baemin Club-style participating-restaurant opt-in |
+| POST | `/scheduled-orders-participation` | `{accepts}` | `{success, merchant: {...}}` | Real 배달의민족 예약주문 (scheduled ordering) opt-in |
+| POST | `/accepting-orders` | `{accepting}` | `{success, merchant: {...}}` | Real Baemin CEO app 영업일시중지 (temporarily pause business) |
+| POST | `/closed-weekdays` | `{weekdays}` | `{success, merchant: {...}}` | Real Baemin CEO app 휴무일 설정 (recurring weekly closed-day schedule) |
+| POST | `/photo` | `{photoUrl}` | `{success, merchant: {...}}` | Restaurant-card photo |
+| POST | `/photos` | `{photoUrls}` | `{success, merchant: {...}}` | Real photo gallery (Maps redesign, 2026-08-28) |
+| POST | `/min-order` | `{minOrderAmount}` | `{success, merchant: {...}}` | |
+| POST | `/phone` | `{phoneNumber}` | `{success, merchant: {...}}` | |
+| POST | `/hours` | `{openingHours}` | `{success, merchant: {...}}` | |
+| POST | `/prep-time` | `{avgPrepTimeMinutes}` | `{success, merchant: {...}}` | Real per-merchant kitchen-prep time |
+| POST | `/pickup-discount` | `{pickupDiscountPercent}` | `{success, merchant: {...}}` | Real Baemin 포장할인 (pickup discount) |
 
-Errors (partial — see below): `409 MERCHANT_ALREADY_REGISTERED`, `404 MERCHANT_NOT_FOUND`,
+### Payments & collection
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/qr/generate` | `{amount, description}` | `{success, paymentIntent: {...}}` | |
+| GET | `/intent/{intentId}` | — | `{success, ...}` | Real read-only preview before `collect` — lets a payer see the merchant/amount/their own coupon eligibility first |
+| POST | `/collect/{intentId}` | `{couponId?, pointsToRedeem?}` (+ `Idempotency-Key`) | `{success, ...}` | Ownership-checked, ledger-backed, real 1.5% fee split. On success, if the merchant has a `webhookUrl`, delivers a real `PAYMENT_STATUS_CHANGED` HTTP POST. Real persistent retry as of 2026-07-13 (7 attempts, 1/4/16/64/256/1024/4096-minute schedule) — failure never blocks or rolls back the payment. `couponId`/`pointsToRedeem` are where the coupon/loyalty-points error codes below actually fire from — there's no separate "redeem coupon" endpoint |
+| POST | `/{merchantId}/static-qr/pay` | `{amount, description}` (+ `Idempotency-Key`) | `{success, ...}` | Real Kakao Pay 정액 QR (static/fixed merchant QR) — public `merchantId` lookup, any registered merchant already accepts dynamic QR, this isn't a new authorization surface |
+| GET | `/{merchantId}/loyalty-balance` | — | `{success, pointBalance}` | Real Toss Place-style 자동 적립 balance check, lets a customer see their point balance at this store before redeeming at checkout |
+| POST | `/pay/customer-code` | `{accountId?}` | `{success, code, expiresAt, accountId}` | Real customer-presented payment code — called by the PAYING customer, any logged-in user, not merchant-role-specific |
+| POST | `/pay/charge-by-code` | `{code, amount}` (+ `Idempotency-Key`) | `{success, ...}` | Called by the MERCHANT after scanning the customer's code |
+| POST | `/card/charge` | `{amount, description, cardNumber, expiryMonth, expiryYear, cvc}` (+ `Idempotency-Key`) | `{success, ...}` | Real demo card-processing endpoint — not real card-network integration |
+
+### Webhooks
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/webhook-url` | `{webhookUrl}` | `{success, merchant: {...}}` | Registers the URL `collect`/Commerce order updates/`/api/v1/pay/*` deliver events to |
+| POST | `/webhook-secret/generate` | — | `{success, webhookSecret}` | `whsec_`-prefixed, shown exactly once, stored in plaintext (re-signs every future delivery with it, unlike the one-way-hashed API key). Every delivery afterward carries `X-Itunda-Signature: HMAC-SHA256(rawBody, secret)` — see `docs/PAYMENTS.md`'s Webhooks section |
+| GET | `/webhook-deliveries` | — | `{success, deliveries: [...]}` | |
+| POST | `/webhook-deliveries/{deliveryId}/replay` | — | `202 {success, delivery: {...}}` | Manually replay an exhausted-retry delivery. Returns `400 {success:false, error:"WEBHOOK_URL_NOT_CONFIGURED"}` or `409 {success:false, error:"WEBHOOK_DELIVERY_NOT_REPLAYABLE"}` as plain bodies, NOT the shared `ApiError` shape every other error on this page uses — a real, minor inconsistency, not yet unified |
+
+### Reports
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/reports?from&to` | — | `{success, from, to, days: [...]}` | Defaults to the last 7 days when `from`/`to` are omitted |
+| GET | `/reports/top-products?from&to` | — | `{success, ...}` | Real Coupang WING-style top-selling-products report |
+
+### Errors (complete — all 38 `@ExceptionHandler`s in `MerchantController.kt`)
+
+`400 INVALID_DATE_FORMAT` (reports `from`/`to` not `YYYY-MM-DD`), `400 INVALID_REPORT_RANGE`,
+`409 MERCHANT_ALREADY_REGISTERED`, `400 INVALID_BUSINESS_NAME`, `404 MERCHANT_NOT_FOUND`,
 `404 ACCOUNT_NOT_FOUND`, `404 PAYMENT_CODE_NOT_FOUND`, `409 PAYMENT_CODE_NOT_PAYABLE`,
-`400 SELF_PAYMENT_NOT_ALLOWED`, `409 IDEMPOTENCY_KEY_CONFLICT`,
-`409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`,
-`422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`, `429 RATE_LIMITED`. **Corrected
-2026-09-04** — real code is `ACCOUNT_NOT_FOUND`, not `WALLET_NOT_FOUND` (doesn't
-exist). `MerchantController.kt` is much larger than this table (coupons, loyalty
-points, static QR, fee waivers, merchant profile fields, business hours — 25+
-more `@ExceptionHandler`s exist beyond what's listed here); this section
-documents the core register/collect/webhook flow only, not the full merchant
-surface — a real, separate documentation gap from the stale-code issue this
-sweep targets. No POS/card processing or B2B payroll — see
-`docs/TOSS_PARITY_MATRIX.md`'s Merchant row.
+`404 CUSTOMER_PAYMENT_CODE_NOT_FOUND`, `409 CUSTOMER_PAYMENT_CODE_NOT_PAYABLE`,
+`422 ACCOUNT_NOT_PAYMENT_ELIGIBLE`, `400 SELF_PAYMENT_NOT_ALLOWED`, `422 CARD_DECLINED`,
+`400 INVALID_WEBHOOK_URL`, `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`, `422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`,
+`429 RATE_LIMITED`, `400 INVALID_COUPON`, `400 INSUFFICIENT_LOYALTY_POINTS`,
+`404 COUPON_NOT_FOUND`, `403 COUPON_NOT_ELIGIBLE`, `409 COUPON_ALREADY_REDEEMED`,
+`400 INVALID_COORDINATES`, `400 INVALID_CATEGORY`, `400 INVALID_CLOSED_WEEKDAYS`,
+`400 INVALID_CASHBACK_RATE`, `400 INVALID_PHOTO_URL`, `409 MERCHANT_ALREADY_WAIVED`,
+`422 MERCHANT_NOT_ELIGIBLE_FOR_FEE_WAIVER`, `400 INVALID_AMOUNT` (static-QR pay),
+`400 INVALID_MIN_ORDER_AMOUNT`, `400 INVALID_PHONE_NUMBER`, `400 INVALID_OPENING_HOURS`,
+`400 INVALID_AVG_PREP_TIME`, `400 INVALID_PICKUP_DISCOUNT`.
+
+**Corrected 2026-09-04** — real code is `ACCOUNT_NOT_FOUND`, not `WALLET_NOT_FOUND`
+(doesn't exist). No POS/card processing (beyond the demo `card/charge` above) or B2B
+payroll on this controller — payroll lives at a separate `PayrollController`, not
+documented on this page yet — see `docs/TOSS_PARITY_MATRIX.md`'s Merchant row.
 
 ## Face Pay — `/api/v1/facepay`
 
