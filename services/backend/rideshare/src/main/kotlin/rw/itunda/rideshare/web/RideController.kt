@@ -213,9 +213,25 @@ class RideController(
         return ResponseEntity.ok(mapOf("success" to true, "from" to fromDate.toString(), "to" to toDate.toString(), "days" to days))
     }
 
+    // Real gap found 2026-09-05 (feedback_idempotency_key_sweep re-audit) -- a
+    // slightly different shape than that sweep's usual "create" endpoints, but the
+    // same underlying risk: RideTripService.acceptTrip checks BOTH "driver already
+    // has an active trip" (RideDriverAlreadyOnTripException) AND "trip already
+    // claimed" (RideTripAlreadyClaimedException). After a successful accept, the
+    // driver legitimately now has an active trip -- so a lost-response retry from
+    // the SAME driver hits the first guard with a scary, confusing "finish your
+    // current trip" message for an accept that actually just succeeded.
     @PostMapping("/trips/{tripId}/accept")
-    fun acceptTrip(@PathVariable tripId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "trip" to rideTripService.acceptTrip(currentUser.userId, tripId)))
+    fun acceptTrip(
+        @PathVariable tripId: String,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/rides/trips/$tripId/accept", idempotencyKey, currentUser.userId) {
+            200 to mapOf("success" to true, "trip" to rideTripService.acceptTrip(currentUser.userId, tripId))
+        }
+        return ResponseEntity.status(status).body(body)
+    }
 
     @PostMapping("/trips/{tripId}/decline")
     fun declineTrip(@PathVariable tripId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =

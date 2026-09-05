@@ -1595,7 +1595,7 @@ extension NetworkClient {
     public func getMyRideDriverTrips() async throws -> RideTripsResponse { try await get("api/v1/rides/trips/my-driver-trips") }
 
     public func acceptRideTrip(id: String) async throws -> RideTripResponse {
-        try await authenticatedPost("api/v1/rides/trips/\(id)/accept", body: EmptyBody())
+        try await authenticatedPost("api/v1/rides/trips/\(id)/accept", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
     public func declineRideTrip(id: String) async throws -> RideTripResponse {
         try await authenticatedPost("api/v1/rides/trips/\(id)/decline", body: EmptyBody())

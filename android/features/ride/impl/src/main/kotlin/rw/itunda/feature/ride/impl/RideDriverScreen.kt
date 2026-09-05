@@ -460,7 +460,7 @@ internal fun RideDriverContent() {
                                 ) { Text("Decline", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
                                 Box(
                                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                        .pressScaleClickable(enabled = busyTripId != trip.id) { act(trip.id) { id -> NetworkClient.apiService.acceptRideTrip(id).trip } }
+                                        .pressScaleClickable(enabled = busyTripId != trip.id) { act(trip.id) { id -> NetworkClient.apiService.acceptRideTrip(id, java.util.UUID.randomUUID().toString()).trip } }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
                                 ) { Text(if (busyTripId == trip.id) "…" else "Accept", color = Color.White, fontWeight = FontWeight.Bold) }

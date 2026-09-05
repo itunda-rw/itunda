@@ -4608,7 +4608,10 @@ interface ApiService {
     suspend fun getMyRideDriverTrips(): RideTripsResponse
 
     @POST("api/v1/rides/trips/{tripId}/accept")
-    suspend fun acceptRideTrip(@Path("tripId") tripId: String): RideTripResponse
+    suspend fun acceptRideTrip(
+        @Path("tripId") tripId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): RideTripResponse
 
     @POST("api/v1/rides/trips/{tripId}/decline")
     suspend fun declineRideTrip(@Path("tripId") tripId: String): RideTripResponse

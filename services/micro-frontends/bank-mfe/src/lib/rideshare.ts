@@ -176,7 +176,10 @@ export const fetchMyDriverTrips = () =>
   apiFetch<{ success: boolean; trips: RideTrip[] }>('/api/v1/rides/trips/my-driver-trips?size=20').then((r) => r.trips);
 
 export const acceptRideTrip = (tripId: string) =>
-  apiFetch<{ success: boolean; trip: RideTrip }>(`/api/v1/rides/trips/${tripId}/accept`, { method: 'POST' }).then((r) => r.trip);
+  apiFetch<{ success: boolean; trip: RideTrip }>(`/api/v1/rides/trips/${tripId}/accept`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  }).then((r) => r.trip);
 
 export const declineRideTrip = (tripId: string) =>
   apiFetch<{ success: boolean; trip: RideTrip }>(`/api/v1/rides/trips/${tripId}/decline`, { method: 'POST' }).then((r) => r.trip);
