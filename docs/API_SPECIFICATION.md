@@ -839,6 +839,35 @@ Errors: `404 USER_NOT_FOUND`. The computation itself lives in `:core`'s `CreditS
 `POST /api/v1/loans/apply`'s real risk governance can reuse the exact same score, not a
 duplicated or cached copy — see the Loans section.
 
+## Trust Score — `/api/v1/trust-score`
+
+**Added 2026-09-05** (sixteenth documentation slice). Real Karrot-Score-style 0-1000
+numeric trust badge (starting at 30, not a manner-temperature metaphor) shown
+alongside sellers/posters across Marketplace/Jobs/Community. Mirrors Credit Score
+above exactly: computed live on every call, not cached, so the account-tenure factor
+stays honestly current between events. Confirmed by direct read of
+`TrustScoreController.kt` (1 endpoint, 1 error code).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `` (base path) | — | `{success, score, factors, computedAt}` | |
+
+Errors: `404 USER_NOT_FOUND`.
+
+## Analytics — `/api/v1/analytics`
+
+**Added 2026-09-05, same slice.** Real, deliberately minimal product-analytics
+endpoint — a small, closed vocabulary of known event names (adding one is a one-line
+code change, not a migration), not a general-purpose event pipe. Confirmed by direct
+read of `AnalyticsController.kt` (2 endpoints, 1 error code).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/events` | `{eventName, platform, metadata?}` | `{success}` | `eventName` must be one of a small known set (`home_view`, `coop_rail_tap`, `discover_banner_impression` as of this writing); `metadata` is truncated to 500 characters server-side |
+| GET | `/summary?days` | — | `{success, windowDays, totalActiveUsers, events: {...}, coopRailReturnRate: {...}}` | ADMIN only — gated by `SecurityConfig`'s own path matcher on this exact route, not a `@PreAuthorize` annotation on the method itself, unlike most other ADMIN-only endpoints on this page. `days` defaults to 30. `coopRailReturnRate` answers "of users who tapped the coop-savings rail, what fraction had any activity 24h+ later" |
+
+Errors: `400 UNKNOWN_EVENT`.
+
 ## Savings — `/api/v1/savings`
 
 | Method | Path | Body | Success | Notes |
@@ -1312,6 +1341,25 @@ exceptions), `404 ORDER_ITEM_NOT_FOUND`, `409 PRODUCT_NOT_YET_DELIVERED`,
 `409 RETURN_REQUEST_ALREADY_DECIDED`, `409 IDEMPOTENCY_KEY_CONFLICT`,
 `409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`,
 `422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`.
+
+## Affiliate — `/api/v1/affiliate`
+
+**Added 2026-09-05, same slice.** Real 쿠팡파트너스 (Coupang Partners)-style
+affiliate link program — the real backing for `POST /api/v1/orders`'s own
+`referralCode` field above. Normal itunda-user JWT gate, except `resolveLink`: a
+shared link must resolve for anyone who clicks it, not just the referrer, so that one
+read is public. Confirmed by direct read of `AffiliateController.kt` (4 endpoints, 3
+error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/links` | `{productId}` | `201 {success, link: {...}}` | |
+| GET | `/links/my-links` | — | `{success, links: [...]}` | |
+| GET | `/commissions/my-commissions` | — | `{success, commissions: [...]}` | |
+| POST | `/links/{code}/resolve` | — | `{success, link: {...}}` | Public — no auth required |
+
+Errors (all 3 real `@ExceptionHandler`s): `404 PRODUCT_NOT_FOUND`,
+`404 AFFILIATE_LINK_NOT_FOUND`, `429 RATE_LIMITED`.
 
 ## Product Subscriptions — `/api/v1/product-subscriptions`
 
@@ -1798,6 +1846,28 @@ Confirmed by direct read of `ServiceChannelController.kt` (1 endpoint, no
 | Method | Path | Body | Success | Notes |
 |---|---|---|---|---|
 | GET | `` (base path) | — | `{success, bubbles: [...], ...pageMeta}` | |
+
+## Calls — `/api/v1/calls`
+
+**Added 2026-09-05, same slice.** Real 1:1 voice/video calling inside Talk, WebRTC-
+based (ephemeral TURN credentials, never a static long-lived secret shipped to a
+client). Confirmed by direct read of `CallController.kt` (5 endpoints, 5
+`@ExceptionHandler`s, 4 unique codes — `CallNotFoundException` and
+`CallNotParticipantException` both map to `CALL_NOT_FOUND`, the same IDOR-safe
+"don't let a non-participant distinguish exists-but-not-mine from doesn't-exist"
+pattern used elsewhere on this page).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | `{conversationId, callType}` | `201 {success, call: {...}}` | |
+| POST | `/{callId}/answer` | — | `{success, call: {...}}` | |
+| POST | `/{callId}/end` | `{reason}` | `{success, call: {...}}` | |
+| GET | `/history` | — | `{success, calls: [...], ...pageMeta}` | |
+| GET | `/turn-credentials` | — | `{success, credentials: {...}}` | Real ephemeral TURN credentials for WebRTC NAT traversal |
+
+Errors (all 5 real `@ExceptionHandler`s, 4 unique codes): `404 CALL_NOT_FOUND`
+(shared by 2 exceptions), `409 CALL_ALREADY_ENDED`, `404 CONVERSATION_NOT_FOUND`,
+`429 RATE_LIMITED`.
 
 ## Support — `/api/v1/support`
 
