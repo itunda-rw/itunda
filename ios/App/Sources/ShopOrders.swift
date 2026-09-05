@@ -4,17 +4,6 @@ import CoreDesignSystem
 import CoreNetwork
 import CoreLocation
 
-// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
-// convention -- comma thousands-separator for every whole-number RWF amount --
-// never reached this file). Same per-file shape TransactionHistoryScreen.swift
-// already established.
-private func formatAmount(_ value: Int) -> String {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    return formatter.string(from: NSNumber(value: value)) ?? "0"
-}
-
 // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper here and at every
 // other IDS.Colors.card site in this file (docs/UI_UX_GUIDELINES.md §10), matching
 // Android's identical ShopOrders.kt conversion -- order-history log (this row) kept its

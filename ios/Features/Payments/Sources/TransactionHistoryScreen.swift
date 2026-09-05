@@ -93,9 +93,3 @@ private struct TransactionRowView: View {
     }
 }
 
-private func formatAmount(_ value: Int) -> String {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    return formatter.string(from: NSNumber(value: value)) ?? "0"
-}

@@ -188,18 +188,3 @@ struct StockRow: View {
         .buttonStyle(.plain)
     }
 }
-
-func formatMoney(_ value: Double) -> String {
-    let rounded = (value * 100).rounded() / 100
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    formatter.usesGroupingSeparator = true
-    if rounded == rounded.rounded(.towardZero) {
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: rounded)) ?? String(Int(rounded))
-    }
-    formatter.minimumFractionDigits = 2
-    formatter.maximumFractionDigits = 2
-    return formatter.string(from: NSNumber(value: rounded)) ?? String(format: "%.2f", rounded)
-}

@@ -186,7 +186,7 @@ struct RideTripCard<Action: View>: View {
             HStack {
                 Text(rideTripStatusLabel(trip)).font(.caption).bold().foregroundColor(rideTripStatusColor(trip.status))
                 Spacer()
-                Text("\(formatMoneyRide(trip.fare)) RWF · \(String(format: "%.1f", trip.distanceKm)) km")
+                Text("\(formatMoney(trip.fare)) RWF · \(String(format: "%.1f", trip.distanceKm)) km")
                     .font(.caption).foregroundColor(IDS.Colors.textSecondary)
             }
             action()
@@ -216,20 +216,6 @@ private func rideTripStatusColor(_ status: String) -> Color {
     }
 }
 
-private func formatMoneyRide(_ value: Double) -> String {
-    let rounded = (value * 100).rounded() / 100
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    formatter.usesGroupingSeparator = true
-    if rounded == rounded.rounded(.down) {
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: rounded)) ?? String(Int64(rounded))
-    }
-    formatter.minimumFractionDigits = 2
-    formatter.maximumFractionDigits = 2
-    return formatter.string(from: NSNumber(value: rounded)) ?? String(format: "%.2f", rounded)
-}
 
 // Real Uber post-trip tipping -- ported from bank-mfe/Android (2026-09-03), see
 // RideTripDto.tipAmount's own doc comment. Same real device step-up pattern every

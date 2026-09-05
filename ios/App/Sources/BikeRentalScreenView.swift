@@ -357,7 +357,7 @@ private struct BikeRentalSessionCard: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("\(session.durationMinutes ?? 0) min ride").bold().foregroundColor(IDS.Colors.textPrimary)
             if let fare = session.totalFare {
-                Text("\(formatMoneyBike(fare)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                Text("\(formatMoney(fare)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -365,17 +365,3 @@ private struct BikeRentalSessionCard: View {
     }
 }
 
-private func formatMoneyBike(_ value: Double) -> String {
-    let rounded = (value * 100).rounded() / 100
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    formatter.usesGroupingSeparator = true
-    if rounded == rounded.rounded(.down) {
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: rounded)) ?? String(Int64(rounded))
-    }
-    formatter.minimumFractionDigits = 2
-    formatter.maximumFractionDigits = 2
-    return formatter.string(from: NSNumber(value: rounded)) ?? String(format: "%.2f", rounded)
-}

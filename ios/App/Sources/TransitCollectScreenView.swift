@@ -2,17 +2,6 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
-// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
-// convention -- comma thousands-separator for every whole-number RWF amount --
-// never reached this file). Same per-file shape TransactionHistoryScreen.swift
-// already established.
-private func formatAmount(_ value: Int) -> String {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    return formatter.string(from: NSNumber(value: value)) ?? "0"
-}
-
 // Real "agent collects a fare from a rider's presented code" flow (2026-08-27, direct
 // user follow-up: "for simplification we need nfc"). Reuses the same
 // CustomerPaymentCode every user already generates and shows as a QR via "My payment
@@ -170,17 +159,3 @@ private struct CardActionButton: View {
     }
 }
 
-private func formatMoney(_ value: Double) -> String {
-    let rounded = (value * 100).rounded() / 100
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    formatter.usesGroupingSeparator = true
-    if rounded == rounded.rounded(.down) {
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: rounded)) ?? String(Int64(rounded))
-    }
-    formatter.minimumFractionDigits = 2
-    formatter.maximumFractionDigits = 2
-    return formatter.string(from: NSNumber(value: rounded)) ?? String(format: "%.2f", rounded)
-}

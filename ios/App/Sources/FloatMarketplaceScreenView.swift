@@ -3,17 +3,6 @@ import CoreLocation
 import CoreDesignSystem
 import CoreNetwork
 
-// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
-// convention -- comma thousands-separator for every whole-number RWF amount --
-// never reached this file). Same per-file shape TransactionHistoryScreen.swift
-// already established.
-private func formatAmount(_ value: Int) -> String {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    return formatter.string(from: NSNumber(value: value)) ?? "0"
-}
-
 /// Real "my location" via Apple's own CLLocationManager -- same technique
 /// DesignatedDriverScreenView.swift's own fetcher already establishes, a separate
 /// private copy per this codebase's established per-file convention.

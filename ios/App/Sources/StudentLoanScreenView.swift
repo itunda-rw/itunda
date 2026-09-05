@@ -103,11 +103,11 @@ struct StudentLoanScreenView: View {
     private func loanRow(_ loan: StudentLoanDto) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("\(formatMoneyStudentLoan(loan.principalAmount)) RWF · \(loan.level.capitalized)").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                Text("\(formatMoney(loan.principalAmount)) RWF · \(loan.level.capitalized)").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                 Spacer()
                 Text(loan.status).font(.caption).foregroundColor(loan.status == "OVERDUE" ? .red : IDS.Colors.textSecondary)
             }
-            Text("Outstanding: \(formatMoneyStudentLoan(loan.outstandingBalance)) RWF" + (loan.graceEndsAt.map { " · Grace ends \(String($0.prefix(10)))" } ?? ""))
+            Text("Outstanding: \(formatMoney(loan.outstandingBalance)) RWF" + (loan.graceEndsAt.map { " · Grace ends \(String($0.prefix(10)))" } ?? ""))
                 .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
             if loan.status == "REQUESTED" {
                 Text("Demo: instantly approved -- stands in for the real BRD/MINEDUC approval step.")
@@ -132,7 +132,7 @@ struct StudentLoanScreenView: View {
             if loan.status == "REPAYING" || loan.status == "OVERDUE" {
                 if let suggested = suggestedPayments[loan.id] {
                     Text(suggested.note).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
-                    Text("Suggested: \(formatMoneyStudentLoan(suggested.suggestedMonthlyPayment)) RWF/month").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                    Text("Suggested: \(formatMoney(suggested.suggestedMonthlyPayment)) RWF/month").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                 }
                 IdsTextField("Repayment amount (RWF)", text: Binding(
                     get: { repayAmounts[loan.id] ?? "" },
@@ -249,17 +249,3 @@ struct StudentLoanScreenView: View {
     }
 }
 
-private func formatMoneyStudentLoan(_ value: Double) -> String {
-    let rounded = (value * 100).rounded() / 100
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    formatter.usesGroupingSeparator = true
-    if rounded == rounded.rounded(.down) {
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: rounded)) ?? String(Int64(rounded))
-    }
-    formatter.minimumFractionDigits = 2
-    formatter.maximumFractionDigits = 2
-    return formatter.string(from: NSNumber(value: rounded)) ?? String(format: "%.2f", rounded)
-}

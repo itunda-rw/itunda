@@ -31,12 +31,6 @@ private let sendableAccountTypes: Set<String> = ["MAIN", "FOREIGN_CURRENCY", "BU
 // Same per-file `formatAmount` shape TransactionHistoryScreen.swift already uses,
 // not deduped into one shared helper, matching this sweep's own established
 // "19+1 Android / 21 iOS... this project's own naming-dedup discipline" choice.
-private func formatAmount(_ value: Int) -> String {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    return formatter.string(from: NSNumber(value: value)) ?? "0"
-}
 
 // Real second iOS screen localized (2026-08-08), following web/Android's own identical
 // "phase content outward from login into account overview" step (docs/DESIGN_REFERENCES.md

@@ -3,17 +3,6 @@ import UIKit
 import CoreDesignSystem
 import CoreNetwork
 
-// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
-// convention -- comma thousands-separator for every whole-number RWF amount --
-// never reached this file). Same per-file shape TransactionHistoryScreen.swift
-// already established.
-private func formatAmount(_ value: Int) -> String {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    return formatter.string(from: NSNumber(value: value)) ?? "0"
-}
-
 // Real minimal shape both PriceOfferDto (Marketplace) and PropertyPriceOfferDto (Real
 // Estate) get mapped into for display -- narrowed to just the fields OfferBubble
 // actually reads (id/amount/status/proposedByUserId), so this one view renders both

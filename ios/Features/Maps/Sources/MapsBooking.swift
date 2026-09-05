@@ -2,17 +2,6 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
-// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
-// convention -- comma thousands-separator for every whole-number RWF amount --
-// never reached this file). Same per-file shape TransactionHistoryScreen.swift
-// already established.
-private func formatAmount(_ value: Int) -> String {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    return formatter.string(from: NSNumber(value: value)) ?? "0"
-}
-
 /// Real local-business appointment booking (customer side) -- closes the "business
 /// profile + real booking" gap independently converged on by Naver Smart Place, Kakao
 /// Hair Shop, and Karrot's Business Profile research (docs/DESIGN_REFERENCES.md).

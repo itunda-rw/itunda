@@ -112,11 +112,11 @@ struct VupLoanScreenView: View {
                                 ForEach(loans) { loan in
                                     VStack(alignment: .leading, spacing: 6) {
                                         HStack {
-                                            Text("\(formatMoneyVup(loan.principalAmount)) RWF · \(loan.purpose)").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                            Text("\(formatMoney(loan.principalAmount)) RWF · \(loan.purpose)").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                                             Spacer()
                                             Text(loan.status).font(.caption).foregroundColor(loan.status == "OVERDUE" ? .red : IDS.Colors.textSecondary)
                                         }
-                                        Text("Outstanding: \(formatMoneyVup(loan.outstandingPrincipal)) RWF" + (loan.dueDate.map { " · Due \(String($0.prefix(10)))" } ?? ""))
+                                        Text("Outstanding: \(formatMoney(loan.outstandingPrincipal)) RWF" + (loan.dueDate.map { " · Due \(String($0.prefix(10)))" } ?? ""))
                                             .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                                         if loan.status == "REQUESTED" {
                                             Text("Demo: instantly approved -- stands in for the real SACCO officer approval step.")
@@ -221,17 +221,3 @@ struct VupLoanScreenView: View {
     }
 }
 
-private func formatMoneyVup(_ value: Double) -> String {
-    let rounded = (value * 100).rounded() / 100
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    formatter.usesGroupingSeparator = true
-    if rounded == rounded.rounded(.down) {
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: rounded)) ?? String(Int64(rounded))
-    }
-    formatter.minimumFractionDigits = 2
-    formatter.maximumFractionDigits = 2
-    return formatter.string(from: NSNumber(value: rounded)) ?? String(format: "%.2f", rounded)
-}

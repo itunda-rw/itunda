@@ -2,12 +2,6 @@ import SwiftUI
 import CoreNetwork
 import CoreDesignSystem
 
-private func formatAmount(_ value: Int) -> String {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    return formatter.string(from: NSNumber(value: value)) ?? "0"
-}
 
 /// Real "Transfer limit" screen (2026-09-01) -- the real, enforced
 /// P2pTransferLimitService caps, previously surfaced only reactively as a decline

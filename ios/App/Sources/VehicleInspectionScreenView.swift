@@ -98,7 +98,7 @@ private struct InspectionBuyerContent: View {
                     ForEach(myBookings, id: \.id) { b in
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Listing \(b.listingId)").bold().font(.subheadline)
-                            Text("\(formatMoneyInspection(b.fee)) RWF · \(b.status)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            Text("\(formatMoney(b.fee)) RWF · \(b.status)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             if let findings = b.findings {
                                 Text(findings).font(.subheadline)
                             }
@@ -237,7 +237,7 @@ private struct InspectionMechanicContent: View {
                     ForEach(bookings, id: \.id) { b in
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Listing \(b.listingId)").bold().font(.subheadline)
-                            Text("\(formatMoneyInspection(b.fee)) RWF · \(b.status)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            Text("\(formatMoney(b.fee)) RWF · \(b.status)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             if b.status == "REQUESTED" {
                                 Button(action: { Task { await accept(b.id) } }) {
                                     Text(busyBookingId == b.id ? "Accepting…" : "Accept").bold().foregroundColor(.white)
@@ -337,17 +337,3 @@ private struct InspectionMechanicContent: View {
     }
 }
 
-private func formatMoneyInspection(_ value: Double) -> String {
-    let rounded = (value * 100).rounded() / 100
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    formatter.usesGroupingSeparator = true
-    if rounded == rounded.rounded(.down) {
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: rounded)) ?? String(Int64(rounded))
-    }
-    formatter.minimumFractionDigits = 2
-    formatter.maximumFractionDigits = 2
-    return formatter.string(from: NSNumber(value: rounded)) ?? String(format: "%.2f", rounded)
-}

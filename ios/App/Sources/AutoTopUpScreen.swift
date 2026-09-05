@@ -128,8 +128,8 @@ private struct AutoTopUpConfigCard: View {
         self.setting = setting
         self.onChanged = onChanged
         _selectedAccountId = State(initialValue: setting?.linkedAccountId ?? linkedAccounts.first?.id ?? "")
-        _thresholdText = State(initialValue: setting.map { formatMoneyAutoTopUp($0.thresholdAmount) } ?? "")
-        _topUpText = State(initialValue: setting.map { formatMoneyAutoTopUp($0.topUpAmount) } ?? "")
+        _thresholdText = State(initialValue: setting.map { formatMoney($0.thresholdAmount) } ?? "")
+        _topUpText = State(initialValue: setting.map { formatMoney($0.topUpAmount) } ?? "")
         _enabled = State(initialValue: setting?.enabled ?? true)
     }
 
@@ -212,17 +212,3 @@ private struct AutoTopUpConfigCard: View {
     }
 }
 
-private func formatMoneyAutoTopUp(_ value: Double) -> String {
-    let rounded = (value * 100).rounded() / 100
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    formatter.usesGroupingSeparator = true
-    if rounded == rounded.rounded(.down) {
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: rounded)) ?? String(Int64(rounded))
-    }
-    formatter.minimumFractionDigits = 2
-    formatter.maximumFractionDigits = 2
-    return formatter.string(from: NSNumber(value: rounded)) ?? String(format: "%.2f", rounded)
-}

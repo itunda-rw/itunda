@@ -4,12 +4,6 @@ import CoreNetwork
 
 // Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
 // convention never reached this file, which predates that sweep's file list).
-private func formatAmount(_ value: Int) -> String {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    return formatter.string(from: NSNumber(value: value)) ?? "0"
-}
 
 // Real fix (2026-08-26): split out of OverviewLoansCreditScoreScreens.swift once
 // that file grew past its file-size-lint baseline. Overdraft and postpaid-credit

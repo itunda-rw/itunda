@@ -126,7 +126,7 @@ private struct ParkingFindContent: View {
                     ForEach(nearbySpots) { spot in
                         VStack(alignment: .leading, spacing: 6) {
                             Text(spot.address).bold().foregroundColor(IDS.Colors.textPrimary)
-                            Text("\(formatMoneyParking(spot.hourlyRate)) RWF / hour").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            Text("\(formatMoney(spot.hourlyRate)) RWF / hour").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             Button(action: { Task { await startSession(spot.id) } }) {
                                 Text(busySpotId == spot.id ? "…" : "Check in").bold().foregroundColor(.white)
                                     .frame(maxWidth: .infinity).padding(.vertical, 12)
@@ -247,7 +247,7 @@ private struct ParkingMineContent: View {
                                 }
                                 .disabled(busySpotId == spot.id)
                             }
-                            Text("\(formatMoneyParking(spot.hourlyRate)) RWF / hour").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            Text("\(formatMoney(spot.hourlyRate)) RWF / hour").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }
                         .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
                     }
@@ -313,7 +313,7 @@ private struct ParkingSessionCard: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("\(session.durationMinutes ?? 0) min parked").bold().foregroundColor(IDS.Colors.textPrimary)
             if let fare = session.totalFare {
-                Text("\(formatMoneyParking(fare)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                Text("\(formatMoney(fare)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -321,17 +321,3 @@ private struct ParkingSessionCard: View {
     }
 }
 
-private func formatMoneyParking(_ value: Double) -> String {
-    let rounded = (value * 100).rounded() / 100
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    formatter.usesGroupingSeparator = true
-    if rounded == rounded.rounded(.down) {
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: rounded)) ?? String(Int64(rounded))
-    }
-    formatter.minimumFractionDigits = 2
-    formatter.maximumFractionDigits = 2
-    return formatter.string(from: NSNumber(value: rounded)) ?? String(format: "%.2f", rounded)
-}

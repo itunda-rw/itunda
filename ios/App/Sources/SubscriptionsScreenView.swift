@@ -2,17 +2,6 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
-// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
-// convention -- comma thousands-separator for every whole-number RWF amount --
-// never reached this file). Same per-file shape TransactionHistoryScreen.swift
-// already established.
-private func formatAmount(_ value: Int) -> String {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    return formatter.string(from: NSNumber(value: value)) ?? "0"
-}
-
 /// Real recurring-payment ("subscription") detection over a user's own real transaction
 /// history -- see rw.itunda.account.SubscriptionDetectionService's own doc comment. Plus
 /// real Kakao Pay 정기결제/Toss 빌링키-style merchant subscriptions the customer actually

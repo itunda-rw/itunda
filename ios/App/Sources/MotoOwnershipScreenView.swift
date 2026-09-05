@@ -66,7 +66,7 @@ struct MotoOwnershipScreenView: View {
                                 IdsTextField("Bike price (RWF, 300,000-2,500,000)", text: $bikePrice, keyboardType: .numberPad)
                                 IdsTextField("Daily contribution (RWF)", text: $dailyContribution, keyboardType: .numberPad)
                                 if let previewDownPayment {
-                                    Text("Down payment target (30%): \(formatMoneyMoto(previewDownPayment)) RWF")
+                                    Text("Down payment target (30%): \(formatMoney(previewDownPayment)) RWF")
                                         .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                                 }
                                 Button(action: { Task { await create() } }) {
@@ -92,12 +92,12 @@ struct MotoOwnershipScreenView: View {
                                 ForEach(plans) { plan in
                                     VStack(alignment: .leading, spacing: 6) {
                                         HStack {
-                                            Text("\(formatMoneyMoto(plan.bikePrice)) RWF bike").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                            Text("\(formatMoney(plan.bikePrice)) RWF bike").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                                             Spacer()
                                             Text(plan.status).font(.caption).bold().foregroundColor(IDS.Colors.brand)
                                         }
                                         if plan.status == "SAVING" {
-                                            Text("Saved \(formatMoneyMoto(plan.savedAmount)) / \(formatMoneyMoto(plan.downPaymentTarget)) RWF down payment")
+                                            Text("Saved \(formatMoney(plan.savedAmount)) / \(formatMoney(plan.downPaymentTarget)) RWF down payment")
                                                 .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                                             GeometryReader { geo in
                                                 ZStack(alignment: .leading) {
@@ -126,7 +126,7 @@ struct MotoOwnershipScreenView: View {
                                                 .disabled(busyId != nil)
                                             }
                                             if plan.savedAmount >= plan.downPaymentTarget {
-                                                Text("This releases your full \(formatMoneyMoto(plan.bikePrice)) RWF bike price to your account (your saved down payment plus a new unsecured loan for the rest) -- itunda cannot repossess the bike if you stop repaying.")
+                                                Text("This releases your full \(formatMoney(plan.bikePrice)) RWF bike price to your account (your saved down payment plus a new unsecured loan for the rest) -- itunda cannot repossess the bike if you stop repaying.")
                                                     .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                                                 Button(action: { Task { await convert(plan.id) } }) {
                                                     Text(busyId == plan.id ? "Converting…" : "Convert to loan").bold().font(.footnote).foregroundColor(.white)
@@ -137,7 +137,7 @@ struct MotoOwnershipScreenView: View {
                                             }
                                         }
                                         if plan.status == "LOAN_ACTIVE" {
-                                            Text("Loan outstanding: \(formatMoneyMoto(plan.loanOutstanding)) RWF")
+                                            Text("Loan outstanding: \(formatMoney(plan.loanOutstanding)) RWF")
                                                 .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                                             IdsTextField("Repayment amount (RWF)", text: Binding(
                                                 get: { repayAmounts[plan.id] ?? "" },
@@ -277,17 +277,3 @@ struct MotoOwnershipScreenView: View {
     }
 }
 
-private func formatMoneyMoto(_ value: Double) -> String {
-    let rounded = (value * 100).rounded() / 100
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    formatter.usesGroupingSeparator = true
-    if rounded == rounded.rounded(.down) {
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: rounded)) ?? String(Int64(rounded))
-    }
-    formatter.minimumFractionDigits = 2
-    formatter.maximumFractionDigits = 2
-    return formatter.string(from: NSNumber(value: rounded)) ?? String(format: "%.2f", rounded)
-}

@@ -1,17 +1,6 @@
 import SwiftUI
 import CoreDesignSystem
 
-// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
-// convention -- comma thousands-separator for every whole-number RWF amount --
-// never reached this file). Same per-file shape TransactionHistoryScreen.swift
-// already established.
-private func formatAmount(_ value: Int) -> String {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    return formatter.string(from: NSNumber(value: value)) ?? "0"
-}
-
 /// Real 배민오더-style table/QR in-store ordering, restaurant side (item 164) -- two
 /// real, independent jobs on one tab: print/display a real per-table QR (top), and
 /// watch + advance real incoming table orders (below), the same restaurant-driven-only

@@ -70,7 +70,7 @@ struct RequestMoneyScreenView: View {
                             ForEach(requests) { req in
                                 HStack {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text("\(formatMoneyReq(req.amount)) RWF").bold()
+                                        Text("\(formatMoney(req.amount)) RWF").bold()
                                         if !req.description.isEmpty { Text(req.description).font(.caption).foregroundColor(IDS.Colors.textSecondary) }
                                     }
                                     Spacer()
@@ -195,17 +195,3 @@ private struct PayRequestCard: View {
     }
 }
 
-private func formatMoneyReq(_ value: Double) -> String {
-    let rounded = (value * 100).rounded() / 100
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    formatter.usesGroupingSeparator = true
-    if rounded == rounded.rounded(.down) {
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: rounded)) ?? String(Int(rounded))
-    }
-    formatter.minimumFractionDigits = 2
-    formatter.maximumFractionDigits = 2
-    return formatter.string(from: NSNumber(value: rounded)) ?? String(format: "%.2f", rounded)
-}

@@ -14,12 +14,6 @@ private let supportCategories = ["GENERAL", "PAYMENT_DISPUTE", "ACCOUNT_TAKEOVER
 
 // Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
 // convention never reached this file, which predates that sweep's file list).
-private func formatAmount(_ value: Int) -> String {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    return formatter.string(from: NSNumber(value: value)) ?? "0"
-}
 
 public struct SupportScreenView: View {
     public var onBack: () -> Void

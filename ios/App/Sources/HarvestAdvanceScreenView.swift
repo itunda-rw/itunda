@@ -101,7 +101,7 @@ struct HarvestAdvanceScreenView: View {
                                 ForEach(advances) { a in
                                     VStack(alignment: .leading, spacing: 6) {
                                         HStack {
-                                            Text("\(formatMoneyHarvest(a.principalAmount)) RWF · \(a.purpose)").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                            Text("\(formatMoney(a.principalAmount)) RWF · \(a.purpose)").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                                             Spacer()
                                             Text(a.status).font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                         }
@@ -116,7 +116,7 @@ struct HarvestAdvanceScreenView: View {
                                         }
                                         if a.status == "DISBURSED" || a.status == "OVERDUE" {
                                             Button(action: { Task { await repayInFull(a) } }) {
-                                                Text(busy ? "…" : "Repay in full (\(formatMoneyHarvest(a.principalAmount)) RWF)").bold().font(.footnote).foregroundColor(IDS.Colors.textPrimary)
+                                                Text(busy ? "…" : "Repay in full (\(formatMoney(a.principalAmount)) RWF)").bold().font(.footnote).foregroundColor(IDS.Colors.textPrimary)
                                                     .frame(maxWidth: .infinity).padding(.vertical, 10)
                                                     .background(Color(.tertiarySystemBackground)).cornerRadius(8)
                                             }
@@ -231,17 +231,3 @@ struct HarvestAdvanceScreenView: View {
     }
 }
 
-private func formatMoneyHarvest(_ value: Double) -> String {
-    let rounded = (value * 100).rounded() / 100
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    formatter.usesGroupingSeparator = true
-    if rounded == rounded.rounded(.down) {
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: rounded)) ?? String(Int64(rounded))
-    }
-    formatter.minimumFractionDigits = 2
-    formatter.maximumFractionDigits = 2
-    return formatter.string(from: NSNumber(value: rounded)) ?? String(format: "%.2f", rounded)
-}

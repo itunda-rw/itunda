@@ -43,8 +43,8 @@ struct SaccoScreenView: View {
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Shares held").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                        Text("\(formatMoneySacco(sharesHeld ?? 0)) RWF").font(.title).bold().foregroundColor(IDS.Colors.textPrimary)
-                        Text("Total contributed: \(formatMoneySacco(totalContributed ?? 0)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        Text("\(formatMoney(sharesHeld ?? 0)) RWF").font(.title).bold().foregroundColor(IDS.Colors.textPrimary)
+                        Text("Total contributed: \(formatMoney(totalContributed ?? 0)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
@@ -83,7 +83,7 @@ struct SaccoScreenView: View {
                                     HStack {
                                         Text(String(d.createdAt.prefix(10))).font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                         Spacer()
-                                        Text("+\(formatMoneySacco(d.amount)) RWF").font(.footnote).bold().foregroundColor(.green)
+                                        Text("+\(formatMoney(d.amount)) RWF").font(.footnote).bold().foregroundColor(.green)
                                     }
                                 }
                             }
@@ -151,17 +151,3 @@ struct SaccoScreenView: View {
     }
 }
 
-private func formatMoneySacco(_ value: Double) -> String {
-    let rounded = (value * 100).rounded() / 100
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    formatter.usesGroupingSeparator = true
-    if rounded == rounded.rounded(.down) {
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: rounded)) ?? String(Int64(rounded))
-    }
-    formatter.minimumFractionDigits = 2
-    formatter.maximumFractionDigits = 2
-    return formatter.string(from: NSNumber(value: rounded)) ?? String(format: "%.2f", rounded)
-}

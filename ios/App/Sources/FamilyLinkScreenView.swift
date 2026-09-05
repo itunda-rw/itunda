@@ -2,17 +2,6 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
-// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
-// convention -- comma thousands-separator for every whole-number RWF amount --
-// never reached this file). Same per-file shape TransactionHistoryScreen.swift
-// already established.
-private func formatAmount(_ value: Int) -> String {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    return formatter.string(from: NSNumber(value: value)) ?? "0"
-}
-
 /// Real Toss 유스 (Toss Youth)-style guardian-child account link -- see
 /// rw.itunda.family.FamilyLinkService's own doc comment for the full sourced account and
 /// honest scope boundary: real read-only spending oversight only, no new allowance

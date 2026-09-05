@@ -402,7 +402,7 @@ private struct DesignatedDriverTripCard<Action: View>: View {
             HStack {
                 Text(designatedDriverStatusLabel(trip.status)).font(.caption).bold().foregroundColor(designatedDriverStatusColor(trip.status))
                 Spacer()
-                Text("\(formatMoneyDesignatedDriver(trip.fare)) RWF · \(String(format: "%.1f", trip.distanceKm)) km")
+                Text("\(formatMoney(trip.fare)) RWF · \(String(format: "%.1f", trip.distanceKm)) km")
                     .font(.caption).foregroundColor(IDS.Colors.textSecondary)
             }
             action()
@@ -431,17 +431,3 @@ private func designatedDriverStatusColor(_ status: String) -> Color {
     }
 }
 
-private func formatMoneyDesignatedDriver(_ value: Double) -> String {
-    let rounded = (value * 100).rounded() / 100
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    formatter.usesGroupingSeparator = true
-    if rounded == rounded.rounded(.down) {
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: rounded)) ?? String(Int64(rounded))
-    }
-    formatter.minimumFractionDigits = 2
-    formatter.maximumFractionDigits = 2
-    return formatter.string(from: NSNumber(value: rounded)) ?? String(format: "%.2f", rounded)
-}

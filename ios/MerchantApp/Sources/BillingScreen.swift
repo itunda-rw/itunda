@@ -1,17 +1,6 @@
 import SwiftUI
 import CoreDesignSystem
 
-// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
-// convention -- comma thousands-separator for every whole-number RWF amount --
-// never reached this file). Same per-file shape TransactionHistoryScreen.swift
-// already established.
-private func formatAmount(_ value: Int) -> String {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    return formatter.string(from: NSNumber(value: value)) ?? "0"
-}
-
 /// Real Kakao Pay 정기결제/Toss Payments 빌링키-style recurring merchant billing (item 144)
 /// -- see MerchantBillingController.kt's own doc comment. Owner-facing plan-management
 /// half only; customer subscribe/cancel is already real on all 3 consumer clients.

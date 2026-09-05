@@ -1,17 +1,6 @@
 import SwiftUI
 import CoreDesignSystem
 
-// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
-// convention -- comma thousands-separator for every whole-number RWF amount --
-// never reached this file). Same per-file shape TransactionHistoryScreen.swift
-// already established.
-private func formatAmount(_ value: Int) -> String {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    return formatter.string(from: NSNumber(value: value)) ?? "0"
-}
-
 /// Real B2B payroll -- see rw.itunda.merchant.PayrollService's own doc comment for why
 /// this is real account-to-account money movement, not a demo. merchant-mfe/Android
 /// already have this; this is the first iOS client.

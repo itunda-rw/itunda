@@ -83,7 +83,7 @@ private struct BusRideContent: View {
                                     Text("Departs \(String(trip.departureTime.prefix(16)).replacingOccurrences(of: "T", with: " "))")
                                 }
                                     .font(.caption).bold().foregroundColor(IDS.Colors.brand)
-                                Text("\(formatMoneyBus(trip.farePerSeat)) RWF/seat · \(trip.availableSeats) seat(s) left")
+                                Text("\(formatMoney(trip.farePerSeat)) RWF/seat · \(trip.availableSeats) seat(s) left")
                                     .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                 HStack {
                                     IdsTextField("Seats", text: Binding(
@@ -113,7 +113,7 @@ private struct BusRideContent: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("\(booking.seatCount) seat(s)").bold().foregroundColor(IDS.Colors.textPrimary)
-                                Text("\(formatMoneyBus(booking.totalFare)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                Text("\(formatMoney(booking.totalFare)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             }
                             Spacer()
                             Button(action: { Task { await cancelBooking(booking.id) } }) {
@@ -226,7 +226,7 @@ private struct BusOperateContent: View {
                                     Text("Departs \(String(trip.departureTime.prefix(16)).replacingOccurrences(of: "T", with: " "))")
                                 }
                                 .font(.caption).bold().foregroundColor(IDS.Colors.brand)
-                            Text("\(trip.availableSeats)/\(trip.totalSeats) seats left · \(formatMoneyBus(trip.farePerSeat)) RWF/seat")
+                            Text("\(trip.availableSeats)/\(trip.totalSeats) seats left · \(formatMoney(trip.farePerSeat)) RWF/seat")
                                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             Button(action: { Task { await toggleManifest(trip.id) } }) {
                                 Text(expandedTripId == trip.id ? "Hide bookings" : "View bookings")
@@ -247,7 +247,7 @@ private struct BusOperateContent: View {
                                                     Text("Rider #\(b.riderUserId.suffix(6)) · \(b.seatCount) seat\(b.seatCount > 1 ? "s" : "")")
                                                         .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                                     Spacer()
-                                                    Text(b.status == "CANCELLED" ? "Cancelled" : "\(formatMoneyBus(b.totalFare)) RWF")
+                                                    Text(b.status == "CANCELLED" ? "Cancelled" : "\(formatMoney(b.totalFare)) RWF")
                                                         .font(.caption).bold()
                                                         .foregroundColor(b.status == "CANCELLED" ? IDS.Colors.textSecondary : IDS.Colors.textPrimary)
                                                 }
@@ -312,17 +312,3 @@ private struct BusOperateContent: View {
     }
 }
 
-private func formatMoneyBus(_ value: Double) -> String {
-    let rounded = (value * 100).rounded() / 100
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    formatter.usesGroupingSeparator = true
-    if rounded == rounded.rounded(.down) {
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: rounded)) ?? String(Int64(rounded))
-    }
-    formatter.minimumFractionDigits = 2
-    formatter.maximumFractionDigits = 2
-    return formatter.string(from: NSNumber(value: rounded)) ?? String(format: "%.2f", rounded)
-}

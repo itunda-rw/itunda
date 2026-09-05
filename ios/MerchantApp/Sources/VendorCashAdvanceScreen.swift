@@ -1,17 +1,6 @@
 import SwiftUI
 import CoreDesignSystem
 
-// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
-// convention -- comma thousands-separator for every whole-number RWF amount --
-// never reached this file). Same per-file shape TransactionHistoryScreen.swift
-// already established.
-private func formatAmount(_ value: Int) -> String {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    return formatter.string(from: NSNumber(value: value)) ?? "0"
-}
-
 /// Real Isoko ("market" in Kinyarwanda) Vendor Cash Advance -- see
 /// VendorCashAdvanceDto's own doc comment for the full sourced account.
 /// merchant-mfe shipped first, Android's native merchantapp ported it

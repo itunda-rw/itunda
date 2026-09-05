@@ -35,7 +35,7 @@ struct SpendingScreenView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("This month so far").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             HStack(alignment: .lastTextBaseline, spacing: 8) {
-                                Text("\(formatMoneySpending(monthlyReport.currentTotal)) RWF").font(.title2).bold().foregroundColor(IDS.Colors.textPrimary)
+                                Text("\(formatMoney(monthlyReport.currentTotal)) RWF").font(.title2).bold().foregroundColor(IDS.Colors.textPrimary)
                                 if let change = monthlyReport.percentChange {
                                     Text("\(change > 0 ? "▲" : "▼") \(abs(change))% vs last month")
                                         .font(.caption).bold().foregroundColor(change > 0 ? .red : .green)
@@ -44,7 +44,7 @@ struct SpendingScreenView: View {
                             let changed = monthlyReport.categories.filter { $0.percentChange != nil }
                                 .sorted { abs($0.percentChange ?? 0) > abs($1.percentChange ?? 0) }
                             ForEach(changed.prefix(3)) { c in
-                                Text("\(c.name): \(formatMoneySpending(c.currentAmount)) RWF (\((c.percentChange ?? 0) > 0 ? "+" : "")\(c.percentChange ?? 0)% vs last month)")
+                                Text("\(c.name): \(formatMoney(c.currentAmount)) RWF (\((c.percentChange ?? 0) > 0 ? "+" : "")\(c.percentChange ?? 0)% vs last month)")
                                     .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             }
                         }
@@ -55,7 +55,7 @@ struct SpendingScreenView: View {
                     if let insight {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Total spent, all time").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                            Text("\(formatMoneySpending(insight.totalSpent)) RWF").font(.title).bold().foregroundColor(IDS.Colors.textPrimary)
+                            Text("\(formatMoney(insight.totalSpent)) RWF").font(.title).bold().foregroundColor(IDS.Colors.textPrimary)
                             Text("Real, ledger-based -- what every account debit actually paid for.")
                                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }
@@ -73,7 +73,7 @@ struct SpendingScreenView: View {
                                         HStack {
                                             Text(category.name).font(.subheadline)
                                             Spacer()
-                                            Text("\(formatMoneySpending(category.amount)) RWF").font(.subheadline).bold()
+                                            Text("\(formatMoney(category.amount)) RWF").font(.subheadline).bold()
                                         }
                                         GeometryReader { geo in
                                             ZStack(alignment: .leading) {
@@ -172,7 +172,7 @@ private struct BudgetCard: View {
             HStack {
                 Text(budget.category ?? "Overall spending").font(.subheadline)
                 Spacer()
-                Text("\(formatMoneySpending(budget.spent)) / \(formatMoneySpending(budget.monthlyLimit)) RWF")
+                Text("\(formatMoney(budget.spent)) / \(formatMoney(budget.monthlyLimit)) RWF")
                     .font(.caption).foregroundColor(IDS.Colors.textSecondary)
             }
             GeometryReader { geo in
@@ -224,17 +224,3 @@ private struct SetBudgetForm: View {
     }
 }
 
-private func formatMoneySpending(_ value: Double) -> String {
-    let rounded = (value * 100).rounded() / 100
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    formatter.usesGroupingSeparator = true
-    if rounded == rounded.rounded(.down) {
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: rounded)) ?? String(Int64(rounded))
-    }
-    formatter.minimumFractionDigits = 2
-    formatter.maximumFractionDigits = 2
-    return formatter.string(from: NSNumber(value: rounded)) ?? String(format: "%.2f", rounded)
-}

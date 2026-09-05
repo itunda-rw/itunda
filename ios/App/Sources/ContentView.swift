@@ -12,17 +12,6 @@ import FeaturePayments
 import FeatureSupport
 import FeatureWealth
 
-// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
-// convention -- comma thousands-separator for every whole-number RWF amount --
-// never reached this file). Same per-file shape TransactionHistoryScreen.swift
-// already established.
-private func formatAmount(_ value: Int) -> String {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    return formatter.string(from: NSNumber(value: value)) ?? "0"
-}
-
 // Fixed (2026-07-11): every Text() in this file used .font(.system(size:weight:)) --
 // a fixed point size that doesn't grow or shrink with iOS's Dynamic Type
 // accessibility setting. Same bug, same fix as CoreDesignSystem's IDS.swift/
