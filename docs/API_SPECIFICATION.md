@@ -537,6 +537,99 @@ and trip-location validators), `400 INVALID_LICENSE_NUMBER`,
 `422 INSUFFICIENT_FUNDS`, `429 RATE_LIMITED`, `409 IDEMPOTENCY_KEY_CONFLICT`,
 `409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`.
 
+## Bike Share — `/api/v1/bikeshare`
+
+**Added 2026-09-05** (fourteenth documentation slice — the rest of itunda's Kakao T
+micro-mobility family, sibling products to Rides above). Real Kakao T 바이크 (Kakao T
+Bike) — a peer-registered bike (not itunda-owned fleet), rented by the trip.
+Confirmed by direct read of `BikeRentalController.kt` (9 endpoints, 9 error codes,
+all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/bikes` | `{type, latitude, longitude}` | `201 {success, bike: {...}}` | |
+| GET | `/bikes/mine` | — | `{success, bikes: [...]}` | |
+| POST | `/bikes/{bikeId}/availability` | `{available}` | `{success, bike: {...}}` | |
+| POST | `/bikes/{bikeId}/location` | `{latitude, longitude}` | `{success, bike: {...}}` | |
+| GET | `/bikes/nearby?latitude&longitude&radiusKm` | — | `{success, bikes: [...]}` | `radiusKm` defaults to 5.0 |
+| POST | `/rentals` | `{bikeId, startLatitude, startLongitude}` | `201 {success, rental: {...}}` | |
+| POST | `/rentals/{sessionId}/end` | `{endLatitude, endLongitude}` | `{success, rental: {...}}` | |
+| POST | `/rentals/process-abandoned` | — | `{success, processedCount, rentals: [...]}` | ADMIN only — manual trigger for the abandoned-rental scheduler; force-settles real other users' money |
+| GET | `/rentals/my-history` | — | `{success, rentals: [...], ...pageMeta}` | |
+
+Errors (all 9 real `@ExceptionHandler`s): `404 BIKE_NOT_FOUND`,
+`409 BIKE_NOT_AVAILABLE`, `400 SELF_RENTAL_NOT_ALLOWED`, `404 ACCOUNT_NOT_FOUND`,
+`400 INVALID_LOCATION`, `404 BIKE_RENTAL_NOT_FOUND`, `409 BIKE_RENTAL_ALREADY_ENDED`,
+`422 INSUFFICIENT_FUNDS`, `429 RATE_LIMITED`.
+
+## Bus — `/api/v1/bus`
+
+**Added 2026-09-05, same slice.** Real Kakao T 시외버스 (intercity bus booking) — a
+driver posts a trip with a fixed seat count, riders book seats. Confirmed by direct
+read of `BusController.kt` (7 endpoints, 12 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/trips` | `{origin, destination, departureTime, totalSeats, farePerSeat}` | `201 {success, trip: {...}}` | |
+| GET | `/trips/mine` | — | `{success, trips: [...]}` | Driver's own posted trips |
+| GET | `/trips/{tripId}/bookings` | — | `{success, bookings: [...]}` | Driver-only |
+| GET | `/trips/search?origin&destination` | — | `{success, trips: [...]}` | Both params optional |
+| POST | `/bookings` | `{tripId, seatCount}` (+ `Idempotency-Key`) | `201 {success, booking: {...}}` | Real bug fixed 2026-08-02: this had no `Idempotency-Key` despite creating a real booking row and decrementing a real `@Version`-guarded seat count on every call — `@Version` alone only protects against two DIFFERENT concurrent requests, not one rider's own sequential retry, which could have booked the same trip twice |
+| POST | `/bookings/{bookingId}/cancel` | — | `{success, booking: {...}}` | |
+| GET | `/bookings/my-history` | — | `{success, bookings: [...], ...pageMeta}` | |
+
+Errors (all 12 real `@ExceptionHandler`s): `404 BUS_TRIP_NOT_FOUND`,
+`400 INVALID_BUS_TRIP`, `404 ACCOUNT_NOT_FOUND`, `409 INSUFFICIENT_SEATS`,
+`404 BUS_BOOKING_NOT_FOUND`, `409 BUS_BOOKING_ALREADY_CANCELLED`,
+`409 BUS_TRIP_ALREADY_DEPARTED`, `422 INSUFFICIENT_FUNDS`, `429 RATE_LIMITED`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`.
+
+## Parking — `/api/v1/parking`
+
+**Added 2026-09-05, same slice.** Real Kakao T 주차 (Kakao T Parking) — a
+peer-registered spot, rented by the session. Confirmed by direct read of
+`ParkingController.kt` (8 endpoints, 9 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/spots` | `{address, latitude, longitude, hourlyRate}` | `201 {success, spot: {...}}` | |
+| GET | `/spots/mine` | — | `{success, spots: [...]}` | |
+| POST | `/spots/{spotId}/availability` | `{available}` | `{success, spot: {...}}` | |
+| GET | `/spots/nearby?latitude&longitude&radiusKm` | — | `{success, spots: [...]}` | `radiusKm` defaults to 5.0 |
+| POST | `/sessions` | `{spotId}` | `201 {success, session: {...}}` | |
+| POST | `/sessions/{sessionId}/end` | — | `{success, session: {...}}` | |
+| POST | `/sessions/process-abandoned` | — | `{success, processedCount, sessions: [...]}` | ADMIN only — manual trigger for the abandoned-session scheduler; force-settles real other users' money |
+| GET | `/sessions/my-history` | — | `{success, sessions: [...], ...pageMeta}` | |
+
+Errors (all 9 real `@ExceptionHandler`s): `404 PARKING_SPOT_NOT_FOUND`,
+`409 PARKING_SPOT_NOT_AVAILABLE`, `400 SELF_RENTAL_NOT_ALLOWED`,
+`404 ACCOUNT_NOT_FOUND`, `400 INVALID_LOCATION`, `404 PARKING_SESSION_NOT_FOUND`,
+`409 PARKING_SESSION_ALREADY_ENDED`, `422 INSUFFICIENT_FUNDS`, `429 RATE_LIMITED`.
+
+## Moto Fare — `/api/v1/moto-fare`
+
+**Added 2026-09-05, same slice.** Real "tap to pay your moto-taxi fare" — a moto
+driver collects a fare by scanning the same real customer-payment-code any itunda
+user's "My payment code" screen already shows (the identical code
+`POST /api/v1/merchant/pay/customer-code` generates — no separate moto-specific code
+type). Confirmed by direct read of `MotoFareController.kt` (3 endpoints, 11 error
+codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/trips?page&size` | — | `{success, trips: [...], totalElements, totalPages}` | Rider's own trips. `size` capped at 100 |
+| GET | `/earnings?page&size` | — | `{success, trips: [...], totalElements, totalPages}` | Driver's own collected fares |
+| POST | `/collect` | `{code, fare}` (+ `Idempotency-Key`) | `201 {success, collected: {...}}` | Called by the driver after scanning the rider's code |
+
+Errors (all 11 real `@ExceptionHandler`s): `404 MOTO_FARE_CODE_NOT_FOUND`,
+`409 MOTO_FARE_CODE_NOT_PAYABLE`, `400 MOTO_FARE_SELF_COLLECTION`,
+`400 INVALID_MOTO_FARE`, `404 MOTO_FARE_NO_ACCOUNT`, `409 ACCOUNT_FROZEN` (a real,
+minor inconsistency — every other controller on this page maps this same code to
+`403`, not `409`), `409 INSUFFICIENT_FUNDS` (same inconsistency — elsewhere on this
+page this is `422`), `429 RATE_LIMITED`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`.
+
 ## Designated Driver — `/api/v1/designated-driver`
 
 **Added 2026-09-05.** Real Kakao T 대리운전 (designated driver) — a driver comes to
@@ -709,6 +802,27 @@ same code), `400 INVALID_AMOUNT`, `404 LISTING_NOT_FOUND`,
 `409 INVALID_INSPECTION_STATUS_TRANSITION`, `422 INSUFFICIENT_FUNDS`,
 `403 ACCOUNT_FROZEN`, `429 RATE_LIMITED`, `409 IDEMPOTENCY_KEY_CONFLICT`,
 `409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`.
+
+## Vehicles — `/api/v1/vehicles`
+
+**Added 2026-09-05, same slice.** Real Toss 내 차 시세 (my car's market value)-style
+vehicle value estimator — register a car you own, get a computed depreciation-based
+valuation. Distinct from Vehicle Inspections above (a real mechanic booking a
+physical check) and Marketplace's own 당근카 lease-takeover listing fields — this
+controller is a personal-finance estimator, not a marketplace or inspection feature.
+Confirmed by direct read of `VehicleController.kt` (5 endpoints, 3 error codes, all
+unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | `{make, model, modelYear, purchasePrice, purchaseDate, mileageKm}` | `201 {success, vehicle: {...}}` | |
+| GET | `` (base path) | — | `{success, vehicles: [...]}` | |
+| GET | `/{id}/valuation` | — | `{success, valuation: {...}}` | |
+| POST | `/{id}/mileage` | `{mileageKm}` | `{success, vehicle: {...}}` | |
+| DELETE | `/{id}` | — | `{success}` | |
+
+Errors (all 3 real `@ExceptionHandler`s): `404 VEHICLE_NOT_FOUND`,
+`400 INVALID_VEHICLE`, `429 RATE_LIMITED`.
 
 ## Credit Score — `/api/v1/credit-score`
 
