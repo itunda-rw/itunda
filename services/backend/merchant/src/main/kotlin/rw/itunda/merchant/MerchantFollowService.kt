@@ -100,21 +100,35 @@ class MerchantFollowService(
         rateLimiter.checkLimit("merchant:broadcast:${merchant.id}", limit = BROADCAST_LIMIT, window = BROADCAST_WINDOW)
 
         val followers = merchantFollowRepository.findByMerchantId(merchant.id)
-        followers.forEach { follow ->
-            notificationRepository.save(
-                Notification(
-                    id = "notif_${UUID.randomUUID()}", userId = follow.userId, type = "MERCHANT_BROADCAST",
-                    title = trimmedTitle, body = trimmedBody, isRead = false, createdAt = Instant.now(),
-                    dataJson = "{\"merchantId\":\"${merchant.id}\",\"businessName\":\"${merchant.businessName}\"}",
-                ),
+        // Real gap found 2026-09-06: a per-follower notificationRepository.save() call
+        // inside this loop meant N individual INSERTs for a merchant with N followers
+        // (a real N+1 query pattern -- a popular merchant broadcasting to hundreds/
+        // thousands of followers could make this request slow, and since the whole
+        // method is @Transactional, a save failure partway through would roll back
+        // every notification row already saved while the push notifications already
+        // sent to those same earlier followers (an external, non-transactional FCM
+        // call) could NOT be un-sent -- a real partial-broadcast inconsistency).
+        // Fixed by batching every notification row into one saveAll() BEFORE sending
+        // any push, so a DB failure here can never leave some followers pushed with no
+        // persisted notification record.
+        val notifications = followers.map { follow ->
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = follow.userId, type = "MERCHANT_BROADCAST",
+                title = trimmedTitle, body = trimmedBody, isRead = false, createdAt = Instant.now(),
+                dataJson = "{\"merchantId\":\"${merchant.id}\",\"businessName\":\"${merchant.businessName}\"}",
             )
+        }
+        notificationRepository.saveAll(notifications)
+        followers.forEach { follow ->
             // Real push wired in (2026-07-28) -- unlike GroupMessagingService's own
             // deliberate mention-only scoping (avoiding spam in a group nobody opted
             // into), every one of these recipients explicitly opted in by following this
             // specific merchant, the same "real subscription, real signal" reasoning
             // Naver's own real "알림받기" feature this mirrors is built on. A merchant is
             // also rate-limited to BROADCAST_LIMIT per BROADCAST_WINDOW, so this can
-            // never itself become the spam it's meant to avoid.
+            // never itself become the spam it's meant to avoid. sendToUser already has
+            // its own internal try/catch around every token lookup/send, so one
+            // follower's push failure can never block the rest.
             pushNotificationService.sendToUser(follow.userId, trimmedTitle, trimmedBody, mapOf("merchantId" to merchant.id))
         }
         return BroadcastResult(followers.size)

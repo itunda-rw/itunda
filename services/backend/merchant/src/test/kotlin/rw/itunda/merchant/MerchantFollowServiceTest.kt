@@ -10,6 +10,7 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantFollow
 import rw.itunda.core.domain.MerchantStatus
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantFollowRepository
 import rw.itunda.core.repository.MerchantRepository
@@ -117,14 +118,19 @@ class MerchantFollowServiceTest : BehaviorSpec({
         When("broadcasting to 2 real followers") {
             every { merchantRepository.findByOwnerUserId("seller_1") } returns merchant
             every { merchantFollowRepository.findByMerchantId("merchant_1") } returns followers
-            every { notificationRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.saveAll<Notification>(any()) } answers { firstArg() }
 
             val result = service.broadcastToFollowers("seller_1", "20% off today", "Come visit us for a real discount!")
 
-            Then("it real-notifies every real follower and reports the real recipient count") {
+            Then("it real-notifies every real follower in one batched saveAll, and reports the real recipient count") {
                 result.recipientCount shouldBe 2
-                verify(exactly = 1) { notificationRepository.save(match { it.userId == "follower_1" && it.type == "MERCHANT_BROADCAST" }) }
-                verify(exactly = 1) { notificationRepository.save(match { it.userId == "follower_2" && it.type == "MERCHANT_BROADCAST" }) }
+                verify(exactly = 1) {
+                    notificationRepository.saveAll<Notification>(match { batch ->
+                        batch.any { it.userId == "follower_1" && it.type == "MERCHANT_BROADCAST" } &&
+                            batch.any { it.userId == "follower_2" && it.type == "MERCHANT_BROADCAST" } &&
+                            batch.count() == 2
+                    })
+                }
             }
 
             Then("every real follower also gets a real push, not just the in-app notification") {
