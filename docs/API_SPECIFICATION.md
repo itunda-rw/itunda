@@ -217,7 +217,127 @@ Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
 (doesn't exist); `LOAN_NOT_OWNED` also doesn't exist — `LoansService.kt` throws the
 same `LoanNotFoundException` (→ `LOAN_NOT_FOUND`) whether the loan is missing or
 owned by someone else, the same IDOR-safe folding used elsewhere in this API;
-`ACCOUNT_FROZEN` was missing from this list entirely.
+`ACCOUNT_FROZEN` was missing from this list entirely. **Still incomplete** —
+`LoansController.kt` also has `/lenders`, `/refinance`, `/overdraft/open`,
+`/overdraft/draw`, `/overdraft/repay`, `/postpaid-credit/apply`,
+`/postpaid-credit/spend`, `/postpaid-credit/repay`,
+`/postpaid-credit/process-payment-reminders` — found while documenting the 5 loan-
+family sibling controllers below, not yet added to this table, a real, separate,
+still-open gap on this same base controller.
+
+## VUP Micro-loan — `/api/v1/loans/vup`
+
+**Added 2026-09-05.** Real Rwanda VUP (Vision 2020 Umurenge Programme) Financial
+Services means-tested micro-loan, targeted at lower Ubudehe-category households — see
+`VupLoanService`'s own doc comment for the full sourced account.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/apply` | `{declaredUbudeheCategory, purpose, amount}` (+ `Idempotency-Key`) | `201 {success, loan: {...}}` | `purpose` is one of `FARMING`/`LIVESTOCK`/`BUSINESS`. `declaredUbudeheCategory` is self-declared, not verified against a real government registry |
+| POST | `/{loanId}/disburse` | — (+ `Idempotency-Key`) | `{success, loan: {...}}` | |
+| POST | `/{loanId}/repay` | `{amount}` (+ `Idempotency-Key`) | `{success, loan: {...}}` | |
+| GET | `/my` | — | `{success, loans: [...]}` | |
+| GET | `/eligibility` | — | `{success, hasActiveLoan, canApply, minUbudeheCategory, maxUbudeheCategory, interestRate, maxAmount}` | |
+| GET | `/{loanId}` | — | `{success, loan: {...}}` | |
+
+Errors: `400 INELIGIBLE_UBUDEHE_CATEGORY`, `400 INVALID_VUP_LOAN_AMOUNT`,
+`400 INVALID_REPAY_AMOUNT`, `409 VUP_LOAN_ALREADY_ACTIVE`, `404 VUP_LOAN_NOT_FOUND`,
+`404 ACCOUNT_NOT_FOUND`, `409 VUP_LOAN_NOT_REQUESTED`, `409 VUP_LOAN_NOT_REPAYABLE`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`, `422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`.
+
+## Student Loan — `/api/v1/loans/student`
+
+**Added 2026-09-05.** Real Rwanda BRD (Development Bank of Rwanda) higher-education
+student loan — see `StudentLoanService`'s own doc comment for the full sourced account.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/apply` | `{level, declaredAnnualHouseholdIncome, amount, expectedGraduationDate}` (+ `Idempotency-Key`) | `201 {success, loan: {...}}` | `level` is `UNDERGRADUATE`/`POSTGRADUATE` |
+| POST | `/{loanId}/disburse` | — (+ `Idempotency-Key`) | `{success, loan: {...}}` | |
+| POST | `/{loanId}/declare-graduated` | — (+ `Idempotency-Key`) | `{success, loan: {...}}` | Starts the real 6-month grace period, moves status to `IN_GRACE_PERIOD` |
+| POST | `/{loanId}/repay` | `{amount}` (+ `Idempotency-Key`) | `{success, loan: {...}}` | |
+| GET | `/my` | — | `{success, loans: [...]}` | |
+| GET | `/{loanId}` | — | `{success, loan: {...}}` | |
+| GET | `/{loanId}/suggested-payment` | — | `{success, loanId, outstandingBalance, suggestedMonthlyPayment, note}` | A suggestion only — itunda has no payroll/RRA-integration path to enforce the real 8%-of-income deduction BRD itself uses |
+| POST | `/process-grace-end-reminders` | — | `{success, processed}` | **ADMIN role only** — manually fires the grace-period-ending-soon reminder job for every user's due loans system-wide |
+
+Errors: `400 INVALID_GRADUATION_DATE`, `400 INVALID_STUDENT_LOAN_AMOUNT`,
+`409 STUDENT_LOAN_ALREADY_ACTIVE`, `404 STUDENT_LOAN_NOT_FOUND`,
+`404 ACCOUNT_NOT_FOUND`, `409 STUDENT_LOAN_NOT_REQUESTED`,
+`409 STUDENT_LOAN_NOT_DISBURSED`, `409 STUDENT_LOAN_NOT_REPAYABLE`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`, `422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`.
+
+## Vendor Cash Advance — `/api/v1/vendor-advance`
+
+**Added 2026-09-05.** Real Isoko ("market" in Kinyarwanda) vendor cash advance — a
+merchant-facing product, not a consumer loan — see `VendorCashAdvanceService`'s own doc
+comment for the full sourced account.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/offer?merchantId` | — | `{success, ...offer fields}` | |
+| POST | `/apply` | `{merchantId}` (+ `Idempotency-Key`) | `201 {success, advance: {...}}` | |
+| POST | `/{advanceId}/disburse` | — (+ `Idempotency-Key`) | `{success, advance: {...}}` | |
+| GET | `/me?merchantId` | — | `{success, advance: {...} \| null}` | |
+| GET | `/{advanceId}` | — | `{success, advance: {...}}` | |
+| GET | `/{advanceId}/collection-history` | — | `{success, ...}` | Real automatic per-sale collection against this advance — see `VendorCashAdvanceCollectionScheduler` |
+| POST | `/{advanceId}/repay-early` | `{amount}` (+ `Idempotency-Key`) | `{success, advance: {...}}` | |
+
+Errors: `404 VENDOR_CASH_ADVANCE_NOT_FOUND`, `404 ACCOUNT_NOT_FOUND`,
+`409 VENDOR_CASH_ADVANCE_NOT_REQUESTED`, `409 VENDOR_CASH_ADVANCE_NOT_REPAYABLE`,
+`409 VENDOR_CASH_ADVANCE_ALREADY_ACTIVE`, `400 VENDOR_CASH_ADVANCE_NOT_ELIGIBLE`,
+`400 INVALID_REPAY_AMOUNT`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`,
+`422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`.
+
+## Cooperatives (Harvest Advance) — `/api/v1/cooperatives`
+
+**Added 2026-09-05.** Real Rwanda coffee-cooperative harvest-advance / input financing
+— see `CooperativeService`'s own doc comment for the full sourced account.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | `{name, cropType, registrationNumber?}` | `201 {success, cooperative: {...}}` | No `@AuthenticationPrincipal` on this endpoint — registering a cooperative itself isn't user-scoped, only joining one is |
+| POST | `/{cooperativeId}/join` | — | `201 {success, membership: {...}}` | |
+| GET | `/my-memberships` | — | `{success, memberships: [...]}` | |
+| GET | `/{cooperativeId}/overview` | — | `{success, ...}` | Real `403`-via-`NotMemberException` gate — a non-member can't see it |
+| POST | `/advances` | `{membershipId, principalAmount, purpose, expectedHarvestDate}` (+ `Idempotency-Key`) | `201 {success, advance: {...}}` | |
+| POST | `/advances/{advanceId}/disburse` | — (+ `Idempotency-Key`) | `{success, advance: {...}}` | |
+| POST | `/advances/{advanceId}/repay` | `{amount}` (+ `Idempotency-Key`) | `{success, advance: {...}}` | Repayment `amount` must exactly equal the advance's own `principalAmount` — no free-form partial repayment (a real bug caught and fixed before this feature shipped: a token repayment used to silently forgive the rest of the debt) |
+| GET | `/advances/my-advances` | — | `{success, advances: [...]}` | |
+
+Errors: `404 COOPERATIVE_NOT_FOUND`, `400 INVALID_COOPERATIVE_NAME`,
+`409 ALREADY_MEMBER`, `404 NOT_MEMBER`, `404 ACCOUNT_NOT_FOUND`,
+`400 INVALID_AMOUNT`, `404 HARVEST_ADVANCE_NOT_FOUND`, `409 INVALID_ADVANCE_STATUS`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`, `422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`.
+
+## Moto-Taxi Ownership — `/api/v1/moto-ownership`
+
+**Added 2026-09-05.** Real Rwanda moto-taxi ownership savings-to-loan plan (save toward
+a down payment, then convert the remainder into a real loan) — see
+`MotoOwnershipService`'s own doc comment for the full sourced account. Lives in the
+`rideshare` module, not `loans`, despite the loan-family shape.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/plans` | `{bikePrice, dailyContribution}` (+ `Idempotency-Key`) | `201 {success, plan: {...}}` | |
+| POST | `/plans/{planId}/contribute` | `{amount}` (+ `Idempotency-Key`) | `{success, plan: {...}}` | |
+| POST | `/plans/{planId}/cancel` | — (+ `Idempotency-Key`) | `{success, plan: {...}}` | |
+| POST | `/plans/{planId}/convert-to-loan` | — (+ `Idempotency-Key`) | `{success, plan: {...}}` | Only once the real down-payment target has been met — see `DOWN_PAYMENT_NOT_MET` below |
+| POST | `/plans/{planId}/repay` | `{amount}` (+ `Idempotency-Key`) | `{success, plan: {...}}` | |
+| GET | `/plans/me` | — | `{success, plans: [...]}` | |
+| GET | `/plans/{planId}` | — | `{success, plan: {...}}` | |
+
+Errors: `404 MOTO_OWNERSHIP_PLAN_NOT_FOUND`, `404 ACCOUNT_NOT_FOUND`,
+`400 INVALID_BIKE_PRICE`, `400 INVALID_DAILY_CONTRIBUTION`, `400 INVALID_AMOUNT`,
+`409 MOTO_OWNERSHIP_PLAN_ALREADY_ACTIVE`, `409 MOTO_OWNERSHIP_PLAN_NOT_SAVING`,
+`409 MOTO_OWNERSHIP_PLAN_NOT_CANCELLABLE`, `409 MOTO_OWNERSHIP_PLAN_NOT_REPAYABLE`,
+`409 DOWN_PAYMENT_NOT_MET`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`,
+`422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`, `429 RATE_LIMITED`.
 
 ## Credit Score — `/api/v1/credit-score`
 
