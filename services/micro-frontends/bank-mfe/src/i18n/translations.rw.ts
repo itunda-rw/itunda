@@ -281,4 +281,12 @@ export const rw: Record<TranslationKey, string> = {
     'autoTopUp.checkError': 'Ntibishoboka kugenzura kwongera amafaranga byikoresha.',
     'common.loadError': 'Ntibishoboka kubona ibi. Reba interineti yawe hanyuma wongere ugerageze.',
     'common.actionError': 'Ibi ntibyashobotse gukorwa. Reba interineti yawe hanyuma wongere ugerageze.',
+    'toast.goalCompleted': 'Wabigezeho — "{{goalName}}" yuzuye burundu! 🎉',
+    'toast.savingsGoalCreated': 'Intego yo kuzigama yashyizweho.',
+    'toast.groupAccountCreated': "Konti y'itsinda yashyizweho.",
+    'toast.ikiminaCreated': 'Ikimina cyashyizweho.',
+    'toast.weeklyPlanStarted': "Gahunda y'ibyumweru 26 yatangiye.",
+    'toast.grow31PlanStarted': "Gahunda y'iminsi 31 yatangiye.",
+    'toast.facePayEnrollFailed': 'Ntibishoboka kwiyandikisha muri FacePay. Wongere ugerageze.',
+    'toast.facePayDisableFailed': 'Ntibishoboka kuzimya FacePay. Wongere ugerageze.',
 };

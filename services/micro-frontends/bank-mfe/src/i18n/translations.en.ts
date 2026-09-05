@@ -282,4 +282,17 @@ export const en: Record<TranslationKey, string> = {
     // real copy Android's own `SessionManager.kt` IOException fallback already uses.
     'common.loadError': "Couldn't load this. Check your connection and try again.",
     'common.actionError': "That couldn't be completed. Check your connection and try again.",
+    // Real gap found 2026-09-05: every showToast(...) call site in BankDashboard.tsx
+    // was a raw hardcoded English string, never routed through t() at all -- these 8
+    // keys close that for the first time. Follows this file's own established honesty
+    // convention (see the top-of-file comment on the original 2026-08-08 pass): the RW
+    // strings are a good-faith translation, not verified by a native speaker.
+    'toast.goalCompleted': 'You did it — "{{goalName}}" is fully funded! 🎉',
+    'toast.savingsGoalCreated': 'Savings goal created.',
+    'toast.groupAccountCreated': 'Group account created.',
+    'toast.ikiminaCreated': 'Ikimina group created.',
+    'toast.weeklyPlanStarted': '26-week plan started.',
+    'toast.grow31PlanStarted': '31-day plan started.',
+    'toast.facePayEnrollFailed': "Couldn't enroll in FacePay. Try again.",
+    'toast.facePayDisableFailed': "Couldn't turn off FacePay. Try again.",
 };

@@ -1169,7 +1169,7 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
       // The row's own enrollment state is untouched on failure (setFacePayEnrolled
       // above only runs after a successful await), so this toast is purely
       // informational, not correcting a false UI state.
-      showToast(wasEnrolled ? "Couldn't turn off FacePay. Try again." : "Couldn't enroll in FacePay. Try again.");
+      showToast(wasEnrolled ? t('toast.facePayDisableFailed') : t('toast.facePayEnrollFailed'));
     } finally {
       setFacePayBusy(false);
     }
@@ -4574,7 +4574,7 @@ function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => voi
       // notice on a later visit. Detects the active->completed transition from
       // the deposit response itself, not a guess from the pre-call goal prop.
       if (goal.status !== 'completed' && result.goal.status === 'completed') {
-        showToast(`You did it — "${goal.name}" is fully funded! 🎉`);
+        showToast(t('toast.goalCompleted', { goalName: goal.name }));
       }
       setAmount('');
       setMode('closed');
@@ -4736,7 +4736,7 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
     try {
       await createGoal(name.trim(), Number(targetAmount), monthlyContribution ? Number(monthlyContribution) : undefined, targetDate || undefined);
       reset();
-      showToast('Savings goal created.');
+      showToast(t('toast.savingsGoalCreated'));
       onCreated();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -5111,7 +5111,7 @@ function CreateGroupAccountForm({ onCreated }: { onCreated: () => void }) {
       await createGroupAccount(name);
       setName('');
       setOpen(false);
-      showToast('Group account created.');
+      showToast(t('toast.groupAccountCreated'));
       onCreated();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -5295,7 +5295,7 @@ function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
     try {
       await createIkimina(name.trim(), Number(contributionAmount), Number(cycleFrequencyDays), Number(memberCap));
       reset();
-      showToast('Ikimina group created.');
+      showToast(t('toast.ikiminaCreated'));
       onCreated();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -5900,7 +5900,7 @@ function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
     try {
       await createWeeklySavingsPlan(name.trim(), Number(baseWeeklyAmount), escalationRate);
       reset();
-      showToast('26-week plan started.');
+      showToast(t('toast.weeklyPlanStarted'));
       onCreated();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -6318,7 +6318,7 @@ function CreateGrow31SavingsPlanForm({ onCreated }: { onCreated: () => void }) {
     try {
       await createGrow31SavingsPlan(name.trim(), Number(dailyAmount));
       reset();
-      showToast('31-day plan started.');
+      showToast(t('toast.grow31PlanStarted'));
       onCreated();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));

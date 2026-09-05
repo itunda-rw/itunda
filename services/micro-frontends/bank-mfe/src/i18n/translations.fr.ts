@@ -273,4 +273,12 @@ export const fr: Record<TranslationKey, string> = {
     'autoTopUp.checkError': 'Impossible de vérifier la recharge automatique.',
     'common.loadError': 'Impossible de charger ceci. Vérifiez votre connexion et réessayez.',
     'common.actionError': "Cette action n'a pas pu être effectuée. Vérifiez votre connexion et réessayez.",
+    'toast.goalCompleted': 'Vous l\'avez fait — « {{goalName}} » est entièrement financé ! 🎉',
+    'toast.savingsGoalCreated': "Objectif d'épargne créé.",
+    'toast.groupAccountCreated': 'Compte de groupe créé.',
+    'toast.ikiminaCreated': 'Groupe Ikimina créé.',
+    'toast.weeklyPlanStarted': 'Plan de 26 semaines démarré.',
+    'toast.grow31PlanStarted': 'Plan de 31 jours démarré.',
+    'toast.facePayEnrollFailed': "Impossible de s'inscrire à FacePay. Réessayez.",
+    'toast.facePayDisableFailed': 'Impossible de désactiver FacePay. Réessayez.',
 };

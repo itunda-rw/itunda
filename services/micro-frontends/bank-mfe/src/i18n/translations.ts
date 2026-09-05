@@ -364,6 +364,14 @@ export type TranslationKey =
   | 'autoTopUp.checkNow'
   | 'autoTopUp.checkError'
   | 'common.loadError'
-  | 'common.actionError';
+  | 'common.actionError'
+  | 'toast.goalCompleted'
+  | 'toast.savingsGoalCreated'
+  | 'toast.groupAccountCreated'
+  | 'toast.ikiminaCreated'
+  | 'toast.weeklyPlanStarted'
+  | 'toast.grow31PlanStarted'
+  | 'toast.facePayEnrollFailed'
+  | 'toast.facePayDisableFailed';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = { en, rw, fr };
