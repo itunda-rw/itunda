@@ -212,10 +212,27 @@ struct MerchantProductDto: Decodable, Identifiable {
     let discountPercent: Int?
     let description: String?
     let stockQuantity: Int?
+    // durationMinutes/requiresPrepay added 2026-09-05 (see AddProductRequest's own
+    // doc comment) -- this struct was missing 2 real fields Android/merchant-mfe's
+    // equivalents already model, discovered while safely wiring up updateProduct
+    // for the first time on iOS.
+    let durationMinutes: Int?
+    let requiresPrepay: Bool
 }
 struct MerchantProductResponse: Decodable { let success: Bool; let product: MerchantProductDto }
 struct MerchantProductsResponse: Decodable { let success: Bool; let products: [MerchantProductDto] }
-struct AddProductRequest: Encodable { let name: String; let price: Double; let imageUrl: String?; let originalPrice: Double?; let description: String?; let stockQuantity: Int? }
+// Real bug class avoided before it ever shipped on iOS (2026-09-05, see
+// project_itunda_uncalled_method_sweep_2026_09_04 memory -- the identical mistake
+// was caught and fixed on merchant-mfe, then avoided proactively here rather than
+// repeated): updateProduct is a full REPLACE on the backend
+// (MerchantProductService.updateProduct's own unconditional field assignments), so
+// this request type -- and MerchantProductDto above -- must carry EVERY field the
+// backend can persist, including durationMinutes/requiresPrepay, or an edit would
+// silently wipe them for any product that had them set.
+struct AddProductRequest: Encodable {
+    let name: String; let price: Double; let imageUrl: String?; let originalPrice: Double?
+    let description: String?; let stockQuantity: Int?; let durationMinutes: Int?; let requiresPrepay: Bool
+}
 
 // Real bulk/wholesale pricing -- see backend MerchantProductService.setPriceTiers's own
 // doc comment. merchant-mfe/Android already have this; this is the first iOS
@@ -584,8 +601,19 @@ final class MerchantNetworkClient {
         try await post("api/v1/orders/reviews/\(reviewId)/reply", body: ReplyToProductReviewRequest(reply: reply))
     }
 
-    func addProduct(name: String, price: Double, imageUrl: String?, originalPrice: Double?, description: String?, stockQuantity: Int?) async throws -> MerchantProductResponse {
-        try await post("api/v1/merchant/products", body: AddProductRequest(name: name, price: price, imageUrl: imageUrl, originalPrice: originalPrice, description: description, stockQuantity: stockQuantity))
+    func addProduct(name: String, price: Double, imageUrl: String?, originalPrice: Double?, description: String?, stockQuantity: Int?, durationMinutes: Int? = nil, requiresPrepay: Bool = false) async throws -> MerchantProductResponse {
+        try await post("api/v1/merchant/products", body: AddProductRequest(name: name, price: price, imageUrl: imageUrl, originalPrice: originalPrice, description: description, stockQuantity: stockQuantity, durationMinutes: durationMinutes, requiresPrepay: requiresPrepay))
+    }
+
+    // Real "edit product" parity gap closed 2026-09-05 (see
+    // project_itunda_uncalled_method_sweep_2026_09_04 memory) -- fully built on the
+    // backend and on merchant-mfe/Android, but iOS never had this endpoint wired at
+    // all (only addProduct/updateProductStock existed). Full round-trip required --
+    // see AddProductRequest's own doc comment for why a partial body would silently
+    // wipe fields.
+    func updateProduct(_ productId: String, name: String, price: Double, imageUrl: String?, originalPrice: Double?, description: String?, stockQuantity: Int?, durationMinutes: Int?, requiresPrepay: Bool) async throws -> MerchantProductResponse {
+        let data = try await sendRequest(method: "PUT", path: "api/v1/merchant/products/\(productId)", body: AddProductRequest(name: name, price: price, imageUrl: imageUrl, originalPrice: originalPrice, description: description, stockQuantity: stockQuantity, durationMinutes: durationMinutes, requiresPrepay: requiresPrepay))
+        return try decoder.decode(MerchantProductResponse.self, from: data)
     }
 
     func updateProductStock(_ productId: String, stockQuantity: Int?) async throws -> MerchantProductResponse {

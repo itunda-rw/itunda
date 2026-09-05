@@ -226,6 +226,9 @@ data class MerchantProductDto(
     val discountPercent: Int? = null,
     val description: String? = null,
     val stockQuantity: Int? = null,
+    // Added 2026-09-05 -- see AddProductRequest's own doc comment for why this had
+    // to be added before updateProduct could be safely wired up.
+    val requiresPrepay: Boolean = false,
 )
 data class MerchantProductResponse(val success: Boolean, val product: MerchantProductDto)
 data class MerchantProductsResponse(val success: Boolean, val products: List<MerchantProductDto>)
@@ -237,6 +240,17 @@ data class AddProductRequest(
     val originalPrice: Double? = null,
     val description: String? = null,
     val stockQuantity: Int? = null,
+    // Added 2026-09-05 (see project_itunda_uncalled_method_sweep_2026_09_04 memory)
+    // -- updateProduct reuses this same request shape and is a full REPLACE on the
+    // backend (MerchantProductService.updateProduct's own unconditional field
+    // assignments). Without this field, MerchantProductDto never modeled it either,
+    // so wiring up an Edit action here would have silently reset requiresPrepay to
+    // false on every edit for any product that had it set true (a real bug caught
+    // and fixed on merchant-mfe before it shipped there -- see
+    // feedback_put_full_replace_vs_patch_partial memory). Defaults to false only
+    // for addProduct's own genuine create-time default; updateProduct's caller must
+    // always round-trip the product's own current value, never rely on this default.
+    val requiresPrepay: Boolean = false,
 )
 data class UpdateProductStockRequest(val stockQuantity: Int? = null)
 

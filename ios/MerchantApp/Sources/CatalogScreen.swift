@@ -13,6 +13,17 @@ struct CatalogTab: View {
     @State private var submitting = false
     @State private var stockProduct: MerchantProductDto?
     @State private var stockDraft = ""
+    // Real "edit product" parity gap closed 2026-09-05 (see
+    // project_itunda_uncalled_method_sweep_2026_09_04 memory) -- updateProduct was
+    // fully built on the backend and already wired on merchant-mfe/Android, but
+    // iOS never had this endpoint at all: a merchant could adjust stock (above) or
+    // remove a product, but never fix a typo in its name or adjust its price
+    // without deleting and recreating it. Mirrors the "Adjust stock" alert pattern
+    // just above -- a lightweight 2-field alert, not a full edit form, matching
+    // merchant-mfe's own window.prompt scope exactly.
+    @State private var editProduct: MerchantProductDto?
+    @State private var editNameDraft = ""
+    @State private var editPriceDraft = ""
     // Real menu-item option groups (item 210) -- see MenuOptionGroupDto's own doc
     // comment. A selected product presents ProductOptionsView as a sheet.
     @State private var optionsProduct: MerchantProductDto?
@@ -83,6 +94,12 @@ struct CatalogTab: View {
                                         .font(.caption).foregroundColor(product.stockQuantity == 0 ? .red : .secondary)
                                 }
                                 Spacer()
+                                Button("Edit") {
+                                    editNameDraft = product.name
+                                    editPriceDraft = String(Int(product.price))
+                                    editProduct = product
+                                }
+                                .font(.footnote)
                                 Button("Adjust stock") {
                                     stockDraft = product.stockQuantity.map(String.init) ?? ""
                                     stockProduct = product
@@ -107,6 +124,25 @@ struct CatalogTab: View {
                 }
             }
             .padding(16)
+        }
+        .alert("Edit product", isPresented: Binding(
+            get: { editProduct != nil },
+            set: { if !$0 { editProduct = nil } }
+        )) {
+            TextField("Product name", text: $editNameDraft)
+            TextField("Price (RWF)", text: $editPriceDraft).keyboardType(.numberPad)
+            Button("Save") {
+                guard let product = editProduct else { return }
+                guard !editNameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                      let price = Double(editPriceDraft.trimmingCharacters(in: .whitespacesAndNewlines)), price > 0 else {
+                    error = "Enter a valid name and a price greater than zero."
+                    return
+                }
+                Task { await updateProduct(product, name: editNameDraft.trimmingCharacters(in: .whitespacesAndNewlines), price: price) }
+            }
+            Button("Cancel", role: .cancel) { editProduct = nil }
+        } message: {
+            Text("Only the name and price change here -- everything else about this product stays the same.")
         }
         .alert("Adjust stock", isPresented: Binding(
             get: { stockProduct != nil },
@@ -191,6 +227,27 @@ struct CatalogTab: View {
             self.error = message ?? "Couldn't update stock. Try again."
         } catch {
             self.error = "Couldn't update stock. Try again."
+        }
+    }
+
+    // Full round-trip of every other field -- see AddProductRequest's own doc
+    // comment for why a partial {name, price} body would silently wipe
+    // imageUrl/originalPrice/description/stockQuantity/durationMinutes/
+    // requiresPrepay on this full-REPLACE endpoint.
+    private func updateProduct(_ product: MerchantProductDto, name: String, price: Double) async {
+        do {
+            _ = try await MerchantNetworkClient.shared.updateProduct(
+                product.id, name: name, price: price,
+                imageUrl: product.imageUrl, originalPrice: product.originalPrice,
+                description: product.description, stockQuantity: product.stockQuantity,
+                durationMinutes: product.durationMinutes, requiresPrepay: product.requiresPrepay,
+            )
+            editProduct = nil
+            await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't save these changes. Try again."
+        } catch {
+            self.error = "Couldn't save these changes. Try again."
         }
     }
 }

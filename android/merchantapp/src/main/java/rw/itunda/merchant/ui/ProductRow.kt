@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import rw.itunda.merchant.network.AddMenuOptionGroupRequest
+import rw.itunda.merchant.network.AddProductRequest
 import rw.itunda.merchant.network.CreateTimeDealRequest
 import rw.itunda.merchant.network.MenuOptionChoiceRequest
 import rw.itunda.merchant.network.MenuOptionGroupDto
@@ -62,6 +63,22 @@ internal fun ProductRow(product: MerchantProductDto, activeDeal: TimeDealViewDto
     var showStockEditor by remember { mutableStateOf(false) }
     var stockDraft by remember { mutableStateOf(product.stockQuantity?.toString() ?: "") }
     var savingStock by remember { mutableStateOf(false) }
+    // Real "edit product" parity gap (2026-09-05, see
+    // project_itunda_uncalled_method_sweep_2026_09_04 memory) -- updateProduct was
+    // fully built on the backend and declared here, but never called anywhere on
+    // Android: a merchant could adjust stock (above) or remove a product, but never
+    // fix a typo in its name or adjust its price without deleting and recreating it
+    // (losing its reviews/analytics/stock history). Reuses the same inline-editor
+    // convention showStockEditor above already established, rather than a full
+    // multi-field edit form for a two-field change -- matches merchant-mfe's own
+    // lightweight window.prompt scope exactly. Full round-trip of every other field
+    // (imageUrl/originalPrice/description/durationMinutes/requiresPrepay/
+    // stockQuantity) is required -- see AddProductRequest.requiresPrepay's own doc
+    // comment for why a partial {name, price} body would silently wipe them.
+    var showEditProduct by remember { mutableStateOf(false) }
+    var editNameDraft by remember { mutableStateOf(product.name) }
+    var editPriceDraft by remember { mutableStateOf(product.price.toString()) }
+    var savingEdit by remember { mutableStateOf(false) }
     var showAnalytics by remember { mutableStateOf(false) }
     var showOptions by remember { mutableStateOf(false) }
     var optionGroups by remember { mutableStateOf<List<MenuOptionGroupDto>?>(null) }
@@ -116,6 +133,11 @@ internal fun ProductRow(product: MerchantProductDto, activeDeal: TimeDealViewDto
                     )
                 }
                 Row {
+                    TextButton(onClick = {
+                        editNameDraft = product.name
+                        editPriceDraft = product.price.toString()
+                        showEditProduct = !showEditProduct
+                    }) { Text(if (showEditProduct) "Close edit" else "Edit") }
                     TextButton(onClick = {
                         stockDraft = product.stockQuantity?.toString() ?: ""
                         showStockEditor = !showStockEditor
@@ -173,6 +195,53 @@ internal fun ProductRow(product: MerchantProductDto, activeDeal: TimeDealViewDto
                         enabled = !savingStock,
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text(if (savingStock) "Saving…" else "Save stock") }
+                }
+            }
+            if (showEditProduct) {
+                Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    IdsTextField(value = editNameDraft, onValueChange = { editNameDraft = it }, label = "Product name", modifier = Modifier.fillMaxWidth())
+                    IdsTextField(value = editPriceDraft, onValueChange = { editPriceDraft = it }, label = "Price (RWF)", modifier = Modifier.fillMaxWidth())
+                    androidx.compose.material3.Button(
+                        onClick = {
+                            val price = editPriceDraft.trim().toDoubleOrNull()
+                            if (editNameDraft.isBlank() || price == null || price <= 0) {
+                                onError("Enter a valid name and a price greater than zero.")
+                                return@Button
+                            }
+                            savingEdit = true
+                            scope.launch {
+                                try {
+                                    // Full round-trip -- see this file's own doc
+                                    // comment on showEditProduct for why a partial
+                                    // {name, price} body would silently wipe every
+                                    // other field on this full-REPLACE endpoint.
+                                    NetworkClient.apiService.updateProduct(
+                                        product.id,
+                                        AddProductRequest(
+                                            name = editNameDraft.trim(),
+                                            price = price,
+                                            durationMinutes = product.durationMinutes,
+                                            imageUrl = product.imageUrl,
+                                            originalPrice = product.originalPrice,
+                                            description = product.description,
+                                            stockQuantity = product.stockQuantity,
+                                            requiresPrepay = product.requiresPrepay,
+                                        ),
+                                    )
+                                    showEditProduct = false
+                                    onRemoved()
+                                } catch (e: retrofit2.HttpException) {
+                                    onError(rw.itunda.merchant.network.apiErrorMessage(e) ?: "Couldn't save these changes. Try again.")
+                                } catch (e: Exception) {
+                                    onError("Couldn't save these changes. Try again.")
+                                } finally {
+                                    savingEdit = false
+                                }
+                            }
+                        },
+                        enabled = !savingEdit,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text(if (savingEdit) "Saving…" else "Save changes") }
                 }
             }
             if (showTimeDeal) {
