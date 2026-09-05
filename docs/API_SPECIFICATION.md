@@ -986,6 +986,78 @@ unique).
 Errors (all 3 real `@ExceptionHandler`s): `404 MERCHANT_NOT_FOUND`, `400 OWN_MERCHANT`,
 `404 MERCHANT_PRODUCT_NOT_FOUND`.
 
+## Orders — `/api/v1/orders`
+
+**Added 2026-09-05, same slice.** Real Coupang-style checkout — the money-moving
+counterpart to Shopping's browse endpoints above. Two real fulfillment paths: merchant
+self-declared delivery, or itunda's own rider fleet (the same `Rider` entity Eats
+riders use — one registration, either delivery type). Confirmed by direct read of
+`OrderController.kt` (27 endpoints, 41 `@ExceptionHandler`s, 39 unique codes —
+`ORDER_NOT_FOUND` and `PRODUCT_NOT_FOUND` are each shared by 2 exceptions).
+
+### Checkout & fulfillment
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | `{merchantId, items, deliveryAddress, referralCode?}` (+ `Idempotency-Key`) | `201 {success, order: {...}, items: [...]}` | `referralCode` is a real 쿠팡파트너스 (Coupang Partners)-style affiliate link — optional, and a missing/unknown/self-referral code falls through to a normal order with no commission paid, never an error |
+| GET | `/my-orders` | — | `{success, orders: [...], ...pageMeta}` | Buyer's own orders |
+| GET | `/merchant-orders` | — | `{success, orders: [...], ...pageMeta}` | Merchant's incoming orders |
+| GET | `/{orderId}` | — | `{success, order: {...}, items: [...]}` | |
+| POST | `/{orderId}/status` | `{status}` | `{success, order: {...}}` | Merchant-side fulfillment status transition |
+| POST | `/{orderId}/cancel` | — | `{success, order: {...}}` | Buyer or seller, `PLACED` orders only — refunds automatically |
+| GET | `/available-deliveries` | — | `{success, orders: [...], ...pageMeta}` | Rider-side, same shared `Rider` account as Eats |
+| POST | `/{orderId}/claim-delivery` | — | `{success, order: {...}}` | |
+| POST | `/{orderId}/complete-delivery` | — | `{success, order: {...}}` | |
+| GET | `/my-deliveries` | — | `{success, orders: [...], ...pageMeta}` | Rider's own delivery history |
+| GET | `/{orderId}/rider-location` | — | `{success, available, location}` | `available: false` (not an error) is the honest response before a rider has shared a location yet — mirrors `EatsController`'s identical endpoint |
+
+### Returns & exchanges
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/{orderId}/return` | `{type, reasonCode, reasonNote?}` | `201 {success, returnRequest: {...}}` | Real post-delivery Return & Exchange — genuinely distinct from `cancel` above (which only applies to `PLACED`, pre-delivery orders) |
+| GET | `/returns/my-requests` | — | `{success, returnRequests: [...], ...pageMeta}` | Buyer's own return requests |
+| GET | `/returns/merchant-queue` | — | `{success, returnRequests: [...], ...pageMeta}` | Merchant's incoming return requests |
+| POST | `/returns/{returnRequestId}/decide` | `{approve}` | `{success, returnRequest: {...}}` | Merchant-only |
+
+### Reviews, inquiries, favorites
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/items/{orderItemId}/review` | `{rating, comment?}` | `201 {success, review: {...}}` | Buyer-only, ownership-checked — mirrors `EatsReviewService`'s already-proven shape |
+| POST | `/reviews/{reviewId}/reply` | `{reply}` | `{success, review: {...}}` | Merchant owner's reply |
+| GET | `/products/{productId}/reviews` | — | `{success, reviews: [...], ...pageMeta}` | Public |
+| GET | `/products/{productId}/rating` | — | `{success, average, count}` | |
+| POST | `/reviews/{reviewId}/helpful` | — | `{success, helpful}` | Real Coupang/Naver-style "helpful" idempotent toggle |
+| POST | `/products/{productId}/inquiries` | `{question}` | `201 {success, inquiry: {...}}` | Real Coupang-style pre-purchase product Q&A — needs no real purchase, unlike the review endpoints above |
+| GET | `/products/{productId}/inquiries` | — | `{success, inquiries: [...], ...pageMeta}` | Public |
+| GET | `/inquiries/my-questions` | — | `{success, inquiries: [...], ...pageMeta}` | |
+| POST | `/inquiries/{inquiryId}/answer` | `{answer}` | `{success, inquiry: {...}}` | Merchant-only |
+| POST | `/products/{productId}/favorite` | — | `201 {success, favorite: {...}}` | |
+| DELETE | `/products/{productId}/favorite` | — | `{success}` | |
+| GET | `/products/favorites` | — | `{success, favorites: [...], ...pageMeta}` | |
+
+### Errors (complete — all 41 `@ExceptionHandler`s in `OrderController.kt`, 39 unique codes)
+
+`404 PRODUCT_NOT_FOUND` (shared by the favorite-lookup and order-item-product-lookup
+exceptions), `404 ORDER_ITEM_NOT_FOUND`, `409 PRODUCT_NOT_YET_DELIVERED`,
+`409 PRODUCT_ALREADY_REVIEWED`, `400 INVALID_RATING`, `404 REVIEW_NOT_FOUND`,
+`400 INVALID_REVIEW_REPLY`, `400 INVALID_INQUIRY`, `404 INQUIRY_NOT_FOUND`,
+`400 INVALID_ANSWER`, `404 MERCHANT_NOT_FOUND`, `404 MERCHANT_ACCOUNT_NOT_FOUND`,
+`404 ACCOUNT_NOT_FOUND`, `400 EMPTY_ORDER`, `400 MERCHANT_NOT_ACCEPTING_ORDERS`,
+`422 MIN_ORDER_AMOUNT_NOT_MET`, `400 INVALID_DELIVERY_ADDRESS`,
+`400 INVALID_QUANTITY`, `409 INSUFFICIENT_PRODUCT_STOCK`, `409 PRODUCT_SOLD_OUT`,
+`409 SURPLUS_DEAL_EXPIRED`, `400 SELF_ORDER_NOT_ALLOWED`, `404 ORDER_NOT_FOUND`
+(shared by the order-lookup and return-order-lookup exceptions),
+`409 INVALID_ORDER_STATUS_TRANSITION`, `404 RIDER_NOT_REGISTERED`,
+`409 RIDER_NOT_AVAILABLE`, `409 RIDER_ALREADY_ON_DELIVERY`,
+`409 DELIVERY_ALREADY_CLAIMED`, `409 ORDER_NOT_DELIVERED`,
+`422 RETURN_WINDOW_EXPIRED`, `409 RETURN_ALREADY_REQUESTED`,
+`400 INVALID_RETURN_REASON`, `404 RETURN_REQUEST_NOT_FOUND`,
+`409 RETURN_REQUEST_ALREADY_DECIDED`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`,
+`422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`.
+
 ## Product Subscriptions — `/api/v1/product-subscriptions`
 
 **Added 2026-09-05, same slice.** Real Coupang 정기배송 (subscribe & save)-style
