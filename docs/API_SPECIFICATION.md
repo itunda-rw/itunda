@@ -775,6 +775,64 @@ direct read of `KeywordAlertController.kt` (5 endpoints, 4 error codes, all uniq
 Errors (all 4 real `@ExceptionHandler`s): `400 INVALID_QUIET_HOURS`,
 `400 INVALID_KEYWORD`, `409 KEYWORD_ALERT_CAP_REACHED`, `404 KEYWORD_ALERT_NOT_FOUND`.
 
+## Property Listings — `/api/v1/realestate`
+
+**Added 2026-09-05** (twenty-second documentation slice). Real 당근부동산-style
+property board (rent/sale) — browse, price-offer negotiation, ownership
+verification, a real Toss Bank 우리집 시세 (home valuation) estimate computed live
+from comparable listings, and asymmetric post-transaction reviews. Structurally
+mirrors `MarketplaceController` closely (same trust-score enrichment, same
+price-offer shape). Confirmed by direct read of `PropertyListingController.kt` (23
+endpoints, 20 `@ExceptionHandler`s, 18 unique codes —
+`PROPERTY_LISTING_NOT_FOUND` is shared by 3 exceptions).
+
+### Listings
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/property-types` | — | `{success, propertyTypes: [...]}` | |
+| POST | `/listings` | `{listingType, propertyType, title, description, price, bedrooms?, sizeSqm?, latitude?, longitude?}` | `201 {success, listing: {...}}` | `listingType` is rent or sale |
+| GET | `/listings?listingType&propertyType` | — | `{success, listings: [...], trustScores, ...pageMeta}` | |
+| GET | `/listings/nearby?latitude&longitude&radiusKm` | — | `{success, listings: [...], trustScores, ...pageMeta}` | `radiusKm` defaults to 5.0 |
+| GET | `/listings/my-neighborhood` | — | `{success, listings: [...], trustScores, ...pageMeta}` | |
+| GET | `/listings/search?q` | — | `{success, listings: [...], trustScores, ...pageMeta}` | |
+| GET | `/my-listings` | — | `{success, listings: [...], trustScores, ...pageMeta}` | |
+| GET | `/my-acquired-listings` | — | `{success, listings: [...], trustScores, ...pageMeta}` | Real "Places I got" history |
+| GET | `/valuation?latitude&longitude&propertyType&listingType&sizeSqm&radiusKm` | — | `{success, estimate: {...}}` | Real Toss Bank 우리집 시세 — read-only, computed fresh from real comparable listings on every call, never persisted. `radiusKm` defaults to 5.0 |
+| GET | `/listings/{propertyListingId}` | — | `{success, listing: {...}, listerTrustScore}` | |
+| POST | `/listings/{propertyListingId}/mark-taken` | `{counterpartyPhoneNumber?}` | `{success, listing: {...}}` | |
+| POST | `/listings/{propertyListingId}/price` | `{price}` | `{success, listing: {...}}` | Real Karrot-style price-drop notification |
+| POST | `/listings/{propertyListingId}/verify-ownership` | `{documentUrl}` | `201 {success, submission: {...}}` | `documentUrl` should already be a real `/api/v1/uploads/{name}` URL; review happens via the ADMIN-only property-verification queue, not documented on this page |
+| DELETE | `/listings/{propertyListingId}` | — | `{success, listing: {...}}` | |
+
+### Favorites, contact, offers, reviews
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/listings/{propertyListingId}/favorite` | — | `201 {success, favorite: {...}}` | |
+| DELETE | `/listings/{propertyListingId}/favorite` | — | `{success}` | |
+| GET | `/listings/favorites` | — | `{success, favorites: [...], ...pageMeta}` | |
+| POST | `/listings/{propertyListingId}/contact-lister` | — | `{success, conversation: {...}}` | |
+| POST | `/listings/{propertyListingId}/offers` | `{amount}` | `201 {success, offer: {...}}` | Real 당근-style price-offer negotiation |
+| POST | `/offers/{offerId}/respond` | `{action, counterAmount?}` | `{success, offer: {...}}` | |
+| GET | `/conversations/{conversationId}/offers` | — | `{success, offers: [...]}` | |
+| POST | `/listings/{propertyListingId}/review` | `{goodPoints?, uncomfortablePoints?}` | `201 {success, review: {...}}` | Shared `HoodReviewService` — asymmetric public/private visibility, same as Jobs/Marketplace |
+| GET | `/listings/{propertyListingId}/review` | — | `{success, reviews: [...]}` | |
+
+### Errors (complete — all 20 `@ExceptionHandler`s in `PropertyListingController.kt`, 18 unique codes)
+
+`404 OFFER_NOT_FOUND`, `400 INVALID_OFFER_AMOUNT`, `409 OFFER_ALREADY_RESOLVED`,
+`400 OWN_OFFER`, `404 PROPERTY_LISTING_NOT_FOUND` (shared by 3 exceptions — the
+listing itself not existing, a stale favorite pointer, and a review-lookup miss),
+`400 INVALID_PROPERTY_LISTING`, `409 PROPERTY_LISTING_NOT_AVAILABLE`,
+`400 OWN_PROPERTY_LISTING`, `400 INVALID_COORDINATES`, `429 RATE_LIMITED`,
+`400 NEIGHBORHOOD_NOT_SET`, `404 COUNTERPARTY_NOT_FOUND`,
+`409 REVIEW_TRANSACTION_NOT_COMPLETED`, `400 REVIEW_NO_COUNTERPARTY`,
+`404 REVIEW_NOT_PARTY` (IDOR fix, 2026-08-30 — same fix class as Jobs/Marketplace's
+identical review-ownership check), `409 REVIEW_ALREADY_SUBMITTED`,
+`409 OWNERSHIP_VERIFICATION_ALREADY_PENDING`, `422 INSUFFICIENT_COMPARABLES`
+(the valuation estimate needs a minimum number of real comparable listings nearby).
+
 ## Vehicle Inspections — `/api/v1/marketplace/inspections`
 
 **Added 2026-09-05.** Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection
