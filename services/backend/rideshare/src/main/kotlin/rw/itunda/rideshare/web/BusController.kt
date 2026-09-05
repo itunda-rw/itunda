@@ -95,9 +95,22 @@ class BusController(
         return ResponseEntity.status(status).body(body)
     }
 
+    // Real gap found 2026-09-05 (feedback_idempotency_key_sweep re-audit) --
+    // cancelBooking is real money movement (a real refund posted via
+    // ledgerService.postLedgerTransaction) guarded by BusBookingAlreadyCancelledException,
+    // with no Idempotency-Key protection. A lost-response retry after a successful
+    // cancel used to hit a confusing conflict for a cancellation that already succeeded.
     @PostMapping("/bookings/{bookingId}/cancel")
-    fun cancelBooking(@PathVariable bookingId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "booking" to busService.cancelBooking(currentUser.userId, bookingId)))
+    fun cancelBooking(
+        @PathVariable bookingId: String,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/bus/bookings/$bookingId/cancel", idempotencyKey, currentUser.userId) {
+            200 to mapOf("success" to true, "booking" to busService.cancelBooking(currentUser.userId, bookingId))
+        }
+        return ResponseEntity.status(status).body(body)
+    }
 
     @GetMapping("/bookings/my-history")
     fun getMyBookings(

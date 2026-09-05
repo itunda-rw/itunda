@@ -4818,7 +4818,7 @@ interface ApiService {
     suspend fun bookBusSeats(@Header("Idempotency-Key") idempotencyKey: String, @Body request: BookBusSeatsRequest): BusBookingResponse
 
     @POST("api/v1/bus/bookings/{bookingId}/cancel")
-    suspend fun cancelBusBooking(@Path("bookingId") bookingId: String): BusBookingResponse
+    suspend fun cancelBusBooking(@Path("bookingId") bookingId: String, @Header("Idempotency-Key") idempotencyKey: String): BusBookingResponse
 
     @GET("api/v1/bus/bookings/my-history")
     suspend fun getMyBusBookings(): BusBookingsResponse

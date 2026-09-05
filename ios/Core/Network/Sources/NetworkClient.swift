@@ -1817,7 +1817,7 @@ extension NetworkClient {
     }
 
     public func cancelBusBooking(bookingId: String) async throws -> BusBookingResponse {
-        try await authenticatedPost("api/v1/bus/bookings/\(bookingId)/cancel", body: EmptyBody())
+        try await authenticatedPost("api/v1/bus/bookings/\(bookingId)/cancel", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     public func getMyBusBookings() async throws -> BusBookingsResponse { try await get("api/v1/bus/bookings/my-history") }

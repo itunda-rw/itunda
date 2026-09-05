@@ -64,7 +64,10 @@ export const bookBusSeats = (tripId: string, seatCount: number) =>
   }).then((r) => r.booking);
 
 export const cancelBusBooking = (bookingId: string) =>
-  apiFetch<{ success: boolean; booking: BusBooking }>(`/api/v1/bus/bookings/${bookingId}/cancel`, { method: 'POST' }).then((r) => r.booking);
+  apiFetch<{ success: boolean; booking: BusBooking }>(`/api/v1/bus/bookings/${bookingId}/cancel`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  }).then((r) => r.booking);
 
 export const fetchMyBusBookings = () =>
   apiFetch<{ success: boolean; bookings: BusBooking[] }>('/api/v1/bus/bookings/my-history?size=20').then((r) => r.bookings);

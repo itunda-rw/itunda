@@ -147,7 +147,7 @@ private fun BusRideContent() {
         error = null
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.cancelBusBooking(bookingId)
+                NetworkClient.apiService.cancelBusBooking(bookingId, java.util.UUID.randomUUID().toString())
                 loadBookings()
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
