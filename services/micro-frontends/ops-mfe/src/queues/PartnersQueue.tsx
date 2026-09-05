@@ -75,6 +75,7 @@ function PartnerMiniAppCard({ submission, onDecided }: { submission: PartnerMini
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="Reason (optional)"
+          maxLength={255}
           rows={2}
           style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', resize: 'vertical' }}
         />
