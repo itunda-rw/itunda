@@ -186,7 +186,7 @@ class BusServiceTest : BehaviorSpec({
             id = "account_operator", userId = "operator_1", accountNumber = "1000000001", accountName = "Operator",
             type = AccountType.MAIN, balance = BigDecimal("5700"), availableBalance = BigDecimal("5700"),
         )
-        every { busBookingRepository.findById("bus_booking_1") } returns Optional.of(booking)
+        every { busBookingRepository.findByIdForUpdate("bus_booking_1") } returns Optional.of(booking)
         every { busTripRepository.findById("bus_trip_1") } returns Optional.of(trip)
         every { accountRepository.findByUserIdAndType("rider_1", AccountType.MAIN) } returns riderAccount
         every { accountRepository.findById("account_operator") } returns Optional.of(operatorAccount)

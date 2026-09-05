@@ -166,8 +166,13 @@ class BusService(
         )
     }
 
+    // Real gap found 2026-09-05 (concurrency audit): cancelBooking (this method's own
+    // caller) mutates status/refundTransactionId after posting a real refund -- a
+    // locked read here, not a plain findById, is what makes that safe under real
+    // concurrent cancel attempts. See BusBookingRepository.findByIdForUpdate's own
+    // doc comment.
     private fun getOwnedBooking(bookingId: String, riderUserId: String): BusBooking {
-        val booking = busBookingRepository.findById(bookingId).orElseThrow { BusBookingNotFoundException("Booking not found") }
+        val booking = busBookingRepository.findByIdForUpdate(bookingId).orElseThrow { BusBookingNotFoundException("Booking not found") }
         if (booking.riderUserId != riderUserId) throw BusBookingNotFoundException("Booking not found")
         return booking
     }
