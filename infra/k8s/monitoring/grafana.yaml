@@ -401,6 +401,98 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  # Real, fifth product-level dashboard (2026-09-06, Insurance product-
+  # completeness pass) -- see docs/ARCHITECTURE.md's dated follow-up.
+  # insurance-service was extracted on 2026-09-01, five days BEFORE the first
+  # product dashboard (itunda-bank, 2026-09-06) existed, and never got one --
+  # a real, confirmed gap this closes. Unlike itunda-bank/pay/merchant/wealth
+  # (whose routes all still run on the shared `backend` monolith), this is the
+  # first product dashboard in the sweep that CAN chart a real, separately
+  # deployed JVM -- insurance-service's own real
+  # spring.application.name="itunda-insurance-service" (confirmed by reading
+  # insurance-service/src/main/resources/application.yml directly, not
+  # guessed), so a real per-service heap/pods-up panel is included below.
+  name: grafana-dashboard-itunda-insurance
+  namespace: monitoring
+data:
+  itunda-insurance.json: |
+    {
+      "title": "itunda Insurance",
+      "uid": "itunda-insurance",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Insurance request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/insurance(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Insurance error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/insurance(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Insurance request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/insurance(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/insurance(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "insurance-service JVM heap used",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "targets": [
+            {
+              "expr": "sum(jvm_memory_used_bytes{area=\"heap\", application=\"itunda-insurance-service\"})",
+              "legendFormat": "insurance-service heap"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "title": "insurance-service pods up",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+          "targets": [
+            {
+              "expr": "count(up{job=\"itunda-services\", app=\"insurance-service\"} == 1)",
+              "legendFormat": "insurance-service"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: grafana-dashboard-itunda-private-cloud
   namespace: monitoring
 data:
@@ -554,6 +646,8 @@ spec:
               name: grafana-dashboard-itunda-merchant
           - configMap:
               name: grafana-dashboard-itunda-wealth
+          - configMap:
+              name: grafana-dashboard-itunda-insurance
           - configMap:
               name: grafana-dashboard-itunda-private-cloud
 ---
