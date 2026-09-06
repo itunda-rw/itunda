@@ -35,11 +35,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
+import rw.itunda.app.R
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.BankCardChip
 import rw.itunda.core.designsystem.components.CardContactlessGlyph
@@ -79,6 +81,11 @@ fun CardScreen(onBack: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var chargeMessage by remember { mutableStateOf<String?>(null) }
+    // Real gap closed 2026-09-07 (Card product-completeness pass): rendering used
+    // to sniff chargeMessage.startsWith("Paid") to pick success/danger color -- a
+    // real correctness bug once that text is localized (rw/fr never start with
+    // "Paid"). A real boolean, not a string-content guess.
+    var chargeSucceeded by remember { mutableStateOf(false) }
     // Real "카드 비밀번호 변경" (change card PIN) inline form (2026-09-01, direct
     // user-supplied Toss Bank card-management screenshots) -- matches bank-mfe's
     // identical setCardPin flow.
@@ -87,14 +94,23 @@ fun CardScreen(onBack: () -> Unit) {
     var pinPasswordInput by remember { mutableStateOf("") }
     var pinError by remember { mutableStateOf<String?>(null) }
     var pinSuccess by remember { mutableStateOf(false) }
-    // Real gap closed 2026-09-07 (Card product-completeness pass): bank-mfe's
-    // BankDashboard.tsx has had a "Card benefits" section (live credit-score
-    // card-usage factor + suggestion) since it was built; Android never did,
-    // despite already having getCreditScore()/getCreditScoreSuggestions() wired
-    // elsewhere in the app -- this is UI wiring, no new network code.
+    // Real "Card benefits" port of bank-mfe's BankDashboard.tsx (2026-09-07) -- UI
+    // wiring only, getCreditScore()/getCreditScoreSuggestions() already existed.
     var cardUsageFactor by remember { mutableStateOf<rw.itunda.core.network.CreditScoreFactorDto?>(null) }
     var cardSuggestion by remember { mutableStateOf<rw.itunda.core.network.CreditScoreSuggestionDto?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    // Prefetched here (LoginScreen.kt's checkingPhoneError convention): stringResource()
+    // only works during composition, not inside the plain functions/coroutines below.
+    val networkError = stringResource(R.string.card_network_error)
+    val limitValidationError = stringResource(R.string.card_limit_validation_error)
+    val pinLengthError = stringResource(R.string.card_pin_length_error)
+    val pinPasswordRequiredError = stringResource(R.string.card_pin_password_required)
+    val chargeValidationError = stringResource(R.string.card_charge_validation_error)
+    val pinSavedMessage = stringResource(R.string.card_pin_saved)
+    // Fetched as a raw, unsubstituted template (no format args passed) since the
+    // real values aren't known until charge() runs later inside a coroutine, well
+    // outside composition -- String.format applies it at that point instead.
+    val cardPaidMessageTemplate = stringResource(R.string.card_paid_message)
 
     fun load() {
         coroutineScope.launch {
@@ -116,7 +132,7 @@ fun CardScreen(onBack: () -> Unit) {
                     error = superAppErrorMessage(e)
                 }
             } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
+                error = networkError
             }
         }
     }
@@ -139,7 +155,7 @@ fun CardScreen(onBack: () -> Unit) {
                     error = superAppErrorMessage(e)
                 }
             } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
+                error = networkError
             } finally {
                 busy = false
             }
@@ -156,7 +172,7 @@ fun CardScreen(onBack: () -> Unit) {
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
+                error = networkError
             } finally {
                 busy = false
             }
@@ -167,7 +183,7 @@ fun CardScreen(onBack: () -> Unit) {
         val daily = dailyLimitInput.trim().toBigDecimalOrNull()
         val monthly = monthlyLimitInput.trim().toBigDecimalOrNull()
         if (daily == null || monthly == null || daily <= BigDecimal.ZERO || monthly <= BigDecimal.ZERO) {
-            error = "Enter real, positive limits."
+            error = limitValidationError
             return
         }
         busy = true
@@ -178,7 +194,7 @@ fun CardScreen(onBack: () -> Unit) {
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
+                error = networkError
             } finally {
                 busy = false
             }
@@ -199,7 +215,7 @@ fun CardScreen(onBack: () -> Unit) {
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
+                error = networkError
             } finally {
                 busy = false
             }
@@ -219,7 +235,7 @@ fun CardScreen(onBack: () -> Unit) {
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
+                error = networkError
             } finally {
                 busy = false
             }
@@ -237,7 +253,7 @@ fun CardScreen(onBack: () -> Unit) {
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
+                error = networkError
             } finally {
                 busy = false
             }
@@ -246,11 +262,11 @@ fun CardScreen(onBack: () -> Unit) {
 
     fun setPin() {
         if (!newPinInput.matches(Regex("^\\d{4}$"))) {
-            pinError = "Your card PIN must be exactly 4 digits."
+            pinError = pinLengthError
             return
         }
         if (pinPasswordInput.isBlank()) {
-            pinError = "Enter your current login password."
+            pinError = pinPasswordRequiredError
             return
         }
         busy = true
@@ -266,7 +282,7 @@ fun CardScreen(onBack: () -> Unit) {
             } catch (e: HttpException) {
                 pinError = superAppErrorMessage(e)
             } catch (e: IOException) {
-                pinError = "Couldn't reach itunda. Check your connection and try again."
+                pinError = networkError
             } finally {
                 busy = false
             }
@@ -276,7 +292,8 @@ fun CardScreen(onBack: () -> Unit) {
     fun charge() {
         val parsedAmount = chargeAmount.trim().toBigDecimalOrNull()
         if (parsedAmount == null || parsedAmount <= BigDecimal.ZERO || merchantName.isBlank()) {
-            chargeMessage = "Enter a real merchant name and amount."
+            chargeMessage = chargeValidationError
+            chargeSucceeded = false
             return
         }
         busy = true
@@ -288,14 +305,17 @@ fun CardScreen(onBack: () -> Unit) {
                     ChargeCardRequest(parsedAmount, merchantName.trim()),
                 )
                 card = result.card
-                chargeMessage = "Paid ${formatMoney(result.transaction.amount)} RWF at ${result.transaction.merchantName}"
+                chargeMessage = String.format(cardPaidMessageTemplate, formatMoney(result.transaction.amount), result.transaction.merchantName)
+                chargeSucceeded = true
                 merchantName = ""
                 chargeAmount = ""
                 load()
             } catch (e: HttpException) {
                 chargeMessage = superAppErrorMessage(e)
+                chargeSucceeded = false
             } catch (e: IOException) {
-                chargeMessage = "Couldn't reach itunda. Check your connection and try again."
+                chargeMessage = networkError
+                chargeSucceeded = false
             } finally {
                 busy = false
             }
@@ -303,7 +323,7 @@ fun CardScreen(onBack: () -> Unit) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        BackTopBar(title = "Card", onBack = onBack)
+        BackTopBar(title = stringResource(R.string.card_title), onBack = onBack)
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
@@ -377,13 +397,13 @@ fun CardScreen(onBack: () -> Unit) {
                                             if (c.frozen) LockGlyph(size = 18.dp) else CardContactlessGlyph(size = 18.dp, tint = onFront.copy(alpha = 0.85f))
                                         }
                                         Column {
-                                            Text("itunda card", color = onFront.copy(alpha = 0.85f), fontSize = 13.sp)
+                                            Text(stringResource(R.string.card_masked_label), color = onFront.copy(alpha = 0.85f), fontSize = 13.sp)
                                             Text("•••• •••• •••• ${c.last4}", color = onFront, fontWeight = FontWeight.Bold, fontSize = 20.sp, letterSpacing = 2.sp)
                                             val statusLabel = when {
-                                                c.closedAt != null -> "Closed"
-                                                c.lost -> "Reported lost or stolen"
-                                                c.frozen -> "Frozen"
-                                                else -> "✓ Active"
+                                                c.closedAt != null -> stringResource(R.string.card_status_closed)
+                                                c.lost -> stringResource(R.string.card_status_lost)
+                                                c.frozen -> stringResource(R.string.card_status_frozen)
+                                                else -> stringResource(R.string.card_status_active)
                                             }
                                             Text(statusLabel, color = onFront.copy(alpha = 0.85f), fontSize = 12.sp)
                                         }
@@ -393,37 +413,37 @@ fun CardScreen(onBack: () -> Unit) {
                         }
                         item {
                             if (c.lost || c.closedAt != null) {
-                                CardActionButton("Get a new card", enabled = !busy) { reissue() }
+                                CardActionButton(stringResource(R.string.card_get_new_card), enabled = !busy) { reissue() }
                             } else {
-                                CardActionButton(if (c.frozen) "Unfreeze card" else "Freeze card", enabled = !busy) { toggleFreeze() }
+                                CardActionButton(if (c.frozen) stringResource(R.string.card_unfreeze) else stringResource(R.string.card_freeze), enabled = !busy) { toggleFreeze() }
                             }
                         }
                         item {
                             Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth()) {
                                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Row(modifier = Modifier.fillMaxWidth().pressScaleClickable(enabled = !busy && c.closedAt == null) { showPinForm = !showPinForm }, horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text(if (c.pinSet) "Change card PIN" else "Set card PIN", color = Ids.colors.textPrimary, fontSize = 14.sp)
+                                        Text(if (c.pinSet) stringResource(R.string.card_change_pin) else stringResource(R.string.card_set_pin), color = Ids.colors.textPrimary, fontSize = 14.sp)
                                     }
                                     if (showPinForm) {
                                         Text(
-                                            "A real 4-digit card PIN, separate from your login password. Confirm your current login password to change it.",
+                                            stringResource(R.string.card_pin_form_subtitle),
                                             color = Ids.colors.textTertiary, fontSize = 11.sp,
                                         )
                                         pinError?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
-                                        IdsTextField(value = newPinInput, onValueChange = { newPinInput = it.filter { c -> c.isDigit() }.take(4) }, label = "New 4-digit PIN", isPassword = true, keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword, modifier = Modifier.fillMaxWidth())
-                                        IdsTextField(value = pinPasswordInput, onValueChange = { pinPasswordInput = it }, label = "Current login password", isPassword = true, modifier = Modifier.fillMaxWidth())
-                                        CardActionButton(if (busy) "…" else "Save PIN", enabled = !busy) { setPin() }
+                                        IdsTextField(value = newPinInput, onValueChange = { newPinInput = it.filter { c -> c.isDigit() }.take(4) }, label = stringResource(R.string.card_new_pin_label), isPassword = true, keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword, modifier = Modifier.fillMaxWidth())
+                                        IdsTextField(value = pinPasswordInput, onValueChange = { pinPasswordInput = it }, label = stringResource(R.string.card_current_password_label), isPassword = true, modifier = Modifier.fillMaxWidth())
+                                        CardActionButton(if (busy) "…" else stringResource(R.string.card_save_pin), enabled = !busy) { setPin() }
                                     }
                                 }
                             }
                         }
-                        pinSuccess.let { if (it) item { Text("Card PIN saved.", color = Ids.colors.success, fontSize = 12.sp) } }
+                        pinSuccess.let { if (it) item { Text(pinSavedMessage, color = Ids.colors.success, fontSize = 12.sp) } }
                         item {
                             Row(
                                 modifier = Modifier.fillMaxWidth().pressScaleClickable(enabled = !busy && !c.lost && c.closedAt == null) { reportLost() },
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
-                                Text(if (c.lost) "Reported lost or stolen" else "Report lost or stolen", color = Ids.colors.textPrimary, fontSize = 14.sp)
+                                Text(if (c.lost) stringResource(R.string.card_status_lost) else stringResource(R.string.card_report_lost), color = Ids.colors.textPrimary, fontSize = 14.sp)
                             }
                         }
                         item {
@@ -431,44 +451,30 @@ fun CardScreen(onBack: () -> Unit) {
                                 modifier = Modifier.fillMaxWidth().pressScaleClickable(enabled = !busy && c.closedAt == null) { closeCard() },
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
-                                Text(if (c.closedAt != null) "Card closed" else "Close card", color = if (c.closedAt != null) Ids.colors.textSecondary else Ids.colors.danger, fontSize = 14.sp)
+                                Text(if (c.closedAt != null) stringResource(R.string.card_card_closed) else stringResource(R.string.card_close_card), color = if (c.closedAt != null) Ids.colors.textSecondary else Ids.colors.danger, fontSize = 14.sp)
                             }
                         }
                         item {
                             Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth()) {
                                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text("Spend limits", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                    Text("Today: ${formatMoney(c.spentToday)} / ${formatMoney(c.dailyLimit)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                                    Text("This month: ${formatMoney(c.spentThisMonth)} / ${formatMoney(c.monthlyLimit)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                                    Text(stringResource(R.string.card_spend_limits), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    Text(stringResource(R.string.card_today_spend, formatMoney(c.spentToday), formatMoney(c.dailyLimit)), color = Ids.colors.textSecondary, fontSize = 12.sp)
+                                    Text(stringResource(R.string.card_month_spend, formatMoney(c.spentThisMonth), formatMoney(c.monthlyLimit)), color = Ids.colors.textSecondary, fontSize = 12.sp)
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        IdsTextField(value = dailyLimitInput, onValueChange = { dailyLimitInput = it }, label = "Daily limit", modifier = Modifier.weight(1f))
-                                        IdsTextField(value = monthlyLimitInput, onValueChange = { monthlyLimitInput = it }, label = "Monthly limit", modifier = Modifier.weight(1f))
+                                        IdsTextField(value = dailyLimitInput, onValueChange = { dailyLimitInput = it }, label = stringResource(R.string.card_daily_limit_label), modifier = Modifier.weight(1f))
+                                        IdsTextField(value = monthlyLimitInput, onValueChange = { monthlyLimitInput = it }, label = stringResource(R.string.card_monthly_limit_label), modifier = Modifier.weight(1f))
                                     }
-                                    CardActionButton("Save limits", enabled = !busy) { saveLimits() }
+                                    CardActionButton(stringResource(R.string.card_save_limits), enabled = !busy) { saveLimits() }
                                 }
                             }
                         }
                         item {
-                            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth()) {
-                                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text("Pay with your card", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                    Text(
-                                        "itunda has no real card-network partnership yet, so this simulates a real card-present purchase -- real money moves, real limits apply.",
-                                        color = Ids.colors.textTertiary, fontSize = 11.sp,
-                                    )
-                                    chargeMessage?.let { Text(it, color = if (it.startsWith("Paid")) Ids.colors.success else Ids.colors.danger, fontSize = 12.sp) }
-                                    IdsTextField(value = merchantName, onValueChange = { merchantName = it }, label = "Merchant name", modifier = Modifier.fillMaxWidth())
-                                    IdsTextField(value = chargeAmount, onValueChange = { chargeAmount = it }, label = "Amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
-                                    val payLabel = when {
-                                        c.closedAt != null -> "Card is closed"
-                                        c.lost -> "Card reported lost"
-                                        c.frozen -> "Card is frozen"
-                                        busy -> "Paying…"
-                                        else -> "Pay"
-                                    }
-                                    CardActionButton(payLabel, enabled = !busy && !c.frozen) { charge() }
-                                }
-                            }
+                            CardPaySection(
+                                card = c, merchantName = merchantName, onMerchantNameChange = { merchantName = it },
+                                chargeAmount = chargeAmount, onChargeAmountChange = { chargeAmount = it },
+                                chargeMessage = chargeMessage, chargeSucceeded = chargeSucceeded, busy = busy,
+                                onCharge = { charge() },
+                            )
                         }
                         cardRecentActivitySection(transactions)
                         cardBenefitsSection(cardUsageFactor, cardSuggestion)
@@ -480,7 +486,7 @@ fun CardScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun CardActionButton(label: String, enabled: Boolean, onClick: () -> Unit) {
+fun CardActionButton(label: String, enabled: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
             .background(if (enabled) Ids.colors.brand else Ids.colors.textTertiary).pressScaleClickable(enabled = enabled, onClick = onClick)

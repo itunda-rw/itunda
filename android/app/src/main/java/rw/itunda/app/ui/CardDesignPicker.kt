@@ -30,9 +30,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import rw.itunda.app.R
 import rw.itunda.core.designsystem.components.BankCardChip
 import rw.itunda.core.designsystem.components.PetalMark
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -75,7 +77,7 @@ fun CardDesignPicker(busy: Boolean, onIssue: (design: String) -> Unit) {
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         Text(
-            "Which finish do you like?", fontSize = 13.sp, fontWeight = FontWeight.Bold,
+            stringResource(R.string.card_which_finish), fontSize = 13.sp, fontWeight = FontWeight.Bold,
             color = Ids.colors.textSecondary, modifier = Modifier.padding(bottom = 14.dp),
         )
 
@@ -127,19 +129,19 @@ fun CardDesignPicker(busy: Boolean, onIssue: (design: String) -> Unit) {
         }
 
         Spacer(Modifier.height(24.dp))
-        Text("Your own itunda card, in seconds", fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+        Text(stringResource(R.string.card_explainer_title), fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
         Spacer(Modifier.height(6.dp))
         Text(
-            "A real debit card for your itunda balance -- no paperwork, no waiting.",
+            stringResource(R.string.card_explainer_subtitle),
             fontSize = 13.sp, color = Ids.colors.textSecondary,
         )
         Spacer(Modifier.height(24.dp))
 
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            FeatureRow({ MoneyBagGlyph(size = 20.dp) }, "No annual fee, ever")
-            FeatureRow({ Icon(Icons.Outlined.Bolt, contentDescription = null, tint = Ids.colors.brand, modifier = Modifier.size(20.dp)) }, "Issued instantly in the app -- no branch visit")
-            FeatureRow({ Icon(Icons.Outlined.Shield, contentDescription = null, tint = Ids.colors.brand, modifier = Modifier.size(20.dp)) }, "Set your own daily and monthly spend limits")
-            FeatureRow({ LockGlyph(size = 20.dp) }, "One-tap freeze if it's ever lost")
+            FeatureRow({ MoneyBagGlyph(size = 20.dp) }, stringResource(R.string.card_feature_no_fee))
+            FeatureRow({ Icon(Icons.Outlined.Bolt, contentDescription = null, tint = Ids.colors.brand, modifier = Modifier.size(20.dp)) }, stringResource(R.string.card_feature_instant))
+            FeatureRow({ Icon(Icons.Outlined.Shield, contentDescription = null, tint = Ids.colors.brand, modifier = Modifier.size(20.dp)) }, stringResource(R.string.card_feature_limits))
+            FeatureRow({ LockGlyph(size = 20.dp) }, stringResource(R.string.card_feature_freeze))
         }
         Spacer(Modifier.height(20.dp))
 
@@ -150,7 +152,7 @@ fun CardDesignPicker(busy: Boolean, onIssue: (design: String) -> Unit) {
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                if (busy) "Issuing…" else "Get your ${design.displayName} card",
+                if (busy) stringResource(R.string.card_explainer_issuing) else stringResource(R.string.card_explainer_get_card, design.displayName),
                 color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp,
             )
         }

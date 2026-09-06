@@ -2474,7 +2474,7 @@ function CardView() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
         <div>
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>This month</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{t('card.thisMonth')}</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '4px 0 0' }}>{card.spentThisMonth.toLocaleString('en-US')} RWF</p>
         </div>
         <div
@@ -2496,25 +2496,25 @@ function CardView() {
       </div>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
         •••• {card.last4} ·{' '}
-        {card.closedAt ? 'Closed' : card.lost ? 'Reported lost or stolen' : card.frozen ? 'Frozen — no purchases can be made' : 'Active'}
+        {card.closedAt ? t('card.statusClosed') : card.lost ? t('card.statusLost') : card.frozen ? t('card.statusFrozen') : t('card.statusActive')}
       </p>
 
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '12px' }} role="alert">{error}</p>}
 
       {card.lost || card.closedAt ? (
         <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={handleReissue} style={{ marginBottom: '20px' }}>
-          {busy ? '…' : 'Get a new card'}
+          {busy ? '…' : t('card.getNewCard')}
         </button>
       ) : (
         <button className={`itunda-btn ${card.frozen ? 'itunda-btn-primary' : 'itunda-btn-danger'}`} disabled={busy} onClick={handleToggleFreeze} style={{ marginBottom: '20px' }}>
-          {card.frozen ? 'Unfreeze card' : 'Freeze card'}
+          {card.frozen ? t('card.unfreezeCard') : t('card.freezeCard')}
         </button>
       )}
 
       <div className="itunda-flat-section">
-        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>Usage history</h3>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>{t('card.usageHistory')}</h3>
         {transactions.length === 0 ? (
-          <EmptyState message="No card purchases yet — once you use your card, they'll show up here." />
+          <EmptyState message={t('card.noPurchasesYet')} />
         ) : (
           transactions.map((t) => (
             <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
@@ -2530,29 +2530,29 @@ function CardView() {
 
       {(cardUsageFactor || cardSuggestion) && (
         <div className="itunda-flat-section">
-          <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>Card benefits</h3>
+          <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>{t('card.benefitsTitle')}</h3>
           {cardUsageFactor && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
               <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{cardUsageFactor.description}</span>
-              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-green)' }}>+{cardUsageFactor.points} credit score</span>
+              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-green)' }}>{t('card.creditScorePoints', { points: cardUsageFactor.points })}</span>
             </div>
           )}
           {cardSuggestion && (
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{cardSuggestion.description}</span>
-              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>+{cardSuggestion.pointsGain} more</span>
+              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{t('card.morePoints', { points: cardSuggestion.pointsGain })}</span>
             </div>
           )}
         </div>
       )}
 
       <div className="itunda-flat-section">
-        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Convenient features</h3>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>{t('card.convenientFeatures')}</h3>
         <button
           onClick={() => document.getElementById('card-spend-limits-section')?.scrollIntoView({ behavior: 'smooth' })}
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left' }}
         >
-          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>Spend limits</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>{t('card.spendLimits')}</span>
           <IconChevronRight size={18} color="var(--itunda-grey-400)" />
         </button>
         <button
@@ -2560,7 +2560,7 @@ function CardView() {
           disabled={busy || !!card.closedAt}
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left', opacity: card.closedAt ? 0.5 : 1 }}
         >
-          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>{card.pinSet ? 'Change card PIN' : 'Set card PIN'}</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>{card.pinSet ? t('card.changePin') : t('card.setPin')}</span>
           <IconChevronRight size={18} color="var(--itunda-grey-400)" />
         </button>
         <button
@@ -2568,7 +2568,7 @@ function CardView() {
           disabled={busy || card.lost || !!card.closedAt}
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left', opacity: card.lost || card.closedAt ? 0.5 : 1 }}
         >
-          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>{card.lost ? 'Reported lost or stolen' : 'Report lost or stolen'}</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>{card.lost ? t('card.statusLost') : t('card.reportLostOrStolen')}</span>
           <IconChevronRight size={18} color="var(--itunda-grey-400)" />
         </button>
         <button
@@ -2576,80 +2576,80 @@ function CardView() {
           disabled={busy || !!card.closedAt}
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left', opacity: card.closedAt ? 0.5 : 1 }}
         >
-          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: card.closedAt ? 'var(--itunda-grey-500)' : 'var(--itunda-red)' }}>{card.closedAt ? 'Card closed' : 'Close card'}</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: card.closedAt ? 'var(--itunda-grey-500)' : 'var(--itunda-red)' }}>{card.closedAt ? t('card.cardClosed') : t('card.closeCard')}</span>
           <IconChevronRight size={18} color="var(--itunda-grey-400)" />
         </button>
       </div>
 
       {showPinForm && (
         <div className="itunda-flat-section">
-          <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>{card.pinSet ? 'Change card PIN' : 'Set card PIN'}</h3>
+          <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>{card.pinSet ? t('card.changePin') : t('card.setPin')}</h3>
           <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
-            A real 4-digit card PIN, separate from your login password. Confirm your current login password to change it.
+            {t('card.pinFormSubtitle')}
           </p>
           <form onSubmit={handleSetPin} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {pinError && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{pinError}</p>}
             <input
-              type="password" inputMode="numeric" placeholder="New 4-digit PIN" value={newPinInput}
+              type="password" inputMode="numeric" placeholder={t('card.newPinPlaceholder')} value={newPinInput}
               onChange={(e) => setNewPinInput(e.target.value)} required maxLength={4} pattern="\d{4}"
               style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
             />
             <input
-              type="password" placeholder="Current login password" value={pinPasswordInput}
+              type="password" placeholder={t('card.currentPasswordPlaceholder')} value={pinPasswordInput}
               onChange={(e) => setPinPasswordInput(e.target.value)} required
               style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
             />
             <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>
-              {busy ? '…' : 'Save PIN'}
+              {busy ? '…' : t('card.savePin')}
             </button>
           </form>
         </div>
       )}
-      {pinSuccess && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-green)', marginBottom: '8px' }}>Card PIN saved.</p>}
+      {pinSuccess && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-green)', marginBottom: '8px' }}>{t('card.pinSaved')}</p>}
 
       <div id="card-spend-limits-section" className="itunda-flat-section">
-        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>Spend limits</h3>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>{t('card.spendLimits')}</h3>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-          <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Today</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{t('card.today')}</span>
           <span style={{ fontSize: 'var(--itunda-type-scale-12-size)' }}>{card.spentToday.toLocaleString('en-US')} / {card.dailyLimit.toLocaleString('en-US')} RWF</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-          <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>This month</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{t('card.thisMonth')}</span>
           <span style={{ fontSize: 'var(--itunda-type-scale-12-size)' }}>{card.spentThisMonth.toLocaleString('en-US')} / {card.monthlyLimit.toLocaleString('en-US')} RWF</span>
         </div>
         <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
           <input
-            type="number" placeholder="Daily limit" value={dailyLimitInput} onChange={(e) => setDailyLimitInput(e.target.value)}
+            type="number" placeholder={t('card.dailyLimitPlaceholder')} value={dailyLimitInput} onChange={(e) => setDailyLimitInput(e.target.value)}
             style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
           />
           <input
-            type="number" placeholder="Monthly limit" value={monthlyLimitInput} onChange={(e) => setMonthlyLimitInput(e.target.value)}
+            type="number" placeholder={t('card.monthlyLimitPlaceholder')} value={monthlyLimitInput} onChange={(e) => setMonthlyLimitInput(e.target.value)}
             style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
           />
         </div>
         <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={handleSaveLimits} style={{ width: '100%' }}>
-          Save limits
+          {t('card.saveLimits')}
         </button>
       </div>
 
       <div className="itunda-flat-section">
-        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Pay with your card</h3>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>{t('card.payWithCard')}</h3>
         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
-          itunda has no real card-network partnership yet, so this simulates a real card-present purchase — real money moves, real limits apply.
+          {t('card.payDisclaimer')}
         </p>
         <form onSubmit={handleCharge} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {chargeError && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{chargeError}</p>}
           {chargeSuccess && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-green)' }}>{chargeSuccess}</p>}
           <input
-            placeholder="Merchant name" value={merchantName} onChange={(e) => setMerchantName(e.target.value)} required
+            placeholder={t('card.merchantNamePlaceholder')} value={merchantName} onChange={(e) => setMerchantName(e.target.value)} required
             style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
           />
           <input
-            type="number" placeholder="Amount (RWF)" value={chargeAmount} onChange={(e) => setChargeAmount(e.target.value)} required min="1"
+            type="number" placeholder={t('card.amountPlaceholder')} value={chargeAmount} onChange={(e) => setChargeAmount(e.target.value)} required min="1"
             style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
           />
           <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy || card.frozen}>
-            {card.closedAt ? 'Card is closed' : card.lost ? 'Card reported lost' : card.frozen ? 'Card is frozen' : busy ? 'Paying…' : 'Pay'}
+            {card.closedAt ? t('card.payStateClosed') : card.lost ? t('card.payStateLost') : card.frozen ? t('card.payStateFrozen') : busy ? t('card.paying') : t('card.pay')}
           </button>
         </form>
       </div>

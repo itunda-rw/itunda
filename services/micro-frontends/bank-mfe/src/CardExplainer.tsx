@@ -5,6 +5,7 @@ import { LockGlyph } from './icons/ItundaFaceSecurity';
 import { MoneyBagGlyph } from './icons/ItundaFaceMisc';
 import { BankCardChip, PetalMark } from './BankCardChip';
 import { CARD_DESIGNS, DEFAULT_CARD_DESIGN, cardDesign } from './lib/card';
+import { useI18n } from './i18n/I18nContext';
 
 // Real Toss Bank "which color do you like?" issuance step (namu.wiki: 5 real named
 // colorways; toss.tech's own engineering post on the picker's 3D touch-and-rotate
@@ -19,19 +20,20 @@ import { CARD_DESIGNS, DEFAULT_CARD_DESIGN, cardDesign } from './lib/card';
 // that file's own file-size-lint baseline, same convention PayHomeExtras.tsx/
 // FullScreenFlow.tsx already established.
 export function CardExplainer({ busy, onIssue }: { busy: boolean; onIssue: (design: string) => void }) {
+  const { t } = useI18n();
   const [selected, setSelected] = useState(DEFAULT_CARD_DESIGN);
   const design = cardDesign(selected);
   const FEATURES: { glyph: ReactNode; label: string }[] = [
-    { glyph: <MoneyBagGlyph size={22} />, label: 'No annual fee, ever' },
-    { glyph: <IconAdd size={20} color="var(--itunda-indigo)" />, label: 'Issued instantly in the app -- no branch visit' },
-    { glyph: <IconShieldCheck size={20} color="var(--itunda-indigo)" />, label: 'Set your own daily and monthly spend limits' },
-    { glyph: <LockGlyph size={22} />, label: 'One-tap freeze if it’s ever lost' },
+    { glyph: <MoneyBagGlyph size={22} />, label: t('card.explainer.featureNoFee') },
+    { glyph: <IconAdd size={20} color="var(--itunda-indigo)" />, label: t('card.explainer.featureInstant') },
+    { glyph: <IconShieldCheck size={20} color="var(--itunda-indigo)" />, label: t('card.explainer.featureLimits') },
+    { glyph: <LockGlyph size={22} />, label: t('card.explainer.featureFreeze') },
   ];
   const lockupColor = design.frontLight ? 'rgba(25,31,40,0.5)' : 'rgba(255,255,255,0.6)';
 
   return (
     <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
-      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', fontWeight: 700, marginBottom: '14px' }}>Which finish do you like?</p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', fontWeight: 700, marginBottom: '14px' }}>{t('card.explainer.whichFinish')}</p>
       <motion.div
         initial={{ opacity: 0, y: 12, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -75,9 +77,9 @@ export function CardExplainer({ busy, onIssue }: { busy: boolean; onIssue: (desi
       </div>
 
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.3 }}>
-        <h3 style={{ fontSize: 'var(--itunda-type-scale-19-size)', fontWeight: 800, marginBottom: '6px' }}>Your own itunda card, in seconds</h3>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-19-size)', fontWeight: 800, marginBottom: '6px' }}>{t('card.explainer.title')}</h3>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '24px' }}>
-          A real debit card for your itunda balance -- no paperwork, no waiting.
+          {t('card.explainer.subtitle')}
         </p>
       </motion.div>
 
@@ -100,7 +102,7 @@ export function CardExplainer({ busy, onIssue }: { busy: boolean; onIssue: (desi
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4, duration: 0.25 }}>
         <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} disabled={busy} onClick={() => onIssue(selected)}>
-          {busy ? 'Issuing…' : `Get your ${design.name} card`}
+          {busy ? t('card.explainer.issuing') : t('card.explainer.getCard', { design: design.name })}
         </button>
       </motion.div>
     </div>
