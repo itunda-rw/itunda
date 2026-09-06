@@ -16,6 +16,7 @@ import {
   getPendingBills,
   payBill,
   getBillProviders,
+  buyAirtime,
   getAutoPaySettings,
   setAutoPay,
   clearAutoPay,
@@ -61,10 +62,20 @@ import type { PendingBill, BillProvider, BillAutoPaySetting } from '@itunda/saro
  * own picker needs it: `setAutoPay`/`clearAutoPay` take a real providerId (e.g. "b1"),
  * not `PendingBill.provider`'s display name -- there is no other honest way for this
  * screen to resolve which provider a user means.
+ *
+ * "Buy airtime" section added (2026-09-07, Bills product-completeness pass) --
+ * bank-mfe's web BillsView.tsx has had this since 2026-08-17, but Android/iOS never
+ * did: their only path to Bills is this mini-app, and `buyAirtime` had never reached
+ * the native bridge on either platform until now. Provider selection is optional
+ * (an empty string means "default provider", same as bank-mfe's own `|| undefined`
+ * fallback) since airtime purchases don't need the same providerId precision
+ * `setAutoPay` requires -- the backend's `BuyAirtimeRequest.provider` is a plain,
+ * optional display-name string, not an id.
  */
 export default function PayBillsPage() {
   const [bills, setBills] = useState<PendingBill[] | null>(null);
   const [providers, setProviders] = useState<BillProvider[]>([]);
+  const [airtimeProviders, setAirtimeProviders] = useState<BillProvider[]>([]);
   const [autoPaySettings, setAutoPaySettings] = useState<BillAutoPaySetting[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [payingId, setPayingId] = useState<string | null>(null);
@@ -73,6 +84,10 @@ export default function PayBillsPage() {
   const [autoPayMax, setAutoPayMax] = useState('');
   const [savingAutoPay, setSavingAutoPay] = useState(false);
   const [clearingProviderId, setClearingProviderId] = useState<string | null>(null);
+  const [airtimePhone, setAirtimePhone] = useState('');
+  const [airtimeAmount, setAirtimeAmount] = useState('');
+  const [airtimeProviderIndex, setAirtimeProviderIndex] = useState<number | null>(null);
+  const [buyingAirtime, setBuyingAirtime] = useState(false);
 
   const load = useCallback(() => {
     setError(null);
@@ -80,8 +95,14 @@ export default function PayBillsPage() {
       .then((result) => setBills(result.bills))
       .catch((err: Error) => setError(err.message));
     getBillProviders()
-      .then((result) => setProviders(result.providers.filter((p) => p.category !== 'airtime')))
-      .catch(() => setProviders([]));
+      .then((result) => {
+        setProviders(result.providers.filter((p) => p.category !== 'airtime'));
+        setAirtimeProviders(result.providers.filter((p) => p.category === 'airtime'));
+      })
+      .catch(() => {
+        setProviders([]);
+        setAirtimeProviders([]);
+      });
     getAutoPaySettings()
       .then((result) => setAutoPaySettings(result.autoPay))
       .catch(() => setAutoPaySettings([]));
@@ -101,6 +122,26 @@ export default function PayBillsPage() {
       Alert.alert('Payment failed', err instanceof Error ? err.message : 'Please try again');
     } finally {
       setPayingId(null);
+    }
+  };
+
+  const handleBuyAirtime = async () => {
+    const amount = Number(airtimeAmount);
+    if (!airtimePhone.trim() || !Number.isFinite(amount) || amount <= 0) {
+      Alert.alert('Buy airtime', 'Enter a phone number and a valid amount.');
+      return;
+    }
+    const provider = airtimeProviderIndex !== null ? airtimeProviders[airtimeProviderIndex] : undefined;
+    setBuyingAirtime(true);
+    try {
+      const result = await buyAirtime(airtimePhone.trim(), amount, provider?.name ?? '');
+      Alert.alert('Airtime sent', result.message);
+      setAirtimePhone('');
+      setAirtimeAmount('');
+    } catch (err) {
+      Alert.alert('Airtime purchase failed', err instanceof Error ? err.message : 'Please try again');
+    } finally {
+      setBuyingAirtime(false);
     }
   };
 
@@ -173,6 +214,45 @@ export default function PayBillsPage() {
           )}
         />
       )}
+
+      <View style={styles.autoPayCard}>
+        <Text style={styles.autoPayTitle}>Buy airtime</Text>
+        <Text style={styles.autoPaySubtitle}>Top up any phone number instantly.</Text>
+        <TextInput
+          placeholder="Phone number"
+          placeholderTextColor="#8B95A1"
+          keyboardType="phone-pad"
+          value={airtimePhone}
+          onChangeText={setAirtimePhone}
+          style={styles.input}
+        />
+        <TextInput
+          placeholder="Amount (RWF)"
+          placeholderTextColor="#8B95A1"
+          keyboardType="numeric"
+          value={airtimeAmount}
+          onChangeText={setAirtimeAmount}
+          style={styles.input}
+        />
+        {airtimeProviders.length > 0 && (
+          <View style={styles.providerPicker}>
+            {airtimeProviders.map((p, i) => (
+              <TouchableOpacity
+                key={p.id}
+                style={[styles.providerChip, i === airtimeProviderIndex && styles.providerChipSelected]}
+                onPress={() => setAirtimeProviderIndex(i === airtimeProviderIndex ? null : i)}
+              >
+                <Text style={i === airtimeProviderIndex ? styles.providerChipTextSelected : styles.providerChipText}>
+                  {p.logo} {p.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+        <TouchableOpacity style={styles.payButton} disabled={buyingAirtime} onPress={handleBuyAirtime}>
+          <Text style={styles.payButtonText}>{buyingAirtime ? 'Sending…' : 'Buy airtime'}</Text>
+        </TouchableOpacity>
+      </View>
 
       {providers.length > 0 && (
         <View style={styles.autoPayCard}>

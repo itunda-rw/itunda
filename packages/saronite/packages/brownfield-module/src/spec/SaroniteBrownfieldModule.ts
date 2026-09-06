@@ -59,6 +59,16 @@ export interface PayBillResult {
   status: string;
 }
 
+/** Mirrors the transaction returned by `POST /api/v1/bills/airtime`
+ * (services/backend/bills's BillsController.buyAirtime) -- same real response
+ * shape as PayBillResult (a `message` plus the resulting transaction's id/
+ * referenceNumber/status), reused as-is since the backend returns an identical
+ * `{message, transaction}` envelope for both endpoints. Real gap closed
+ * 2026-09-07 (Bills product-completeness pass): bank-mfe's web BillsView.tsx
+ * already had "Buy airtime" since 2026-08-17; this bridge -- the only path
+ * Android/iOS have to Bills at all -- never did. */
+export type BuyAirtimeResult = PayBillResult;
+
 /** Mirrors a single billing partner from `GET /api/v1/bills/providers`
  * (services/backend/bills's BillsController.getProviders / BillsCatalog.providers).
  * `id` (e.g. "b1") is distinct from `PendingBill.provider`, which is only the
@@ -381,6 +391,11 @@ export interface SaroniteBrownfieldModuleSpec {
     provider: string,
   ): Promise<PayBillResult>;
   getBillProviders(): Promise<BillProvidersResult>;
+  buyAirtime(
+    phoneNumber: string,
+    amount: number,
+    provider: string,
+  ): Promise<BuyAirtimeResult>;
   getAutoPaySettings(): Promise<AutoPaySettingsResult>;
   setAutoPay(
     providerId: string,

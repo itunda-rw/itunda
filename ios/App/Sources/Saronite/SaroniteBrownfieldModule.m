@@ -16,6 +16,11 @@ RCT_EXTERN_METHOD(payBill:(NSString *)billId
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(getBillProviders:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(buyAirtime:(NSString *)phoneNumber
+                  amount:(nonnull NSNumber *)amount
+                  provider:(NSString *)provider
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(getAutoPaySettings:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(setAutoPay:(NSString *)providerId
                   accountNumber:(NSString *)accountNumber

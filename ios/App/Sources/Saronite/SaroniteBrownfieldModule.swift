@@ -162,6 +162,34 @@ final class SaroniteBrownfieldModule: NSObject {
         }
     }
 
+    // Real gap closed 2026-09-07 (Bills product-completeness pass): bank-mfe's web
+    // BillsView.tsx has had "Buy airtime" since 2026-08-17, but this bridge -- the
+    // only path iOS has to Bills at all -- never did. `provider` is an empty string,
+    // not nil, when the mini-app's own picker has no selection ("Default provider"),
+    // matching every other method's non-optional String parameter here -- omitted
+    // from the request body entirely when blank, same as the backend's real optional
+    // `provider: String? = null` expects. Response shape is identical to payBill's,
+    // so it's parsed the same way rather than duplicating a mapper.
+    @objc func buyAirtime(
+        _ phoneNumber: String,
+        amount: NSNumber,
+        provider: String,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        var body: [String: Any] = ["phoneNumber": phoneNumber, "amount": amount]
+        if !provider.isEmpty { body["provider"] = provider }
+        authorizedCall(path: "api/v1/bills/airtime", method: "POST", body: body, resolve: resolve, reject: reject) { root in
+            let transaction = root["transaction"] as? [String: Any]
+            return [
+                "message": root["message"] as? String ?? "Airtime purchase successful",
+                "transactionId": transaction?["id"] as? String ?? "",
+                "referenceNumber": transaction?["referenceNumber"] as? String ?? "",
+                "status": transaction?["status"] as? String ?? "",
+            ]
+        }
+    }
+
     @objc func getAutoPaySettings(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
         authorizedCall(path: "api/v1/bills/auto-pay", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
             let settings = ((root["autoPay"] as? [[String: Any]]) ?? []).map(Self.mapBillAutoPaySetting)

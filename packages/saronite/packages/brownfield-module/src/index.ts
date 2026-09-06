@@ -11,6 +11,7 @@ export type {
   PendingBill,
   PendingBillsResult,
   PayBillResult,
+  BuyAirtimeResult,
   BillProvider,
   BillProvidersResult,
   BillAutoPaySetting,

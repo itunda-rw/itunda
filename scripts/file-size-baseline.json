@@ -1,5 +1,5 @@
 {
-  "android/app/src/main/java/rw/itunda/app/miniapps/SaroniteBridge.kt": 966,
+  "android/app/src/main/java/rw/itunda/app/miniapps/SaroniteBridge.kt": 989,
   "android/app/src/main/java/rw/itunda/app/ui/ItundaAppScreen.kt": 2398,
   "android/app/src/main/java/rw/itunda/app/ui/LoginScreen.kt": 663,
   "android/app/src/main/java/rw/itunda/app/ui/MainViewModel.kt": 674,
@@ -24,7 +24,7 @@
   "ios/App/Sources/Grow31SavingsScreenView.swift": 526,
   "ios/App/Sources/HoodMarketplaceCard.swift": 572,
   "ios/App/Sources/RideScreenView.swift": 805,
-  "ios/App/Sources/Saronite/SaroniteBrownfieldModule.swift": 645,
+  "ios/App/Sources/Saronite/SaroniteBrownfieldModule.swift": 673,
   "ios/App/Sources/TalkChatThread.swift": 681,
   "ios/App/Sources/WeeklySavingsScreenView.swift": 538,
   "ios/Core/Network/Sources/NetworkClient.swift": 7255,

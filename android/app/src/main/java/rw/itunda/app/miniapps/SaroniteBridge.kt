@@ -178,6 +178,29 @@ class SaroniteBrownfieldModule(
         authorizedCall(get("api/v1/bills/providers"), promise, ::parseBillProviders)
     }
 
+    // Real gap closed 2026-09-07 (Bills product-completeness pass): bank-mfe's web
+    // BillsView.tsx has had "Buy airtime" since 2026-08-17 (lib/bills.ts's own doc
+    // comment), but this bridge -- the only path Android/iOS have to Bills at all --
+    // never did, so the pay-bills mini-app had no airtime UI to call even if it wanted
+    // one. Money movement, same requireScope(null, ...) classification as payBill
+    // above. `provider` is an empty string, not null, when the mini-app's own picker
+    // has no selection ("Default provider"), matching the RN bridge's non-nullable
+    // String parameter convention every other method here already uses -- mapped to
+    // the backend's real optional `provider: String? = null` by omitting it entirely
+    // when blank, same as BillsController.BuyAirtimeRequest expects. Response shape
+    // (`{message, transaction: {id, referenceNumber, status}}`) is identical to
+    // payBill's, so parsePayBillResult is reused as-is rather than duplicated.
+    @ReactMethod
+    fun buyAirtime(phoneNumber: String, amount: Double, provider: String, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        val body = JsonObject().apply {
+            addProperty("phoneNumber", phoneNumber)
+            addProperty("amount", amount)
+            if (provider.isNotBlank()) addProperty("provider", provider)
+        }
+        authorizedCall(post("api/v1/bills/airtime", body), promise, ::parsePayBillResult)
+    }
+
     @ReactMethod
     fun getAutoPaySettings(promise: Promise) {
         if (!requireScope(null, promise)) return

@@ -4,6 +4,7 @@ export { getWalletBalance } from './native-modules/natives/getWalletBalance';
 export { getPendingBills } from './native-modules/natives/getPendingBills';
 export { payBill } from './native-modules/natives/payBill';
 export { getBillProviders } from './native-modules/natives/getBillProviders';
+export { buyAirtime } from './native-modules/natives/buyAirtime';
 export { getAutoPaySettings } from './native-modules/natives/getAutoPaySettings';
 export { setAutoPay } from './native-modules/natives/setAutoPay';
 export { clearAutoPay } from './native-modules/natives/clearAutoPay';
