@@ -45,7 +45,15 @@ import java.io.IOException
 // them. A ticket is always tied to a specific transaction (see SupportTicket.kt's own
 // doc comment for why), so this screen has the user pick one from their real
 // transaction history rather than filing a free-floating complaint.
-private val CATEGORIES = listOf("GENERAL", "PAYMENT_DISPUTE", "ACCOUNT_TAKEOVER")
+// Real, pre-existing cross-platform gap found (2026-09-06, Eats product-completeness
+// pass): "RIDE_ISSUE" is a real backend category with its own real web client
+// pre-filled hand-off (bank-mfe's RidePassengerView "Report an issue" button), but
+// this screen never got it -- Android has no equivalent pre-filled hand-off for ANY
+// category yet, ride or otherwise, so it's named here, not built (a separate, larger
+// piece of work, out of scope for this pass). EATS_ORDER_ISSUE is added below purely
+// so a user can at least pick the right category when filing a ticket manually --
+// the same real gap RIDE_ISSUE already has here, not a new one introduced by Eats.
+private val CATEGORIES = listOf("GENERAL", "PAYMENT_DISPUTE", "ACCOUNT_TAKEOVER", "EATS_ORDER_ISSUE")
 
 @Composable
 fun SupportScreen(onBack: () -> Unit) {

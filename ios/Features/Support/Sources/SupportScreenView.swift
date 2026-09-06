@@ -10,7 +10,15 @@ import CoreNetwork
 // OverviewLoansCreditScoreScreens.swift (2026-08-30) into its own FeatureSupport
 // module -- same real, sourced Toss one-feature-per-module precedent applied to
 // Certificate/Identity's own extraction (toss.tech/article/slash23-iOS).
-private let supportCategories = ["GENERAL", "PAYMENT_DISPUTE", "ACCOUNT_TAKEOVER"]
+// Real, pre-existing cross-platform gap found (2026-09-06, Eats product-completeness
+// pass): "RIDE_ISSUE" is a real backend category with its own real web client
+// pre-filled hand-off (bank-mfe's RidePassengerView "Report an issue" button), but
+// this screen never got it -- iOS has no equivalent pre-filled hand-off for ANY
+// category yet, ride or otherwise, so it's named here, not built (a separate, larger
+// piece of work, out of scope for this pass). EATS_ORDER_ISSUE is added below purely
+// so a user can at least pick the right category when filing a ticket manually --
+// the same real gap RIDE_ISSUE already has here, not a new one introduced by Eats.
+private let supportCategories = ["GENERAL", "PAYMENT_DISPUTE", "ACCOUNT_TAKEOVER", "EATS_ORDER_ISSUE"]
 
 // Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
 // convention never reached this file, which predates that sweep's file list).

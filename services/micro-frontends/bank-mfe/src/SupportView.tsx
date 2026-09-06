@@ -16,13 +16,15 @@ import { useDeferredLoading } from './useDeferredLoading';
 // specific transaction (see SupportTicket.kt's own doc comment for why), so this view
 // has the user pick one from their real transaction history rather than filing a
 // free-floating complaint.
-const SUPPORT_CATEGORIES: SupportTicketCategory[] = ['GENERAL', 'PAYMENT_DISPUTE', 'ACCOUNT_TAKEOVER', 'RIDE_ISSUE'];
+const SUPPORT_CATEGORIES: SupportTicketCategory[] = ['GENERAL', 'PAYMENT_DISPUTE', 'ACCOUNT_TAKEOVER', 'RIDE_ISSUE', 'EATS_ORDER_ISSUE'];
 
 // Real Uber "trip issue report" hand-off (2026-08-16) -- a completed ride's own
 // "Report an issue" button lands here with the trip's real transactionId/RIDE_ISSUE
 // category already chosen, same pending-hand-off pattern pendingConversationId already
 // established, rather than dropping the rider on a blank category picker they'd have
-// to know to select the right transaction from themselves.
+// to know to select the right transaction from themselves. A delivered Eats order's
+// own "Report an issue" button (2026-09-06, Eats product-completeness pass) reuses
+// the identical hand-off shape with EATS_ORDER_ISSUE.
 export function SupportView({ initialTransactionId, initialCategory, onConsumedInitial }: { initialTransactionId?: string | null; initialCategory?: SupportTicketCategory; onConsumedInitial?: () => void } = {}) {
   const { t } = useI18n();
   const [tickets, setTickets] = useState<SupportTicket[] | null>(null);

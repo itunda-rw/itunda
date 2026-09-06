@@ -18,7 +18,7 @@ import { MenuView } from './MenuView';
 import { MyEatsOrdersView, FavoriteRestaurantsView } from './EatsOrdersAndFavorites';
 import { SearchAndCategoryChips, WishlistButton } from './BankDashboard';
 
-export function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: string) => void }) {
+export function OrderFoodView({ onMessageSeller, onReportIssue }: { onMessageSeller: (conversationId: string) => void; onReportIssue: (transactionId: string) => void }) {
   const { t } = useI18n();
   const [view, setView] = useState<'BROWSE' | 'FAVORITES' | 'ORDERS'>('BROWSE');
   const [restaurants, setRestaurants] = useState<ShoppingMerchant[] | null>(null);
@@ -228,7 +228,7 @@ export function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversat
       {view === 'ORDERS' ? (
         <>
           {reorderError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '10px' }} role="alert">{reorderError}</p>}
-          <MyEatsOrdersView onReorder={handleReorder} reorderingId={reorderingId} restaurants={allRestaurants} onMessageSeller={onMessageSeller} />
+          <MyEatsOrdersView onReorder={handleReorder} reorderingId={reorderingId} restaurants={allRestaurants} onMessageSeller={onMessageSeller} onReportIssue={onReportIssue} />
         </>
       ) : view === 'FAVORITES' ? (
         <FavoriteRestaurantsView

@@ -16,7 +16,11 @@ import java.time.Instant
 // payment, so this isn't a new capability -- it's a real, distinct category (own SLA,
 // own framing) plus a real trip-contextual entry point, not a bespoke second ticket
 // system.
-enum class SupportTicketCategory { GENERAL, PAYMENT_DISPUTE, ACCOUNT_TAKEOVER, RIDE_ISSUE }
+// EATS_ORDER_ISSUE added 2026-09-06 (Eats product-completeness pass) -- the exact
+// same shape as RIDE_ISSUE, for a delivered Eats order: a buyer disputing a bad order
+// today could only file a generic GENERAL/PAYMENT_DISPUTE ticket with no pre-attached
+// order context, despite a delivered order already carrying a real transactionId.
+enum class SupportTicketCategory { GENERAL, PAYMENT_DISPUTE, ACCOUNT_TAKEOVER, RIDE_ISSUE, EATS_ORDER_ISSUE }
 enum class SupportTicketStatus { OPEN, RESOLVED }
 enum class SupportTicketResolution { REFUNDED, REJECTED }
 

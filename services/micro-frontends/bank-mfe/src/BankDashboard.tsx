@@ -55,6 +55,7 @@ import { submitHoodReport, type HoodReportTargetType } from './lib/hoodReport';
 import { IdentityView } from './IdentityView';
 import { addContact, fetchContacts, type Contact } from './lib/contacts';
 import { SupportView } from './SupportView';
+import type { SupportTicketCategory } from './lib/support';
 import { SpendingInsightView } from './SpendingInsightView';
 import { SubscriptionsView } from './SubscriptionsView';
 import { StocksView } from './StocksView';
@@ -2712,6 +2713,11 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   // Real Uber "trip issue report" hand-off -- see SupportView's own doc comment on
   // initialTransactionId. Same pending-hand-off shape as pendingConversationId above.
   const [pendingRideIssueTransactionId, setPendingRideIssueTransactionId] = useState<string | null>(null);
+  // Real Eats order "report an issue" hand-off (2026-09-06, Eats product-completeness
+  // pass) -- same pending-hand-off shape as pendingRideIssueTransactionId above, kept
+  // as its own state rather than generalized since a user can only ever be reporting
+  // one specific completed order/trip at a time.
+  const [pendingEatsOrderIssueTransactionId, setPendingEatsOrderIssueTransactionId] = useState<string | null>(null);
   // Real gap named in docs/DESIGN_REFERENCES.md's own IA research (Section 41 item 3):
   // search only ever existed buried inside the Explore tab, not reachable from
   // anywhere else without navigating there first and scrolling to find it. The
@@ -2811,6 +2817,17 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     setPendingRideIssueTransactionId(transactionId);
     setTab('SUPPORT');
   };
+
+  // Real Eats order "report an issue" hand-off (2026-09-06, Eats product-completeness
+  // pass) -- same shape as handleReportRideIssue above.
+  const handleReportEatsOrderIssue = (transactionId: string) => {
+    setPendingEatsOrderIssueTransactionId(transactionId);
+    setTab('SUPPORT');
+  };
+
+  let supportInitialCategory: SupportTicketCategory | undefined;
+  if (pendingRideIssueTransactionId) supportInitialCategory = 'RIDE_ISSUE';
+  else if (pendingEatsOrderIssueTransactionId) supportInitialCategory = 'EATS_ORDER_ISSUE';
 
   const TABS: { id: Tab; label: string }[] = [
     { id: 'HOME', label: 'Home' },
@@ -3004,7 +3021,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'YOU' && <YouHub onNavigateToTab={setTab} />}
       {tab === 'MY' && <MyView />}
       {tab === 'SHOP' && <ShopView onMessageSeller={handleMessageSeller} />}
-      {tab === 'EATS' && <EatsView onMessageSeller={handleMessageSeller} />}
+      {tab === 'EATS' && <EatsView onMessageSeller={handleMessageSeller} onReportIssue={handleReportEatsOrderIssue} />}
       {tab === 'MARKETPLACE' && <MarketplaceView onMessageSeller={handleMessageSeller} />}
       {tab === 'COMMUNITY' && <CommunityView onOpenGroupChat={handleMessageSeller} />}
       {tab === 'JOBS' && <JobsView onMessagePoster={handleMessageSeller} />}
@@ -3073,9 +3090,12 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'IDENTITY' && <IdentityView />}
       {tab === 'SUPPORT' && (
         <SupportView
-          initialTransactionId={pendingRideIssueTransactionId}
-          initialCategory={pendingRideIssueTransactionId ? 'RIDE_ISSUE' : undefined}
-          onConsumedInitial={() => setPendingRideIssueTransactionId(null)}
+          initialTransactionId={pendingRideIssueTransactionId ?? pendingEatsOrderIssueTransactionId}
+          initialCategory={supportInitialCategory}
+          onConsumedInitial={() => {
+            setPendingRideIssueTransactionId(null);
+            setPendingEatsOrderIssueTransactionId(null);
+          }}
         />
       )}
     </div>

@@ -45,6 +45,9 @@ class SupportService(
         val SLA_HOURS = mapOf(
             SupportTicketCategory.ACCOUNT_TAKEOVER to 4L,
             SupportTicketCategory.RIDE_ISSUE to 24L,
+            // Same 24h SLA as RIDE_ISSUE -- the same "dispute a completed paid
+            // transaction" shape, see SupportTicketCategory's own doc comment.
+            SupportTicketCategory.EATS_ORDER_ISSUE to 24L,
             SupportTicketCategory.PAYMENT_DISPUTE to 48L,
             SupportTicketCategory.GENERAL to 72L,
         )

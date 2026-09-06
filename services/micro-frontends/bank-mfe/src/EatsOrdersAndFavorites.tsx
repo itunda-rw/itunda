@@ -15,7 +15,7 @@ import { ReviewOrderCard, TipRiderPrompt, RestaurantReviewsManageView } from './
 import { ShareFavoritesModal, WishlistButton, nextInChain } from './BankDashboard';
 import { useDeferredLoading } from './useDeferredLoading';
 
-export function MyEatsOrdersView({ onReorder, reorderingId, restaurants, onMessageSeller }: { onReorder: (order: EatsOrder) => void; reorderingId: string | null; restaurants: ShoppingMerchant[] | null; onMessageSeller: (conversationId: string) => void }) {
+export function MyEatsOrdersView({ onReorder, reorderingId, restaurants, onMessageSeller, onReportIssue }: { onReorder: (order: EatsOrder) => void; reorderingId: string | null; restaurants: ShoppingMerchant[] | null; onMessageSeller: (conversationId: string) => void; onReportIssue: (transactionId: string) => void }) {
   const { t } = useI18n();
   const [orders, setOrders] = useState<EatsOrder[] | null>(null);
   const showSkeleton = useDeferredLoading(orders === null);
@@ -94,6 +94,9 @@ export function MyEatsOrdersView({ onReorder, reorderingId, restaurants, onMessa
                 )}
                 <button className="itunda-btn itunda-btn-secondary" disabled={reorderingId === o.id} onClick={() => onReorder(o)}>
                   {reorderingId === o.id ? 'Reordering…' : 'Reorder'}
+                </button>
+                <button className="itunda-btn itunda-btn-secondary" style={{ fontSize: 'var(--itunda-type-scale-12-size)' }} onClick={() => onReportIssue(o.transactionId)}>
+                  Report an issue
                 </button>
               </div>
             ) : o.status === 'CANCELLED' ? (

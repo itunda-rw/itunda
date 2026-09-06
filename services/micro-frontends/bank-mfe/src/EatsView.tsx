@@ -142,7 +142,7 @@ function EatsMembershipCard() {
   );
 }
 
-export function EatsView({ onMessageSeller }: { onMessageSeller: (conversationId: string) => void }) {
+export function EatsView({ onMessageSeller, onReportIssue }: { onMessageSeller: (conversationId: string) => void; onReportIssue: (transactionId: string) => void }) {
   // Real fix (2026-08-19) -- same gap and same fix as MessagesView's identical
   // joinChatCode handling: a tapped ?joinEatsCode= link needs the Together-order sub-tab
   // pre-selected or GroupOrderView (which owns the actual auto-join effect) never mounts.
@@ -172,7 +172,7 @@ export function EatsView({ onMessageSeller }: { onMessageSeller: (conversationId
           <PlatformMembershipCard />
           <EatsMembershipCard />
           <RestaurantOrdersView />
-          <OrderFoodView onMessageSeller={onMessageSeller} />
+          <OrderFoodView onMessageSeller={onMessageSeller} onReportIssue={onReportIssue} />
         </div>
       ) : mode === 'TOGETHER' ? (
         <GroupOrderView />
