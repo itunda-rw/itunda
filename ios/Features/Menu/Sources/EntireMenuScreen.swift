@@ -297,7 +297,7 @@ public struct EntireMenuScreen: View {
                     ], isExpanded: expandedMenuSection == "Send & pay", onToggle: { expandedMenuSection = (expandedMenuSection == "Send & pay") ? nil : "Send & pay" })
                     CollapsibleFlatSection(title: "Save & grow", rows: [
                         FlatRow(title: "Round-up savings", subtitle: "Auto-save spare change from every transfer", symbol: "arrow.up.circle.fill", tint: .accentOrange, action: onOpenRoundUp),
-                        FlatRow(title: "12-month deposit", subtitle: "2.80%/yr interest paid upfront, principal locked", glyph: { AnyView(LockGlyph(size: 28)) }, action: onOpenUpfrontDeposit),
+                        FlatRow(title: "12-month deposit", subtitle: "\(String(format: "%.2f", upfrontDepositAnnualRate))%/yr interest paid upfront, principal locked", glyph: { AnyView(LockGlyph(size: 28)) }, action: onOpenUpfrontDeposit),
                     ], isExpanded: expandedMenuSection == "Save & grow", onToggle: { expandedMenuSection = (expandedMenuSection == "Save & grow") ? nil : "Save & grow" })
                     CollapsibleFlatSection(title: "Borrow", rows: [
                         FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: onOpenLoans),

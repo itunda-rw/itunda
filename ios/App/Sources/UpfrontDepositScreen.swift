@@ -9,7 +9,9 @@ import CoreNetwork
 // since unlike WeeklySavingsScreen there's no per-deposit detail screen -- everything
 // a deposit needs to show fits on its list row, no installments, no early withdrawal).
 private let termMonths = 12
-private let annualRate = 2.80
+// Consolidated 2026-09-06 into CoreDesignSystem's UpfrontDepositPolicy.swift -- see
+// its own doc comment.
+private let annualRate = upfrontDepositAnnualRate
 
 private enum UpfrontDepositMode { case list, new }
 
