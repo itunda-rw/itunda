@@ -334,6 +334,73 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  # Real, fourth product-level dashboard (2026-09-06, Wealth/Invest product-
+  # completeness pass) -- see docs/ARCHITECTURE.md's dated follow-up. Same
+  # zero-new-instrumentation approach as itunda-bank/itunda-pay/itunda-merchant
+  # above: /api/v1/stocks already runs on `backend` (application="itunda") with
+  # Prometheus/actuator already flowing. No per-service JVM/pods-up panel here
+  # either -- this pass's own backend-extraction attempt (:stocks) was
+  # investigated and correctly ruled out (real reverse coupling from :savings,
+  # which stays in :app for round-up-to-invest -- see staged-swimming-sun.md's
+  # own account, including a methodology correction to an initial research
+  # conclusion), so there is no new JVM to chart.
+  name: grafana-dashboard-itunda-wealth
+  namespace: monitoring
+data:
+  itunda-wealth.json: |
+    {
+      "title": "itunda Wealth",
+      "uid": "itunda-wealth",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Wealth request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/stocks(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Wealth error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/stocks(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Wealth request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/stocks(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/stocks(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: grafana-dashboard-itunda-private-cloud
   namespace: monitoring
 data:
@@ -485,6 +552,8 @@ spec:
               name: grafana-dashboard-itunda-pay
           - configMap:
               name: grafana-dashboard-itunda-merchant
+          - configMap:
+              name: grafana-dashboard-itunda-wealth
           - configMap:
               name: grafana-dashboard-itunda-private-cloud
 ---
