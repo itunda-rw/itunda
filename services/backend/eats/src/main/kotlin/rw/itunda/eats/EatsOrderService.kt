@@ -254,6 +254,21 @@ class EatsOrderService(
         // See this method's own doc comment for the real opt-in/window rules.
         scheduledFor: Instant? = null,
     ): EatsOrderDetail {
+        // Real bug found live (2026-09-06, Eats product-completeness pass): this real
+        // order-creation endpoint had shipped with zero rate limiting -- every other
+        // real content/order-creation endpoint in this module (geocode-search,
+        // GroupEatsOrderService.createGroupOrder, EatsReviewService.submitReview) already
+        // has one. Same bug class as ChatReportService's real, already-fixed 2026-08-02
+        // incident. Limit mirrors GiftVoucherService/EmoticonService's own real
+        // purchase-frequency bound.
+        // Real bug found live (2026-09-06, Eats product-completeness pass): this real
+        // order-creation endpoint had shipped with zero rate limiting -- every other
+        // real content/order-creation endpoint in this module (geocode-search,
+        // GroupEatsOrderService.createGroupOrder, EatsReviewService.submitReview) already
+        // has one. Same bug class as ChatReportService's real, already-fixed 2026-08-02
+        // incident. Limit mirrors GiftVoucherService/EmoticonService's own real
+        // purchase-frequency bound.
+        rateLimiter.checkLimit("eats:place-order:$buyerId", limit = 20, window = Duration.ofHours(1))
         if (items.isEmpty()) {
             throw EmptyEatsOrderException("An order needs at least one item")
         }

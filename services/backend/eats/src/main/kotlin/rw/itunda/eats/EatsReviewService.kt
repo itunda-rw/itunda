@@ -92,6 +92,11 @@ class EatsReviewService(
         photoUrl: String? = null,
         goodPoints: List<String> = emptyList(),
     ): EatsReview {
+        // Real bug found live (2026-09-06, Eats product-completeness pass): this real
+        // review-creation endpoint had shipped with zero rate limiting despite this
+        // same class's own helpful-vote/report endpoints already having one. Same bug
+        // class as ChatReportService's real, already-fixed 2026-08-02 incident.
+        rateLimiter.checkLimit("eats:review:submit:$buyerId", limit = 20, window = Duration.ofHours(1))
         if (restaurantRating !in 1..5) {
             throw InvalidEatsRatingException("Restaurant rating must be between 1 and 5")
         }

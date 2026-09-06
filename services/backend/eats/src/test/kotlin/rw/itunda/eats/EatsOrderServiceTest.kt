@@ -2525,6 +2525,60 @@ class EatsOrderServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real bug found live (2026-09-06, Eats product-completeness pass): placeOrder
+    // had shipped with zero rate limiting despite every other real content/order-
+    // creation endpoint in this module already having one. See placeOrder's own doc
+    // comment for the full account.
+    Given("a real buyer who has already hit the real place-order rate limit") {
+        val merchantRepository = mockk<MerchantRepository>()
+        every { merchantRepository.findById(any<String>()) } returns Optional.empty()
+        val merchantProductRepository = mockk<MerchantProductRepository>()
+        val riderRepository = mockk<RiderRepository>()
+        val eatsOrderRepository = mockk<EatsOrderRepository>()
+        every { eatsOrderRepository.existsByRiderIdAndStatusIn(any(), any()) } returns false
+        every { eatsOrderRepository.findDistinctRiderIdsByStatusIn(any()) } returns emptyList()
+        val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
+        val menuOptionGroupRepository = mockk<MenuOptionGroupRepository>(relaxed = true)
+        every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
+        val menuOptionChoiceRepository = mockk<MenuOptionChoiceRepository>(relaxed = true)
+        every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
+        val accountRepository = mockk<AccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
+        val rateLimiter = mockk<RateLimiter>()
+        every { rateLimiter.checkLimit("eats:place-order:buyer_1", limit = 20, window = Duration.ofHours(1)) } throws
+            RateLimitExceededException("Too many requests")
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        val webhookDeliveryService = mockk<rw.itunda.merchant.WebhookDeliveryService>(relaxed = true)
+        val service = EatsOrderService(
+            merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
+            eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
+            mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            pushNotificationService, autoTopUpService, webhookDeliveryService,
+        )
+
+        When("they try to place another order") {
+            Then("it real-429s before ever looking up the restaurant or touching the repository") {
+                try {
+                    service.placeOrder("buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 2)), "KG 9 Ave")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    // expected
+                }
+                verify(exactly = 0) { merchantRepository.findById("restaurant_1") }
+                verify(exactly = 0) { eatsOrderRepository.save(any()) }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

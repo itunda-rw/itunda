@@ -6,6 +6,8 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.EatsOrder
 import rw.itunda.core.domain.EatsOrderStatus
@@ -235,6 +237,36 @@ class EatsReviewServiceTest : BehaviorSpec({
 
             Then("it returns real counts derived only from real submitted tags") {
                 counts shouldBe mapOf("GREAT_FOOD" to 2, "NICE_INTERIOR" to 1)
+            }
+        }
+    }
+
+    // Real bug found live (2026-09-06, Eats product-completeness pass): submitReview
+    // had shipped with zero rate limiting despite this same class's own helpful-vote/
+    // report endpoints already having one. See submitReview's own doc comment.
+    Given("a real buyer who has already hit the real review-submission rate limit") {
+        val eatsOrderRepository = mockk<EatsOrderRepository>()
+        val eatsReviewRepository = mockk<EatsReviewRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val eatsReviewHelpfulVoteRepository = mockk<EatsReviewHelpfulVoteRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        every { rateLimiter.checkLimit("eats:review:submit:buyer_1", limit = 20, window = java.time.Duration.ofHours(1)) } throws
+            RateLimitExceededException("Too many requests")
+        val eatsReviewReportRepository = mockk<EatsReviewReportRepository>(relaxed = true)
+        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService, eatsReviewHelpfulVoteRepository, rateLimiter, eatsReviewReportRepository)
+
+        When("they try to submit another review") {
+            Then("it real-429s before ever looking up the order") {
+                try {
+                    service.submitReview("buyer_1", "eats_order_1", 5, "Great food!", 4, "Fast delivery")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    // expected
+                }
+                verify(exactly = 0) { eatsOrderRepository.findById(any()) }
+                verify(exactly = 0) { eatsReviewRepository.save(any()) }
             }
         }
     }
