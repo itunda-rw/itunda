@@ -166,6 +166,31 @@ export const resolveHoodReport = (reportId: string) =>
 export const removeHoodReportTarget = (reportId: string) =>
   apiFetch(`/api/v1/system/hood-reports/${reportId}/remove-target`, { method: 'POST' });
 
+// Real Talk (1:1 chat) message-report queue -- `ChatReportController` had a real,
+// live create endpoint (`POST /api/v1/chat/reports`) but no admin surface ever
+// consumed the resulting rows; found during the Talk product-completeness pass.
+export interface ChatReport {
+  id: string;
+  reporterUserId: string;
+  messageId: string;
+  reason: string;
+  status: 'OPEN' | 'RESOLVED';
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export const fetchChatReportsQueue = (page = 0) =>
+  apiFetch<{ success: boolean; reports: ChatReport[]; page: number; totalElements: number; totalPages: number }>(
+    `/api/v1/system/chat-reports?page=${page}`,
+  ).then((r) => ({ items: r.reports, totalElements: r.totalElements, hasMore: r.page + 1 < r.totalPages }));
+
+export const resolveChatReport = (reportId: string) =>
+  apiFetch(`/api/v1/system/chat-reports/${reportId}/resolve`, { method: 'POST' });
+
+export const removeChatReportMessage = (reportId: string) =>
+  apiFetch(`/api/v1/system/chat-reports/${reportId}/remove-message`, { method: 'POST' });
+
 // Real MTN MoMo/Airtel Money-style physical cash-in/cash-out agent network -- Agent
 // management (item 129: register/list/suspend an agent, fund a real till float), the
 // rest of this module's admin surface item 126 deliberately left open. Cash-in/

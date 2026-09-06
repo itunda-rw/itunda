@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, Banknote, CircleDollarSign, Flag, Gauge, HeartPulse, Home, Landmark, LifeBuoy, LogOut, Percent, Puzzle, Scale, ShieldCheck, Siren, Store, Users, Webhook } from 'lucide-react';
+import { AlertTriangle, Banknote, CircleDollarSign, Flag, Gauge, HeartPulse, Home, Landmark, LifeBuoy, LogOut, MessageCircleWarning, Percent, Puzzle, Scale, ShieldCheck, Siren, Store, Users, Webhook } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
 import OverviewView from './queues/OverviewView';
 import FraudQueue from './queues/FraudQueue';
@@ -18,11 +18,12 @@ import MerchantModerationQueue from './queues/MerchantModerationQueue';
 import LoanDefaultQueue from './queues/LoanDefaultQueue';
 import FeeWaiverQueue from './queues/FeeWaiverQueue';
 import WebhookFailuresQueue from './queues/WebhookFailuresQueue';
+import ChatReportsQueue from './queues/ChatReportsQueue';
 
 type Tab =
   | 'overview' | 'fraud' | 'compliance' | 'incidents' | 'reconciliation' | 'support' | 'insurance' | 'partners'
   | 'escrow' | 'agents' | 'hood-reports' | 'property-verification' | 'agents-management' | 'merchants' | 'loan-default'
-  | 'fee-waiver' | 'webhook-failures';
+  | 'fee-waiver' | 'webhook-failures' | 'chat-reports';
 
 const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'overview', label: 'Overview', icon: Gauge },
@@ -42,6 +43,7 @@ const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'loan-default', label: 'Loan default review', icon: Landmark },
   { id: 'fee-waiver', label: 'Fee waiver revocation', icon: Percent },
   { id: 'webhook-failures', label: 'Webhook failures', icon: Webhook },
+  { id: 'chat-reports', label: 'Talk message reports', icon: MessageCircleWarning },
 ];
 
 export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
@@ -125,6 +127,7 @@ export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
         {tab === 'loan-default' && <LoanDefaultQueue />}
         {tab === 'fee-waiver' && <FeeWaiverQueue />}
         {tab === 'webhook-failures' && <WebhookFailuresQueue />}
+        {tab === 'chat-reports' && <ChatReportsQueue />}
       </main>
     </div>
   );

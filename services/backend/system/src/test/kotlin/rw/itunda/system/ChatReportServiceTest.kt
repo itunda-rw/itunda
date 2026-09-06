@@ -6,9 +6,13 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.ChatReport
 import rw.itunda.core.domain.Conversation
+import rw.itunda.core.domain.HoodReportStatus
 import rw.itunda.core.domain.Message
 import rw.itunda.core.repository.ChatReportRepository
 import rw.itunda.core.repository.ConversationRepository
@@ -94,6 +98,89 @@ class ChatReportServiceTest : BehaviorSpec({
                 }
                 verify(exactly = 0) { messageRepository.findById(any()) }
                 verify(exactly = 0) { chatReportRepository.save(any()) }
+            }
+        }
+    }
+
+    Given("an ops reviewer opening the real chat-report queue") {
+        val chatReportRepository = mockk<ChatReportRepository>()
+        val messageRepository = mockk<MessageRepository>()
+        val conversationRepository = mockk<ConversationRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = ChatReportService(chatReportRepository, messageRepository, conversationRepository, rateLimiter)
+        val pageable = PageRequest.of(0, 30)
+        val openReport = ChatReport("chat_report_1", "user_1", "msg_1", "Harassment")
+        every { chatReportRepository.findByStatusOrderByCreatedAtAsc(HoodReportStatus.OPEN, pageable) } returns PageImpl(listOf(openReport))
+
+        When("they fetch the queue") {
+            val result = service.queue(pageable)
+
+            Then("it real-returns only OPEN reports, oldest first") {
+                result.content shouldBe listOf(openReport)
+            }
+        }
+    }
+
+    Given("an ops reviewer dismissing a chat report without touching the message") {
+        val chatReportRepository = mockk<ChatReportRepository>()
+        val messageRepository = mockk<MessageRepository>()
+        val conversationRepository = mockk<ConversationRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = ChatReportService(chatReportRepository, messageRepository, conversationRepository, rateLimiter)
+        val report = ChatReport("chat_report_2", "user_1", "msg_2", "Spam")
+        every { chatReportRepository.findById("chat_report_2") } returns Optional.of(report)
+        every { chatReportRepository.save(any()) } answers { firstArg() }
+
+        When("they resolve it") {
+            val result = service.resolve("chat_report_2", "reviewer_1")
+
+            Then("it real-marks the report RESOLVED and attributes the reviewer, leaving the message alone") {
+                result.status shouldBe HoodReportStatus.RESOLVED
+                result.reviewedBy shouldBe "reviewer_1"
+                verify(exactly = 0) { messageRepository.findById(any()) }
+            }
+        }
+    }
+
+    Given("an ops reviewer removing a reported message") {
+        val chatReportRepository = mockk<ChatReportRepository>()
+        val messageRepository = mockk<MessageRepository>()
+        val conversationRepository = mockk<ConversationRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = ChatReportService(chatReportRepository, messageRepository, conversationRepository, rateLimiter)
+        val report = ChatReport("chat_report_3", "user_1", "msg_3", "Abuse")
+        val message = message("msg_3", "conv_3")
+        every { chatReportRepository.findById("chat_report_3") } returns Optional.of(report)
+        every { messageRepository.findById("msg_3") } returns Optional.of(message)
+        every { messageRepository.save(any()) } answers { firstArg() }
+        every { chatReportRepository.save(any()) } answers { firstArg() }
+
+        When("they remove the message") {
+            val result = service.removeMessage("chat_report_3", "reviewer_1")
+
+            Then("it real-soft-deletes the message, attributed to the reviewer, and resolves the report") {
+                message.deletedByUserId shouldBe "reviewer_1"
+                verify { messageRepository.save(message) }
+                result.status shouldBe HoodReportStatus.RESOLVED
+            }
+        }
+
+        When("the message was already removed") {
+            val alreadyDeletedMessageRepository = mockk<MessageRepository>()
+            val alreadyDeletedChatReportRepository = mockk<ChatReportRepository>()
+            val alreadyDeletedService = ChatReportService(alreadyDeletedChatReportRepository, alreadyDeletedMessageRepository, conversationRepository, rateLimiter)
+            val alreadyDeleted = message("msg_4", "conv_4")
+            alreadyDeleted.deletedAt = java.time.Instant.parse("2026-01-01T00:00:00Z")
+            alreadyDeleted.deletedByUserId = "someone_else"
+            val secondReport = ChatReport("chat_report_4", "user_1", "msg_4", "Abuse")
+            every { alreadyDeletedChatReportRepository.findById("chat_report_4") } returns Optional.of(secondReport)
+            every { alreadyDeletedMessageRepository.findById("msg_4") } returns Optional.of(alreadyDeleted)
+            every { alreadyDeletedChatReportRepository.save(any()) } answers { firstArg() }
+
+            Then("it real-skips re-deleting (no double-attribution), but still resolves the report") {
+                alreadyDeletedService.removeMessage("chat_report_4", "reviewer_2")
+                verify(exactly = 0) { alreadyDeletedMessageRepository.save(any()) }
+                alreadyDeleted.deletedByUserId shouldBe "someone_else"
             }
         }
     }
