@@ -32,6 +32,14 @@ struct CardScreenView: View {
     @State private var pinPasswordInput = ""
     @State private var pinError: String?
     @State private var pinSuccess = false
+    // Real gap closed 2026-09-07 (Card product-completeness pass): bank-mfe's
+    // BankDashboard.tsx has had a "Card benefits" section (live credit-score
+    // card-usage factor + suggestion) since it was built; Android got it in the
+    // same pass; iOS never did, despite already having getCreditScore()/
+    // getCreditScoreSuggestions() wired elsewhere in the app -- this is UI wiring,
+    // no new network code.
+    @State private var cardUsageFactor: CreditScoreFactorDto?
+    @State private var cardSuggestion: CreditScoreSuggestionDto?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -192,6 +200,27 @@ struct CardScreenView: View {
                                 }
                             }
                             .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(16)
+
+                            if cardUsageFactor != nil || cardSuggestion != nil {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Card benefits").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                    if let factor = cardUsageFactor {
+                                        HStack {
+                                            Text(factor.description).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                            Spacer()
+                                            Text("+\(factor.points) credit score").font(.caption).bold().foregroundColor(.green)
+                                        }
+                                    }
+                                    if let suggestion = cardSuggestion {
+                                        HStack {
+                                            Text(suggestion.description).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                            Spacer()
+                                            Text("+\(suggestion.pointsGain) more").font(.caption).bold().foregroundColor(IDS.Colors.brand)
+                                        }
+                                    }
+                                }
+                                .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(16)
+                            }
                         }
                     }
                 }
@@ -217,6 +246,10 @@ struct CardScreenView: View {
             }
             if let transactionsRes = try? await NetworkClient.shared.getCardTransactions() {
                 transactions = transactionsRes.transactions
+            }
+            cardUsageFactor = try? await NetworkClient.shared.getCreditScore().factors.first { $0.name == "Card usage" }
+            cardSuggestion = try? await NetworkClient.shared.getCreditScoreSuggestions().suggestions.first {
+                $0.action == "Use your itunda Card more" || $0.action == "Get an itunda Card"
             }
         }
     }

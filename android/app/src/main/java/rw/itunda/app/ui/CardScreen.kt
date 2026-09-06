@@ -87,6 +87,13 @@ fun CardScreen(onBack: () -> Unit) {
     var pinPasswordInput by remember { mutableStateOf("") }
     var pinError by remember { mutableStateOf<String?>(null) }
     var pinSuccess by remember { mutableStateOf(false) }
+    // Real gap closed 2026-09-07 (Card product-completeness pass): bank-mfe's
+    // BankDashboard.tsx has had a "Card benefits" section (live credit-score
+    // card-usage factor + suggestion) since it was built; Android never did,
+    // despite already having getCreditScore()/getCreditScoreSuggestions() wired
+    // elsewhere in the app -- this is UI wiring, no new network code.
+    var cardUsageFactor by remember { mutableStateOf<rw.itunda.core.network.CreditScoreFactorDto?>(null) }
+    var cardSuggestion by remember { mutableStateOf<rw.itunda.core.network.CreditScoreSuggestionDto?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
@@ -98,6 +105,10 @@ fun CardScreen(onBack: () -> Unit) {
                 monthlyLimitInput = c.monthlyLimit.toPlainString()
                 mode = CardMode.ACTIVE
                 transactions = runCatching { NetworkClient.apiService.getCardTransactions().transactions }.getOrDefault(emptyList())
+                cardUsageFactor = runCatching { NetworkClient.apiService.getCreditScore().factors.find { it.name == "Card usage" } }.getOrNull()
+                cardSuggestion = runCatching {
+                    NetworkClient.apiService.getCreditScoreSuggestions().suggestions.find { it.action == "Use your itunda Card more" || it.action == "Get an itunda Card" }
+                }.getOrNull()
             } catch (e: HttpException) {
                 if (apiErrorCode(e) == "CARD_NOT_FOUND") {
                     mode = CardMode.NO_CARD
@@ -459,19 +470,8 @@ fun CardScreen(onBack: () -> Unit) {
                                 }
                             }
                         }
-                        item {
-                            Text("Recent card activity", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        }
-                        if (transactions.isEmpty()) {
-                            item { EmptyState("No card purchases yet — once you use your card, they'll show up here.") }
-                        } else {
-                            items(transactions, key = { it.id }) { t ->
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text(t.merchantName, color = Ids.colors.textPrimary, fontSize = 13.sp)
-                                    Text("${formatMoney(t.amount)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                }
-                            }
-                        }
+                        cardRecentActivitySection(transactions)
+                        cardBenefitsSection(cardUsageFactor, cardSuggestion)
                     }
                 }
             }
