@@ -21,6 +21,7 @@ import rw.itunda.core.domain.FloatTransferRequestStatus
 import rw.itunda.core.domain.LedgerAccount
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
@@ -50,11 +51,12 @@ class FloatMarketplaceServiceTest : BehaviorSpec({
         ledgerAccountRepository: LedgerAccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
+        fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
         // relaxed: refresh() is a real call this class now makes (see acceptRequest's
         // own 2026-08-09 lost-update fix comment) but has nothing meaningful to verify
         // against a mocked, already-fully-stubbed entity in these tests.
         entityManager: EntityManager = mockk(relaxed = true),
-    ) = FloatMarketplaceService(agentRepository, operatorRepository, listingRepository, requestRepository, ledgerAccountRepository, ledgerService, rateLimiter, entityManager)
+    ) = FloatMarketplaceService(agentRepository, operatorRepository, listingRepository, requestRepository, ledgerAccountRepository, ledgerService, rateLimiter, fraudRuleEngine, entityManager)
 
     Given("a real active agent operator posting a listing") {
         val agentRepository = mockk<AgentRepository>()
@@ -119,6 +121,42 @@ class FloatMarketplaceServiceTest : BehaviorSpec({
         }
     }
 
+    // Real gap closed 2026-09-07 (Agents product-completeness pass): requestFloat had
+    // zero rateLimiter.checkLimit call before this -- only postListing did. Same
+    // "verify the real call happened" style postListing's own test above already
+    // establishes for this file.
+    Given("a real agent operator requesting float from another agent's open listing") {
+        val agentRepository = mockk<AgentRepository>()
+        val operatorRepository = mockk<AgentOperatorRepository>()
+        val listingRepository = mockk<FloatListingRepository>()
+        val requestRepository = mockk<FloatTransferRequestRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val svc = service(
+            agentRepository = agentRepository, operatorRepository = operatorRepository, listingRepository = listingRepository,
+            requestRepository = requestRepository, rateLimiter = rateLimiter,
+        )
+        val operator = AgentOperator("operator_2", "agent_2", "user_2")
+        val listing = FloatListing("floatlisting_1", "agent_1", BigDecimal("20000"))
+        every { operatorRepository.findByUserId("user_2") } returns operator
+        every { agentRepository.findById("agent_2") } returns Optional.of(Agent("agent_2", "Nyamirambo", "agent_cash_2", AgentStatus.ACTIVE, BigDecimal("100000"), BigDecimal("80000")))
+        every { listingRepository.findById("floatlisting_1") } returns Optional.of(listing)
+        every { requestRepository.save(any()) } answers { firstArg() }
+
+        When("they request a valid amount") {
+            val request = svc.requestFloat("user_2", "floatlisting_1", BigDecimal("10000"))
+
+            Then("a real REQUESTED transfer request is created against that listing") {
+                request.listingId shouldBe "floatlisting_1"
+                request.requestingAgentId shouldBe "agent_2"
+                request.status shouldBe FloatTransferRequestStatus.REQUESTED
+            }
+
+            Then("the per-agent request rate limit is enforced") {
+                verify(exactly = 1) { rateLimiter.checkLimit("float:request:create:agent_2", limit = any(), window = any()) }
+            }
+        }
+    }
+
     Given("an agent trying to request float from their own listing") {
         val agentRepository = mockk<AgentRepository>()
         val operatorRepository = mockk<AgentOperatorRepository>()
@@ -145,10 +183,12 @@ class FloatMarketplaceServiceTest : BehaviorSpec({
         val ledgerAccountRepository = mockk<LedgerAccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val entityManager = mockk<EntityManager>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val svc = service(
             agentRepository = agentRepository, operatorRepository = operatorRepository, listingRepository = listingRepository,
             requestRepository = requestRepository, ledgerAccountRepository = ledgerAccountRepository, ledgerService = ledgerService,
-            entityManager = entityManager,
+            entityManager = entityManager, rateLimiter = rateLimiter, fraudRuleEngine = fraudRuleEngine,
         )
         val owningOperator = AgentOperator("operator_1", "agent_1", "owner_1")
         val listingAgent = Agent("agent_1", "Kigali Central", "agent_cash_1", AgentStatus.ACTIVE, BigDecimal("100000"), BigDecimal("80000"))
@@ -211,6 +251,19 @@ class FloatMarketplaceServiceTest : BehaviorSpec({
             Then("both the request and the listing are refreshed with a locking read, not trusted from cache") {
                 verify(exactly = 1) { entityManager.refresh(request, LockModeType.PESSIMISTIC_WRITE) }
                 verify(exactly = 1) { entityManager.refresh(listing, LockModeType.PESSIMISTIC_WRITE) }
+            }
+
+            // Real gaps closed 2026-09-07 (Agents product-completeness pass):
+            // acceptRequest had zero rateLimiter.checkLimit and zero FraudRuleEngine
+            // coverage before this, despite being real money movement between two
+            // agents' own cash accounts -- AgentService.cashIn/cashOut already had the
+            // fraud check, this sibling service never did.
+            Then("the per-agent accept rate limit is enforced") {
+                verify(exactly = 1) { rateLimiter.checkLimit("float:request:accept:agent_1", limit = any(), window = any()) }
+            }
+
+            Then("the accepting operator's own fraud history is evaluated against the real transferred amount") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("owner_1", null, BigDecimal("10000"), "ledgertxn_1") }
             }
         }
     }
@@ -343,6 +396,42 @@ class FloatMarketplaceServiceTest : BehaviorSpec({
         When("the owner tries to accept a 10,000 request anyway") {
             Then("it real-422s instead of posting an overdrawing ledger transaction") {
                 shouldThrow<FloatListingInsufficientCashException> { svc.acceptRequest("owner_1", "floattransferreq_1") }
+            }
+        }
+    }
+
+    // Real gap closed 2026-09-07 (Agents product-completeness pass): declineRequest
+    // had zero rateLimiter.checkLimit call before this -- same "verify the real call
+    // happened" style already used above for postListing/requestFloat/acceptRequest.
+    Given("a real pending request the listing owner is about to decline") {
+        val agentRepository = mockk<AgentRepository>()
+        val operatorRepository = mockk<AgentOperatorRepository>()
+        val listingRepository = mockk<FloatListingRepository>()
+        val requestRepository = mockk<FloatTransferRequestRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val svc = service(
+            agentRepository = agentRepository, operatorRepository = operatorRepository, listingRepository = listingRepository,
+            requestRepository = requestRepository, rateLimiter = rateLimiter,
+        )
+        val owningOperator = AgentOperator("operator_1", "agent_1", "owner_1")
+        val listing = FloatListing("floatlisting_1", "agent_1", BigDecimal("20000"))
+        val request = FloatTransferRequest("floattransferreq_1", "floatlisting_1", "agent_2", BigDecimal("10000"))
+        every { operatorRepository.findByUserId("owner_1") } returns owningOperator
+        every { agentRepository.findById("agent_1") } returns Optional.of(Agent("agent_1", "Kigali Central", "agent_cash_1", AgentStatus.ACTIVE, BigDecimal("100000"), BigDecimal("80000")))
+        every { requestRepository.findById("floattransferreq_1") } returns Optional.of(request)
+        every { requestRepository.findByIdForUpdate("floattransferreq_1") } returns Optional.of(request)
+        every { listingRepository.findById("floatlisting_1") } returns Optional.of(listing)
+        every { requestRepository.save(any()) } answers { firstArg() }
+
+        When("the owner declines it") {
+            val declined = svc.declineRequest("owner_1", "floattransferreq_1")
+
+            Then("it is marked DECLINED") {
+                declined.status shouldBe FloatTransferRequestStatus.DECLINED
+            }
+
+            Then("the per-agent decline rate limit is enforced") {
+                verify(exactly = 1) { rateLimiter.checkLimit("float:request:decline:agent_1", limit = any(), window = any()) }
             }
         }
     }

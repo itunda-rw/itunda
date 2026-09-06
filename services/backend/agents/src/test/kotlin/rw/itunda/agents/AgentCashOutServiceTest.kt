@@ -29,6 +29,7 @@ import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.agents.AgentWithdrawalAuthorizationService
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.fraud.FraudRuleEngine
 import java.math.BigDecimal
 import java.util.Optional
@@ -49,7 +50,8 @@ class AgentCashOutServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>()
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = AgentService(agentRepository, operatorRepository, tillReconciliationRepository, cashInRepository, cashOutRepository, accountRepository, ledgerAccountRepository, ledgerService, transactionRepository, userRepository, withdrawalAuthorizationService, notificationRepository, pushNotificationService, fraudRuleEngine)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = AgentService(agentRepository, operatorRepository, tillReconciliationRepository, cashInRepository, cashOutRepository, accountRepository, ledgerAccountRepository, ledgerService, transactionRepository, userRepository, withdrawalAuthorizationService, notificationRepository, pushNotificationService, fraudRuleEngine, rateLimiter)
         val agent = Agent("agent_1", "Kigali Central", "agent_cash_1", AgentStatus.ACTIVE, BigDecimal("100000"), BigDecimal("80000"))
         val account = Account("account_1", "user_1", "2024100001", "Jean Main", AccountType.MAIN, BigDecimal("50000"), BigDecimal("50000"))
         every { cashOutRepository.existsByReceiptNumber("KGL-W-001") } returns false
@@ -89,6 +91,39 @@ class AgentCashOutServiceTest : BehaviorSpec({
             Then("the customer also gets a real mobile push notification, not just the in-app one") {
                 verify(exactly = 1) { pushNotificationService.sendToUser("user_1", "Cash withdrawn", any(), any()) }
             }
+        }
+    }
+
+    // Real gap closed 2026-09-07 (Agents product-completeness pass): cashOut had zero
+    // rateLimiter.checkLimit call before this -- only the daily *amount* limit above,
+    // a different concern. Fresh mocks, not the shared `service` above, so stubbing
+    // rateLimiter to throw here can't leak into the successful-payout Given block.
+    Given("a real agent operator who has already hit the real cash-out rate limit") {
+        val agentRepository = mockk<AgentRepository>()
+        val cashInRepository = mockk<AgentCashInRepository>()
+        val cashOutRepository = mockk<AgentCashOutRepository>()
+        val operatorRepository = mockk<AgentOperatorRepository>()
+        val tillReconciliationRepository = mockk<AgentTillReconciliationRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val ledgerAccountRepository = mockk<LedgerAccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val userRepository = mockk<UserRepository>()
+        val withdrawalAuthorizationService = mockk<AgentWithdrawalAuthorizationService>()
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>()
+        every { rateLimiter.checkLimit("agent:cash-out:agent_1", limit = 30, window = java.time.Duration.ofMinutes(1)) } throws
+            rw.itunda.auth.RateLimitExceededException("Too many requests")
+        val service = AgentService(agentRepository, operatorRepository, tillReconciliationRepository, cashInRepository, cashOutRepository, accountRepository, ledgerAccountRepository, ledgerService, transactionRepository, userRepository, withdrawalAuthorizationService, notificationRepository, pushNotificationService, fraudRuleEngine, rateLimiter)
+
+        Then("cash-out real-429s before ever locking the agent row or touching the ledger") {
+            io.kotest.assertions.throwables.shouldThrow<rw.itunda.auth.RateLimitExceededException> {
+                service.cashOut("agent_1", "2024100001", BigDecimal("25000"), "KGL-RL-001", "AUTH001", "admin_1")
+            }
+            verify(exactly = 0) { agentRepository.findByIdForUpdate(any()) }
+            verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
         }
     }
 })

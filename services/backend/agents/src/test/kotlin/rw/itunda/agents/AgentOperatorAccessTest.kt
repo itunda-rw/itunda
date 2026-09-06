@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import rw.itunda.core.agents.AgentWithdrawalAuthorizationService
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.domain.Agent
 import rw.itunda.core.domain.AgentOperator
@@ -32,7 +33,7 @@ class AgentOperatorAccessTest : BehaviorSpec({
         agents, operators, mockk<AgentTillReconciliationRepository>(), mockk<AgentCashInRepository>(),
         mockk<AgentCashOutRepository>(), mockk<AccountRepository>(), mockk<LedgerAccountRepository>(),
         mockk<LedgerService>(), mockk<TransactionRepository>(), mockk<UserRepository>(),
-        mockk<AgentWithdrawalAuthorizationService>(), mockk<NotificationRepository>(), mockk<PushNotificationService>(relaxed = true), mockk<FraudRuleEngine>(relaxed = true),
+        mockk<AgentWithdrawalAuthorizationService>(), mockk<NotificationRepository>(), mockk<PushNotificationService>(relaxed = true), mockk<FraudRuleEngine>(relaxed = true), mockk<RateLimiter>(relaxed = true),
     )
     val operator = AgentOperator("operator_1", "agent_1", "user_1")
 

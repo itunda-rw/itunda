@@ -5,6 +5,7 @@ import jakarta.persistence.LockModeType
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.domain.FloatListing
 import rw.itunda.core.domain.FloatListingStatus
 import rw.itunda.core.domain.FloatTransferRequest
@@ -66,6 +67,7 @@ class FloatMarketplaceService(
     private val ledgerAccountRepository: LedgerAccountRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val fraudRuleEngine: FraudRuleEngine,
     private val entityManager: EntityManager,
 ) {
 
@@ -103,6 +105,11 @@ class FloatMarketplaceService(
     fun requestFloat(userId: String, listingId: String, amount: BigDecimal): FloatTransferRequest {
         require(amount > BigDecimal.ZERO) { "Requested amount must be greater than zero" }
         val operator = activeOperator(userId)
+        // Real gap found (2026-09-07, Agents product-completeness pass): only
+        // postListing had a rate limit -- requestFloat/acceptRequest/declineRequest
+        // below were all unbounded. Same 20/hour per-agent sizing postListing already
+        // established for this same peer-marketplace feature.
+        rateLimiter.checkLimit("float:request:create:${operator.agentId}", limit = 20, window = Duration.ofHours(1))
         val listing = floatListingRepository.findById(listingId).orElseThrow { FloatListingNotFoundException("Float listing not found") }
         if (listing.agentId == operator.agentId) throw FloatSelfTransferException("An agent cannot request float from their own listing")
         if (listing.status != FloatListingStatus.OPEN) throw FloatListingNotOpenException("This float listing is no longer open")
@@ -129,6 +136,8 @@ class FloatMarketplaceService(
     @Transactional
     fun acceptRequest(userId: String, requestId: String): FloatTransferRequest {
         val operator = activeOperator(userId)
+        // Same real gap, same 20/hour per-agent sizing as requestFloat above.
+        rateLimiter.checkLimit("float:request:accept:${operator.agentId}", limit = 20, window = Duration.ofHours(1))
         val request = floatTransferRequestRepository.findById(requestId).orElseThrow { FloatTransferRequestNotFoundException("Float transfer request not found") }
         // Real 404-not-403 IDOR discipline: look the listing up once first purely to
         // check ownership before taking any lock, and treat "not this operator's
@@ -194,6 +203,15 @@ class FloatMarketplaceService(
                 LedgerLeg(listingAgent.cashAccountId, LedgerAccountType.AGENT_CASH, LedgerDirection.CREDIT, lockedRequest.amount, "Float sent to ${requestingAgent.displayName} (float marketplace)"),
             ),
         )
+        // Real gap found (2026-09-07, Agents product-completeness pass): real money
+        // movement between two agents' own cash accounts with zero FraudRuleEngine
+        // coverage -- AgentService.cashIn/cashOut already got this exact fix in an
+        // earlier pass, this sibling service never did. Evaluated against the
+        // accepting operator's own userId (the real platform user executing this),
+        // same recipientUserId=null reasoning AgentService.cashIn/cashOut already
+        // establish -- the counterparty here is another agent, not a recurring itunda
+        // user counterparty the NEW_RECIPIENT rule's shape fits.
+        fraudRuleEngine.evaluate(userId, null, lockedRequest.amount, ledger.transactionId)
 
         lockedRequest.status = FloatTransferRequestStatus.ACCEPTED
         lockedRequest.transactionId = ledger.transactionId
@@ -209,6 +227,9 @@ class FloatMarketplaceService(
     @Transactional
     fun declineRequest(userId: String, requestId: String): FloatTransferRequest {
         val operator = activeOperator(userId)
+        // Same real gap, same 20/hour per-agent sizing as requestFloat/acceptRequest
+        // above.
+        rateLimiter.checkLimit("float:request:decline:${operator.agentId}", limit = 20, window = Duration.ofHours(1))
         val request = floatTransferRequestRepository.findById(requestId).orElseThrow { FloatTransferRequestNotFoundException("Float transfer request not found") }
         val listing = floatListingRepository.findById(request.listingId).orElseThrow { FloatTransferRequestNotFoundException("Float transfer request not found") }
         if (listing.agentId != operator.agentId) throw FloatTransferRequestNotFoundException("Float transfer request not found")

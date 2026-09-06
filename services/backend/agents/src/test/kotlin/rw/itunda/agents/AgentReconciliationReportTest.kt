@@ -8,6 +8,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import rw.itunda.core.agents.AgentWithdrawalAuthorizationService
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.domain.AgentTillReconciliation
 import rw.itunda.core.domain.TillReconciliationStatus
@@ -32,7 +33,7 @@ class AgentReconciliationReportTest : BehaviorSpec({
         mockk<AgentRepository>(), mockk<AgentOperatorRepository>(), reconciliations,
         mockk<AgentCashInRepository>(), mockk<AgentCashOutRepository>(), mockk<AccountRepository>(),
         mockk<LedgerAccountRepository>(), mockk<LedgerService>(), mockk<TransactionRepository>(),
-        mockk<UserRepository>(), mockk<AgentWithdrawalAuthorizationService>(), mockk<NotificationRepository>(), mockk<PushNotificationService>(relaxed = true), mockk<FraudRuleEngine>(relaxed = true),
+        mockk<UserRepository>(), mockk<AgentWithdrawalAuthorizationService>(), mockk<NotificationRepository>(), mockk<PushNotificationService>(relaxed = true), mockk<FraudRuleEngine>(relaxed = true), mockk<RateLimiter>(relaxed = true),
     )
     val from = LocalDate.of(2026, 7, 1)
     val to = LocalDate.of(2026, 7, 2)

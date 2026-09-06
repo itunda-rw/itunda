@@ -8,6 +8,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import rw.itunda.core.agents.AgentWithdrawalAuthorizationService
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.domain.Agent
 import rw.itunda.core.domain.AgentStatus
@@ -29,7 +30,7 @@ class AgentTillFundingServiceTest : BehaviorSpec({
             agents, mockk<AgentOperatorRepository>(), mockk<AgentTillReconciliationRepository>(),
             mockk<AgentCashInRepository>(), mockk<AgentCashOutRepository>(), mockk<AccountRepository>(),
             mockk<LedgerAccountRepository>(), ledgerService, mockk<TransactionRepository>(), mockk<UserRepository>(),
-            mockk<AgentWithdrawalAuthorizationService>(), mockk<NotificationRepository>(), mockk<PushNotificationService>(relaxed = true), mockk<FraudRuleEngine>(relaxed = true),
+            mockk<AgentWithdrawalAuthorizationService>(), mockk<NotificationRepository>(), mockk<PushNotificationService>(relaxed = true), mockk<FraudRuleEngine>(relaxed = true), mockk<RateLimiter>(relaxed = true),
         )
         val agent = Agent("agent_1", "Kigali Central", "agent_cash_1", AgentStatus.ACTIVE, BigDecimal("100000"))
         every { agents.findByIdForUpdate(agent.id) } returns Optional.of(agent)

@@ -30,6 +30,7 @@ import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.agents.AgentWithdrawalAuthorizationService
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.fraud.FraudRuleEngine
 import java.math.BigDecimal
 import java.util.Optional
@@ -49,7 +50,8 @@ class AgentServiceTest : BehaviorSpec({
     val notificationRepository = mockk<NotificationRepository>()
     val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
     val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-    val service = AgentService(agentRepository, operatorRepository, tillReconciliationRepository, cashInRepository, cashOutRepository, accountRepository, ledgerAccountRepository, ledgerService, transactionRepository, userRepository, withdrawalAuthorizationService, notificationRepository, pushNotificationService, fraudRuleEngine)
+    val rateLimiter = mockk<RateLimiter>(relaxed = true)
+    val service = AgentService(agentRepository, operatorRepository, tillReconciliationRepository, cashInRepository, cashOutRepository, accountRepository, ledgerAccountRepository, ledgerService, transactionRepository, userRepository, withdrawalAuthorizationService, notificationRepository, pushNotificationService, fraudRuleEngine, rateLimiter)
     val agent = Agent("agent_1", "Kigali Central", "agent_cash_1", AgentStatus.ACTIVE, BigDecimal("100000"))
     val account = Account("account_1", "user_1", "2024100001", "Jean Main", AccountType.MAIN, BigDecimal("1000"), BigDecimal("1000"))
 
@@ -124,6 +126,40 @@ class AgentServiceTest : BehaviorSpec({
         }
     }
 
+    // Real gap closed 2026-09-07 (Agents product-completeness pass): cashIn had zero
+    // rateLimiter.checkLimit call before this -- only the daily *amount* limit above,
+    // a different concern (caps total value, not call frequency). A fresh, fully
+    // isolated set of mocks, same reasoning the commission Given block below already
+    // gives -- this file's own shared outer `rateLimiter` mock is relaxed and reused
+    // by every other Given block, so stubbing it to throw here would break them.
+    Given("a real agent operator who has already hit the real cash-in rate limit") {
+        val agentRepository4 = mockk<AgentRepository>()
+        val cashInRepository4 = mockk<AgentCashInRepository>()
+        val cashOutRepository4 = mockk<AgentCashOutRepository>()
+        val operatorRepository4 = mockk<AgentOperatorRepository>()
+        val tillReconciliationRepository4 = mockk<AgentTillReconciliationRepository>()
+        val accountRepository4 = mockk<AccountRepository>()
+        val ledgerAccountRepository4 = mockk<LedgerAccountRepository>()
+        val ledgerService4 = mockk<LedgerService>()
+        val transactionRepository4 = mockk<TransactionRepository>()
+        val userRepository4 = mockk<UserRepository>()
+        val withdrawalAuthorizationService4 = mockk<AgentWithdrawalAuthorizationService>()
+        val notificationRepository4 = mockk<NotificationRepository>()
+        val pushNotificationService4 = mockk<PushNotificationService>(relaxed = true)
+        val fraudRuleEngine4 = mockk<FraudRuleEngine>(relaxed = true)
+        val rateLimiter4 = mockk<RateLimiter>()
+        every { rateLimiter4.checkLimit("agent:cash-in:agent_1", limit = 30, window = java.time.Duration.ofMinutes(1)) } throws
+            rw.itunda.auth.RateLimitExceededException("Too many requests")
+        val service4 = AgentService(agentRepository4, operatorRepository4, tillReconciliationRepository4, cashInRepository4, cashOutRepository4, accountRepository4, ledgerAccountRepository4, ledgerService4, transactionRepository4, userRepository4, withdrawalAuthorizationService4, notificationRepository4, pushNotificationService4, fraudRuleEngine4, rateLimiter4)
+
+        Then("cash-in real-429s before ever locking the agent row or touching the ledger") {
+            shouldThrow<rw.itunda.auth.RateLimitExceededException> {
+                service4.cashIn("agent_1", account.accountNumber, BigDecimal("25000"), "KGL-RL-001", "admin_1")
+            }
+            verify(exactly = 0) { agentRepository4.findByIdForUpdate(any()) }
+            verify(exactly = 0) { ledgerService4.postLedgerTransaction(any(), any()) }
+        }
+    }
 
     // Real MTN MoMo-style agent commission (2026-07-27) -- see
     // AgentCommissionSchedule's own doc comment. A fresh, fully isolated set of mocks
@@ -144,7 +180,8 @@ class AgentServiceTest : BehaviorSpec({
         val notificationRepository2 = mockk<NotificationRepository>()
         val pushNotificationService2 = mockk<PushNotificationService>(relaxed = true)
         val fraudRuleEngine2 = mockk<FraudRuleEngine>(relaxed = true)
-        val service2 = AgentService(agentRepository2, operatorRepository2, tillReconciliationRepository2, cashInRepository2, cashOutRepository2, accountRepository2, ledgerAccountRepository2, ledgerService2, transactionRepository2, userRepository2, withdrawalAuthorizationService2, notificationRepository2, pushNotificationService2, fraudRuleEngine2)
+        val rateLimiter2 = mockk<RateLimiter>(relaxed = true)
+        val service2 = AgentService(agentRepository2, operatorRepository2, tillReconciliationRepository2, cashInRepository2, cashOutRepository2, accountRepository2, ledgerAccountRepository2, ledgerService2, transactionRepository2, userRepository2, withdrawalAuthorizationService2, notificationRepository2, pushNotificationService2, fraudRuleEngine2, rateLimiter2)
 
         val agent2 = Agent("agent_2", "Nyamirambo Branch", "agent_cash_2", AgentStatus.ACTIVE, BigDecimal("100000"))
         val customerAccount = Account("account_customer", "user_customer", "2024100002", "Customer", AccountType.MAIN, BigDecimal("1000"), BigDecimal("1000"))
@@ -194,7 +231,8 @@ class AgentServiceTest : BehaviorSpec({
         val notificationRepository3 = mockk<NotificationRepository>()
         val pushNotificationService3 = mockk<PushNotificationService>(relaxed = true)
         val fraudRuleEngine3 = mockk<FraudRuleEngine>(relaxed = true)
-        val service3 = AgentService(agentRepository3, operatorRepository3, tillReconciliationRepository3, cashInRepository3, cashOutRepository3, accountRepository3, ledgerAccountRepository3, ledgerService3, transactionRepository3, userRepository3, withdrawalAuthorizationService3, notificationRepository3, pushNotificationService3, fraudRuleEngine3)
+        val rateLimiter3 = mockk<RateLimiter>(relaxed = true)
+        val service3 = AgentService(agentRepository3, operatorRepository3, tillReconciliationRepository3, cashInRepository3, cashOutRepository3, accountRepository3, ledgerAccountRepository3, ledgerService3, transactionRepository3, userRepository3, withdrawalAuthorizationService3, notificationRepository3, pushNotificationService3, fraudRuleEngine3, rateLimiter3)
 
         val agent3 = Agent("agent_3", "Kimisagara Branch", "agent_cash_3", AgentStatus.ACTIVE, BigDecimal("100000"))
         val customerAccount3 = Account("account_customer3", "user_customer3", "2024100004", "Customer", AccountType.MAIN, BigDecimal("1000"), BigDecimal("1000"))

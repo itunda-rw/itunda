@@ -24,6 +24,7 @@ import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.repository.AgentCashInRepository
 import rw.itunda.core.repository.AgentCashOutRepository
 import rw.itunda.core.repository.AgentRepository
@@ -36,6 +37,7 @@ import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.geo.GeoUtils
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.UUID
@@ -100,6 +102,7 @@ class AgentService(
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
     private val fraudRuleEngine: FraudRuleEngine,
+    private val rateLimiter: RateLimiter,
 ) {
     @Transactional
     fun register(displayName: String, dailyCashInLimit: BigDecimal, dailyCashOutLimit: BigDecimal): Agent {
@@ -296,6 +299,14 @@ class AgentService(
 
     @Transactional
     fun cashIn(agentId: String, accountNumber: String, amount: BigDecimal, receiptNumber: String, acceptedByUserId: String): Map<String, Any?> {
+        // Real gap found (2026-09-07, Agents product-completeness pass): zero abuse-rate
+        // limiting on the core money-moving op, only the daily-*amount* limit above (a
+        // different concern -- that caps total value, not call frequency). Sized like a
+        // real high-frequency business actor, not a low-frequency consumer -- same real
+        // precedent PaymentsApiController's own merchant-API `payment-create` limit
+        // already establishes (30/minute), not the 20-30/hour consumer pattern
+        // Bills/Eats/Commerce use.
+        rateLimiter.checkLimit("agent:cash-in:$agentId", limit = 30, window = Duration.ofMinutes(1))
         require(amount > BigDecimal.ZERO) { "Cash-in amount must be greater than zero" }
         val receipt = receiptNumber.trim()
         require(receipt.isNotEmpty() && receipt.length <= 80) { "Receipt number must be between 1 and 80 characters" }
@@ -381,6 +392,9 @@ class AgentService(
 
     @Transactional
     fun cashOut(agentId: String, accountNumber: String, amount: BigDecimal, receiptNumber: String, authorizationCode: String, paidByUserId: String): Map<String, Any?> {
+        // Same real gap, same fix as cashIn above -- see its own comment for the full
+        // account.
+        rateLimiter.checkLimit("agent:cash-out:$agentId", limit = 30, window = Duration.ofMinutes(1))
         require(amount > BigDecimal.ZERO) { "Cash-out amount must be greater than zero" }
         val receipt = receiptNumber.trim()
         require(receipt.isNotEmpty() && receipt.length <= 80) { "Receipt number must be between 1 and 80 characters" }
