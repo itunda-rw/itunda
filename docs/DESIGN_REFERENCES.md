@@ -6709,9 +6709,14 @@ Kotlin/TS retain (unstripped comparison produced ~270 false positives), and iOS 
 `NetworkClient.swift` files** across `Core/Network`/`MerchantApp`/`RiderApp`/`AgentApp` (checking
 only `Core/Network`'s falsely flagged every merchant/agent/rides/bus/parking endpoint, which DO have
 real clients in their own app's file). Also correctly ruled out several bigger, pre-existing,
-already-known gaps as NOT small wire-up jobs: `Insurance`/`Bills` Feature modules are placeholder-only
-(whole features never built), and `eats/group-orders`/`loans/student/*` are whole multi-endpoint
-sub-products, not single-endpoint gaps -- don't re-scope those as quick fixes.
+already-known gaps as NOT small wire-up jobs: `Insurance`/`Bills` native Android/iOS Feature
+modules are intentionally empty placeholders (by design, per `CLAUDE.md` -- both products are
+real, fully-built, and live-verified, just served through the shared Saronite React-Native
+mini-app bridge rather than native code; see the phase-5 product-completeness pass,
+2026-09-06, which confirmed Insurance's own bespoke web implementation and full Saronite
+mini-app parity are complete, not placeholder), and `eats/group-orders`/`loans/student/*` are
+whole multi-endpoint sub-products, not single-endpoint gaps -- don't re-scope those as quick
+fixes.
 
 ## 82. Naver Pay 페이펫-inspired collectible pet -- real gamification layer over existing reward data
 
