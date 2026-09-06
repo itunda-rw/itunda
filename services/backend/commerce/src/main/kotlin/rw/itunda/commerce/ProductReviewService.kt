@@ -58,6 +58,12 @@ class ProductReviewService(
 ) {
     @Transactional
     fun submitReview(buyerId: String, orderItemId: String, rating: Int, comment: String?): ProductReview {
+        // Real bug found live (2026-09-07, Shop/Commerce product-completeness pass):
+        // this real review-creation endpoint had shipped with zero rate limiting
+        // despite this same class's own toggleHelpful endpoint already having one --
+        // the exact same class of gap EatsReviewService.submitReview was already
+        // fixed for (2026-09-06).
+        rateLimiter.checkLimit("commerce:review:submit:$buyerId", limit = 20, window = Duration.ofHours(1))
         if (rating !in 1..5) {
             throw InvalidProductRatingException("Rating must be between 1 and 5")
         }

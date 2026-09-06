@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.MerchantProduct
@@ -39,6 +40,7 @@ import rw.itunda.core.pricing.PlatformFees
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -90,6 +92,7 @@ class OrderService(
     private val affiliateService: AffiliateService,
     private val autoTopUpService: rw.itunda.account.AutoTopUpService,
     private val webhookDeliveryService: rw.itunda.merchant.WebhookDeliveryService,
+    private val rateLimiter: RateLimiter,
 ) {
     private val logger = LoggerFactory.getLogger(OrderService::class.java)
 
@@ -100,6 +103,12 @@ class OrderService(
 
     @Transactional
     fun placeOrder(buyerId: String, merchantId: String, items: List<OrderItemRequest>, deliveryAddress: String, referralCode: String? = null): OrderDetail {
+        // Real bug found live (2026-09-07, Shop/Commerce product-completeness pass):
+        // this real order-creation endpoint had shipped with zero rate limiting --
+        // the exact same class of gap EatsOrderService.placeOrder was already fixed
+        // for (2026-09-06). Limit mirrors that same fix's real purchase-frequency
+        // bound.
+        rateLimiter.checkLimit("commerce:place-order:$buyerId", limit = 20, window = Duration.ofHours(1))
         if (items.isEmpty()) {
             throw EmptyOrderException("An order needs at least one item")
         }

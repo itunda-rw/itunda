@@ -5,6 +5,7 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import rw.itunda.auth.RateLimiter
 import io.mockk.slot
 import io.mockk.verify
 import org.springframework.transaction.support.TransactionSynchronizationManager
@@ -80,11 +81,12 @@ class OrderServiceTest : BehaviorSpec({
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val webhookDeliveryService = mockk<rw.itunda.merchant.WebhookDeliveryService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             accountRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
             notificationRepository, priceTierRepository, riderRepository, pushNotificationService,
-            timeDealRepository, affiliateService, autoTopUpService, webhookDeliveryService,
+            timeDealRepository, affiliateService, autoTopUpService, webhookDeliveryService, rateLimiter,
         )
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
@@ -511,11 +513,12 @@ class OrderServiceTest : BehaviorSpec({
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val webhookDeliveryService = mockk<rw.itunda.merchant.WebhookDeliveryService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             accountRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
             notificationRepository, priceTierRepository, riderRepository, pushNotificationService,
-            timeDealRepository, affiliateService, autoTopUpService, webhookDeliveryService,
+            timeDealRepository, affiliateService, autoTopUpService, webhookDeliveryService, rateLimiter,
         )
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val order = Order(
@@ -682,6 +685,52 @@ class OrderServiceTest : BehaviorSpec({
                 } catch (e: OrderNotFoundException) {
                     // expected
                 }
+            }
+        }
+    }
+
+    // Real bug found live (2026-09-07, Shop/Commerce product-completeness pass):
+    // placeOrder had shipped with zero rate limiting -- the exact same class of gap
+    // EatsOrderService.placeOrder was already fixed for (2026-09-06). See
+    // placeOrder's own doc comment.
+    Given("a real buyer who has already hit the real place-order rate limit") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val merchantProductRepository = mockk<MerchantProductRepository>()
+        val orderRepository = mockk<OrderRepository>()
+        val orderItemRepository = mockk<OrderItemRepository>(relaxed = true)
+        val accountRepository = mockk<AccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
+        val riderRepository = mockk<RiderRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val timeDealRepository = mockk<TimeDealRepository>()
+        val affiliateService = mockk<AffiliateService>()
+        val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        val webhookDeliveryService = mockk<rw.itunda.merchant.WebhookDeliveryService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>()
+        every { rateLimiter.checkLimit("commerce:place-order:buyer_1", limit = 20, window = java.time.Duration.ofHours(1)) } throws
+            rw.itunda.auth.RateLimitExceededException("Too many requests")
+        val service = OrderService(
+            merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
+            accountRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
+            notificationRepository, priceTierRepository, riderRepository, pushNotificationService,
+            timeDealRepository, affiliateService, autoTopUpService, webhookDeliveryService, rateLimiter,
+        )
+
+        When("they try to place another order") {
+            Then("it real-429s before ever looking up the merchant or touching the repository") {
+                try {
+                    service.placeOrder("buyer_1", "merchant_1", listOf(OrderItemRequest("item_1", 2)), "KG 9 Ave")
+                    error("expected RateLimitExceededException")
+                } catch (e: rw.itunda.auth.RateLimitExceededException) {
+                    // expected
+                }
+                verify(exactly = 0) { merchantRepository.findById("merchant_1") }
+                verify(exactly = 0) { orderRepository.save(any()) }
             }
         }
     }

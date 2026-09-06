@@ -238,6 +238,37 @@ class ProductReviewServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real bug found live (2026-09-07, Shop/Commerce product-completeness pass):
+    // submitReview had shipped with zero rate limiting despite this same class's
+    // own toggleHelpful endpoint already having one -- the exact same class of gap
+    // EatsReviewService.submitReview was already fixed for (2026-09-06).
+    Given("a real buyer who has already hit the real review-submission rate limit") {
+        val orderRepository = mockk<OrderRepository>()
+        val orderItemRepository = mockk<OrderItemRepository>()
+        val productReviewRepository = mockk<ProductReviewRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val productReviewHelpfulVoteRepository = mockk<ProductReviewHelpfulVoteRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>()
+        every { rateLimiter.checkLimit("commerce:review:submit:buyer_1", limit = 20, window = java.time.Duration.ofHours(1)) } throws
+            rw.itunda.auth.RateLimitExceededException("Too many requests")
+        val service = ProductReviewService(orderRepository, orderItemRepository, productReviewRepository, merchantRepository, notificationRepository, pushNotificationService, productReviewHelpfulVoteRepository, rateLimiter)
+
+        When("they try to submit another review") {
+            Then("it real-429s before ever looking up the order item") {
+                try {
+                    service.submitReview("buyer_1", "order_item_1", 5, "Great product")
+                    error("expected RateLimitExceededException")
+                } catch (e: rw.itunda.auth.RateLimitExceededException) {
+                    // expected
+                }
+                verify(exactly = 0) { orderItemRepository.findById(any()) }
+                verify(exactly = 0) { productReviewRepository.save(any()) }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

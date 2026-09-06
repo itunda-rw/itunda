@@ -5,6 +5,7 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import rw.itunda.auth.RateLimiter
 import io.mockk.slot
 import io.mockk.verify
 import org.springframework.transaction.support.TransactionSynchronizationManager
@@ -68,11 +69,12 @@ class OrderDeliveryServiceTest : BehaviorSpec({
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val webhookDeliveryService = mockk<rw.itunda.merchant.WebhookDeliveryService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             accountRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
             notificationRepository, priceTierRepository, riderRepository, pushNotificationService,
-            timeDealRepository, affiliateService, autoTopUpService, webhookDeliveryService,
+            timeDealRepository, affiliateService, autoTopUpService, webhookDeliveryService, rateLimiter,
         )
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val rider = Rider(id = "rider_1", userId = "rider_user_1", accountId = "account_rider", available = true)
