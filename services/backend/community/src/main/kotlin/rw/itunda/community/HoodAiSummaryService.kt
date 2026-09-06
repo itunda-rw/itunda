@@ -3,6 +3,7 @@ package rw.itunda.community
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.core.ai.AiSummaryBatchPolicy
 import rw.itunda.core.ai.AiSummaryClient
 import rw.itunda.core.domain.CommunityPost
 import rw.itunda.core.repository.CommunityPostRepository
@@ -36,8 +37,9 @@ class HoodAiSummaryService(
     private val logger = LoggerFactory.getLogger(HoodAiSummaryService::class.java)
 
     companion object {
-        private val STALE_AFTER = Duration.ofDays(14)
-        private const val DEFAULT_BATCH_LIMIT = 20
+        // Consolidated 2026-09-06 into core/ai/AiSummaryBatchPolicy -- see its own doc comment.
+        private val STALE_AFTER = AiSummaryBatchPolicy.STALE_AFTER
+        private const val DEFAULT_BATCH_LIMIT = AiSummaryBatchPolicy.DEFAULT_BATCH_LIMIT
         private const val MIN_BODY_LENGTH = 20
 
         private const val SYSTEM_PROMPT = "You write a single short, honest, one-sentence summary of a real neighborhood meetup group for a community app, in plain English, under 40 words. " +
