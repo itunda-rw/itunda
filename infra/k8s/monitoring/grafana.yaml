@@ -104,6 +104,103 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  # Real, first product-level dashboard (2026-09-06, Bank product-completeness
+  # pass) -- see docs/ARCHITECTURE.md's dated follow-up. Both dashboards above are
+  # pure infra (pod health/JVM/node resources); zero transaction-volume or
+  # error-rate panel existed for any single PRODUCT before this. Built from data
+  # that is ALREADY flowing (every service here already runs with
+  # prometheus.io/scrape: "true" + /actuator/prometheus, Micrometer already wired)
+  # -- zero new backend instrumentation needed. Bank's 11 real route prefixes are
+  # split across two JVMs today: `backend` (application="itunda") still serves
+  # /api/v1/account and /api/v1/savings/** (+ its 6 sibling prefixes -- see
+  # docs/ARCHITECTURE.md's Fourteenth-extraction entry for why those stayed in
+  # the monolith), and `loans-service` (application="itunda-loans-service") serves
+  # /api/v1/loans/**, /api/v1/cooperatives, /api/v1/vendor-advance. The uri regex
+  # below deliberately spans both JVMs by matching on route path, not on
+  # `application`, so this dashboard reflects the real product surface
+  # regardless of which JVM currently answers each route -- it does not need
+  # editing if/when :account/:savings are ever extracted too.
+  name: grafana-dashboard-itunda-bank
+  namespace: monitoring
+data:
+  itunda-bank.json: |
+    {
+      "title": "itunda Bank",
+      "uid": "itunda-bank",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Bank request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(account|savings|upfront-deposits|sacco|ikiminas|group-accounts|weekly-savings|grow31-savings|loans|cooperatives|vendor-advance)(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Bank error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(account|savings|upfront-deposits|sacco|ikiminas|group-accounts|weekly-savings|grow31-savings|loans|cooperatives|vendor-advance)(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Bank request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(account|savings|upfront-deposits|sacco|ikiminas|group-accounts|weekly-savings|grow31-savings|loans|cooperatives|vendor-advance)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(account|savings|upfront-deposits|sacco|ikiminas|group-accounts|weekly-savings|grow31-savings|loans|cooperatives|vendor-advance)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "loans-service JVM heap used",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "targets": [
+            {
+              "expr": "sum(jvm_memory_used_bytes{area=\"heap\", application=\"itunda-loans-service\"})",
+              "legendFormat": "loans-service heap"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "title": "Bank-serving pods up (backend + loans-service)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+          "targets": [
+            {
+              "expr": "count(up{job=\"itunda-services\", app=~\"backend|loans-service\"} == 1) by (app)",
+              "legendFormat": "{{app}}"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: grafana-dashboard-itunda-private-cloud
   namespace: monitoring
 data:
@@ -249,6 +346,8 @@ spec:
           sources:
           - configMap:
               name: grafana-dashboard-itunda-fleet
+          - configMap:
+              name: grafana-dashboard-itunda-bank
           - configMap:
               name: grafana-dashboard-itunda-private-cloud
 ---
