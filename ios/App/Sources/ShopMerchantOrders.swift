@@ -4,6 +4,28 @@ import CoreDesignSystem
 import CoreNetwork
 import CoreLocation
 
+// ReorderButton was Eats' own EatsOrders.swift (App/Sources-only until 2026-09-06,
+// when it moved into FeatureEats) -- that file's own doc comment already named this
+// exact real risk ("no Feature-module isolation boundary on iOS between these, unlike
+// Android's Konsist-enforced split, which needed a real duplicate there"). Now that
+// FeatureEats is a real Feature module, App/Sources can no longer reach it directly,
+// so this is that same real duplicate Android already has.
+private struct ReorderButton: View {
+    let reordering: Bool
+    let onClick: () -> Void
+    var label = "Reorder"
+    var reorderingLabel = "Reordering…"
+
+    var body: some View {
+        Button(action: onClick) {
+            Text(reordering ? reorderingLabel : label)
+                .font(.subheadline).bold().foregroundColor(.white)
+                .padding(.horizontal, 16).padding(.vertical, 10)
+                .background(IDS.Colors.brand).cornerRadius(12)
+        }
+        .disabled(reordering)
+    }
+}
 
 // Real merchant-side Commerce order fulfillment queue (item 234) -- found via a
 // sibling-consistency audit against bank-mfe's own MerchantOrdersView, which has had

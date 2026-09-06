@@ -189,7 +189,21 @@ let featureDependencies: [TargetDependency] = [
 // split those domains into separate Feature modules yet"; TalkScreen.errorMessage
 // (App-only, 23 other real callers) got its own local per-file copy, same
 // established convention as this file's own formatAmount duplication.
-let featureModules = ["Payments", "Bills", "Merchant", "Credit", "Wealth", "Insurance", "Engagement", "Assets", "Banking", "Maps", "Certificate", "Identity", "Support", "Home", "Pay", "Menu", "My"]
+// "Eats" added 2026-09-06 (Eats product-completeness pass) -- iOS was the only
+// platform with zero Features/Eats module at all (not even an empty placeholder
+// like Bills/Insurance), despite the functionality being fully real (10
+// App/Sources files). EatsContent (the one real external call site, from
+// ContentView.swift) made public. Real blocker found and fixed: EatsOrders.swift's
+// live rider-tracking uses RouteMiniMap (also used by 3 still-App-only Hood
+// screens -- Jobs/Marketplace/Property) and LiveRiderMiniMap (Eats-only, verified
+// via a real per-symbol grep, not assumed from the "Maps" 2026-08-19 comment's own
+// prediction that this promotion would eventually be needed). RouteMiniMap.swift
+// promoted to Core/DesignSystem/Sources/Components (its own real MapLibre pod
+// dependency now needs a CoreDesignSystem Podfile target too); LiveRiderMiniMap.swift
+// moved into FeatureEats alongside the other 10 files, since nothing outside Eats
+// uses it. EatsReviews.swift's `import FeatureMaps` was dead (zero real symbol use,
+// confirmed via grep) -- dropped, not carried over.
+let featureModules = ["Payments", "Bills", "Merchant", "Credit", "Wealth", "Insurance", "Engagement", "Assets", "Banking", "Maps", "Certificate", "Identity", "Support", "Home", "Pay", "Menu", "My", "Eats"]
 for feature in featureModules {
     allTargets.append(contentsOf: makeMicroFeature(name: feature, dependencies: featureDependencies))
 }

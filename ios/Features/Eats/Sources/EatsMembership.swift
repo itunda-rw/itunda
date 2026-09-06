@@ -77,7 +77,7 @@ struct PlatformMembershipCard: View {
             _ = try await NetworkClient.shared.subscribePlatformMembership(days: days)
             await load()
         } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
-            error = message ?? TalkScreen.errorMessage(statusCode)
+            error = message ?? errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
@@ -152,7 +152,7 @@ struct EatsMembershipCard: View {
             _ = try await NetworkClient.shared.subscribeEatsMembership(days: days)
             await load()
         } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
-            error = message ?? TalkScreen.errorMessage(statusCode)
+            error = message ?? errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }

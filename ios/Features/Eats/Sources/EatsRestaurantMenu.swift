@@ -2,6 +2,37 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
+// ShopBestSellerBadge/colorFromHex are real, trivial App-only helpers this file
+// already depended on before Eats moved into its own Feature module -- local
+// duplicate copies, matching the same "small App-only utility gets its own local
+// per-file copy in a new Feature module" convention FeatureMaps' own colorFromHex
+// duplicate and TalkScreen.errorMessage's own per-file copy already established
+// (see Project.swift's own doc comment), rather than promoting either into a
+// shared Core module for a single small use.
+private struct ShopBestSellerBadge: View {
+    var body: some View {
+        Text("Best seller")
+            .font(.system(size: 11, weight: .bold))
+            .foregroundColor(.white)
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .background(IDS.Colors.brand)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+    }
+}
+
+private func colorFromHex(_ hex: String) -> Color {
+    var sanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+    if sanitized.hasPrefix("#") { sanitized.removeFirst() }
+    guard sanitized.count == 6, let value = UInt64(sanitized, radix: 16) else {
+        return Color(red: 0.961, green: 0.651, blue: 0.137) // the default star-yellow, same fallback RideScreenView.swift's own copy uses
+    }
+    return Color(
+        red: Double((value >> 16) & 0xFF) / 255,
+        green: Double((value >> 8) & 0xFF) / 255,
+        blue: Double(value & 0xFF) / 255
+    )
+}
+
 // Real restaurant-photo thumbnail (2026-07-21) -- photoUrl is a merchant-supplied
 // external URL (see backend Merchant.kt's own doc comment: no upload/storage layer
 // exists in this backend, same "bring your own URL" convention ShopScreen's own

@@ -4,6 +4,7 @@ import CoreNetwork
 import CoreDesignSystem
 import FeatureBanking
 import FeatureCredit
+import FeatureEats
 import FeatureHome
 import FeatureMaps
 import FeatureMy

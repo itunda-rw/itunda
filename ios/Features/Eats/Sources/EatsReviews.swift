@@ -1,7 +1,6 @@
 import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
-import FeatureMaps
 
 // Real post-delivery ratings & reviews (2026-07-18) -- itunda's own self-hosted rating
 // system, ported from bank-mfe's own review UI (the template for this iOS version).
@@ -302,7 +301,7 @@ struct ReviewOrderCard: View {
             if statusCode == 409 {
                 done = true
             } else {
-                error = TalkScreen.errorMessage(statusCode)
+                error = errorMessage(statusCode)
             }
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."

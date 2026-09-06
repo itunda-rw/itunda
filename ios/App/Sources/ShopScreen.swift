@@ -10,42 +10,10 @@ import CoreLocation
 // ShopReturns.swift / ShopReviews.swift / ShopPay.swift (split 2026-08-19
 // for real file-size decomposition).
 
-/// Real "silent" one-shot location fetch for the nearby-ads rail below -- no UI, no
-/// error surfaced to the user (a customer who denies/lacks location just never sees
-/// the rail), same discipline RideScreenView's own RideLocationFetcher establishes for
-/// an interactive fetch.
-final class SilentLocationFetcher: NSObject, ObservableObject, CLLocationManagerDelegate {
-    @Published var coordinate: CLLocationCoordinate2D?
-    private let manager = CLLocationManager()
-
-    override init() {
-        super.init()
-        manager.delegate = self
-    }
-
-    func requestLocation() {
-        let status = manager.authorizationStatus
-        if status == .notDetermined {
-            manager.requestWhenInUseAuthorization()
-        } else if status == .authorizedWhenInUse || status == .authorizedAlways {
-            manager.requestLocation()
-        }
-    }
-
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {
-            manager.requestLocation()
-        }
-    }
-
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        coordinate = locations.last?.coordinate
-    }
-
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        // Real, non-critical -- the rail just won't render if this fails.
-    }
-}
+// SilentLocationFetcher promoted to Core/DesignSystem/Sources/Components/
+// SilentLocationFetcher.swift (2026-09-06, Eats product-completeness pass) -- see
+// that file's own doc comment for why (EatsDishGrid.swift needed the same real
+// utility once Eats moved into its own Feature module).
 
 /// Real Coupang-style multi-item checkout (2026-07-18) -- iOS mirror of Android's
 /// CommerceShopContent (:features:shop:impl), replacing the old Toss-Shopping-cashback

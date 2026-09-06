@@ -171,7 +171,7 @@ struct DeliverContent: View {
         do {
             rider = try await NetworkClient.shared.registerRider().rider
         } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
+            error = errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
@@ -182,7 +182,7 @@ struct DeliverContent: View {
         do {
             self.rider = try await NetworkClient.shared.setRiderAvailability(!rider.available).rider
         } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
+            error = errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
@@ -196,7 +196,7 @@ struct DeliverContent: View {
             _ = try await NetworkClient.shared.claimDelivery(order.id)
             await loadDeliveries()
         } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
-            error = message ?? TalkScreen.errorMessage(statusCode)
+            error = message ?? errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
@@ -210,7 +210,7 @@ struct DeliverContent: View {
             _ = try await NetworkClient.shared.updateRiderOrderStatus(order.id, status: status)
             await loadDeliveries()
         } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
-            error = message ?? TalkScreen.errorMessage(statusCode)
+            error = message ?? errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }

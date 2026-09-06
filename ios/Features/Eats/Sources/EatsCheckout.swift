@@ -192,7 +192,7 @@ struct EatsCheckoutView: View {
             // the new pickup+promotion discount-stacking rejection, etc.) instead of
             // falling through to the same generic per-status-code bucket for every
             // 4xx -- see NetworkClient.postEatsOrder's own doc comment.
-            error = message ?? TalkScreen.errorMessage(statusCode)
+            error = message ?? errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }

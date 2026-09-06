@@ -8,6 +8,10 @@ import CoreNetwork
 // EatsOrders.swift / EatsDeliver.swift (split 2026-08-19 for real
 // file-size decomposition).
 
+// errorMessage/eatsGoodPointOptions/eatsGoodPointLabels moved to
+// EatsSharedHelpers.swift (2026-09-06, Eats product-completeness pass) once this
+// file crossed the file-size-lint 500-line guideline.
+
 let eatsStatusLabel: [String: String] = [
     "PLACED": "Placed",
     "ACCEPTED": "Accepted by restaurant",
@@ -65,10 +69,12 @@ func eatsLineUnitPrice(_ item: MerchantProductDto, _ choiceIds: [String]) -> Dou
 
 enum EatsMode { case order, deliver }
 
-struct EatsContent: View {
+public struct EatsContent: View {
     @State private var mode: EatsMode = .order
 
-    var body: some View {
+    public init() {}
+
+    public var body: some View {
         VStack(spacing: 0) {
             Picker("", selection: $mode) {
                 Text("Order food").tag(EatsMode.order)

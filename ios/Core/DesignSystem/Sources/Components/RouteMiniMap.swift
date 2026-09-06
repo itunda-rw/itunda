@@ -42,7 +42,7 @@ private func writeRouteMiniStyleFile() -> URL {
     return url
 }
 
-struct RouteMiniMap: View {
+public struct RouteMiniMap: View {
     let fromLat: Double
     let fromLng: Double
     let toLat: Double
@@ -54,7 +54,16 @@ struct RouteMiniMap: View {
     @State private var error: String?
     @State private var loading = true
 
-    var body: some View {
+    public init(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double, fromLabel: String, toLabel: String) {
+        self.fromLat = fromLat
+        self.fromLng = fromLng
+        self.toLat = toLat
+        self.toLng = toLng
+        self.fromLabel = fromLabel
+        self.toLabel = toLabel
+    }
+
+    public var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             RouteMiniMapRepresentable(
                 fromLat: fromLat, fromLng: fromLng, toLat: toLat, toLng: toLng, routeGeometry: route?.geometry,

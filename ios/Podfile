@@ -87,3 +87,20 @@ end
 target 'FeatureMaps' do
   pod 'MapLibre'
 end
+
+# Real Eats Feature-module extraction (2026-09-06, Eats product-completeness pass) --
+# EatsOrders.swift's live rider-tracking (LiveRiderMiniMap.swift, Eats-only, moved
+# alongside it) imports MapLibre directly, same per-Tuist-target CocoaPods
+# integration requirement as FeatureMaps above.
+target 'FeatureEats' do
+  pod 'MapLibre'
+end
+
+# RouteMiniMap.swift promoted from App/Sources into Core/DesignSystem/Sources/
+# Components (same pass) -- it's real, genuinely shared (3 still-App-only Hood
+# screens -- Jobs/Marketplace/Property -- use it besides Eats), so it moved to
+# CoreDesignSystem instead of FeatureEats. Its own `import MapLibre` needs the
+# same per-target declaration.
+target 'CoreDesignSystem' do
+  pod 'MapLibre'
+end
