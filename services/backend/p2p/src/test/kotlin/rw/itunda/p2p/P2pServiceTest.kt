@@ -481,6 +481,49 @@ class P2pServiceTest : BehaviorSpec({
         }
     }
 
+    // Real fix (2026-09-06, Pay product-completeness pass) -- see
+    // P2pTransferLimitService's own doc comment: payRequest (QR-pay) now gets the
+    // exact same real per-transfer cap sendDirect already enforces above, closing a
+    // real gap where an identical amount sent via QR was unbounded. Uses the REAL
+    // P2pTransferLimitService, same style as the sendDirect limit tests above.
+    Given("a real pending payment request for more than the real per-transfer limit") {
+        val p2pPaymentRequestRepository = mockk<P2pPaymentRequestRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val p2pNotificationService = mockk<P2pNotificationService>(relaxed = true)
+        val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>(relaxed = true)
+        val autoTopUpService = mockk<AutoTopUpService>(relaxed = true)
+        val p2pTransferLimitService = P2pTransferLimitService(transactionRepository, accountRepository)
+        val service = P2pService(
+            p2pPaymentRequestRepository, accountRepository, userRepository, transactionRepository, ledgerService,
+            fraudRuleEngine, rateLimiter, roundUpService, familyLinkService, autoTopUpService,
+            p2pTransferLimitService, p2pNotificationService,
+        )
+
+        val request = P2pPaymentRequest(id = "p2p_lim3", requesterUserId = "requester_lim3", amount = BigDecimal("600000"), description = "Rent", expiresAt = Instant.now().plusSeconds(900))
+        every { p2pPaymentRequestRepository.findById("p2p_lim3") } returns Optional.of(request)
+        every { accountRepository.findByUserIdAndType("payer_lim3", AccountType.MAIN) } returns account("account_payer_lim3", "payer_lim3", "10000000")
+        every { accountRepository.findByUserIdAndType("requester_lim3", AccountType.MAIN) } returns account("account_requester_lim3", "requester_lim3", "0")
+        every { accountRepository.findByIdForUpdate("account_payer_lim3") } returns Optional.empty()
+        every { transactionRepository.findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(eq("payer_lim3"), any(), any(), any()) } returns emptyList()
+
+        When("a real user tries to pay it via QR") {
+            Then("it real-blocks with P2pTransferLimitExceededException before the ledger is ever touched -- the same cap sendDirect enforces, not a QR-pay loophole") {
+                try {
+                    service.payRequest("payer_lim3", "p2p_lim3")
+                    throw AssertionError("expected P2pTransferLimitExceededException")
+                } catch (e: P2pTransferLimitExceededException) {
+                    io.mockk.verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+    }
+
     Given("a real linked child whose transfer would exceed their real guardian-set daily spend limit") {
         val p2pPaymentRequestRepository = mockk<P2pPaymentRequestRepository>()
         val accountRepository = mockk<AccountRepository>()

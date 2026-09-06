@@ -113,6 +113,14 @@ class P2pService(
         if (payerAccount.availableBalance < request.amount) {
             throw InsufficientFundsException("Insufficient available balance for this payment")
         }
+        // Real Korean "이체한도" (transfer limit) enforcement (2026-09-06, Pay
+        // product-completeness pass) -- see P2pTransferLimitService's own doc
+        // comment for the full sourced account. Closes a real, disclosed gap that
+        // same doc comment names: this real per-transfer/daily cap already applied
+        // to sendDirect/sendDelayed but was deliberately deferred here to avoid
+        // regressing payRequest's own already-proven fraud-rule-heavy path. Same
+        // ordering as sendDirect: after the balance check, before the ledger posts.
+        p2pTransferLimitService.enforce(payerUserId, payerAccount.id, request.amount)
 
         val result = ledgerService.postLedgerTransaction(
             payerAccount.currency,

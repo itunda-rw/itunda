@@ -58,13 +58,15 @@ import java.time.ZoneOffset
  * whitelist/threshold system. A single flat real limit is honest and strictly safer
  * than pretending to support tiers that don't exist yet.
  *
- * Deliberately does NOT gate [P2pService.payRequest] (QR-pay fulfilling an existing
- * request) or [P2pService.sendToFamilyMember] (already routes through `sendDirect`,
- * so it's covered transitively) -- `payRequest` is `P2pService`'s own most heavily-
- * tuned, most-fraud-rule-load-bearing method (three separately documented
- * transaction-composition bugs in `sendDirect`'s own round-up history alone), and
- * extending this cap onto it is a real, named, deliberately deferred follow-up rather
- * than risking a regression on an already-proven path for this pass.
+ * Also gates [P2pService.payRequest] (QR-pay fulfilling an existing request), added
+ * 2026-09-06 (Pay product-completeness pass) -- previously deliberately deferred
+ * (see git history) since `payRequest` is `P2pService`'s own most heavily-tuned,
+ * most-fraud-rule-load-bearing method, but leaving it uncapped meant a payment
+ * requested via QR could move an unbounded amount while the identical amount sent
+ * via `sendDirect` would be blocked -- a real inconsistency across itunda's own two
+ * paths to the same transfer, closed now rather than left open indefinitely.
+ * [P2pService.sendToFamilyMember] already routes through `sendDirect`, so it's
+ * covered transitively and needs no separate call.
  */
 @Component
 class P2pTransferLimitService(
