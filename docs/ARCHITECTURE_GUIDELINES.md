@@ -212,6 +212,25 @@ just as often as "there are really zero violations" (a real, previously-hit fail
 with dependency-cruiser's own path-vs-glob resolution, see
 [[project_itunda_multi_agent_isolation]]).
 
+**A domain boundary needs the same discipline as a build-tool one — confirmed clean on
+Bank, 2026-09-06.** `AccountType.BUSINESS` + `MerchantBusinessAccountService` + a real
+business-account screen exist on all 3 MERCHANT surfaces only (`merchant-mfe`,
+`android/merchantapp`, `ios/MerchantApp`) — zero business-account UI leaks into the
+consumer Bank hub on any platform. `LoanOffer.requiresBusinessAccount` implements a
+real, sourced SME/business-loan product (Toss's 사장님신용대출) that correctly requires a
+BUSINESS account, and nothing else does. This wasn't built for the Bank
+product-completeness pass — it was already correct, confirmed by direct code
+investigation across all three client platforms plus the backend's own
+`AccountType` enum. Recorded here because a B2B/B2C split has no dependency-cruiser
+equivalent to catch a future regression automatically: it's an enum value plus which
+screens choose to read it, not an import boundary a tool enforces. **How to apply**:
+when adding a new account-gated feature (a new loan product, a new account type,
+a new business-only capability), check which `AccountType` it actually requires and
+make sure the UI that surfaces it lives on the merchant surfaces, not the consumer
+Bank hub (or vice versa for a genuinely consumer-only feature) — the same manual
+"grep before you build" discipline this doc asks for elsewhere, since no lint rule
+will catch a business-only card rendering on the wrong tab.
+
 ## 7. A name is a promise the code must keep (Toss Frontend Fundamentals)
 
 The same real, open-sourced guide behind §1 has a dedicated real naming discipline under
