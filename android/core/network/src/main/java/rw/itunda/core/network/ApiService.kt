@@ -660,9 +660,19 @@ data class RoundUpSettingsDto(
     val enabled: Boolean,
     val roundToNearest: java.math.BigDecimal,
     val targetGoalId: String?,
+    // Real stock-destination option (backend since 2026-07-27,
+    // RoundUpService.processRoundUp's own targetStockId branch) -- wired into
+    // this client (Wealth product-completeness pass, 2026-09-06). Mutually
+    // exclusive with targetGoalId, enforced server-side.
+    val targetStockId: String? = null,
 )
 data class RoundUpSettingsResponse(val success: Boolean, val settings: RoundUpSettingsDto?)
-data class SetRoundUpSettingsRequest(val enabled: Boolean, val roundToNearest: java.math.BigDecimal, val targetGoalId: String? = null)
+data class SetRoundUpSettingsRequest(
+    val enabled: Boolean,
+    val roundToNearest: java.math.BigDecimal,
+    val targetGoalId: String? = null,
+    val targetStockId: String? = null,
+)
 
 data class CreateAgentWithdrawalAuthorizationRequest(val amount: java.math.BigDecimal)
 data class CancelAgentWithdrawalAuthorizationRequest(val code: String)

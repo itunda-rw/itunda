@@ -105,10 +105,7 @@ export const fetchDepositProtectionStatus = () =>
 // Real Kakao Pay 머니굴리기 ("rolling money") round-up auto-saving (rw.itunda.savings.
 // RoundUpService, real since well before this session) -- first client UI for this
 // feature anywhere (item 112, found via a content-grep sweep: Android has a real
-// client, bank-mfe and iOS never did). Honest v1 scope, matching Android's own current
-// client exactly: only the goal destination (targetGoalId), not the newer
-// (2026-07-27) stock-destination option -- a real, separate, not-yet-started gap on
-// every client including Android's.
+// client, bank-mfe and iOS never did).
 export const ROUND_UP_INCREMENTS = [100, 500, 1000] as const;
 
 export interface RoundUpSettings {
@@ -117,13 +114,19 @@ export interface RoundUpSettings {
   enabled: boolean;
   roundToNearest: number;
   targetGoalId: string | null;
+  // Real stock-destination option (2026-07-27 on the backend,
+  // RoundUpService.processRoundUp's own targetStockId branch) -- wired into this
+  // client (Wealth product-completeness pass, 2026-09-06) alongside the
+  // already-real goal destination above. Mutually exclusive with targetGoalId,
+  // enforced server-side by RoundUpService.setSettings.
+  targetStockId: string | null;
 }
 
 export const fetchRoundUpSettings = () =>
   apiFetch<{ success: boolean; settings: RoundUpSettings | null }>('/api/v1/savings/round-up').then((r) => r.settings);
 
-export const setRoundUpSettings = (enabled: boolean, roundToNearest: number, targetGoalId: string | null) =>
+export const setRoundUpSettings = (enabled: boolean, roundToNearest: number, targetGoalId: string | null, targetStockId: string | null = null) =>
   apiFetch<{ success: boolean; settings: RoundUpSettings }>('/api/v1/savings/round-up', {
     method: 'POST',
-    body: JSON.stringify({ enabled, roundToNearest, targetGoalId }),
+    body: JSON.stringify({ enabled, roundToNearest, targetGoalId, targetStockId }),
   }).then((r) => r.settings);

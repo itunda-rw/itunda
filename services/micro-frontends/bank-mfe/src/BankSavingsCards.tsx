@@ -11,12 +11,18 @@ import {
   fetchInterestJar, fetchInterestJarTransactions, fetchRoundUpSettings, ROUND_UP_INCREMENTS, setRoundUpSettings,
   type DepositProtectionStatus, type InterestJar, type RoundUpSettings, type SavingsGoal,
 } from './lib/savings';
+import { fetchStocks, type Stock } from './lib/stocks';
+
+type RoundUpDestination = 'GOAL' | 'STOCK';
 
 export function RoundUpCard({ goals }: { goals: SavingsGoal[] }) {
   const { t } = useI18n();
   const [settings, setSettings] = useState<RoundUpSettings | null | undefined>(undefined);
   const [increment, setIncrement] = useState<number>(100);
+  const [destination, setDestination] = useState<RoundUpDestination>('GOAL');
   const [goalId, setGoalId] = useState('');
+  const [stockId, setStockId] = useState('');
+  const [stocks, setStocks] = useState<Stock[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,18 +30,38 @@ export function RoundUpCard({ goals }: { goals: SavingsGoal[] }) {
     fetchRoundUpSettings()
       .then((s) => {
         setSettings(s);
-        if (s) { setIncrement(s.roundToNearest); setGoalId(s.targetGoalId ?? ''); }
+        if (s) {
+          setIncrement(s.roundToNearest);
+          setGoalId(s.targetGoalId ?? '');
+          setStockId(s.targetStockId ?? '');
+          setDestination(s.targetStockId ? 'STOCK' : 'GOAL');
+        }
       })
       .catch(() => setSettings(null));
   };
   useEffect(load, []);
+  // Real stock-destination option (Wealth product-completeness pass) -- fetched
+  // lazily alongside settings, same list the Invest market browse already uses,
+  // not a fabricated/duplicated catalog.
+  useEffect(() => { fetchStocks().then(setStocks).catch(() => setStocks([])); }, []);
 
   const handleToggle = async (enabled: boolean) => {
-    if (enabled && !goalId) { setError('Choose a savings goal first.'); return; }
+    if (enabled && destination === 'GOAL' && !goalId) { setError('Choose a savings goal first.'); return; }
+    if (enabled && destination === 'STOCK' && !stockId) { setError('Choose a stock first.'); return; }
     setBusy(true);
     setError(null);
     try {
-      const updated = await setRoundUpSettings(enabled, increment, enabled ? goalId : (settings?.targetGoalId ?? null));
+      let nextGoalId: string | null = null;
+      let nextStockId: string | null = null;
+      if (enabled) {
+        if (destination === 'GOAL') nextGoalId = goalId;
+        else nextStockId = stockId;
+      } else if (destination === 'GOAL') {
+        nextGoalId = settings?.targetGoalId ?? null;
+      } else {
+        nextStockId = settings?.targetStockId ?? null;
+      }
+      const updated = await setRoundUpSettings(enabled, increment, nextGoalId, nextStockId);
       setSettings(updated);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -59,7 +85,8 @@ export function RoundUpCard({ goals }: { goals: SavingsGoal[] }) {
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
       {settings?.enabled ? (
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
-          Every transfer rounds up to the nearest {settings.roundToNearest.toLocaleString('en-US')} RWF, saved into your goal.
+          Every transfer rounds up to the nearest {settings.roundToNearest.toLocaleString('en-US')} RWF, saved into your{' '}
+          {settings.targetStockId ? 'stock' : 'goal'}.
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -77,14 +104,43 @@ export function RoundUpCard({ goals }: { goals: SavingsGoal[] }) {
               </button>
             ))}
           </div>
-          <select
-            value={goalId} onChange={(e) => setGoalId(e.target.value)}
-            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <button
+              type="button" onClick={() => setDestination('GOAL')}
+              className={destination === 'GOAL' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
+              style={{ flex: 1, fontSize: 'var(--itunda-type-scale-12-size)', padding: '8px' }}
+            >
+              Savings goal
+            </button>
+            <button
+              type="button" onClick={() => setDestination('STOCK')}
+              className={destination === 'STOCK' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
+              style={{ flex: 1, fontSize: 'var(--itunda-type-scale-12-size)', padding: '8px' }}
+            >
+              Stock
+            </button>
+          </div>
+          {destination === 'GOAL' ? (
+            <select
+              value={goalId} onChange={(e) => setGoalId(e.target.value)}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+            >
+              <option value="">Choose a savings goal</option>
+              {goals.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+          ) : (
+            <select
+              value={stockId} onChange={(e) => setStockId(e.target.value)}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+            >
+              <option value="">Choose a stock</option>
+              {stocks.map((s) => <option key={s.id} value={s.id}>{s.symbol} · {s.name}</option>)}
+            </select>
+          )}
+          <button
+            className="itunda-btn itunda-btn-primary" disabled={busy || (destination === 'GOAL' ? !goalId : !stockId)}
+            onClick={() => handleToggle(true)}
           >
-            <option value="">Choose a savings goal</option>
-            {goals.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-          </select>
-          <button className="itunda-btn itunda-btn-primary" disabled={busy || !goalId} onClick={() => handleToggle(true)}>
             {busy ? 'Turning on…' : 'Turn on round-up'}
           </button>
         </div>

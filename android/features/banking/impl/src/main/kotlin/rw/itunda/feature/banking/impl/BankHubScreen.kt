@@ -100,7 +100,7 @@ fun BankHubScreen(
     interestJar: rw.itunda.core.network.InterestJar?,
     roundUpSettings: rw.itunda.core.network.RoundUpSettingsDto?,
     spendingInsight: rw.itunda.core.network.SpendingInsightResponse?,
-    onSetRoundUpSettings: suspend (enabled: Boolean, roundToNearest: Long, targetGoalId: String?) -> MoneyActionResult,
+    onSetRoundUpSettings: suspend (enabled: Boolean, roundToNearest: Long, targetGoalId: String?, targetStockId: String?) -> MoneyActionResult,
     onCreateSavingsGoal: suspend (name: String, targetAmountRwf: Long, monthlyContributionRwf: Long?, targetDate: String?) -> MoneyActionResult,
     onBack: () -> Unit,
     onDepositToGoal: (goalId: String, goalName: String) -> Unit,
@@ -164,6 +164,22 @@ fun BankHubScreen(
             creditScore = rw.itunda.core.network.NetworkClient.apiService.getCreditScore()
         } catch (_: Exception) {
             // Non-critical -- the row just won't render if this fails.
+        }
+    }
+    // Real stock-destination option for round-up (Wealth product-completeness
+    // pass, 2026-09-06) -- same "each screen fetches its own minimal real data"
+    // precedent as depositProtection/creditScore above. Fetched once the dialog
+    // is actually opened, not on every BankHubScreen composition -- unlike the
+    // three fetches above, a stock list is real Invest-market data this screen
+    // otherwise has no use for.
+    var roundUpStocks by remember { mutableStateOf<List<rw.itunda.core.network.StockDto>>(emptyList()) }
+    LaunchedEffect(showRoundUpDialog) {
+        if (showRoundUpDialog) {
+            try {
+                roundUpStocks = rw.itunda.core.network.NetworkClient.apiService.getStocks().stocks
+            } catch (_: Exception) {
+                // Non-critical -- the stock-destination radio list just stays empty.
+            }
         }
     }
 
@@ -411,10 +427,11 @@ fun BankHubScreen(
             RoundUpSettingsDialog(
                 settings = roundUpSettings,
                 goals = savingsGoals,
+                stocks = roundUpStocks,
                 onDismiss = { showRoundUpDialog = false },
-                onSave = { enabled, increment, goalId ->
+                onSave = { enabled, increment, goalId, stockId ->
                     coroutineScope.launch {
-                        onSetRoundUpSettings(enabled, increment, goalId)
+                        onSetRoundUpSettings(enabled, increment, goalId, stockId)
                         showRoundUpDialog = false
                     }
                 },

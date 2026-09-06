@@ -454,10 +454,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * RoundUpController.kt's own doc comment for why this is unqueued (a settings
      * change, not money movement) unlike depositToSavingsGoal above.
      */
-    suspend fun setRoundUpSettings(enabled: Boolean, roundToNearest: Long, targetGoalId: String?): MoneyActionResult {
+    suspend fun setRoundUpSettings(enabled: Boolean, roundToNearest: Long, targetGoalId: String?, targetStockId: String? = null): MoneyActionResult {
         return try {
             val res = NetworkClient.apiService.setRoundUpSettings(
-                SetRoundUpSettingsRequest(enabled = enabled, roundToNearest = BigDecimal(roundToNearest), targetGoalId = targetGoalId)
+                SetRoundUpSettingsRequest(enabled = enabled, roundToNearest = BigDecimal(roundToNearest), targetGoalId = targetGoalId, targetStockId = targetStockId)
             )
             _roundUpSettings.value = res.settings
             MoneyActionResult.Success(if (enabled) "Round-up saving is on" else "Round-up saving is off")

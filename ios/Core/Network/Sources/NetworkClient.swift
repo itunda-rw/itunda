@@ -1358,9 +1358,14 @@ public struct RoundUpSettingsDto: Decodable {
     public let enabled: Bool
     public let roundToNearest: Double
     public let targetGoalId: String?
+    // Real stock-destination option (backend since 2026-07-27,
+    // RoundUpService.processRoundUp's own targetStockId branch) -- wired into
+    // this client (Wealth product-completeness pass, 2026-09-06). Mutually
+    // exclusive with targetGoalId, enforced server-side.
+    public let targetStockId: String?
 }
 public struct RoundUpSettingsResponse: Decodable { public let success: Bool; public let settings: RoundUpSettingsDto? }
-public struct SetRoundUpSettingsRequest: Encodable { public let enabled: Bool; public let roundToNearest: Double; public let targetGoalId: String? }
+public struct SetRoundUpSettingsRequest: Encodable { public let enabled: Bool; public let roundToNearest: Double; public let targetGoalId: String?; public let targetStockId: String? }
 
 // Real 당근마켓 Keyword Alert (키워드 알림) -- mirrors bank-mfe's lib/marketplace.ts and
 // Android's ApiService.kt exactly.
@@ -1971,8 +1976,8 @@ extension NetworkClient {
     // Real gap found 2026-09-04: RoundUpService.setSettings' real "Choose a real
     // increment -- 10, 50, 100 RWF" (dynamically listing SUPPORTED_INCREMENTS) was
     // flattened by RoundUpSettingsView.swift's bare `catch {}`.
-    public func setRoundUpSettings(enabled: Bool, roundToNearest: Double, targetGoalId: String?) async throws -> RoundUpSettingsResponse {
-        try await authenticatedPostWithMessage("api/v1/savings/round-up", body: SetRoundUpSettingsRequest(enabled: enabled, roundToNearest: roundToNearest, targetGoalId: targetGoalId))
+    public func setRoundUpSettings(enabled: Bool, roundToNearest: Double, targetGoalId: String?, targetStockId: String? = nil) async throws -> RoundUpSettingsResponse {
+        try await authenticatedPostWithMessage("api/v1/savings/round-up", body: SetRoundUpSettingsRequest(enabled: enabled, roundToNearest: roundToNearest, targetGoalId: targetGoalId, targetStockId: targetStockId))
     }
 
     // Real 당근마켓 Keyword Alert (키워드 알림) -- first iOS client for this feature
