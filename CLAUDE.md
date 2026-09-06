@@ -77,19 +77,21 @@ whichever one is wrong; never let them silently drift apart.
   target structure + `CoreDesignSystem`/`CoreNetwork`/`CoreIdentity` wiring
   automatically — adding a Feature's real content is just dropping `.swift` files into
   its `Sources/` and removing the placeholder `Dummy.swift`, no per-module manifest
-  edits needed). Confirmed 2026-09-06, real per-module file counts: `Banking`/`Credit`/
+  edits needed). Confirmed 2026-09-07, real per-module file counts: `Banking`/`Credit`/
   `Maps`/`Payments`/`Home`/`Menu`/`My`/`Pay`/`Wealth`/`Assets`/`Certificate`/`Identity`/
-  `Support`/`Eats` all have real, populated Feature modules (`Eats` extracted
-  2026-09-06 out of `App/Sources`, the Eats product-completeness pass's own real
-  architecture-consistency fix — see its own real blockers: `RouteMiniMap`/
-  `SearchAndCategoryChips`/`SilentLocationFetcher` promoted to
-  `Core/DesignSystem/Sources/Components` since still-App-only Hood/Shop screens also
-  needed them; `TalkScreen.errorMessage`/`ShopBestSellerBadge`/`colorFromHex`/
-  `eatsGoodPointOptions` given local per-file copies, matching `FeatureMaps`'s/
-  `FeatureMy`'s own existing duplicate-small-utility convention; `ReorderButton`
-  needed a real duplicate in Commerce's `ShopMerchantOrders.swift`, same as Android
-  already has). `Bills`/`Insurance` are correctly empty (Saronite/React-Native
-  mini-apps, not native). `Engagement`/`Merchant` remain empty on both platforms — a
+  `Support`/`Eats`/`Ride` all have real, populated Feature modules (`Eats` extracted
+  2026-09-06, `Ride` extracted 2026-09-07, both out of `App/Sources`, each product-
+  completeness pass's own real architecture-consistency fix — see each pass's own
+  real blockers: `RouteMiniMap`/`SearchAndCategoryChips`/`SilentLocationFetcher`
+  promoted to `Core/DesignSystem/Sources/Components` since still-App-only Hood/Shop
+  screens also needed them; `TalkScreen.errorMessage`/`ShopBestSellerBadge`/
+  `colorFromHex`/`eatsGoodPointOptions` given local per-file copies, matching
+  `FeatureMaps`'s/`FeatureMy`'s own existing duplicate-small-utility convention;
+  `ReorderButton` needed a real duplicate in Commerce's `ShopMerchantOrders.swift`,
+  same as Android already has; `Ride`'s own `colorFromHex` reuse site
+  (`ShopProductDetail.swift`) got the identical fix). `Bills`/`Insurance` are
+  correctly empty (Saronite/React-Native mini-apps, not native). `Engagement`/
+  `Merchant` remain empty on both platforms — a
   real product-scope gap (no mapped screen yet), matching Android exactly.
   `tuist generate && pod install` before `xcodebuild`.
 - `packages/design-tokens/tokens.css` — the single real source of truth for color/type
