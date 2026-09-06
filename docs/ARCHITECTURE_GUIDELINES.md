@@ -240,6 +240,31 @@ on `fromAccountId` names this as deliberate, alongside `FOREIGN_CURRENCY`/`MINI`
 direction. Second real data point for the same "check which `AccountType` a new
 feature needs, don't assume" discipline above.
 
+**Confirmed clean a third time on Merchant, 2026-09-06 — verified via a real
+`yarn depcruise` run, not assumed.** `.dependency-cruiser.cjs`'s generic
+`no-cross-mfe-import-*` rule forbids `merchant-mfe` from directly importing
+`bank-mfe` (or vice versa); a live run found zero violations (369 modules, 1361
+dependencies at the time). `merchant-mfe/package.json` itself has no bank-mfe/
+pay-checkout dependency at all. Android/iOS merchant apps only mention bank-mfe
+in doc comments comparing behavior, never in real imports. Third confirming data
+point — worth actually running the enforcement tool rather than eyeballing
+import statements, since a config that "should" catch a violation can silently
+not be wired the way `docs/ARCHITECTURE_GUIDELINES.md` §6 (module boundaries)
+already warns about.
+
+**A backend-domain boundary can hide a real coupling a Gradle-dependency grep
+alone won't find — confirmed on Merchant, Pay, 2026-09-06.** Before extracting a
+backend module into its own service, checking "does anything else declare
+`project(":candidate")`" is necessary but not sufficient: also check whether the
+candidate's OWN transitive dependencies reach an `:app`-only-implemented
+interface (e.g. `RealtimeMessagePublisher`, real-implemented only in `:app`'s
+`MessagingWebSocketHandler`) — a candidate can have zero dependents and still be
+unextractable. Found on `:gift`→`:messaging` (Pay pass) and `:commerce`→
+`:merchant`→`:messaging` (Merchant pass), two real instances of the same class
+of gotcha in two consecutive passes. See
+[[project_itunda_backend_service_split]]'s own dated entries for the full
+account.
+
 **A review-queue gap also has no automated check — confirmed already-covered on
 Pay, 2026-09-06.** Before building a new ops-mfe review queue for a product, check
 whether an existing generic queue already surfaces the relevant flagged rows: `P2pService`'s
