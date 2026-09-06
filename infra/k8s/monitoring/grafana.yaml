@@ -833,6 +833,69 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  # Real, twelfth product-level dashboard (2026-09-07, Card product-completeness
+  # pass) -- see docs/ARCHITECTURE.md's "First independently-deployable product"
+  # entry. `:card-service` was the very first backend extraction, yet had zero
+  # monitoring coverage before this. Scoped to /api/v1/card(/.*)? -- confirmed by
+  # reading CardController.kt's own @RequestMapping directly. No per-service JVM
+  # panel, matching every other product dashboard on the shared backend.
+  name: grafana-dashboard-itunda-card
+  namespace: monitoring
+data:
+  itunda-card.json: |
+    {
+      "title": "itunda Card",
+      "uid": "itunda-card",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Card request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/card(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Card error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/card(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Card request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/card(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/card(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   # Real, eighth product-level dashboard (2026-09-06, Rideshare product-completeness
   # pass) -- see docs/ARCHITECTURE.md's dated follow-up. `:rideshare` stays inside
   # the shared `backend` monolith deployment (not extractable -- real, direct,
@@ -1073,6 +1136,8 @@ spec:
               name: grafana-dashboard-itunda-bills
           - configMap:
               name: grafana-dashboard-itunda-agents
+          - configMap:
+              name: grafana-dashboard-itunda-card
           - configMap:
               name: grafana-dashboard-itunda-private-cloud
 ---
