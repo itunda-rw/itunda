@@ -231,6 +231,29 @@ Bank hub (or vice versa for a genuinely consumer-only feature) — the same manu
 "grep before you build" discipline this doc asks for elsewhere, since no lint rule
 will catch a business-only card rendering on the wrong tab.
 
+**Confirmed clean again on Pay, 2026-09-06.** `P2pService` explicitly excludes
+`AccountType.BUSINESS` from consumer P2P send/pay (`P2pService.kt`'s own doc comment
+on `fromAccountId` names this as deliberate, alongside `FOREIGN_CURRENCY`/`MINI`/
+`GROW31_SAVINGS`). Merchant QR-receive (`MerchantStaticQrService.payByStaticQr`,
+`MerchantService.generateQr`/`collect`) is a structurally separate flow keyed off the
+`Merchant` entity, not a generic `AccountType.BUSINESS` check — no leakage either
+direction. Second real data point for the same "check which `AccountType` a new
+feature needs, don't assume" discipline above.
+
+**A review-queue gap also has no automated check — confirmed already-covered on
+Pay, 2026-09-06.** Before building a new ops-mfe review queue for a product, check
+whether an existing generic queue already surfaces the relevant flagged rows: `P2pService`'s
+`FraudRuleEngine.evaluate` writes `FraudFlag` rows through the same
+`FraudFlagRepository`/`FraudReviewService` that already powers ops-mfe's `FraudQueue.tsx`
+(`FraudReviewService.kt`'s own `fraudFlagRepository.save` call, confirmed directly, not
+assumed) — so P2P/QR-pay fraud already had a real home, and no new queue was needed.
+Bank's own `LoanDefaultQueue` (same pass) is the counter-example: a genuinely new
+signal (`VupLoanStatus.OVERDUE`) with no existing consumer, so a new queue was the
+right call there. **How to apply**: before proposing a new review queue, grep for
+whether the underlying flagged/pending rows already feed an existing queue's backend
+repository — a queue gap and a data gap are different things, and only the second
+needs new UI.
+
 ## 7. A name is a promise the code must keep (Toss Frontend Fundamentals)
 
 The same real, open-sourced guide behind §1 has a dedicated real naming discipline under
