@@ -94,6 +94,7 @@ struct MenuTabContent: View {
     @State private var showKnowledge = false
     @State private var showAgentOperator = false
     @State private var showFloatMarketplace = false
+    @State private var showAgentCashOut = false
     @State private var showForeignCurrency = false
     @State private var showSupport = false
 
@@ -152,6 +153,7 @@ struct MenuTabContent: View {
             onOpenKnowledge: { showKnowledge = true },
             onOpenAgentOperator: { showAgentOperator = true },
             onOpenFloatMarketplace: { showFloatMarketplace = true },
+            onOpenAgentCashOut: { showAgentCashOut = true },
             onOpenForeignCurrency: { showForeignCurrency = true },
             onOpenSupport: { showSupport = true }
         )
@@ -304,6 +306,14 @@ struct MenuTabContent: View {
         }
         .sheet(isPresented: $showFloatMarketplace) {
             FloatMarketplaceScreenView(onBack: { showFloatMarketplace = false })
+        }
+        // "Find a nearby itunda agent" opens the plain map, not filtered to the
+        // ITUNDA_AGENT category -- MapScreenView's own public init takes no
+        // initialCategory param today (only initialSearchQuery/initialSharedFolder),
+        // same real limitation bank-mfe's MapView (a federated remote) has. Named
+        // here rather than silently claimed as full category-filtered parity.
+        .sheet(isPresented: $showAgentCashOut) {
+            AgentCashOutScreenView(onBack: { showAgentCashOut = false }, onFindNearbyAgent: { showAgentCashOut = false; showMap = true })
         }
         .sheet(isPresented: $showForeignCurrency) {
             ForeignCurrencyScreenView(onBack: { showForeignCurrency = false })

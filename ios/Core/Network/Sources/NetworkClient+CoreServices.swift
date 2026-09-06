@@ -292,6 +292,22 @@ extension NetworkClient {
         try await authenticatedPostWithMessage("api/v1/float-marketplace/requests/\(requestId)/decline", body: EmptyBody())
     }
 
+    // Real "cash out at an agent" -- see AgentWithdrawalAuthorizationDto's own doc
+    // comment. A fresh Idempotency-Key on create only: cancel is not idempotency-
+    // keyed on the backend (AccountController.cancelAgentWithdrawalAuthorization),
+    // matching bank-mfe's lib/agentWithdrawal.ts's identical omission.
+    public func createAgentWithdrawalAuthorization(amount: Double) async throws -> AgentWithdrawalAuthorizationResponse {
+        try await authenticatedPost("api/v1/account/agent-withdrawal-authorizations", body: CreateAgentWithdrawalAuthorizationRequest(amount: amount), idempotencyKey: UUID().uuidString)
+    }
+
+    public func getAgentWithdrawalAuthorizations() async throws -> AgentWithdrawalAuthorizationsResponse {
+        try await get("api/v1/account/agent-withdrawal-authorizations")
+    }
+
+    public func cancelAgentWithdrawalAuthorization(code: String) async throws -> AgentWithdrawalAuthorizationResponse {
+        try await authenticatedPost("api/v1/account/agent-withdrawal-authorizations/cancel", body: CancelAgentWithdrawalAuthorizationRequest(code: code))
+    }
+
     public func issueCertificate() async throws -> IssueCertificateResponse {
         try await authenticatedPost("api/v1/certificate/issue", body: EmptyRequest())
     }

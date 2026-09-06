@@ -57,6 +57,7 @@ extension EntireMenuScreen {
         onOpenKnowledge: @escaping () -> Void = {},
         onOpenAgentOperator: @escaping () -> Void = {},
         onOpenFloatMarketplace: @escaping () -> Void = {},
+        onOpenAgentCashOut: @escaping () -> Void = {},
         onOpenForeignCurrency: @escaping () -> Void = {},
         onOpenSupport: @escaping () -> Void = {}
     ) {
@@ -113,6 +114,7 @@ extension EntireMenuScreen {
         self.onOpenKnowledge = onOpenKnowledge
         self.onOpenAgentOperator = onOpenAgentOperator
         self.onOpenFloatMarketplace = onOpenFloatMarketplace
+        self.onOpenAgentCashOut = onOpenAgentCashOut
         self.onOpenForeignCurrency = onOpenForeignCurrency
         self.onOpenSupport = onOpenSupport
     }

@@ -7161,6 +7161,26 @@ public struct NearbyFloatListingsResponse: Decodable { public let success: Bool;
 public struct FloatTransferRequestResponse: Decodable { public let success: Bool; public let request: FloatTransferRequestDto }
 public struct FloatTransferRequestsResponse: Decodable { public let success: Bool; public let requests: [FloatTransferRequestDto] }
 
+// Real "cash out at an agent" -- see AgentWithdrawalAuthorizationService.kt's own
+// doc comment: a one-time, 10-minute-expiry code a customer creates and hands to
+// an itunda agent, consumed exactly once for the exact amount shown. Distinct
+// from the agent-operator STAFF console above (AgentTillResponse etc.) -- this is
+// the CUSTOMER side. Real gap closed 2026-09-07 (Agents product-completeness
+// pass): Android's AgentCashScreen.kt has had this since it was built; this is
+// the first iOS client.
+public struct AgentWithdrawalAuthorizationDto: Decodable, Identifiable {
+    public let id: String; public let code: String; public let amount: Double
+    public let expiresAt: String; public let status: String; public let createdAt: String
+}
+public struct CreateAgentWithdrawalAuthorizationRequest: Encodable { public let amount: Double
+    public init(amount: Double) { self.amount = amount }
+}
+public struct CancelAgentWithdrawalAuthorizationRequest: Encodable { public let code: String
+    public init(code: String) { self.code = code }
+}
+public struct AgentWithdrawalAuthorizationResponse: Decodable { public let success: Bool; public let authorization: AgentWithdrawalAuthorizationDto }
+public struct AgentWithdrawalAuthorizationsResponse: Decodable { public let success: Bool; public let authorizations: [AgentWithdrawalAuthorizationDto] }
+
 public struct CertificateDto: Decodable {
     public let id: String; public let userId: String; public let serialNumber: String; public let publicKeyBase64: String
     public let algorithm: String; public let status: String; public let issuedAt: String; public let expiresAt: String; public let revokedAt: String?

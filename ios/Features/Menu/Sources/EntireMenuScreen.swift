@@ -88,6 +88,7 @@ public struct EntireMenuScreen: View {
     public var onOpenKnowledge: () -> Void
     public var onOpenAgentOperator: () -> Void
     public var onOpenFloatMarketplace: () -> Void
+    public var onOpenAgentCashOut: () -> Void
     public var onOpenForeignCurrency: () -> Void
     public var onOpenSupport: () -> Void
 
@@ -325,6 +326,10 @@ public struct EntireMenuScreen: View {
                     // these two are role-gated (only assigned cash-agent operators can use
                     // them), same reasoning as Android's identical split.
                     CollapsibleFlatSection(title: "Cash agent tools", rows: [
+                        // Real gap closed 2026-09-07 (Agents product-completeness pass) --
+                        // the customer-facing counterpart to "Agent till" above: any account
+                        // can create a withdrawal code, not just an assigned operator.
+                        FlatRow(title: "Cash out at an agent", subtitle: "Create a one-time code to withdraw cash from a nearby itunda agent", glyph: { AnyView(PlaceGlyph(category: "ITUNDA_AGENT", size: 28)) }, action: onOpenAgentCashOut),
                         FlatRow(title: "Agent till", subtitle: "For assigned cash-agent operators: cash-in, cash-out, till count", glyph: { AnyView(PlaceGlyph(category: "ITUNDA_AGENT", size: 28)) }, action: onOpenAgentOperator),
                         FlatRow(title: "Float marketplace", subtitle: "For assigned cash-agents: offer or request float from nearby agents", glyph: { AnyView(PlaceGlyph(category: "MARKET", size: 28)) }, action: onOpenFloatMarketplace),
                     ], isExpanded: expandedMenuSection == "Cash agent tools", onToggle: { expandedMenuSection = (expandedMenuSection == "Cash agent tools") ? nil : "Cash agent tools" })
