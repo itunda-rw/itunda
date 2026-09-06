@@ -4,7 +4,7 @@ import { EmptyState } from './EmptyState';
 import { ApiError } from './lib/api';
 import { QrScanCamera } from './QrScanCamera';
 import {
-  fetchAgentTill, fetchAgentActivity, agentCashIn, agentCashOut, submitAgentTillCount,
+  fetchAgentTill, fetchAgentActivity, agentCashIn, agentCashOut, submitAgentTillCount, setAgentLocation,
   isNotAgentOperatorError, type AgentTillSnapshot, type AgentActivityItem,
 } from './lib/agentOperator';
 import {
@@ -56,6 +56,35 @@ export function AgentOperatorView() {
     fetchAgentActivity().then(setActivity).catch(() => setActivity([]));
   };
   useEffect(load, []);
+
+  // Real gap closed 2026-09-07 (Agents product-completeness pass): Android's
+  // AgentOperatorScreen.kt has had "Report my location" since the 2026-08-16
+  // uncalled-endpoint sweep found setLocationForOperator with zero real caller;
+  // bank-mfe never did, so a web-only agent's till never shows up on the
+  // customer-facing "nearby agents" map.
+  const [reportingLocation, setReportingLocation] = useState(false);
+  const handleReportLocation = () => {
+    if (!navigator.geolocation) {
+      setError('Location is not available in this browser.');
+      return;
+    }
+    setMessage(null);
+    setError(null);
+    setReportingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setAgentLocation(position.coords.latitude, position.coords.longitude)
+          .then(() => setMessage('Your location has been updated.'))
+          .catch((err) => setError(err instanceof ApiError ? err.message : t('common.actionError')))
+          .finally(() => setReportingLocation(false));
+      },
+      () => {
+        setError('Could not get your current location.');
+        setReportingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
 
   const handleCashIn = async () => {
     const amount = Number(cashInAmount);
@@ -161,6 +190,16 @@ export function AgentOperatorView() {
             Last count: {till.reconciliation.countedCash.toLocaleString('en-US')} RWF ({till.reconciliation.status}, variance {till.reconciliation.variance.toLocaleString('en-US')})
           </p>
         )}
+      </div>
+
+      <div className="itunda-flat-section">
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>Store location</h3>
+        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '8px' }}>
+          Real customers use "nearby agents" to find your store — keep your location current.
+        </p>
+        <button className="itunda-btn itunda-btn-primary" disabled={reportingLocation} onClick={handleReportLocation}>
+          {reportingLocation ? 'Getting your location…' : 'Report my location'}
+        </button>
       </div>
 
       <div className="itunda-flat-section">

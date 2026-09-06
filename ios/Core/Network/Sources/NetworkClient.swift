@@ -7135,6 +7135,14 @@ public struct SubmitAgentTillCountRequest: Encodable { public let countedCash: D
     public init(countedCash: Double) { self.countedCash = countedCash }
 }
 public struct AgentTillReconciliationResponse: Decodable { public let success: Bool; public let reconciliation: AgentTillReconciliationDto }
+// Real gap found live (uncalled-endpoint sweep, 2026-08-16) -- see the backend's
+// AgentService.setLocationForOperator doc comment: the customer-facing "nearby
+// agents" feature already depends on Agent.latitude/longitude being current.
+// Android's AgentOperatorScreen.kt has had this since it was found; this is the
+// first iOS client.
+public struct SetAgentLocationRequest: Encodable { public let latitude: Double; public let longitude: Double
+    public init(latitude: Double, longitude: Double) { self.latitude = latitude; self.longitude = longitude }
+}
 
 // Real peer-to-peer agent float rebalancing marketplace -- see the backend's
 // FloatMarketplaceService.kt doc comment for the full sourced account (a real

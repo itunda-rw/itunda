@@ -233,6 +233,9 @@ extension NetworkClient {
     public func getAgentActivity(limit: Int = 30) async throws -> AgentActivityResponse {
         try await get("api/v1/agent/activity", query: [URLQueryItem(name: "limit", value: String(limit))])
     }
+    public func setAgentLocation(latitude: Double, longitude: Double) async throws -> SuccessResponse {
+        try await authenticatedPost("api/v1/agent/location", body: SetAgentLocationRequest(latitude: latitude, longitude: longitude))
+    }
     public func agentCashIn(_ request: AgentCashInRequest) async throws -> AgentCashResultResponse {
         try await authenticatedPost("api/v1/agent/cash-ins", body: request, idempotencyKey: UUID().uuidString)
     }

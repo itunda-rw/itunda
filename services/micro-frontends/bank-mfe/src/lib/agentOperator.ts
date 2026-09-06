@@ -90,3 +90,15 @@ export const submitAgentTillCount = (countedCash: number) =>
   }).then((r) => r.reconciliation);
 
 export const isNotAgentOperatorError = (err: unknown) => err instanceof ApiError && err.code === 'AGENT_OPERATOR_NOT_AUTHORIZED';
+
+// Real gap found live (uncalled-endpoint sweep, 2026-08-16) -- see the backend's
+// AgentService.setLocationForOperator doc comment: the customer-facing "nearby
+// agents" feature already depends on Agent.latitude/longitude being current, but
+// no real agent had any way to report it. Android's AgentOperatorScreen.kt has
+// had this since it was found; bank-mfe and iOS never did. Real gap closed
+// 2026-09-07 (Agents product-completeness pass).
+export const setAgentLocation = (latitude: number, longitude: number) =>
+  apiFetch<{ success: boolean }>('/api/v1/agent/location', {
+    method: 'POST',
+    body: JSON.stringify({ latitude, longitude }),
+  });

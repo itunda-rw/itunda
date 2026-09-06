@@ -1,6 +1,7 @@
 import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
+import CoreLocation
 
 /// Real Itunda cash-agent operator console -- see AgentOperatorController.kt's own doc
 /// comment: "Store-facing API: the operator's JWT determines the agent; callers never
@@ -15,6 +16,13 @@ struct AgentOperatorScreenView: View {
     @State private var notOperator = false
     @State private var error: String?
     @State private var message: String?
+    // Real gap closed 2026-09-07 (Agents product-completeness pass): Android's
+    // AgentOperatorScreen.kt has had "Report my location" since the 2026-08-16
+    // uncalled-endpoint sweep found setLocationForOperator with zero real caller;
+    // iOS never did, so a store operator using only this app never shows up on
+    // the customer-facing "nearby agents" map.
+    @State private var reportingLocation = false
+    @StateObject private var locationFetcher = SilentLocationFetcher()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -43,6 +51,16 @@ struct AgentOperatorScreenView: View {
                             // Divider()s mark the real boundaries instead
                             // (docs/UI_UX_GUIDELINES.md §10).
                             TillSummaryCard(till: till)
+                            Divider().overlay(IDS.Colors.divider)
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Store location").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                Text("Real customers use \"nearby agents\" to find your store -- keep your location current.")
+                                    .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                IdsButton(text: reportingLocation ? "Getting your location…" : "Report my location", isEnabled: !reportingLocation) {
+                                    message = nil; error = nil; reportingLocation = true
+                                    locationFetcher.requestLocation()
+                                }
+                            }
                             Divider().overlay(IDS.Colors.divider)
                             CashInCard(onSubmitted: { balance in message = "Cash in accepted — new customer balance \(formatAmount(Int(balance))) RWF"; Task { await load() } }, onError: { error = $0 })
                             Divider().overlay(IDS.Colors.divider)
@@ -77,6 +95,18 @@ struct AgentOperatorScreenView: View {
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .task { await load() }
+        .onChange(of: locationFetcher.coordinate?.latitude) { _ in
+            guard reportingLocation, let coordinate = locationFetcher.coordinate else { return }
+            Task {
+                do {
+                    _ = try await NetworkClient.shared.setAgentLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+                    message = "Your location has been updated."
+                } catch {
+                    self.error = "Could not update your location."
+                }
+                reportingLocation = false
+            }
+        }
     }
 
     private func load() async {
