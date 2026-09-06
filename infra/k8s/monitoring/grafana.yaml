@@ -561,6 +561,72 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  # Real, seventh product-level dashboard (2026-09-06, Eats product-completeness
+  # pass) -- see docs/ARCHITECTURE.md's dated follow-up. `:eats` stays inside the
+  # shared `backend` monolith deployment (not extractable -- real reverse coupling
+  # from `:maps`, plus a direct, unexcludable MessagingService dependency and
+  # direct build.gradle.kts coupling to :account/:merchant/:splitbill), so this
+  # follows the same pattern as itunda-bank/pay/merchant/wealth/talk: route-filtered
+  # request-rate/error-rate/latency panels, no per-service JVM/pods-up panel (no
+  # new, separately deployed JVM to chart). Single real prefix covers dishes/
+  # orders/riders/reviews/favorites/memberships/group-orders in one regex.
+  name: grafana-dashboard-itunda-eats
+  namespace: monitoring
+data:
+  itunda-eats.json: |
+    {
+      "title": "itunda Eats",
+      "uid": "itunda-eats",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Eats request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/eats(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Eats error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/eats(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Eats request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/eats(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/eats(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: grafana-dashboard-itunda-private-cloud
   namespace: monitoring
 data:
@@ -718,6 +784,8 @@ spec:
               name: grafana-dashboard-itunda-insurance
           - configMap:
               name: grafana-dashboard-itunda-talk
+          - configMap:
+              name: grafana-dashboard-itunda-eats
           - configMap:
               name: grafana-dashboard-itunda-private-cloud
 ---
