@@ -94,6 +94,8 @@ import java.util.UUID
  * cheap in-memory filter across every candidate driver, not the one real per-trip
  * distance a passenger is actually charged for.
  */
+data class RideDriverLocationView(val latitude: Double, val longitude: Double, val updatedAt: Instant)
+
 @Service
 class RideTripService(
     private val rideDriverRepository: RideDriverRepository,
@@ -477,6 +479,39 @@ class RideTripService(
         return saved
     }
 
+    /** Real driver-side cancel-after-acceptance -- a real gap found during the
+     * Rideshare product-completeness pass: declineTrip above only ever covers
+     * PRE-acceptance (an active offer), and cancelTrip is passenger-only, so a driver
+     * who accepted and then genuinely can't make the pickup had no way back out. Only
+     * valid while DRIVER_ASSIGNED (not IN_PROGRESS -- once a trip is under way, a
+     * driver bailing is a materially bigger problem needing its own real handling,
+     * correctly out of scope here). Reuses declineTrip's own real redispatch
+     * mechanism exactly (exclude this driver, dispatchToNextDriver) -- no fee applies
+     * to the passenger, since the driver initiated it, not them. findByIdForUpdate,
+     * same real lost-update-fix discipline cancelTrip's own doc comment already
+     * establishes for this exact class of check-then-act race. */
+    @Transactional
+    fun driverCancelTrip(driverUserId: String, tripId: String): RideTrip {
+        val driver = getMyDriver(driverUserId)
+        val trip = rideTripRepository.findByIdForUpdate(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
+        if (trip.driverId != driver.id) {
+            throw RideTripNotFoundException("Trip not found")
+        }
+        if (trip.status != RideTripStatus.DRIVER_ASSIGNED) {
+            throw InvalidRideTripStatusTransitionException("Only a DRIVER_ASSIGNED trip can be cancelled by its driver -- this one is already ${trip.status}")
+        }
+        trip.excludedDriverUserIds = (
+            (trip.excludedDriverUserIds?.split(",")?.filter { it.isNotBlank() } ?: emptyList()) + driverUserId
+            ).distinct().joinToString(",")
+        trip.driverId = null
+        trip.status = RideTripStatus.REQUESTED
+        trip.driverAssignedAt = null
+        trip.updatedAt = Instant.now()
+        val saved = rideTripRepository.save(trip)
+        dispatchToNextDriver(saved)
+        return saved
+    }
+
     // Real Kakao T-style multi-stop rides (item 214) -- every real waypoint recorded for
     // a trip, in real visit order.
     fun getTripStops(tripId: String): List<RideTripStop> = rideTripStopRepository.findByTripIdOrderBySequenceAsc(tripId)
@@ -516,6 +551,32 @@ class RideTripService(
         val trip = rideTripRepository.findById(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
         if (trip.passengerId != passengerUserId) throw RideTripNotFoundException("Trip not found")
         return trip.pin ?: ""
+    }
+
+    /** Real live driver-location tracking during an active ride trip -- the same
+     * "watch your ride approach/arrive" moment EatsOrderService.getRiderLocation
+     * already established for Eats delivery, mirrored exactly (same participant-only
+     * IDOR discipline, same real-404-not-403 on a stranger, same "only while the trip
+     * is actually active" null-instead-of-stale-data guard). Found missing on all 3
+     * clients during the Rideshare product-completeness pass despite every real field
+     * this needs already existing (RideDriver.currentLatitude/currentLongitude/
+     * locationUpdatedAt, already set by the real RideDriverService.updateLocation). */
+    fun getDriverLocation(requesterId: String, tripId: String): RideDriverLocationView? {
+        val trip = rideTripRepository.findById(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
+        val isPassenger = trip.passengerId == requesterId
+        val isDriver = trip.driverId?.let { rideDriverRepository.findById(it).orElse(null)?.userId == requesterId } == true
+        if (!isPassenger && !isDriver) {
+            throw RideTripNotFoundException("Trip not found")
+        }
+        if (trip.status != RideTripStatus.DRIVER_ASSIGNED && trip.status != RideTripStatus.IN_PROGRESS) {
+            return null
+        }
+        val driver = trip.driverId?.let { rideDriverRepository.findById(it).orElse(null) } ?: return null
+        val lat = driver.currentLatitude
+        val lng = driver.currentLongitude
+        val updatedAt = driver.locationUpdatedAt
+        if (lat == null || lng == null || updatedAt == null) return null
+        return RideDriverLocationView(lat, lng, updatedAt)
     }
 
     // Real Uber "Share Trip Status" (2026-08-16, help.uber.com/en/riders/article/

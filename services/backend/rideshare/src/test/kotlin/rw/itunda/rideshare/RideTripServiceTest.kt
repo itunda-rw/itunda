@@ -889,6 +889,180 @@ class RideTripServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("a real DRIVER_ASSIGNED trip its own driver wants to cancel before pickup") {
+        val rideDriverRepository = mockk<RideDriverRepository>()
+        val rideTripRepository = mockk<RideTripRepository>()
+        val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
+
+        val driver = RideDriver(id = "driver_cancel_2", userId = "driver_user_cancel_2", accountId = "account_driver_cancel_2", available = true, licenseNumber = "LIC-TEST")
+        val nearbyDriver = RideDriver(id = "driver_next", userId = "driver_user_next", accountId = "account_next", available = true, currentLatitude = -1.95, currentLongitude = 30.06, licenseNumber = "LIC-TEST")
+        val trip = RideTrip(
+            id = "ride_trip_driver_cancel", passengerId = "passenger_dc", driverId = "driver_cancel_2",
+            pickupAddress = "A", pickupLatitude = -1.95, pickupLongitude = 30.06,
+            dropoffAddress = "B", dropoffLatitude = -1.96, dropoffLongitude = 30.09, distanceKm = BigDecimal("2.0"),
+            fare = BigDecimal("1500"), platformFee = BigDecimal("22.5"), transactionId = "ledgertxn_dc",
+            status = RideTripStatus.DRIVER_ASSIGNED, driverAssignedAt = Instant.now(),
+        )
+        every { rideDriverRepository.findByUserId("driver_user_cancel_2") } returns driver
+        every { rideTripRepository.findByIdForUpdate("ride_trip_driver_cancel") } returns Optional.of(trip)
+        every { rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns listOf(nearbyDriver)
+        every { rideTripRepository.findDistinctDriverIdsByStatusIn(any()) } returns emptyList()
+        val savedSlot = slot<RideTrip>()
+        every { rideTripRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+        When("the driver cancels") {
+            val result = service.driverCancelTrip("driver_user_cancel_2", "ride_trip_driver_cancel")
+
+            Then("it real-excludes this driver and redispatches to the next real nearby driver, no fee involved") {
+                result.excludedDriverUserIds shouldBe "driver_user_cancel_2"
+                savedSlot.captured.offeredDriverId shouldBe "driver_next"
+            }
+        }
+    }
+
+    Given("a real IN_PROGRESS trip a driver tries to cancel after pickup") {
+        val rideDriverRepository = mockk<RideDriverRepository>()
+        val rideTripRepository = mockk<RideTripRepository>()
+        val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
+
+        val driver = RideDriver(id = "driver_cancel_3", userId = "driver_user_cancel_3", accountId = "account_driver_cancel_3", licenseNumber = "LIC-TEST")
+        val trip = RideTrip(
+            id = "ride_trip_in_progress", passengerId = "passenger_ip", driverId = "driver_cancel_3",
+            pickupAddress = "A", pickupLatitude = -1.95, pickupLongitude = 30.06,
+            dropoffAddress = "B", dropoffLatitude = -1.96, dropoffLongitude = 30.09, distanceKm = BigDecimal("2.0"),
+            fare = BigDecimal("1500"), platformFee = BigDecimal("22.5"), transactionId = "ledgertxn_ip",
+            status = RideTripStatus.IN_PROGRESS,
+        )
+        every { rideDriverRepository.findByUserId("driver_user_cancel_3") } returns driver
+        every { rideTripRepository.findByIdForUpdate("ride_trip_in_progress") } returns Optional.of(trip)
+
+        When("the driver tries to cancel anyway") {
+            Then("it throws InvalidRideTripStatusTransitionException -- only a DRIVER_ASSIGNED trip is cancellable this way") {
+                try {
+                    service.driverCancelTrip("driver_user_cancel_3", "ride_trip_in_progress")
+                    error("expected InvalidRideTripStatusTransitionException")
+                } catch (e: InvalidRideTripStatusTransitionException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real DRIVER_ASSIGNED trip a stranger driver tries to cancel") {
+        val rideDriverRepository = mockk<RideDriverRepository>()
+        val rideTripRepository = mockk<RideTripRepository>()
+        val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
+
+        val strangerDriver = RideDriver(id = "driver_stranger", userId = "driver_user_stranger", accountId = "account_stranger", licenseNumber = "LIC-TEST")
+        val trip = RideTrip(
+            id = "ride_trip_owned_by_other", passengerId = "passenger_o", driverId = "driver_owner",
+            pickupAddress = "A", pickupLatitude = -1.95, pickupLongitude = 30.06,
+            dropoffAddress = "B", dropoffLatitude = -1.96, dropoffLongitude = 30.09, distanceKm = BigDecimal("2.0"),
+            fare = BigDecimal("1500"), platformFee = BigDecimal("22.5"), transactionId = "ledgertxn_o",
+            status = RideTripStatus.DRIVER_ASSIGNED,
+        )
+        every { rideDriverRepository.findByUserId("driver_user_stranger") } returns strangerDriver
+        every { rideTripRepository.findByIdForUpdate("ride_trip_owned_by_other") } returns Optional.of(trip)
+
+        When("the stranger tries to cancel it") {
+            Then("it real-404s (RideTripNotFoundException), not confirming another driver's trip exists") {
+                try {
+                    service.driverCancelTrip("driver_user_stranger", "ride_trip_owned_by_other")
+                    error("expected RideTripNotFoundException")
+                } catch (e: RideTripNotFoundException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real active DRIVER_ASSIGNED trip, its own passenger checking the driver's live location") {
+        val rideDriverRepository = mockk<RideDriverRepository>()
+        val rideTripRepository = mockk<RideTripRepository>()
+        val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
+
+        val driver = RideDriver(
+            id = "driver_loc_1", userId = "driver_user_loc_1", accountId = "account_loc_1",
+            currentLatitude = -1.951, currentLongitude = 30.061, locationUpdatedAt = Instant.now(), licenseNumber = "LIC-TEST",
+        )
+        val trip = RideTrip(
+            id = "ride_trip_loc_1", passengerId = "passenger_loc_1", driverId = "driver_loc_1",
+            pickupAddress = "A", pickupLatitude = -1.95, pickupLongitude = 30.06,
+            dropoffAddress = "B", dropoffLatitude = -1.96, dropoffLongitude = 30.09, distanceKm = BigDecimal("2.0"),
+            fare = BigDecimal("1500"), platformFee = BigDecimal("22.5"), transactionId = "ledgertxn_loc",
+            status = RideTripStatus.DRIVER_ASSIGNED,
+        )
+        every { rideTripRepository.findById("ride_trip_loc_1") } returns Optional.of(trip)
+        every { rideDriverRepository.findById("driver_loc_1") } returns Optional.of(driver)
+
+        When("the passenger checks the driver's live location") {
+            val location = service.getDriverLocation("passenger_loc_1", "ride_trip_loc_1")
+
+            Then("it real-returns the driver's current position") {
+                location?.latitude shouldBe -1.951
+                location?.longitude shouldBe 30.061
+            }
+        }
+
+        When("a stranger checks it") {
+            Then("it real-404s, not confirming this trip exists") {
+                try {
+                    service.getDriverLocation("stranger", "ride_trip_loc_1")
+                    error("expected RideTripNotFoundException")
+                } catch (e: RideTripNotFoundException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real REQUESTED trip (no driver assigned yet), its own passenger checking the driver's live location") {
+        val rideDriverRepository = mockk<RideDriverRepository>()
+        val rideTripRepository = mockk<RideTripRepository>()
+        val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
+
+        val trip = RideTrip(
+            id = "ride_trip_loc_2", passengerId = "passenger_loc_2",
+            pickupAddress = "A", pickupLatitude = -1.95, pickupLongitude = 30.06,
+            dropoffAddress = "B", dropoffLatitude = -1.96, dropoffLongitude = 30.09, distanceKm = BigDecimal("2.0"),
+            fare = BigDecimal("1500"), platformFee = BigDecimal("22.5"), transactionId = "ledgertxn_loc2",
+            status = RideTripStatus.REQUESTED,
+        )
+        every { rideTripRepository.findById("ride_trip_loc_2") } returns Optional.of(trip)
+
+        When("the passenger checks the driver's live location before any driver is assigned") {
+            Then("it real-returns null, not a stale/nonexistent position") {
+                service.getDriverLocation("passenger_loc_2", "ride_trip_loc_2") shouldBe null
+            }
+        }
+    }
+
+    Given("a real COMPLETED trip, its own passenger checking the driver's live location afterward") {
+        val rideDriverRepository = mockk<RideDriverRepository>()
+        val rideTripRepository = mockk<RideTripRepository>()
+        val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
+
+        val driver = RideDriver(
+            id = "driver_loc_3", userId = "driver_user_loc_3", accountId = "account_loc_3",
+            currentLatitude = -1.951, currentLongitude = 30.061, locationUpdatedAt = Instant.now(), licenseNumber = "LIC-TEST",
+        )
+        val trip = RideTrip(
+            id = "ride_trip_loc_3", passengerId = "passenger_loc_3", driverId = "driver_loc_3",
+            pickupAddress = "A", pickupLatitude = -1.95, pickupLongitude = 30.06,
+            dropoffAddress = "B", dropoffLatitude = -1.96, dropoffLongitude = 30.09, distanceKm = BigDecimal("2.0"),
+            fare = BigDecimal("1500"), platformFee = BigDecimal("22.5"), transactionId = "ledgertxn_loc3",
+            status = RideTripStatus.COMPLETED,
+        )
+        every { rideTripRepository.findById("ride_trip_loc_3") } returns Optional.of(trip)
+        every { rideDriverRepository.findById("driver_loc_3") } returns Optional.of(driver)
+
+        When("the passenger checks the driver's live location on an already-completed trip") {
+            Then("it real-returns null -- never a stale location for a trip that's already over") {
+                service.getDriverLocation("passenger_loc_3", "ride_trip_loc_3") shouldBe null
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

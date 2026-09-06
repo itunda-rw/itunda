@@ -237,6 +237,12 @@ class RideController(
     fun declineTrip(@PathVariable tripId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "trip" to rideTripService.declineTrip(currentUser.userId, tripId)))
 
+    // Real driver-side cancel-after-acceptance -- see RideTripService.driverCancelTrip's
+    // own doc comment.
+    @PostMapping("/trips/{tripId}/driver-cancel")
+    fun driverCancelTrip(@PathVariable tripId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "trip" to rideTripService.driverCancelTrip(currentUser.userId, tripId)))
+
     @PostMapping("/trips/{tripId}/start")
     fun startTrip(
         @PathVariable tripId: String,
@@ -250,6 +256,12 @@ class RideController(
     @GetMapping("/trips/{tripId}/pin")
     fun getTripPin(@PathVariable tripId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "pin" to rideTripService.getTripPin(currentUser.userId, tripId)))
+
+    // Real live driver-location tracking -- see RideTripService.getDriverLocation's own
+    // doc comment.
+    @GetMapping("/trips/{tripId}/location")
+    fun getDriverLocation(@PathVariable tripId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "location" to rideTripService.getDriverLocation(currentUser.userId, tripId)))
 
     // Real Uber "Share Trip Status" -- see RideTripService.shareTripStatus's own doc
     // comment.
