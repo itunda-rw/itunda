@@ -13,6 +13,7 @@ import {
   type RideTrip, type RideTripStop,
 } from './lib/rideshare';
 import { DriverRatingSection, RideReviewPrompt, RideTripCard, TipDriverPrompt, TrustedContactsSection } from './RideCards';
+import RideLiveDriverMap from './RideLiveDriverMap';
 import { PlaceSearchInput, ShareFavoritesModal } from './BankDashboard';
 
 export function RidePassengerView({ onReportIssue }: { onReportIssue: (transactionId: string) => void }) {
@@ -172,6 +173,12 @@ export function RidePassengerView({ onReportIssue }: { onReportIssue: (transacti
                     <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Tell your driver this PIN before you get in</p>
                     <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 700, letterSpacing: '4px', color: 'var(--itunda-indigo)' }}>{activeTripPin}</p>
                   </div>
+                )}
+                {(activeTrip.status === 'DRIVER_ASSIGNED' || activeTrip.status === 'IN_PROGRESS') && (
+                  <RideLiveDriverMap
+                    tripId={activeTrip.id} fromLat={activeTrip.pickupLatitude} fromLng={activeTrip.pickupLongitude}
+                    toLat={activeTrip.dropoffLatitude} toLng={activeTrip.dropoffLongitude}
+                  />
                 )}
                 {activeTrip.driverId && <DriverRatingSection driverId={activeTrip.driverId} />}
                 <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowShareTripModal(true)}>

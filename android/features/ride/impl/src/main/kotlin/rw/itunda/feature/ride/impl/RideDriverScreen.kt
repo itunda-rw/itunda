@@ -436,6 +436,15 @@ internal fun RideDriverContent() {
                                             }.padding(vertical = 12.dp),
                                         contentAlignment = Alignment.Center,
                                     ) { Text(if (busyTripId == trip.id) "…" else "Start trip", color = Color.White, fontWeight = FontWeight.Bold) }
+                                    // Real driver-side cancel-after-acceptance (Rideshare
+                                    // product-completeness pass, 2026-09-06) -- see
+                                    // RideTripService.driverCancelTrip's own doc comment.
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.danger)
+                                            .pressScaleClickable(enabled = busyTripId != trip.id) { act(trip.id) { id -> NetworkClient.apiService.driverCancelRideTrip(id).trip } }
+                                            .padding(vertical = 12.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) { Text(if (busyTripId == trip.id) "…" else "Cancel trip", color = Color.White, fontWeight = FontWeight.Bold) }
                                 } else if (trip.status == "IN_PROGRESS") {
                                     Box(
                                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)

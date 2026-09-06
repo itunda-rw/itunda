@@ -4631,6 +4631,11 @@ interface ApiService {
     @POST("api/v1/rides/trips/{tripId}/decline")
     suspend fun declineRideTrip(@Path("tripId") tripId: String): RideTripResponse
 
+    // Real driver-side cancel-after-acceptance (Rideshare product-completeness pass,
+    // 2026-09-06) -- see RideTripService.driverCancelTrip's own doc comment.
+    @POST("api/v1/rides/trips/{tripId}/driver-cancel")
+    suspend fun driverCancelRideTrip(@Path("tripId") tripId: String): RideTripResponse
+
     // Real Uber "Verify Your Ride" PIN (uber.com/pl/en/blog/pin-number) -- the driver
     // must enter the exact 4-digit code the passenger reads aloud before the trip (and
     // the fare clock) actually starts.
@@ -4641,6 +4646,11 @@ interface ApiService {
     // a real 404 from the backend.
     @GET("api/v1/rides/trips/{tripId}/pin")
     suspend fun getRideTripPin(@Path("tripId") tripId: String): RideTripPinResponse
+
+    // Real live driver-location tracking (Rideshare product-completeness pass,
+    // 2026-09-06) -- see RideTripService.getDriverLocation's own doc comment.
+    @GET("api/v1/rides/trips/{tripId}/location")
+    suspend fun getRideDriverLocation(@Path("tripId") tripId: String): RideDriverLocationResponse
 
     @POST("api/v1/rides/trips/{tripId}/complete")
     suspend fun completeRideTrip(@Path("tripId") tripId: String): RideTripResponse
@@ -5220,6 +5230,8 @@ data class RideTripDto(
 data class RideTripResponse(val success: Boolean, val trip: RideTripDto)
 data class RideTripsResponse(val success: Boolean, val trips: List<RideTripDto>)
 data class StartRideTripRequest(val pin: String)
+data class RideDriverLocationDto(val latitude: Double, val longitude: Double, val updatedAt: String)
+data class RideDriverLocationResponse(val success: Boolean, val location: RideDriverLocationDto?)
 data class TipRideTripRequest(val amount: java.math.BigDecimal)
 data class RideTripPinResponse(val success: Boolean, val pin: String)
 // Real Kakao T-style multi-stop rides (item 214) -- see the backend's RideTripStop.kt

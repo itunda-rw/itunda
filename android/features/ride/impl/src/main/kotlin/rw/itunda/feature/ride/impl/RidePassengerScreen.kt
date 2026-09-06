@@ -38,6 +38,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
+import rw.itunda.core.designsystem.components.RideLiveDriverMiniMap
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.AddRideTrustedContactRequest
 import rw.itunda.core.network.MapBookmarkDto
@@ -318,6 +319,12 @@ internal fun RidePassengerContent() {
                                 Text(activeTripPin ?: "", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 28.sp, letterSpacing = 4.sp)
                             }
                         }
+                    }
+                    if (activeTrip.status == "DRIVER_ASSIGNED" || activeTrip.status == "IN_PROGRESS") {
+                        RideLiveDriverMiniMap(
+                            tripId = activeTrip.id, fromLat = activeTrip.pickupLatitude, fromLng = activeTrip.pickupLongitude,
+                            toLat = activeTrip.dropoffLatitude, toLng = activeTrip.dropoffLongitude,
+                        )
                     }
                     activeTrip.driverId?.let { DriverRatingSection(it) }
                     if (!trustedContacts.isNullOrEmpty()) {

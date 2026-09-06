@@ -8,7 +8,7 @@ import { EmptyState } from './EmptyState';
 import { ApiError } from './lib/api';
 import { type AddressSuggestion } from './lib/eats';
 import {
-  acceptRideTrip, arriveAtRideStop, clearDriverDestination, completeRideTrip, declineRideTrip, fetchAvailableTrips, fetchDriverRating,
+  acceptRideTrip, arriveAtRideStop, clearDriverDestination, completeRideTrip, declineRideTrip, driverCancelRideTrip, fetchAvailableTrips, fetchDriverRating,
   fetchMyDriverProfile, fetchMyDriverTrips, fetchMyEarnings, fetchTripStops, registerAsDriver, setDriverAvailability, setDriverDestination, startRideTrip, updateDriverLocation,
   type DriverDailyEarnings, type RideDriver, type RideDriverRating, type RideTrip, type RideTripStop,
 } from './lib/rideshare';
@@ -329,6 +329,15 @@ export function RideDriverView() {
                             onClick={() => handleStartTrip(t.id)}
                           >
                             {busyDriverTripId === t.id ? 'Updating…' : 'Start trip'}
+                          </button>
+                          {/* Real driver-side cancel-after-acceptance (Rideshare
+                              product-completeness pass, 2026-09-06) -- see backend
+                              RideTripService.driverCancelTrip's own doc comment. */}
+                          <button
+                            className="itunda-btn itunda-btn-danger" disabled={busyDriverTripId === t.id}
+                            onClick={() => handleDriverTripAction(t.id, driverCancelRideTrip)}
+                          >
+                            {busyDriverTripId === t.id ? 'Updating…' : 'Cancel trip'}
                           </button>
                         </>
                       ) : (

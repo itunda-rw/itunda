@@ -184,6 +184,11 @@ export const acceptRideTrip = (tripId: string) =>
 export const declineRideTrip = (tripId: string) =>
   apiFetch<{ success: boolean; trip: RideTrip }>(`/api/v1/rides/trips/${tripId}/decline`, { method: 'POST' }).then((r) => r.trip);
 
+// Real driver-side cancel-after-acceptance (Rideshare product-completeness pass,
+// 2026-09-06) -- see backend RideTripService.driverCancelTrip's own doc comment.
+export const driverCancelRideTrip = (tripId: string) =>
+  apiFetch<{ success: boolean; trip: RideTrip }>(`/api/v1/rides/trips/${tripId}/driver-cancel`, { method: 'POST' }).then((r) => r.trip);
+
 // Real Uber "Verify Your Ride" PIN -- see backend RideTrip.pin's own doc comment. The
 // driver must enter the exact 4-digit code the passenger reads aloud before the trip
 // (and the fare clock) actually starts.
@@ -200,6 +205,12 @@ export const fetchRideTripPin = (tripId: string) =>
 
 export const completeRideTrip = (tripId: string) =>
   apiFetch<{ success: boolean; trip: RideTrip }>(`/api/v1/rides/trips/${tripId}/complete`, { method: 'POST' }).then((r) => r.trip);
+
+// Real live driver-location tracking (Rideshare product-completeness pass,
+// 2026-09-06) -- see backend RideTripService.getDriverLocation's own doc comment.
+export const fetchRideDriverLocation = (tripId: string) =>
+  apiFetch<{ success: boolean; location: { latitude: number; longitude: number; updatedAt: string } | null }>(`/api/v1/rides/trips/${tripId}/location`)
+    .then((r) => r.location);
 
 // Real Uber "Share Trip Status" (2026-08-16, help.uber.com/en/riders/article/
 // sharing-your-trip-status-faq) -- see backend RideTripService.shareTripStatus's own
