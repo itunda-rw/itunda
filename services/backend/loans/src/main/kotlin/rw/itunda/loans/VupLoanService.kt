@@ -1,5 +1,7 @@
 package rw.itunda.loans
 
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
@@ -31,6 +33,8 @@ class VupLoanNotRequestedException(message: String) : RuntimeException(message)
 class VupLoanNotRepayableException(message: String) : RuntimeException(message)
 class VupLoanNoAccountException(message: String) : RuntimeException(message)
 class VupLoanInvalidRepayAmountException(message: String) : RuntimeException(message)
+class VupLoanNotOverdueException(message: String) : RuntimeException(message)
+class InvalidVupLoanReviewNoteException(message: String) : RuntimeException(message)
 
 // itunda's own honest ceiling on a single VUP loan: 500,000 RWF, 5x the real sourced
 // NISR EICV7 average (~100,000 RWF) -- a reasonable bound, not a claimed reproduction
@@ -249,5 +253,59 @@ class VupLoanService(
             ),
         )
         pushNotificationService.sendToUser(loan.userId, title, body, mapOf("loanId" to loan.id))
+    }
+
+    // Real ops loan-default review queue (2026-09-06, Bank product-completeness pass)
+    // -- Bank had zero dedicated ops-mfe queue despite 14 real queues existing for
+    // other products (fraud/compliance/disputes/etc.). VUP is the one loan product
+    // with a real, already-computed OVERDUE status (VupLoanOverdueScheduler), so
+    // this is the clean, honest starting point -- Student/Postpaid/Overdraft loan
+    // review is a real, separate follow-up, not attempted here.
+    fun getDefaultReviewQueue(pageable: Pageable): Page<VupLoan> =
+        vupLoanRepository.findByStatusAndReviewedAtIsNull(VupLoanStatus.OVERDUE, pageable)
+
+    // Mirrors PropertyOwnershipService.decide's exact shape: validate, record the
+    // reviewer/note/timestamp, optionally transition status, notify the affected
+    // user. Deliberately does NOT touch the ledger -- writing off a loan's real
+    // accounting treatment is booking a bad-debt expense against itunda's own P&L,
+    // which needs a real ledger account this pass doesn't invent (see
+    // VupLoanStatus.WRITTEN_OFF's own doc comment). This only records the ops
+    // decision and stops the loan reappearing in the queue; the outstanding
+    // principal figure is left untouched and honestly still reflects what the
+    // borrower owes.
+    @Transactional
+    fun decide(loanId: String, reviewerId: String, writeOff: Boolean, note: String?): VupLoan {
+        val loan = vupLoanRepository.findById(loanId).orElseThrow { VupLoanNotFoundException("VUP loan not found") }
+        if (loan.status != VupLoanStatus.OVERDUE) {
+            throw VupLoanNotOverdueException("Only an OVERDUE loan can be reviewed here -- this loan is ${loan.status}")
+        }
+        // Same missing-bound bug class as the 2026-09-05 sweep -- see
+        // PropertyOwnershipService.decide's identical check, matching ops-mfe's own
+        // real 255-char decision-reason cap.
+        if (note != null && note.length > 255) {
+            throw InvalidVupLoanReviewNoteException("Review note must be 255 characters or fewer")
+        }
+
+        loan.reviewedBy = reviewerId
+        loan.reviewedAt = Instant.now()
+        loan.reviewNote = note
+        if (writeOff) {
+            loan.status = VupLoanStatus.WRITTEN_OFF
+        }
+        vupLoanRepository.save(loan)
+
+        if (writeOff) {
+            val title = "VUP loan written off"
+            val body = "Your VUP Financial Services loan has been written off by itunda and is no longer being pursued for repayment."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = loan.userId, type = "VUP_LOAN_WRITTEN_OFF",
+                    title = title, body = body,
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"loanId\":\"${loan.id}\"}",
+                ),
+            )
+            pushNotificationService.sendToUser(loan.userId, title, body, mapOf("loanId" to loan.id))
+        }
+        return loan
     }
 }

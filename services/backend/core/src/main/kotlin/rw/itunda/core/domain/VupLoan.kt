@@ -12,7 +12,13 @@ import java.time.Instant
 import java.time.LocalDate
 
 enum class VupLoanPurpose { FARMING, LIVESTOCK, BUSINESS }
-enum class VupLoanStatus { REQUESTED, DISBURSED, REPAID, OVERDUE }
+// WRITTEN_OFF added 2026-09-06 (Bank product-completeness pass) -- a real ops
+// decision on a loan that has stayed OVERDUE, made via VupLoanService.decide.
+// A terminal state like REPAID, not a claim of returning to collection. See
+// that function's own doc comment for why this deliberately does NOT touch
+// the ledger (a real bad-debt-expense posting is a genuine follow-up, not
+// invented here).
+enum class VupLoanStatus { REQUESTED, DISBURSED, REPAID, OVERDUE, WRITTEN_OFF }
 
 /**
  * Real Rwanda VUP (Vision 2020 Umurenge Programme) Financial Services micro-loan --
@@ -105,6 +111,19 @@ class VupLoan(
     // for this loan, so the scheduler's own polling doesn't re-notify on every tick.
     @Column(name = "reminder_sent_at")
     var reminderSentAt: Instant? = null,
+
+    // Real admin-review audit trail (2026-09-06, Bank product-completeness pass) --
+    // see VupLoanService.decide's own doc comment. Same shape as
+    // PropertyOwnershipSubmission.reviewedBy/decisionReason/reviewedAt: all three
+    // default to NULL, populated only once an admin actually reviews this loan.
+    @Column(name = "reviewed_by", length = 64)
+    var reviewedBy: String? = null,
+
+    @Column(name = "review_note")
+    var reviewNote: String? = null,
+
+    @Column(name = "reviewed_at")
+    var reviewedAt: Instant? = null,
 
     // Real check-then-act "single claimable resource" guard: only one active loan per
     // user at a time, and both disburse and repay read-then-mutate this row -- same

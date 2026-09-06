@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, Banknote, CircleDollarSign, Flag, Gauge, HeartPulse, Home, LifeBuoy, LogOut, Puzzle, Scale, ShieldCheck, Siren, Store, Users } from 'lucide-react';
+import { AlertTriangle, Banknote, CircleDollarSign, Flag, Gauge, HeartPulse, Home, Landmark, LifeBuoy, LogOut, Puzzle, Scale, ShieldCheck, Siren, Store, Users } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
 import OverviewView from './queues/OverviewView';
 import FraudQueue from './queues/FraudQueue';
@@ -15,10 +15,11 @@ import HoodReportsQueue from './queues/HoodReportsQueue';
 import PropertyOwnershipQueue from './queues/PropertyOwnershipQueue';
 import AgentsManagementView from './queues/AgentsManagementView';
 import MerchantModerationQueue from './queues/MerchantModerationQueue';
+import LoanDefaultQueue from './queues/LoanDefaultQueue';
 
 type Tab =
   | 'overview' | 'fraud' | 'compliance' | 'incidents' | 'reconciliation' | 'support' | 'insurance' | 'partners'
-  | 'escrow' | 'agents' | 'hood-reports' | 'property-verification' | 'agents-management' | 'merchants';
+  | 'escrow' | 'agents' | 'hood-reports' | 'property-verification' | 'agents-management' | 'merchants' | 'loan-default';
 
 const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'overview', label: 'Overview', icon: Gauge },
@@ -35,6 +36,7 @@ const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'hood-reports', label: 'Hood content reports', icon: Flag },
   { id: 'property-verification', label: 'Property ownership', icon: Home },
   { id: 'merchants', label: 'Merchant moderation', icon: Store },
+  { id: 'loan-default', label: 'Loan default review', icon: Landmark },
 ];
 
 export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
@@ -115,6 +117,7 @@ export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
         {tab === 'property-verification' && <PropertyOwnershipQueue />}
         {tab === 'agents-management' && <AgentsManagementView />}
         {tab === 'merchants' && <MerchantModerationQueue />}
+        {tab === 'loan-default' && <LoanDefaultQueue />}
       </main>
     </div>
   );

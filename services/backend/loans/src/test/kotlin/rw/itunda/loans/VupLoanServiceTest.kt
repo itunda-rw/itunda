@@ -236,4 +236,102 @@ class VupLoanServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real ops loan-default review queue (2026-09-06, Bank product-completeness
+    // pass) -- see VupLoanService.decide's own doc comment for why this
+    // deliberately never touches the ledger. Separate Given blocks, not sibling
+    // Whens -- same "shared mutable loan instance leaks mutation across Whens"
+    // reasoning the repay tests above already document.
+    Given("a real OVERDUE VUP loan being written off by an admin") {
+        val vupLoanRepository = mockk<VupLoanRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(
+            vupLoanRepository = vupLoanRepository,
+            notificationRepository = notificationRepository,
+            pushNotificationService = pushNotificationService,
+        )
+        val loan = VupLoan(
+            id = "vuploan_5", userId = "user_1", declaredUbudeheCategory = 2, purpose = VupLoanPurpose.FARMING,
+            principalAmount = BigDecimal("100000"), outstandingPrincipal = BigDecimal("100000"), status = VupLoanStatus.OVERDUE,
+        )
+        every { vupLoanRepository.findById("vuploan_5") } returns Optional.of(loan)
+        every { vupLoanRepository.save(any()) } answers { firstArg() }
+        // Relaxed mockk's default generic-method auto-answer doesn't satisfy
+        // JpaRepository.save's own <S extends T> S signature -- a real
+        // ClassCastException at runtime, not just a style preference. Same
+        // explicit-stub fix as vupLoanRepository.save above.
+        every { notificationRepository.save(any()) } answers { firstArg() }
+
+        When("an admin writes it off with a note") {
+            val result = service.decide("vuploan_5", "admin_1", writeOff = true, note = "borrower unreachable")
+
+            Then("the loan transitions to WRITTEN_OFF with a real audit trail, and the outstanding balance is left untouched") {
+                result.status shouldBe VupLoanStatus.WRITTEN_OFF
+                result.reviewedBy shouldBe "admin_1"
+                result.reviewNote shouldBe "borrower unreachable"
+                (result.reviewedAt != null) shouldBe true
+                result.outstandingPrincipal shouldBe BigDecimal("100000")
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any()) }
+            }
+        }
+    }
+
+    Given("a real OVERDUE VUP loan being merely acknowledged by an admin") {
+        val vupLoanRepository = mockk<VupLoanRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(vupLoanRepository = vupLoanRepository, pushNotificationService = pushNotificationService)
+        val loan = VupLoan(
+            id = "vuploan_6", userId = "user_1", declaredUbudeheCategory = 2, purpose = VupLoanPurpose.FARMING,
+            principalAmount = BigDecimal("100000"), outstandingPrincipal = BigDecimal("100000"), status = VupLoanStatus.OVERDUE,
+        )
+        every { vupLoanRepository.findById("vuploan_6") } returns Optional.of(loan)
+        every { vupLoanRepository.save(any()) } answers { firstArg() }
+
+        When("an admin acknowledges it without writing it off") {
+            val result = service.decide("vuploan_6", "admin_1", writeOff = false, note = "contacted borrower, monitoring")
+
+            Then("the loan stays OVERDUE but records the review, and no write-off notification fires") {
+                result.status shouldBe VupLoanStatus.OVERDUE
+                result.reviewedBy shouldBe "admin_1"
+                verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any()) }
+            }
+        }
+    }
+
+    Given("a real OVERDUE VUP loan reviewed with an over-length note") {
+        val vupLoanRepository = mockk<VupLoanRepository>()
+        val service = newService(vupLoanRepository = vupLoanRepository)
+        val loan = VupLoan(
+            id = "vuploan_7", userId = "user_1", declaredUbudeheCategory = 2, purpose = VupLoanPurpose.FARMING,
+            principalAmount = BigDecimal("100000"), outstandingPrincipal = BigDecimal("100000"), status = VupLoanStatus.OVERDUE,
+        )
+        every { vupLoanRepository.findById("vuploan_7") } returns Optional.of(loan)
+
+        When("the review note exceeds the real 255-character bound") {
+            Then("the length guard fires before touching the repository") {
+                shouldThrow<InvalidVupLoanReviewNoteException> {
+                    service.decide("vuploan_7", "admin_1", writeOff = false, note = "x".repeat(256))
+                }
+            }
+        }
+    }
+
+    Given("a VUP loan that is not OVERDUE") {
+        val vupLoanRepository = mockk<VupLoanRepository>()
+        val service = newService(vupLoanRepository = vupLoanRepository)
+        val loan = VupLoan(
+            id = "vuploan_8", userId = "user_1", declaredUbudeheCategory = 2, purpose = VupLoanPurpose.FARMING,
+            principalAmount = BigDecimal("100000"), outstandingPrincipal = BigDecimal("100000"), status = VupLoanStatus.DISBURSED,
+        )
+        every { vupLoanRepository.findById("vuploan_8") } returns Optional.of(loan)
+
+        When("an admin tries to review it anyway") {
+            Then("the status guard fires -- only OVERDUE loans belong in this queue") {
+                shouldThrow<VupLoanNotOverdueException> {
+                    service.decide("vuploan_8", "admin_1", writeOff = false, note = null)
+                }
+            }
+        }
+    }
 })

@@ -111,6 +111,34 @@ export const decidePropertyOwnership = (submissionId: string, approve: boolean, 
     body: JSON.stringify({ approve, reason }),
   });
 
+// Real Bank product-completeness pass (2026-09-06) -- Bank's first ops-mfe review
+// queue (see VupLoanAdminController's own doc comment for why it's scoped to VUP
+// loans only). Same real human-review-queue shape as PropertyOwnershipSubmission
+// above: a flagged row, decide with an optional note.
+export interface VupLoanReview {
+  id: string;
+  userId: string;
+  principalAmount: number;
+  outstandingPrincipal: number;
+  interestRate: number;
+  status: string;
+  dueDate: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+}
+
+export const fetchVupLoanReviewQueue = (page = 0) =>
+  apiFetch<{ success: boolean; queue: VupLoanReview[]; page: number; totalElements: number; totalPages: number }>(
+    `/api/v1/system/loans/vup-overdue?page=${page}`,
+  ).then(toPagedQueue);
+
+export const decideVupLoanReview = (loanId: string, writeOff: boolean, note?: string) =>
+  apiFetch(`/api/v1/system/loans/vup-overdue/${loanId}/decide`, {
+    method: 'POST',
+    body: JSON.stringify({ writeOff, note }),
+  });
+
 // Real merchant moderation queue -- `MerchantModerationAdminController` had zero client
 // anywhere despite being real and working (found via an uncalled-endpoint sweep): every
 // other real admin queue under /api/v1/system (fraud, compliance, escrow, support,

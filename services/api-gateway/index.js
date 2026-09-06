@@ -280,11 +280,15 @@ const ANALYTICS_SERVICE_URL = process.env.ANALYTICS_SERVICE_URL || 'http://local
 // Real, fourteenth independently-deployable itunda product (2026-09-06) --
 // Bank product-completeness pass, see docs/ARCHITECTURE.md's dated follow-up.
 // Same routing-precedence reasoning as the other *_SERVICE_URL consts above.
-// :loans owns THREE distinct top-level route prefixes (see the three app.use
+// :loans owns FOUR distinct top-level route prefixes (see the four app.use
 // calls below): /api/v1/loans (covers /loans/vup and /loans/student too, same
 // sub-path prefix-match reasoning as :partners' own multi-prefix comment
-// above), /api/v1/cooperatives, and /api/v1/vendor-advance. Checked against
-// every other registered prefix here for a collision before adding --
+// above), /api/v1/cooperatives, /api/v1/vendor-advance, and (added 2026-09-06
+// for VupLoanAdminController, Bank's first ops-mfe review queue)
+// /api/v1/system/loans -- no moneyMovementLimiter on that one, same reasoning
+// as every other /api/v1/system/** admin route here (an ops decision, not a
+// user-initiated money movement). Checked against every other registered
+// prefix here for a collision before adding --
 // deliberately singular /api/v1/account (unrelated, stays on `backend` this
 // pass, see staged-swimming-sun.md's own account of the real :account/:savings
 // reverse-coupling that ruled those two out) is a genuinely different string
@@ -503,6 +507,7 @@ app.use('/api/v1/knowledge', upstreamProxy(KNOWLEDGE_SERVICE_URL));
 app.use('/api/v1/talk/service-channel', upstreamProxy(NOTIFICATIONS_SERVICE_URL));
 app.use('/api/v1/notifications', upstreamProxy(NOTIFICATIONS_SERVICE_URL));
 app.use('/api/v1/analytics', upstreamProxy(ANALYTICS_SERVICE_URL));
+app.use('/api/v1/system/loans', upstreamProxy(LOANS_SERVICE_URL));
 app.use('/api/v1/loans', moneyMovementLimiter, upstreamProxy(LOANS_SERVICE_URL));
 app.use('/api/v1/cooperatives', moneyMovementLimiter, upstreamProxy(LOANS_SERVICE_URL));
 app.use('/api/v1/vendor-advance', moneyMovementLimiter, upstreamProxy(LOANS_SERVICE_URL));
