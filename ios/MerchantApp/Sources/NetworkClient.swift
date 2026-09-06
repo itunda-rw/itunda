@@ -276,6 +276,25 @@ struct ProductReviewResponse: Decodable { let success: Bool; let review: Product
 struct ProductReviewsResponse: Decodable { let success: Bool; let reviews: [ProductReviewDto] }
 struct ReplyToProductReviewRequest: Encodable { let reply: String }
 
+// Real post-appointment booking reviews + owner-side reply (Merchant product-
+// completeness pass) -- see backend MerchantBookingReview.kt's own doc comment.
+// merchant-mfe and Android already have this; this is the first iOS client.
+struct BookingReviewDto: Decodable, Identifiable {
+    let id: String
+    let bookingId: String
+    let merchantId: String
+    let customerId: String
+    let serviceName: String
+    let rating: Int
+    let comment: String?
+    let ownerReply: String?
+    let ownerRepliedAt: String?
+    let createdAt: String
+}
+struct BookingReviewResponse: Decodable { let success: Bool; let review: BookingReviewDto }
+struct BookingReviewsResponse: Decodable { let success: Bool; let reviews: [BookingReviewDto] }
+struct ReplyToBookingReviewRequest: Encodable { let reply: String }
+
 struct GenerateQrRequest: Encodable { let amount: Double; let description: String }
 struct PaymentIntentDto: Decodable { let id: String; let merchantId: String; let amount: Double; let description: String; let status: String; let expiresAt: String; let createdAt: String }
 struct PaymentIntentResponse: Decodable { let success: Bool; let paymentIntent: PaymentIntentDto }
@@ -599,6 +618,18 @@ final class MerchantNetworkClient {
 
     func replyToProductReview(_ reviewId: String, reply: String) async throws -> ProductReviewResponse {
         try await post("api/v1/orders/reviews/\(reviewId)/reply", body: ReplyToProductReviewRequest(reply: reply))
+    }
+
+    // Real post-appointment booking reviews + owner-side reply -- see
+    // MerchantBookingReviewController.kt's real contract. getMyBookingReviews
+    // returns every review across all of this merchant's bookings in one call
+    // (unlike product reviews, which need a per-product fan-out).
+    func getMyBookingReviews() async throws -> BookingReviewsResponse {
+        try await get("api/v1/merchant/reviews/my-reviews")
+    }
+
+    func replyToBookingReview(_ reviewId: String, reply: String) async throws -> BookingReviewResponse {
+        try await post("api/v1/merchant/reviews/\(reviewId)/reply", body: ReplyToBookingReviewRequest(reply: reply))
     }
 
     func addProduct(name: String, price: Double, imageUrl: String?, originalPrice: Double?, description: String?, stockQuantity: Int?, durationMinutes: Int? = nil, requiresPrepay: Bool = false) async throws -> MerchantProductResponse {

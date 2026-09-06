@@ -237,6 +237,11 @@ private struct ReviewsTab: View {
 
     @State private var restaurantReviews: [EatsReviewDto]?
     @State private var productReviews: [(productName: String, review: ProductReviewDto)]?
+    // Real post-appointment booking reviews + owner-side reply (Merchant product-
+    // completeness pass) -- see NetworkClient's own BookingReviewDto doc comment.
+    // merchant-mfe and Android already have this; this closes the same real gap
+    // for iOS.
+    @State private var bookingReviews: [BookingReviewDto]?
     @State private var error: String?
 
     var body: some View {
@@ -244,8 +249,8 @@ private struct ReviewsTab: View {
             if let error {
                 Text(error).foregroundColor(.red).padding(16)
             }
-            if let restaurantReviews, let productReviews {
-                if restaurantReviews.isEmpty && productReviews.isEmpty {
+            if let restaurantReviews, let productReviews, let bookingReviews {
+                if restaurantReviews.isEmpty && productReviews.isEmpty && bookingReviews.isEmpty {
                     Spacer()
                     // Real copy-voice fix (item 244, round 7): honest about whose gap
                     // this is -- reviews only appear once customers leave them after a
@@ -255,6 +260,12 @@ private struct ReviewsTab: View {
                 } else {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 10) {
+                            if !bookingReviews.isEmpty {
+                                Text("Booking reviews").font(.headline)
+                                ForEach(bookingReviews) { review in
+                                    BookingReviewReplyCard(review: review, onReplied: { Task { await refreshBookings() } })
+                                }
+                            }
                             if !restaurantReviews.isEmpty {
                                 Text("Restaurant reviews").font(.headline)
                                 ForEach(restaurantReviews) { review in
@@ -280,12 +291,21 @@ private struct ReviewsTab: View {
         .task {
             await refreshRestaurant()
             await refreshProducts()
+            await refreshBookings()
         }
     }
 
     private func refreshRestaurant() async {
         do {
             restaurantReviews = try await MerchantNetworkClient.shared.getRestaurantReviews(restaurantId).reviews
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func refreshBookings() async {
+        do {
+            bookingReviews = try await MerchantNetworkClient.shared.getMyBookingReviews().reviews
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
@@ -418,6 +438,67 @@ private struct ProductReviewReplyCard: View {
         error = nil
         do {
             _ = try await MerchantNetworkClient.shared.replyToProductReview(review.id, reply: reply.trimmingCharacters(in: .whitespaces))
+            replying = false
+            onReplied()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not submit your reply."
+        } catch {
+            self.error = "Could not submit your reply."
+        }
+        submitting = false
+    }
+}
+
+private struct BookingReviewReplyCard: View {
+    let review: BookingReviewDto
+    let onReplied: () -> Void
+
+    @State private var replying = false
+    @State private var reply = ""
+    @State private var submitting = false
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(review.serviceName).bold()
+            Text(String(repeating: "★", count: review.rating) + String(repeating: "☆", count: 5 - review.rating))
+                .foregroundColor(.yellow)
+            if let comment = review.comment, !comment.isEmpty {
+                Text(comment).font(.subheadline)
+            }
+            if let ownerReply = review.ownerReply, !ownerReply.isEmpty {
+                Text("Your reply: \(ownerReply)").font(.footnote).foregroundColor(.secondary)
+            } else if replying {
+                HStack {
+                    IdsTextField("Write a reply…", text: $reply)
+                    Button(action: { Task { await submit() } }) {
+                        Text(submitting ? "…" : "Reply").bold().foregroundColor(.white)
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .background(IDS.Colors.brand).cornerRadius(8)
+                    }
+                    .disabled(submitting || reply.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            } else {
+                Button(action: { replying = true }) {
+                    Text("Reply").bold().foregroundColor(IDS.Colors.brand)
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                }
+            }
+            if let error {
+                Text(error).foregroundColor(.red).font(.caption)
+            }
+        }
+        .padding(16)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
+    }
+
+    private func submit() async {
+        submitting = true
+        error = nil
+        do {
+            _ = try await MerchantNetworkClient.shared.replyToBookingReview(review.id, reply: reply.trimmingCharacters(in: .whitespaces))
             replying = false
             onReplied()
         } catch let NetworkError.httpErrorWithMessage(_, message) {

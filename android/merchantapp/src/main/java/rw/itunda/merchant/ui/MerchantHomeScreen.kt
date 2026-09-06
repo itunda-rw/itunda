@@ -256,6 +256,10 @@ private fun nextRestaurantAction(status: String): Pair<String, String>? = when (
 private fun ReviewsTab(restaurantId: String) {
     var restaurantReviews by remember { mutableStateOf<List<rw.itunda.merchant.network.EatsReviewDto>?>(null) }
     var productReviews by remember { mutableStateOf<List<Pair<String, rw.itunda.merchant.network.ProductReviewDto>>?>(null) }
+    // Real post-appointment booking reviews + owner-side reply (Merchant product-
+    // completeness pass) -- see ApiService.kt's own BookingReviewDto doc comment.
+    // merchant-mfe already has this; this closes the same real gap for Android.
+    var bookingReviews by remember { mutableStateOf<List<rw.itunda.merchant.network.BookingReviewDto>?>(null) }
     // Real Coupang-style pre-purchase product Q&A (상품문의), owner-answer side -- see
     // ApiService.kt's own doc comment: ProductInquiryService.answerQuestion existed on
     // the backend with genuinely zero client anywhere until now. Same "no aggregate
@@ -268,6 +272,13 @@ private fun ReviewsTab(restaurantId: String) {
     suspend fun refreshRestaurant() {
         try {
             restaurantReviews = NetworkClient.apiService.getRestaurantReviews(restaurantId).reviews
+        } catch (e: Exception) {
+            error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+    suspend fun refreshBookings() {
+        try {
+            bookingReviews = NetworkClient.apiService.getMyBookingReviews().reviews
         } catch (e: Exception) {
             error = "Couldn't reach itunda. Check your connection and try again."
         }
@@ -297,17 +308,19 @@ private fun ReviewsTab(restaurantId: String) {
         error = null
         refreshRestaurant()
         refreshProducts()
+        refreshBookings()
     }
 
     error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp)) }
     val restaurantList = restaurantReviews
     val productList = productReviews
     val inquiryList = productInquiries
-    if (restaurantList == null || productList == null || inquiryList == null) {
+    val bookingList = bookingReviews
+    if (restaurantList == null || productList == null || inquiryList == null || bookingList == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         return
     }
-    if (restaurantList.isEmpty() && productList.isEmpty() && inquiryList.isEmpty()) {
+    if (restaurantList.isEmpty() && productList.isEmpty() && inquiryList.isEmpty() && bookingList.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             EmptyState("No reviews or questions yet — they'll show up here once customers start ordering.", icon = Icons.Outlined.RateReview)
         }
@@ -327,6 +340,22 @@ private fun ReviewsTab(restaurantId: String) {
                     Text(productName, fontWeight = FontWeight.Bold)
                     Text(inquiry.question, style = MaterialTheme.typography.bodyMedium)
                     ProductInquiryAnswerRow(inquiry = inquiry, onAnswered = { scope.launch { refreshProducts() } })
+                }
+            }
+        }
+        if (bookingList.isNotEmpty()) {
+            item { Text("Booking reviews", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
+        }
+        items(bookingList, key = { "b_${it.id}" }) { review ->
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(review.serviceName, fontWeight = FontWeight.Bold)
+                    Text("★".repeat(review.rating) + "☆".repeat(5 - review.rating), color = androidx.compose.ui.graphics.Color(0xFFF5A623))
+                    review.comment?.takeIf { it.isNotBlank() }?.let {
+                        androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(top = 4.dp))
+                        Text(it, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    BookingReviewReplyRow(review = review, onReplied = { scope.launch { refreshBookings() } })
                 }
             }
         }
@@ -489,6 +518,54 @@ private fun ProductReviewReplyRow(review: rw.itunda.merchant.network.ProductRevi
                     scope.launch {
                         try {
                             NetworkClient.apiService.replyToProductReview(review.id, rw.itunda.merchant.network.ReplyToProductReviewRequest(reply.trim()))
+                            replying = false
+                            onReplied()
+                        } catch (e: retrofit2.HttpException) {
+                            error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not submit your reply."
+                        } catch (e: Exception) {
+                            error = "Could not submit your reply."
+                        } finally {
+                            submitting = false
+                        }
+                    }
+                },
+            )
+        }
+        else -> {
+            IdsButton(text = "Reply", size = IdsButtonSize.Small, onClick = { replying = true })
+        }
+    }
+}
+
+@Composable
+private fun BookingReviewReplyRow(review: rw.itunda.merchant.network.BookingReviewDto, onReplied: () -> Unit) {
+    var replying by remember { mutableStateOf(false) }
+    var reply by remember { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(top = 8.dp))
+    when {
+        !review.ownerReply.isNullOrBlank() -> {
+            Text(
+                "Your reply: ${review.ownerReply}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        replying -> {
+            IdsTextField(value = reply, onValueChange = { reply = it }, label = "Write a reply", modifier = Modifier.fillMaxWidth())
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            IdsButton(
+                text = if (submitting) "Submitting…" else "Reply",
+                enabled = !submitting && reply.isNotBlank(),
+                onClick = {
+                    submitting = true
+                    error = null
+                    scope.launch {
+                        try {
+                            NetworkClient.apiService.replyToBookingReview(review.id, rw.itunda.merchant.network.ReplyToBookingReviewRequest(reply.trim()))
                             replying = false
                             onReplied()
                         } catch (e: retrofit2.HttpException) {

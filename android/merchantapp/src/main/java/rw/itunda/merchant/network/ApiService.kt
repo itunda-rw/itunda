@@ -298,6 +298,26 @@ data class ProductReviewResponse(val success: Boolean, val review: ProductReview
 data class ProductReviewsResponse(val success: Boolean, val reviews: List<ProductReviewDto>)
 data class ReplyToProductReviewRequest(val reply: String)
 
+// Real post-appointment booking reviews + owner-side reply (Merchant product-
+// completeness pass) -- see backend MerchantBookingReview.kt's own doc comment.
+// merchant-mfe already has this (item 143); this is the first Android client for
+// the owner-reply side, mirroring ProductReviewDto/EatsReviewDto's exact shape.
+data class BookingReviewDto(
+    val id: String,
+    val bookingId: String,
+    val merchantId: String,
+    val customerId: String,
+    val serviceName: String,
+    val rating: Int,
+    val comment: String?,
+    val ownerReply: String? = null,
+    val ownerRepliedAt: String? = null,
+    val createdAt: String,
+)
+data class BookingReviewResponse(val success: Boolean, val review: BookingReviewDto)
+data class BookingReviewsResponse(val success: Boolean, val reviews: List<BookingReviewDto>)
+data class ReplyToBookingReviewRequest(val reply: String)
+
 // Real Coupang-style pre-purchase product Q&A (상품문의) -- mirrors the consumer app's
 // ProductInquiryDto field-for-field (see android/core/network's ApiService.kt).
 data class ProductInquiryDto(
@@ -533,6 +553,16 @@ interface ApiService {
 
     @POST("api/v1/orders/reviews/{reviewId}/reply")
     suspend fun replyToProductReview(@Path("reviewId") reviewId: String, @Body request: ReplyToProductReviewRequest): ProductReviewResponse
+
+    // Real post-appointment booking reviews + owner-side reply -- see
+    // MerchantBookingReviewController.kt's real contract. getMyBookingReviews
+    // returns every review across all of this merchant's bookings in one call
+    // (unlike product reviews, which need a per-product fan-out).
+    @GET("api/v1/merchant/reviews/my-reviews")
+    suspend fun getMyBookingReviews(): BookingReviewsResponse
+
+    @POST("api/v1/merchant/reviews/{reviewId}/reply")
+    suspend fun replyToBookingReview(@Path("reviewId") reviewId: String, @Body request: ReplyToBookingReviewRequest): BookingReviewResponse
 
     // Real Coupang-style pre-purchase product Q&A (상품문의), owner-answer side --
     // ProductInquiryService.answerQuestion existed on the backend with genuinely zero
