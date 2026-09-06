@@ -35,6 +35,16 @@ interface MerchantRepository : JpaRepository<Merchant, String> {
     // real chip already can't be found the intended way).
     fun findByStatusAndCategoryIsNull(status: MerchantStatus, pageable: Pageable): Page<Merchant>
 
+    // Real fee-waiver revocation review (Merchant product-completeness pass) -- see
+    // MerchantFeeWaiverService's own doc comment. Coarse repo filter (every merchant
+    // with a currently-active waiver) -- the real "has this merchant outgrown the
+    // threshold" check needs a computed 30-day volume the database can't filter on
+    // directly, so that exact logic lives in the service, same "coarse repo filter,
+    // exact logic in the service" discipline P2pTransferLimitService's own doc
+    // comment already establishes. Naturally small-cardinality (only merchants with
+    // an active waiver), so a plain list rather than a paginated query.
+    fun findByFeeRateOverride(feeRateOverride: BigDecimal): List<Merchant>
+
     // Real category/search filter (2026-07-19) for restaurant/merchant browse -- both
     // params optional and independently combinable, matching how a real Coupang
     // Eats-style filter bar works (category chip + free-text search, either or both).

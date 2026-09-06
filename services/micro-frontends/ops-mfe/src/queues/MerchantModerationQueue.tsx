@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { usePagedQueue } from '../hooks/useQueue';
-import { fetchUncategorizedMerchants, reactivateMerchant, suspendMerchant, type UncategorizedMerchant } from '../lib/queues';
+import { fetchUncategorizedMerchants, reactivateMerchant, suspendMerchant, type UncategorizedMerchant } from '../lib/merchantAdminQueues';
 import { ApiError } from '../lib/api';
 import { QueueEmpty, QueueError, QueueHeader, QueueLoadMore, QueueSkeleton } from '../QueueState';
 

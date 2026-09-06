@@ -34,3 +34,5 @@ class InvalidCheckoutRequestException(message: String) : RuntimeException(messag
 class PaymentIntentNotRefundableException(message: String) : RuntimeException(message)
 class InvalidCancelRequestException(message: String) : RuntimeException(message)
 class InvalidReportRangeException(message: String) : RuntimeException(message)
+class WebhookUrlNotConfiguredException(message: String) : RuntimeException(message)
+class WebhookDeliveryNotFoundException(message: String) : RuntimeException(message)

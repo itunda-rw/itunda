@@ -6,9 +6,12 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.slf4j.LoggerFactory
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import rw.itunda.core.domain.WebhookDelivery
 import rw.itunda.core.domain.WebhookDeliveryStatus
+import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.WebhookDeliveryRepository
 import java.net.URI
 import java.time.Instant
@@ -40,6 +43,7 @@ import javax.crypto.spec.SecretKeySpec
 class WebhookDeliveryService(
     private val objectMapper: ObjectMapper,
     private val webhookDeliveryRepository: WebhookDeliveryRepository,
+    private val merchantRepository: MerchantRepository,
 ) {
     private val log = LoggerFactory.getLogger(WebhookDeliveryService::class.java)
 
@@ -134,6 +138,44 @@ class WebhookDeliveryService(
             ),
         )
         return mapOf("id" to replay.id, "status" to replay.status.name, "replayOf" to original.id)
+    }
+
+    /**
+     * Real ops visibility closing the gap this class's own doc comment names above:
+     * EXHAUSTED deliveries had zero admin surface ACROSS merchants -- a merchant's
+     * own self-service [deliveryHistory] is scoped to just that merchant, useless
+     * for spotting a systemic problem (e.g. a shared downstream outage) shared
+     * across several. Same real mapping shape as [deliveryHistory], plus
+     * `merchantId` since this spans merchants.
+     */
+    fun getExhaustedQueue(pageable: Pageable): Page<Map<String, Any?>> =
+        webhookDeliveryRepository.findByStatusOrderByCreatedAtDesc(WebhookDeliveryStatus.EXHAUSTED, pageable).map { delivery ->
+            mapOf(
+                "id" to delivery.id,
+                "merchantId" to delivery.merchantId,
+                "eventType" to delivery.eventType,
+                "attemptCount" to delivery.attemptCount,
+                "createdAt" to delivery.createdAt.toString(),
+                "lastError" to delivery.lastError,
+            )
+        }
+
+    /**
+     * Real admin replay -- reuses [replayExhausted]'s exact retry-row logic, but
+     * looks up the merchant's CURRENT `webhookUrl` server-side (an admin has no
+     * reason to know or supply it) rather than trusting a client-provided one, same
+     * "never trust a client for a value the server already owns" discipline every
+     * other admin action in this codebase follows.
+     */
+    fun replayExhaustedAsAdmin(deliveryId: String): Map<String, Any?> {
+        val original = webhookDeliveryRepository.findById(deliveryId).orElse(null)
+            ?.takeIf { it.status == WebhookDeliveryStatus.EXHAUSTED }
+            ?: throw WebhookDeliveryNotFoundException("Delivery not found or not exhausted")
+        val merchantId = original.merchantId ?: throw WebhookDeliveryNotFoundException("Delivery not found or not exhausted")
+        val currentWebhookUrl = merchantRepository.findById(merchantId).orElse(null)?.webhookUrl
+            ?: throw WebhookUrlNotConfiguredException("This merchant no longer has a webhook URL configured")
+        return replayExhausted(merchantId, deliveryId, currentWebhookUrl)
+            ?: throw WebhookDeliveryNotFoundException("Delivery not found or not exhausted")
     }
 
     private fun deliver(eventType: String, merchantId: String, webhookUrl: String?, data: Map<String, Any?>, webhookSecret: String?) {

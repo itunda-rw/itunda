@@ -8,8 +8,11 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import rw.itunda.core.domain.Merchant
+import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.domain.WebhookDelivery
 import rw.itunda.core.domain.WebhookDeliveryStatus
+import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.WebhookDeliveryRepository
 import java.time.Instant
 import java.net.URI
@@ -34,7 +37,7 @@ class WebhookDeliveryServiceTest : BehaviorSpec({
     )
 
     Given("an outbound payment-status webhook") {
-        val service = WebhookDeliveryService(ObjectMapper(), mockk())
+        val service = WebhookDeliveryService(ObjectMapper(), mockk(), mockk())
 
         When("it is prepared for delivery") {
             val request = service.buildRequest(
@@ -53,9 +56,10 @@ class WebhookDeliveryServiceTest : BehaviorSpec({
 
     Given("a payment flow that emits a webhook") {
         val repository = mockk<WebhookDeliveryRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
         val saved = slot<WebhookDelivery>()
         every { repository.save(capture(saved)) } answers { firstArg() }
-        val service = WebhookDeliveryService(ObjectMapper(), repository)
+        val service = WebhookDeliveryService(ObjectMapper(), repository, merchantRepository)
 
         When("it completes the financial operation") {
             service.deliverPaymentStatusChanged("merchant_1", "https://merchant.example/hooks", mapOf("paymentKey" to "pay_1"))
@@ -73,12 +77,13 @@ class WebhookDeliveryServiceTest : BehaviorSpec({
 
     Given("a successfully delivered webhook") {
         val repository = mockk<WebhookDeliveryRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
         val delivered = exhaustedDelivery().also {
             it.status = WebhookDeliveryStatus.DELIVERED
             it.deliveredAt = Instant.parse("2026-07-01T00:01:00Z")
         }
         every { repository.findTop100ByMerchantIdOrderByCreatedAtDesc("merchant_1") } returns listOf(delivered)
-        val service = WebhookDeliveryService(ObjectMapper(), repository)
+        val service = WebhookDeliveryService(ObjectMapper(), repository, merchantRepository)
 
         When("the merchant views delivery history") {
             val history = service.deliveryHistory("merchant_1")
@@ -94,7 +99,8 @@ class WebhookDeliveryServiceTest : BehaviorSpec({
 
     Given("an exhausted merchant webhook delivery") {
         val repository = mockk<WebhookDeliveryRepository>()
-        val service = WebhookDeliveryService(ObjectMapper(), repository)
+        val merchantRepository = mockk<MerchantRepository>()
+        val service = WebhookDeliveryService(ObjectMapper(), repository, merchantRepository)
         val original = exhaustedDelivery()
 
         When("its owning merchant replays it after correcting their endpoint") {
@@ -152,6 +158,69 @@ class WebhookDeliveryServiceTest : BehaviorSpec({
             Then("it leaves the active retry schedule untouched") {
                 result shouldBe null
                 verify(exactly = 0) { repository.save(any()) }
+            }
+        }
+    }
+
+    // Real ops visibility (Merchant product-completeness pass) -- see
+    // WebhookDeliveryService.getExhaustedQueue/replayExhaustedAsAdmin's own doc
+    // comments.
+    Given("EXHAUSTED deliveries across multiple merchants") {
+        val repository = mockk<WebhookDeliveryRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
+        val service = WebhookDeliveryService(ObjectMapper(), repository, merchantRepository)
+        val pageable = org.springframework.data.domain.PageRequest.of(0, 50)
+        val deliveries = listOf(exhaustedDelivery("merchant_1"), exhaustedDelivery("merchant_2"))
+        every { repository.findByStatusOrderByCreatedAtDesc(WebhookDeliveryStatus.EXHAUSTED, pageable) } returns
+            org.springframework.data.domain.PageImpl(deliveries)
+
+        When("an admin lists the exhausted queue") {
+            val page = service.getExhaustedQueue(pageable)
+
+            Then("it real-spans every merchant, not just one") {
+                page.content.map { it["merchantId"] } shouldBe listOf("merchant_1", "merchant_2")
+            }
+        }
+    }
+
+    Given("an exhausted delivery an admin replays") {
+        val repository = mockk<WebhookDeliveryRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
+        val service = WebhookDeliveryService(ObjectMapper(), repository, merchantRepository)
+        val original = exhaustedDelivery("merchant_1")
+        val merchant = Merchant(
+            id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Diner",
+            status = MerchantStatus.ACTIVE, webhookUrl = "https://current.example.test/webhook",
+        )
+        every { repository.findById("whd_original") } returns Optional.of(original)
+        every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+        val saved = slot<WebhookDelivery>()
+        every { repository.save(capture(saved)) } answers { saved.captured }
+
+        When("the admin replays it") {
+            val result = service.replayExhaustedAsAdmin("whd_original")
+
+            Then("it real-looks-up the merchant's CURRENT webhookUrl server-side, not a client-supplied one") {
+                result["replayOf"] shouldBe "whd_original"
+                saved.captured.webhookUrl shouldBe "https://current.example.test/webhook"
+            }
+        }
+    }
+
+    Given("an exhausted delivery for a merchant who has since removed their webhook URL") {
+        val repository = mockk<WebhookDeliveryRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
+        val service = WebhookDeliveryService(ObjectMapper(), repository, merchantRepository)
+        val original = exhaustedDelivery("merchant_1")
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Diner", status = MerchantStatus.ACTIVE)
+        every { repository.findById("whd_original") } returns Optional.of(original)
+        every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+
+        When("an admin tries to replay it") {
+            Then("it real-blocks with WebhookUrlNotConfiguredException rather than replaying to nowhere") {
+                io.kotest.assertions.throwables.shouldThrow<WebhookUrlNotConfiguredException> {
+                    service.replayExhaustedAsAdmin("whd_original")
+                }
             }
         }
     }

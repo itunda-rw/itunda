@@ -14,7 +14,9 @@ import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
+import rw.itunda.merchant.MerchantFeeWaiverService
 import rw.itunda.merchant.MerchantNotFoundException
+import rw.itunda.merchant.MerchantNotWaivedException
 import rw.itunda.merchant.MerchantService
 
 // Mapped under api/v1/system/merchants specifically so it inherits SecurityConfig's
@@ -28,6 +30,7 @@ import rw.itunda.merchant.MerchantService
 class MerchantModerationAdminController(
     private val merchantService: MerchantService,
     private val merchantRepository: MerchantRepository,
+    private val merchantFeeWaiverService: MerchantFeeWaiverService,
 ) {
 
     // Real moderation queue -- see MerchantRepository.findByStatusAndCategoryIsNull's
@@ -47,7 +50,22 @@ class MerchantModerationAdminController(
     fun reactivate(@PathVariable merchantId: String): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "status" to merchantService.reactivateMerchant(merchantId).status.name))
 
+    // Real fee-waiver revocation review -- see MerchantFeeWaiverService's own doc
+    // comment: once granted, a waiver stayed in effect forever with no admin
+    // surface to catch a merchant who outgrew the small-merchant threshold.
+    @GetMapping("/fee-waiver-candidates")
+    fun feeWaiverCandidates(): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "candidates" to merchantFeeWaiverService.getRevocationCandidates()))
+
+    @PostMapping("/{merchantId}/revoke-fee-waiver")
+    fun revokeFeeWaiver(@PathVariable merchantId: String): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "merchantId" to merchantFeeWaiverService.revokeFeeWaiver(merchantId).id))
+
     @ExceptionHandler(MerchantNotFoundException::class)
     fun handleNotFound(ex: MerchantNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(MerchantNotWaivedException::class)
+    fun handleNotWaived(ex: MerchantNotWaivedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("MERCHANT_NOT_WAIVED", ex.message ?: "Conflict"))
 }
