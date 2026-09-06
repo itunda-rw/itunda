@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useQueue } from '../hooks/useQueue';
 import { ApiError } from '../lib/api';
 import {
-  fetchPaymentRails, fetchSystemDashboard, testMtnMomoConnectivity,
-  type MtnMomoConnectivityResult, type PaymentRail, type SystemDashboard,
-} from '../lib/queues';
+  fetchPaymentRails, fetchSystemDashboard, testMtnMomoConnectivity, processAutoPaymentsSweep,
+  type AutoPaySweepResult, type MtnMomoConnectivityResult, type PaymentRail, type SystemDashboard,
+} from '../lib/system';
 import { QueueEmpty, QueueError, QueueHeader, QueueSkeleton } from '../QueueState';
 
 // Real system overview + per-rail health -- see queues.ts's own doc comment: both
@@ -109,6 +109,89 @@ function MtnMomoConnectivityCard() {
   );
 }
 
+// Real, orphaned admin sweep -- see lib/queues.ts's own doc comment:
+// BillsController.processAutoPayments was fully built (real money movement across
+// every user's due, in-cap auto-pay bill) but had zero caller anywhere until this
+// fresh endpoint-coverage sweep. Unlike MtnMomoConnectivityCard's read-only "Run
+// test" above, this moves real money for every eligible user at once, so it's
+// gated behind a real confirm step -- same 2-step pattern
+// EscrowDisputesQueue.tsx's release/refund buttons already established (2026-09-05),
+// not a plain one-click button.
+function BillsAutoPaySweepCard() {
+  const [running, setRunning] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [result, setResult] = useState<AutoPaySweepResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const run = async () => {
+    setRunning(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = await processAutoPaymentsSweep();
+      setResult(res);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not run the auto-pay sweep.');
+    } finally {
+      setRunning(false);
+      setConfirming(false);
+    }
+  };
+
+  return (
+    <div className="itunda-card" style={{ marginBottom: '28px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+        <div>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>Bills auto-pay sweep</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
+            Runs every active auto-pay setting right now -- not scoped to one account.
+          </p>
+        </div>
+        {!confirming ? (
+          <button
+            className="itunda-btn itunda-btn-secondary"
+            onClick={() => setConfirming(true)}
+            disabled={running}
+            style={{ padding: '8px 16px', fontSize: '13px' }}
+          >
+            Run sweep now
+          </button>
+        ) : (
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              className="itunda-btn itunda-btn-secondary"
+              onClick={() => setConfirming(false)}
+              disabled={running}
+              style={{ padding: '8px 16px', fontSize: '13px' }}
+            >
+              Cancel
+            </button>
+            <button
+              className="itunda-btn itunda-btn-danger"
+              onClick={run}
+              disabled={running}
+              style={{ padding: '8px 16px', fontSize: '13px' }}
+            >
+              {running ? 'Running…' : 'Confirm sweep'}
+            </button>
+          </div>
+        )}
+      </div>
+      {confirming && !running && (
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)', marginTop: '12px' }}>
+          This charges every user with a due, in-cap auto-pay bill right now. This can't be undone.
+        </p>
+      )}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '12px' }} role="alert">{error}</p>}
+      {result && (
+        <p style={{ fontSize: '13px', color: 'var(--itunda-green)', marginTop: '12px' }}>
+          Processed {result.processed.length} payment{result.processed.length === 1 ? '' : 's'}.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function OverviewView() {
   const dashboard = useSingle<SystemDashboard>(fetchSystemDashboard);
   const rails = useQueue(fetchPaymentRails);
@@ -136,6 +219,7 @@ export default function OverviewView() {
       )}
 
       <MtnMomoConnectivityCard />
+      <BillsAutoPaySweepCard />
 
       <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-grey-900)', marginBottom: '12px' }}>Payment rail health</h3>
       {rails.error && <QueueError message={rails.error} onRetry={rails.reload} />}

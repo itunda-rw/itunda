@@ -449,51 +449,7 @@ export const resolveSupportTicket = (ticketId: string, resolution: 'REFUNDED' | 
     body: JSON.stringify({ resolution, notes }),
   });
 
-// Real system overview + per-rail health (SystemController.kt on the backend) -- both
-// compute from real persisted data (today's settled transaction volume/count, active
-// consent count, real attempt-tracked rail success rate/latency via
-// ProviderHealthTracker), not mocks, but had zero caller anywhere in any client until
-// found via this fresh endpoint-coverage sweep, same pattern as MarketplaceEscrowDispute
-// above (item 125).
-export interface SystemDashboard {
-  generatedAt: string;
-  country: string;
-  currency: string;
-  operations: { todayVolume: number; todayCompletedTransactionCount: number };
-  operatingLayer: { activeConsents: number };
-}
-
-export interface PaymentRail {
-  railId: string;
-  displayName: string;
-  totalAttempts: number;
-  successCount: number;
-  failureCount: number;
-  successRate: number;
-  avgLatencyMs: number;
-  status: 'HEALTHY' | 'INCIDENT';
-}
-
-export const fetchSystemDashboard = () =>
-  apiFetch<{ success: boolean; dashboard: SystemDashboard }>('/api/v1/system/dashboard').then((r) => r.dashboard);
-
-export const fetchPaymentRails = () =>
-  apiFetch<{ success: boolean; rails: PaymentRail[] }>('/api/v1/system/rails').then((r) => r.rails);
-
-export interface MtnMomoConnectivityResult {
-  referenceId: string;
-  status: string;
-  financialTransactionId: string | null;
-  latencyMs: number;
-}
-
-// Real, live external diagnostic (SystemController.testMtnMomoConnectivity) -- see
-// MtnMomoSandboxClient's own doc comment for why this is deliberately NOT wired into
-// any real user-facing transfer/bill flow, ADMIN-gated the same way every other
-// /api/v1/system/** route already is. Found via scripts/uncalled-endpoint-sweep.py:
-// fully built, zero caller anywhere -- an admin had no way to actually run this check
-// except raw curl/Postman.
-export const testMtnMomoConnectivity = () =>
-  apiFetch<{ success: boolean } & MtnMomoConnectivityResult>('/api/v1/system/mtn-momo/connectivity-test', {
-    method: 'POST',
-  });
+// SystemDashboard/PaymentRail/MtnMomoConnectivity/AutoPaySweep (OverviewView.tsx's
+// own concern) moved to lib/system.ts (2026-09-07, Bills product-completeness pass)
+// once this file crossed the file-size-lint 500-line guideline -- see that file's
+// own doc comment.
