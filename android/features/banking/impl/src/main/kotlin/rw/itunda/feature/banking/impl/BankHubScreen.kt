@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import java.util.Locale
 import kotlinx.coroutines.launch
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.UPFRONT_DEPOSIT_ANNUAL_RATE
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.components.rememberCountUp
 import rw.itunda.core.designsystem.theme.AccentIndigo
@@ -62,16 +63,18 @@ import rw.itunda.core.network.BucketDetailTarget
 import rw.itunda.core.network.MoneyActionResult
 
 // Real, display-only mirrors of each product's own real backend rate constant --
-// same convention Grow31SavingsScreen's own grow31BonusRateForStreak() and
-// UpfrontDepositScreen's own ANNUAL_RATE already establish, just file-scoped here
-// since BankHubScreen's hub-level teaser rows (below) need them before any specific
-// plan exists to read a real per-plan rate off of. Keep in sync with the real
-// source: WeeklySavingsService.BASE_RATE/BONUS_RATE, Grow31SavingsService's real
-// streak-bonus tier table (10.0 at the max 31-day streak), UpfrontDepositScreen's
-// own ANNUAL_RATE.
+// same convention Grow31SavingsScreen's own grow31BonusRateForStreak() already
+// establishes, just file-scoped here since BankHubScreen's hub-level teaser rows
+// (below) need them before any specific plan exists to read a real per-plan rate
+// off of. Keep in sync with the real source: WeeklySavingsService.BASE_RATE/
+// BONUS_RATE, Grow31SavingsService's real streak-bonus tier table (10.0 at the max
+// 31-day streak).
 private const val BANK_HUB_WEEKLY_SAVINGS_BASE_RATE = 5.0
 private const val BANK_HUB_GROW31_MAX_BONUS_RATE = 10.0
-private const val BANK_HUB_UPFRONT_DEPOSIT_ANNUAL_RATE = 2.80
+// Consolidated 2026-09-06 into core/designsystem's UpfrontDepositPolicy.kt -- see its
+// own doc comment. Unlike the two rates above, this one now shares the exact same
+// constant UpfrontDepositScreen.kt itself uses, not just a manually-kept-in-sync copy.
+private const val BANK_HUB_UPFRONT_DEPOSIT_ANNUAL_RATE = UPFRONT_DEPOSIT_ANNUAL_RATE
 
 // Real itunda Bank product hub (2026-08-11) -- see the doc comment on the showBank
 // state var in :app's ItundaAppScreen for the full "itunda Bank vs itunda Pay/account"

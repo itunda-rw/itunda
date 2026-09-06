@@ -1,6 +1,7 @@
 package rw.itunda.app.ui
 
 import rw.itunda.core.designsystem.components.formatMoney
+import rw.itunda.core.designsystem.components.UPFRONT_DEPOSIT_ANNUAL_RATE
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -59,7 +60,9 @@ import java.math.BigDecimal
 // depends on), so there's no separate detail screen -- everything a deposit needs to
 // show fits on its list row.
 private const val TERM_MONTHS = 12
-private const val ANNUAL_RATE = 2.80
+// Consolidated 2026-09-06 into core/designsystem's UpfrontDepositPolicy.kt -- see its
+// own doc comment.
+private const val ANNUAL_RATE = UPFRONT_DEPOSIT_ANNUAL_RATE
 
 private enum class UpfrontDepositMode { LIST, NEW }
 
