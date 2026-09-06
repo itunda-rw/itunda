@@ -49,11 +49,15 @@ private final class DesignatedDriverLocationFetcher: NSObject, ObservableObject,
 /// Android already have this; this is the first iOS client, mirroring RideScreenView's
 /// Get-a-ride/Drive toggle exactly. Same honest v1 scope-down: manual dropoff address/
 /// lat/lng entry, one-tap "use my location" for pickup via CLLocationManager.
-struct DesignatedDriverScreenView: View {
+public struct DesignatedDriverScreenView: View {
     var onBack: () -> Void = {}
     @State private var tab = 0
 
-    var body: some View {
+    public init(onBack: @escaping () -> Void = {}) {
+        self.onBack = onBack
+    }
+
+    public var body: some View {
         VStack(spacing: 0) {
             HStack {
                 Button(action: onBack) { IDS.Icons.back(size: 17, color: IDS.Colors.textPrimary, relativeTo: .body) }.accessibilityLabel("Back")

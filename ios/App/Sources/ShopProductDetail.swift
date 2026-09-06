@@ -4,6 +4,25 @@ import CoreDesignSystem
 import CoreNetwork
 import CoreLocation
 
+// colorFromHex was RideScreenView.swift's own real, internal-visibility copy (App/
+// Sources-only until 2026-09-06, when Ride moved into FeatureRide) -- that file's
+// own doc comment had already named this exact file as a real reuse site. Now that
+// FeatureRide is a real Feature module, App/Sources can no longer reach it directly,
+// so this is a real local duplicate, same convention EatsRestaurantMenu.swift's own
+// copy already established during the Eats extraction.
+private func colorFromHex(_ hex: String) -> Color {
+    var sanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+    if sanitized.hasPrefix("#") { sanitized.removeFirst() }
+    guard sanitized.count == 6, let value = UInt64(sanitized, radix: 16) else {
+        return Color(red: 0.961, green: 0.651, blue: 0.137) // the default star-yellow, same fallback every other copy of this helper uses
+    }
+    return Color(
+        red: Double((value >> 16) & 0xFF) / 255,
+        green: Double((value >> 8) & 0xFF) / 255,
+        blue: Double(value & 0xFF) / 255
+    )
+}
+
 struct ProductDetailView: View {
     let merchant: ShoppingMerchantDto
     let product: MerchantProductDto

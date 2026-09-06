@@ -104,3 +104,11 @@ end
 target 'CoreDesignSystem' do
   pod 'MapLibre'
 end
+
+# Real Ride Feature-module extraction (2026-09-06, Rideshare product-completeness
+# pass) -- RideLiveDriverMap.swift (new this pass, mirrors FeatureEats' own
+# LiveRiderMiniMap.swift) imports MapLibre directly, same per-Tuist-target
+# CocoaPods integration requirement as FeatureMaps/FeatureEats above.
+target 'FeatureRide' do
+  pod 'MapLibre'
+end

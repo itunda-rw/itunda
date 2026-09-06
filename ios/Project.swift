@@ -203,7 +203,12 @@ let featureDependencies: [TargetDependency] = [
 // moved into FeatureEats alongside the other 10 files, since nothing outside Eats
 // uses it. EatsReviews.swift's `import FeatureMaps` was dead (zero real symbol use,
 // confirmed via grep) -- dropped, not carried over.
-let featureModules = ["Payments", "Bills", "Merchant", "Credit", "Wealth", "Insurance", "Engagement", "Assets", "Banking", "Maps", "Certificate", "Identity", "Support", "Home", "Pay", "Menu", "My", "Eats"]
+// "Ride" added 2026-09-06 (Rideshare product-completeness pass) -- same real gap
+// class as Eats: iOS had zero Features/Ride module despite ~1,511 real lines
+// (RideScreenView.swift/RideSharedComponents.swift/DesignatedDriverScreenView.swift)
+// living in App/Sources. RideScreenView (the one real external call site, from
+// MenuTabContent.swift) made public.
+let featureModules = ["Payments", "Bills", "Merchant", "Credit", "Wealth", "Insurance", "Engagement", "Assets", "Banking", "Maps", "Certificate", "Identity", "Support", "Home", "Pay", "Menu", "My", "Eats", "Ride"]
 for feature in featureModules {
     allTargets.append(contentsOf: makeMicroFeature(name: feature, dependencies: featureDependencies))
 }

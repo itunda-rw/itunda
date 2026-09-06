@@ -929,6 +929,8 @@ public struct RideTripDto: Decodable {
 }
 public struct RideTripResponse: Decodable { public let success: Bool; public let trip: RideTripDto }
 public struct TipRideTripRequest: Encodable { public let amount: Double; public init(amount: Double) { self.amount = amount } }
+public struct RideDriverLocationDto: Decodable { public let latitude: Double; public let longitude: Double; public let updatedAt: String }
+public struct RideDriverLocationResponse: Decodable { public let success: Bool; public let location: RideDriverLocationDto? }
 public struct RideTripsResponse: Decodable { public let success: Bool; public let trips: [RideTripDto] }
 public struct StartRideTripRequest: Encodable { public let pin: String }
 public struct RideTripPinResponse: Decodable { public let success: Bool; public let pin: String }
@@ -1605,6 +1607,11 @@ extension NetworkClient {
     public func declineRideTrip(id: String) async throws -> RideTripResponse {
         try await authenticatedPost("api/v1/rides/trips/\(id)/decline", body: EmptyBody())
     }
+    // Real driver-side cancel-after-acceptance (Rideshare product-completeness pass,
+    // 2026-09-06) -- see RideTripService.driverCancelTrip's own doc comment.
+    public func driverCancelRideTrip(id: String) async throws -> RideTripResponse {
+        try await authenticatedPostWithMessage("api/v1/rides/trips/\(id)/driver-cancel", body: EmptyBody())
+    }
     // Real Uber "Verify Your Ride" PIN (uber.com/pl/en/blog/pin-number) -- the driver
     // must enter the exact 4-digit code the passenger reads aloud before the trip (and
     // the fare clock) actually starts.
@@ -1616,6 +1623,11 @@ extension NetworkClient {
     // a real 404 from the backend.
     public func getRideTripPin(id: String) async throws -> RideTripPinResponse {
         try await get("api/v1/rides/trips/\(id)/pin")
+    }
+    // Real live driver-location tracking (Rideshare product-completeness pass,
+    // 2026-09-06) -- see RideTripService.getDriverLocation's own doc comment.
+    public func getRideDriverLocation(id: String) async throws -> RideDriverLocationResponse {
+        try await get("api/v1/rides/trips/\(id)/location")
     }
     public func completeRideTrip(id: String) async throws -> RideTripResponse {
         try await authenticatedPost("api/v1/rides/trips/\(id)/complete", body: EmptyBody())
