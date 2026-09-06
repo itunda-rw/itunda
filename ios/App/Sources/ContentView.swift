@@ -172,6 +172,16 @@ struct ContentView: View {
     // owns its own sheet state" duplication already used for showSacco above.
     @State private var showLoans = false
     @State private var showInvest = false
+    // Real gap found 2026-09-06 (Bank product-completeness pass): WeeklySavingsScreenView/
+    // Grow31SavingsScreenView/UpfrontDepositScreenView/CreditScoreScreenView were fully
+    // built and API-wired but only reachable from MenuTabContent's own local @State --
+    // BankView itself (itunda's real Bank hub) had no path to any of the 4. Same
+    // "duplicate the presenting view's own local @State so Home/Bank can reach it
+    // directly" convention showSacco/showLoans/showInvest above already establish.
+    @State private var showWeeklySavings = false
+    @State private var showGrow31Savings = false
+    @State private var showUpfrontDeposit = false
+    @State private var showCreditScore = false
     // Real architectural fix (2026-08-13, matching the identical Android fix same
     // session, direct user directive): "all itunda product features are independent
     // and isolated -- itunda bank is a complete product... tabs are not products,
@@ -236,6 +246,25 @@ struct ContentView: View {
             CooperativeRowData(title: "Grow your money", subtitle: "RSE stocks, bonds & fixed income, IPOs", symbol: "chart.line.uptrend.xyaxis", tint: Color.accentTeal.opacity(0.15), onTap: {
                 NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "invest")
                 showInvest = true
+            }),
+            // Real gap found 2026-09-06 (Bank product-completeness pass) -- these 4 rows
+            // reuse the exact same, already-built, already-API-wired screens
+            // MenuTabContent.swift already presents; only the entry point is new.
+            CooperativeRowData(title: "Weekly savings", subtitle: "26-week plan, a bonus rate for staying consistent", symbol: "calendar", tint: Color.accentOrange.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "weekly_savings")
+                showWeeklySavings = true
+            }),
+            CooperativeRowData(title: "31-day challenge", subtitle: "Save every day for a month, earn a streak bonus", symbol: "flame.fill", tint: Color.accentOrange.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "grow31_savings")
+                showGrow31Savings = true
+            }),
+            CooperativeRowData(title: "12-month deposit", subtitle: "\(String(format: "%.2f", upfrontDepositAnnualRate))%/yr interest paid upfront, principal locked", symbol: "lock.fill", tint: Color.accentPurple.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "upfront_deposit")
+                showUpfrontDeposit = true
+            }),
+            CooperativeRowData(title: "Credit score", subtitle: "Free check, see what's helping or hurting it", symbol: "star.fill", tint: Color.accentIndigo.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "credit_score")
+                showCreditScore = true
             }),
         ]
     }
@@ -520,6 +549,18 @@ struct ContentView: View {
                         }
                         .sheet(isPresented: $showInvest) {
                             InvestScreenView(onBack: { showInvest = false })
+                        }
+                        .sheet(isPresented: $showWeeklySavings) {
+                            WeeklySavingsScreenView(onBack: { showWeeklySavings = false })
+                        }
+                        .sheet(isPresented: $showGrow31Savings) {
+                            Grow31SavingsScreenView(onBack: { showGrow31Savings = false })
+                        }
+                        .sheet(isPresented: $showUpfrontDeposit) {
+                            UpfrontDepositScreenView(onBack: { showUpfrontDeposit = false })
+                        }
+                        .sheet(isPresented: $showCreditScore) {
+                            CreditScoreScreenView(onBack: { showCreditScore = false })
                         }
                         .fullScreenCover(isPresented: $showAccountManage) {
                             AccountManageScreen(

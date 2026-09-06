@@ -66,15 +66,8 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "viewTransactionHistory": "View transaction history",
         "rwandaServicesTitle": "For life in Rwanda",
         "more": "More",
-        "rewardsTitle": "Rewards and savings",
         "discoverTitle": "Discover",
         "discoverNew": "NEW",
-        "bkAccountTitle": "BK Bank account",
-        "bkAccountSubtitle": "Salary and card settlement",
-        "momoSubtitle": "Daily spending account",
-        "airtelTitle": "Airtel Money",
-        "airtelSubtitle": "Backup cash-out line",
-        "connected": "Connected",
         "cashPowerTitle": "Pay CashPower",
         "cashPowerSubtitle": "Top up electricity instantly",
         "open": "Open",
@@ -84,10 +77,6 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "mySpendingTitle": "My spending",
         "mySpendingSubtitle": "View monthly categories and trends",
         "seeAll": "See all",
-        "rewardsRowTitle": "Itunda rewards",
-        "rewardsRowSubtitle": "Claim today's cashback and offers",
-        "goalSaverTitle": "Goal saver",
-        "goalSaverSubtitle": "Rainy day fund progress",
         // Real itunda Bank product identity (2026-08-11) -- see Android's identical
         // BankHubScreen/BankSummaryCard doc comment for the full "itunda Bank vs
         // itunda account/Pay" research (KakaoPay/KakaoBank, Toss's own Payments/Bank)
@@ -118,15 +107,8 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "viewTransactionHistory": "Reba amateka y'ibikorwa",
         "rwandaServicesTitle": "Ubuzima muri Rwanda",
         "more": "Ibindi",
-        "rewardsTitle": "Ibihembo n'ubwizigame",
         "discoverTitle": "Menya",
         "discoverNew": "GISHYA",
-        "bkAccountTitle": "Konti ya BK Bank",
-        "bkAccountSubtitle": "Umushahara n'ubwishyu bwa karita",
-        "momoSubtitle": "Account yo gukoresha buri munsi",
-        "airtelTitle": "Airtel Money",
-        "airtelSubtitle": "Umurongo w'inyongera wo kubikuza",
-        "connected": "Byahujwe",
         "cashPowerTitle": "Kwishyura CashPower",
         "cashPowerSubtitle": "Ongera amashanyarazi ako kanya",
         "open": "Fungura",
@@ -136,10 +118,6 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "mySpendingTitle": "Amakoreshereze yanjye",
         "mySpendingSubtitle": "Reba ibyiciro n'imigendekere y'ukwezi",
         "seeAll": "Reba byose",
-        "rewardsRowTitle": "Ibihembo bya itunda",
-        "rewardsRowSubtitle": "Saba amafaranga n'ibindi byiza by'uyu munsi",
-        "goalSaverTitle": "Umugambi w'ubwizigame",
-        "goalSaverSubtitle": "Imigendekere y'ubwizigame bw'ibihe bikomeye",
         "coopRailTitle": "itunda Bank",
         "bankStatusDisclosure": "itunda si banki ifite uruhushya, kandi iki si ubwishingizi nyakuri bw'ubwizigame bwa Leta. \"itunda Bank\" ni izina ry'ibicuruzwa bya itunda ku bwizigame, SACCO/Ikimina, inguzanyo, no gushora imari -- ntabwo ari urwego rwihariye rufite uruhushya rwa banki.",
     ],
@@ -164,15 +142,8 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "viewTransactionHistory": "Voir l'historique des transactions",
         "rwandaServicesTitle": "Pour la vie au Rwanda",
         "more": "Plus",
-        "rewardsTitle": "Récompenses et épargne",
         "discoverTitle": "Découvrir",
         "discoverNew": "NOUVEAU",
-        "bkAccountTitle": "Compte BK Bank",
-        "bkAccountSubtitle": "Salaire et règlement par carte",
-        "momoSubtitle": "Portefeuille de dépenses quotidiennes",
-        "airtelTitle": "Airtel Money",
-        "airtelSubtitle": "Ligne de retrait de secours",
-        "connected": "Connecté",
         "cashPowerTitle": "Payer CashPower",
         "cashPowerSubtitle": "Rechargez l'électricité instantanément",
         "open": "Ouvrir",
@@ -182,10 +153,6 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "mySpendingTitle": "Mes dépenses",
         "mySpendingSubtitle": "Voir les catégories et tendances mensuelles",
         "seeAll": "Tout voir",
-        "rewardsRowTitle": "Récompenses itunda",
-        "rewardsRowSubtitle": "Réclamez le cashback et les offres du jour",
-        "goalSaverTitle": "Épargne objectif",
-        "goalSaverSubtitle": "Progression du fonds d'urgence",
         "coopRailTitle": "itunda Bank",
         "bankStatusDisclosure": "itunda n'est pas une banque agréée, et ceci n'est pas une véritable assurance-dépôts gouvernementale. « itunda Bank » est le nom de produit d'itunda pour ces fonctionnalités d'épargne, de SACCO/Ikimina, de prêt et d'investissement -- ce n'est pas une entité bancaire agréée distincte.",
     ],
@@ -321,6 +288,15 @@ public struct BankView: View {
     // "each screen fetches its own minimal real data" shape `locale` above already
     // establishes for this view.
     @State private var depositProtection: DepositProtectionStatus?
+    // Real gap found+fixed 2026-09-06 (Bank product-completeness pass): the
+    // "Connected money" section below used to render 3 hardcoded literal rows
+    // ("itunda Bank: RWF 842,000", "MTN MoMo: RWF 118,400", "Airtel: Connected")
+    // with zero backing API call -- fabricated data shown as if live. Fixed by
+    // self-fetching the already-real, already-proven `GET /api/v1/accounts/linked`
+    // (same endpoint web's AccountLinkForm.tsx/Android's OverviewScreen.kt already
+    // use), same "each screen fetches its own minimal real data" shape
+    // `depositProtection` above already establishes.
+    @State private var linkedAccounts: [LinkedAccountDto] = []
     // Real Toss Bank reference (20 screenshots, 2026-08-21) -- see
     // AccountSummaryCard's own doc comment: opens AccountLedgerDetailView, the
     // real ledger drill-in, rather than rendering it inline on this screen.
@@ -428,10 +404,17 @@ public struct BankView: View {
                     title: bt("connectedMoneyTitle", locale: locale),
                     actionLabel: bt("manage", locale: locale),
                     rows: [HomeRowData(title: bt("spentThisMonth", locale: locale), subtitle: bt("viewTransactionHistory", locale: locale), trailing: "", symbol: "list.bullet", iconBackground: IDS.Colors.chipBackground, onTap: onOpenTransactionHistory)]
-                        + BankViewData.connectedMoney(locale: locale)
+                        + linkedAccounts.map { account in
+                            HomeRowData(
+                                title: account.provider,
+                                subtitle: "\(account.externalAccountNumberMasked) · \(account.status)",
+                                trailing: account.demoBalance.map { "\(account.demoBalanceCurrency ?? "") \(formatAmount(Int($0)))" } ?? "",
+                                symbol: "building.columns",
+                                iconBackground: IDS.Colors.backgroundTertiary
+                            )
+                        }
                 )
                 HomeSectionCard(title: bt("rwandaServicesTitle", locale: locale), actionLabel: bt("more", locale: locale), rows: BankViewData.rwandaServices(locale: locale))
-                HomeSectionCard(title: bt("rewardsTitle", locale: locale), actionLabel: bt("view", locale: locale), rows: BankViewData.rewards(locale: locale))
                 if !discoverRows.isEmpty {
                     HomeSectionCard(
                         title: bt("discoverTitle", locale: locale),
@@ -488,6 +471,7 @@ public struct BankView: View {
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .task {
             depositProtection = try? await NetworkClient.shared.getDepositProtectionStatus().status
+            linkedAccounts = (try? await NetworkClient.shared.getLinkedAccounts().linkedAccounts) ?? []
         }
         .fullScreenCover(isPresented: $showAccountDetail) {
             NavigationStack {
@@ -510,26 +494,11 @@ private enum BankViewData {
     // fix) -- a `static let` only ever evaluates once per process lifetime, which would
     // freeze these rows in whichever language was active the first time this enum was
     // touched, never picking up a later switch the way BankView's own @State locale can.
-    static func connectedMoney(locale: BankingLocale) -> [HomeRowData] {
-        [
-            HomeRowData(title: bt("bkAccountTitle", locale: locale), subtitle: bt("bkAccountSubtitle", locale: locale), trailing: "RWF 842,000", symbol: "building.columns", iconBackground: IDS.Colors.backgroundTertiary),
-            HomeRowData(title: "MTN MoMo", subtitle: bt("momoSubtitle", locale: locale), trailing: "RWF 118,400", symbol: "iphone", iconBackground: IDS.Colors.successTint),
-            HomeRowData(title: bt("airtelTitle", locale: locale), subtitle: bt("airtelSubtitle", locale: locale), trailing: bt("connected", locale: locale), symbol: "creditcard", iconBackground: IDS.Colors.warningTint),
-        ]
-    }
-
     static func rwandaServices(locale: BankingLocale) -> [HomeRowData] {
         [
             HomeRowData(title: bt("cashPowerTitle", locale: locale), subtitle: bt("cashPowerSubtitle", locale: locale), trailing: bt("open", locale: locale), symbol: "doc.text", iconBackground: IDS.Colors.warningTint),
             HomeRowData(title: bt("iremboTitle", locale: locale), subtitle: bt("iremboSubtitle", locale: locale), trailing: bt("browse", locale: locale), symbol: "building.columns", iconBackground: IDS.Colors.pressed),
             HomeRowData(title: bt("mySpendingTitle", locale: locale), subtitle: bt("mySpendingSubtitle", locale: locale), trailing: bt("seeAll", locale: locale), symbol: "account.pass", iconBackground: IDS.Colors.backgroundTertiary),
-        ]
-    }
-
-    static func rewards(locale: BankingLocale) -> [HomeRowData] {
-        [
-            HomeRowData(title: bt("rewardsRowTitle", locale: locale), subtitle: bt("rewardsRowSubtitle", locale: locale), trailing: "140 RWF", symbol: "sparkles", iconBackground: IDS.Colors.successTint),
-            HomeRowData(title: bt("goalSaverTitle", locale: locale), subtitle: bt("goalSaverSubtitle", locale: locale), trailing: "62%", symbol: "leaf", iconBackground: IDS.Colors.pressed),
         ]
     }
 }
