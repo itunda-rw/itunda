@@ -627,6 +627,79 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  # Real, eighth product-level dashboard (2026-09-06, Rideshare product-completeness
+  # pass) -- see docs/ARCHITECTURE.md's dated follow-up. `:rideshare` stays inside
+  # the shared `backend` monolith deployment (not extractable -- real, direct,
+  # unexcludable MessagingService coupling for the real Share Trip Status/Trusted
+  # Contacts safety features), so this follows the same pattern as itunda-bank/pay/
+  # merchant/wealth/talk/eats: route-filtered request-rate/error-rate/latency
+  # panels, no per-service JVM/pods-up panel (no new, separately deployed JVM to
+  # chart). Scoped to the real Rideshare (ride-hailing) product itself --
+  # /api/v1/rides(/.*)? -- confirmed by reading RideController.kt's own
+  # @RequestMapping directly (NOT "/api/v1/rideshare", despite the Gradle module's
+  # own name). This deliberately excludes :rideshare's sibling sub-features (bus,
+  # bike rental, parking, moto-fare, designated driver), which each have their own
+  # separate top-level route prefix (/api/v1/bus, /api/v1/bikeshare, /api/v1/
+  # parking, /api/v1/moto-fare, /api/v1/designated-driver) and are real, distinct
+  # products sharing this Gradle module, not part of ride-hailing itself -- each is
+  # a reasonable candidate for its own future product-completeness pass.
+  name: grafana-dashboard-itunda-rideshare
+  namespace: monitoring
+data:
+  itunda-rideshare.json: |
+    {
+      "title": "itunda Rideshare",
+      "uid": "itunda-rideshare",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Rideshare request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/rides(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Rideshare error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/rides(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Rideshare request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/rides(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/rides(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: grafana-dashboard-itunda-private-cloud
   namespace: monitoring
 data:
@@ -786,6 +859,8 @@ spec:
               name: grafana-dashboard-itunda-talk
           - configMap:
               name: grafana-dashboard-itunda-eats
+          - configMap:
+              name: grafana-dashboard-itunda-rideshare
           - configMap:
               name: grafana-dashboard-itunda-private-cloud
 ---
