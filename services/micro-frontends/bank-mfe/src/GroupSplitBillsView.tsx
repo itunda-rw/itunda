@@ -16,7 +16,7 @@ import {
   attachSplitBillReceipt, createSplitBill, fetchSplitBillsForGroup, paySplitBillShare, requestSplitBillNextRound,
   type SplitBillWithParticipants,
 } from './lib/splitBill';
-import { type GroupMember } from './lib/messaging';
+import { type GroupMember } from './lib/groupMessaging';
 import { useDeferredLoading } from './useDeferredLoading';
 
 // Real KakaoPay-style split bill (2026-07-22) -- found fully built on the backend

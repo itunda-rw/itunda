@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.security.CurrentUser
@@ -42,6 +43,7 @@ import rw.itunda.messaging.InvalidGroupPollException
 import rw.itunda.messaging.InvalidGroupReactionException
 import rw.itunda.messaging.InvalidGroupJoinCodeException
 import rw.itunda.messaging.InvalidGroupMessageImageException
+import rw.itunda.messaging.InvalidGroupMessageSearchException
 import rw.itunda.messaging.MessageDestinationType
 import rw.itunda.messaging.MessageForwardService
 import rw.itunda.messaging.MessageNotFoundException
@@ -150,6 +152,26 @@ class GroupMessagingController(
                 "imageUrl" to m.imageUrl, "emoticonId" to m.emoticonId,
                 "forwardedFromMessageId" to m.forwardedFromMessageId, "forwardedFromType" to m.forwardedFromType,
                 "mentionedUserIds" to m.mentionedUserIds,
+            )
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "messages" to messages) + pageMeta(page))
+    }
+
+    // Real group-chat message search -- see MessagingController.searchMessages's own
+    // doc comment for the 1:1 equivalent this mirrors.
+    @GetMapping("/{groupId}/messages/search")
+    fun searchMessages(
+        @PathVariable groupId: String,
+        @RequestParam query: String,
+        @PageableDefault(size = 30) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = groupMessagingService.searchMessages(currentUser.userId, groupId, query, pageable)
+        val reactions = groupMessagingService.getReactionSummaries(page.content.map { it.id })
+        val messages = page.content.map { m ->
+            mapOf(
+                "id" to m.id, "groupConversationId" to m.groupConversationId, "senderId" to m.senderId, "body" to m.body,
+                "sentAt" to m.sentAt, "deletedAt" to m.deletedAt, "replyToMessageId" to m.replyToMessageId, "reactions" to (reactions[m.id] ?: emptyList()),
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "messages" to messages) + pageMeta(page))
@@ -396,6 +418,10 @@ class GroupMessagingController(
     @ExceptionHandler(InvalidGroupMessageImageException::class)
     fun handleInvalidMessageImage(ex: InvalidGroupMessageImageException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MESSAGE_IMAGE", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidGroupMessageSearchException::class)
+    fun handleInvalidSearch(ex: InvalidGroupMessageSearchException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MESSAGE_SEARCH", ex.message ?: "Bad request"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =

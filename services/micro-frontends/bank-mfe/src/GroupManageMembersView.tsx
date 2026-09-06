@@ -8,10 +8,11 @@ import { useI18n } from './i18n/I18nContext';
 import { ApiError } from './lib/api';
 import { EmptyState } from './EmptyState';
 import { IconBack } from './icons/ItundaIcons';
+import { fetchTalkContacts, type TalkContact } from './lib/messaging';
 import {
-  addGroupMember, fetchTalkContacts, leaveGroup, setGroupDescription, setGroupPhotoUrl,
-  type GroupMember, type GroupSummary, type TalkContact,
-} from './lib/messaging';
+  addGroupMember, leaveGroup, setGroupDescription, setGroupPhotoUrl,
+  type GroupMember, type GroupSummary,
+} from './lib/groupMessaging';
 
 // Real leave-group/add-member (2026-07-22) -- found fully built on the backend
 // (GroupMessagingController's POST/DELETE .../members) with zero client UI anywhere.

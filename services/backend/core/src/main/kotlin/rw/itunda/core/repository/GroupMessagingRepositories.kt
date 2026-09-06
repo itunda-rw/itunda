@@ -78,6 +78,18 @@ interface GroupMessageRepository : JpaRepository<GroupMessage, String> {
     // analogue, used by GroupMessagingService.listMyGroups' batched last-message fetch.
     fun findByGroupConversationIdInOrderBySentAtDesc(groupConversationIds: List<String>, pageable: Pageable): List<GroupMessage>
 
+    // Real group-chat message search -- same shape as MessageRepository
+    // .searchByConversationIdAndBody's 1:1 equivalent.
+    @Query(
+        "SELECT m FROM GroupMessage m WHERE m.groupConversationId = :groupConversationId " +
+            "AND m.deletedAt IS NULL AND LOWER(m.body) LIKE LOWER(CONCAT('%', :query, '%')) ORDER BY m.sentAt DESC",
+    )
+    fun searchByGroupConversationIdAndBody(
+        @Param("groupConversationId") groupConversationId: String,
+        @Param("query") query: String,
+        pageable: Pageable,
+    ): Page<GroupMessage>
+
     // Real unread-count support, the group-chat analogue of MessageRepository's
     // countByConversationIdAndSenderIdNotAndReadAtIsNull -- since group read state is a
     // per-member cursor (GroupConversationMember.lastReadAt), not a per-message flag,

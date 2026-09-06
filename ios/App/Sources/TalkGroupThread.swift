@@ -105,6 +105,8 @@ struct GroupThreadScreen: View {
     @State private var showPhotoPicker = false
     @State private var uploadingPhoto = false
     @State private var showMediaGallery = false
+    @State private var showSearch = false
+    @State private var searchResults: [GroupMessageDto]?
     private let currentUserId = KeychainTokenStore.shared.getUserId()
 
     private func name(for senderId: String) -> String {
@@ -139,6 +141,10 @@ struct GroupThreadScreen: View {
                 .accessibilityLabel("Back")
                 Text(group.name).font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()
+                Button(action: { showSearch.toggle() }) {
+                    Image(systemName: "magnifyingglass").font(IDS.scaledFont(size: 18, weight: .regular, relativeTo: .title3)).frame(width: 40, height: 40)
+                }
+                .accessibilityLabel("Search this group")
                 Button(action: { showMediaGallery = true }) {
                     Image(systemName: "photo.on.rectangle").font(IDS.scaledFont(size: 18, weight: .regular, relativeTo: .title3)).frame(width: 40, height: 40)
                 }
@@ -162,6 +168,10 @@ struct GroupThreadScreen: View {
             }
             .padding(.horizontal, 8)
 
+            if showSearch {
+                TalkGroupSearchBar(groupId: group.groupId, onResultsChange: { searchResults = $0 }, onError: { error = $0 })
+            }
+
             if let pinnedMessage {
                 HStack(spacing: 8) {
                     HStack(spacing: 4) {
@@ -180,7 +190,7 @@ struct GroupThreadScreen: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 8) {
-                        if let messages {
+                        if let messages = searchResults ?? messages {
                             if messages.isEmpty {
                                 Text("Say hello — no messages yet.").foregroundColor(IDS.Colors.textSecondary).padding(.top, 20)
                             }
@@ -195,7 +205,9 @@ struct GroupThreadScreen: View {
                                     onPin: { pinned in Task { await pinMessage(pinned) } },
                                     onForward: { forwarding = $0 },
                                     emoticonImageUrl: message.emoticonId.flatMap { emoticonImageById[$0] },
-                                    showTimestamp: shouldShowChatTimestamp(messages, index, senderId: { $0.senderId }, sentAt: { $0.sentAt }),
+                                    // Never collapsed when showing search hits -- same
+                                    // reasoning as TalkChatThread's own identical 1:1 search.
+                                    showTimestamp: searchResults != nil || shouldShowChatTimestamp(messages, index, senderId: { $0.senderId }, sentAt: { $0.sentAt }),
                                 )
                                 .id(message.id)
                             }

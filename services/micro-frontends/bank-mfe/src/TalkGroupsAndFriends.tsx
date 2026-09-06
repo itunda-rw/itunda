@@ -11,9 +11,10 @@ import { EmptyState, ErrorCard } from './EmptyState';
 import { useDeferredLoading } from './useDeferredLoading';
 import { GroupThread } from './GroupThread';
 import {
-  fetchGroups, fetchPresence, fetchTalkContacts, fetchTodaysBirthdays, startConversationWithUser,
-  type GroupSummary, type TalkContact,
+  fetchPresence, fetchTalkContacts, fetchTodaysBirthdays, startConversationWithUser,
+  type TalkContact,
 } from './lib/messaging';
+import { fetchGroups, type GroupSummary } from './lib/groupMessaging';
 import { NewGroupCard, OpenChatCard } from './TalkNewChatCards';
 import { DirectMessagesList } from './TalkDirectMessagesList';
 

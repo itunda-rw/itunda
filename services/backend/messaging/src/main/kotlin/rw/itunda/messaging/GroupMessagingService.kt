@@ -40,6 +40,7 @@ class GroupMessageDeleteForbiddenException(message: String) : RuntimeException(m
 class InvalidGroupReactionException(message: String) : RuntimeException(message)
 class InvalidGroupMessageImageException(message: String) : RuntimeException(message)
 class InvalidGroupJoinCodeException(message: String) : RuntimeException(message)
+class InvalidGroupMessageSearchException(message: String) : RuntimeException(message)
 
 data class GroupSummary(
     val groupId: String,
@@ -471,6 +472,17 @@ class GroupMessagingService(
             .filter { it != userId }
         realtimeMessagePublisher.publishGroupReadReceiptChange(groupId, otherMemberIds, userId, now)
         return page
+    }
+
+    /** Search stays strictly inside one group after the normal membership check --
+     * same real shape as MessagingService.searchMessages for 1:1 threads. */
+    fun searchMessages(userId: String, groupId: String, query: String, pageable: Pageable): Page<GroupMessage> {
+        requireMember(userId, groupId)
+        val trimmed = query.trim()
+        if (trimmed.length < 2 || trimmed.length > 120) {
+            throw InvalidGroupMessageSearchException("Search must be between 2 and 120 characters")
+        }
+        return groupMessageRepository.searchByGroupConversationIdAndBody(groupId, trimmed, pageable)
     }
 
     /**

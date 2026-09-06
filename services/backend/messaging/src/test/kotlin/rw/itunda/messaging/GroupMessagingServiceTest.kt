@@ -784,6 +784,77 @@ class GroupMessagingServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("a real member searching messages in their own group") {
+        val groupConversationRepository = mockk<GroupConversationRepository>()
+        val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
+        val groupMessageRepository = mockk<GroupMessageRepository>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val groupMessageReactionRepository = mockk<GroupMessageReactionRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = GroupMessagingService(
+            groupConversationRepository, groupConversationMemberRepository, groupMessageRepository,
+            userRepository, notificationRepository, groupMessageReactionRepository, rateLimiter, realtimeMessagePublisher,
+            pushNotificationService,
+        )
+        val group = GroupConversation(id = "group_1", name = "Kigali Friends", createdBy = "user_a")
+        every { groupConversationRepository.findById("group_1") } returns Optional.of(group)
+        every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "user_a") } returns
+            GroupConversationMember(id = "member_1", groupConversationId = "group_1", userId = "user_a")
+
+        When("they search for a real match") {
+            service.searchMessages("user_a", "group_1", "hello", org.springframework.data.domain.PageRequest.of(0, 30))
+
+            Then("it real-scopes the search to that group, after the normal membership check") {
+                verify { groupMessageRepository.searchByGroupConversationIdAndBody("group_1", "hello", any()) }
+            }
+        }
+
+        When("the query is too short") {
+            Then("it throws InvalidGroupMessageSearchException before ever touching the repository") {
+                try {
+                    service.searchMessages("user_a", "group_1", "h", org.springframework.data.domain.PageRequest.of(0, 30))
+                    error("expected InvalidGroupMessageSearchException")
+                } catch (e: InvalidGroupMessageSearchException) {
+                    verify(exactly = 0) { groupMessageRepository.searchByGroupConversationIdAndBody(any(), any(), any()) }
+                }
+            }
+        }
+    }
+
+    Given("a non-member trying to search messages in someone else's group") {
+        val groupConversationRepository = mockk<GroupConversationRepository>()
+        val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
+        val groupMessageRepository = mockk<GroupMessageRepository>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val groupMessageReactionRepository = mockk<GroupMessageReactionRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = GroupMessagingService(
+            groupConversationRepository, groupConversationMemberRepository, groupMessageRepository,
+            userRepository, notificationRepository, groupMessageReactionRepository, rateLimiter, realtimeMessagePublisher,
+            pushNotificationService,
+        )
+        val group = GroupConversation(id = "group_2", name = "Someone else's group", createdBy = "user_b")
+        every { groupConversationRepository.findById("group_2") } returns Optional.of(group)
+        every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_2", "attacker") } returns null
+
+        When("the attacker searches it anyway") {
+            Then("it real-404s (GroupNotFoundException) rather than confirming the group exists") {
+                try {
+                    service.searchMessages("attacker", "group_2", "hello", org.springframework.data.domain.PageRequest.of(0, 30))
+                    error("expected GroupNotFoundException")
+                } catch (e: GroupNotFoundException) {
+                    verify(exactly = 0) { groupMessageRepository.searchByGroupConversationIdAndBody(any(), any(), any()) }
+                }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

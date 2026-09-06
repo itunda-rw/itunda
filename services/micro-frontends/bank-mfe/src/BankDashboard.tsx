@@ -58,7 +58,8 @@ import { SupportView } from './SupportView';
 import { SpendingInsightView } from './SpendingInsightView';
 import { SubscriptionsView } from './SubscriptionsView';
 import { StocksView } from './StocksView';
-import { fetchConversations, fetchGroups, type ConversationSummary } from './lib/messaging';
+import { fetchConversations, type ConversationSummary } from './lib/messaging';
+import { fetchGroups } from './lib/groupMessaging';
 import {
   type HoodReview,
 } from './lib/marketplace';

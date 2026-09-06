@@ -13,10 +13,8 @@ import { IdsButton } from './IdsButton';
 import { renderTextWithEmoji } from './icons/ItundaFaceEmoji';
 import { chatMessageTime } from './TalkBubbles';
 import { useDeferredLoading } from './useDeferredLoading';
-import {
-  fetchConversations, fetchGroups,
-  type ConversationSummary, type GroupSummary, type ReactionGroup,
-} from './lib/messaging';
+import { fetchConversations, type ConversationSummary, type ReactionGroup } from './lib/messaging';
+import { fetchGroups, type GroupSummary } from './lib/groupMessaging';
 
 // Real per-thread shared-media gallery (Kakao's real "Chat Room Drawer") -- ports
 // Android TalkScreen.kt's own identical addition (2026-08-04) to bank-mfe. Scoped

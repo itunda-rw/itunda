@@ -9,9 +9,8 @@ import { LinkGlyph, GlobeGlyph, CameraGlyph } from './icons/ItundaFaceMisc';
 import { ApiError } from './lib/api';
 import { useI18n } from './i18n/I18nContext';
 import { QrScanCamera, parseQrParam } from './QrScanCamera';
-import {
-  createGroup, createOpenGroup, fetchTalkContacts, joinGroupByCode, startConversation, startConversationWithUser,
-} from './lib/messaging';
+import { fetchTalkContacts, startConversation, startConversationWithUser } from './lib/messaging';
+import { createGroup, createOpenGroup, joinGroupByCode } from './lib/groupMessaging';
 import { buildJoinUrl, readAndClearUrlParam, shareOrCopyLink } from './BankDashboard';
 
 export function NewChatCard({ onStarted }: { onStarted: (conversationId: string) => void }) {

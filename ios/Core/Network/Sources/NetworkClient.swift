@@ -5234,6 +5234,13 @@ extension NetworkClient {
         try await get("api/v1/messages/groups/\(groupId)/messages/\(messageId)/thread")
     }
 
+    // Real group-chat message search (Talk product-completeness pass, 2026-09-06) --
+    // see searchMessages's own doc comment for the 1:1 equivalent this mirrors.
+    public func searchGroupMessages(groupId: String, query: String) async throws -> GroupMessagesResponse {
+        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        return try await get("api/v1/messages/groups/\(groupId)/messages/search?query=\(encoded)")
+    }
+
     public func sendGroupMessage(groupId: String, body: String, replyToMessageId: String? = nil, imageUrl: String? = nil) async throws -> GroupMessageResponse {
         try await authenticatedPost("api/v1/messages/groups/\(groupId)/messages", body: SendGroupMessageRequest(body: body, replyToMessageId: replyToMessageId, imageUrl: imageUrl))
     }

@@ -3,7 +3,7 @@
 // composer helpers (mentions only make sense with 3+ participants, confirmed via
 // usage grep -- GroupThread is their only real caller).
 
-import { type GroupMember } from './lib/messaging';
+import { type GroupMember } from './lib/groupMessaging';
 
 // Real @mention composer UI -- ports Android TalkScreen.kt's own identical addition
 // (2026-08-04) to bank-mfe. GroupMessagingService.parseMentions (backend) already

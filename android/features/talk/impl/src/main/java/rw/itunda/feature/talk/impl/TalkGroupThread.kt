@@ -29,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Photo
 import androidx.compose.material.icons.outlined.Receipt
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -78,14 +79,12 @@ import rw.itunda.core.network.ToggleReactionRequest
 import rw.itunda.core.network.TokenStore
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
-
-
-
-
 @Composable
 internal fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     var messages by remember { mutableStateOf<List<GroupMessageDto>?>(null) }
+    var showSearch by remember { mutableStateOf(false) }
+    var searchResults by remember { mutableStateOf<List<GroupMessageDto>?>(null) }
     var members by remember { mutableStateOf<List<GroupMemberDto>>(emptyList()) }
     var draft by remember { mutableStateOf("") }
     var replyingTo by remember { mutableStateOf<GroupMessageDto?>(null) }
@@ -246,6 +245,9 @@ internal fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
         Box(modifier = Modifier.fillMaxWidth()) {
             BackTopBar(group.name, onBack)
             Row(modifier = Modifier.align(Alignment.TopEnd)) {
+                IconButton(onClick = { showSearch = !showSearch }) {
+                    Icon(Icons.Outlined.Search, contentDescription = "Search this group")
+                }
                 IconButton(onClick = { showMediaGallery = true }) {
                     Icon(Icons.Outlined.Photo, contentDescription = "Shared photos")
                 }
@@ -256,6 +258,9 @@ internal fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                     Icon(Icons.Outlined.Receipt, contentDescription = "Split a bill")
                 }
             }
+        }
+        if (showSearch) {
+            GroupSearchBar(group.groupId, onResultsChange = { searchResults = it }, onError = { error = it })
         }
         if (showMediaGallery) {
             MediaGalleryView(imageUrls = (messages ?: emptyList()).mapNotNull { it.imageUrl }.reversed(), onBack = { showMediaGallery = false })
@@ -305,7 +310,7 @@ internal fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
         }
         Spacer(modifier = Modifier.height(8.dp))
         LazyColumn(state = listState, modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            val msgs = messages
+            val msgs = searchResults ?: messages
             if (msgs == null) {
                 item { SkeletonBlock(height = 72.dp) }
             } else if (msgs.isEmpty()) {
@@ -322,7 +327,7 @@ internal fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                         senderName = senderName,
                         currentUserId = currentUserId,
                         emoticonImageUrl = m.emoticonId?.let(emoticonImageById::get),
-                        showTimestamp = shouldShowChatTimestamp(msgs, index, { it.senderId }, { it.sentAt }),
+                        showTimestamp = searchResults != null || shouldShowChatTimestamp(msgs, index, { it.senderId }, { it.sentAt }),
                         onToggleReaction = { emoji ->
                             coroutineScope.launch {
                                 try {

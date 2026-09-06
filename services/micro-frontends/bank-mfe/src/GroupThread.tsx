@@ -3,7 +3,6 @@
 // for one cohesive chat screen) with no safe sub-split available -- moved verbatim.
 
 import { useEffect, useRef, useState } from 'react';
-import { Image as ImageIcon, Link as LinkIcon, Megaphone, Receipt, Users } from 'lucide-react';
 import { IconBack, IconSend } from './icons/ItundaIcons';
 import { CameraGlyph, PinGlyph } from './icons/ItundaFaceMisc';
 import { SmileySlight } from './icons/ItundaFaceSmileys';
@@ -17,20 +16,25 @@ import { MediaGalleryModal, ForwardPickerModal, ThreadModal } from './TalkModals
 import { applyMention, MentionSuggestions } from './TalkMentions';
 import { TalkLinksModal } from './TalkLinksTab';
 import { TalkGroupAnnouncementPoll } from './TalkGroupAnnouncementPoll';
+import { TalkGroupToolbar } from './TalkGroupToolbar';
 import { extractLinks } from './lib/talk';
 import { GroupSplitBillsView } from './GroupSplitBillsView';
 import { GroupManageMembersView } from './GroupManageMembersView';
 import { fetchEmoticonImageMap, sendGroupEmoticon } from './lib/emoticons';
+import { connectMessagingSocket, type MessagingSocketHandle } from './lib/messaging';
 import {
-  connectMessagingSocket, deleteGroupMessage, fetchGroupMembers, fetchGroupMessages, fetchGroupThread,
+  deleteGroupMessage, fetchGroupMembers, fetchGroupMessages, fetchGroupThread,
   fetchPinnedGroupMessage, forwardGroupMessage, pinGroupMessage, sendGroupMessage, toggleGroupReaction, unpinGroupMessage,
-  type GroupMember, type GroupMessage, type GroupSummary, type MessagingSocketHandle,
-} from './lib/messaging';
+  type GroupMember, type GroupMessage, type GroupSummary,
+} from './lib/groupMessaging';
 import { useDeferredLoading } from './useDeferredLoading';
 
 export function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => void }) {
   const { t } = useI18n();
   const [messages, setMessages] = useState<GroupMessage[] | null>(null);
+  // Real group-chat message search (Talk product-completeness pass, 2026-09-06) --
+  // see TalkGroupToolbar.tsx's own doc comment.
+  const [searchResults, setSearchResults] = useState<GroupMessage[] | null>(null);
   const showSkeleton = useDeferredLoading(messages === null);
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -314,23 +318,15 @@ export function GroupThread({ group, onBack }: { group: GroupSummary; onBack: ()
             <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{group.memberCount} members</p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '6px' }}>
-          <button type="button" onClick={() => setShowMediaGallery(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Shared photos">
-            <ImageIcon size={20} />
-          </button>
-          <button type="button" onClick={() => setShowLinks(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Shared links">
-            <LinkIcon size={20} />
-          </button>
-          <button type="button" onClick={() => setShowManageMembers(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Manage members">
-            <Users size={20} />
-          </button>
-          <button type="button" onClick={() => setShowAnnouncementPoll(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Announcement and polls">
-            <Megaphone size={20} />
-          </button>
-          <button type="button" onClick={() => setShowSplitBills(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Split a bill">
-            <Receipt size={20} />
-          </button>
-        </div>
+        <TalkGroupToolbar
+          groupId={group.groupId}
+          onShowMediaGallery={() => setShowMediaGallery(true)}
+          onShowLinks={() => setShowLinks(true)}
+          onShowManageMembers={() => setShowManageMembers(true)}
+          onShowAnnouncementPoll={() => setShowAnnouncementPoll(true)}
+          onShowSplitBills={() => setShowSplitBills(true)}
+          onSearchResultsChange={setSearchResults}
+        />
       </div>
 
       {showMediaGallery && (
@@ -357,9 +353,11 @@ export function GroupThread({ group, onBack }: { group: GroupSummary; onBack: ()
             Say hello — no messages yet.
           </p>
         )}
-        {messages?.map((m, index, list) => {
+        {(searchResults ?? messages)?.map((m, index, list) => {
           const isMine = m.senderId === currentUser?.id;
-          const showTimestamp = shouldShowChatTimestamp(list, index);
+          // Never collapsed when showing search hits -- same reasoning as
+          // ConversationThread's own identical 1:1 search.
+          const showTimestamp = searchResults != null || shouldShowChatTimestamp(list, index);
           return (
             <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
               {!isMine && (

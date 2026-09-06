@@ -2991,6 +2991,11 @@ interface ApiService {
     @GET("api/v1/messages/groups/{id}/messages")
     suspend fun getGroupMessages(@Path("id") groupId: String): GroupMessagesResponse
 
+    // Real group-chat message search (Talk product-completeness pass, 2026-09-06) --
+    // see searchMessages's own doc comment for the 1:1 equivalent this mirrors.
+    @GET("api/v1/messages/groups/{id}/messages/search")
+    suspend fun searchGroupMessages(@Path("id") groupId: String, @Query("query") query: String): GroupMessagesResponse
+
     @POST("api/v1/messages/groups/{id}/messages")
     suspend fun sendGroupMessage(@Path("id") groupId: String, @Body request: SendGroupMessageRequest): GroupMessageResponse
 
