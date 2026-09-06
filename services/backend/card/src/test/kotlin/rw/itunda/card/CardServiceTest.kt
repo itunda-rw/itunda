@@ -8,6 +8,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import rw.itunda.auth.RateLimiter
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.domain.DebitCard
 import rw.itunda.core.domain.DebitCardDesign
 import rw.itunda.core.domain.LedgerAccountType
@@ -62,14 +63,16 @@ class CardServiceTest : BehaviorSpec({
         pushNotificationService: PushNotificationService = mockk(relaxed = true),
         rateLimiter: RateLimiter = mockk(relaxed = true),
         userRepository: UserRepository = mockk(),
-    ) = CardService(debitCardRepository, debitCardTransactionRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService, rateLimiter, userRepository)
+        fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
+    ) = CardService(debitCardRepository, debitCardTransactionRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService, rateLimiter, userRepository, fraudRuleEngine)
 
     Given("a real user issuing their first itunda debit card") {
         val debitCardRepository = mockk<DebitCardRepository>()
         every { debitCardRepository.findByUserId("user_1") } returns null
         val savedSlot = mutableListOf<DebitCard>()
         every { debitCardRepository.save(capture(savedSlot)) } answers { firstArg() }
-        val service = newService(debitCardRepository = debitCardRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = newService(debitCardRepository = debitCardRepository, rateLimiter = rateLimiter)
 
         When("issuing a card with no design specified") {
             val card = service.issueCard("user_1")
@@ -82,6 +85,53 @@ class CardServiceTest : BehaviorSpec({
                 card.design shouldBe DebitCardDesign.DEFAULT
                 card.last4.length shouldBe 4
                 savedSlot.size shouldBe 1
+            }
+
+            // Real gap closed 2026-09-07 (Card product-completeness pass): issue had
+            // zero rateLimiter.checkLimit call before this.
+            Then("the per-user issuance rate limit is enforced") {
+                verify(exactly = 1) { rateLimiter.checkLimit("card:issue:user_1", limit = any(), window = any()) }
+            }
+        }
+    }
+
+    // Real gaps closed 2026-09-07 (Card product-completeness pass): freeze/unfreeze
+    // had zero rateLimiter.checkLimit call before this -- every other state-
+    // mutating card endpoint already had one.
+    Given("a real active card being frozen") {
+        val debitCardRepository = mockk<DebitCardRepository>()
+        val debitCardTransactionRepository = mockk<DebitCardTransactionRepository>()
+        every { debitCardTransactionRepository.sumAmountByCardIdAndCreatedAtSince(any(), any()) } returns BigDecimal.ZERO
+        val card = freshCard("user_1")
+        every { debitCardRepository.findByUserId("user_1") } returns card
+        every { debitCardRepository.save(any()) } answers { firstArg() }
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = newService(debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository, rateLimiter = rateLimiter)
+
+        When("freezing") {
+            service.freeze("user_1")
+
+            Then("the per-user freeze rate limit is enforced") {
+                verify(exactly = 1) { rateLimiter.checkLimit("card:freeze:user_1", limit = any(), window = any()) }
+            }
+        }
+    }
+
+    Given("a real frozen (never lost or closed) card being unfrozen") {
+        val debitCardRepository = mockk<DebitCardRepository>()
+        val debitCardTransactionRepository = mockk<DebitCardTransactionRepository>()
+        every { debitCardTransactionRepository.sumAmountByCardIdAndCreatedAtSince(any(), any()) } returns BigDecimal.ZERO
+        val card = freshCard("user_1").also { it.frozen = true }
+        every { debitCardRepository.findByUserId("user_1") } returns card
+        every { debitCardRepository.save(any()) } answers { firstArg() }
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = newService(debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository, rateLimiter = rateLimiter)
+
+        When("unfreezing") {
+            service.unfreeze("user_1")
+
+            Then("the per-user unfreeze rate limit is enforced") {
+                verify(exactly = 1) { rateLimiter.checkLimit("card:unfreeze:user_1", limit = any(), window = any()) }
             }
         }
     }
@@ -161,9 +211,10 @@ class CardServiceTest : BehaviorSpec({
         every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
         val legsSlot = mutableListOf<List<LedgerLeg>>()
         every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_1", emptyList())
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = newService(
             debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository,
-            accountRepository = accountRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService, fraudRuleEngine = fraudRuleEngine,
         )
 
         When("charging a real purchase") {
@@ -187,6 +238,12 @@ class CardServiceTest : BehaviorSpec({
             // the sums serializes concurrent charges on the SAME card.
             Then("the card row is locked before the spend sums are ever computed") {
                 verify(exactly = 1) { debitCardRepository.findByIdForUpdate("card_1") }
+            }
+
+            // Real gap closed 2026-09-07 (Card product-completeness pass): real money
+            // movement with zero FraudRuleEngine coverage before this fix.
+            Then("the real purchase is evaluated against the cardholder's own fraud history") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("user_1", null, BigDecimal("5000"), "ledgertxn_1") }
             }
         }
     }

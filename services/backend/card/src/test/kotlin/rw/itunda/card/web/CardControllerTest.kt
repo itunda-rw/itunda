@@ -73,6 +73,53 @@ class CardControllerTest : BehaviorSpec({
             }
         }
     }
+
+    // Real gap closed 2026-09-07 (Card product-completeness pass): reissue had no
+    // Idempotency-Key protection at all before this -- same class of gap `issue`
+    // above already got fixed 2026-09-05. Same test shape as the two Given blocks
+    // above, proving the wiring can't silently regress.
+    Given("a first-time card reissue request") {
+        val cardService = mockk<CardService>()
+        val idempotencyService = mockk<IdempotencyService>()
+        val controller = CardController(cardService, idempotencyService)
+
+        val cardView = mockk<CardView>(relaxed = true)
+        every { cardService.reissue("user_1") } returns cardView
+
+        val actionSlot = slot<() -> Pair<Int, Map<String, Any?>>>()
+        every {
+            idempotencyService.replayOrExecute("POST /api/v1/card/reissue", "key-1", any(), capture(actionSlot))
+        } answers { actionSlot.captured.invoke() }
+
+        When("reissuing the card") {
+            val response = controller.reissue("key-1", currentUser)
+
+            Then("it routes through the real idempotency service, keyed to this exact route") {
+                verify(exactly = 1) { idempotencyService.replayOrExecute("POST /api/v1/card/reissue", "key-1", any(), any()) }
+                verify(exactly = 1) { cardService.reissue("user_1") }
+                response.statusCode shouldBe HttpStatus.OK
+            }
+        }
+    }
+
+    Given("a retried card reissue request using the same Idempotency-Key as a completed one") {
+        val cardService = mockk<CardService>()
+        val idempotencyService = mockk<IdempotencyService>()
+        val controller = CardController(cardService, idempotencyService)
+
+        every {
+            idempotencyService.replayOrExecute("POST /api/v1/card/reissue", "key-1", any(), any())
+        } returns (200 to mapOf("success" to true, "card" to "cached-result"))
+
+        When("retrying with the same key") {
+            val response = controller.reissue("key-1", currentUser)
+
+            Then("the cached response is returned and the card is never reissued twice") {
+                response.body?.get("card") shouldBe "cached-result"
+                verify(exactly = 0) { cardService.reissue(any()) }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

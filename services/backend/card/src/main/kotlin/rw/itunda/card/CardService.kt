@@ -15,6 +15,7 @@ import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
@@ -87,6 +88,7 @@ class CardService(
     private val pushNotificationService: PushNotificationService,
     private val rateLimiter: RateLimiter,
     private val userRepository: UserRepository,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     companion object {
         // itunda has no real production timezone service; Rwanda is a single-timezone
@@ -103,6 +105,12 @@ class CardService(
 
     @Transactional
     fun issueCard(userId: String, design: String = DebitCardDesign.DEFAULT): DebitCard {
+        // Real gap found (2026-09-07, Card product-completeness pass): every other
+        // state-mutating card endpoint already has a rate limiter, this one never
+        // did. A real card can only ever be issued once per user (the uniqueness
+        // check right below), so this is a modest, consumer-style limit -- not sized
+        // for a repeat-caller business actor the way Agents' cashIn/cashOut are.
+        rateLimiter.checkLimit("card:issue:$userId", limit = 10, window = Duration.ofHours(1))
         if (debitCardRepository.findByUserId(userId) != null) {
             throw CardAlreadyIssuedException("You already have an itunda debit card")
         }
@@ -152,6 +160,9 @@ class CardService(
 
     @Transactional
     fun freeze(userId: String): CardView {
+        // Same real gap, same reasoning as issueCard above -- a rare state toggle,
+        // not a high-frequency action, so a modest consumer-style limit fits.
+        rateLimiter.checkLimit("card:freeze:$userId", limit = 10, window = Duration.ofHours(1))
         val card = getCardOrThrow(userId)
         card.frozen = true
         val saved = debitCardRepository.save(card)
@@ -161,6 +172,8 @@ class CardService(
 
     @Transactional
     fun unfreeze(userId: String): CardView {
+        // Same real gap, same reasoning as freeze above.
+        rateLimiter.checkLimit("card:unfreeze:$userId", limit = 10, window = Duration.ofHours(1))
         val card = getCardOrThrow(userId)
         // Real one-way-state fix: `lost`/`closedAt` must never be self-service-
         // reversible the way an ordinary freeze is -- see DebitCard.kt's own doc
@@ -329,6 +342,15 @@ class CardService(
                 LedgerLeg("card_spend_expense", LedgerAccountType.CARD_SPEND_EXPENSE, LedgerDirection.CREDIT, amount, "Card purchase - $trimmedMerchant"),
             ),
         )
+
+        // Real gap found (2026-09-07, Card product-completeness pass): real money
+        // movement with zero FraudRuleEngine coverage -- AgentService.cashIn/cashOut,
+        // BillsService.payBill/buyAirtime, FloatMarketplaceService.acceptRequest, and
+        // P2pService.pay/send all already have this exact fix, this sibling service
+        // never did. recipientUserId is null -- a free-text merchant name isn't a
+        // recurring itunda counterparty the NEW_RECIPIENT rule's shape fits, so only
+        // HIGH_VALUE/VELOCITY apply, same reasoning those other call sites use.
+        fraudRuleEngine.evaluate(userId, null, amount, result.transactionId)
 
         val transaction = debitCardTransactionRepository.save(
             DebitCardTransaction(

@@ -109,9 +109,23 @@ class CardController(
     fun close(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "card" to cardService.closeCard(currentUser.userId)))
 
+    // Real gap found (2026-09-07, Card product-completeness pass): the same class
+    // of fix `issue` above got 2026-09-05 -- a lost response after a successful
+    // reissue currently fails the retry with CardNotEligibleForReissueException
+    // (the card is no longer lost/closed) instead of replaying the same success.
+    // No real request body -- currentUser.userId stands in for canonical-JSON
+    // purposes, same convention FloatMarketplaceController.acceptRequest already
+    // established for a no-body idempotent endpoint.
     @PostMapping("/reissue")
-    fun reissue(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "card" to cardService.reissue(currentUser.userId)))
+    fun reissue(
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/card/reissue", idempotencyKey, currentUser.userId) {
+            HttpStatus.OK.value() to mapOf("success" to true, "card" to cardService.reissue(currentUser.userId))
+        }
+        return ResponseEntity.status(status).body(body)
+    }
 
     @PutMapping("/pin")
     fun setPin(@RequestBody request: SetCardPinRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
