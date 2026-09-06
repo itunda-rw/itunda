@@ -493,6 +493,74 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  # Real, sixth product-level dashboard (2026-09-06, Talk product-completeness
+  # pass) -- see docs/ARCHITECTURE.md's dated follow-up. Talk (:messaging +
+  # :calling) stays inside the shared `backend` monolith deployment (not
+  # extractable -- real reverse coupling from realestate/marketplace/gift/
+  # splitbill/rideshare/jobs/eats/merchant, plus :calling's real circular
+  # dependency on :app's MessagingWebSocketHandler), so this follows the same
+  # pattern as itunda-bank/pay/merchant/wealth: route-filtered request-rate/
+  # error-rate/latency panels, no per-service JVM/pods-up panel (no new,
+  # separately deployed JVM to chart). Real route prefixes confirmed by
+  # reading each controller directly: /api/v1/messages(/groups), /api/v1/calls,
+  # /api/v1/emoticons, /api/v1/talk/ai-chat, /api/v1/chat/reports.
+  name: grafana-dashboard-itunda-talk
+  namespace: monitoring
+data:
+  itunda-talk.json: |
+    {
+      "title": "itunda Talk",
+      "uid": "itunda-talk",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Talk request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(messages|calls|emoticons|talk|chat)(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Talk error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(messages|calls|emoticons|talk|chat)(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Talk request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(messages|calls|emoticons|talk|chat)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(messages|calls|emoticons|talk|chat)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: grafana-dashboard-itunda-private-cloud
   namespace: monitoring
 data:
@@ -648,6 +716,8 @@ spec:
               name: grafana-dashboard-itunda-wealth
           - configMap:
               name: grafana-dashboard-itunda-insurance
+          - configMap:
+              name: grafana-dashboard-itunda-talk
           - configMap:
               name: grafana-dashboard-itunda-private-cloud
 ---
