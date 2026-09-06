@@ -42,6 +42,7 @@ export type TranslationKey =
   | 'tabs.collect'
   | 'tabs.pos'
   | 'tabs.eatsOrders'
+  | 'tabs.commerceOrders'
   | 'tabs.dineIn'
   | 'tabs.bookings'
   | 'tabs.reports'
@@ -119,6 +120,19 @@ export type TranslationKey =
   | 'eatsOrders.itemUnavailableError'
   | 'eatsOrders.markPrefix'
   | 'eatsOrders.empty'
+  // Real Coupang-style Shop/Commerce order queue -- see screens/CommerceOrdersScreen
+  // .tsx's own doc comment. Same real shape as eatsOrders.* above, for Shop instead
+  // of Eats.
+  | 'commerceOrders.statusPlaced'
+  | 'commerceOrders.statusPacked'
+  | 'commerceOrders.statusShipped'
+  | 'commerceOrders.statusDelivered'
+  | 'commerceOrders.statusCancelled'
+  | 'commerceOrders.loadError'
+  | 'commerceOrders.updateError'
+  | 'commerceOrders.updating'
+  | 'commerceOrders.markPrefix'
+  | 'commerceOrders.empty'
   // Real 5th-localization-pass additions (2026-08-15): DineInScreen -- the real
   // 배민오더-style table/QR in-store ordering screen (QR generator + live table-order
   // queue), a real daily-use screen for any sit-down restaurant merchant.
@@ -648,6 +662,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'tabs.collect': 'Collect',
     'tabs.pos': 'POS',
     'tabs.eatsOrders': 'Eats orders',
+    'tabs.commerceOrders': 'Shop orders',
     'tabs.dineIn': 'Dine-in',
     'tabs.bookings': 'Bookings',
     'tabs.reports': 'Reports',
@@ -719,6 +734,16 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'eatsOrders.itemUnavailableError': 'Could not mark this item unavailable.',
     'eatsOrders.markPrefix': 'Mark',
     'eatsOrders.empty': 'No Eats orders yet. Orders placed against your restaurant will show up here.',
+    'commerceOrders.statusPlaced': 'Placed',
+    'commerceOrders.statusPacked': 'Packed',
+    'commerceOrders.statusShipped': 'Shipped',
+    'commerceOrders.statusDelivered': 'Delivered',
+    'commerceOrders.statusCancelled': 'Cancelled — refunded',
+    'commerceOrders.loadError': 'Could not load your Shop orders.',
+    'commerceOrders.updateError': 'Could not update this order.',
+    'commerceOrders.updating': 'Updating…',
+    'commerceOrders.markPrefix': 'Mark',
+    'commerceOrders.empty': 'No Shop orders yet. Orders placed against your store will show up here.',
     'dineIn.qrTitle': 'Table QR codes',
     'dineIn.qrBody': 'Print this and leave it on a table -- a customer scans it to order straight to that table.',
     'dineIn.tableNumberPlaceholder': 'Table number',
@@ -1217,6 +1242,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'tabs.collect': 'Kwakira',
     'tabs.pos': 'POS',
     'tabs.eatsOrders': 'Itumiza ry\'ibiryo',
+    'tabs.commerceOrders': 'Itumiza rya Shop',
     'tabs.dineIn': 'Kurira ku meza',
     'tabs.bookings': 'Gahunda',
     'tabs.reports': 'Raporo',
@@ -1288,6 +1314,16 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'eatsOrders.itemUnavailableError': 'Ntibishoboka kwemeza ko iki kiribwa kidahari.',
     'eatsOrders.markPrefix': 'Emeza',
     'eatsOrders.empty': 'Nta itumiza ry\'ibiryo urafite. Itumiza ryakorewe resitora yawe rizagaragara hano.',
+    'commerceOrders.statusPlaced': 'Byatanzwe',
+    'commerceOrders.statusPacked': 'Byapakiwe',
+    'commerceOrders.statusShipped': 'Byoherejwe',
+    'commerceOrders.statusDelivered': 'Byageze',
+    'commerceOrders.statusCancelled': 'Byahagaritswe — hasubijwe amafaranga',
+    'commerceOrders.loadError': 'Ntibishoboka gushakisha itumiza ryawe rya Shop.',
+    'commerceOrders.updateError': 'Ntibishoboka kuvugurura iri tumiza.',
+    'commerceOrders.updating': 'Kuvugurura…',
+    'commerceOrders.markPrefix': 'Emeza',
+    'commerceOrders.empty': 'Nta itumiza rya Shop urafite. Itumiza ryakorewe iduka ryawe rizagaragara hano.',
     'dineIn.qrTitle': 'QR code z\'ameza',
     'dineIn.qrBody': 'Chapa iyi uyishyire ku meza -- umukiriya ayisikana atumiza akoresheje iryo tebulo.',
     'dineIn.tableNumberPlaceholder': 'Nomero y\'itebulo',
@@ -1786,6 +1822,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'tabs.collect': 'Encaisser',
     'tabs.pos': 'Caisse',
     'tabs.eatsOrders': 'Commandes Eats',
+    'tabs.commerceOrders': 'Commandes Shop',
     'tabs.dineIn': 'Sur place',
     'tabs.bookings': 'Réservations',
     'tabs.reports': 'Rapports',
@@ -1857,6 +1894,16 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'eatsOrders.itemUnavailableError': 'Impossible de marquer cet article comme indisponible.',
     'eatsOrders.markPrefix': 'Marquer',
     'eatsOrders.empty': 'Aucune commande Eats pour le moment. Les commandes passées à votre restaurant apparaîtront ici.',
+    'commerceOrders.statusPlaced': 'Passée',
+    'commerceOrders.statusPacked': 'Emballée',
+    'commerceOrders.statusShipped': 'Expédiée',
+    'commerceOrders.statusDelivered': 'Livrée',
+    'commerceOrders.statusCancelled': 'Annulée — remboursée',
+    'commerceOrders.loadError': 'Impossible de charger vos commandes Shop.',
+    'commerceOrders.updateError': 'Impossible de mettre à jour cette commande.',
+    'commerceOrders.updating': 'Mise à jour…',
+    'commerceOrders.markPrefix': 'Marquer',
+    'commerceOrders.empty': 'Aucune commande Shop pour le moment. Les commandes passées à votre boutique apparaîtront ici.',
     'dineIn.qrTitle': 'Codes QR des tables',
     'dineIn.qrBody': 'Imprimez-le et laissez-le sur une table -- un client le scanne pour commander directement à cette table.',
     'dineIn.tableNumberPlaceholder': 'Numéro de table',

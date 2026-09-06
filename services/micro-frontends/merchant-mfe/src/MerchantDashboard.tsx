@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Briefcase, CalendarClock, CircleDollarSign, CreditCard, HandCoins, Images, LogOut, Megaphone, Newspaper, QrCode, Settings, ShoppingCart, Star, Store, Tag, Users2, Utensils, UtensilsCrossed, Users } from 'lucide-react';
+import { Briefcase, CalendarClock, CircleDollarSign, CreditCard, HandCoins, Images, LogOut, Megaphone, Newspaper, Package, QrCode, Settings, ShoppingCart, Star, Store, Tag, Users2, Utensils, UtensilsCrossed, Users } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
 import { getMyMerchant, type Merchant } from './lib/merchant';
 import type { MerchantWithPhotos } from './lib/merchantPhotos';
@@ -11,6 +11,7 @@ import BillingScreen from './screens/BillingScreen';
 import BookingScreen from './screens/BookingScreen';
 import BusinessAccountScreen from './screens/BusinessAccountScreen';
 import CollectScreen from './screens/CollectScreen';
+import CommerceOrdersScreen from './screens/CommerceOrdersScreen';
 import CouponsScreen from './screens/CouponsScreen';
 import DineInScreen from './screens/DineInScreen';
 import EatsOrdersScreen from './screens/EatsOrdersScreen';
@@ -25,7 +26,7 @@ import VendorCashAdvanceScreen from './screens/VendorCashAdvanceScreen';
 import VisitorAnalyticsScreen from './screens/VisitorAnalyticsScreen';
 import { QueueError, QueueSkeleton } from './QueueState';
 
-type Tab = 'collect' | 'pos' | 'eats' | 'dinein' | 'booking' | 'reports' | 'reviews' | 'updates' | 'photos' | 'billing' | 'coupons' | 'visitors' | 'ads' | 'business' | 'advance' | 'payroll' | 'settings';
+type Tab = 'collect' | 'pos' | 'eats' | 'commerce' | 'dinein' | 'booking' | 'reports' | 'reviews' | 'updates' | 'photos' | 'billing' | 'coupons' | 'visitors' | 'ads' | 'business' | 'advance' | 'payroll' | 'settings';
 
 // Real 2nd-localization-pass (2026-08-15): labelKey replaces a literal string so the
 // nav renders in the merchant's own chosen language -- see i18n/translations.ts's own
@@ -38,6 +39,10 @@ const TABS: { id: Tab; labelKey: TranslationKey; icon: typeof QrCode }[] = [
   // restaurant orders sees an honest empty state, not a hidden tab -- there's no
   // cheap way to know in advance whether a given merchant is a restaurant.
   { id: 'eats', labelKey: 'tabs.eatsOrders', icon: UtensilsCrossed },
+  // Real Coupang-style Shop/Commerce order queue (Shop/Commerce product-completeness
+  // pass) -- see screens/CommerceOrdersScreen.tsx's own doc comment. Same real
+  // "honest empty state, not a hidden tab" reasoning as Eats orders above.
+  { id: 'commerce', labelKey: 'tabs.commerceOrders', icon: Package },
   // Real 배민오더-style table/QR in-store ordering -- see lib/eats.ts's own
   // dineInTableQrPayload doc comment. Already real on Android/iOS MerchantApp since
   // 2026-07-25; found missing here via the same sweep that found Bookings below.
@@ -199,6 +204,7 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
         {tab === 'collect' && <CollectScreen />}
         {tab === 'pos' && <PosScreen />}
         {tab === 'eats' && <EatsOrdersScreen />}
+        {tab === 'commerce' && <CommerceOrdersScreen />}
         {tab === 'dinein' && <DineInScreen merchant={merchant} />}
         {tab === 'booking' && <BookingScreen />}
         {tab === 'reports' && <ReportsScreen />}
