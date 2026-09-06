@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactElement } from 'react';
-import { Bike as MotoIcon, Bus as BusIcon, Clock, Gift as GiftIcon, HandCoins, Navigation, RefreshCw, ScanFace, Timer, Wallet as AccountIcon } from 'lucide-react';
+import { Banknote, Bike as MotoIcon, Bus as BusIcon, Clock, Gift as GiftIcon, HandCoins, Navigation, RefreshCw, ScanFace, Timer, Wallet as AccountIcon } from 'lucide-react';
 import { IconChevronRight } from './icons/ItundaIcons';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -209,7 +209,7 @@ export function GetHelpLinks({ onOpenSupport }: { onOpenSupport: () => void }) {
 // itself uses. `onNavigateToTab` is narrowed to the one literal tab this rail ever
 // navigates to, rather than importing BankDashboard's full `Tab` union back into this
 // file (which is imported BY BankDashboard.tsx -- that would be circular).
-export function PayHubOtherServicesRail({ onCardsClick, onTransitClick, onMotoFareClick, onNavigateToTab }: { onCardsClick: () => void; onTransitClick: () => void; onMotoFareClick: () => void; onNavigateToTab: (tab: 'REWARDS') => void }) {
+export function PayHubOtherServicesRail({ onCardsClick, onTransitClick, onMotoFareClick, onAgentCashClick, onNavigateToTab }: { onCardsClick: () => void; onTransitClick: () => void; onMotoFareClick: () => void; onAgentCashClick: () => void; onNavigateToTab: (tab: 'REWARDS') => void }) {
   const items: { key: string; title: string; subtitle: string; icon: ReactElement; tint: string; onClick: () => void }[] = [
     { key: 'cards', title: 'Cards', subtitle: 'Manage your itunda cards', icon: <AccountIcon size={20} color="#8A2BE2" />, tint: 'rgba(138, 43, 226, 0.12)', onClick: onCardsClick },
     // Real Kigali public-transit stored-value balance (2026-08-27) -- see
@@ -218,6 +218,12 @@ export function PayHubOtherServicesRail({ onCardsClick, onTransitClick, onMotoFa
     // Real moto-taxi fare tap-collection (2026-08-27) -- see lib/motoFare.ts's own
     // doc comment for the full sourced account.
     { key: 'moto_fare', title: 'Collect a moto fare', subtitle: 'Drivers: tap or scan a rider’s code to collect a real fare', icon: <MotoIcon size={20} color="#D97706" />, tint: 'rgba(217, 119, 6, 0.12)', onClick: onMotoFareClick },
+    // Real gap closed 2026-09-07 (Agents product-completeness pass) -- see
+    // lib/agentWithdrawal.ts's own doc comment. Android's AgentCashScreen.kt has
+    // had this since it was built; bank-mfe never did, same entry-point placement
+    // (Pay tab, alongside Cards/Transit/Moto Fare) Android's own PayTab.
+    // onCashOutAtAgent uses.
+    { key: 'agent_cash', title: 'Cash out at an agent', subtitle: 'Create a one-time code to withdraw cash from a nearby itunda agent', icon: <Banknote size={20} color="#0EA5A5" />, tint: 'rgba(14, 165, 165, 0.12)', onClick: onAgentCashClick },
     { key: 'request_money', title: 'Request money', subtitle: 'Ask someone to send you a specific amount', icon: <HandCoins size={20} color="#14AE85" />, tint: 'rgba(20, 174, 133, 0.12)', onClick: () => document.getElementById('pay-request-money-section')?.scrollIntoView({ behavior: 'smooth' }) },
     { key: 'scheduled', title: 'Scheduled transfers', subtitle: 'Send on a future date, one time', icon: <Clock size={20} color="var(--itunda-indigo)" />, tint: 'var(--itunda-indigo-light)', onClick: () => document.getElementById('pay-scheduled-transfers-section')?.scrollIntoView({ behavior: 'smooth' }) },
     { key: 'delayed', title: 'Delayed transfers', subtitle: 'A short grace period to cancel before it sends', icon: <Timer size={20} color="#F2A93B" />, tint: 'rgba(242, 169, 59, 0.14)', onClick: () => document.getElementById('pay-delayed-transfers-section')?.scrollIntoView({ behavior: 'smooth' }) },

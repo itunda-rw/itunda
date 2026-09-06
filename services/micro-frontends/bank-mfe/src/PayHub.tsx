@@ -6,6 +6,7 @@ import { TransferFlow, type Tab } from './BankDashboard';
 import { PayMoneyDetail } from './PayMoneyDetail';
 import { CouponBoxView } from './CouponBoxView';
 import { MembershipView } from './MembershipView';
+import { AgentCashOutView } from './AgentCashOutView';
 import {
   averageCashbackRatePercent, FacePayStatusRow, GetHelpLinks, NearbyMerchantsDialog, NearbyMerchantsMap,
   PayHubOtherServicesRail, RewardsPreviewSection, RewardsSummaryRow,
@@ -168,6 +169,7 @@ export function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab:
   // full-screen-overlay way PayMoneyDetail already is above.
   const [showCouponBox, setShowCouponBox] = useState(false);
   const [showMembership, setShowMembership] = useState(false);
+  const [showAgentCash, setShowAgentCash] = useState(false);
   // Real itunda-issued card summary row -- see DebitCard.kt's own doc comment for
   // why this is itunda's own real, ledger-backed card simulation, not a real
   // Visa/Mastercard rail. null = genuinely not issued yet (real teaser state),
@@ -267,6 +269,10 @@ export function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab:
 
   if (showCouponBox) {
     return <CouponBoxView onBack={() => setShowCouponBox(false)} onBrowseMerchants={() => { setShowCouponBox(false); onNavigateToTab('SHOP'); }} />;
+  }
+
+  if (showAgentCash) {
+    return <AgentCashOutView onBack={() => setShowAgentCash(false)} onFindNearbyAgent={() => { setShowAgentCash(false); onNavigateToTab('MAP'); }} />;
   }
 
   if (showMembership) {
@@ -387,7 +393,7 @@ export function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab:
           existing icon set, nothing new invented for these rows beyond the icons
           imported at the top of this file (all real lucide-react icons already a
           dependency here). */}
-      <PayHubOtherServicesRail onCardsClick={onNavigateToCard} onTransitClick={() => onNavigateToTab('TRANSIT')} onMotoFareClick={() => onNavigateToTab('MOTO_FARE_COLLECT')} onNavigateToTab={onNavigateToTab} />
+      <PayHubOtherServicesRail onCardsClick={onNavigateToCard} onTransitClick={() => onNavigateToTab('TRANSIT')} onMotoFareClick={() => onNavigateToTab('MOTO_FARE_COLLECT')} onAgentCashClick={() => setShowAgentCash(true)} onNavigateToTab={onNavigateToTab} />
       <QuickActions onCardsClick={onNavigateToCard} />
       {rewardsPreview && <RewardsSummaryRow rewardsTotal={rewardsPreview.rewardsTotal} payBalance={account?.balance ?? null} />}
       {/* Real itunda-issued card summary row (itunda Pay redesign, 2026-08-28) --
