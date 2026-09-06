@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.LocationUpdateRateLimit
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Bike
 import rw.itunda.core.domain.BikeRentalSession
@@ -95,12 +96,12 @@ class BikeRentalService(
     }
 
     // Real bug found live (2026-08-02): unlike its direct siblings
-    // (RideDriverService.updateLocation, DesignatedDriverService.updateLocation --
-    // both real 20/minute for "a real client pushes a coordinate periodically"), this
-    // had no rate limit at all.
+    // (RideDriverService.updateLocation, DesignatedDriverService.updateLocation), this
+    // had no rate limit at all. Consolidated 2026-09-06 into
+    // auth/LocationUpdateRateLimit -- see its own doc comment.
     @Transactional
     fun updateLocation(ownerUserId: String, bikeId: String, latitude: Double, longitude: Double): Bike {
-        rateLimiter.checkLimit("bike:location:$ownerUserId", limit = 20, window = Duration.ofMinutes(1))
+        rateLimiter.checkLimit("bike:location:$ownerUserId", limit = LocationUpdateRateLimit.LIMIT, window = LocationUpdateRateLimit.WINDOW)
         if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
             throw InvalidBikeLocationException("Latitude must be between -90 and 90, longitude between -180 and 180")
         }

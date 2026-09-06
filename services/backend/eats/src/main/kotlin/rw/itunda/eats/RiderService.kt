@@ -1,6 +1,7 @@
 package rw.itunda.eats
 
 import org.springframework.stereotype.Service
+import rw.itunda.auth.LocationUpdateRateLimit
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Rider
 import rw.itunda.core.domain.AccountType
@@ -59,11 +60,11 @@ class RiderService(
     // got its first actual callers (the new standalone rider apps push a real coordinate
     // every 15s during an active delivery, plus once on going online) -- until then it
     // had zero client integration and so had never been sanity-checked the way every
-    // other real, exercised endpoint in this codebase routinely is. 20/min comfortably
-    // covers the real client's own cadence (~4/min) with headroom, while still bounding
-    // an abusive caller from writing to this row unboundedly.
+    // other real, exercised endpoint in this codebase routinely is. Consolidated
+    // 2026-09-06 into auth/LocationUpdateRateLimit -- see its own doc comment for the
+    // full sourcing (this is the traced origin of that shared constant).
     fun updateLocation(userId: String, latitude: Double, longitude: Double): Rider {
-        rateLimiter.checkLimit("eats:rider-location:$userId", limit = 20, window = Duration.ofMinutes(1))
+        rateLimiter.checkLimit("eats:rider-location:$userId", limit = LocationUpdateRateLimit.LIMIT, window = LocationUpdateRateLimit.WINDOW)
         if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
             throw InvalidRiderLocationException("Latitude must be between -90 and 90, longitude between -180 and 180")
         }

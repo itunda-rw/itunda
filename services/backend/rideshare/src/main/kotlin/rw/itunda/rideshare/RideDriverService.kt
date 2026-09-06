@@ -1,6 +1,7 @@
 package rw.itunda.rideshare
 
 import org.springframework.stereotype.Service
+import rw.itunda.auth.LocationUpdateRateLimit
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.RideDriver
 import rw.itunda.core.domain.AccountType
@@ -64,10 +65,10 @@ class RideDriverService(
 
     // Real GPS location update -- same "client owns when to push a fresh reading, this
     // backend never polls a device" model RiderService.updateLocation already
-    // establishes, same rate limit for the same reasoning (a real client pushes a
-    // coordinate periodically while online/on a trip, comfortably under 20/min).
+    // establishes. Consolidated 2026-09-06 into auth/LocationUpdateRateLimit -- see
+    // its own doc comment.
     fun updateLocation(userId: String, latitude: Double, longitude: Double): RideDriver {
-        rateLimiter.checkLimit("rideshare:driver-location:$userId", limit = 20, window = Duration.ofMinutes(1))
+        rateLimiter.checkLimit("rideshare:driver-location:$userId", limit = LocationUpdateRateLimit.LIMIT, window = LocationUpdateRateLimit.WINDOW)
         if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
             throw InvalidRideDriverLocationException("Latitude must be between -90 and 90, longitude between -180 and 180")
         }

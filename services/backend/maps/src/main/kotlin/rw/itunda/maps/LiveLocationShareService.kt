@@ -2,6 +2,7 @@ package rw.itunda.maps
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.LocationUpdateRateLimit
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LiveLocationShare
 import rw.itunda.core.geo.GeoUtils
@@ -78,15 +79,16 @@ class LiveLocationShareService(
         )
     }
 
-    // Real "client owns when to push a fresh reading" position update -- same 20/min
-    // rate limit and reasoning RideDriverService.updateLocation already establishes.
-    // Fans out to every one of this sharer's currently-active shares at once (a single
-    // real position push updates every real recipient watching it), rather than
-    // requiring one call per share -- matches how a real phone only has one real GPS
-    // reading to push regardless of how many people are watching it.
+    // Real "client owns when to push a fresh reading" position update -- same rate
+    // limit and reasoning RideDriverService.updateLocation already establishes,
+    // consolidated 2026-09-06 into auth/LocationUpdateRateLimit (see its own doc
+    // comment). Fans out to every one of this sharer's currently-active shares at once
+    // (a single real position push updates every real recipient watching it), rather
+    // than requiring one call per share -- matches how a real phone only has one real
+    // GPS reading to push regardless of how many people are watching it.
     @Transactional
     fun updateMyLocation(sharerUserId: String, latitude: Double, longitude: Double): Int {
-        rateLimiter.checkLimit("maps:location-share:update:$sharerUserId", limit = 20, window = Duration.ofMinutes(1))
+        rateLimiter.checkLimit("maps:location-share:update:$sharerUserId", limit = LocationUpdateRateLimit.LIMIT, window = LocationUpdateRateLimit.WINDOW)
         if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
             throw InvalidLiveLocationCoordinateException("Latitude must be between -90 and 90, longitude between -180 and 180")
         }

@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.LocationUpdateRateLimit
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.DesignatedDriver
 import rw.itunda.core.domain.DesignatedDriverTrip
@@ -116,10 +117,11 @@ class DesignatedDriverService(
     }
 
     // Same "client owns when to push a fresh reading" model RideDriverService.
-    // updateLocation already establishes, same rate limit for the same reasoning.
+    // updateLocation already establishes. Consolidated 2026-09-06 into
+    // auth/LocationUpdateRateLimit -- see its own doc comment.
     @Transactional
     fun updateLocation(userId: String, latitude: Double, longitude: Double): DesignatedDriver {
-        rateLimiter.checkLimit("designated-driver:location:$userId", limit = 20, window = Duration.ofMinutes(1))
+        rateLimiter.checkLimit("designated-driver:location:$userId", limit = LocationUpdateRateLimit.LIMIT, window = LocationUpdateRateLimit.WINDOW)
         if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
             throw InvalidDesignatedDriverLocationException("Latitude must be between -90 and 90, longitude between -180 and 180")
         }
