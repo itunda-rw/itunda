@@ -277,6 +277,22 @@ const NOTIFICATIONS_SERVICE_URL = process.env.NOTIFICATIONS_SERVICE_URL || 'http
 // stays real, deliberate hasRole("ADMIN") in the shared :security
 // SecurityConfig, unaffected by this extraction.
 const ANALYTICS_SERVICE_URL = process.env.ANALYTICS_SERVICE_URL || 'http://localhost:4014';
+// Real, fourteenth independently-deployable itunda product (2026-09-06) --
+// Bank product-completeness pass, see docs/ARCHITECTURE.md's dated follow-up.
+// Same routing-precedence reasoning as the other *_SERVICE_URL consts above.
+// :loans owns THREE distinct top-level route prefixes (see the three app.use
+// calls below): /api/v1/loans (covers /loans/vup and /loans/student too, same
+// sub-path prefix-match reasoning as :partners' own multi-prefix comment
+// above), /api/v1/cooperatives, and /api/v1/vendor-advance. Checked against
+// every other registered prefix here for a collision before adding --
+// deliberately singular /api/v1/account (unrelated, stays on `backend` this
+// pass, see staged-swimming-sun.md's own account of the real :account/:savings
+// reverse-coupling that ruled those two out) is a genuinely different string
+// from OVERVIEW_SERVICE_URL's existing plural /api/v1/accounts above (Express
+// app.use only matches on a "/" or end-of-string boundary after the prefix, so
+// neither route can ever swallow the other's traffic) -- not touched by this
+// service at all, named here only to record that the check was made.
+const LOANS_SERVICE_URL = process.env.LOANS_SERVICE_URL || 'http://localhost:4015';
 function parsePositiveTimeout(value, fallback) {
     const parsed = Number.parseInt(value, 10);
     return Number.isInteger(parsed) && parsed >= 1000 ? parsed : fallback;
@@ -487,6 +503,9 @@ app.use('/api/v1/knowledge', upstreamProxy(KNOWLEDGE_SERVICE_URL));
 app.use('/api/v1/talk/service-channel', upstreamProxy(NOTIFICATIONS_SERVICE_URL));
 app.use('/api/v1/notifications', upstreamProxy(NOTIFICATIONS_SERVICE_URL));
 app.use('/api/v1/analytics', upstreamProxy(ANALYTICS_SERVICE_URL));
+app.use('/api/v1/loans', moneyMovementLimiter, upstreamProxy(LOANS_SERVICE_URL));
+app.use('/api/v1/cooperatives', moneyMovementLimiter, upstreamProxy(LOANS_SERVICE_URL));
+app.use('/api/v1/vendor-advance', moneyMovementLimiter, upstreamProxy(LOANS_SERVICE_URL));
 
 app.use('/api/v1', upstreamProxy(BACKEND_URL));
 

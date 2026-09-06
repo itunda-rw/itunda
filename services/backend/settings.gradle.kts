@@ -109,5 +109,13 @@ include(
     // confirmed to have zero Gradle-level coupling with any other product
     // module.
     ":analytics-service",
+    // Real, fourteenth independently-deployable module (2026-09-06) -- see
+    // loans-service/build.gradle.kts's own doc comment: :loans was confirmed to
+    // have zero Gradle-level coupling with any other product module (unlike
+    // :account/:savings, which have real reverse coupling from commerce/eats/
+    // gift/merchant/p2p/rideshare and p2p respectively -- see
+    // docs/ARCHITECTURE.md's dated follow-up for the full account of why those
+    // two stayed in :app this pass).
+    ":loans-service",
     ":app"
 )

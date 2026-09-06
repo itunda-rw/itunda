@@ -27,7 +27,12 @@ dependencies {
     // independently-deployable bills-service, the sixth product after
     // :card/:insurance/:agents/:transit/:certificate. Confirmed via repo-wide
     // grep: nothing else in :app reaches into rw.itunda.bills directly.
-    implementation(project(":loans"))
+    // :loans removed (2026-09-06) -- extracted into its own
+    // independently-deployable loans-service, the fourteenth product after
+    // :card/:insurance/:agents/:transit/:certificate/:bills/:vehicle/:partners/
+    // :identity/:overview/:knowledge/:notifications/:analytics. Confirmed via
+    // repo-wide grep: nothing else in :app (or any other module) declares
+    // project(":loans") or reaches into rw.itunda.loans directly.
     implementation(project(":contacts"))
     implementation(project(":stocks"))
     implementation(project(":savings"))
