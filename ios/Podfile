@@ -112,3 +112,12 @@ end
 target 'FeatureRide' do
   pod 'MapLibre'
 end
+
+# Real Shop Feature-module extraction (2026-09-07, Shop/Commerce product-completeness
+# pass) -- SimpleLiveRiderMiniMap.swift (Shop's own real live-tracking map, moved
+# alongside it -- its only real consumer, ShopMerchantOrders.swift, moved into the
+# same module) imports MapLibre directly, same per-Tuist-target CocoaPods
+# integration requirement as FeatureMaps/FeatureEats/FeatureRide above.
+target 'FeatureShop' do
+  pod 'MapLibre'
+end

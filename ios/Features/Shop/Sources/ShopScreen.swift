@@ -50,8 +50,12 @@ struct CommerceCheckoutResult: Identifiable {
     let error: String?
 }
 
-struct CommerceShopContent: View {
+public struct CommerceShopContent: View {
     var onMessageSeller: (String) -> Void = { _ in } // default no-op keeps both existing call sites unchanged
+
+    public init(onMessageSeller: @escaping (String) -> Void = { _ in }) {
+        self.onMessageSeller = onMessageSeller
+    }
 
     @State private var view: CommerceView = .browse
     @State private var merchants: [ShoppingMerchantDto]?
@@ -126,19 +130,7 @@ struct CommerceShopContent: View {
 
     private var totalItems: Int { cart.values.reduce(0) { $0 + $1.quantity } }
 
-    private func searchProducts() async {
-        let q = productSearchInput.trimmingCharacters(in: .whitespaces)
-        guard !q.isEmpty else { return }
-        productSearching = true
-        do {
-            productSearchResults = try await NetworkClient.shared.searchProducts(q, businessType: "SHOP").products
-        } catch {
-            productSearchResults = []
-        }
-        productSearching = false
-    }
-
-    var body: some View {
+    public var body: some View {
         Group {
             if let results {
                 MultiCartResultsView(results: results, onDone: {
@@ -322,51 +314,14 @@ struct CommerceShopContent: View {
                             }
                             .padding(.vertical, 10).frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        HStack(spacing: 8) {
-                            TextField("Search products across every merchant", text: $productSearchInput)
-                                .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
-                            Button(action: { Task { await searchProducts() } }) {
-                                Text(productSearching ? "…" : "Search").bold().foregroundColor(.white)
-                                    .padding(.horizontal, 16).padding(.vertical, 14)
-                                    .background(productSearching || productSearchInput.trimmingCharacters(in: .whitespaces).isEmpty ? IDS.Colors.textTertiary : IDS.Colors.brand)
-                                    .cornerRadius(10)
-                            }
-                            .disabled(productSearching || productSearchInput.trimmingCharacters(in: .whitespaces).isEmpty)
-                            if productSearchResults != nil {
-                                Button(action: { productSearchResults = nil; productSearchInput = "" }) {
-                                    Text("Clear").bold().foregroundColor(IDS.Colors.textPrimary)
-                                        .padding(.horizontal, 16).padding(.vertical, 14)
-                                        .background(IDS.Colors.textTertiary).cornerRadius(10)
-                                }
-                            }
-                        }
+                        ShopProductSearchSection(
+                            query: $productSearchInput,
+                            results: $productSearchResults,
+                            searching: $productSearching,
+                            onOpenMerchant: { m in Task { await openMerchant(m) } }
+                        )
 
-                        if let productSearchResults {
-                            if productSearchResults.isEmpty {
-                                Text("No products matched \"\(productSearchInput)\".").foregroundColor(IDS.Colors.textSecondary)
-                            } else {
-                                ForEach(productSearchResults) { r in
-                                    Button(action: {
-                                        Task {
-                                            await openMerchant(ShoppingMerchantDto(merchantId: r.merchantId, businessName: r.merchantName, category: nil, cashbackRate: "1%"))
-                                        }
-                                    }) {
-                                        HStack(spacing: 12) {
-                                            ProductImageThumb(imageUrl: r.imageUrl, side: 48)
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text(r.name).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-                                                Text(r.merchantName).font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                                                Text(r.stockQuantity.map { $0 == 0 ? "Out of stock" : "\($0) available" } ?? "Available").font(.caption).foregroundColor(r.stockQuantity == 0 ? .red : IDS.Colors.textSecondary)
-                                                if r.isBestSeller { ShopBestSellerBadge() }
-                                            }
-                                            Spacer()
-                                            Text("\(formatAmount(Int(r.price))) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-                                        }
-                                        .padding(.vertical, 10)
-                                    }
-                                }
-                            }
-                        } else {
+                        if productSearchResults == nil {
                         // Real "recently viewed products" rail (2026-08-23) -- see
                         // RecentlyViewedStores.swift's own doc comment. Same "merchandising
                         // above the raw list, hidden once filtering starts" discipline the
@@ -374,58 +329,14 @@ struct CommerceShopContent: View {
                         // (same shortcut those rails use), not a possibly-stale cached
                         // product snapshot.
                         if selectedCategory == nil, searchInput.trimmingCharacters(in: .whitespaces).isEmpty, !recentlyViewedProducts.isEmpty {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("🕒 Recently viewed").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 10) {
-                                        ForEach(recentlyViewedProducts) { rv in
-                                            Button(action: {
-                                                Task { await openMerchant(ShoppingMerchantDto(merchantId: rv.merchantId, businessName: rv.businessName, category: nil, cashbackRate: "1%")) }
-                                            }) {
-                                                VStack(alignment: .leading, spacing: 6) {
-                                                    ProductImageThumb(imageUrl: rv.imageUrl, side: 96)
-                                                    Text(rv.name).font(.caption).bold().foregroundColor(IDS.Colors.textPrimary).lineLimit(2)
-                                                    if let discountPercent = rv.discountPercent, discountPercent > 0 {
-                                                        Text("\(discountPercent)% off").font(.caption2).bold().foregroundColor(.red)
-                                                    }
-                                                    Text("\(formatAmount(Int(rv.price))) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
-                                                }
-                                            }
-                                            .buttonStyle(.plain)
-                                        }
-                                    }
-                                }
-                            }
+                            ShopRecentlyViewedRail(products: recentlyViewedProducts, onOpenMerchant: { m in Task { await openMerchant(m) } })
                         }
                         // Real 당근(Karrot) 반경 타기팅-style nearby ads rail -- only shown
                         // on the unfiltered landing state, same discipline the Deals rail
                         // below follows. Tapping one opens that merchant's real catalog,
                         // same minimal-ShoppingMerchantDto shortcut the Deals rail uses.
                         if selectedCategory == nil, searchInput.trimmingCharacters(in: .whitespaces).isEmpty, !nearbyAds.isEmpty {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("📍 Near you").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 10) {
-                                        ForEach(nearbyAds) { a in
-                                            Button(action: {
-                                                Task { await openMerchant(ShoppingMerchantDto(merchantId: a.ad.merchantId, businessName: a.businessName, category: nil, cashbackRate: "1%")) }
-                                            }) {
-                                                VStack(alignment: .leading, spacing: 4) {
-                                                    Text(a.ad.title).font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
-                                                    Text(a.businessName).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
-                                                    if let description = a.ad.description, !description.isEmpty {
-                                                        Text(description).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
-                                                    }
-                                                    Text(String(format: "%.1f km away", a.distanceKm)).font(.caption2).bold().foregroundColor(IDS.Colors.brand)
-                                                }
-                                                .padding(10).frame(width: 160, alignment: .leading)
-                                                .background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
-                                            }
-                                            .buttonStyle(.plain)
-                                        }
-                                    }
-                                }
-                            }
+                            ShopNearbyAdsRail(ads: nearbyAds, onOpenMerchant: { m in Task { await openMerchant(m) } })
                         }
                         // Real "Deals" rail (2026-07-25) -- only shown on the
                         // unfiltered landing state, same "merchandising above the raw
@@ -513,32 +424,17 @@ struct CommerceShopContent: View {
     // Android's identical ShopScreen.kt fix and EatsScreen.swift's own existing
     // businessType: "RESTAURANT" call, which this mirrors.
     private func loadMerchants() async {
-        do {
-            let q = searchInput.trimmingCharacters(in: .whitespaces)
-            let res = try await NetworkClient.shared.getShoppingMerchants(category: selectedCategory, businessType: "SHOP", q: q.isEmpty ? nil : q)
-            merchants = res.merchants
-            error = nil
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
+        let result = await loadShopMerchants(selectedCategory: selectedCategory, searchInput: searchInput)
+        if let loaded = result.merchants { merchants = loaded }
+        error = result.error
     }
 
     private func openMerchant(_ merchant: ShoppingMerchantDto) async {
         selectedMerchant = merchant
         products = nil
-        do {
-            let res = try await NetworkClient.shared.getMerchantProducts(merchantId: merchant.merchantId)
-            // Real filter (2026-08-25, direct user feedback: "booking... supposed to be
-            // in itunda place not in itunda shopping") -- a product with a real
-            // durationMinutes set is a real-time appointment at this merchant's
-            // physical location, not a cart-able online good, so it no longer shows in
-            // Shop's own catalog at all. Booking now lives in itunda Place
-            // (Features/Maps/Sources/MapsBooking.swift), reachable from the same real
-            // merchant pinned on the map.
-            products = res.products.filter { $0.durationMinutes == nil }
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
+        let result = await loadShopMerchantProducts(merchantId: merchant.merchantId)
+        if let loaded = result.products { products = loaded }
+        if let err = result.error { error = err }
     }
 
     // Real "recently viewed products" rail (2026-08-23) -- see

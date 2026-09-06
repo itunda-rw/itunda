@@ -277,7 +277,7 @@ struct MyCommerceOrdersView: View {
             _ = try await NetworkClient.shared.cancelOrder(orderId)
             await load()
         } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
+            error = errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }

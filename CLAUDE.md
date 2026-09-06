@@ -79,21 +79,28 @@ whichever one is wrong; never let them silently drift apart.
   its `Sources/` and removing the placeholder `Dummy.swift`, no per-module manifest
   edits needed). Confirmed 2026-09-07, real per-module file counts: `Banking`/`Credit`/
   `Maps`/`Payments`/`Home`/`Menu`/`My`/`Pay`/`Wealth`/`Assets`/`Certificate`/`Identity`/
-  `Support`/`Eats`/`Ride` all have real, populated Feature modules (`Eats` extracted
-  2026-09-06, `Ride` extracted 2026-09-07, both out of `App/Sources`, each product-
-  completeness pass's own real architecture-consistency fix — see each pass's own
-  real blockers: `RouteMiniMap`/`SearchAndCategoryChips`/`SilentLocationFetcher`
-  promoted to `Core/DesignSystem/Sources/Components` since still-App-only Hood/Shop
-  screens also needed them; `TalkScreen.errorMessage`/`ShopBestSellerBadge`/
-  `colorFromHex`/`eatsGoodPointOptions` given local per-file copies, matching
-  `FeatureMaps`'s/`FeatureMy`'s own existing duplicate-small-utility convention;
-  `ReorderButton` needed a real duplicate in Commerce's `ShopMerchantOrders.swift`,
-  same as Android already has; `Ride`'s own `colorFromHex` reuse site
-  (`ShopProductDetail.swift`) got the identical fix). `Bills`/`Insurance` are
-  correctly empty (Saronite/React-Native mini-apps, not native). `Engagement`/
-  `Merchant` remain empty on both platforms — a
-  real product-scope gap (no mapped screen yet), matching Android exactly.
-  `tuist generate && pod install` before `xcodebuild`.
+  `Support`/`Eats`/`Ride`/`Shop` all have real, populated Feature modules (`Eats`
+  extracted 2026-09-06, `Ride` and `Shop` extracted 2026-09-07, all out of
+  `App/Sources`, each product-completeness pass's own real architecture-consistency
+  fix — see each pass's own real blockers: `RouteMiniMap`/`SearchAndCategoryChips`/
+  `SilentLocationFetcher` promoted to `Core/DesignSystem/Sources/Components` since
+  still-App-only Hood/Shop screens also needed them; `TalkScreen.errorMessage`/
+  `ShopBestSellerBadge`/`colorFromHex`/`eatsGoodPointOptions` given local per-file
+  copies, matching `FeatureMaps`'s/`FeatureMy`'s own existing duplicate-small-utility
+  convention; `ReorderButton` needed a real duplicate in Commerce's
+  `ShopMerchantOrders.swift`, same as Android already has; `Ride`'s own
+  `colorFromHex` reuse site (`ShopProductDetail.swift`) got the identical fix;
+  `Shop`'s own extraction found a whole extra file only a real compiler error
+  surfaced (`SimpleLiveRiderMiniMap.swift`, never promoted during the Eats pass,
+  moved alongside its only real consumer `ShopMerchantOrders.swift`) and correctly
+  left `ShopPay.swift` in `Features/Pay/Sources` despite its name — its real
+  consumer `PayHomeExtras.swift` lives in that same module, and moving it would
+  violate the Feature-isolation boundary; Android's own `:features:shop:impl`
+  placement for the equivalent code is a real cross-platform naming inconsistency,
+  not evidence of an iOS placement bug). `Bills`/`Insurance` are correctly empty
+  (Saronite/React-Native mini-apps, not native). `Engagement`/`Merchant` remain
+  empty on both platforms — a real product-scope gap (no mapped screen yet),
+  matching Android exactly. `tuist generate && pod install` before `xcodebuild`.
 - `packages/design-tokens/tokens.css` — the single real source of truth for color/type
   tokens across every web workspace; matches Toss's own published TDS hex values exactly.
 

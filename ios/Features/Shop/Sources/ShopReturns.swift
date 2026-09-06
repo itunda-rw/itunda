@@ -87,7 +87,7 @@ struct ReturnExchangeAction: View {
             )
             done = true
         } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
-            error = message ?? TalkScreen.errorMessage(statusCode)
+            error = message ?? errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }

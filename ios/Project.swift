@@ -208,7 +208,24 @@ let featureDependencies: [TargetDependency] = [
 // (RideScreenView.swift/RideSharedComponents.swift/DesignatedDriverScreenView.swift)
 // living in App/Sources. RideScreenView (the one real external call site, from
 // MenuTabContent.swift) made public.
-let featureModules = ["Payments", "Bills", "Merchant", "Credit", "Wealth", "Insurance", "Engagement", "Assets", "Banking", "Maps", "Certificate", "Identity", "Support", "Home", "Pay", "Menu", "My", "Eats", "Ride"]
+// "Shop" added 2026-09-07 (Shop/Commerce product-completeness pass) -- same real gap
+// class as Eats/Ride: iOS had zero Features/Shop module despite ~3,281 real lines
+// across 13 files living in App/Sources. CommerceShopContent (the one real external
+// call site, from ContentView.swift) made public. RecentlyViewedStores.swift (by
+// this point already Shop-only -- its Eats half moved out during the Eats pass) came
+// along too, renamed ShopRecentlyViewedStore.swift to match that same convention.
+// A real, deliberate NON-move found and corrected before executing: an earlier
+// research pass assumed Features/Pay/Sources/ShopPay.swift was misplaced purely from
+// its name, but its real content (PayAMerchantSection/FacePaySettingsCard/
+// PayByCodeCard/PayByStaticQrCard) is consumed by PayHomeExtras.swift, which lives in
+// that same FeaturePay module -- moving it would either violate the real Feature-
+// isolation boundary (scripts/ios-silo-boundary-check.py forbids a cross-Feature-impl
+// import) or need disproportionate Interface-layer restructuring for what are
+// concrete SwiftUI Views, not thin contracts. Android's own :features:shop:impl
+// groups the identical real content under Shop, so this is a genuine naming
+// inconsistency between platforms -- but the file's current iOS placement is
+// structurally correct, not a bug, so it was deliberately left in Pay.
+let featureModules = ["Payments", "Bills", "Merchant", "Credit", "Wealth", "Insurance", "Engagement", "Assets", "Banking", "Maps", "Certificate", "Identity", "Support", "Home", "Pay", "Menu", "My", "Eats", "Ride", "Shop"]
 for feature in featureModules {
     allTargets.append(contentsOf: makeMicroFeature(name: feature, dependencies: featureDependencies))
 }

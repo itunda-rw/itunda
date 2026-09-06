@@ -10,6 +10,7 @@ import FeatureMaps
 import FeatureMy
 import FeaturePay
 import FeaturePayments
+import FeatureShop
 import FeatureSupport
 import FeatureWealth
 

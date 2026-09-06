@@ -239,7 +239,7 @@ struct ProductReviewRow: View {
             if statusCode == 409 {
                 done = true
             } else {
-                error = TalkScreen.errorMessage(statusCode)
+                error = errorMessage(statusCode)
             }
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."

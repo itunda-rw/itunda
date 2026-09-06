@@ -5,6 +5,22 @@ import CoreNetwork
 // CommerceShopContent's own methods -- explicit params/return values instead of
 // `self.` state mutation, same technique used for Android's ShopDetailDispatch.kt.
 
+// TalkScreen.errorMessage (App-only, 23 other real callers) isn't reachable from a
+// Feature module, so this Feature keeps its own local copy -- same real precedent
+// FeatureMy's/FeatureEats'/FeatureRide's own copies already established. Internal
+// (not private), since 4 files across this module call it.
+func errorMessage(_ statusCode: Int) -> String {
+    switch statusCode {
+    case 400: return "Please check what you entered and try again."
+    case 401, 403: return "You don't have access to do that."
+    case 404: return "That couldn't be found."
+    case 409: return "That's already been done, or is being processed."
+    case 422: return "Insufficient funds for this order."
+    case 429: return "Too many attempts -- please wait a moment and try again."
+    default: return "Something went wrong. Please try again."
+    }
+}
+
 func loadShopFollowedMerchantIds() async -> Set<String>? {
     do {
         let res = try await NetworkClient.shared.getMyFollowedMerchants()
@@ -52,6 +68,63 @@ func toggleShopProductFavoriteIds(_ productId: String, favoriteProductIds: Set<S
         }
     } catch {
         return (nil, "Couldn't reach itunda. Check your connection and try again.")
+    }
+}
+
+struct ShopMerchantsLoadResult {
+    let merchants: [ShoppingMerchantDto]?
+    let error: String?
+}
+
+// Extracted out of CommerceShopContent.loadMerchants (2026-09-07, Shop/Commerce
+// product-completeness pass) once ShopScreen.swift crossed the file-size-lint
+// 500-line guideline -- same real "explicit params/return values" technique this
+// file's own doc comment already established.
+func loadShopMerchants(selectedCategory: String?, searchInput: String) async -> ShopMerchantsLoadResult {
+    do {
+        let q = searchInput.trimmingCharacters(in: .whitespaces)
+        let res = try await NetworkClient.shared.getShoppingMerchants(category: selectedCategory, businessType: "SHOP", q: q.isEmpty ? nil : q)
+        return ShopMerchantsLoadResult(merchants: res.merchants, error: nil)
+    } catch {
+        return ShopMerchantsLoadResult(merchants: nil, error: "Couldn't reach itunda. Check your connection and try again.")
+    }
+}
+
+struct ShopMerchantProductsLoadResult {
+    let products: [MerchantProductDto]?
+    let error: String?
+}
+
+// Extracted out of CommerceShopContent.openMerchant (2026-09-07, Shop/Commerce
+// product-completeness pass) -- same real extraction reasoning as
+// loadShopMerchants above.
+func loadShopMerchantProducts(merchantId: String) async -> ShopMerchantProductsLoadResult {
+    do {
+        let res = try await NetworkClient.shared.getMerchantProducts(merchantId: merchantId)
+        // Real filter (2026-08-25, direct user feedback: "booking... supposed to be
+        // in itunda place not in itunda shopping") -- a product with a real
+        // durationMinutes set is a real-time appointment at this merchant's
+        // physical location, not a cart-able online good, so it no longer shows in
+        // Shop's own catalog at all. Booking now lives in itunda Place
+        // (Features/Maps/Sources/MapsBooking.swift), reachable from the same real
+        // merchant pinned on the map.
+        return ShopMerchantProductsLoadResult(products: res.products.filter { $0.durationMinutes == nil }, error: nil)
+    } catch {
+        return ShopMerchantProductsLoadResult(products: nil, error: "Couldn't reach itunda. Check your connection and try again.")
+    }
+}
+
+// Extracted out of CommerceShopContent.searchProducts (2026-09-07, Shop/Commerce
+// product-completeness pass) alongside ShopProductSearchSection in
+// ShopBrowseComponents.swift -- same real extraction reasoning as loadShopMerchants
+// above. Matches the original's own "empty array, not nil, on error" behavior so a
+// failed search still clears the loading state into a real (empty) "no results"
+// view rather than reverting to the pre-search state.
+func searchShopProducts(_ query: String) async -> [ProductSearchResultDto]? {
+    do {
+        return try await NetworkClient.shared.searchProducts(query, businessType: "SHOP").products
+    } catch {
+        return []
     }
 }
 

@@ -305,7 +305,7 @@ struct MultiCartView: View {
                 needsDeviceVerification = true
                 return
             } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
-                checkoutResults.append(CommerceCheckoutResult(merchantId: group.merchantId, businessName: group.businessName, order: nil, error: message ?? TalkScreen.errorMessage(statusCode)))
+                checkoutResults.append(CommerceCheckoutResult(merchantId: group.merchantId, businessName: group.businessName, order: nil, error: message ?? errorMessage(statusCode)))
             } catch {
                 checkoutResults.append(CommerceCheckoutResult(merchantId: group.merchantId, businessName: group.businessName, order: nil, error: "Couldn't reach itunda. Check your connection and try again."))
             }

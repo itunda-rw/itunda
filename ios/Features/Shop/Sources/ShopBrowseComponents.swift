@@ -225,3 +225,138 @@ struct ShoppingPointsRow: View {
         }
     }
 }
+
+// Extracted out of ShopScreen.swift's own browseBody (2026-09-07, Shop/Commerce
+// product-completeness pass) once that file crossed the file-size-lint 500-line
+// guideline once the Feature-module extraction landed. Same real "self-contained,
+// mostly-presentational rail with an onOpenMerchant closure" convention
+// ShopDealsCarousels.swift's own ShopDealsCarousel/ShopTimeDealsCarousel already
+// established.
+
+// Real "recently viewed products" rail (2026-08-23) -- see
+// ShopRecentlyViewedStore.swift's own doc comment. Only shown on the unfiltered
+// landing state.
+struct ShopRecentlyViewedRail: View {
+    let products: [RecentlyViewedProduct]
+    let onOpenMerchant: (ShoppingMerchantDto) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("🕒 Recently viewed").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(products) { rv in
+                        Button(action: { onOpenMerchant(ShoppingMerchantDto(merchantId: rv.merchantId, businessName: rv.businessName, category: nil, cashbackRate: "1%")) }) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                ProductImageThumb(imageUrl: rv.imageUrl, side: 96)
+                                Text(rv.name).font(.caption).bold().foregroundColor(IDS.Colors.textPrimary).lineLimit(2)
+                                if let discountPercent = rv.discountPercent, discountPercent > 0 {
+                                    Text("\(discountPercent)% off").font(.caption2).bold().foregroundColor(.red)
+                                }
+                                Text("\(formatAmount(Int(rv.price))) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Real 당근(Karrot) 반경 타기팅-style nearby ads rail -- see lib/shopping.ts's own
+// NearbyMerchantAd doc comment. Only shown on the unfiltered landing state.
+struct ShopNearbyAdsRail: View {
+    let ads: [NearbyMerchantAdDto]
+    let onOpenMerchant: (ShoppingMerchantDto) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("📍 Near you").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(ads) { a in
+                        Button(action: { onOpenMerchant(ShoppingMerchantDto(merchantId: a.ad.merchantId, businessName: a.businessName, category: nil, cashbackRate: "1%")) }) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(a.ad.title).font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                Text(a.businessName).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                if let description = a.ad.description, !description.isEmpty {
+                                    Text(description).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                }
+                                Text(String(format: "%.1f km away", a.distanceKm)).font(.caption2).bold().foregroundColor(IDS.Colors.brand)
+                            }
+                            .padding(10).frame(width: 160, alignment: .leading)
+                            .background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Real cross-merchant product search (item 191) -- see NetworkClient.searchProducts's
+// own doc comment. Owns its own search invocation (searchShopProducts, in
+// ShopAsyncHandlers.swift) rather than taking an onSearch closure, since the
+// search/result/loading state triplet is only ever read/written together.
+struct ShopProductSearchSection: View {
+    @Binding var query: String
+    @Binding var results: [ProductSearchResultDto]?
+    @Binding var searching: Bool
+    let onOpenMerchant: (ShoppingMerchantDto) -> Void
+
+    var body: some View {
+        Group {
+            HStack(spacing: 8) {
+                TextField("Search products across every merchant", text: $query)
+                    .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
+                Button(action: { Task { await search() } }) {
+                    Text(searching ? "…" : "Search").bold().foregroundColor(.white)
+                        .padding(.horizontal, 16).padding(.vertical, 14)
+                        .background(searching || query.trimmingCharacters(in: .whitespaces).isEmpty ? IDS.Colors.textTertiary : IDS.Colors.brand)
+                        .cornerRadius(10)
+                }
+                .disabled(searching || query.trimmingCharacters(in: .whitespaces).isEmpty)
+                if results != nil {
+                    Button(action: { results = nil; query = "" }) {
+                        Text("Clear").bold().foregroundColor(IDS.Colors.textPrimary)
+                            .padding(.horizontal, 16).padding(.vertical, 14)
+                            .background(IDS.Colors.textTertiary).cornerRadius(10)
+                    }
+                }
+            }
+
+            if let results {
+                if results.isEmpty {
+                    Text("No products matched \"\(query)\".").foregroundColor(IDS.Colors.textSecondary)
+                } else {
+                    ForEach(results) { r in
+                        Button(action: { onOpenMerchant(ShoppingMerchantDto(merchantId: r.merchantId, businessName: r.merchantName, category: nil, cashbackRate: "1%")) }) {
+                            HStack(spacing: 12) {
+                                ProductImageThumb(imageUrl: r.imageUrl, side: 48)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(r.name).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                    Text(r.merchantName).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                    Text(r.stockQuantity.map { $0 == 0 ? "Out of stock" : "\($0) available" } ?? "Available").font(.caption).foregroundColor(r.stockQuantity == 0 ? .red : IDS.Colors.textSecondary)
+                                    if r.isBestSeller { ShopBestSellerBadge() }
+                                }
+                                Spacer()
+                                Text("\(formatAmount(Int(r.price))) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                            }
+                            .padding(.vertical, 10)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func search() async {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return }
+        searching = true
+        results = await searchShopProducts(q)
+        searching = false
+    }
+}
