@@ -29,19 +29,24 @@ whichever one is wrong; never let them silently drift apart.
   Kotest + MockK. `:card-service`, `:insurance-service`, `:agents-service`,
   `:transit-service`, `:certificate-service`, `:bills-service`, `:vehicle-service`,
   `:partners-service`, `:identity-service`, `:overview-service`, `:knowledge-service`,
-  `:notifications-service`, and `:analytics-service` (each its own Gradle module, own
-  bootJar/Dockerfile/k8s Deployment) are the first thirteen products extracted out of
-  `:app` into independently deployable services — same code, same shared MySQL schema,
-  not a separate database. See `docs/ARCHITECTURE.md`'s "First independently-deployable
-  product" row and its "Second" through "Thirteenth extraction" follow-ups (including the
-  confirmed-zero-coupling candidate list, how the `:identity`/`:partners`
-  shared-route-prefix collision was resolved by gateway registration order, a real
-  `:app`-source-level coupling that ruled out `:calling`, how `:bills-service` wires real
-  Kafka events, why any `hasRole("ADMIN")`-gated route needs a real admin JWT to verify
-  removal, and why a `:core`-shared implementation like `PushNotificationService` stays
-  in `:core` even after the module that surfaces it via REST is extracted) before
-  extracting another module the same way; the remaining candidate pool is genuinely thin
-  now.
+  `:notifications-service`, `:analytics-service`, and `:loans-service` (each its own
+  Gradle module, own bootJar/Dockerfile/k8s Deployment) are the first fourteen products
+  extracted out of `:app` into independently deployable services — same code, same
+  shared MySQL schema, not a separate database. See `docs/ARCHITECTURE.md`'s "First
+  independently-deployable product" row and its "Second" through "Fourteenth
+  extraction" follow-ups (including the confirmed-zero-coupling candidate list, how the
+  `:identity`/`:partners` shared-route-prefix collision was resolved by gateway
+  registration order, a real `:app`-source-level coupling that ruled out `:calling`, how
+  `:bills-service` wires real Kafka events, why any `hasRole("ADMIN")`-gated route needs
+  a real admin JWT to verify removal, why a `:core`-shared implementation like
+  `PushNotificationService` stays in `:core` even after the module that surfaces it via
+  REST is extracted, and — the Fourteenth extraction's own real finding — why `:account`
+  and `:savings` stay in `:app` for now despite looking superficially identical to
+  `:loans`: real reverse Gradle coupling from `commerce`/`eats`/`gift`/`merchant`/`p2p`/
+  `rideshare` (`AutoTopUpService`) and `p2p` (`RoundUpService`) respectively, a class of
+  coupling only found by grepping every OTHER module's own `build.gradle.kts` for
+  `project(":candidate")`, not just `:app`'s) before extracting another module the same
+  way; the remaining candidate pool is genuinely thin now.
 - `services/microservices/{payment-service,ledger-service,core-libs}` — a real, parallel,
   not-yet-reconciled hexagonal-architecture MSA prototype. Not superseded, not the default
   for new feature work.
