@@ -201,6 +201,73 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  # Real, second product-level dashboard (2026-09-06, Pay product-completeness
+  # pass) -- see docs/ARCHITECTURE.md's dated follow-up. Same zero-new-
+  # instrumentation approach as itunda-bank above: every route below already
+  # runs on `backend` (application="itunda") with Prometheus/actuator already
+  # flowing. No per-service JVM/pods-up panel here, unlike itunda-bank's --
+  # this pass's own backend-extraction attempt (:gift -> gift-service) was
+  # investigated and correctly ruled out (see staged-swimming-sun.md's own
+  # account of the real RealtimeMessagePublisher-via-:messaging blocker), so
+  # there is no new JVM to chart; all of Pay's routes still run on the one
+  # `backend` deployment charted by itunda-fleet's own "Pods up by app" panel.
+  name: grafana-dashboard-itunda-pay
+  namespace: monitoring
+data:
+  itunda-pay.json: |
+    {
+      "title": "itunda Pay",
+      "uid": "itunda-pay",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Pay request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(p2p|split-bills|gifts|gift-vouchers|pay|facepay)(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Pay error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(p2p|split-bills|gifts|gift-vouchers|pay|facepay)(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Pay request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(p2p|split-bills|gifts|gift-vouchers|pay|facepay)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(p2p|split-bills|gifts|gift-vouchers|pay|facepay)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: grafana-dashboard-itunda-private-cloud
   namespace: monitoring
 data:
@@ -348,6 +415,8 @@ spec:
               name: grafana-dashboard-itunda-fleet
           - configMap:
               name: grafana-dashboard-itunda-bank
+          - configMap:
+              name: grafana-dashboard-itunda-pay
           - configMap:
               name: grafana-dashboard-itunda-private-cloud
 ---
