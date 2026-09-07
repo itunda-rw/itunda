@@ -219,7 +219,12 @@ class MapsService(
     // itunda-owned place catalog -- two users saving "the same place" from the same real
     // search/nearby result get identical coordinates, the same assumption `addBookmark`'s
     // own idempotency check already relies on.
-    fun getTrendingSavedPlaces(days: Int, limit: Int): List<TrendingPlace> {
+    fun getTrendingSavedPlaces(userId: String, days: Int, limit: Int): List<TrendingPlace> {
+        // Rate limit added (Maps product-completeness pass, 2026-09-07) -- this is a
+        // real cross-user aggregate query with no throttle at all before this, unlike
+        // every other real read in this service (search/reverse/directions/nearby/
+        // around-me).
+        rateLimiter.checkLimit("maps:trending:$userId", limit = 20, window = Duration.ofMinutes(1))
         val since = java.time.Instant.now().minus(Duration.ofDays(days.toLong().coerceIn(1, 90)))
         return mapBookmarkRepository.findTrending(since, org.springframework.data.domain.PageRequest.of(0, limit.coerceIn(1, 50)))
             .map { TrendingPlace(it.getDisplayName(), it.getLatitude(), it.getLongitude(), it.getSaveCount()) }
@@ -332,6 +337,7 @@ class MapsService(
                 color = color,
                 isPublic = existing.isPublic,
                 createdAt = existing.createdAt,
+                version = existing.version,
             ),
         )
     }
@@ -358,6 +364,7 @@ class MapsService(
                     latitude = it.latitude, longitude = it.longitude,
                     folderName = it.folderName, color = it.color,
                     isPublic = isPublic, createdAt = it.createdAt,
+                    version = it.version,
                 )
             },
         )

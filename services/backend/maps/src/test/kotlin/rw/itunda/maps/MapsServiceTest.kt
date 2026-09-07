@@ -309,10 +309,24 @@ class MapsServiceTest : BehaviorSpec({
             every { projection.getSaveCount() } returns 4L
             every { mapBookmarkRepository.findTrending(any(), any()) } returns listOf(projection)
 
-            val results = service.getTrendingSavedPlaces(7, 10)
+            val results = service.getTrendingSavedPlaces("user_1", 7, 10)
 
             Then("it returns the real aggregate save count, not a fabricated popularity score") {
                 results shouldBe listOf(TrendingPlace("Real Popular Cafe", -1.9441, 30.0619, 4L))
+            }
+        }
+
+        When("the caller has exceeded the real rate limit") {
+            every { rateLimiter.checkLimit("maps:trending:user_1", limit = 20, window = Duration.ofMinutes(1)) } throws
+                RateLimitExceededException("Too many requests")
+
+            Then("it real-propagates RateLimitExceededException") {
+                try {
+                    service.getTrendingSavedPlaces("user_1", 7, 10)
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    // expected
+                }
             }
         }
     }
@@ -458,17 +472,22 @@ class MapsServiceTest : BehaviorSpec({
         }
 
         When("a real existing bookmark is moved to a different real folder") {
-            val existing = MapBookmark(id = "map_bookmark_1", userId = "user_1", displayName = "Kigali International Airport", latitude = lat, longitude = lng, folderName = "Saved places", color = "#F5A623")
+            val existing = MapBookmark(id = "map_bookmark_1", userId = "user_1", displayName = "Kigali International Airport", latitude = lat, longitude = lng, folderName = "Saved places", color = "#F5A623", version = 5L)
             every { mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude("user_1", lat, lng) } returns existing
             every { mapBookmarkRepository.save(any()) } answers { firstArg() }
 
             val moved = service.moveBookmark("user_1", lat, lng, "Cafes to try", "#8B5CF6")
 
-            Then("it real-preserves the original id/place while updating the real folder/color") {
+            Then("it real-preserves the original id/place/version while updating the real folder/color") {
                 moved.id shouldBe existing.id
                 moved.displayName shouldBe existing.displayName
                 moved.folderName shouldBe "Cafes to try"
                 moved.color shouldBe "#8B5CF6"
+                // Real optimistic-lock fix (Maps product-completeness pass, 2026-09-07) --
+                // the fetched row's own version must carry forward so JPA's real UPDATE ...
+                // WHERE version = ? check still fires against the value actually read,
+                // not a fresh entity that would silently bypass concurrent-write detection.
+                moved.version shouldBe 5L
             }
         }
 
@@ -495,8 +514,8 @@ class MapsServiceTest : BehaviorSpec({
 
         When("making a real non-empty folder public") {
             val bookmarks = listOf(
-                MapBookmark(id = "map_bookmark_1", userId = "user_1", displayName = "Cafe A", latitude = -1.9, longitude = 30.0, folderName = "Cafes to try"),
-                MapBookmark(id = "map_bookmark_2", userId = "user_1", displayName = "Cafe B", latitude = -1.91, longitude = 30.01, folderName = "Cafes to try"),
+                MapBookmark(id = "map_bookmark_1", userId = "user_1", displayName = "Cafe A", latitude = -1.9, longitude = 30.0, folderName = "Cafes to try", version = 2L),
+                MapBookmark(id = "map_bookmark_2", userId = "user_1", displayName = "Cafe B", latitude = -1.91, longitude = 30.01, folderName = "Cafes to try", version = 7L),
             )
             every { mapBookmarkRepository.findByUserIdAndFolderName("user_1", "Cafes to try") } returns bookmarks
             val savedSlot = slot<List<MapBookmark>>()
@@ -504,9 +523,14 @@ class MapsServiceTest : BehaviorSpec({
 
             val updatedCount = service.setFolderPublic("user_1", "Cafes to try", true)
 
-            Then("it real-bulk-updates every bookmark in that folder, not just one") {
+            Then("it real-bulk-updates every bookmark in that folder, not just one, preserving each row's own fetched version") {
                 updatedCount shouldBe 2
                 savedSlot.captured.all { it.isPublic } shouldBe true
+                // Real optimistic-lock fix (Maps product-completeness pass, 2026-09-07) --
+                // a bulk saveAll that dropped each row's own fetched version back to the
+                // default would silently defeat concurrent-write detection for this bulk
+                // update path specifically.
+                savedSlot.captured.map { it.id to it.version }.toSet() shouldBe setOf("map_bookmark_1" to 2L, "map_bookmark_2" to 7L)
             }
         }
 

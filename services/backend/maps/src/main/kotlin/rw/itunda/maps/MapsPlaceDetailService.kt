@@ -1,6 +1,7 @@
 package rw.itunda.maps
 
 import org.springframework.stereotype.Service
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.domain.MerchantUpdate
 import rw.itunda.core.repository.MerchantProductRepository
@@ -10,6 +11,7 @@ import rw.itunda.eats.RatingSummary
 import rw.itunda.merchant.MerchantNotFoundException
 import rw.itunda.merchant.MerchantProfileViewService
 import rw.itunda.merchant.MerchantUpdateService
+import java.time.Duration
 
 data class MapsPlaceDetail(
     val merchantId: String,
@@ -48,8 +50,13 @@ class MapsPlaceDetailService(
     private val eatsReviewService: EatsReviewService,
     private val merchantUpdateService: MerchantUpdateService,
     private val merchantProfileViewService: MerchantProfileViewService,
+    private val rateLimiter: RateLimiter,
 ) {
-    fun getPlaceDetail(merchantId: String): MapsPlaceDetail {
+    fun getPlaceDetail(userId: String, merchantId: String): MapsPlaceDetail {
+        // Rate limit added (Maps product-completeness pass, 2026-09-07) -- this real
+        // multi-repo + cross-service (EatsReviewService) aggregation had no throttle at
+        // all, unlike every other real Maps read. Sized to match `search`'s own 60/min.
+        rateLimiter.checkLimit("maps:place-detail:$userId", limit = 60, window = Duration.ofMinutes(1))
         val merchant = merchantRepository.findById(merchantId).orElseThrow { MerchantNotFoundException("Merchant not found") }
         // Real 비즈프로필 (Karrot Business Profile) visitor-count tracking (itunda Hood
         // redesign, 2026-08-28) -- every real consumer open of this place-detail counts

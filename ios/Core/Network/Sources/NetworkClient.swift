@@ -6142,17 +6142,24 @@ extension NetworkClient {
 
     // Real Kakao Map-style "친구위치" live location sharing -- see LiveLocationShareDto's
     // own doc comment.
+    //
+    // Idempotency-Key added (Maps product-completeness pass, 2026-09-07) -- creates a
+    // brand-new share row every call with no dedup key at all, unlike a real
+    // DB-unique-constraint-backed bookmark add.
     public func startLocationShare(recipientPhoneNumber: String, durationHours: Int = 1) async throws -> StartLocationShareResponse {
-        try await authenticatedPost("api/v1/maps/location-share", body: StartLocationShareRequest(recipientPhoneNumber: recipientPhoneNumber, durationHours: durationHours))
+        try await authenticatedPost("api/v1/maps/location-share", body: StartLocationShareRequest(recipientPhoneNumber: recipientPhoneNumber, durationHours: durationHours), idempotencyKey: UUID().uuidString)
     }
 
     public func updateMyLocationShare(latitude: Double, longitude: Double) async throws -> UpdateLocationShareResponse {
         try await authenticatedPost("api/v1/maps/location-share/_/update-location", body: UpdateLocationShareRequest(latitude: latitude, longitude: longitude))
     }
 
+    // Idempotency-Key added (Maps product-completeness pass, 2026-09-07) -- this is
+    // additive (extends from the share's current expiry), so a retry without a real
+    // dedup key used to silently double-extend it.
     public func extendLocationShare(id: String, additionalHours: Int = 1) async throws -> ExtendLocationShareResponse {
         let encodedId = id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? id
-        return try await authenticatedPost("api/v1/maps/location-share/\(encodedId)/extend", body: ExtendLocationShareRequest(additionalHours: additionalHours))
+        return try await authenticatedPost("api/v1/maps/location-share/\(encodedId)/extend", body: ExtendLocationShareRequest(additionalHours: additionalHours), idempotencyKey: UUID().uuidString)
     }
 
     public func stopLocationShare(id: String) async throws -> StopLocationShareResponse {

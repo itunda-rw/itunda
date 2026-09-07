@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.UUID
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import rw.itunda.core.designsystem.components.IdsTextField
@@ -166,7 +167,7 @@ fun LocationShareSection(
                             busy = true; error = null
                             scope.launch {
                                 try {
-                                    val share = NetworkClient.apiService.startLocationShare(StartLocationShareRequest(recipientPhone.trim(), durationHours)).share
+                                    val share = NetworkClient.apiService.startLocationShare(UUID.randomUUID().toString(), StartLocationShareRequest(recipientPhone.trim(), durationHours)).share
                                     myShares = listOf(share) + myShares
                                     showStartShare = false
                                     recipientPhone = ""
@@ -204,7 +205,7 @@ fun LocationShareSection(
                         modifier = Modifier.pressScaleClickable {
                             scope.launch {
                                 try {
-                                    val updated = NetworkClient.apiService.extendLocationShare(s.id, ExtendLocationShareRequest(1)).share
+                                    val updated = NetworkClient.apiService.extendLocationShare(s.id, UUID.randomUUID().toString(), ExtendLocationShareRequest(1)).share
                                     myShares = myShares.map { if (it.id == s.id) updated else it }
                                 } catch (_: Exception) {}
                             }

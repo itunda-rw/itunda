@@ -25,7 +25,7 @@ class MapsPlaceDetailServiceTest : BehaviorSpec({
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val eatsReviewService = mockk<EatsReviewService>()
         val merchantUpdateService = mockk<MerchantUpdateService>()
-        val service = MapsPlaceDetailService(merchantRepository, merchantProductRepository, eatsReviewService, merchantUpdateService, mockk(relaxed = true))
+        val service = MapsPlaceDetailService(merchantRepository, merchantProductRepository, eatsReviewService, merchantUpdateService, mockk(relaxed = true), mockk(relaxed = true))
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Diner", status = MerchantStatus.ACTIVE, category = "Rwandan")
         merchant.photoUrls = "https://a.jpg,https://b.jpg"
@@ -41,7 +41,7 @@ class MapsPlaceDetailServiceTest : BehaviorSpec({
         every { merchantUpdateService.getUpdates("merchant_1") } returns listOf(update)
 
         When("fetching the real consolidated place detail") {
-            val detail = service.getPlaceDetail("merchant_1")
+            val detail = service.getPlaceDetail("user_1", "merchant_1")
 
             Then("it assembles every real piece from its real source, nothing fabricated") {
                 detail.businessName shouldBe "Kigali Diner"
@@ -60,15 +60,38 @@ class MapsPlaceDetailServiceTest : BehaviorSpec({
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val eatsReviewService = mockk<EatsReviewService>()
         val merchantUpdateService = mockk<MerchantUpdateService>()
-        val service = MapsPlaceDetailService(merchantRepository, merchantProductRepository, eatsReviewService, merchantUpdateService, mockk(relaxed = true))
+        val service = MapsPlaceDetailService(merchantRepository, merchantProductRepository, eatsReviewService, merchantUpdateService, mockk(relaxed = true), mockk(relaxed = true))
         every { merchantRepository.findById("does_not_exist") } returns Optional.empty()
 
         When("fetching its place detail") {
             Then("it throws MerchantNotFoundException") {
                 try {
-                    service.getPlaceDetail("does_not_exist")
+                    service.getPlaceDetail("user_1", "does_not_exist")
                     error("expected MerchantNotFoundException")
                 } catch (e: MerchantNotFoundException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a caller who has exceeded the real rate limit") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val merchantProductRepository = mockk<MerchantProductRepository>()
+        val eatsReviewService = mockk<EatsReviewService>()
+        val merchantUpdateService = mockk<MerchantUpdateService>()
+        val rateLimiter = mockk<rw.itunda.auth.RateLimiter>()
+        val service = MapsPlaceDetailService(merchantRepository, merchantProductRepository, eatsReviewService, merchantUpdateService, mockk(relaxed = true), rateLimiter)
+        every {
+            rateLimiter.checkLimit("maps:place-detail:user_1", limit = 60, window = java.time.Duration.ofMinutes(1))
+        } throws rw.itunda.auth.RateLimitExceededException("Too many requests")
+
+        When("fetching a place detail") {
+            Then("it real-propagates RateLimitExceededException") {
+                try {
+                    service.getPlaceDetail("user_1", "merchant_1")
+                    error("expected RateLimitExceededException")
+                } catch (e: rw.itunda.auth.RateLimitExceededException) {
                     // expected
                 }
             }

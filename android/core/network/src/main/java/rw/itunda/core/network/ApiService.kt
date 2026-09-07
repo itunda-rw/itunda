@@ -3658,14 +3658,21 @@ interface ApiService {
 
     // Real Kakao Map-style "친구위치" live location sharing -- see LiveLocationShareDto's
     // own doc comment.
+    //
+    // Idempotency-Key added (Maps product-completeness pass, 2026-09-07) -- creates a
+    // brand-new share row every call with no dedup key at all, unlike a real
+    // DB-unique-constraint-backed bookmark add.
     @POST("api/v1/maps/location-share")
-    suspend fun startLocationShare(@Body request: StartLocationShareRequest): StartLocationShareResponse
+    suspend fun startLocationShare(@Header("Idempotency-Key") idempotencyKey: String, @Body request: StartLocationShareRequest): StartLocationShareResponse
 
     @POST("api/v1/maps/location-share/_/update-location")
     suspend fun updateMyLocationShare(@Body request: UpdateLocationShareRequest): UpdateLocationShareResponse
 
+    // Idempotency-Key added (Maps product-completeness pass, 2026-09-07) -- this is
+    // additive (extends from the share's current expiry), so a retry without a real
+    // dedup key used to silently double-extend it.
     @POST("api/v1/maps/location-share/{id}/extend")
-    suspend fun extendLocationShare(@Path("id") id: String, @Body request: ExtendLocationShareRequest): ExtendLocationShareResponse
+    suspend fun extendLocationShare(@Path("id") id: String, @Header("Idempotency-Key") idempotencyKey: String, @Body request: ExtendLocationShareRequest): ExtendLocationShareResponse
 
     @POST("api/v1/maps/location-share/{id}/stop")
     suspend fun stopLocationShare(@Path("id") id: String): StopLocationShareResponse

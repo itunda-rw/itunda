@@ -4,6 +4,7 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 
 /**
@@ -63,6 +64,14 @@ class MapBookmark(
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
+
+    // Added (Maps product-completeness pass, 2026-09-07) -- moveBookmark/setFolderPublic
+    // both read-then-save (bulk, for setFolderPublic) without this, an unprotected
+    // lost-update surface on the exact same entity class LiveLocationShare.kt already
+    // hardened with @Version. Threaded through both methods' existing
+    // copy-construct-then-save pattern via the fetched row's own version value.
+    @Version
+    val version: Long = 0,
 ) {
     protected constructor() : this(id = "", userId = "", displayName = "", latitude = 0.0, longitude = 0.0)
 }

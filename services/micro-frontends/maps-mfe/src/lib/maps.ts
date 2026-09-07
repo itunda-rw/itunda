@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Deliberately duplicated from bank-mfe/src/lib/maps.ts (2026-08-19, the maps-mfe
 // split) rather than shared -- bank-mfe's own inline code (RouteMiniMap/LiveRiderMap/
@@ -246,9 +247,13 @@ export interface LiveLocationShare {
   createdAt: string;
 }
 
+// Idempotency-Key added (Maps product-completeness pass, 2026-09-07) -- creates a
+// brand-new share row every call with no dedup key at all, unlike a real
+// DB-unique-constraint-backed bookmark add.
 export const startLocationShare = (recipientPhoneNumber: string, durationHours: number = 1) =>
   apiFetch<{ success: boolean; share: LiveLocationShare }>('/api/v1/maps/location-share', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ recipientPhoneNumber, durationHours }),
   }).then((r) => r.share);
 
@@ -261,9 +266,13 @@ export const updateMyLocationShare = (latitude: number, longitude: number) =>
     body: JSON.stringify({ latitude, longitude }),
   }).then((r) => r.updatedShareCount);
 
+// Idempotency-Key added (Maps product-completeness pass, 2026-09-07) -- this is
+// additive (extends from the share's current expiry), so a retry without a real dedup
+// key used to silently double-extend it.
 export const extendLocationShare = (shareId: string, additionalHours: number = 1) =>
   apiFetch<{ success: boolean; share: LiveLocationShare }>(`/api/v1/maps/location-share/${encodeURIComponent(shareId)}/extend`, {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ additionalHours }),
   }).then((r) => r.share);
 
