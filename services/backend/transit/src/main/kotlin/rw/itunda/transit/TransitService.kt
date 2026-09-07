@@ -11,6 +11,7 @@ import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.TransitBalance
 import rw.itunda.core.domain.TransitOperator
 import rw.itunda.core.domain.TransitTrip
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.AccountRepository
@@ -73,6 +74,7 @@ class TransitService(
     private val customerPaymentCodeRepository: CustomerPaymentCodeRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     fun getMyBalance(userId: String): TransitBalanceView = toView(getBalanceOrThrow(userId))
 
@@ -101,13 +103,19 @@ class TransitService(
         // user must not race the balance mutation below.
         val locked = transitBalanceRepository.findByIdForUpdate(balance.id).orElseThrow { IllegalStateException("Unknown transit balance ${balance.id}") }
 
-        ledgerService.postLedgerTransaction(
+        val result = ledgerService.postLedgerTransaction(
             account.currency,
             listOf(
                 LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Transit balance top-up"),
                 LedgerLeg("transit_balance_payable", LedgerAccountType.TRANSIT_BALANCE_PAYABLE, LedgerDirection.CREDIT, amount, "Transit balance top-up"),
             ),
         )
+        // Real gap found (2026-09-07, Transit product-completeness pass): real money
+        // movement with zero FraudRuleEngine coverage -- AgentService/BillsService/
+        // CardService/P2pService all already have this exact fix, this sibling
+        // service never did. recipientUserId is null -- topping up your own stored
+        // balance has no real counterparty.
+        fraudRuleEngine.evaluate(userId, null, amount, result.transactionId)
 
         locked.balance = locked.balance.add(amount)
         val saved = transitBalanceRepository.save(locked)
@@ -189,6 +197,15 @@ class TransitService(
                 LedgerLeg("transit_fare_expense", LedgerAccountType.TRANSIT_FARE_EXPENSE, LedgerDirection.CREDIT, fare, "Transit fare - $operator"),
             ),
         )
+        // Real gap found (2026-09-07, Transit product-completeness pass): real money
+        // movement with zero FraudRuleEngine coverage -- same fix as topUp above.
+        // Shared by both tapFare (rider self-tap) and tapFareByCode (collector
+        // collects) since both route through this one function with the real
+        // rider's own userId -- one fix here covers both real call sites, evaluated
+        // against the rider whose balance actually moves, not the collector.
+        // recipientUserId is null -- neither a fixed operator string nor a collector
+        // is a recurring itunda-user counterparty the NEW_RECIPIENT rule fits.
+        fraudRuleEngine.evaluate(riderUserId, null, fare, result.transactionId)
 
         locked.balance = locked.balance.subtract(fare)
         val savedBalance = transitBalanceRepository.save(locked)

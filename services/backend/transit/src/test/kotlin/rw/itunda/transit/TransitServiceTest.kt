@@ -6,6 +6,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import rw.itunda.auth.RateLimiter
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
 import rw.itunda.core.domain.CustomerPaymentCode
@@ -44,7 +45,8 @@ class TransitServiceTest : BehaviorSpec({
         customerPaymentCodeRepository: CustomerPaymentCodeRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = TransitService(transitBalanceRepository, transitTripRepository, accountRepository, customerPaymentCodeRepository, ledgerService, rateLimiter)
+        fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
+    ) = TransitService(transitBalanceRepository, transitTripRepository, accountRepository, customerPaymentCodeRepository, ledgerService, rateLimiter, fraudRuleEngine)
 
     Given("a real user topping up their transit balance for the first time") {
         val transitBalanceRepository = mockk<TransitBalanceRepository>()
@@ -57,7 +59,8 @@ class TransitServiceTest : BehaviorSpec({
         every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
         val legsSlot = mutableListOf<List<LedgerLeg>>()
         every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_1", emptyList())
-        val service = newService(transitBalanceRepository = transitBalanceRepository, accountRepository = accountRepository, ledgerService = ledgerService)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = newService(transitBalanceRepository = transitBalanceRepository, accountRepository = accountRepository, ledgerService = ledgerService, fraudRuleEngine = fraudRuleEngine)
 
         When("topping up 2000 RWF") {
             val result = service.topUp("user_1", BigDecimal("2000"))
@@ -68,6 +71,12 @@ class TransitServiceTest : BehaviorSpec({
                 legs.first { it.accountType == LedgerAccountType.WALLET }.direction shouldBe LedgerDirection.DEBIT
                 legs.first { it.accountType == LedgerAccountType.TRANSIT_BALANCE_PAYABLE }.direction shouldBe LedgerDirection.CREDIT
                 result.balance shouldBe BigDecimal("2000")
+            }
+
+            // Real gap closed 2026-09-07 (Transit product-completeness pass):
+            // topUp had zero FraudRuleEngine coverage before this.
+            Then("the real top-up is evaluated against the user's own fraud history") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("user_1", null, BigDecimal("2000"), "ledgertxn_1") }
             }
         }
     }
@@ -98,8 +107,10 @@ class TransitServiceTest : BehaviorSpec({
         every { transitTripRepository.save(any()) } answers { firstArg() }
         val legsSlot = mutableListOf<List<LedgerLeg>>()
         every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_1", emptyList())
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = newService(
             transitBalanceRepository = transitBalanceRepository, transitTripRepository = transitTripRepository, ledgerService = ledgerService,
+            fraudRuleEngine = fraudRuleEngine,
         )
 
         When("tapping a real, in-range fare with a real operator") {
@@ -113,6 +124,13 @@ class TransitServiceTest : BehaviorSpec({
                 result.trip.fare shouldBe BigDecimal("300")
                 result.trip.operator shouldBe TransitOperator.KIGALI_BUS_SERVICES
                 result.balance.balance shouldBe BigDecimal("700")
+            }
+
+            // Real gap closed 2026-09-07 (Transit product-completeness pass):
+            // chargeFare (shared by tapFare/tapFareByCode) had zero FraudRuleEngine
+            // coverage before this.
+            Then("the real fare charge is evaluated against the rider's own fraud history") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("user_1", null, BigDecimal("300"), "ledgertxn_1") }
             }
         }
 
