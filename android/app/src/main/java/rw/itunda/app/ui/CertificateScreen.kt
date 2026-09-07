@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonVariant
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.theme.Ids
@@ -88,88 +87,100 @@ fun CertificateScreen(onBack: () -> Unit) {
             if (!loaded) {
                 SkeletonBlock()
             } else {
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(
-                            "A digital certificate you can use to sign agreements in Itunda. You'll need a verified identity first.",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                // Real flat-design fix (2026-09-07, Certificate product-completeness
+                // pass) -- matches iOS's own 2026-08-24 fix to this exact screen
+                // (CertificateScreenView.swift): dropped the structural Card wrappers
+                // in favor of a Divider marking the boundary between the issue/revoke
+                // section and VerifyCertificateCard below (docs/UI_UX_GUIDELINES.md
+                // §10). The private-key warning box below is deliberately left with a
+                // distinct color treatment (Ids.colors.warning/warningTint, this app's
+                // own theme-aware semantic tokens), not itunda-card, signaling a
+                // one-time, high-stakes notice -- same as iOS's own orange box.
+                Column {
+                    Text(
+                        "A digital certificate you can use to sign agreements in Itunda. You'll need a verified identity first.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    val current = certificate
+                    if (current != null && current.status == "ACTIVE") {
+                        ItundaCertificateCard(certificate = current, holderName = holderName)
                         Spacer(Modifier.height(12.dp))
-                        val current = certificate
-                        if (current != null && current.status == "ACTIVE") {
-                            ItundaCertificateCard(certificate = current, holderName = holderName)
-                            Spacer(Modifier.height(12.dp))
-                            IdsButton(
-                                text = if (busy) "Revoking…" else "Revoke certificate",
-                                enabled = !busy,
-                                variant = IdsButtonVariant.Tinted,
-                                onClick = {
-                                    busy = true
-                                    scope.launch {
-                                        try {
-                                            certificate = NetworkClient.apiService.revokeCertificate().certificate
-                                            issuedPrivateKey = null
-                                            error = null
-                                        } catch (e: HttpException) {
-                                            error = superAppErrorMessage(e)
-                                        } catch (e: IOException) {
-                                            error = "Couldn't reach itunda. Check your connection and try again."
-                                        } finally { busy = false }
-                                    }
-                                },
+                        IdsButton(
+                            text = if (busy) "Revoking…" else "Revoke certificate",
+                            enabled = !busy,
+                            variant = IdsButtonVariant.Tinted,
+                            onClick = {
+                                busy = true
+                                scope.launch {
+                                    try {
+                                        certificate = NetworkClient.apiService.revokeCertificate().certificate
+                                        issuedPrivateKey = null
+                                        error = null
+                                    } catch (e: HttpException) {
+                                        error = superAppErrorMessage(e)
+                                    } catch (e: IOException) {
+                                        error = "Couldn't reach itunda. Check your connection and try again."
+                                    } finally { busy = false }
+                                }
+                            },
+                        )
+                    } else {
+                        if (current != null) {
+                            Text(
+                                "Your previous certificate was ${current.status.lowercase()}.",
+                                style = MaterialTheme.typography.bodySmall,
                             )
-                        } else {
-                            if (current != null) {
-                                Text(
-                                    "Your previous certificate was ${current.status.lowercase()}.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
-                                Spacer(Modifier.height(8.dp))
-                            }
-                            IdsButton(
-                                text = if (busy) "Issuing…" else "Issue a certificate",
-                                enabled = !busy,
-                                onClick = {
-                                    busy = true
-                                    scope.launch {
-                                        try {
-                                            val result = NetworkClient.apiService.issueCertificate(UUID.randomUUID().toString())
-                                            certificate = result.certificate
-                                            issuedPrivateKey = result.privateKey
-                                            error = null
-                                        } catch (e: HttpException) {
-                                            error = if (isKycRequiredError(e)) {
-                                                "You need a verified identity before you can issue a certificate."
-                                            } else {
-                                                superAppErrorMessage(e)
-                                            }
-                                        } catch (e: IOException) {
-                                            error = "Couldn't reach itunda. Check your connection and try again."
-                                        } finally { busy = false }
-                                    }
-                                },
-                            )
+                            Spacer(Modifier.height(8.dp))
                         }
+                        IdsButton(
+                            text = if (busy) "Issuing…" else "Issue a certificate",
+                            enabled = !busy,
+                            onClick = {
+                                busy = true
+                                scope.launch {
+                                    try {
+                                        val result = NetworkClient.apiService.issueCertificate(UUID.randomUUID().toString())
+                                        certificate = result.certificate
+                                        issuedPrivateKey = result.privateKey
+                                        error = null
+                                    } catch (e: HttpException) {
+                                        error = if (isKycRequiredError(e)) {
+                                            "You need a verified identity before you can issue a certificate."
+                                        } else {
+                                            superAppErrorMessage(e)
+                                        }
+                                    } catch (e: IOException) {
+                                        error = "Couldn't reach itunda. Check your connection and try again."
+                                    } finally { busy = false }
+                                }
+                            },
+                        )
                     }
                 }
                 issuedPrivateKey?.let { privateKey ->
                     Spacer(Modifier.height(12.dp))
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text(
-                                "Save this private key now — you won't be able to see it again.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                            Spacer(Modifier.height(6.dp))
-                            Text(privateKey, style = MaterialTheme.typography.bodySmall)
-                        }
+                    Column(
+                        Modifier.fillMaxWidth()
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(Ids.layout.cardCornerRadius))
+                            .background(Ids.colors.warningTint)
+                            .padding(16.dp),
+                    ) {
+                        Text(
+                            "Save this private key now — you won't be able to see it again.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Ids.colors.warning,
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(privateKey, style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 error?.let {
                     Spacer(Modifier.height(12.dp))
                     Text(it, color = MaterialTheme.colorScheme.error)
                 }
+                Spacer(Modifier.height(20.dp))
+                androidx.compose.material3.HorizontalDivider()
                 Spacer(Modifier.height(20.dp))
                 VerifyCertificateCard()
             }
@@ -249,81 +260,79 @@ private fun VerifyCertificateCard() {
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
-            Text("Verify a certificate", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "Check whether a certificate serial number is still active, or verify a document someone signed with theirs.",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Spacer(Modifier.height(12.dp))
-            IdsTextField(value = serialNumber, onValueChange = { serialNumber = it; statusResult = null; verifyResult = null; error = null }, label = "Serial number", modifier = Modifier.fillMaxWidth())
+    Column(Modifier.fillMaxWidth()) {
+        Text("Verify a certificate", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Check whether a certificate serial number is still active, or verify a document someone signed with theirs.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Spacer(Modifier.height(12.dp))
+        IdsTextField(value = serialNumber, onValueChange = { serialNumber = it; statusResult = null; verifyResult = null; error = null }, label = "Serial number", modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(8.dp))
+        IdsButton(
+            text = if (busy) "Checking…" else "Check status",
+            enabled = !busy && serialNumber.isNotBlank(),
+            onClick = {
+                busy = true
+                scope.launch {
+                    try {
+                        statusResult = NetworkClient.apiService.getCertificateStatus(serialNumber).certificate
+                        verifyResult = null
+                        error = null
+                    } catch (_: Exception) {
+                        statusResult = null
+                        error = "No certificate found with that serial number."
+                    } finally { busy = false }
+                }
+            },
+        )
+        statusResult?.let { cert ->
             Spacer(Modifier.height(8.dp))
-            IdsButton(
-                text = if (busy) "Checking…" else "Check status",
-                enabled = !busy && serialNumber.isNotBlank(),
-                onClick = {
-                    busy = true
-                    scope.launch {
-                        try {
-                            statusResult = NetworkClient.apiService.getCertificateStatus(serialNumber).certificate
-                            verifyResult = null
-                            error = null
-                        } catch (_: Exception) {
-                            statusResult = null
-                            error = "No certificate found with that serial number."
-                        } finally { busy = false }
-                    }
-                },
-            )
-            statusResult?.let { cert ->
-                Spacer(Modifier.height(8.dp))
-                Text("Status: ${cert.status}", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                Text("Expires ${cert.expiresAt}", style = MaterialTheme.typography.bodySmall)
-            }
+            Text("Status: ${cert.status}", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            Text("Expires ${cert.expiresAt}", style = MaterialTheme.typography.bodySmall)
+        }
 
-            Spacer(Modifier.height(16.dp))
-            Text("Verify a signature", style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(16.dp))
+        Text("Verify a signature", style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(8.dp))
+        IdsTextField(value = payload, onValueChange = { payload = it; verifyResult = null }, label = "Payload (the exact text they signed)", modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(8.dp))
+        IdsTextField(value = signature, onValueChange = { signature = it; verifyResult = null }, label = "Signature (base64)", modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(8.dp))
+        IdsButton(
+            text = if (busy) "Verifying…" else "Verify signature",
+            enabled = !busy && serialNumber.isNotBlank() && payload.isNotBlank() && signature.isNotBlank(),
+            onClick = {
+                busy = true
+                scope.launch {
+                    try {
+                        verifyResult = NetworkClient.apiService.verifyCertificateSignature(
+                            VerifyCertificateSignatureRequest(serialNumber, payload, signature),
+                        )
+                        error = null
+                    } catch (e: HttpException) {
+                        verifyResult = null
+                        error = superAppErrorMessage(e)
+                    } catch (e: IOException) {
+                        verifyResult = null
+                        error = "Couldn't reach itunda. Check your connection and try again."
+                    } finally { busy = false }
+                }
+            },
+        )
+        verifyResult?.let { result ->
             Spacer(Modifier.height(8.dp))
-            IdsTextField(value = payload, onValueChange = { payload = it; verifyResult = null }, label = "Payload (the exact text they signed)", modifier = Modifier.fillMaxWidth())
-            Spacer(Modifier.height(8.dp))
-            IdsTextField(value = signature, onValueChange = { signature = it; verifyResult = null }, label = "Signature (base64)", modifier = Modifier.fillMaxWidth())
-            Spacer(Modifier.height(8.dp))
-            IdsButton(
-                text = if (busy) "Verifying…" else "Verify signature",
-                enabled = !busy && serialNumber.isNotBlank() && payload.isNotBlank() && signature.isNotBlank(),
-                onClick = {
-                    busy = true
-                    scope.launch {
-                        try {
-                            verifyResult = NetworkClient.apiService.verifyCertificateSignature(
-                                VerifyCertificateSignatureRequest(serialNumber, payload, signature),
-                            )
-                            error = null
-                        } catch (e: HttpException) {
-                            verifyResult = null
-                            error = superAppErrorMessage(e)
-                        } catch (e: IOException) {
-                            verifyResult = null
-                            error = "Couldn't reach itunda. Check your connection and try again."
-                        } finally { busy = false }
-                    }
-                },
+            Text(
+                if (result.signatureValid) "✓ Signature is valid" else "✗ Signature does not match",
+                color = if (result.signatureValid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
             )
-            verifyResult?.let { result ->
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    if (result.signatureValid) "✓ Signature is valid" else "✗ Signature does not match",
-                    color = if (result.signatureValid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                )
-                Text("Certificate status: ${result.certificateStatus}", style = MaterialTheme.typography.bodySmall)
-            }
-            error?.let {
-                Spacer(Modifier.height(8.dp))
-                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            }
+            Text("Certificate status: ${result.certificateStatus}", style = MaterialTheme.typography.bodySmall)
+        }
+        error?.let {
+            Spacer(Modifier.height(8.dp))
+            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
