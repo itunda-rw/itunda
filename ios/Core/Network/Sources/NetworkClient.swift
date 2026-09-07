@@ -1919,11 +1919,16 @@ extension NetworkClient {
     public func acceptVehicleInspection(bookingId: String) async throws -> VehicleInspectionBookingResponse {
         try await authenticatedPostWithMessage("api/v1/marketplace/inspections/\(bookingId)/accept", body: EmptyBody())
     }
+    // Idempotency-Key added (Hood product-completeness pass, 2026-09-07) -- posts a
+    // real ledger payout/refund, the same real-money-mutation class
+    // registerAsInspectionMechanic/requestVehicleInspection above already require it
+    // for. Switched from authenticatedPostWithMessage to postP2p, matching those same
+    // two methods' own established convention for this exact controller.
     public func completeVehicleInspection(bookingId: String, findings: String?) async throws -> VehicleInspectionBookingResponse {
-        try await authenticatedPostWithMessage("api/v1/marketplace/inspections/\(bookingId)/complete", body: CompleteVehicleInspectionRequest(findings: findings))
+        try await postP2p("api/v1/marketplace/inspections/\(bookingId)/complete", body: CompleteVehicleInspectionRequest(findings: findings), idempotencyKey: UUID().uuidString)
     }
     public func cancelVehicleInspection(bookingId: String) async throws -> VehicleInspectionBookingResponse {
-        try await authenticatedPostWithMessage("api/v1/marketplace/inspections/\(bookingId)/cancel", body: EmptyBody())
+        try await postP2p("api/v1/marketplace/inspections/\(bookingId)/cancel", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     // Real Toss 내 차 시세 (my car's market value)-style vehicle value estimator -- see

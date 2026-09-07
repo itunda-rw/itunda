@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.jobs.InvalidResumeException
@@ -106,4 +107,8 @@ class ResumeController(private val resumeService: ResumeService) {
     @ExceptionHandler(ResumeEntryNotFoundException::class)
     fun handleNotFound(ex: ResumeEntryNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RESUME_ENTRY_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(RateLimitExceededException::class)
+    fun handleRateLimit(ex: RateLimitExceededException) =
+        ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
 }

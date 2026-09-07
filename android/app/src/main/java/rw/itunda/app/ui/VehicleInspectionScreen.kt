@@ -147,7 +147,7 @@ private fun InspectionBuyerContent() {
         busyBookingId = bookingId
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.cancelVehicleInspection(bookingId)
+                NetworkClient.apiService.cancelVehicleInspection(bookingId, UUID.randomUUID().toString())
                 load()
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
@@ -303,7 +303,7 @@ private fun InspectionMechanicContent() {
         busyBookingId = bookingId
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.completeVehicleInspection(bookingId, CompleteVehicleInspectionRequest(findingsByBooking[bookingId]))
+                NetworkClient.apiService.completeVehicleInspection(bookingId, UUID.randomUUID().toString(), CompleteVehicleInspectionRequest(findingsByBooking[bookingId]))
                 load()
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)

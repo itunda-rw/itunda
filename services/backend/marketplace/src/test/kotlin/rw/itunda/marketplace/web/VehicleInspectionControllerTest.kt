@@ -8,6 +8,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import org.springframework.http.HttpStatus
+import rw.itunda.core.domain.VehicleInspectionBooking
 import rw.itunda.core.domain.VehicleInspectionMechanic
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.security.CurrentUser
@@ -74,6 +75,51 @@ class VehicleInspectionControllerTest : BehaviorSpec({
             Then("the cached response is returned and the account is never registered again") {
                 response.body?.get("mechanic") shouldBe "cached-result"
                 verify(exactly = 0) { service.registerAsMechanic(any(), any()) }
+            }
+        }
+    }
+
+    // Idempotency-Key added (Hood product-completeness pass, 2026-09-07) --
+    // completeInspection/cancelInspection post real ledger payouts/refunds, the same
+    // real-money-mutation class registerAsMechanic/requestInspection above already
+    // require it for.
+    Given("a real inspection completion") {
+        val service = mockk<VehicleInspectionService>()
+        val idempotencyService = mockk<IdempotencyService>()
+        val controller = VehicleInspectionController(service, idempotencyService)
+        val booking = mockk<VehicleInspectionBooking>(relaxed = true)
+        val request = CompleteInspectionRequest(findings = "Engine sounds fine")
+        val actionSlot = slot<() -> Pair<Int, Map<String, Any?>>>()
+        every { service.completeInspection("user_1", "booking_1", "Engine sounds fine") } returns booking
+        every {
+            idempotencyService.replayOrExecute("POST /api/v1/marketplace/inspections/booking_1/complete", "key-1", request, capture(actionSlot))
+        } answers { actionSlot.captured.invoke() }
+
+        When("completing it") {
+            controller.completeInspection("booking_1", request, "key-1", currentUser)
+            Then("it routes through the real idempotency service scoped to the caller's own userId") {
+                verify(exactly = 1) { idempotencyService.replayOrExecute("POST /api/v1/marketplace/inspections/booking_1/complete", "key-1", request, any()) }
+                verify(exactly = 1) { service.completeInspection("user_1", "booking_1", "Engine sounds fine") }
+            }
+        }
+    }
+
+    Given("a real inspection cancellation") {
+        val service = mockk<VehicleInspectionService>()
+        val idempotencyService = mockk<IdempotencyService>()
+        val controller = VehicleInspectionController(service, idempotencyService)
+        val booking = mockk<VehicleInspectionBooking>(relaxed = true)
+        val actionSlot = slot<() -> Pair<Int, Map<String, Any?>>>()
+        every { service.cancelInspection("user_1", "booking_1") } returns booking
+        every {
+            idempotencyService.replayOrExecute("POST /api/v1/marketplace/inspections/booking_1/cancel", "key-1", emptyMap<String, Any>(), capture(actionSlot))
+        } answers { actionSlot.captured.invoke() }
+
+        When("cancelling it") {
+            controller.cancelInspection("booking_1", "key-1", currentUser)
+            Then("it routes through the real idempotency service scoped to the caller's own userId") {
+                verify(exactly = 1) { idempotencyService.replayOrExecute("POST /api/v1/marketplace/inspections/booking_1/cancel", "key-1", emptyMap<String, Any>(), any()) }
+                verify(exactly = 1) { service.cancelInspection("user_1", "booking_1") }
             }
         }
     }

@@ -107,17 +107,42 @@ class VehicleInspectionController(
     fun acceptInspection(@PathVariable bookingId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "booking" to vehicleInspectionService.acceptInspection(currentUser.userId, bookingId)))
 
+    // Idempotency-Key added (Hood product-completeness pass, 2026-09-07) -- this posts
+    // a real ledger payout to the mechanic, same class of real-money mutation
+    // registerAsMechanic/requestInspection above already require it for. The
+    // booking's own status transition away from ACCEPTED already made a retry safe
+    // (a second attempt hits InvalidInspectionStatusTransitionException, not a double
+    // payout), but this closes a real, named policy inconsistency with this
+    // controller's own sibling endpoints rather than relying on that as the only
+    // real protection.
     @PostMapping("/{bookingId}/complete")
     fun completeInspection(
         @PathVariable bookingId: String,
         @RequestBody request: CompleteInspectionRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
-    ): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "booking" to vehicleInspectionService.completeInspection(currentUser.userId, bookingId, request.findings)))
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/marketplace/inspections/$bookingId/complete", idempotencyKey, request) {
+            val booking = vehicleInspectionService.completeInspection(currentUser.userId, bookingId, request.findings)
+            200 to mapOf("success" to true, "booking" to booking)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
 
+    // Idempotency-Key added (Hood product-completeness pass, 2026-09-07) -- same real
+    // ledger-refund reasoning as completeInspection above.
     @PostMapping("/{bookingId}/cancel")
-    fun cancelInspection(@PathVariable bookingId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "booking" to vehicleInspectionService.cancelInspection(currentUser.userId, bookingId)))
+    fun cancelInspection(
+        @PathVariable bookingId: String,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/marketplace/inspections/$bookingId/cancel", idempotencyKey, emptyMap<String, Any>()) {
+            val booking = vehicleInspectionService.cancelInspection(currentUser.userId, bookingId)
+            200 to mapOf("success" to true, "booking" to booking)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
 
     @ExceptionHandler(MechanicAlreadyRegisteredException::class)
     fun handleMechanicAlreadyRegistered(ex: MechanicAlreadyRegisteredException) =

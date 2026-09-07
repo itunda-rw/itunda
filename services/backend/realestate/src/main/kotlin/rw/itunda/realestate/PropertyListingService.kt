@@ -59,9 +59,9 @@ data class PropertyValuationEstimate(
  * listing-type (sale/rent) + property-type browse filters (independently combinable),
  * a real opt-in Haversine "near me" browse, real "message lister" (reusing
  * `MessagingService` unmodified, same as Marketplace/Jobs), real lister-only
- * mark-taken/remove. No price-offer negotiation yet -- a real, named follow-up, matching
- * how Marketplace's own price-offers shipped as a later addition, not required for a
- * usable v1.
+ * mark-taken/remove. Real price-offer negotiation now also exists
+ * (`PropertyPriceOfferService`), matching how Marketplace's own price-offers were
+ * likewise added after v1 shipped, not required for a usable v1.
  */
 @Service
 class PropertyListingService(

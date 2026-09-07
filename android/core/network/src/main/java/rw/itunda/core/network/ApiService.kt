@@ -4951,11 +4951,16 @@ interface ApiService {
     @POST("api/v1/marketplace/inspections/{bookingId}/accept")
     suspend fun acceptVehicleInspection(@Path("bookingId") bookingId: String): VehicleInspectionBookingResponse
 
+    // Idempotency-Key added (Hood product-completeness pass, 2026-09-07) -- posts a
+    // real ledger payout to the mechanic, same class of real-money mutation
+    // registerAsInspectionMechanic/requestVehicleInspection above already require it for.
     @POST("api/v1/marketplace/inspections/{bookingId}/complete")
-    suspend fun completeVehicleInspection(@Path("bookingId") bookingId: String, @Body request: CompleteVehicleInspectionRequest): VehicleInspectionBookingResponse
+    suspend fun completeVehicleInspection(@Path("bookingId") bookingId: String, @Header("Idempotency-Key") idempotencyKey: String, @Body request: CompleteVehicleInspectionRequest): VehicleInspectionBookingResponse
 
+    // Idempotency-Key added (Hood product-completeness pass, 2026-09-07) -- same real
+    // ledger-refund reasoning as completeVehicleInspection above.
     @POST("api/v1/marketplace/inspections/{bookingId}/cancel")
-    suspend fun cancelVehicleInspection(@Path("bookingId") bookingId: String): VehicleInspectionBookingResponse
+    suspend fun cancelVehicleInspection(@Path("bookingId") bookingId: String, @Header("Idempotency-Key") idempotencyKey: String): VehicleInspectionBookingResponse
 
     // Real Toss 내 차 시세 (my car's market value)-style vehicle value estimator -- see
     // rw.itunda.vehicle.VehicleValuationService's own doc comment. bank-mfe already has

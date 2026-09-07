@@ -6,6 +6,8 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Resume
 import rw.itunda.core.domain.ResumeCertification
 import rw.itunda.core.domain.ResumeEducation
@@ -14,6 +16,7 @@ import rw.itunda.core.repository.ResumeCertificationRepository
 import rw.itunda.core.repository.ResumeEducationRepository
 import rw.itunda.core.repository.ResumeExperienceRepository
 import rw.itunda.core.repository.ResumeRepository
+import java.time.Duration
 
 class ResumeServiceTest : BehaviorSpec({
 
@@ -22,7 +25,7 @@ class ResumeServiceTest : BehaviorSpec({
         val experienceRepository = mockk<ResumeExperienceRepository>(relaxed = true)
         val educationRepository = mockk<ResumeEducationRepository>(relaxed = true)
         val certificationRepository = mockk<ResumeCertificationRepository>(relaxed = true)
-        val service = ResumeService(resumeRepository, experienceRepository, educationRepository, certificationRepository)
+        val service = ResumeService(resumeRepository, experienceRepository, educationRepository, certificationRepository, mockk(relaxed = true))
 
         every { resumeRepository.findByUserId("user_1") } returns null
         val savedSlot = slot<Resume>()
@@ -66,7 +69,7 @@ class ResumeServiceTest : BehaviorSpec({
         val experienceRepository = mockk<ResumeExperienceRepository>()
         val educationRepository = mockk<ResumeEducationRepository>()
         val certificationRepository = mockk<ResumeCertificationRepository>()
-        val service = ResumeService(resumeRepository, experienceRepository, educationRepository, certificationRepository)
+        val service = ResumeService(resumeRepository, experienceRepository, educationRepository, certificationRepository, mockk(relaxed = true))
 
         val resume = Resume(id = "resume_1", userId = "user_1", selfIntro = "Hi", strengths = "friendly")
         every { resumeRepository.findByUserId("user_1") } returns resume
@@ -113,12 +116,35 @@ class ResumeServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a caller who has exceeded the real rate limit") {
+        val resumeRepository = mockk<ResumeRepository>()
+        val experienceRepository = mockk<ResumeExperienceRepository>()
+        val educationRepository = mockk<ResumeEducationRepository>()
+        val certificationRepository = mockk<ResumeCertificationRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = ResumeService(resumeRepository, experienceRepository, educationRepository, certificationRepository, rateLimiter)
+        every {
+            rateLimiter.checkLimit("resume:update:user_1", limit = 10, window = Duration.ofHours(1))
+        } throws RateLimitExceededException("Too many requests")
+
+        When("updating their profile") {
+            Then("it real-propagates RateLimitExceededException rather than a silent unbounded write") {
+                try {
+                    service.updateProfile("user_1", "Hi", emptyList(), null)
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { resumeRepository.save(any()) }
+                }
+            }
+        }
+    }
+
     Given("a user with genuinely no résumé at all") {
         val resumeRepository = mockk<ResumeRepository>()
         val experienceRepository = mockk<ResumeExperienceRepository>(relaxed = true)
         val educationRepository = mockk<ResumeEducationRepository>(relaxed = true)
         val certificationRepository = mockk<ResumeCertificationRepository>(relaxed = true)
-        val service = ResumeService(resumeRepository, experienceRepository, educationRepository, certificationRepository)
+        val service = ResumeService(resumeRepository, experienceRepository, educationRepository, certificationRepository, mockk(relaxed = true))
         every { resumeRepository.findByUserId("user_2") } returns null
 
         When("fetching it") {

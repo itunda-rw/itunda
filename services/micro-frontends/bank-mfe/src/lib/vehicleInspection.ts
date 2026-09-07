@@ -68,11 +68,20 @@ export const fetchMyMechanicBookings = () =>
 export const acceptInspection = (bookingId: string) =>
   apiFetch<{ success: boolean; booking: VehicleInspectionBooking }>(`/api/v1/marketplace/inspections/${bookingId}/accept`, { method: 'POST' }).then((r) => r.booking);
 
+// Idempotency-Key added (Hood product-completeness pass, 2026-09-07) -- posts a real
+// ledger payout to the mechanic, the same real-money-mutation class
+// registerAsMechanic/requestInspection above already require it for.
 export const completeInspection = (bookingId: string, findings?: string) =>
   apiFetch<{ success: boolean; booking: VehicleInspectionBooking }>(`/api/v1/marketplace/inspections/${bookingId}/complete`, {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ findings }),
   }).then((r) => r.booking);
 
+// Idempotency-Key added (Hood product-completeness pass, 2026-09-07) -- same real
+// ledger-refund reasoning as completeInspection above.
 export const cancelInspection = (bookingId: string) =>
-  apiFetch<{ success: boolean; booking: VehicleInspectionBooking }>(`/api/v1/marketplace/inspections/${bookingId}/cancel`, { method: 'POST' }).then((r) => r.booking);
+  apiFetch<{ success: boolean; booking: VehicleInspectionBooking }>(`/api/v1/marketplace/inspections/${bookingId}/cancel`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  }).then((r) => r.booking);

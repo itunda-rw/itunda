@@ -34,16 +34,16 @@ data class JobCategory(val id: String, val label: String)
  * A real 당근알바 (Danggeun/Karrot "Alba")-style local job board -- see `JobPost`'s own
  * doc comment for the full account of why this is a distinct surface from Marketplace,
  * explicitly named by the user alongside 당근생활 (now real as Community) and
- * 당근부동산 (real estate, still open) as three distinct neighborhood-services
- * products.
+ * 당근부동산 (now real as RealEstate/`PropertyListingService`) as three distinct
+ * neighborhood-services products.
  *
  * v1, honestly scoped, mirroring `MarketplaceService`'s own v1 shape: real posts, real
  * category browse, a real opt-in Haversine "near me" browse, real "message poster"
- * (the real apply mechanism, reusing `MessagingService` unmodified), real
- * poster-only mark-filled/remove. No structured "application" object, no
- * accept/reject-a-worker flow -- a real conversation with the poster covers v1, matching
- * how Marketplace's own price-offer negotiation was a later addition, not required to
- * ship a real, usable job board.
+ * (a real contact mechanism reusing `MessagingService` unmodified), real
+ * poster-only mark-filled/remove. A real structured application object and
+ * accept/reject-a-worker flow now also exist (`JobApplicationService`), matching
+ * how Marketplace's own price-offer negotiation was likewise added after v1 shipped,
+ * not required to ship a real, usable job board.
  */
 @Service
 class JobPostService(

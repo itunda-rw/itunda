@@ -2,6 +2,7 @@ package rw.itunda.jobs
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Resume
 import rw.itunda.core.domain.ResumeCertification
 import rw.itunda.core.domain.ResumeEducation
@@ -10,6 +11,7 @@ import rw.itunda.core.repository.ResumeCertificationRepository
 import rw.itunda.core.repository.ResumeEducationRepository
 import rw.itunda.core.repository.ResumeExperienceRepository
 import rw.itunda.core.repository.ResumeRepository
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -30,11 +32,12 @@ data class ResumeDetail(
  * A real 이력서 (Karrot 당근알바-style résumé) builder -- see `Resume`'s own doc
  * comment for the full account. v1, honestly scoped: a real self-intro + preset
  * strength tags + free-text additional-info section, plus real experience/education/
- * certification entries. No résumé photo upload -- itunda has no upload/storage
- * pipeline anywhere in this backend (same honest gap `Merchant.photoUrl`/
- * `EatsReview.photoUrl` already document), so the reference's "사진을 입력해주세요"
- * completion-nudge item is deliberately never satisfiable here, same "bring your own
- * already-hosted URL" convention used everywhere else if a future pass wants it.
+ * certification entries. No résumé photo upload -- a real, separate follow-up
+ * feature (Hood product-completeness pass, 2026-09-07): `UploadController`
+ * (`marketplace/.../web/UploadController.kt`) has provided a real upload/storage
+ * pipeline since 2026-07-24, already used by `PropertyOwnershipService`, so a
+ * future pass can wire a photo field the same "bring your own already-hosted URL"
+ * way -- this just hasn't been done yet, not because the pipeline doesn't exist.
  */
 @Service
 class ResumeService(
@@ -42,6 +45,7 @@ class ResumeService(
     private val experienceRepository: ResumeExperienceRepository,
     private val educationRepository: ResumeEducationRepository,
     private val certificationRepository: ResumeCertificationRepository,
+    private val rateLimiter: RateLimiter,
 ) {
     companion object {
         val STRENGTHS = listOf(
@@ -65,8 +69,14 @@ class ResumeService(
             Resume(id = "resume_${UUID.randomUUID()}", userId = userId),
         )
 
+    // Rate limit added (Hood product-completeness pass, 2026-09-07) -- this was the
+    // one Hood content-creation service missing this repo-wide convention (every
+    // sibling create action -- MarketplaceService.createListing, CommunityService
+    // .createPost, JobPostService.createPost, PropertyListingService.createListing --
+    // already has one).
     @Transactional
     fun updateProfile(userId: String, selfIntro: String?, strengths: List<String>, additionalInfo: String?): Resume {
+        rateLimiter.checkLimit("resume:update:$userId", limit = 10, window = Duration.ofHours(1))
         val trimmedIntro = selfIntro?.trim()?.ifEmpty { null }
         if (trimmedIntro != null && trimmedIntro.length > 2000) {
             throw InvalidResumeException("Self-intro must be 2000 characters or fewer")
@@ -107,6 +117,7 @@ class ResumeService(
 
     @Transactional
     fun addExperience(userId: String, company: String, role: String, period: String, description: String?): ResumeExperience {
+        rateLimiter.checkLimit("resume:experience:$userId", limit = 10, window = Duration.ofHours(1))
         val trimmedCompany = company.trim()
         val trimmedRole = role.trim()
         val trimmedPeriod = period.trim()
@@ -136,6 +147,7 @@ class ResumeService(
 
     @Transactional
     fun addEducation(userId: String, school: String, degree: String?, major: String?): ResumeEducation {
+        rateLimiter.checkLimit("resume:education:$userId", limit = 10, window = Duration.ofHours(1))
         val trimmedSchool = school.trim()
         if (trimmedSchool.isEmpty()) {
             throw InvalidResumeException("School is required")
@@ -162,6 +174,7 @@ class ResumeService(
 
     @Transactional
     fun addCertification(userId: String, name: String, issuedDate: String?): ResumeCertification {
+        rateLimiter.checkLimit("resume:certification:$userId", limit = 10, window = Duration.ofHours(1))
         val trimmedName = name.trim()
         if (trimmedName.isEmpty()) {
             throw InvalidResumeException("Certification name is required")
