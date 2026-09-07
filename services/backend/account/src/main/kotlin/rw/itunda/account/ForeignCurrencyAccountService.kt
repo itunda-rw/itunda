@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.CurrencyConversion
 import rw.itunda.core.domain.ExchangeRateAlert
 import rw.itunda.core.domain.LedgerAccountType
@@ -24,6 +25,7 @@ import rw.itunda.core.account.AccountNumberGenerator
 import rw.itunda.core.pricing.PlatformFees
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -70,6 +72,7 @@ class ForeignCurrencyAccountService(
     private val exchangeRateAlertRepository: ExchangeRateAlertRepository,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
+    private val rateLimiter: RateLimiter,
 ) {
     companion object {
         val SUPPORTED_CURRENCIES = setOf("USD", "EUR", "GBP")
@@ -125,6 +128,9 @@ class ForeignCurrencyAccountService(
 
     @Transactional
     fun convert(userId: String, fromCurrency: String, toCurrency: String, amount: BigDecimal): CurrencyConversion {
+        // Real anti-spam/cost limit -- this endpoint (a real, repeatable money-movement
+        // action calling out to a live rate provider on every call) had zero throttle.
+        rateLimiter.checkLimit("foreign-currency:convert:$userId", limit = 30, window = Duration.ofHours(1))
         val from = fromCurrency.trim().uppercase()
         val to = toCurrency.trim().uppercase()
         if (amount <= BigDecimal.ZERO) {

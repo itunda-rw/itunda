@@ -380,6 +380,38 @@ class WeeklySavingsServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("a real caller who has already exceeded a real weekly-savings rate limit") {
+        val planRepository = mockk<WeeklySavingsPlanRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val svc = service(planRepository = planRepository, rateLimiter = rateLimiter)
+
+        When("cancelling a plan") {
+            every { rateLimiter.checkLimit("weekly-savings:cancel:user_1", limit = 10, window = any()) } throws RateLimitExceededException("Too many requests")
+
+            Then("a real RateLimitExceededException fires before ever touching the real plan row") {
+                try {
+                    svc.cancelPlan("user_1", "wsp_1")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { planRepository.findById(any()) }
+                }
+            }
+        }
+
+        When("withdrawing a matured plan") {
+            every { rateLimiter.checkLimit("weekly-savings:withdraw:user_1", limit = 10, window = any()) } throws RateLimitExceededException("Too many requests")
+
+            Then("a real RateLimitExceededException fires before ever touching the real plan row") {
+                try {
+                    svc.withdraw("user_1", "wsp_1")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { planRepository.findById(any()) }
+                }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

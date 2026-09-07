@@ -304,6 +304,44 @@ class SavingsServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a real caller who has already exceeded a real savings-goal rate limit") {
+        val accountRepository = mockk<AccountRepository>()
+        val savingsGoalRepository = mockk<SavingsGoalRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val rateLimiter = mockk<RateLimiter>()
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val ledgerAccountRepository = mockk<LedgerAccountRepository>(relaxed = true)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>(relaxed = true)
+        val service = SavingsService(accountRepository, savingsGoalRepository, ledgerService, rateLimiter, notificationRepository, pushNotificationService, ledgerAccountRepository, ledgerEntryRepository)
+
+        When("depositing to a goal") {
+            every { rateLimiter.checkLimit("savings:goal:deposit:user_1", limit = 30, window = any()) } throws rw.itunda.auth.RateLimitExceededException("Too many requests")
+
+            Then("a real RateLimitExceededException fires before ever touching the real goal row") {
+                try {
+                    service.depositToGoal("user_1", "sg_1", BigDecimal("1000"), null)
+                    error("expected RateLimitExceededException")
+                } catch (e: rw.itunda.auth.RateLimitExceededException) {
+                    verify(exactly = 0) { savingsGoalRepository.findByIdForUpdate(any()) }
+                }
+            }
+        }
+
+        When("withdrawing from a goal") {
+            every { rateLimiter.checkLimit("savings:goal:withdraw:user_1", limit = 30, window = any()) } throws rw.itunda.auth.RateLimitExceededException("Too many requests")
+
+            Then("a real RateLimitExceededException fires before ever touching the real goal row") {
+                try {
+                    service.withdrawFromGoal("user_1", "sg_1", BigDecimal("1000"), null)
+                    error("expected RateLimitExceededException")
+                } catch (e: rw.itunda.auth.RateLimitExceededException) {
+                    verify(exactly = 0) { savingsGoalRepository.findByIdForUpdate(any()) }
+                }
+            }
+        }
+    }
+
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

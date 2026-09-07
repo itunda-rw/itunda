@@ -155,6 +155,10 @@ class UpfrontInterestDepositService(
 
     @Transactional
     fun withdraw(userId: String, depositId: String): UpfrontInterestDeposit {
+        // Real anti-spam/cost limit -- open already has one, withdraw never did, the
+        // same "row creation vs. repeatable action" gap class this pass's own Loans
+        // research already named.
+        rateLimiter.checkLimit("upfront-deposit:withdraw:$userId", limit = 10, window = Duration.ofHours(1))
         val deposit = findOwned(userId, depositId)
         if (deposit.status != UpfrontInterestDepositStatus.MATURED) throw UpfrontDepositNotMaturedException("This deposit has not matured yet")
         if (deposit.withdrawnAt != null) throw UpfrontDepositAlreadyWithdrawnException("This deposit has already been withdrawn")

@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerService
@@ -77,6 +78,51 @@ class Grow31SavingsServiceTest : BehaviorSpec({
                     error("expected InvalidGrow31PlanNameException")
                 } catch (e: InvalidGrow31PlanNameException) {
                     verify(exactly = 0) { planRepository.save(any()) }
+                }
+            }
+        }
+    }
+
+    Given("a real caller who has already exceeded a real Grow31 rate limit") {
+        val planRepository = mockk<Grow31SavingsPlanRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val svc = service(planRepository = planRepository, rateLimiter = rateLimiter)
+
+        When("depositing today") {
+            every { rateLimiter.checkLimit("grow31-savings:deposit:user_1", limit = 30, window = any()) } throws RateLimitExceededException("Too many requests")
+
+            Then("a real RateLimitExceededException fires before ever touching the real plan row") {
+                try {
+                    svc.depositToday("user_1", "g31_1")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { planRepository.findById(any()) }
+                }
+            }
+        }
+
+        When("cancelling a plan") {
+            every { rateLimiter.checkLimit("grow31-savings:cancel:user_1", limit = 10, window = any()) } throws RateLimitExceededException("Too many requests")
+
+            Then("a real RateLimitExceededException fires before ever touching the real plan row") {
+                try {
+                    svc.cancelPlan("user_1", "g31_1")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { planRepository.findById(any()) }
+                }
+            }
+        }
+
+        When("withdrawing a matured plan") {
+            every { rateLimiter.checkLimit("grow31-savings:withdraw:user_1", limit = 10, window = any()) } throws RateLimitExceededException("Too many requests")
+
+            Then("a real RateLimitExceededException fires before ever touching the real plan row") {
+                try {
+                    svc.withdraw("user_1", "g31_1")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { planRepository.findById(any()) }
                 }
             }
         }

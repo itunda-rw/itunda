@@ -199,6 +199,10 @@ class IkiminaService(
      */
     @Transactional
     fun contributeThisRound(userId: String, ikiminaId: String): IkiminaContributionResult {
+        // Real anti-spam/cost limit -- createIkimina already has one, contribution never
+        // did, the same "row creation vs. repeatable action" gap class this pass's own
+        // Loans research already named.
+        rateLimiter.checkLimit("ikimina:contribute:$userId", limit = 30, window = Duration.ofHours(1))
         val ikimina = ikiminaRepository.findById(ikiminaId).orElseThrow { IkiminaNotFoundException("Ikimina not found") }
         if (ikimina.status != IkiminaStatus.ACTIVE) throw IkiminaNotActiveException("This ikimina's cycle is not currently active")
         val member = ikiminaMemberRepository.findByIkiminaIdAndUserId(ikiminaId, userId)

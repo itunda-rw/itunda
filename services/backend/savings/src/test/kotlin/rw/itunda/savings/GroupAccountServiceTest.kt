@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.GroupAccount
 import rw.itunda.core.domain.GroupAccountContribution
@@ -403,6 +404,50 @@ class GroupAccountServiceTest : BehaviorSpec({
                     error("expected IllegalArgumentException")
                 } catch (e: IllegalArgumentException) {
                     verify(exactly = 0) { notificationRepository.save(any()) }
+                }
+            }
+        }
+    }
+
+    Given("a real caller who has already exceeded a real group-account rate limit") {
+        val groupAccountRepository = mockk<GroupAccountRepository>()
+        val groupAccountMemberRepository = mockk<GroupAccountMemberRepository>()
+        val groupAccountContributionRepository = mockk<GroupAccountContributionRepository>()
+        val groupAccountDuesReminderRepository = mockk<GroupAccountDuesReminderRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val userRepository = mockk<UserRepository>()
+        val notificationRepository = mockk<NotificationRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val rateLimiter = mockk<RateLimiter>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val accountNumberGenerator = mockk<AccountNumberGenerator>(relaxed = true)
+        val service = GroupAccountService(
+            groupAccountRepository, groupAccountMemberRepository, groupAccountContributionRepository, groupAccountDuesReminderRepository,
+            accountRepository, userRepository, notificationRepository, ledgerService, rateLimiter, pushNotificationService, accountNumberGenerator,
+        )
+
+        When("depositing to a group account") {
+            every { rateLimiter.checkLimit("group-account:deposit:user_1", limit = 30, window = any()) } throws RateLimitExceededException("Too many requests")
+
+            Then("a real RateLimitExceededException fires before ever touching the real group account row") {
+                try {
+                    service.deposit("user_1", "grp_1", BigDecimal("1000"))
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { groupAccountRepository.findById(any()) }
+                }
+            }
+        }
+
+        When("withdrawing from a group account") {
+            every { rateLimiter.checkLimit("group-account:withdraw:owner_1", limit = 30, window = any()) } throws RateLimitExceededException("Too many requests")
+
+            Then("a real RateLimitExceededException fires before ever touching the real group account row") {
+                try {
+                    service.withdraw("owner_1", "grp_1", BigDecimal("1000"))
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { groupAccountRepository.findById(any()) }
                 }
             }
         }

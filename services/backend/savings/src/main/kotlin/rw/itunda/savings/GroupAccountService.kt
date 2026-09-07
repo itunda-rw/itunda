@@ -163,6 +163,10 @@ class GroupAccountService(
 
     @Transactional
     fun deposit(userId: String, groupAccountId: String, amount: BigDecimal): GroupAccountView {
+        // Real anti-spam/cost limit -- createGroupAccount already has one, deposit never
+        // did, the same "row creation vs. repeatable action" gap class this pass's own
+        // Loans research already named.
+        rateLimiter.checkLimit("group-account:deposit:$userId", limit = 30, window = Duration.ofHours(1))
         require(amount > BigDecimal.ZERO) { "Amount must be greater than zero" }
         val account = groupAccountRepository.findById(groupAccountId).orElseThrow { GroupAccountNotFoundException("Group account not found") }
         groupAccountMemberRepository.findByGroupAccountIdAndUserId(groupAccountId, userId)
@@ -191,6 +195,8 @@ class GroupAccountService(
 
     @Transactional
     fun withdraw(ownerId: String, groupAccountId: String, amount: BigDecimal): GroupAccountView {
+        // Real anti-spam/cost limit -- same convention deposit above now establishes.
+        rateLimiter.checkLimit("group-account:withdraw:$ownerId", limit = 30, window = Duration.ofHours(1))
         require(amount > BigDecimal.ZERO) { "Amount must be greater than zero" }
         val account = groupAccountRepository.findById(groupAccountId).orElseThrow { GroupAccountNotFoundException("Group account not found") }
         // Real Kakao Bank behavior: withdrawal/settlement authority belongs to the

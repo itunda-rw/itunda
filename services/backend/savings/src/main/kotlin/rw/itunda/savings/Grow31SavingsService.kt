@@ -140,6 +140,12 @@ class Grow31SavingsService(
      */
     @Transactional
     fun depositToday(userId: String, planId: String): Grow31SavingsPlanView {
+        // Real anti-spam/cost limit -- createPlan already has one, this repeatable daily
+        // action never did, the same "row creation vs. repeatable action" gap class this
+        // pass's own Loans research already named. Sized generously since the plan's
+        // own once-per-real-calendar-day guard already caps legitimate real usage far
+        // below this.
+        rateLimiter.checkLimit("grow31-savings:deposit:$userId", limit = 30, window = Duration.ofHours(1))
         val plan = findOwned(userId, planId)
         if (plan.status != Grow31SavingsPlanStatus.ACTIVE) throw Grow31PlanNotActiveException("This plan is not active")
 
@@ -232,6 +238,9 @@ class Grow31SavingsService(
      * mirrors WeeklySavingsService.cancelPlan's exact same early-withdrawal shape. */
     @Transactional
     fun cancelPlan(userId: String, planId: String): Grow31SavingsPlanView {
+        // Real anti-spam/cost limit -- same convention depositToday above now
+        // establishes.
+        rateLimiter.checkLimit("grow31-savings:cancel:$userId", limit = 10, window = Duration.ofHours(1))
         val plan = findOwned(userId, planId)
         if (plan.status != Grow31SavingsPlanStatus.ACTIVE) throw Grow31PlanNotActiveException("This plan is not active")
 
@@ -279,6 +288,9 @@ class Grow31SavingsService(
      * distinction WeeklySavingsService.withdraw already establishes. */
     @Transactional
     fun withdraw(userId: String, planId: String): Grow31SavingsPlanView {
+        // Real anti-spam/cost limit -- same convention depositToday/cancelPlan above now
+        // establish.
+        rateLimiter.checkLimit("grow31-savings:withdraw:$userId", limit = 10, window = Duration.ofHours(1))
         val plan = findOwned(userId, planId)
         if (plan.status != Grow31SavingsPlanStatus.MATURED) throw Grow31PlanNotMaturedException("This plan has not matured yet")
         if (plan.withdrawnAt != null) throw Grow31PlanAlreadyWithdrawnException("This plan has already been withdrawn")

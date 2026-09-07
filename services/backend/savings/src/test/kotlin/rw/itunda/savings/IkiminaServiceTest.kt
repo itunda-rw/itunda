@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Ikimina
 import rw.itunda.core.domain.IkiminaMember
@@ -357,6 +358,24 @@ class IkiminaServiceTest : BehaviorSpec({
                     throw AssertionError("expected IkiminaContributionsIncompleteException")
                 } catch (e: IkiminaContributionsIncompleteException) {
                     e.message shouldBe "Not every member has contributed for round 1 yet"
+                }
+            }
+        }
+    }
+
+    Given("a real caller who has already exceeded a real ikimina contribution rate limit") {
+        val ikiminaRepository = mockk<IkiminaRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = newService(ikiminaRepository = ikiminaRepository, rateLimiter = rateLimiter)
+        every { rateLimiter.checkLimit("ikimina:contribute:user_1", limit = 30, window = any()) } throws RateLimitExceededException("Too many requests")
+
+        When("contributing to a round") {
+            Then("a real RateLimitExceededException fires before ever touching the real ikimina row") {
+                try {
+                    service.contributeThisRound("user_1", "ikimina_1")
+                    throw AssertionError("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { ikiminaRepository.findById(any()) }
                 }
             }
         }

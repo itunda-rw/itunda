@@ -2,6 +2,7 @@ package rw.itunda.account
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Transaction
@@ -16,6 +17,7 @@ import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.account.AccountNumberGenerator
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.Period
@@ -65,6 +67,7 @@ class YouthAccountService(
     private val ledgerService: LedgerService,
     private val userRepository: UserRepository,
     private val accountNumberGenerator: AccountNumberGenerator,
+    private val rateLimiter: RateLimiter,
 ) {
     companion object {
         val MAX_BALANCE: BigDecimal = BigDecimal("500000")
@@ -127,6 +130,10 @@ class YouthAccountService(
      */
     @Transactional
     fun deposit(userId: String, amount: BigDecimal): Map<String, Any?> {
+        // Real anti-spam/cost limit -- this endpoint had zero throttle of any kind
+        // beyond its own daily/monthly deposit caps, which bound total amount but not
+        // request frequency.
+        rateLimiter.checkLimit("youth-account:deposit:$userId", limit = 30, window = Duration.ofHours(1))
         if (amount <= BigDecimal.ZERO) throw InvalidYouthAccountDepositAmountException("Amount must be greater than zero")
         val mainAccount = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
             ?: throw AccountNotFoundException("No account found for this account")

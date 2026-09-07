@@ -126,6 +126,10 @@ class SavingsService(
         // work + a raw optimistic-lock exception if this races withdrawFromGoal/
         // autoContribute on the same goal. SavingsGoal's own @Version already made this
         // provably NOT a fund-leak either way -- see this thread's own standing rule.
+        // Real anti-spam/cost limit -- deposit/withdraw were missed by the 2026-07-19
+        // sweep that only covered goal creation, the exact same "row creation vs.
+        // repeatable action" gap class this pass's own Loans research already named.
+        rateLimiter.checkLimit("savings:goal:deposit:$userId", limit = 30, window = Duration.ofHours(1))
         val goal = savingsGoalRepository.findByIdForUpdate(goalId).filter { it.userId == userId }.orElseThrow { GoalNotFoundException("Goal not found") }
         // Real gap found+fixed (2026-09-04, amount-validation sweep): unlike
         // withdrawFromGoal's own identical check just below, nothing here rejected a
@@ -203,6 +207,9 @@ class SavingsService(
     // history" real Toss behavior.
     @Transactional
     fun withdrawFromGoal(userId: String, goalId: String, amount: BigDecimal, toAccountId: String?): SavingsGoal {
+        // Real anti-spam/cost limit -- same convention depositToGoal above now
+        // establishes.
+        rateLimiter.checkLimit("savings:goal:withdraw:$userId", limit = 30, window = Duration.ofHours(1))
         // Real hardening (concurrency-audit thread) -- same reasoning as
         // depositToGoal's own identical lock above.
         val goal = savingsGoalRepository.findByIdForUpdate(goalId).filter { it.userId == userId }.orElseThrow { GoalNotFoundException("Goal not found") }

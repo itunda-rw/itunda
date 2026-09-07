@@ -8,6 +8,8 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.ExchangeRateAlert
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
@@ -45,7 +47,7 @@ class ForeignCurrencyAccountServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = ForeignCurrencyAccountService(
             accountRepository, ledgerService, rateClient, currencyConversionRepository, accountNumberGenerator,
-            exchangeRateAlertRepository, notificationRepository, pushNotificationService,
+            exchangeRateAlertRepository, notificationRepository, pushNotificationService, mockk(relaxed = true),
         )
 
         val mainAccount = account("account_main", "user_1", AccountType.MAIN)
@@ -95,7 +97,7 @@ class ForeignCurrencyAccountServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = ForeignCurrencyAccountService(
             accountRepository, ledgerService, rateClient, currencyConversionRepository, accountNumberGenerator,
-            exchangeRateAlertRepository, notificationRepository, pushNotificationService,
+            exchangeRateAlertRepository, notificationRepository, pushNotificationService, mockk(relaxed = true),
         )
 
         val mainAccount = account("account_main", "user_1", AccountType.MAIN)
@@ -127,7 +129,7 @@ class ForeignCurrencyAccountServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = ForeignCurrencyAccountService(
             accountRepository, ledgerService, rateClient, currencyConversionRepository, accountNumberGenerator,
-            exchangeRateAlertRepository, notificationRepository, pushNotificationService,
+            exchangeRateAlertRepository, notificationRepository, pushNotificationService, mockk(relaxed = true),
         )
 
         every { accountRepository.findByUserIdAndType("user_2", AccountType.MAIN) } returns null
@@ -156,7 +158,7 @@ class ForeignCurrencyAccountServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = ForeignCurrencyAccountService(
             accountRepository, ledgerService, rateClient, currencyConversionRepository, accountNumberGenerator,
-            exchangeRateAlertRepository, notificationRepository, pushNotificationService,
+            exchangeRateAlertRepository, notificationRepository, pushNotificationService, mockk(relaxed = true),
         )
 
         val mainAccount = account("account_main", "user_1", AccountType.MAIN)
@@ -204,7 +206,7 @@ class ForeignCurrencyAccountServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = ForeignCurrencyAccountService(
             accountRepository, ledgerService, rateClient, currencyConversionRepository, accountNumberGenerator,
-            exchangeRateAlertRepository, notificationRepository, pushNotificationService,
+            exchangeRateAlertRepository, notificationRepository, pushNotificationService, mockk(relaxed = true),
         )
 
         every { exchangeRateAlertRepository.save(any()) } answers { firstArg() }
@@ -270,7 +272,7 @@ class ForeignCurrencyAccountServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = ForeignCurrencyAccountService(
             accountRepository, ledgerService, rateClient, currencyConversionRepository, accountNumberGenerator,
-            exchangeRateAlertRepository, notificationRepository, pushNotificationService,
+            exchangeRateAlertRepository, notificationRepository, pushNotificationService, mockk(relaxed = true),
         )
 
         val alert = ExchangeRateAlert(id = "fx_alert_1", userId = "user_1", fromCurrency = "RWF", toCurrency = "USD", targetRate = 0.0007, direction = "ABOVE")
@@ -314,6 +316,34 @@ class ForeignCurrencyAccountServiceTest : BehaviorSpec({
             Then("it honestly skips rather than fabricating a rate") {
                 verify(exactly = 0) { notificationRepository.save(any()) }
                 alert.alertTriggeredAt shouldBe null
+            }
+        }
+    }
+
+    Given("a real caller who has already exceeded a real foreign-currency-conversion rate limit") {
+        val accountRepository = mockk<AccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val rateClient = mockk<ForeignCurrencyRateClient>()
+        val currencyConversionRepository = mockk<CurrencyConversionRepository>()
+        val accountNumberGenerator = mockk<AccountNumberGenerator>(relaxed = true)
+        val exchangeRateAlertRepository = mockk<ExchangeRateAlertRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>()
+        val service = ForeignCurrencyAccountService(
+            accountRepository, ledgerService, rateClient, currencyConversionRepository, accountNumberGenerator,
+            exchangeRateAlertRepository, notificationRepository, pushNotificationService, rateLimiter,
+        )
+        every { rateLimiter.checkLimit("foreign-currency:convert:user_1", limit = 30, window = any()) } throws RateLimitExceededException("Too many requests")
+
+        When("converting") {
+            Then("a real RateLimitExceededException fires before ever calling the real rate provider") {
+                try {
+                    service.convert("user_1", "RWF", "USD", BigDecimal("1000"))
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { rateClient.getRate(any(), any()) }
+                }
             }
         }
     }

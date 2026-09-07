@@ -7,6 +7,8 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
@@ -41,7 +43,7 @@ class YouthAccountServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val userRepository = mockk<UserRepository>()
-        val service = YouthAccountService(accountRepository, transactionRepository, ledgerService, userRepository, mockk<AccountNumberGenerator>(relaxed = true))
+        val service = YouthAccountService(accountRepository, transactionRepository, ledgerService, userRepository, mockk<AccountNumberGenerator>(relaxed = true), mockk(relaxed = true))
 
         When("they don't already have one") {
             every { accountRepository.findByUserIdAndType("user_1", AccountType.MINI) } returns null
@@ -122,7 +124,7 @@ class YouthAccountServiceTest : BehaviorSpec({
             Then("it throws YouthAccountBirthDateRequiredException before ever checking for a MAIN account") {
                 val accountRepository = mockk<AccountRepository>()
                 val userRepository = mockk<UserRepository>()
-                val service = YouthAccountService(accountRepository, mockk(), mockk(), userRepository, mockk<AccountNumberGenerator>(relaxed = true))
+                val service = YouthAccountService(accountRepository, mockk(), mockk(), userRepository, mockk<AccountNumberGenerator>(relaxed = true), mockk(relaxed = true))
                 every { accountRepository.findByUserIdAndType("user_no_birth_date", AccountType.MINI) } returns null
                 every { userRepository.findById("user_no_birth_date") } returns Optional.of(user("user_no_birth_date", null))
                 try {
@@ -138,7 +140,7 @@ class YouthAccountServiceTest : BehaviorSpec({
             Then("it throws YouthAccountAgeIneligibleException") {
                 val accountRepository = mockk<AccountRepository>()
                 val userRepository = mockk<UserRepository>()
-                val service = YouthAccountService(accountRepository, mockk(), mockk(), userRepository, mockk<AccountNumberGenerator>(relaxed = true))
+                val service = YouthAccountService(accountRepository, mockk(), mockk(), userRepository, mockk<AccountNumberGenerator>(relaxed = true), mockk(relaxed = true))
                 every { accountRepository.findByUserIdAndType("user_too_young", AccountType.MINI) } returns null
                 every { userRepository.findById("user_too_young") } returns Optional.of(user("user_too_young", LocalDate.now(rwandaZone).minusYears(6)))
                 try {
@@ -154,7 +156,7 @@ class YouthAccountServiceTest : BehaviorSpec({
             Then("it throws YouthAccountAgeIneligibleException") {
                 val accountRepository = mockk<AccountRepository>()
                 val userRepository = mockk<UserRepository>()
-                val service = YouthAccountService(accountRepository, mockk(), mockk(), userRepository, mockk<AccountNumberGenerator>(relaxed = true))
+                val service = YouthAccountService(accountRepository, mockk(), mockk(), userRepository, mockk<AccountNumberGenerator>(relaxed = true), mockk(relaxed = true))
                 every { accountRepository.findByUserIdAndType("user_too_old", AccountType.MINI) } returns null
                 every { userRepository.findById("user_too_old") } returns Optional.of(user("user_too_old", LocalDate.now(rwandaZone).minusYears(19)))
                 try {
@@ -170,7 +172,7 @@ class YouthAccountServiceTest : BehaviorSpec({
             Then("it real-opens the Youth account -- the boundary age is inclusive, not excluded") {
                 val accountRepository = mockk<AccountRepository>()
                 val userRepository = mockk<UserRepository>()
-                val service = YouthAccountService(accountRepository, mockk(), mockk(), userRepository, mockk<AccountNumberGenerator>(relaxed = true))
+                val service = YouthAccountService(accountRepository, mockk(), mockk(), userRepository, mockk<AccountNumberGenerator>(relaxed = true), mockk(relaxed = true))
                 every { accountRepository.findByUserIdAndType("user_minimum_age", AccountType.MINI) } returns null
                 every { userRepository.findById("user_minimum_age") } returns Optional.of(user("user_minimum_age", LocalDate.now(rwandaZone).minusYears(7)))
                 every { accountRepository.findByUserIdAndType("user_minimum_age", AccountType.MAIN) } returns account("account_main", "user_minimum_age", AccountType.MAIN, "10000")
@@ -188,7 +190,7 @@ class YouthAccountServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val userRepository = mockk<UserRepository>()
-        val service = YouthAccountService(accountRepository, transactionRepository, ledgerService, userRepository, mockk<AccountNumberGenerator>(relaxed = true))
+        val service = YouthAccountService(accountRepository, transactionRepository, ledgerService, userRepository, mockk<AccountNumberGenerator>(relaxed = true), mockk(relaxed = true))
 
         val mainAccount = account("account_main", "user_1", AccountType.MAIN, "1000000")
         val miniAccount = account("account_mini", "user_1", AccountType.MINI, "0")
@@ -265,7 +267,7 @@ class YouthAccountServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val userRepository = mockk<UserRepository>()
-        val service = YouthAccountService(accountRepository, transactionRepository, ledgerService, userRepository, mockk<AccountNumberGenerator>(relaxed = true))
+        val service = YouthAccountService(accountRepository, transactionRepository, ledgerService, userRepository, mockk<AccountNumberGenerator>(relaxed = true), mockk(relaxed = true))
 
         every { accountRepository.findByUserIdAndType("user_3", AccountType.MAIN) } returns account("account_main", "user_3", AccountType.MAIN, "10000")
         every { accountRepository.findByUserIdAndType("user_3", AccountType.MINI) } returns null
@@ -277,6 +279,27 @@ class YouthAccountServiceTest : BehaviorSpec({
                     error("expected AccountNotFoundException")
                 } catch (e: AccountNotFoundException) {
                     // expected
+                }
+            }
+        }
+    }
+
+    Given("a real caller who has already exceeded a real Youth account deposit rate limit") {
+        val accountRepository = mockk<AccountRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val userRepository = mockk<UserRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = YouthAccountService(accountRepository, transactionRepository, ledgerService, userRepository, mockk<AccountNumberGenerator>(relaxed = true), rateLimiter)
+        every { rateLimiter.checkLimit("youth-account:deposit:user_1", limit = 30, window = any()) } throws RateLimitExceededException("Too many requests")
+
+        When("depositing") {
+            Then("a real RateLimitExceededException fires before ever touching the real account row") {
+                try {
+                    service.deposit("user_1", BigDecimal("1000"))
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { accountRepository.findByUserIdAndType(any(), any()) }
                 }
             }
         }

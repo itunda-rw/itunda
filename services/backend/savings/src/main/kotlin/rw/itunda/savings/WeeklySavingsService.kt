@@ -245,6 +245,10 @@ class WeeklySavingsService(
      * matured plan's separate withdraw() step, cancellation *is* the exit. */
     @Transactional
     fun cancelPlan(userId: String, planId: String): WeeklySavingsPlanView {
+        // Real anti-spam/cost limit -- createPlan already has one, cancel/withdraw never
+        // did, the same "row creation vs. repeatable action" gap class this pass's own
+        // Loans research already named.
+        rateLimiter.checkLimit("weekly-savings:cancel:$userId", limit = 10, window = Duration.ofHours(1))
         val plan = findOwned(userId, planId)
         if (plan.status != WeeklySavingsPlanStatus.ACTIVE) throw WeeklyPlanNotActiveException("This plan is not active")
 
@@ -291,6 +295,8 @@ class WeeklySavingsService(
      * action, matching how a real matured term-deposit account behaves. */
     @Transactional
     fun withdraw(userId: String, planId: String): WeeklySavingsPlanView {
+        // Real anti-spam/cost limit -- same convention cancelPlan above now establishes.
+        rateLimiter.checkLimit("weekly-savings:withdraw:$userId", limit = 10, window = Duration.ofHours(1))
         val plan = findOwned(userId, planId)
         if (plan.status != WeeklySavingsPlanStatus.MATURED) throw WeeklyPlanNotMaturedException("This plan has not matured yet")
         if (plan.withdrawnAt != null) throw WeeklyPlanAlreadyWithdrawnException("This plan has already been withdrawn")
