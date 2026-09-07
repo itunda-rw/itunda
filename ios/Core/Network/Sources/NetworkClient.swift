@@ -7228,6 +7228,17 @@ public struct IdentityVerificationRequestResponse: Decodable {
     public let success: Bool; public let partnerName: String; public let status: String; public let expiresAt: String; public let requestedFields: [String]
 }
 
+// Real published third-party mini-app catalog -- mirrors Android's own
+// PartnerMiniAppDto/MiniAppCatalogResponse (ApiService.kt) exactly. Browse-only on
+// iOS (Partners product-completeness pass, 2026-09-07) -- same scope bank-mfe
+// already has; the real runtime bundle loader stays Android-only (see
+// PartnerService.kt's own doc comment).
+public struct PartnerMiniAppDto: Decodable, Identifiable {
+    public let id: String; public let partnerId: String; public let name: String; public let description: String
+    public let iconUrl: String?; public let bundleUrl: String; public let permissions: String; public let status: String; public let createdAt: String
+}
+public struct MiniAppCatalogResponse: Decodable { public let success: Bool; public let miniApps: [PartnerMiniAppDto] }
+
 public struct SubmitIdentityRequest: Encodable { public let documentType: String; public let documentNumber: String; public let documentReference: String }
 public struct KycSubmissionDto: Decodable, Identifiable {
     public let id: String; public let userId: String; public let documentType: String; public let documentNumber: String; public let documentReference: String
