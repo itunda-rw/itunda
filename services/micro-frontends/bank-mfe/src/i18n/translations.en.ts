@@ -61,6 +61,7 @@ export const en: Record<TranslationKey, string> = {
     'overview.teaserRealEstateCta': 'Explore real estate',
     'overview.teaserCar': 'No vehicle yet',
     'overview.teaserCarCta': 'Add a vehicle',
+    'overview.send': 'Send',
     'pay.pickerTitle': 'Choose how to pay',
     'pay.pickerRecent': 'Recent',
     'pay.pickerAccount': 'Account',

@@ -294,6 +294,7 @@ export function OverviewAssetsView({ onNavigateToTab }: { onNavigateToTab: (tab:
 // row rather than inside the parent's accounts.map() callback, which the Rules of
 // Hooks forbid (same pattern as ForeignCurrencyAccountRow in BankDashboard.tsx).
 function OverviewAccountRow({ account, onSend }: { account: AccountSummary; onSend?: () => void }) {
+  const { t } = useI18n();
   const animatedBalance = useCountUp(account.balance);
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--itunda-type-scale-13-size)', padding: '6px 0' }}>
@@ -307,7 +308,7 @@ function OverviewAccountRow({ account, onSend }: { account: AccountSummary; onSe
             className="itunda-btn itunda-btn-secondary"
             style={{ padding: '4px 10px', fontSize: 'var(--itunda-type-scale-12-size)' }}
           >
-            Send
+            {t('overview.send')}
           </button>
         )}
       </div>

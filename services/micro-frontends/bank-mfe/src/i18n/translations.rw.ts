@@ -61,6 +61,7 @@ export const rw: Record<TranslationKey, string> = {
     'overview.teaserRealEstateCta': 'Reba imitungo itimukanwa',
     'overview.teaserCar': 'Nta modoka ufite',
     'overview.teaserCarCta': 'Ongeraho imodoka',
+    'overview.send': 'Kohereza',
     'pay.pickerTitle': 'Hitamo uko wishyura',
     'pay.pickerRecent': 'Vuba aha',
     'pay.pickerAccount': 'Konti',
