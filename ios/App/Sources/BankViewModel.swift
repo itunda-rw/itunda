@@ -34,6 +34,12 @@ final class BankViewModel: ObservableObject {
     // last open item, ported from bank-mfe's identical AccountSummaryRow.tsx fix):
     // nil when the account genuinely doesn't exist yet, not just still loading.
     @Published private(set) var payBalanceText: String?
+    // Real gap found live (2026-09-07): Android's HomeTopBar/web's nav-tab both
+    // already show a small dot when unreadCount > 0; iOS's HomeTopBar showed
+    // nothing at all, because unreadCount only ever lived inside the separate
+    // SettingsViewModel, never plumbed into the view model that actually backs
+    // Home. Matches Android's/web's own "a dot, never a number" design rule.
+    @Published private(set) var unreadNotificationCount: Int = 0
 
     // Real offline queue + connectivity signal (2026-07-13) -- see
     // docs/TOSS_PARITY_MATRIX.md's Offline row. Started once, from init(), matching
@@ -196,6 +202,14 @@ final class BankViewModel: ObservableObject {
                 discoverRows = discoverRes.items.sorted { $0.priority > $1.priority }.map {
                     DiscoverRowData(title: $0.title, subtitle: $0.subtitle, badge: $0.badge, isNew: $0.isNew)
                 }
+            }
+
+            // Real bug fix (2026-09-07, same class as Android's MainViewModel.kt fix):
+            // scoped in its own try?, same "purely informational, must never block Home"
+            // discipline as the Discover-items fetch above -- a notifications hiccup
+            // must never block the rest of Home from loading real data.
+            if let notificationsRes = try? await NetworkClient.shared.getNotifications(), notificationsRes.success {
+                unreadNotificationCount = notificationsRes.unreadCount
             }
 
             isOffline = false

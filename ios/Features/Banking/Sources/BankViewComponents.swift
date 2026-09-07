@@ -39,6 +39,10 @@ struct HomeTopBar: View {
     let locale: BankingLocale
     let onOpenNotifications: () -> Void
     let onOpenProfile: () -> Void
+    // Real gap found live (2026-09-07): Android's HomeTopBar.kt/web's nav-tab both
+    // already show a small dot when unreadCount > 0; this bell showed nothing at
+    // all. A dot, never a number, matching that same established design rule.
+    var unreadNotificationCount: Int = 0
 
     var body: some View {
         HStack {
@@ -54,7 +58,16 @@ struct HomeTopBar: View {
             Spacer()
 
             HStack(spacing: IDS.Layout.inlineGap) {
-                TopBarActionButton(symbol: "bell", accessibilityLabel: bt("notifications", locale: locale), action: onOpenNotifications)
+                ZStack(alignment: .topTrailing) {
+                    TopBarActionButton(symbol: "bell", accessibilityLabel: bt("notifications", locale: locale), action: onOpenNotifications)
+                    if unreadNotificationCount > 0 {
+                        Circle()
+                            .fill(IDS.Colors.danger)
+                            .frame(width: 9, height: 9)
+                            .offset(x: -2, y: 2)
+                            .allowsHitTesting(false)
+                    }
+                }
                 TopBarActionButton(symbol: "person", accessibilityLabel: bt("profile", locale: locale), action: onOpenProfile)
             }
         }

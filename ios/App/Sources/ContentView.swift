@@ -528,6 +528,7 @@ struct ContentView: View {
                             onOpenTransactionHistory: { showTransactionHistory = true },
                             onOpenNotifications: { showBankSettings = true },
                             onOpenProfile: { showBankSettings = true },
+                            unreadNotificationCount: bankViewModel.unreadNotificationCount,
                             payBalanceText: bankViewModel.payBalanceText,
                             onOpenPay: { showBank = false; selectedTab = 1 },
                             onOpenCard: { showBankCard = true },

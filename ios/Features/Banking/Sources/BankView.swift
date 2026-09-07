@@ -311,6 +311,8 @@ public struct BankView: View {
     private let onOpenTransactionHistory: () -> Void
     private let onOpenNotifications: () -> Void
     private let onOpenProfile: () -> Void
+    // Real gap found live (2026-09-07) -- see HomeTopBar's own doc comment.
+    private let unreadNotificationCount: Int
     private let payBalanceText: String?
     private let onOpenPay: () -> Void
     // Real Card/Manage top-bar pair (2026-09-01) -- pure pass-throughs, no local
@@ -340,6 +342,7 @@ public struct BankView: View {
         onOpenTransactionHistory: @escaping () -> Void = {},
         onOpenNotifications: @escaping () -> Void = {},
         onOpenProfile: @escaping () -> Void = {},
+        unreadNotificationCount: Int = 0,
         // Dual-balance UI (2026-08-29, closing [[project_itunda_bank_pay_separation]]'s
         // last open item, ported from bank-mfe's identical AccountSummaryRow.tsx fix).
         payBalanceText: String? = nil,
@@ -357,6 +360,7 @@ public struct BankView: View {
         self.onOpenTransactionHistory = onOpenTransactionHistory
         self.onOpenNotifications = onOpenNotifications
         self.onOpenProfile = onOpenProfile
+        self.unreadNotificationCount = unreadNotificationCount
         self.payBalanceText = payBalanceText
         self.onOpenPay = onOpenPay
         self.onOpenCard = onOpenCard
@@ -366,7 +370,7 @@ public struct BankView: View {
     public var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: IDS.Layout.cardGap) {
-                HomeTopBar(locale: locale, onOpenNotifications: onOpenNotifications, onOpenProfile: onOpenProfile)
+                HomeTopBar(locale: locale, onOpenNotifications: onOpenNotifications, onOpenProfile: onOpenProfile, unreadNotificationCount: unreadNotificationCount)
                 // Real Toss Bank reference (20 screenshots, 2026-08-21): the account
                 // ledger was first built inline right here, flat, directly below the
                 // balance card -- the user's own direct follow-up ("those below they
