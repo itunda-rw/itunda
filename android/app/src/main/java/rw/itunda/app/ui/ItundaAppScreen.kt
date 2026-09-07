@@ -1545,6 +1545,8 @@ fun ItundaAppScreen(
                 // above for the full "wrong home" story. showBank cleared first, same
                 // reasoning as onOpenSpendingInsight just above.
                 onOpenAccountDetail = { showBank = false; showAccountDetail = true },
+                onOpenYouthAccount = { showBank = false; showYouthAccount = true },
+                onOpenGroupAccounts = { showBank = false; showGroupAccounts = true },
             )
             return@IdsTheme
         }

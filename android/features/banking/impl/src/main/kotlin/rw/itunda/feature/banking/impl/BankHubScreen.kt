@@ -23,10 +23,12 @@ import androidx.compose.material.icons.outlined.Agriculture
 import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.ChildCare
 import androidx.compose.material.icons.outlined.CurrencyExchange
 import androidx.compose.material.icons.outlined.DirectionsBike
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.SupervisorAccount
 import androidx.compose.material.icons.outlined.PieChart
 import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material.icons.outlined.School
@@ -124,6 +126,14 @@ fun BankHubScreen(
     onOpenSpendingInsight: () -> Unit = {},
     onOpenAccountDetail: () -> Unit = {},
     onOpenPay: () -> Unit = {},
+    // Real Bank-hub entry-point fix (Savings/Account product-completeness pass,
+    // 2026-09-07) -- both screens were already fully built and API-wired, but
+    // stranded behind the generic Explore/Menu tab, unlike every sibling
+    // sub-product (26-week/31-day/12-month savings) which already has a direct
+    // row here. Matches the exact fix shape the 2026-09-06 pass already applied
+    // to those siblings.
+    onOpenYouthAccount: () -> Unit = {},
+    onOpenGroupAccounts: () -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     var showRoundUpDialog by remember { mutableStateOf(false) }
@@ -346,6 +356,8 @@ fun BankHubScreen(
                         add(ShellRow("26-week savings", "$BANK_HUB_WEEKLY_SAVINGS_BASE_RATE% base rate, escalates weekly", ">", Icons.Outlined.CalendarMonth, AccentIndigo, onClick = onOpenWeeklySavings))
                         add(ShellRow("31-day savings", "Daily streak, up to $BANK_HUB_GROW31_MAX_BONUS_RATE% bonus rate", ">", Icons.Outlined.Bolt, AccentOrange, onClick = onOpenGrow31Savings))
                         add(ShellRow("12-month deposit", "$BANK_HUB_UPFRONT_DEPOSIT_ANNUAL_RATE%/yr interest paid upfront, principal locked", ">", Icons.Outlined.Lock, AccentPurple, onClick = onOpenUpfrontDeposit))
+                        add(ShellRow("Youth account", "A starter account for under-18s, parent-supervised", ">", Icons.Outlined.ChildCare, AccentOrange, onClick = onOpenYouthAccount))
+                        add(ShellRow("Group accounts", "Shared savings for family, church or cooperative groups", ">", Icons.Outlined.SupervisorAccount, AccentIndigo, onClick = onOpenGroupAccounts))
                         add(ShellRow(stringResource(R.string.home_coop_rail_ikimina_title), stringResource(R.string.home_coop_rail_ikimina_subtitle), ">", Icons.Outlined.Groups, AccentTeal, onClick = onOpenIkimina))
                         add(ShellRow(stringResource(R.string.home_coop_rail_sacco_title), stringResource(R.string.home_coop_rail_sacco_subtitle), ">", Icons.Outlined.AccountBalance, AccentPurple, onClick = onOpenSacco))
                         add(ShellRow("Investments", "RSE stocks, bonds & fixed income, IPOs", ">", Icons.Outlined.TrendingUp, AccentTeal, onClick = onOpenInvest))
