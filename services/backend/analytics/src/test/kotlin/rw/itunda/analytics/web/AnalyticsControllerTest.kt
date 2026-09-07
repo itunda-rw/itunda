@@ -8,6 +8,8 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import org.springframework.http.HttpStatus
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.AnalyticsEvent
 import rw.itunda.core.repository.AnalyticsEventRepository
 import rw.itunda.core.security.CurrentUser
@@ -24,14 +26,16 @@ class AnalyticsControllerTest : BehaviorSpec({
 
     Given("a real request to record a known event") {
         val repository = mockk<AnalyticsEventRepository>()
-        val controller = AnalyticsController(repository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val controller = AnalyticsController(repository, rateLimiter)
         val savedSlot = slot<AnalyticsEvent>()
         every { repository.save(capture(savedSlot)) } answers { firstArg() }
 
         When("recording it") {
             val response = controller.recordEvent(currentUser, RecordEventRequest("home_view", "android"))
 
-            Then("a real row is saved, scoped to the caller's own userId") {
+            Then("a real row is saved, scoped to the caller's own userId, after a real rate-limit check") {
+                verify(exactly = 1) { rateLimiter.checkLimit("analytics:event:user_1", limit = 60, window = any()) }
                 verify(exactly = 1) { repository.save(any()) }
                 savedSlot.captured.userId shouldBe "user_1"
                 savedSlot.captured.eventName shouldBe "home_view"
@@ -41,9 +45,38 @@ class AnalyticsControllerTest : BehaviorSpec({
         }
     }
 
+    Given("a caller who has already exceeded the analytics event rate limit") {
+        val repository = mockk<AnalyticsEventRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val controller = AnalyticsController(repository, rateLimiter)
+        every { rateLimiter.checkLimit("analytics:event:user_1", limit = 60, window = any()) } throws RateLimitExceededException("Too many requests")
+
+        When("recording another event") {
+            Then("a real RateLimitExceededException fires, and nothing is saved") {
+                try {
+                    controller.recordEvent(currentUser, RecordEventRequest("home_view", "android"))
+                    throw AssertionError("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    // expected
+                }
+                verify(exactly = 0) { repository.save(any()) }
+            }
+        }
+
+        When("its exception handler maps it to a real HTTP response") {
+            val response = controller.handleRateLimit(RateLimitExceededException("Too many requests"))
+
+            Then("it maps to 429 with code RATE_LIMITED, not a generic 500") {
+                response.statusCode shouldBe HttpStatus.TOO_MANY_REQUESTS
+                response.body?.code shouldBe "RATE_LIMITED"
+            }
+        }
+    }
+
     Given("a real request to record an unknown event name") {
         val repository = mockk<AnalyticsEventRepository>()
-        val controller = AnalyticsController(repository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val controller = AnalyticsController(repository, rateLimiter)
 
         When("recording it") {
             Then("a real UnknownAnalyticsEventException fires, and nothing is saved") {
@@ -69,7 +102,7 @@ class AnalyticsControllerTest : BehaviorSpec({
 
     Given("a real usage window with events for every known type and a real coop-rail return") {
         val repository = mockk<AnalyticsEventRepository>()
-        val controller = AnalyticsController(repository)
+        val controller = AnalyticsController(repository, mockk(relaxed = true))
         val since = slot<Instant>()
 
         every { repository.countByEventNameSince(any(), capture(since)) } returns 10L
@@ -105,7 +138,7 @@ class AnalyticsControllerTest : BehaviorSpec({
 
     Given("a real usage window with nobody tapping the coop rail") {
         val repository = mockk<AnalyticsEventRepository>()
-        val controller = AnalyticsController(repository)
+        val controller = AnalyticsController(repository, mockk(relaxed = true))
 
         every { repository.countByEventNameSince(any(), any()) } returns 0L
         every { repository.countDistinctUsersByEventNameSince(any(), any()) } returns 0L

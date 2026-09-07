@@ -1,5 +1,6 @@
 package rw.itunda.analytics.web
 
+import java.time.Duration
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
@@ -13,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.AnalyticsEvent
 import rw.itunda.core.repository.AnalyticsEventRepository
 import rw.itunda.core.security.CurrentUser
@@ -28,7 +31,10 @@ class UnknownAnalyticsEventException(eventName: String) : RuntimeException("Unkn
  */
 @RestController
 @RequestMapping("/api/v1/analytics")
-class AnalyticsController(private val repository: AnalyticsEventRepository) {
+class AnalyticsController(
+    private val repository: AnalyticsEventRepository,
+    private val rateLimiter: RateLimiter,
+) {
 
     companion object {
         // Deliberately small, closed vocabulary (see AnalyticsEvent.kt's own doc
@@ -57,6 +63,11 @@ class AnalyticsController(private val repository: AnalyticsEventRepository) {
     @PostMapping("/events")
     fun recordEvent(@AuthenticationPrincipal currentUser: CurrentUser, @RequestBody request: RecordEventRequest): ResponseEntity<Map<String, Any>> {
         if (request.eventName !in KNOWN_EVENTS) throw UnknownAnalyticsEventException(request.eventName)
+        // Real anti-spam/cost limit -- same "frequent, cheap, easy to hammer otherwise"
+        // convention MapsService.searchPlaces already establishes, not a low
+        // content-creation limit like Knowledge's -- this is a self-reported usage
+        // ping, not authored content.
+        rateLimiter.checkLimit("analytics:event:${currentUser.userId}", limit = 60, window = Duration.ofMinutes(1))
         repository.save(
             AnalyticsEvent(
                 id = "analytics_event_${UUID.randomUUID()}",
@@ -115,4 +126,8 @@ class AnalyticsController(private val repository: AnalyticsEventRepository) {
     @ExceptionHandler(UnknownAnalyticsEventException::class)
     fun handleUnknownEvent(ex: UnknownAnalyticsEventException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("UNKNOWN_EVENT", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(RateLimitExceededException::class)
+    fun handleRateLimit(ex: RateLimitExceededException) =
+        ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
 }
