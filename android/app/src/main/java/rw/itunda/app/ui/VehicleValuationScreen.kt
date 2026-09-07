@@ -47,6 +47,7 @@ import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
 import java.math.BigDecimal
 import java.time.Year
+import java.util.UUID
 import rw.itunda.core.designsystem.components.EmptyState
 
 // Real Toss 내 차 시세 (my car's market value)-style vehicle value estimator -- see
@@ -110,7 +111,7 @@ fun VehicleValuationScreen(onBack: () -> Unit) {
         error = null
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.registerVehicle(RegisterVehicleRequest(make.trim(), model.trim(), year, price, purchaseDate.trim(), mileage))
+                NetworkClient.apiService.registerVehicle(UUID.randomUUID().toString(), RegisterVehicleRequest(make.trim(), model.trim(), year, price, purchaseDate.trim(), mileage))
                 make = ""; model = ""; purchasePrice = ""; purchaseDate = ""; mileageKm = ""
                 showCreate = false
                 load()

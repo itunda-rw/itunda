@@ -1923,8 +1923,12 @@ extension NetworkClient {
     // model-year bounds (dynamic, "between 1980 and $currentYear+1"), a future
     // purchase date, and make/model length -- none of it checked client-side beyond
     // a non-empty/positive-price guard.
+    // Idempotency-Key added 2026-09-07 (Vehicle product-completeness pass) -- same bug
+    // class registerAsMechanic (marketplace) already got fixed for: a lost response
+    // after a successful registration previously resubmitted here and created a real
+    // duplicate vehicle row (no uniqueness constraint exists).
     public func registerVehicle(make: String, model: String, modelYear: Int, purchasePrice: Double, purchaseDate: String, mileageKm: Int) async throws -> VehicleResponse {
-        try await authenticatedPostWithMessage("api/v1/vehicles", body: RegisterVehicleRequest(make: make, model: model, modelYear: modelYear, purchasePrice: purchasePrice, purchaseDate: purchaseDate, mileageKm: mileageKm))
+        try await authenticatedPostWithMessage("api/v1/vehicles", body: RegisterVehicleRequest(make: make, model: model, modelYear: modelYear, purchasePrice: purchasePrice, purchaseDate: purchaseDate, mileageKm: mileageKm), idempotencyKey: UUID().uuidString)
     }
     public func getMyVehicles() async throws -> VehiclesResponse { try await get("api/v1/vehicles") }
     public func getVehicleValuation(_ id: String) async throws -> VehicleValuationResponse { try await get("api/v1/vehicles/\(id)/valuation") }

@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Real Toss 내 차 시세 (my car's market value)-style vehicle value estimator -- see
 // backend VehicleValuationService's own doc comment for the full sourced account and
@@ -29,9 +30,14 @@ export interface VehicleValuation {
 export const fetchMyVehicles = () =>
   apiFetch<{ success: boolean; vehicles: Vehicle[] }>('/api/v1/vehicles').then((r) => r.vehicles);
 
+// Idempotency-Key added 2026-09-07 (Vehicle product-completeness pass) -- same bug
+// class registerAsMechanic (marketplace) already got fixed for: a lost response
+// after a successful registration previously resubmitted here and created a real
+// duplicate vehicle row (no uniqueness constraint exists).
 export const registerVehicle = (make: string, model: string, modelYear: number, purchasePrice: number, purchaseDate: string, mileageKm: number) =>
   apiFetch<{ success: boolean; vehicle: Vehicle }>('/api/v1/vehicles', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ make, model, modelYear, purchasePrice, purchaseDate, mileageKm }),
   }).then((r) => r.vehicle);
 

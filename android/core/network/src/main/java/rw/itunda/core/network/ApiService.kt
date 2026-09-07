@@ -4936,8 +4936,12 @@ interface ApiService {
     // Real Toss 내 차 시세 (my car's market value)-style vehicle value estimator -- see
     // rw.itunda.vehicle.VehicleValuationService's own doc comment. bank-mfe already has
     // this; this is the first Android client.
+    // Idempotency-Key added 2026-09-07 (Vehicle product-completeness pass) -- same bug
+    // class registerAsMechanic (marketplace) already got fixed for: a lost response
+    // after a successful registration previously resubmitted here and created a real
+    // duplicate vehicle row (no uniqueness constraint exists).
     @POST("api/v1/vehicles")
-    suspend fun registerVehicle(@Body request: RegisterVehicleRequest): VehicleResponse
+    suspend fun registerVehicle(@Header("Idempotency-Key") idempotencyKey: String, @Body request: RegisterVehicleRequest): VehicleResponse
 
     @GET("api/v1/vehicles")
     suspend fun getMyVehicles(): VehiclesResponse
