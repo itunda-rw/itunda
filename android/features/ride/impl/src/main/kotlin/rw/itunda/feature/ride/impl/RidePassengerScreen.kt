@@ -62,7 +62,7 @@ import java.util.UUID
 internal data class StopInput(var address: String = "", var lat: String = "", var lng: String = "")
 
 @Composable
-internal fun RidePassengerContent() {
+internal fun RidePassengerContent(onReportIssue: (String) -> Unit = {}) {
     var pickupAddress by remember { mutableStateOf("") }
     var pickupLat by remember { mutableStateOf<Double?>(null) }
     var pickupLng by remember { mutableStateOf<Double?>(null) }
@@ -443,6 +443,19 @@ internal fun RidePassengerContent() {
                     }
                     if (trip.status == "COMPLETED" && trip.driverId != null && trip.tipAmount == null && trip.id !in tippedTripIds) {
                         TipDriverPrompt(tripId = trip.id, onTipped = { tippedTripIds = tippedTripIds + trip.id })
+                    }
+                    // Real "report an issue" hand-off (Support product-completeness
+                    // pass, 2026-09-08) -- mirrors bank-mfe's RidePassengerView's own
+                    // identical button, see SupportScreen.kt's own doc comment.
+                    if (trip.status == "COMPLETED") {
+                        Text(
+                            "Report an issue", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Ids.colors.surfaceSoft)
+                                .pressScaleClickable { onReportIssue(trip.transactionId) }
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                        )
                     }
                 }
             }

@@ -50,7 +50,7 @@ import rw.itunda.core.designsystem.theme.Ids
 private enum class RideTab { RIDE, DRIVE }
 
 @Composable
-fun RideScreen(onBack: () -> Unit) {
+fun RideScreen(onBack: () -> Unit, onReportIssue: (String) -> Unit = {}) {
     BackHandler(onBack = onBack)
     var tab by remember { mutableStateOf(RideTab.RIDE) }
 
@@ -72,6 +72,6 @@ fun RideScreen(onBack: () -> Unit) {
                 }
             }
         }
-        if (tab == RideTab.RIDE) RidePassengerContent() else RideDriverContent()
+        if (tab == RideTab.RIDE) RidePassengerContent(onReportIssue = onReportIssue) else RideDriverContent()
     }
 }

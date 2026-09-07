@@ -97,6 +97,11 @@ struct MenuTabContent: View {
     @State private var showAgentCashOut = false
     @State private var showForeignCurrency = false
     @State private var showSupport = false
+    // Real "report an issue" hand-off from a completed ride (Support product-
+    // completeness pass, 2026-09-08) -- same pending-hand-off shape bank-mfe's
+    // BankDashboard.tsx already established (pendingRideIssueTransactionId), see
+    // SupportScreenView.swift's own doc comment for the full account.
+    @State private var pendingRideIssueTransactionId: String?
 
     var body: some View {
         EntireMenuScreen(
@@ -272,7 +277,14 @@ struct MenuTabContent: View {
             MotoOwnershipScreenView(onBack: { showMotoOwnership = false })
         }
         .sheet(isPresented: $showRides) {
-            RideScreenView(onBack: { showRides = false })
+            RideScreenView(
+                onBack: { showRides = false },
+                onReportIssue: { transactionId in
+                    showRides = false
+                    pendingRideIssueTransactionId = transactionId
+                    showSupport = true
+                }
+            )
         }
         .sheet(isPresented: $showDesignatedDriver) {
             DesignatedDriverScreenView(onBack: { showDesignatedDriver = false })
@@ -319,7 +331,12 @@ struct MenuTabContent: View {
             ForeignCurrencyScreenView(onBack: { showForeignCurrency = false })
         }
         .sheet(isPresented: $showSupport) {
-            SupportScreenView(onBack: { showSupport = false })
+            SupportScreenView(
+                onBack: { showSupport = false; pendingRideIssueTransactionId = nil },
+                initialTransactionId: pendingRideIssueTransactionId,
+                initialCategory: pendingRideIssueTransactionId != nil ? "RIDE_ISSUE" : nil,
+                onConsumedInitial: { pendingRideIssueTransactionId = nil }
+            )
         }
     }
 }

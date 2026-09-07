@@ -29,9 +29,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
+import rw.itunda.app.R
 import rw.itunda.core.network.CreateSupportTicketRequest
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SupportTicketDto
@@ -45,28 +47,36 @@ import java.io.IOException
 // them. A ticket is always tied to a specific transaction (see SupportTicket.kt's own
 // doc comment for why), so this screen has the user pick one from their real
 // transaction history rather than filing a free-floating complaint.
-// Real, pre-existing cross-platform gap found (2026-09-06, Eats product-completeness
-// pass): "RIDE_ISSUE" is a real backend category with its own real web client
-// pre-filled hand-off (bank-mfe's RidePassengerView "Report an issue" button), but
-// this screen never got it -- Android has no equivalent pre-filled hand-off for ANY
-// category yet, ride or otherwise, so it's named here, not built (a separate, larger
-// piece of work, out of scope for this pass). EATS_ORDER_ISSUE is added below purely
-// so a user can at least pick the right category when filing a ticket manually --
-// the same real gap RIDE_ISSUE already has here, not a new one introduced by Eats.
-private val CATEGORIES = listOf("GENERAL", "PAYMENT_DISPUTE", "ACCOUNT_TAKEOVER", "EATS_ORDER_ISSUE")
+// Real cross-platform gap closed (Support product-completeness pass, 2026-09-08):
+// "RIDE_ISSUE" is a real backend category with its own real web client pre-filled
+// hand-off (bank-mfe's RidePassengerView "Report an issue" button); this screen now
+// has the equivalent -- see initialTransactionId/initialCategory below, wired from
+// RideScreen's own new onReportIssue callback via ItundaAppScreen.kt's
+// pendingRideIssueTransactionId state (same shape as this file's own sibling
+// hand-offs, e.g. MarketplaceContent's requestedView).
+private val CATEGORIES = listOf("GENERAL", "PAYMENT_DISPUTE", "ACCOUNT_TAKEOVER", "RIDE_ISSUE", "EATS_ORDER_ISSUE")
 
 @Composable
-fun SupportScreen(onBack: () -> Unit) {
+fun SupportScreen(
+    onBack: () -> Unit,
+    initialTransactionId: String? = null,
+    initialCategory: String? = null,
+    onConsumedInitial: () -> Unit = {},
+) {
     BackHandler(onBack = onBack)
     var tickets by remember { mutableStateOf<List<SupportTicketDto>?>(null) }
     var transactions by remember { mutableStateOf<List<TransactionDto>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
-    var showNewTicketForm by remember { mutableStateOf(false) }
-    var selectedTransactionId by remember { mutableStateOf<String?>(null) }
-    var selectedCategory by remember { mutableStateOf(CATEGORIES.first()) }
+    var showNewTicketForm by remember { mutableStateOf(initialTransactionId != null) }
+    var selectedTransactionId by remember { mutableStateOf(initialTransactionId) }
+    var selectedCategory by remember { mutableStateOf(initialCategory ?: CATEGORIES.first()) }
     var descriptionText by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(initialTransactionId) {
+        if (initialTransactionId != null) onConsumedInitial()
+    }
 
     suspend fun refresh() {
         try {
@@ -87,10 +97,10 @@ fun SupportScreen(onBack: () -> Unit) {
             error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
             item {
                 if (!showNewTicketForm) {
-                    IdsButton(text = "Report an issue with a transaction", onClick = { showNewTicketForm = true })
+                    IdsButton(text = stringResource(R.string.support_report_issue_cta), onClick = { showNewTicketForm = true })
                 } else {
                     Column {
-                        Text("Which transaction?", style = MaterialTheme.typography.labelMedium)
+                        Text(stringResource(R.string.support_which_transaction), style = MaterialTheme.typography.labelMedium)
                         transactions.take(10).forEach { tx ->
                             Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("${tx.description} · ${tx.currency} ${tx.amount}", style = MaterialTheme.typography.bodySmall)
@@ -103,17 +113,17 @@ fun SupportScreen(onBack: () -> Unit) {
                             }
                         }
                         Spacer(Modifier.height(8.dp))
-                        Text("Category", style = MaterialTheme.typography.labelMedium)
+                        Text(stringResource(R.string.support_category), style = MaterialTheme.typography.labelMedium)
                         IdsSegmentedControl(
                             options = CATEGORIES.map { it to it },
                             selected = selectedCategory,
                             onSelect = { selectedCategory = it },
                         )
                         Spacer(Modifier.height(8.dp))
-                        IdsTextField(value = descriptionText, onValueChange = { descriptionText = it }, label = "Describe the issue", modifier = Modifier.fillMaxWidth())
+                        IdsTextField(value = descriptionText, onValueChange = { descriptionText = it }, label = stringResource(R.string.support_describe_issue), modifier = Modifier.fillMaxWidth())
                         Spacer(Modifier.height(8.dp))
                         IdsButton(
-                            text = if (busy) "Submitting…" else "Submit ticket",
+                            text = if (busy) stringResource(R.string.support_submitting) else stringResource(R.string.support_submit_ticket),
                             enabled = !busy && selectedTransactionId != null && descriptionText.isNotBlank(),
                             onClick = {
                                 val transactionId = selectedTransactionId ?: return@IdsButton
@@ -138,10 +148,10 @@ fun SupportScreen(onBack: () -> Unit) {
                     }
                 }
             }
-            item { Text("Your tickets", style = MaterialTheme.typography.titleMedium) }
+            item { Text(stringResource(R.string.support_your_tickets), style = MaterialTheme.typography.titleMedium) }
             val currentTickets = tickets
             if (currentTickets == null) item { SkeletonBlock() }
-            else if (currentTickets.isEmpty()) item { Text("You have no support tickets.") }
+            else if (currentTickets.isEmpty()) item { Text(stringResource(R.string.support_no_tickets)) }
             else items(currentTickets, key = { it.id }) { ticket -> TicketCard(ticket) }
         }
     }

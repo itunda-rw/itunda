@@ -10,22 +10,36 @@ import CoreNetwork
 // OverviewLoansCreditScoreScreens.swift (2026-08-30) into its own FeatureSupport
 // module -- same real, sourced Toss one-feature-per-module precedent applied to
 // Certificate/Identity's own extraction (toss.tech/article/slash23-iOS).
-// Real, pre-existing cross-platform gap found (2026-09-06, Eats product-completeness
-// pass): "RIDE_ISSUE" is a real backend category with its own real web client
-// pre-filled hand-off (bank-mfe's RidePassengerView "Report an issue" button), but
-// this screen never got it -- iOS has no equivalent pre-filled hand-off for ANY
-// category yet, ride or otherwise, so it's named here, not built (a separate, larger
-// piece of work, out of scope for this pass). EATS_ORDER_ISSUE is added below purely
-// so a user can at least pick the right category when filing a ticket manually --
-// the same real gap RIDE_ISSUE already has here, not a new one introduced by Eats.
-private let supportCategories = ["GENERAL", "PAYMENT_DISPUTE", "ACCOUNT_TAKEOVER", "EATS_ORDER_ISSUE"]
+// Real cross-platform gap closed (Support product-completeness pass, 2026-09-08):
+// "RIDE_ISSUE" is a real backend category with its own real web client pre-filled
+// hand-off (bank-mfe's RidePassengerView "Report an issue" button); this screen now
+// has the equivalent -- see initialTransactionId/initialCategory below, wired from
+// RideScreenView's own new onReportIssue callback via MenuTabContent.swift's
+// pendingRideIssueTransactionId state.
+private let supportCategories = ["GENERAL", "PAYMENT_DISPUTE", "ACCOUNT_TAKEOVER", "RIDE_ISSUE", "EATS_ORDER_ISSUE"]
 
 // Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
 // convention never reached this file, which predates that sweep's file list).
 
 public struct SupportScreenView: View {
     public var onBack: () -> Void
-    public init(onBack: @escaping () -> Void = {}) { self.onBack = onBack }
+    public var initialTransactionId: String?
+    public var initialCategory: String?
+    public var onConsumedInitial: () -> Void
+    public init(
+        onBack: @escaping () -> Void = {},
+        initialTransactionId: String? = nil,
+        initialCategory: String? = nil,
+        onConsumedInitial: @escaping () -> Void = {}
+    ) {
+        self.onBack = onBack
+        self.initialTransactionId = initialTransactionId
+        self.initialCategory = initialCategory
+        self.onConsumedInitial = onConsumedInitial
+        _showNewForm = State(initialValue: initialTransactionId != nil)
+        _selectedTransactionId = State(initialValue: initialTransactionId)
+        _category = State(initialValue: initialCategory ?? supportCategories[0])
+    }
 
     @State private var tickets: [SupportTicketDto]?
     @State private var transactions: [TransactionDto] = []
@@ -109,6 +123,9 @@ public struct SupportScreenView: View {
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .task { await refresh() }
+        .task {
+            if initialTransactionId != nil { onConsumedInitial() }
+        }
     }
 
     private func refresh() async {

@@ -522,6 +522,11 @@ fun ItundaAppScreen(
         var showOverview by rememberSaveable { mutableStateOf(false) }
         var showLoans by rememberSaveable { mutableStateOf(false) }
         var showSupport by rememberSaveable { mutableStateOf(false) }
+        // Real "report an issue" hand-off from a completed ride (Support product-
+        // completeness pass, 2026-09-08) -- same pending-hand-off shape bank-mfe's
+        // BankDashboard.tsx already established (pendingRideIssueTransactionId), see
+        // SupportScreen.kt's own doc comment for the full account.
+        var pendingRideIssueTransactionId by rememberSaveable { mutableStateOf<String?>(null) }
         var showCreditScore by rememberSaveable { mutableStateOf(false) }
         var showCertificate by rememberSaveable { mutableStateOf(false) }
         var showIdentity by rememberSaveable { mutableStateOf(false) }
@@ -1368,7 +1373,12 @@ fun ItundaAppScreen(
         }
         if (showSupport) {
             BackHandler { showSupport = false }
-            SupportScreen(onBack = { showSupport = false })
+            SupportScreen(
+                onBack = { showSupport = false; pendingRideIssueTransactionId = null },
+                initialTransactionId = pendingRideIssueTransactionId,
+                initialCategory = if (pendingRideIssueTransactionId != null) "RIDE_ISSUE" else null,
+                onConsumedInitial = { pendingRideIssueTransactionId = null },
+            )
             return@IdsTheme
         }
         if (showCreditScore) {
@@ -1684,7 +1694,14 @@ fun ItundaAppScreen(
         }
         if (showRides) {
             BackHandler { showRides = false }
-            RideScreen(onBack = { showRides = false })
+            RideScreen(
+                onBack = { showRides = false },
+                onReportIssue = { transactionId ->
+                    showRides = false
+                    pendingRideIssueTransactionId = transactionId
+                    showSupport = true
+                },
+            )
             return@IdsTheme
         }
         if (showDesignatedDriver) {

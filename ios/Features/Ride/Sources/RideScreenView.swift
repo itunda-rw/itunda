@@ -62,10 +62,12 @@ final class RideLocationFetcher: NSObject, ObservableObject, CLLocationManagerDe
 // instant) is identical either way.
 public struct RideScreenView: View {
     var onBack: () -> Void = {}
+    var onReportIssue: (String) -> Void = { _ in }
     @State private var tab = 0
 
-    public init(onBack: @escaping () -> Void = {}) {
+    public init(onBack: @escaping () -> Void = {}, onReportIssue: @escaping (String) -> Void = { _ in }) {
         self.onBack = onBack
+        self.onReportIssue = onReportIssue
     }
 
     public var body: some View {
@@ -87,7 +89,7 @@ public struct RideScreenView: View {
             .padding(.horizontal)
 
             if tab == 0 {
-                RidePassengerContent()
+                RidePassengerContent(onReportIssue: onReportIssue)
             } else {
                 RideDriverContent()
             }
@@ -128,6 +130,7 @@ func colorFromHex(_ hex: String) -> Color {
 }
 
 private struct RidePassengerContent: View {
+    var onReportIssue: (String) -> Void = { _ in }
     @StateObject private var locationFetcher = RideLocationFetcher()
     @State private var pickupAddress = ""
     @State private var dropoffAddress = ""
@@ -318,6 +321,18 @@ private struct RidePassengerContent: View {
                             }
                             if trip.status == "COMPLETED", trip.driverId != nil, trip.tipAmount == nil, !tippedTripIds.contains(trip.id) {
                                 TipDriverPrompt(tripId: trip.id, onTipped: { tippedTripIds.insert(trip.id) })
+                            }
+                            // Real "report an issue" hand-off (Support product-
+                            // completeness pass, 2026-09-08) -- mirrors bank-mfe's
+                            // RidePassengerView's own identical button, see
+                            // SupportScreenView.swift's own doc comment.
+                            if trip.status == "COMPLETED" {
+                                Button(action: { onReportIssue(trip.transactionId) }) {
+                                    Text("Report an issue")
+                                        .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                        .padding(.horizontal, 12).padding(.vertical, 8)
+                                        .background(IDS.Colors.chipBackground).cornerRadius(8)
+                                }
                             }
                         }
                     }

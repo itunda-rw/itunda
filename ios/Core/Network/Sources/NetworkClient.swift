@@ -930,6 +930,12 @@ public struct RideTripDto: Decodable {
     public let platformFee: Double
     public let status: String
     public let createdAt: String
+    // Real gap found (Support product-completeness pass, 2026-09-08): the backend's
+    // RideTrip.kt has always returned this field, but this DTO never declared it, so
+    // it was silently discarded on every response -- the exact same drift bank-mfe
+    // already found and fixed 2026-08-16 (see lib/rideshare.ts's own doc comment).
+    // Needed for the real "report an issue" hand-off into Support.
+    public let transactionId: String
     // Real Kakao T 예약 호출 (scheduled ride booking, item 212) -- nil means an ASAP
     // request, unchanged from before.
     public let scheduledFor: String?
