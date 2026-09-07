@@ -94,11 +94,11 @@ export function NewCommunityPostCard({ categories, onCreated }: { categories: Co
         {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
       </select>
       <input
-        type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" required
+        type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('hood.community.titlePlaceholder')} required
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
       />
       <textarea
-        value={body} onChange={(e) => setBody(e.target.value)} placeholder="What's going on in the neighborhood?" required rows={4}
+        value={body} onChange={(e) => setBody(e.target.value)} placeholder={t('hood.community.bodyPlaceholder')} required rows={4}
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', resize: 'vertical' }}
       />
       {category === 'meetup' && (
@@ -175,7 +175,7 @@ export function CommentNotificationToggle() {
         {error && <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-red)', marginTop: '4px' }} role="alert">{error}</p>}
       </div>
       <button
-        type="button" role="switch" aria-checked={enabled} aria-label="Notify me about new comments" disabled={busy} onClick={handleToggle}
+        type="button" role="switch" aria-checked={enabled} aria-label={t('hood.community.notifyToggleLabel')} disabled={busy} onClick={handleToggle}
         style={{
           width: '44px', height: '26px', borderRadius: '13px', padding: '2px', flexShrink: 0,
           background: enabled ? 'var(--itunda-indigo)' : 'var(--itunda-grey-300)', display: 'flex', justifyContent: enabled ? 'flex-end' : 'flex-start',
@@ -453,11 +453,11 @@ export function GroupBuyFinalizeSection({ post, currentUserId }: { post: Communi
         Enter what you paid up front -- every real member who joined will be asked for their even share.
       </p>
       <input
-        type="number" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="Total amount (RWF)"
+        type="number" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder={t('hood.community.groupBuyAmountPlaceholder')}
         style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)', width: '100%', boxSizing: 'border-box', marginBottom: '8px' }}
       />
       <input
-        type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What was this for?"
+        type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t('hood.community.groupBuyDescriptionPlaceholder')}
         style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)', width: '100%', boxSizing: 'border-box', marginBottom: '8px' }}
       />
       <button className="itunda-btn itunda-btn-primary" disabled={submitting} onClick={handleFinalize}>

@@ -289,11 +289,11 @@ export function PropertyValuationCard({ propertyTypes }: { propertyTypes: Proper
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
-            type="text" value={latitude} placeholder="Latitude" onChange={(e) => setLatitude(e.target.value)}
+            type="text" value={latitude} placeholder={t('hood.property.latitudePlaceholder')} onChange={(e) => setLatitude(e.target.value)}
             style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
           />
           <input
-            type="text" value={longitude} placeholder="Longitude" onChange={(e) => setLongitude(e.target.value)}
+            type="text" value={longitude} placeholder={t('hood.property.longitudePlaceholder')} onChange={(e) => setLongitude(e.target.value)}
             style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
           />
           <button className="itunda-btn itunda-btn-secondary" onClick={useMyLocation} style={{ padding: '10px 12px', fontSize: 'var(--itunda-type-scale-12-size)' }}>
@@ -324,7 +324,7 @@ export function PropertyValuationCard({ propertyTypes }: { propertyTypes: Proper
           ))}
         </div>
         <input
-          type="text" value={sizeSqm} placeholder="Size (sqm)" onChange={(e) => setSizeSqm(e.target.value)}
+          type="text" value={sizeSqm} placeholder={t('hood.property.sizeSqmPlaceholder')} onChange={(e) => setSizeSqm(e.target.value)}
           style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
         />
         {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}

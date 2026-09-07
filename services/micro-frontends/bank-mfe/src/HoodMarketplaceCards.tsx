@@ -110,26 +110,26 @@ export function NewListingCard({ onCreated }: { onCreated: () => void }) {
     <form onSubmit={handleSubmit} style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>List an item</h3>
       <input
-        type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What are you selling?" required
+        type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('hood.marketplace.titlePlaceholder')} required
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
       />
       <textarea
-        value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" required rows={3}
+        value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t('hood.marketplace.descriptionPlaceholder')} required rows={3}
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', resize: 'vertical' }}
       />
       <div style={{ display: 'flex', gap: '10px' }}>
         <input
-          type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Price (RWF)" required min="1"
+          type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder={t('hood.marketplace.pricePlaceholder')} required min="1"
           style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
         />
         <input
-          type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Category" required
+          type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder={t('hood.marketplace.categoryPlaceholder')} required
           style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
         />
       </div>
       <input
         type="text" value={meetingPlace} maxLength={120} onChange={(e) => setMeetingPlace(e.target.value)}
-        placeholder="Suggested meeting place (optional)"
+        placeholder={t('hood.marketplace.meetingPlacePlaceholder')}
         aria-describedby="meeting-place-help"
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
       />
@@ -352,7 +352,7 @@ export function KeywordAlertsView() {
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <form onSubmit={handleAdd} className="itunda-flat-section" style={{ display: 'flex', gap: '8px' }}>
         <input
-          type="text" value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="Alert me for (e.g. iPhone 15)"
+          type="text" value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder={t('hood.marketplace.keywordAlertPlaceholder')}
           style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
         />
         <button type="submit" className="itunda-btn itunda-btn-primary" disabled={adding || !keyword.trim()}>{adding ? '…' : 'Add'}</button>

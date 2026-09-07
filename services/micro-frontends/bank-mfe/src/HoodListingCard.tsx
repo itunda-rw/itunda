@@ -337,7 +337,7 @@ export function ListingCard({ listing, isMine, onChanged, onMessageSeller, favor
               type="button"
               onClick={handleHide}
               disabled={hiding}
-              title="Hide this listing -- you won't see it again"
+              title={t('hood.listing.hideTitle')}
               style={{ background: 'none', border: 'none', padding: 0, fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-400)', cursor: 'pointer' }}
             >
               {hiding ? '…' : 'Hide'}
@@ -370,7 +370,7 @@ export function ListingCard({ listing, isMine, onChanged, onMessageSeller, favor
             type="number"
             value={offerAmount}
             onChange={(e) => setOfferAmount(e.target.value)}
-            placeholder="Your offer (RWF)"
+            placeholder={t('hood.listing.offerPlaceholder')}
             style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
           />
           <button className="itunda-btn itunda-btn-primary" disabled={busy || !offerAmount} onClick={handleMakeOffer}>
@@ -412,7 +412,7 @@ export function ListingCard({ listing, isMine, onChanged, onMessageSeller, favor
           type="text"
           value={deliveryAddress}
           onChange={(e) => setDeliveryAddress(e.target.value)}
-          placeholder="Delivery address (optional, for a shipped item)"
+          placeholder={t('hood.listing.deliveryAddressPlaceholder')}
           style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
         />
       )}

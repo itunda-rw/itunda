@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useI18n } from './i18n/I18nContext';
 import { ApiError } from './lib/api';
 import {
   addResumeCertification, addResumeEducation, addResumeExperience,
@@ -49,6 +50,7 @@ export function ResumeBuilderView() {
 }
 
 function ResumeProfileSection({ detail, strengthsCatalog, onSaved }: { detail: ResumeDetail; strengthsCatalog: ResumeStrength[]; onSaved: () => void }) {
+  const { t } = useI18n();
   const [selfIntro, setSelfIntro] = useState(detail.resume?.selfIntro ?? '');
   const [additionalInfo, setAdditionalInfo] = useState(detail.resume?.additionalInfo ?? '');
   const [selectedStrengths, setSelectedStrengths] = useState<Set<string>>(
@@ -81,7 +83,7 @@ function ResumeProfileSection({ detail, strengthsCatalog, onSaved }: { detail: R
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>About you</h4>
-      <textarea value={selfIntro} onChange={(e) => setSelfIntro(e.target.value)} placeholder="Self-introduction" rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+      <textarea value={selfIntro} onChange={(e) => setSelfIntro(e.target.value)} placeholder={t('hood.resume.selfIntroPlaceholder')} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
       {strengthsCatalog.length > 0 && (
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {strengthsCatalog.map((s) => {
@@ -100,7 +102,7 @@ function ResumeProfileSection({ detail, strengthsCatalog, onSaved }: { detail: R
           })}
         </div>
       )}
-      <textarea value={additionalInfo} onChange={(e) => setAdditionalInfo(e.target.value)} placeholder="Additional info (optional)" rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+      <textarea value={additionalInfo} onChange={(e) => setAdditionalInfo(e.target.value)} placeholder={t('hood.resume.additionalInfoPlaceholder')} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       <button className="itunda-btn itunda-btn-primary" disabled={saving} onClick={handleSave} style={{ width: 'fit-content' }}>
         {saving ? 'Saving…' : 'Save'}
@@ -110,6 +112,7 @@ function ResumeProfileSection({ detail, strengthsCatalog, onSaved }: { detail: R
 }
 
 function ResumeExperienceSection({ experiences, onChanged }: { experiences: ResumeExperience[]; onChanged: () => void }) {
+  const { t } = useI18n();
   const [adding, setAdding] = useState(false);
   const [company, setCompany] = useState('');
   const [role, setRole] = useState('');
@@ -150,9 +153,9 @@ function ResumeExperienceSection({ experiences, onChanged }: { experiences: Resu
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {adding && (
         <>
-          <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company" style={inputStyle} />
-          <input value={role} onChange={(e) => setRole(e.target.value)} placeholder="Role" style={inputStyle} />
-          <input value={period} onChange={(e) => setPeriod(e.target.value)} placeholder="Period (e.g. 2023 – present)" style={inputStyle} />
+          <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder={t('hood.resume.companyPlaceholder')} style={inputStyle} />
+          <input value={role} onChange={(e) => setRole(e.target.value)} placeholder={t('hood.resume.rolePlaceholder')} style={inputStyle} />
+          <input value={period} onChange={(e) => setPeriod(e.target.value)} placeholder={t('hood.resume.periodPlaceholder')} style={inputStyle} />
           <button className="itunda-btn itunda-btn-primary" style={{ width: 'fit-content' }} onClick={handleAdd}>Save</button>
         </>
       )}
@@ -161,6 +164,7 @@ function ResumeExperienceSection({ experiences, onChanged }: { experiences: Resu
 }
 
 function ResumeEducationSection({ educations, onChanged }: { educations: ResumeEducation[]; onChanged: () => void }) {
+  const { t } = useI18n();
   const [adding, setAdding] = useState(false);
   const [school, setSchool] = useState('');
   const [degree, setDegree] = useState('');
@@ -191,8 +195,8 @@ function ResumeEducationSection({ educations, onChanged }: { educations: ResumeE
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {adding && (
         <>
-          <input value={school} onChange={(e) => setSchool(e.target.value)} placeholder="School" style={inputStyle} />
-          <input value={degree} onChange={(e) => setDegree(e.target.value)} placeholder="Degree (optional)" style={inputStyle} />
+          <input value={school} onChange={(e) => setSchool(e.target.value)} placeholder={t('hood.resume.schoolPlaceholder')} style={inputStyle} />
+          <input value={degree} onChange={(e) => setDegree(e.target.value)} placeholder={t('hood.resume.degreePlaceholder')} style={inputStyle} />
           <button className="itunda-btn itunda-btn-primary" style={{ width: 'fit-content' }} onClick={handleAdd}>Save</button>
         </>
       )}
@@ -201,6 +205,7 @@ function ResumeEducationSection({ educations, onChanged }: { educations: ResumeE
 }
 
 function ResumeCertificationSection({ certifications, onChanged }: { certifications: ResumeCertification[]; onChanged: () => void }) {
+  const { t } = useI18n();
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -230,7 +235,7 @@ function ResumeCertificationSection({ certifications, onChanged }: { certificati
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {adding && (
         <>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Certification name" style={inputStyle} />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('hood.resume.certificationNamePlaceholder')} style={inputStyle} />
           <button className="itunda-btn itunda-btn-primary" style={{ width: 'fit-content' }} onClick={handleAdd}>Save</button>
         </>
       )}

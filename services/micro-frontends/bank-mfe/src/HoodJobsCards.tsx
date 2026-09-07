@@ -56,11 +56,11 @@ export function NewJobPostCard({ categories, onCreated }: { categories: JobCateg
         {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
       </select>
       <input
-        type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What do you need done?" required
+        type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('hood.jobs.titlePlaceholder')} required
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
       />
       <textarea
-        value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the work" required rows={3}
+        value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t('hood.jobs.descriptionPlaceholder')} required rows={3}
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', resize: 'vertical' }}
       />
       <div style={{ display: 'flex', gap: '10px' }}>
@@ -72,7 +72,7 @@ export function NewJobPostCard({ categories, onCreated }: { categories: JobCateg
           <option value="FIXED">Fixed price</option>
         </select>
         <input
-          type="number" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} placeholder="Pay (RWF)" required min="1"
+          type="number" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} placeholder={t('hood.jobs.payPlaceholder')} required min="1"
           style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
         />
       </div>
@@ -233,7 +233,7 @@ export function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact,
             type="tel"
             value={workerPhone}
             onChange={(e) => setWorkerPhone(e.target.value)}
-            placeholder="Worker's phone (optional)"
+            placeholder={t('hood.jobs.workerPhonePlaceholder')}
             style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
           />
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -316,7 +316,7 @@ export function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact,
           <textarea
             value={applicationMessage}
             onChange={(e) => setApplicationMessage(e.target.value)}
-            placeholder="Why should the poster pick you? (required)"
+            placeholder={t('hood.jobs.applicationMessagePlaceholder')}
             style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', minHeight: '72px' }}
           />
           <div style={{ display: 'flex', gap: '8px' }}>

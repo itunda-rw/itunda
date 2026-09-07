@@ -1,3 +1,4 @@
+import { useI18n } from './i18n/I18nContext';
 import type { Listing, VehicleFieldsState } from './lib/marketplace';
 
 // Real 당근카 (Karrot Vehicles) listing-creation fields + detail-view breakdown
@@ -31,6 +32,7 @@ function ToggleChip({ label, active, onClick }: { label: string; active: boolean
 }
 
 export function VehicleListingFieldsForm({ state, onChange }: { state: VehicleFieldsState; onChange: (next: VehicleFieldsState) => void }) {
+  const { t } = useI18n();
   const set = (patch: Partial<VehicleFieldsState>) => onChange({ ...state, ...patch });
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -38,23 +40,23 @@ export function VehicleListingFieldsForm({ state, onChange }: { state: VehicleFi
       {state.isVehicle && (
         <>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <input type="number" value={state.mileageKm} onChange={(e) => set({ mileageKm: e.target.value })} placeholder="Mileage (km)" style={inputStyle} />
-            <input type="number" value={state.insuranceClaimCount} onChange={(e) => set({ insuranceClaimCount: e.target.value })} placeholder="Insurance claims" style={inputStyle} />
+            <input type="number" value={state.mileageKm} onChange={(e) => set({ mileageKm: e.target.value })} placeholder={t('hood.vehicle.mileagePlaceholder')} style={inputStyle} />
+            <input type="number" value={state.insuranceClaimCount} onChange={(e) => set({ insuranceClaimCount: e.target.value })} placeholder={t('hood.vehicle.insuranceClaimsPlaceholder')} style={inputStyle} />
           </div>
           <ToggleChip label="Lease takeover (렌트 승계)" active={state.isLeaseTakeover} onClick={() => set({ isLeaseTakeover: !state.isLeaseTakeover })} />
           {state.isLeaseTakeover && (
             <>
               <div style={{ display: 'flex', gap: '10px' }}>
-                <input type="number" value={state.leaseTotalAcquisitionCost} onChange={(e) => set({ leaseTotalAcquisitionCost: e.target.value })} placeholder="Total acquisition cost" style={inputStyle} />
-                <input type="number" value={state.leaseMonthlyPayment} onChange={(e) => set({ leaseMonthlyPayment: e.target.value })} placeholder="Monthly payment" style={inputStyle} />
+                <input type="number" value={state.leaseTotalAcquisitionCost} onChange={(e) => set({ leaseTotalAcquisitionCost: e.target.value })} placeholder={t('hood.vehicle.leaseAcquisitionCostPlaceholder')} style={inputStyle} />
+                <input type="number" value={state.leaseMonthlyPayment} onChange={(e) => set({ leaseMonthlyPayment: e.target.value })} placeholder={t('hood.vehicle.leaseMonthlyPaymentPlaceholder')} style={inputStyle} />
               </div>
               <div style={{ display: 'flex', gap: '10px' }}>
-                <input type="number" value={state.leaseRemainingMonths} onChange={(e) => set({ leaseRemainingMonths: e.target.value })} placeholder="Months remaining" style={inputStyle} />
-                <input type="number" value={state.leaseTotalMonths} onChange={(e) => set({ leaseTotalMonths: e.target.value })} placeholder="Total lease months" style={inputStyle} />
+                <input type="number" value={state.leaseRemainingMonths} onChange={(e) => set({ leaseRemainingMonths: e.target.value })} placeholder={t('hood.vehicle.leaseMonthsRemainingPlaceholder')} style={inputStyle} />
+                <input type="number" value={state.leaseTotalMonths} onChange={(e) => set({ leaseTotalMonths: e.target.value })} placeholder={t('hood.vehicle.leaseTotalMonthsPlaceholder')} style={inputStyle} />
               </div>
               <div style={{ display: 'flex', gap: '10px' }}>
-                <input type="number" value={state.leaseSubsidyAmount} onChange={(e) => set({ leaseSubsidyAmount: e.target.value })} placeholder="Subsidy amount" style={inputStyle} />
-                <input type="number" value={state.leaseReturnFee} onChange={(e) => set({ leaseReturnFee: e.target.value })} placeholder="Return fee at end" style={inputStyle} />
+                <input type="number" value={state.leaseSubsidyAmount} onChange={(e) => set({ leaseSubsidyAmount: e.target.value })} placeholder={t('hood.vehicle.leaseSubsidyPlaceholder')} style={inputStyle} />
+                <input type="number" value={state.leaseReturnFee} onChange={(e) => set({ leaseReturnFee: e.target.value })} placeholder={t('hood.vehicle.leaseReturnFeePlaceholder')} style={inputStyle} />
               </div>
             </>
           )}

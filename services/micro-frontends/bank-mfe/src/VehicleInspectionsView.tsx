@@ -170,7 +170,7 @@ export function VehicleInspectionsView() {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <input
-                type="text" value={listingId} onChange={(e) => setListingId(e.target.value)} placeholder="Listing ID"
+                type="text" value={listingId} onChange={(e) => setListingId(e.target.value)} placeholder={t('hood.inspection.listingIdPlaceholder')}
                 style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
               />
               <select
@@ -181,7 +181,7 @@ export function VehicleInspectionsView() {
                 {(mechanics ?? []).map((m) => <option key={m.id} value={m.id}>{m.businessName}</option>)}
               </select>
               <input
-                type="number" value={fee} onChange={(e) => setFee(e.target.value)} placeholder="Inspection fee (RWF)"
+                type="number" value={fee} onChange={(e) => setFee(e.target.value)} placeholder={t('hood.inspection.feePlaceholder')}
                 style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
               />
               <input
@@ -232,7 +232,7 @@ export function VehicleInspectionsView() {
             Get booked and paid to inspect used cars for real buyers before they purchase.
           </p>
           <input
-            type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Business name"
+            type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder={t('hood.inspection.businessNamePlaceholder')}
             style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)', width: '100%', boxSizing: 'border-box', marginBottom: '8px' }}
           />
           <button className="itunda-btn itunda-btn-primary" disabled={registering} onClick={handleRegister}>
@@ -275,7 +275,7 @@ export function VehicleInspectionsView() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
                       <textarea
                         value={findings[b.id] ?? ''} onChange={(e) => setFindings((prev) => ({ ...prev, [b.id]: e.target.value }))}
-                        placeholder="Inspection findings" rows={2}
+                        placeholder={t('hood.inspection.findingsPlaceholder')} rows={2}
                         style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)', resize: 'vertical' }}
                       />
                       <button className="itunda-btn itunda-btn-primary" disabled={busyBookingId === b.id} onClick={() => handleComplete(b.id)}>

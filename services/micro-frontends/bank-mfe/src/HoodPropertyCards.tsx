@@ -70,11 +70,11 @@ export function NewPropertyListingCard({ propertyTypes, onCreated }: { propertyT
         </select>
       </div>
       <input
-        type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. 2-bedroom apartment in Kacyiru" required
+        type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('hood.property.titlePlaceholder')} required
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
       />
       <textarea
-        value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the property" required rows={3}
+        value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t('hood.property.descriptionPlaceholder')} required rows={3}
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', resize: 'vertical' }}
       />
       <div style={{ display: 'flex', gap: '10px' }}>
@@ -84,11 +84,11 @@ export function NewPropertyListingCard({ propertyTypes, onCreated }: { propertyT
           style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
         />
         <input
-          type="number" value={bedrooms} onChange={(e) => setBedrooms(e.target.value)} placeholder="Bedrooms" min="0"
+          type="number" value={bedrooms} onChange={(e) => setBedrooms(e.target.value)} placeholder={t('hood.property.bedroomsPlaceholder')} min="0"
           style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
         />
         <input
-          type="number" value={sizeSqm} onChange={(e) => setSizeSqm(e.target.value)} placeholder="Size (m²)" min="1"
+          type="number" value={sizeSqm} onChange={(e) => setSizeSqm(e.target.value)} placeholder={t('hood.property.sizePlaceholder')} min="1"
           style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
         />
       </div>
