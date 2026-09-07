@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -105,7 +106,7 @@ internal fun MapTopChrome(
             OutlinedTextField(
                 value = query,
                 onValueChange = onQueryChange,
-                placeholder = { Text("Search a real place in Rwanda", fontSize = 13.sp) },
+                placeholder = { Text(stringResource(R.string.maps_search_placeholder), fontSize = 13.sp) },
                 singleLine = true,
                 textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp),
                 colors = OutlinedTextFieldDefaults.colors(

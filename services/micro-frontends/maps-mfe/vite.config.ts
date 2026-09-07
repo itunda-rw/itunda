@@ -13,6 +13,7 @@ export default defineConfig({
       filename: 'remoteEntry.js',
       exposes: {
         './MapView': './src/MapView.tsx',
+        './I18nProvider': './src/RemoteI18nProvider.tsx',
       },
       shared: ['react', 'react-dom']
     })

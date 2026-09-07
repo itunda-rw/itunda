@@ -85,6 +85,11 @@ import { captureReferralCodeFromUrl } from './lib/affiliate';
 // ever exposed, never consumed) -- lazy-loading a federated remote is the same import()
 // call as lazy-loading a local module, so this line barely changes.
 const MapView = lazy(() => import('maps_mfe/MapView'));
+// Real fix (Maps product-completeness pass, 2026-09-07) -- MapView's own useI18n()
+// call binds to maps-mfe's own bundled Context object, which THIS app's I18nProvider
+// cannot satisfy even though both share the same React instance (same real fix
+// host-app's own App.tsx already documents for bank_mfe/kyc_mfe).
+const MapsI18nProvider = lazy(() => import('maps_mfe/I18nProvider'));
 const InsuranceView = lazy(() => import('./InsuranceView'));
 const BikeShareView = lazy(() => import('./BikeShareView'));
 const ParkingView = lazy(() => import('./ParkingView'));
@@ -3080,7 +3085,9 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'KNOWLEDGE' && <KnowledgeView />}
       {tab === 'MAP' && (
         <Suspense fallback={<div className="itunda-flat-section skeleton" style={{ height: '300px' }} />}>
-          <MapView />
+          <MapsI18nProvider>
+            <MapView />
+          </MapsI18nProvider>
         </Suspense>
       )}
       {tab === 'CERTIFICATE' && <CertificateView />}

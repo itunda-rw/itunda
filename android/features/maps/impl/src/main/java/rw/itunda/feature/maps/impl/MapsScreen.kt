@@ -57,6 +57,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -193,6 +194,10 @@ fun MapScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    // Real localization (Maps product-completeness pass, 2026-09-07) -- resolved once
+    // here (a `stringResource` call can't happen inside the many non-composable
+    // coroutine catch blocks below that set `error`) and captured by every one of them.
+    val connectionErrorMessage = stringResource(R.string.maps_connection_error)
     // Real dark map style (2026-08-10) -- read once via `remember`, like every other
     // one-shot MapView setup below.
     val isDarkMap = isSystemInDarkTheme()
@@ -492,7 +497,7 @@ fun MapScreen(
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: Exception) {
-                error = "Couldn't reach itunda. Check your connection and try again."
+                error = connectionErrorMessage
             } finally {
                 searching = false
             }
@@ -526,7 +531,7 @@ fun MapScreen(
         } catch (e: HttpException) {
             sharedFolderError = superAppErrorMessage(e)
         } catch (e: Exception) {
-            sharedFolderError = "Couldn't reach itunda. Check your connection and try again."
+            sharedFolderError = connectionErrorMessage
         } finally {
             loadingSharedFolder = false
         }
@@ -552,7 +557,7 @@ fun MapScreen(
         } catch (e: HttpException) {
             error = superAppErrorMessage(e)
         } catch (e: Exception) {
-            error = "Couldn't reach itunda. Check your connection and try again."
+            error = connectionErrorMessage
         } finally {
             searching = false
         }
@@ -644,7 +649,7 @@ fun MapScreen(
                 } catch (e: HttpException) {
                     error = superAppErrorMessage(e)
                 } catch (e: Exception) {
-                    error = "Couldn't reach itunda. Check your connection and try again."
+                    error = connectionErrorMessage
                 } finally {
                     bookmarking = false
                 }
@@ -685,7 +690,7 @@ fun MapScreen(
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: Exception) {
-                error = "Couldn't reach itunda. Check your connection and try again."
+                error = connectionErrorMessage
             } finally {
                 sharingFolder = null
             }
@@ -709,7 +714,7 @@ fun MapScreen(
             } catch (e: HttpException) {
                 sharedFolderError = superAppErrorMessage(e)
             } catch (e: Exception) {
-                sharedFolderError = "Couldn't reach itunda. Check your connection and try again."
+                sharedFolderError = connectionErrorMessage
             } finally {
                 subscribingSharedFolder = false
             }
@@ -730,7 +735,7 @@ fun MapScreen(
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: Exception) {
-                error = "Couldn't reach itunda. Check your connection and try again."
+                error = connectionErrorMessage
             } finally {
                 bookmarking = false
             }
@@ -782,7 +787,7 @@ fun MapScreen(
                 error = superAppErrorMessage(e)
                 activeCategory = null
             } catch (e: Exception) {
-                error = "Couldn't reach itunda. Check your connection and try again."
+                error = connectionErrorMessage
                 activeCategory = null
             } finally {
                 categoryLoading = false
@@ -819,7 +824,7 @@ fun MapScreen(
                 routeAlternatives = response.routes; selectedRouteIndex = 0
                 route = MapsDirectionsResponse(success = true, route = response.routes[0]); showSteps = false
             } catch (e: HttpException) { error = superAppErrorMessage(e) }
-            catch (e: Exception) { error = "Couldn't reach itunda. Check your connection and try again." }
+            catch (e: Exception) { error = connectionErrorMessage }
             finally { routing = false }
         }
     }
@@ -870,7 +875,7 @@ fun MapScreen(
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: Exception) {
-                error = "Couldn't reach itunda. Check your connection and try again."
+                error = connectionErrorMessage
             } finally {
                 routing = false
             }
@@ -962,7 +967,7 @@ fun MapScreen(
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
+                error = connectionErrorMessage
             } finally {
                 routing = false
             }
@@ -1580,7 +1585,7 @@ fun MapScreen(
                                     } catch (e: HttpException) {
                                         error = superAppErrorMessage(e)
                                     } catch (e: Exception) {
-                                        error = "Couldn't reach itunda. Check your connection and try again."
+                                        error = connectionErrorMessage
                                     } finally {
                                         routing = false
                                     }

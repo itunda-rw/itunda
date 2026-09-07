@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="maps_search_placeholder">Shakisha ahantu nyaho mu Rwanda</string>
+    <string name="maps_connection_error">Ntibishoboka guhuza na itunda. Reba interineti yawe hanyuma ugerageze nanone.</string>
+    <string name="maps_folder_name_placeholder">Izina ry\'idosiye (urugero: Ibyo nkunda)</string>
+    <string name="maps_saving">Kubika…</string>
+    <string name="maps_save">Bika</string>
+    <string name="maps_cancel">Hagarika</string>
+    <string name="maps_location_share_title">📍 Gusangira aho uri ako kanya</string>
+    <string name="maps_share_my_location">+ Sangira aho ndi</string>
+    <string name="maps_recipient_phone_placeholder">Numero ya telefoni y\'uwakira</string>
+    <string name="maps_share_for">Igihe cy\'</string>
+    <string name="maps_starting">Gutangira…</string>
+    <string name="maps_start_sharing">Tangira gusangira</string>
+</resources>

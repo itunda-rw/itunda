@@ -20,6 +20,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -129,9 +130,9 @@ fun LocationShareSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("📍 Live location sharing", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textTertiary)
+            Text(stringResource(R.string.maps_location_share_title), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textTertiary)
             Text(
-                if (showStartShare) "Cancel" else "+ Share my location",
+                if (showStartShare) stringResource(R.string.maps_cancel) else stringResource(R.string.maps_share_my_location),
                 fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
                 modifier = Modifier.pressScaleClickable { showStartShare = !showStartShare },
             )
@@ -142,9 +143,9 @@ fun LocationShareSection(
                 Modifier.fillMaxWidth().padding(top = 6.dp).background(Ids.colors.surfaceSoft, RoundedCornerShape(8.dp)).padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                IdsTextField(value = recipientPhone, onValueChange = { recipientPhone = it }, label = "Recipient's phone number")
+                IdsTextField(value = recipientPhone, onValueChange = { recipientPhone = it }, label = stringResource(R.string.maps_recipient_phone_placeholder))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("For", fontSize = 12.sp, color = Ids.colors.textSecondary)
+                    Text(stringResource(R.string.maps_share_for), fontSize = 12.sp, color = Ids.colors.textSecondary)
                     listOf(1, 2, 3, 4, 5, 6).forEach { h ->
                         Text(
                             "${h}h",
@@ -157,7 +158,7 @@ fun LocationShareSection(
                 }
                 error?.let { Text(it, fontSize = 12.sp, color = Ids.colors.danger) }
                 Text(
-                    if (busy) "Starting…" else "Start sharing",
+                    if (busy) stringResource(R.string.maps_starting) else stringResource(R.string.maps_start_sharing),
                     fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.surface,
                     modifier = Modifier
                         .fillMaxWidth()

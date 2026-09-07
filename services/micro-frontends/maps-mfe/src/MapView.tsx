@@ -46,6 +46,7 @@ import {
 } from './lib/maps';
 import { fetchShoppingCatalog, type ShoppingMerchant } from './lib/shopping';
 import { searchBusTrips, type BusTrip } from './lib/bus';
+import { useI18n } from './i18n/I18nContext';
 import { ApiError, getStoredUser } from './lib/api';
 import { PlaceGlyph } from './icons/ItundaFacePlaces';
 import { MerchantBookableServicesSection, MyBookingReviewsCard, MyBookingsCard } from './MapsBooking';
@@ -261,6 +262,7 @@ const MAP_CARD_DIVIDER = '#D1D6DB';
  * self-hosted OSRM, drawing the actual road-following route, not just a straight line).
  */
 export default function MapView() {
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const myLocationMarkerRef = useRef<maplibregl.Marker | null>(null);
@@ -716,14 +718,14 @@ export default function MapView() {
         if (searchRequestIdRef.current === requestId) setSearchResults(results);
       } catch (err) {
         if (searchRequestIdRef.current === requestId) {
-          setError(err instanceof ApiError ? err.message : 'Could not search for that place.');
+          setError(err instanceof ApiError ? err.message : t('maps.searchError'));
         }
       } finally {
         if (searchRequestIdRef.current === requestId) setSearching(false);
       }
     }, 350);
     return () => window.clearTimeout(timer);
-  }, [query]);
+  }, [query, t]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -736,7 +738,7 @@ export default function MapView() {
       const results = await searchPlaces(trimmed);
       setSearchResults(results);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not search for that place.');
+      setError(err instanceof ApiError ? err.message : t('maps.searchError'));
     } finally {
       setSearching(false);
     }
@@ -819,7 +821,7 @@ export default function MapView() {
       setShareCopied(true);
       window.setTimeout(() => setShareCopied(false), 2000);
     } catch {
-      setError('Could not share this place.');
+      setError(t('maps.shareError'));
     }
   };
 
@@ -1018,7 +1020,7 @@ export default function MapView() {
         await removeMapBookmark(place.latitude, place.longitude);
         setBookmarks((prev) => prev.filter((b) => !(b.latitude === place.latitude && b.longitude === place.longitude)));
       } catch (err) {
-        setError(err instanceof ApiError ? err.message : 'Could not remove this place.');
+        setError(err instanceof ApiError ? err.message : t('maps.bookmarkRemoveError'));
       } finally {
         setBookmarking(false);
       }
@@ -1047,7 +1049,7 @@ export default function MapView() {
       setBookmarks((prev) => [saved, ...prev]);
       setSavingToFolder(null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save this place.');
+      setError(err instanceof ApiError ? err.message : t('maps.bookmarkSaveError'));
     } finally {
       setBookmarking(false);
     }
@@ -1397,7 +1399,7 @@ export default function MapView() {
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
-            placeholder="Search a real place in Rwanda"
+            placeholder={t('maps.searchPlaceholder')}
             style={{ flex: 1, padding: '10px 6px', border: 'none', outline: 'none', fontSize: '14px', background: 'transparent' }}
           />
           {query.trim() !== '' && (
@@ -1733,7 +1735,7 @@ export default function MapView() {
                     type="text"
                     value={folderNameInput}
                     onChange={(e) => setFolderNameInput(e.target.value)}
-                    placeholder="Folder name (e.g. Favorites)"
+                    placeholder={t('maps.folderNamePlaceholder')}
                     maxLength={120}
                     style={{ padding: '8px 10px', borderRadius: '8px', border: `1px solid ${MAP_CARD_DIVIDER}`, fontSize: '13px' }}
                   />
@@ -1763,10 +1765,10 @@ export default function MapView() {
                   </div>
                   <div style={{ display: 'flex', gap: '6px' }}>
                     <button type="button" className="itunda-btn itunda-btn-primary" disabled={bookmarking} onClick={confirmSaveToFolder} style={{ flex: 1 }}>
-                      {bookmarking ? 'Saving…' : 'Save'}
+                      {bookmarking ? t('maps.saving') : t('maps.save')}
                     </button>
                     <button type="button" disabled={bookmarking} onClick={() => setSavingToFolder(null)} style={{ flex: 1, fontSize: '13px', color: MAP_CARD_TEXT_SECONDARY }}>
-                      Cancel
+                      {t('maps.cancel')}
                     </button>
                   </div>
                 </div>
@@ -1847,7 +1849,7 @@ export default function MapView() {
                   {merchantCount === null
                     ? 'Loading real merchants near you…'
                     : merchantCount === 0
-                    ? 'Search a real place or pick a category above to explore Rwanda.'
+                    ? t('maps.exploreDefault')
                     : `${merchantCount} real merchant${merchantCount === 1 ? '' : 's'} on the map. Search a place or pick a category above to explore.`}
                 </p>
               )}
@@ -2015,13 +2017,13 @@ export default function MapView() {
                   the folder-share section above already establishes. */}
               <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #E5E8EB' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <p style={{ fontSize: '12px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY }}>📍 Live location sharing</p>
+                  <p style={{ fontSize: '12px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY }}>{t('maps.locationShareTitle')}</p>
                   <button
                     type="button"
                     onClick={() => setShowStartShare((v) => !v)}
                     style={{ fontSize: '11px', fontWeight: 700, color: '#7472F4', background: 'none', border: 'none' }}
                   >
-                    {showStartShare ? 'Cancel' : '+ Share my location'}
+                    {showStartShare ? t('maps.cancel') : t('maps.shareMyLocation')}
                   </button>
                 </div>
 
@@ -2031,11 +2033,11 @@ export default function MapView() {
                       type="text"
                       value={shareRecipientPhone}
                       onChange={(e) => setShareRecipientPhone(e.target.value)}
-                      placeholder="Recipient's phone number"
+                      placeholder={t('maps.recipientPhonePlaceholder')}
                       style={{ fontSize: '13px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #e5e8eb' }}
                     />
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '12px', color: MAP_CARD_TEXT_SECONDARY }}>For</span>
+                      <span style={{ fontSize: '12px', color: MAP_CARD_TEXT_SECONDARY }}>{t('maps.shareFor')}</span>
                       <select
                         value={shareDurationHours}
                         onChange={(e) => setShareDurationHours(Number(e.target.value))}
@@ -2053,7 +2055,7 @@ export default function MapView() {
                       onClick={handleStartLocationShare}
                       style={{ fontSize: '13px', fontWeight: 700, color: 'white', background: '#7472F4', border: 'none', borderRadius: '6px', padding: '8px', opacity: shareBusy ? 0.6 : 1 }}
                     >
-                      {shareBusy ? 'Starting…' : 'Start sharing'}
+                      {shareBusy ? t('maps.starting') : t('maps.startSharing')}
                     </button>
                   </div>
                 )}
