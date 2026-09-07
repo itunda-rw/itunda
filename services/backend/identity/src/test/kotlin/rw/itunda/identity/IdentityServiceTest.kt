@@ -241,6 +241,7 @@ class IdentityServiceTest : BehaviorSpec({
 
         every { kycSubmissionRepository.findById("kyc_2") } returns Optional.of(submission)
         every { kycSubmissionRepository.save(any()) } answers { firstArg() }
+        every { kycSubmissionRepository.findByDocumentTypeAndDocumentNumberAndStatus(any(), any(), any()) } returns emptyList()
         every { userRepository.findById("user_3") } returns Optional.of(user)
         every { userRepository.save(any()) } answers { firstArg() }
 
@@ -269,6 +270,71 @@ class IdentityServiceTest : BehaviorSpec({
         }
     }
 
+    // Real gap closed 2026-09-07 (Identity product-completeness pass): documentNumber
+    // has no unique DB constraint -- nothing previously stopped a second, different
+    // account from being approved for a document number already verified under someone
+    // else's account.
+    Given("an ADMIN approving a submission whose document number is already VERIFIED under a different account") {
+        val kycSubmissionRepository = mockk<KycSubmissionRepository>()
+        val userRepository = mockk<UserRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter, notificationRepository, pushNotificationService)
+
+        val submission = KycSubmission(id = "kyc_7", userId = "user_new", documentType = "NATIONAL_ID", documentNumber = "1199012345678901", documentReference = "y", status = "PENDING", submittedAt = Instant.now())
+        val alreadyVerified = KycSubmission(id = "kyc_old", userId = "user_original", documentType = "NATIONAL_ID", documentNumber = "1199012345678901", documentReference = "z", status = "VERIFIED", submittedAt = Instant.now())
+        every { kycSubmissionRepository.findById("kyc_7") } returns Optional.of(submission)
+        every {
+            kycSubmissionRepository.findByDocumentTypeAndDocumentNumberAndStatus("NATIONAL_ID", "1199012345678901", "VERIFIED")
+        } returns listOf(alreadyVerified)
+
+        When("approving") {
+            Then("it real-rejects rather than verifying a second account for the same real identity") {
+                try {
+                    service.decide("kyc_7", "admin_1", approve = true, reason = null)
+                    error("expected DuplicateDocumentNumberException")
+                } catch (e: DuplicateDocumentNumberException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                    verify(exactly = 0) { kycSubmissionRepository.save(any()) }
+                }
+            }
+        }
+    }
+
+    Given("an ADMIN approving a submission whose document number was already VERIFIED under the SAME account (a real re-verification)") {
+        val kycSubmissionRepository = mockk<KycSubmissionRepository>()
+        val userRepository = mockk<UserRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter, notificationRepository, pushNotificationService)
+
+        val submission = KycSubmission(id = "kyc_8", userId = "user_same", documentType = "NATIONAL_ID", documentNumber = "1199012345678901", documentReference = "y", status = "PENDING", submittedAt = Instant.now())
+        val ownPriorVerification = KycSubmission(id = "kyc_old2", userId = "user_same", documentType = "NATIONAL_ID", documentNumber = "1199012345678901", documentReference = "z", status = "VERIFIED", submittedAt = Instant.now())
+        val user = User(id = "user_same", phoneNumber = "0788000001", firstName = "Test", lastName = "User", passwordHash = "hash")
+        every { kycSubmissionRepository.findById("kyc_8") } returns Optional.of(submission)
+        every { kycSubmissionRepository.save(any()) } answers { firstArg() }
+        every {
+            kycSubmissionRepository.findByDocumentTypeAndDocumentNumberAndStatus("NATIONAL_ID", "1199012345678901", "VERIFIED")
+        } returns listOf(ownPriorVerification)
+        every { userRepository.findById("user_same") } returns Optional.of(user)
+        every { userRepository.save(any()) } answers { firstArg() }
+        // relaxed=true mishandles JpaRepository's generic `<S extends T> S save(S)` and
+        // returns a raw Object, ClassCastException-ing at the call site -- same fix as
+        // this codebase's other documented instances of this exact pitfall.
+        every { notificationRepository.save(any()) } answers { firstArg() }
+
+        When("approving") {
+            Then("it never real-rejects the same account re-verifying its own already-verified document number") {
+                val decided = service.decide("kyc_8", "admin_1", approve = true, reason = null)
+                decided.status shouldBe "VERIFIED"
+            }
+        }
+    }
+
     Given("an ADMIN approving a real PENDING BUSINESS_TIN (KYB) submission") {
         val kycSubmissionRepository = mockk<KycSubmissionRepository>()
         val userRepository = mockk<UserRepository>()
@@ -284,6 +350,7 @@ class IdentityServiceTest : BehaviorSpec({
 
         every { kycSubmissionRepository.findById("kyc_5") } returns Optional.of(submission)
         every { kycSubmissionRepository.save(any()) } answers { firstArg() }
+        every { kycSubmissionRepository.findByDocumentTypeAndDocumentNumberAndStatus(any(), any(), any()) } returns emptyList()
         every { merchantRepository.findByOwnerUserId("owner_2") } returns merchant
         every { merchantRepository.save(any()) } answers { firstArg() }
 
@@ -319,6 +386,7 @@ class IdentityServiceTest : BehaviorSpec({
         val submission = KycSubmission(id = "kyc_6", userId = "owner_3", documentType = "BUSINESS_TIN", documentNumber = "123456789", documentReference = "y", status = "PENDING", submittedAt = Instant.now())
         every { kycSubmissionRepository.findById("kyc_6") } returns Optional.of(submission)
         every { kycSubmissionRepository.save(any()) } answers { firstArg() }
+        every { kycSubmissionRepository.findByDocumentTypeAndDocumentNumberAndStatus(any(), any(), any()) } returns emptyList()
         every { merchantRepository.findByOwnerUserId("owner_3") } returns null
 
         When("approving") {

@@ -24,6 +24,7 @@ class SubmissionNotFoundException(message: String) : RuntimeException(message)
 class SubmissionNotPendingException(message: String) : RuntimeException(message)
 class IdentityUserNotFoundException(message: String) : RuntimeException(message)
 class InvalidDecisionReasonException(message: String) : RuntimeException(message)
+class DuplicateDocumentNumberException(message: String) : RuntimeException(message)
 
 private const val BUSINESS_TIN_DOCUMENT_TYPE = "BUSINESS_TIN"
 
@@ -124,7 +125,21 @@ class IdentityService(
         if (reason != null && reason.length > 255) {
             throw InvalidDecisionReasonException("Decision reason must be 255 characters or fewer")
         }
-
+        // Real gap closed 2026-09-07 (Identity product-completeness pass): documentNumber
+        // has no unique DB constraint, so nothing previously stopped a second, different
+        // account from being approved for the same real NIDA/passport/TIN number a
+        // different account already got verified for -- defeating the entire real purpose
+        // of this feature (confirming a real, unique identity). Checked here, at the real
+        // load-bearing enforcement point (the moment a second account would actually
+        // become verified), not at submit() time.
+        if (approve) {
+            val duplicate = kycSubmissionRepository
+                .findByDocumentTypeAndDocumentNumberAndStatus(submission.documentType, submission.documentNumber, "VERIFIED")
+                .firstOrNull { it.userId != submission.userId }
+            if (duplicate != null) {
+                throw DuplicateDocumentNumberException("This document number is already verified under a different account")
+            }
+        }
         submission.status = if (approve) "VERIFIED" else "REJECTED"
         submission.reviewedBy = reviewerId
         submission.reviewedAt = Instant.now()
