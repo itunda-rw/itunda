@@ -95,6 +95,41 @@ class VehicleInspectionServiceTest : BehaviorSpec({
         }
     }
 
+    // Real gap closed 2026-09-07 (Vehicle product-completeness pass): mechanics are
+    // real money-receiving business actors with previously zero admin moderation
+    // lever, unlike MerchantService.suspendMerchant.
+    Given("an admin suspending a real mechanic") {
+        val vehicleInspectionMechanicRepository = mockk<VehicleInspectionMechanicRepository>()
+        val service = newService(vehicleInspectionMechanicRepository = vehicleInspectionMechanicRepository)
+        val mechanic = VehicleInspectionMechanic(id = "mechanic_1", userId = "mechanic_user_1", accountId = "account_1", businessName = "Kigali Auto Care")
+        every { vehicleInspectionMechanicRepository.findById("mechanic_1") } returns Optional.of(mechanic)
+        every { vehicleInspectionMechanicRepository.save(any()) } answers { firstArg() }
+
+        When("suspending") {
+            val suspended = service.suspendMechanic("mechanic_1")
+
+            Then("it real-flips the separate suspended field, not the mechanic's own available toggle") {
+                suspended.suspended shouldBe true
+            }
+        }
+    }
+
+    Given("an admin reactivating a real suspended mechanic") {
+        val vehicleInspectionMechanicRepository = mockk<VehicleInspectionMechanicRepository>()
+        val service = newService(vehicleInspectionMechanicRepository = vehicleInspectionMechanicRepository)
+        val mechanic = VehicleInspectionMechanic(id = "mechanic_1", userId = "mechanic_user_1", accountId = "account_1", businessName = "Kigali Auto Care", suspended = true)
+        every { vehicleInspectionMechanicRepository.findById("mechanic_1") } returns Optional.of(mechanic)
+        every { vehicleInspectionMechanicRepository.save(any()) } answers { firstArg() }
+
+        When("reactivating") {
+            val reactivated = service.reactivateMechanic("mechanic_1")
+
+            Then("it real-clears suspended") {
+                reactivated.suspended shouldBe false
+            }
+        }
+    }
+
     Given("a real buyer requesting a real inspection of a real listing") {
         val vehicleInspectionMechanicRepository = mockk<VehicleInspectionMechanicRepository>()
         val vehicleInspectionBookingRepository = mockk<VehicleInspectionBookingRepository>()
@@ -161,6 +196,22 @@ class VehicleInspectionServiceTest : BehaviorSpec({
                     error("expected InvalidInspectionFeeException")
                 } catch (e: InvalidInspectionFeeException) {
                     verify(exactly = 0) { listingRepository.findById(any()) }
+                }
+            }
+        }
+
+        // Real gap closed 2026-09-07 (Vehicle product-completeness pass): a suspended
+        // mechanic must never be bookable, even via a direct mechanicId a buyer
+        // already had, not just excluded from the public getAvailableMechanics list.
+        When("the target mechanic is real-suspended") {
+            every { vehicleInspectionMechanicRepository.findById("mechanic_1") } returns Optional.of(mechanic.also { it.suspended = true })
+
+            Then("it throws MechanicSuspendedException before ever touching the ledger") {
+                try {
+                    service.requestInspection("buyer_1", "listing_1", "mechanic_1", BigDecimal("15000"), Instant.now().plusSeconds(86400))
+                    error("expected MechanicSuspendedException")
+                } catch (e: MechanicSuspendedException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
             }
         }

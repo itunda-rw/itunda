@@ -33,6 +33,8 @@ import java.util.UUID
 class MechanicAlreadyRegisteredException(message: String) : RuntimeException(message)
 class MechanicNotRegisteredException(message: String) : RuntimeException(message)
 class MechanicNoAccountException(message: String) : RuntimeException(message)
+class MechanicSuspendedException(message: String) : RuntimeException(message)
+class MechanicNotFoundException(message: String) : RuntimeException(message)
 class InvalidInspectionFeeException(message: String) : RuntimeException(message)
 class InspectionBookingNotFoundException(message: String) : RuntimeException(message)
 class InvalidInspectionStatusTransitionException(message: String) : RuntimeException(message)
@@ -79,7 +81,27 @@ class VehicleInspectionService(
 
     fun getMyMechanicProfile(userId: String): VehicleInspectionMechanic? = vehicleInspectionMechanicRepository.findByUserId(userId)
 
-    fun getAvailableMechanics(): List<VehicleInspectionMechanic> = vehicleInspectionMechanicRepository.findByAvailableTrue()
+    fun getAllMechanics(): List<VehicleInspectionMechanic> = vehicleInspectionMechanicRepository.findAll()
+
+    /** Real admin suspend -- closes the real gap named in
+     * `VehicleInspectionMechanic.kt`'s own doc comment: mechanics are real
+     * money-receiving business actors (same shape as `Merchant`) that previously had
+     * no admin lever at all, unlike `MerchantService.suspendMerchant`. */
+    @Transactional
+    fun suspendMechanic(mechanicId: String): VehicleInspectionMechanic {
+        val mechanic = vehicleInspectionMechanicRepository.findById(mechanicId).orElseThrow { MechanicNotFoundException("Mechanic not found") }
+        mechanic.suspended = true
+        return vehicleInspectionMechanicRepository.save(mechanic)
+    }
+
+    @Transactional
+    fun reactivateMechanic(mechanicId: String): VehicleInspectionMechanic {
+        val mechanic = vehicleInspectionMechanicRepository.findById(mechanicId).orElseThrow { MechanicNotFoundException("Mechanic not found") }
+        mechanic.suspended = false
+        return vehicleInspectionMechanicRepository.save(mechanic)
+    }
+
+    fun getAvailableMechanics(): List<VehicleInspectionMechanic> = vehicleInspectionMechanicRepository.findByAvailableTrueAndSuspendedFalse()
 
     @Transactional
     fun setAvailability(userId: String, available: Boolean): VehicleInspectionMechanic {
@@ -108,6 +130,13 @@ class VehicleInspectionService(
         rateLimiter.checkLimit("marketplace:inspection-request:$buyerId", limit = 20, window = Duration.ofHours(1))
         val listing = listingRepository.findById(listingId).orElseThrow { ListingNotFoundException("Listing not found") }
         val mechanic = vehicleInspectionMechanicRepository.findById(mechanicId).orElseThrow { MechanicNotRegisteredException("Mechanic not found") }
+        // Real admin moderation gate closed 2026-09-07 (Vehicle product-completeness
+        // pass) -- a suspended mechanic must never be bookable, even via a direct
+        // mechanicId a buyer already had (e.g. a bookmarked/shared link), not just
+        // excluded from the public list (see getAvailableMechanics above).
+        if (mechanic.suspended) {
+            throw MechanicSuspendedException("This mechanic is not currently accepting inspections")
+        }
         if (mechanic.userId == buyerId) {
             throw SelfInspectionException("Cannot book an inspection with yourself")
         }

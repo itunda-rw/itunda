@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, Banknote, CircleDollarSign, Flag, Gauge, HeartPulse, Home, Landmark, LifeBuoy, LogOut, MessageCircleWarning, Percent, Puzzle, Scale, ShieldCheck, Siren, Store, Users, Webhook } from 'lucide-react';
+import { AlertTriangle, Banknote, CircleDollarSign, Flag, Gauge, HeartPulse, Home, Landmark, LifeBuoy, LogOut, MessageCircleWarning, Percent, Puzzle, Scale, ShieldCheck, Siren, Store, Users, Wrench, Webhook } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
 import OverviewView from './queues/OverviewView';
 import FraudQueue from './queues/FraudQueue';
@@ -15,6 +15,7 @@ import HoodReportsQueue from './queues/HoodReportsQueue';
 import PropertyOwnershipQueue from './queues/PropertyOwnershipQueue';
 import AgentsManagementView from './queues/AgentsManagementView';
 import MerchantModerationQueue from './queues/MerchantModerationQueue';
+import VehicleInspectionMechanicModerationQueue from './queues/VehicleInspectionMechanicModerationQueue';
 import LoanDefaultQueue from './queues/LoanDefaultQueue';
 import FeeWaiverQueue from './queues/FeeWaiverQueue';
 import WebhookFailuresQueue from './queues/WebhookFailuresQueue';
@@ -23,7 +24,7 @@ import ChatReportsQueue from './queues/ChatReportsQueue';
 type Tab =
   | 'overview' | 'fraud' | 'compliance' | 'incidents' | 'reconciliation' | 'support' | 'insurance' | 'partners'
   | 'escrow' | 'agents' | 'hood-reports' | 'property-verification' | 'agents-management' | 'merchants' | 'loan-default'
-  | 'fee-waiver' | 'webhook-failures' | 'chat-reports';
+  | 'fee-waiver' | 'webhook-failures' | 'chat-reports' | 'vehicle-inspection-mechanics';
 
 const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'overview', label: 'Overview', icon: Gauge },
@@ -40,6 +41,7 @@ const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'hood-reports', label: 'Hood content reports', icon: Flag },
   { id: 'property-verification', label: 'Property ownership', icon: Home },
   { id: 'merchants', label: 'Merchant moderation', icon: Store },
+  { id: 'vehicle-inspection-mechanics', label: 'Vehicle inspection mechanics', icon: Wrench },
   { id: 'loan-default', label: 'Loan default review', icon: Landmark },
   { id: 'fee-waiver', label: 'Fee waiver revocation', icon: Percent },
   { id: 'webhook-failures', label: 'Webhook failures', icon: Webhook },
@@ -124,6 +126,7 @@ export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
         {tab === 'property-verification' && <PropertyOwnershipQueue />}
         {tab === 'agents-management' && <AgentsManagementView />}
         {tab === 'merchants' && <MerchantModerationQueue />}
+        {tab === 'vehicle-inspection-mechanics' && <VehicleInspectionMechanicModerationQueue />}
         {tab === 'loan-default' && <LoanDefaultQueue />}
         {tab === 'fee-waiver' && <FeeWaiverQueue />}
         {tab === 'webhook-failures' && <WebhookFailuresQueue />}

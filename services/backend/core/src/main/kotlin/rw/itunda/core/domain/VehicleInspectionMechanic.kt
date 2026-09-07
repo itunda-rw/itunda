@@ -38,6 +38,13 @@ class VehicleInspectionMechanic(
     @Column(nullable = false)
     var available: Boolean = true,
 
+    // Real admin moderation lever (2026-09-07, Vehicle product-completeness pass) --
+    // same MerchantStatus.SUSPENDED shape, deliberately a separate field from
+    // `available` above: an admin-suspended mechanic must not be able to
+    // un-suspend themselves by flipping their own self-service availability toggle.
+    @Column(nullable = false)
+    var suspended: Boolean = false,
+
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 ) {

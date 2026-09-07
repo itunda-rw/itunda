@@ -8,7 +8,12 @@ import java.time.Instant
 
 interface VehicleInspectionMechanicRepository : JpaRepository<VehicleInspectionMechanic, String> {
     fun findByUserId(userId: String): VehicleInspectionMechanic?
-    fun findByAvailableTrue(): List<VehicleInspectionMechanic>
+
+    // Real admin moderation gap closed 2026-09-07 (Vehicle product-completeness
+    // pass) -- a suspended mechanic must never appear in the real, public
+    // available-mechanics list a buyer books from, even if they're still
+    // self-toggled `available`.
+    fun findByAvailableTrueAndSuspendedFalse(): List<VehicleInspectionMechanic>
 }
 
 interface VehicleInspectionBookingRepository : JpaRepository<VehicleInspectionBooking, String> {

@@ -28,6 +28,7 @@ import rw.itunda.marketplace.ListingNotFoundException
 import rw.itunda.marketplace.MechanicAlreadyRegisteredException
 import rw.itunda.marketplace.MechanicNoAccountException
 import rw.itunda.marketplace.MechanicNotRegisteredException
+import rw.itunda.marketplace.MechanicSuspendedException
 import rw.itunda.marketplace.SelfInspectionException
 import rw.itunda.marketplace.VehicleInspectionService
 import java.math.BigDecimal
@@ -145,6 +146,10 @@ class VehicleInspectionController(
     @ExceptionHandler(SelfInspectionException::class)
     fun handleSelfInspection(ex: SelfInspectionException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("SELF_INSPECTION_NOT_ALLOWED", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(MechanicSuspendedException::class)
+    fun handleMechanicSuspended(ex: MechanicSuspendedException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("MECHANIC_SUSPENDED", ex.message ?: "Forbidden"))
 
     @ExceptionHandler(InspectionBookingNotFoundException::class)
     fun handleBookingNotFound(ex: InspectionBookingNotFoundException) =
