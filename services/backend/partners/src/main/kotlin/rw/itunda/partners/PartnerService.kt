@@ -26,6 +26,7 @@ class PartnerMiniAppNotFoundException(message: String) : RuntimeException(messag
 class PartnerMiniAppNotPendingException(message: String) : RuntimeException(message)
 class InvalidMiniAppSubmissionException(message: String) : RuntimeException(message)
 class InvalidMiniAppDecisionReasonException(message: String) : RuntimeException(message)
+class PartnerNotFoundException(message: String) : RuntimeException(message)
 
 /**
  * The real scopes a partner mini-app can request review for -- deliberately a small,
@@ -164,6 +165,28 @@ class PartnerService(
         miniApp.reviewedAt = java.time.Instant.now()
         miniApp.decisionReason = reason
         return partnerMiniAppRepository.save(miniApp)
+    }
+
+    // Real admin moderation surface (2026-09-07, Partners product-completeness pass) --
+    // `resolvePartner` below already real-enforces PartnerStatus.SUSPENDED (locking a
+    // suspended partner out of every real partner-facing feature), but nothing anywhere
+    // ever set a Partner to SUSPENDED until this pass -- the same real gap class this
+    // sweep already found and fixed for Merchant (MerchantService.suspendMerchant) and
+    // for Vehicle Inspection's mechanics.
+    fun getAllPartners(): List<Partner> = partnerRepository.findAll()
+
+    @Transactional
+    fun suspendPartner(partnerId: String): Partner {
+        val partner = partnerRepository.findById(partnerId).orElseThrow { PartnerNotFoundException("Partner not found") }
+        partner.status = PartnerStatus.SUSPENDED
+        return partnerRepository.save(partner)
+    }
+
+    @Transactional
+    fun reactivatePartner(partnerId: String): Partner {
+        val partner = partnerRepository.findById(partnerId).orElseThrow { PartnerNotFoundException("Partner not found") }
+        partner.status = PartnerStatus.ACTIVE
+        return partnerRepository.save(partner)
     }
 
     // Real, shared partner-authentication entry point -- IdentityVerificationService

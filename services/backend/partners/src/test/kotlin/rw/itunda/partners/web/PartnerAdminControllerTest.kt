@@ -9,10 +9,12 @@ import io.mockk.verify
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpStatus
+import rw.itunda.core.domain.Partner
 import rw.itunda.core.domain.PartnerMiniApp
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.partners.PartnerMiniAppNotFoundException
 import rw.itunda.partners.PartnerMiniAppNotPendingException
+import rw.itunda.partners.PartnerNotFoundException
 import rw.itunda.partners.PartnerService
 
 /**
@@ -58,9 +60,64 @@ class PartnerAdminControllerTest : BehaviorSpec({
         }
     }
 
+    // Real gap closed 2026-09-07 (Partners product-completeness pass): resolvePartner
+    // already real-enforces PartnerStatus.SUSPENDED, but there was no admin endpoint
+    // anywhere to actually set a Partner to SUSPENDED before this.
+    Given("a real list of every registered partner") {
+        val service = mockk<PartnerService>()
+        val controller = PartnerAdminController(service)
+        val partner = mockk<Partner>(relaxed = true)
+        every { partner.status } returns rw.itunda.core.domain.PartnerStatus.ACTIVE
+        every { service.getAllPartners() } returns listOf(partner)
+
+        When("listing them") {
+            val response = controller.listPartners()
+
+            Then("it real-delegates and reports every real partner") {
+                verify(exactly = 1) { service.getAllPartners() }
+                @Suppress("UNCHECKED_CAST")
+                val partners = response.body?.get("partners") as List<Map<String, Any?>>
+                partners.size shouldBe 1
+            }
+        }
+    }
+
+    Given("an admin suspending a real partner") {
+        val service = mockk<PartnerService>()
+        val controller = PartnerAdminController(service)
+        val suspended = mockk<Partner>(relaxed = true)
+        every { service.suspendPartner("partner_1") } returns suspended
+
+        When("suspending") {
+            val response = controller.suspend("partner_1")
+
+            Then("it real-delegates to the service") {
+                verify(exactly = 1) { service.suspendPartner("partner_1") }
+                response.body?.get("partner") shouldBe suspended
+            }
+        }
+    }
+
+    Given("an admin reactivating a real partner") {
+        val service = mockk<PartnerService>()
+        val controller = PartnerAdminController(service)
+        val reactivated = mockk<Partner>(relaxed = true)
+        every { service.reactivatePartner("partner_1") } returns reactivated
+
+        When("reactivating") {
+            val response = controller.reactivate("partner_1")
+
+            Then("it real-delegates to the service") {
+                verify(exactly = 1) { service.reactivatePartner("partner_1") }
+                response.body?.get("partner") shouldBe reactivated
+            }
+        }
+    }
+
     listOf(
         Pair(PartnerMiniAppNotFoundException("Not found") as RuntimeException, HttpStatus.NOT_FOUND to "PARTNER_MINI_APP_NOT_FOUND"),
         Pair(PartnerMiniAppNotPendingException("Conflict"), HttpStatus.CONFLICT to "PARTNER_MINI_APP_NOT_PENDING"),
+        Pair(PartnerNotFoundException("Not found"), HttpStatus.NOT_FOUND to "PARTNER_NOT_FOUND"),
     ).forEach { (exception, expected) ->
         val (expectedStatus, expectedCode) = expected
         Given("a real ${exception::class.simpleName}") {
@@ -71,6 +128,7 @@ class PartnerAdminControllerTest : BehaviorSpec({
                 val response = when (exception) {
                     is PartnerMiniAppNotFoundException -> controller.handleNotFound(exception)
                     is PartnerMiniAppNotPendingException -> controller.handleNotPending(exception)
+                    is PartnerNotFoundException -> controller.handlePartnerNotFound(exception)
                     else -> error("unexpected exception type")
                 }
 

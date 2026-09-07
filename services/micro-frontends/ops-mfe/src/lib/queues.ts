@@ -406,6 +406,29 @@ export const decidePartnerMiniApp = (miniAppId: string, approve: boolean, reason
     body: JSON.stringify({ approve, reason }),
   });
 
+// Real admin moderation lever (Partners product-completeness pass, 2026-09-07) --
+// PartnerService.resolvePartner already real-enforces PartnerStatus.SUSPENDED, but
+// there was no admin endpoint anywhere to actually set a Partner to SUSPENDED before
+// this. Naturally small-cardinality (every registered partner, not a paged
+// sub-selection) -- a plain list, not paginated, same shape
+// lib/merchantAdminQueues.ts's own fetchFeeWaiverCandidates already establishes.
+export interface PartnerAccount {
+  partnerId: string;
+  companyName: string;
+  contactEmail: string;
+  status: 'ACTIVE' | 'SUSPENDED';
+  createdAt: string;
+}
+
+export const fetchPartnerAccounts = () =>
+  apiFetch<{ success: boolean; partners: PartnerAccount[] }>('/api/v1/system/partners').then((r) => r.partners);
+
+export const suspendPartnerAccount = (partnerId: string) =>
+  apiFetch<{ success: boolean; partner: PartnerAccount }>(`/api/v1/system/partners/${partnerId}/suspend`, { method: 'POST' });
+
+export const reactivatePartnerAccount = (partnerId: string) =>
+  apiFetch<{ success: boolean; partner: PartnerAccount }>(`/api/v1/system/partners/${partnerId}/reactivate`, { method: 'POST' });
+
 export const fetchInsuranceClaimsQueue = () =>
   apiFetch<{ success: boolean; queue: InsuranceClaim[] }>('/api/v1/system/insurance-claims/queue').then((r) => r.queue);
 

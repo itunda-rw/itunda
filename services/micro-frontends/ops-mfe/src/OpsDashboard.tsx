@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, Banknote, CircleDollarSign, Flag, Gauge, HeartPulse, Home, Landmark, LifeBuoy, LogOut, MessageCircleWarning, Percent, Puzzle, Scale, ShieldCheck, Siren, Store, Users, Wrench, Webhook } from 'lucide-react';
+import { AlertTriangle, Banknote, Building2, CircleDollarSign, Flag, Gauge, HeartPulse, Home, Landmark, LifeBuoy, LogOut, MessageCircleWarning, Percent, Puzzle, Scale, ShieldCheck, Siren, Store, Users, Wrench, Webhook } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
 import OverviewView from './queues/OverviewView';
 import FraudQueue from './queues/FraudQueue';
@@ -9,6 +9,7 @@ import ReconciliationView from './queues/ReconciliationView';
 import SupportQueue from './queues/SupportQueue';
 import InsuranceClaimsQueue from './queues/InsuranceClaimsQueue';
 import PartnersQueue from './queues/PartnersQueue';
+import PartnerAccountsQueue from './queues/PartnerAccountsQueue';
 import EscrowDisputesQueue from './queues/EscrowDisputesQueue';
 import AgentReconciliationQueue from './queues/AgentReconciliationQueue';
 import HoodReportsQueue from './queues/HoodReportsQueue';
@@ -24,7 +25,7 @@ import ChatReportsQueue from './queues/ChatReportsQueue';
 type Tab =
   | 'overview' | 'fraud' | 'compliance' | 'incidents' | 'reconciliation' | 'support' | 'insurance' | 'partners'
   | 'escrow' | 'agents' | 'hood-reports' | 'property-verification' | 'agents-management' | 'merchants' | 'loan-default'
-  | 'fee-waiver' | 'webhook-failures' | 'chat-reports' | 'vehicle-inspection-mechanics';
+  | 'fee-waiver' | 'webhook-failures' | 'chat-reports' | 'vehicle-inspection-mechanics' | 'partner-accounts';
 
 const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'overview', label: 'Overview', icon: Gauge },
@@ -35,6 +36,7 @@ const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'support', label: 'Support', icon: LifeBuoy },
   { id: 'insurance', label: 'Insurance claims', icon: HeartPulse },
   { id: 'partners', label: 'Partner mini-apps', icon: Puzzle },
+  { id: 'partner-accounts', label: 'Partner accounts', icon: Building2 },
   { id: 'escrow', label: 'Escrow disputes', icon: Scale },
   { id: 'agents-management', label: 'Agents', icon: Users },
   { id: 'agents', label: 'Agent till variances', icon: Banknote },
@@ -120,6 +122,7 @@ export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
         {tab === 'support' && <SupportQueue />}
         {tab === 'insurance' && <InsuranceClaimsQueue />}
         {tab === 'partners' && <PartnersQueue />}
+        {tab === 'partner-accounts' && <PartnerAccountsQueue />}
         {tab === 'escrow' && <EscrowDisputesQueue />}
         {tab === 'agents' && <AgentReconciliationQueue />}
         {tab === 'hood-reports' && <HoodReportsQueue />}

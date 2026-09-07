@@ -242,6 +242,82 @@ class PartnerServiceTest : BehaviorSpec({
         }
     }
 
+    // Real gap closed 2026-09-07 (Partners product-completeness pass): resolvePartner
+    // already real-enforces PartnerStatus.SUSPENDED, but nothing anywhere could ever
+    // set a Partner to SUSPENDED until this pass -- same real gap class this sweep
+    // already found and fixed for Merchant/vehicle-inspection mechanics.
+    Given("an admin suspending a real active partner") {
+        val partnerRepository = mockk<PartnerRepository>()
+        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
+        val partner = Partner(id = "partner_1", companyName = "Acme Ltd", contactEmail = "dev@acme.rw", apiKeyHash = "hash")
+        every { partnerRepository.findById("partner_1") } returns Optional.of(partner)
+        every { partnerRepository.save(any()) } answers { firstArg() }
+
+        When("suspending") {
+            val suspended = service.suspendPartner("partner_1")
+
+            Then("it real-flips the partner's own status field") {
+                suspended.status shouldBe PartnerStatus.SUSPENDED
+            }
+        }
+    }
+
+    Given("an admin reactivating a real suspended partner") {
+        val partnerRepository = mockk<PartnerRepository>()
+        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
+        val partner = Partner(id = "partner_1", companyName = "Acme Ltd", contactEmail = "dev@acme.rw", apiKeyHash = "hash", status = PartnerStatus.SUSPENDED)
+        every { partnerRepository.findById("partner_1") } returns Optional.of(partner)
+        every { partnerRepository.save(any()) } answers { firstArg() }
+
+        When("reactivating") {
+            val reactivated = service.reactivatePartner("partner_1")
+
+            Then("it real-clears the suspension") {
+                reactivated.status shouldBe PartnerStatus.ACTIVE
+            }
+        }
+    }
+
+    Given("an admin acting on a partner that doesn't exist") {
+        val partnerRepository = mockk<PartnerRepository>()
+        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
+        every { partnerRepository.findById("unknown") } returns Optional.empty()
+
+        When("suspending") {
+            Then("it real-404s") {
+                try {
+                    service.suspendPartner("unknown")
+                    error("expected PartnerNotFoundException")
+                } catch (e: PartnerNotFoundException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("the real list of every registered partner") {
+        val partnerRepository = mockk<PartnerRepository>()
+        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
+        val partner = Partner(id = "partner_1", companyName = "Acme Ltd", contactEmail = "dev@acme.rw", apiKeyHash = "hash")
+        every { partnerRepository.findAll() } returns listOf(partner)
+
+        When("fetched for the real admin moderation queue") {
+            val partners = service.getAllPartners()
+
+            Then("it reports every real registered partner, not just a filtered subset") {
+                partners shouldBe listOf(partner)
+            }
+        }
+    }
+
     Given("the real published mini-app catalog") {
         val partnerRepository = mockk<PartnerRepository>()
         val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
