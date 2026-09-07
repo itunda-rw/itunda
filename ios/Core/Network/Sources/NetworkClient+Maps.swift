@@ -28,6 +28,9 @@ public struct TransitJourneyDto: Decodable {
 }
 public struct MapsTransitDirectionsResponse: Decodable { public let success: Bool; public let journeys: [TransitJourneyDto] }
 
+public struct MapCategoryDto: Decodable { public let id: String; public let label: String }
+public struct MapCategoriesResponse: Decodable { public let success: Bool; public let categories: [MapCategoryDto] }
+
 public struct MapPlaceRatingDto: Decodable { public let average: Double?; public let count: Int }
 public struct MapPlaceMenuItemDto: Decodable { public let id: String; public let name: String; public let price: Double; public let imageUrl: String?; public let active: Bool }
 public struct MapPlaceUpdateDto: Decodable {
@@ -90,6 +93,13 @@ extension NetworkClient {
 
     public func getKigaliWeather() async throws -> MapsWeatherResponse {
         try await get("api/v1/maps/weather")
+    }
+
+    // Real backend category list (Maps product-completeness pass, 2026-09-07) -- see
+    // mapNearbyCategories's own doc comment for why this replaces that hardcoded
+    // fallback as the real source of truth once fetched.
+    public func getMapCategories() async throws -> MapCategoriesResponse {
+        try await get("api/v1/maps/categories")
     }
 
     public func getRestaurantGoodPoints(_ restaurantId: String) async throws -> EatsGoodPointsResponse {

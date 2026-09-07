@@ -298,6 +298,11 @@ fun MapScreen(
         }
     }
     var weather by remember { mutableStateOf<KigaliWeatherDto?>(null) }
+    // Real backend category list (Maps product-completeness pass, 2026-09-07) -- see
+    // MAP_NEARBY_CATEGORIES's own doc comment. Starts as that hardcoded default, then
+    // replaced by the real fetched list below (with the client-only ITUNDA_AGENT
+    // category re-appended, since the backend enum doesn't define it).
+    var categories by remember { mutableStateOf(MAP_NEARBY_CATEGORIES) }
     var error by remember { mutableStateOf<String?>(null) }
     var activeCategory by remember { mutableStateOf<String?>(null) }
     var categoryLoading by remember { mutableStateOf(false) }
@@ -592,6 +597,14 @@ fun MapScreen(
             followedMerchantIds = NetworkClient.apiService.getMyFollowedMerchants().follows.map { it.merchantId }.toSet()
         } catch (e: Exception) {
             // Honest partial failure, same as bookmarks above.
+        }
+    }
+    LaunchedEffect(Unit) {
+        try {
+            val itundaAgentCategory = MAP_NEARBY_CATEGORIES.first { it.id == "ITUNDA_AGENT" }
+            categories = NetworkClient.apiService.getMapCategories().categories + itundaAgentCategory
+        } catch (e: Exception) {
+            // Honest partial failure -- the hardcoded default above still renders.
         }
     }
     fun toggleFollow(merchantId: String) {
@@ -1329,6 +1342,7 @@ fun MapScreen(
                 onBack = onBack,
                 query = query,
                 searching = searching,
+                categories = categories,
                 activeCategory = activeCategory,
                 categoryLoading = categoryLoading,
                 categoryResults = categoryResults,

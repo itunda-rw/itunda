@@ -134,6 +134,11 @@ export interface MapPlaceCategory {
   label: string;
 }
 
+// Real, honest fallback (Maps product-completeness pass, 2026-09-07) -- this hardcoded
+// list used to be the ONLY source, requiring a manual, error-prone 3-way sync with the
+// backend's own MapPlaceCategory.kt enum and Android's/iOS's own identical hardcoded
+// copies. `fetchMapCategories` below is the new real source of truth; this stays only
+// as the pre-fetch/offline default MapView starts from before that call resolves.
 export const NEARBY_CATEGORIES: MapPlaceCategory[] = [
   { id: 'RESTAURANT', label: 'Restaurants' },
   { id: 'CAFE', label: 'Cafes' },
@@ -151,6 +156,16 @@ export const NEARBY_CATEGORIES: MapPlaceCategory[] = [
   { id: 'MARKET', label: 'Markets' },
   { id: 'BUS_STOP', label: 'Bus stops' },
 ];
+
+// Real backend category list (Maps product-completeness pass, 2026-09-07) -- see
+// NEARBY_CATEGORIES's own doc comment. ITUNDA_AGENT is re-appended since it's a real,
+// itunda-only category the backend enum doesn't define (own dedicated endpoint, see
+// fetchNearbyAgents).
+export const fetchMapCategories = () =>
+  apiFetch<{ success: boolean; categories: MapPlaceCategory[] }>('/api/v1/maps/categories').then((r) => {
+    const itundaAgentCategory = NEARBY_CATEGORIES.find((c) => c.id === 'ITUNDA_AGENT');
+    return itundaAgentCategory ? [...r.categories, itundaAgentCategory] : r.categories;
+  });
 
 export const searchNearbyPlaces = (category: string, lat: number, lng: number, radiusKm = 2.0) =>
   apiFetch<{ success: boolean; places: NearbyPlace[] }>(

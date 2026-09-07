@@ -12,6 +12,7 @@ import {
   searchNearbyPlaces,
   fetchNearbyAgents,
   NEARBY_CATEGORIES,
+  fetchMapCategories,
   fetchMyMapBookmarks,
   addMapBookmark,
   removeMapBookmark,
@@ -38,6 +39,7 @@ import {
   type LiveLocationShare,
   type TransitJourney,
   type KigaliWeather,
+  type MapPlaceCategory,
 } from './lib/maps';
 import { fetchShoppingCatalog, type ShoppingMerchant } from './lib/shopping';
 import { searchBusTrips, type BusTrip } from './lib/bus';
@@ -307,6 +309,10 @@ export default function MapView() {
   // into the full panel, or null when the compact bottom-sheet preview is showing.
   const [viewingPlaceDetail, setViewingPlaceDetail] = useState<string | null>(null);
   const [weather, setWeather] = useState<KigaliWeather | null>(null);
+  // Real backend category list (Maps product-completeness pass, 2026-09-07) -- see
+  // NEARBY_CATEGORIES's own doc comment. Starts as that hardcoded default, then
+  // replaced by the real fetched list below.
+  const [categories, setCategories] = useState<MapPlaceCategory[]>(NEARBY_CATEGORIES);
   // Real Naver Map-style transit tab (2026-08-12, direct user screenshot) -- see the
   // Android/iOS ports' own doc comments for the full account: itunda has no live
   // bus-GPS or transit-schedule feed, so this surfaces the real, already-shipped
@@ -442,6 +448,14 @@ export default function MapView() {
   // null (chip doesn't render) if the real upstream is unreachable -- never fabricated.
   useEffect(() => {
     fetchKigaliWeather().then(setWeather).catch(() => setWeather(null));
+  }, []);
+
+  useEffect(() => {
+    fetchMapCategories()
+      .then(setCategories)
+      .catch(() => {
+        // Honest partial failure -- the hardcoded default above still renders.
+      });
   }, []);
 
   useEffect(() => {
@@ -1385,7 +1399,7 @@ export default function MapView() {
         </form>
 
         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '2px' }}>
-          {NEARBY_CATEGORIES.map((category) => {
+          {categories.map((category) => {
             const active = activeCategory === category.id;
             return (
               <button
@@ -1799,7 +1813,7 @@ export default function MapView() {
               {activeCategory && categoryResults !== null ? (
                 categoryResults.length === 0 ? (
                   <p style={{ fontSize: '13px', color: MAP_CARD_TEXT_TERTIARY }}>
-                    No real matches found nearby for {NEARBY_CATEGORIES.find((c) => c.id === activeCategory)?.label.toLowerCase()}.
+                    No real matches found nearby for {categories.find((c) => c.id === activeCategory)?.label.toLowerCase()}.
                   </p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column' }}>

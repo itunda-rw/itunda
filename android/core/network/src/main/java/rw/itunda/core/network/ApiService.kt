@@ -1408,6 +1408,14 @@ data class LocationShareResponse(val success: Boolean, val share: LiveLocationSh
 data class StopLocationShareResponse(val success: Boolean)
 
 data class MapPlaceCategory(val id: String, val label: String)
+data class MapCategoriesResponse(val success: Boolean, val categories: List<MapPlaceCategory>)
+
+// Real, honest fallback (Maps product-completeness pass, 2026-09-07) -- this hardcoded
+// list used to be the ONLY source, requiring a manual, error-prone 3-way sync with the
+// backend's own MapPlaceCategory.kt enum and web's/iOS's own identical hardcoded
+// copies. `getMapCategories()` (see ApiService.getMapCategories) is the new real
+// source of truth; this stays only as the pre-fetch/offline default MapsScreen starts
+// from before that call resolves.
 val MAP_NEARBY_CATEGORIES = listOf(
     MapPlaceCategory("RESTAURANT", "Restaurants"),
     MapPlaceCategory("CAFE", "Cafes"),
@@ -3592,6 +3600,12 @@ interface ApiService {
     // Real, free, keyless Kigali weather (2026-08-28) -- see KigaliWeatherDto's own doc comment.
     @GET("api/v1/maps/weather")
     suspend fun getKigaliWeather(): MapsWeatherResponse
+
+    // Real backend category list (Maps product-completeness pass, 2026-09-07) -- see
+    // MAP_NEARBY_CATEGORIES's own doc comment for why this replaces that hardcoded
+    // fallback as the real source of truth once fetched.
+    @GET("api/v1/maps/categories")
+    suspend fun getMapCategories(): MapCategoriesResponse
 
     // Real "nearby places" category search + bookmarked/favorite places (2026-07-19) --
     // see rw.itunda.maps.MapsService's own doc comment on the backend.

@@ -249,6 +249,11 @@ public struct MapScreenView: View {
     // Real, free, keyless Kigali weather (2026-08-28) -- see KigaliWeatherClient's own doc
     // comment on the backend. Stays nil (chip doesn't render) if unreachable -- never fabricated.
     @State private var weather: KigaliWeatherDto?
+    // Real backend category list (Maps product-completeness pass, 2026-09-07) -- see
+    // mapNearbyCategories's own doc comment. Starts as that hardcoded default, then
+    // replaced by the real fetched list below (with the client-only ITUNDA_AGENT
+    // category re-appended, since the backend enum doesn't define it).
+    @State private var categories: [MapPlaceCategory] = mapNearbyCategories
     @State private var showSteps = false
     @State private var routing = false
     @State private var error: String?
@@ -383,7 +388,7 @@ public struct MapScreenView: View {
                         // MapScreen.kt chip row, now with a per-category emoji glyph.
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) {
-                                ForEach(mapNearbyCategories) { category in
+                                ForEach(categories) { category in
                                     let active = activeCategory == category.id
                                     Button(action: { Task { await searchNearbyCategory(category.id) } }) {
                                         HStack(spacing: 4) {
@@ -669,7 +674,7 @@ public struct MapScreenView: View {
                                         }
                                     }
                                     if let activeCategory, let categoryResults {
-                                        let label = mapNearbyCategories.first { $0.id == activeCategory }?.label.lowercased() ?? "places"
+                                        let label = categories.first { $0.id == activeCategory }?.label.lowercased() ?? "places"
                                         if categoryResults.isEmpty {
                                             EmptyStateView("No real matches found nearby for \(label).")
                                         } else {
@@ -850,6 +855,16 @@ public struct MapScreenView: View {
             }
             .task {
                 weather = try? await NetworkClient.shared.getKigaliWeather().weather
+            }
+            .task {
+                do {
+                    let itundaAgentCategory = mapNearbyCategories.first { $0.id == "ITUNDA_AGENT" }
+                    let backendCategories = try await NetworkClient.shared.getMapCategories().categories
+                        .map { MapPlaceCategory(id: $0.id, label: $0.label) }
+                    categories = itundaAgentCategory.map { backendCategories + [$0] } ?? backendCategories
+                } catch {
+                    // Honest partial failure -- the hardcoded default above still renders.
+                }
             }
             .onChange(of: locationFetcher.errorMessage) { newValue in
                 if let newValue { error = newValue }

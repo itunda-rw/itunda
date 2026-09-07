@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsIcons
-import rw.itunda.core.network.MAP_NEARBY_CATEGORIES
+import rw.itunda.core.network.MapPlaceCategory
 import rw.itunda.core.network.NearbyPlaceDto
 import rw.itunda.core.network.PlaceSearchResultDto
 import rw.itunda.core.network.TrendingPlaceDto
@@ -48,6 +48,7 @@ internal fun MapTopChrome(
     onBack: () -> Unit,
     query: String,
     searching: Boolean,
+    categories: List<MapPlaceCategory>,
     activeCategory: String?,
     categoryLoading: Boolean,
     categoryResults: List<NearbyPlaceDto>?,
@@ -137,7 +138,7 @@ internal fun MapTopChrome(
             .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        MAP_NEARBY_CATEGORIES.forEach { category ->
+        categories.forEach { category ->
             val active = activeCategory == category.id
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -249,7 +250,7 @@ internal fun MapTopChrome(
                 .padding(vertical = 4.dp),
         ) {
             if (activeCategory != null && categoryResults != null) {
-                val label = MAP_NEARBY_CATEGORIES.firstOrNull { it.id == activeCategory }?.label?.lowercase()
+                val label = categories.firstOrNull { it.id == activeCategory }?.label?.lowercase()
                 Text(
                     if (categoryResults.isEmpty()) "No real matches found nearby for that category."
                     else if (isAgentCashDiscovery && activeCategory == "ITUNDA_AGENT") {
