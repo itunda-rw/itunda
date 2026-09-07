@@ -16,6 +16,7 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SmilePlus } from 'lucide-react';
+import { useI18n } from './i18n/I18nContext';
 import { GiftGlyph, VoucherTicket } from './icons/ItundaFaceGifts';
 import { MoneyBagGlyph } from './icons/ItundaFaceMisc';
 import { ReactionGlyph } from './icons/ItundaFace';
@@ -229,11 +230,12 @@ export function GiftBubble({
 }: {
   gift: Gift; isMine: boolean; currentUserId: string | undefined; onClaim: (giftId: string) => void;
 }) {
+  const { t } = useI18n();
   const canClaim = gift.status === 'PENDING' && currentUserId === gift.recipientId && new Date(gift.expiresAt).getTime() > Date.now();
   const statusLabel: Record<GiftStatus, string> = {
-    PENDING: isMine ? 'Waiting to be opened' : 'Tap to open',
-    CLAIMED: 'Opened',
-    EXPIRED: 'Expired — refunded',
+    PENDING: isMine ? t('gift.waitingToBeOpened') : t('gift.tapToOpen'),
+    CLAIMED: t('gift.opened'),
+    EXPIRED: t('gift.expiredRefunded'),
   };
 
   return (
@@ -257,7 +259,7 @@ export function GiftBubble({
           style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px', alignSelf: 'flex-start' }}
           onClick={() => onClaim(gift.id)}
         >
-          Open gift
+          {t('gift.openGift')}
         </button>
       )}
     </div>
@@ -281,6 +283,7 @@ export function GiftVoucherBubble({
 }: {
   voucher: GiftVoucher; isMine: boolean; onExtend: (voucherId: string) => void;
 }) {
+  const { t } = useI18n();
   const [extending, setExtending] = useState(false);
   // Real gap found live (Toss-style error-handling audit, 2026-08-30): this had NO
   // catch block at all -- a real 409 GIFT_VOUCHER_ALREADY_EXTENDED (the other real
@@ -289,9 +292,9 @@ export function GiftVoucherBubble({
   // rejection, reading to the customer as the page silently breaking.
   const [extendError, setExtendError] = useState<string | null>(null);
   const statusLabel: Record<GiftVoucherStatus, string> = {
-    ACTIVE: 'Present this at the store to redeem',
-    REDEEMED: 'Redeemed',
-    EXPIRED: 'Expired',
+    ACTIVE: t('gift.presentAtStore'),
+    REDEEMED: t('gift.redeemed'),
+    EXPIRED: t('gift.voucherExpired'),
   };
   const withinExtensionWindow = new Date(voucher.expiresAt).getTime() - Date.now() <= GIFT_VOUCHER_EXTENSION_WINDOW_MS;
   const canExtend = voucher.status === 'ACTIVE' && !voucher.extended && withinExtensionWindow;
@@ -308,7 +311,7 @@ export function GiftVoucherBubble({
       <p style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-15-size)', display: 'flex', alignItems: 'center', gap: '6px' }}><VoucherTicket size={18} /> {voucher.productNameSnapshot ?? `${voucher.amount.toLocaleString('en-US')} RWF voucher`}</p>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', opacity: 0.8 }}>{statusLabel[voucher.status]}</p>
       {voucher.status === 'ACTIVE' && (
-        <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', opacity: 0.7 }}>Expires {new Date(voucher.expiresAt).toLocaleDateString()}</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', opacity: 0.7 }}>{t('gift.expiresOn', { date: new Date(voucher.expiresAt).toLocaleDateString() })}</p>
       )}
       {extendError && (
         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: isMine ? 'var(--itunda-white)' : 'var(--itunda-red)', opacity: isMine ? 0.9 : 1 }} role="alert">{extendError}</p>
@@ -332,14 +335,14 @@ export function GiftVoucherBubble({
                 // "already done" conflict that isn't really a failure.
                 onExtend(voucher.id);
               } else {
-                setExtendError(err instanceof ApiError ? err.message : 'Could not extend this voucher.');
+                setExtendError(err instanceof ApiError ? err.message : t('gift.couldNotExtend'));
               }
             } finally {
               setExtending(false);
             }
           }}
         >
-          {extending ? '…' : 'Extend expiry'}
+          {extending ? '…' : t('gift.extendExpiry')}
         </button>
       )}
     </div>

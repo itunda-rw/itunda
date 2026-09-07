@@ -566,6 +566,17 @@ export type TranslationKey =
   | 'family.send'
   | 'family.sent'
   | 'family.yourGuardians'
-  | 'family.emptyState';
+  | 'family.emptyState'
+  | 'gift.waitingToBeOpened'
+  | 'gift.tapToOpen'
+  | 'gift.opened'
+  | 'gift.expiredRefunded'
+  | 'gift.openGift'
+  | 'gift.presentAtStore'
+  | 'gift.redeemed'
+  | 'gift.voucherExpired'
+  | 'gift.expiresOn'
+  | 'gift.couldNotExtend'
+  | 'gift.extendExpiry';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = { en, rw, fr };
