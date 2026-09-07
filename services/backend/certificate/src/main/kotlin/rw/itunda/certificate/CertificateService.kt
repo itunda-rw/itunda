@@ -132,6 +132,10 @@ class CertificateService(
 
     @Transactional
     fun revoke(userId: String): Certificate {
+        // Rate-limited 2026-09-07 (Certificate product-completeness pass) -- authenticated,
+        // but a rare, meaningful account action; same "bound how fast a sensitive action
+        // repeats" discipline issue() above already applies.
+        rateLimiter.checkLimit("certificate:revoke:$userId", limit = 10, window = Duration.ofHours(1))
         val cert = certificateRepository.findByUserIdAndStatus(userId, CertificateStatus.ACTIVE)
             ?: throw NoCertificateFoundException("No active certificate to revoke")
         cert.status = CertificateStatus.REVOKED
@@ -139,14 +143,27 @@ class CertificateService(
         return certificateRepository.save(cert)
     }
 
-    fun getStatus(serialNumber: String): Certificate =
-        withEffectiveStatus(certificateRepository.findBySerialNumber(serialNumber) ?: throw CertificateNotFoundException("Certificate not found"))
+    // Rate-limited 2026-09-07 (Certificate product-completeness pass) -- this route is
+    // permitAll (public, unauthenticated: see CertificateController's own doc comment),
+    // so there's no userId to key on. Same real precedent AuthService.checkPhone already
+    // establishes for its own public endpoints: key by the natural identifier in the
+    // request (here, serialNumber) rather than by IP -- this codebase has no IP-based
+    // rate-limiting mechanism anywhere. Bounds serial-number-enumeration abuse of a
+    // public status check.
+    fun getStatus(serialNumber: String): Certificate {
+        rateLimiter.checkLimit("certificate:status:$serialNumber", limit = 20, window = Duration.ofMinutes(1))
+        return withEffectiveStatus(certificateRepository.findBySerialNumber(serialNumber) ?: throw CertificateNotFoundException("Certificate not found"))
+    }
 
     // Real cryptographic verification (JCA Ed25519) against the certificate's stored
     // public key -- reports signature validity and certificate status as two separate
     // real facts, matching how real PKI verification checks both the math and
     // revocation/expiry independently, rather than collapsing them into one boolean.
+    // Rate-limited 2026-09-07 -- same public-endpoint, key-by-serialNumber reasoning as
+    // getStatus above: an unrate-limited public endpoint doing real Ed25519 verification
+    // per call is a cheap signature-guessing target against one specific certificate.
     fun verify(serialNumber: String, payload: String, signatureBase64: String): VerificationResult {
+        rateLimiter.checkLimit("certificate:verify:$serialNumber", limit = 20, window = Duration.ofMinutes(1))
         val cert = certificateRepository.findBySerialNumber(serialNumber)
             ?: throw CertificateNotFoundException("Certificate not found")
         val signatureValid = try {

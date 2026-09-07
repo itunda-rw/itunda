@@ -4441,8 +4441,14 @@ interface ApiService {
     @POST("api/v1/float-marketplace/requests/{requestId}/decline")
     suspend fun declineFloatRequest(@Path("requestId") requestId: String): FloatTransferRequestResponse
 
+    // Idempotency-Key added 2026-09-07 (Certificate product-completeness pass) -- issue
+    // is the one endpoint where a lost response causes irreversible harm: the private
+    // key is returned exactly once and never persisted (CertificateService.kt's own
+    // doc comment). A retry after a timeout previously created a brand-new certificate
+    // (silently revoking the one just issued), permanently orphaning a private key the
+    // user may never have actually received.
     @POST("api/v1/certificate/issue")
-    suspend fun issueCertificate(): IssueCertificateResponse
+    suspend fun issueCertificate(@Header("Idempotency-Key") idempotencyKey: String): IssueCertificateResponse
 
     @GET("api/v1/certificate/me")
     suspend fun getMyCertificate(): MyCertificateResponse

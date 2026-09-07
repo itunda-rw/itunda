@@ -16,11 +16,13 @@ dependencyManagement {
 // exact pattern card-service/insurance-service/agents-service/transit-service
 // established. Runs the exact same :certificate/:core/:auth code as the :app
 // monolith, in its own JVM, against the same MySQL schema -- own bootJar, own
-// Dockerfile, own k8s Deployment, own port. :certificate (income/employment
-// verification documents) was chosen as the fifth extraction because it has
-// zero Gradle-level coupling in either direction with any other product
-// module (confirmed via a full repo-wide dependency-graph grep before
-// starting).
+// Dockerfile, own k8s Deployment, own port. :certificate (a real Ed25519
+// digital identity/signing certificate product -- see Certificate.kt's own
+// doc comment; NOT income/employment verification documents, a stale
+// description fixed 2026-09-07) was chosen as the fifth extraction because
+// it has zero Gradle-level coupling in either direction with any other
+// product module (confirmed via a full repo-wide dependency-graph grep
+// before starting).
 dependencies {
     implementation(project(":certificate"))
     implementation(project(":core"))

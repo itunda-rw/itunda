@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Real digital identity/signing certificate (Toss Certificate parity) -- see
 // CertificateService.kt's own doc comment. First real UI touchpoint for this endpoint,
@@ -21,8 +22,17 @@ export interface IssueCertificateResult {
   privateKey: string;
 }
 
+// Idempotency-Key added 2026-09-07 (Certificate product-completeness pass) -- issue
+// is the one endpoint where a lost response causes irreversible harm: the private
+// key is returned exactly once and never persisted (CertificateService.kt's own doc
+// comment). A retry after a timeout previously created a brand-new certificate
+// (silently revoking the one just issued), permanently orphaning a private key the
+// user may never have actually received.
 export const issueCertificate = () =>
-  apiFetch<{ success: boolean } & IssueCertificateResult>('/api/v1/certificate/issue', { method: 'POST' });
+  apiFetch<{ success: boolean } & IssueCertificateResult>('/api/v1/certificate/issue', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  });
 
 // Real-200s with `certificate: null` when there's no active certificate -- unlike
 // lib/merchant.ts's getMyMerchant (which real-404s), CertificateService.getMyCertificate

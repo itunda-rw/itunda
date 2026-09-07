@@ -184,6 +184,13 @@ class CertificateServiceTest : BehaviorSpec({
                 result.signatureValid shouldBe true
                 result.certificateStatus shouldBe CertificateStatus.ACTIVE
             }
+            // Real gap closed 2026-09-07 (Certificate product-completeness pass): this
+            // route is permitAll (public, unauthenticated) and does real Ed25519
+            // verification per call -- rate-limited by serialNumber (same reasoning as
+            // getStatus above) to bound a cheap signature-guessing target.
+            Then("the real public verification is rate-limited against the certificate's serial number") {
+                io.mockk.verify(exactly = 1) { rateLimiter.checkLimit("certificate:verify:SERIAL1", limit = 20, window = java.time.Duration.ofMinutes(1)) }
+            }
         }
 
         When("verifying a real signature against a tampered payload") {
@@ -199,6 +206,56 @@ class CertificateServiceTest : BehaviorSpec({
 
             Then("it real-fails cleanly rather than throwing a 500") {
                 result.signatureValid shouldBe false
+            }
+        }
+    }
+
+    // Real gap closed 2026-09-07 (Certificate product-completeness pass): revoke() had
+    // zero test coverage before this and, separately, no rate-limiting -- unlike issue()'s
+    // own long-established rate limit.
+    Given("a user revoking their active certificate") {
+        val certificateRepository = mockk<CertificateRepository>()
+        val userRepository = mockk<UserRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
+
+        val active = Certificate(id = "cert_active", userId = "user_6", serialNumber = "SERIAL3", publicKeyBase64 = "x", expiresAt = Instant.now().plusSeconds(1000))
+        every { certificateRepository.findByUserIdAndStatus("user_6", CertificateStatus.ACTIVE) } returns active
+        every { certificateRepository.save(any()) } answers { firstArg() }
+
+        When("revoking it") {
+            val result = service.revoke("user_6")
+
+            Then("it is real-revoked with a real revokedAt timestamp") {
+                result.status shouldBe CertificateStatus.REVOKED
+                result.revokedAt shouldNotBe null
+            }
+            Then("the real revoke is rate-limited against the caller's own userId") {
+                io.mockk.verify(exactly = 1) { rateLimiter.checkLimit("certificate:revoke:user_6", limit = 10, window = java.time.Duration.ofHours(1)) }
+            }
+        }
+    }
+
+    Given("a user with no active certificate trying to revoke") {
+        val certificateRepository = mockk<CertificateRepository>()
+        val userRepository = mockk<UserRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
+        every { certificateRepository.findByUserIdAndStatus("user_7", CertificateStatus.ACTIVE) } returns null
+
+        When("revoking") {
+            Then("it real-404s") {
+                try {
+                    service.revoke("user_7")
+                    error("expected NoCertificateFoundException")
+                } catch (e: NoCertificateFoundException) {
+                    // expected
+                }
             }
         }
     }
@@ -222,6 +279,13 @@ class CertificateServiceTest : BehaviorSpec({
 
             Then("it reports EXPIRED even though the stored status column still says ACTIVE") {
                 result.status shouldBe CertificateStatus.EXPIRED
+            }
+            // Real gap closed 2026-09-07 (Certificate product-completeness pass): this
+            // route is permitAll (public, unauthenticated), so it's rate-limited by
+            // serialNumber rather than userId -- same real precedent
+            // AuthService.checkPhone already establishes for its own public endpoints.
+            Then("the real public status check is rate-limited against the requested serial number") {
+                io.mockk.verify(exactly = 1) { rateLimiter.checkLimit("certificate:status:SERIAL2", limit = 20, window = java.time.Duration.ofMinutes(1)) }
             }
         }
     }

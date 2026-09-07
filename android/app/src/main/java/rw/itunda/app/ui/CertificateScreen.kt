@@ -38,6 +38,7 @@ import rw.itunda.core.network.VerifyCertificateSignatureRequest
 import rw.itunda.core.network.VerifyCertificateSignatureResponse
 import rw.itunda.core.network.isKycRequiredError
 import java.io.IOException
+import java.util.UUID
 
 // Real digital identity/signing certificate (2026-07-22 port) -- this feature was
 // already real and live-verified on bank-mfe (web) since 2026-07-17, but a full
@@ -132,7 +133,7 @@ fun CertificateScreen(onBack: () -> Unit) {
                                     busy = true
                                     scope.launch {
                                         try {
-                                            val result = NetworkClient.apiService.issueCertificate()
+                                            val result = NetworkClient.apiService.issueCertificate(UUID.randomUUID().toString())
                                             certificate = result.certificate
                                             issuedPrivateKey = result.privateKey
                                             error = null

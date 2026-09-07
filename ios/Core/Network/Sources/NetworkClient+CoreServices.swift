@@ -315,8 +315,14 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/account/agent-withdrawal-authorizations/cancel", body: CancelAgentWithdrawalAuthorizationRequest(code: code))
     }
 
+    // Idempotency-Key added 2026-09-07 (Certificate product-completeness pass) -- issue
+    // is the one endpoint where a lost response causes irreversible harm: the private
+    // key is returned exactly once and never persisted (CertificateService.kt's own
+    // doc comment). A retry after a timeout previously created a brand-new certificate
+    // (silently revoking the one just issued), permanently orphaning a private key the
+    // user may never have actually received.
     public func issueCertificate() async throws -> IssueCertificateResponse {
-        try await authenticatedPost("api/v1/certificate/issue", body: EmptyRequest())
+        try await authenticatedPost("api/v1/certificate/issue", body: EmptyRequest(), idempotencyKey: UUID().uuidString)
     }
 
     public func getMyCertificate() async throws -> MyCertificateResponse { try await get("api/v1/certificate/me") }
