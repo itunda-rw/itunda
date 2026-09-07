@@ -1317,6 +1317,77 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  # Real, nineteenth product-level dashboard (2026-09-07, Overview product-
+  # completeness pass) -- see docs/ARCHITECTURE.md's dated follow-up. `:overview`/
+  # `:overview-service` is the 10th independently-deployable backend extraction
+  # (own Gradle module, own bootJar/Dockerfile/k8s Deployment), same shared-MySQL-
+  # schema shape as the other extracted services. Covers both of this product's
+  # real route prefixes -- the net-worth/asset aggregation dashboard
+  # (/api/v1/overview) and the external bank/MoMo account-linking consent
+  # registry (/api/v1/accounts) -- confirmed by reading OverviewController.kt's
+  # and LinkedAccountController.kt's own @RequestMapping directly, and confirmed
+  # via a repo-wide grep that no other module registers either prefix (unlike
+  # Identity's real collision with Partners' /api/v1/identity/verification,
+  # this pair is exclusively owned by :overview, so a plain wildcard is safe
+  # here). Same route-filtered request-rate/error-rate/latency panel shape as
+  # itunda-card/itunda-identity (no per-service JVM panel).
+  name: grafana-dashboard-itunda-overview
+  namespace: monitoring
+data:
+  itunda-overview.json: |
+    {
+      "title": "itunda Overview",
+      "uid": "itunda-overview",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Overview request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(overview|accounts)(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Overview error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(overview|accounts)(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Overview request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(overview|accounts)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(overview|accounts)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: grafana-dashboard-itunda-private-cloud
   namespace: monitoring
 data:
@@ -1496,6 +1567,8 @@ spec:
               name: grafana-dashboard-itunda-partners
           - configMap:
               name: grafana-dashboard-itunda-identity
+          - configMap:
+              name: grafana-dashboard-itunda-overview
           - configMap:
               name: grafana-dashboard-itunda-private-cloud
 ---
