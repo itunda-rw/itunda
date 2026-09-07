@@ -15,7 +15,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsSegmentedControl
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
@@ -93,12 +92,15 @@ fun IdentityScreen(onBack: () -> Unit) {
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
             item {
+                // Real flat-design fix (2026-09-07, Identity product-completeness pass) --
+                // matches iOS's own 2026-08-24 fix to this exact screen
+                // (IdentityScreenView.swift): dropped the structural Card wrappers here and
+                // per submission below in favor of a HorizontalDivider between entries
+                // (docs/UI_UX_GUIDELINES.md §10).
                 if (hasPending) {
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text("Submission pending review", style = MaterialTheme.typography.titleMedium)
-                            Text("We'll update your status once it's reviewed.", style = MaterialTheme.typography.bodySmall)
-                        }
+                    Column {
+                        Text("Submission pending review", style = MaterialTheme.typography.titleMedium)
+                        Text("We'll update your status once it's reviewed.", style = MaterialTheme.typography.bodySmall)
                     }
                 } else {
                     Column {
@@ -145,18 +147,24 @@ fun IdentityScreen(onBack: () -> Unit) {
                     }
                 }
             }
+            item { androidx.compose.material3.HorizontalDivider() }
             item { Text("Your submissions", style = MaterialTheme.typography.titleMedium) }
             val current = submissions
             if (current == null) item { SkeletonBlock() }
             else if (current.isEmpty()) item { EmptyState("No submissions yet.") }
-            else items(current, key = { it.id }) { submission -> SubmissionCard(submission) }
+            else items(current, key = { it.id }) { submission ->
+                Column {
+                    SubmissionRow(submission)
+                    androidx.compose.material3.HorizontalDivider()
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun SubmissionCard(submission: KycSubmissionDto) = Card(Modifier.fillMaxWidth()) {
-    Column(Modifier.padding(16.dp)) {
+private fun SubmissionRow(submission: KycSubmissionDto) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
         Text("${submission.documentType} · ${submission.documentNumber}", style = MaterialTheme.typography.titleMedium)
         Text("Status: ${submission.status}", style = MaterialTheme.typography.bodyMedium)
         submission.decisionReason?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
