@@ -98,6 +98,24 @@ class SaccoControllerTest : BehaviorSpec({
         }
     }
 
+    Given("a real ADMIN checking the real SACCO pool solvency status") {
+        val service = mockk<SaccoService>()
+        val idempotencyService = mockk<IdempotencyService>()
+        val controller = SaccoController(service, idempotencyService)
+        every { service.getPoolStatus() } returns SaccoPoolStatusView(BigDecimal("500000"), BigDecimal("500000"), solvent = true)
+
+        When("fetching pool status") {
+            val response = controller.poolStatus()
+
+            Then("it real-delegates and reports the real solvency indicator") {
+                verify(exactly = 1) { service.getPoolStatus() }
+                response.body?.get("poolAccountBalance") shouldBe BigDecimal("500000")
+                response.body?.get("totalSharesOutstanding") shouldBe BigDecimal("500000")
+                response.body?.get("solvent") shouldBe true
+            }
+        }
+    }
+
     Given("a real ADMIN declaring a dividend") {
         val service = mockk<SaccoService>()
         val idempotencyService = mockk<IdempotencyService>()

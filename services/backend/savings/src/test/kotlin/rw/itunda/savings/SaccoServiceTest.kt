@@ -268,4 +268,47 @@ class SaccoServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("a real SACCO pool with a real balanced pool account and real shares outstanding") {
+        val shareholdingRepository = mockk<SaccoShareholdingRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val service = newService(shareholdingRepository = shareholdingRepository, accountRepository = accountRepository)
+
+        val poolAccount = account("account_pool", "sacco_pool_system", type = AccountType.GROUP, balance = BigDecimal("500000"))
+        every { accountRepository.findByUserIdAndType("sacco_pool_system", AccountType.GROUP) } returns poolAccount
+        every { shareholdingRepository.findAll() } returns listOf(
+            SaccoShareholding(id = "share_1", userId = "user_1", accountId = "account_1", sharesHeld = BigDecimal("300000")),
+            SaccoShareholding(id = "share_2", userId = "user_2", accountId = "account_2", sharesHeld = BigDecimal("200000")),
+        )
+
+        When("getPoolStatus runs") {
+            val status = service.getPoolStatus()
+
+            Then("it real-reports the exact invariant declareDividend's own lock protects, and correctly reports solvent when they match") {
+                status.poolAccountBalance shouldBe BigDecimal("500000")
+                status.totalSharesOutstanding shouldBe BigDecimal("500000")
+                status.solvent shouldBe true
+            }
+        }
+    }
+
+    Given("a real SACCO pool that has fallen insolvent") {
+        val shareholdingRepository = mockk<SaccoShareholdingRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val service = newService(shareholdingRepository = shareholdingRepository, accountRepository = accountRepository)
+
+        val poolAccount = account("account_pool", "sacco_pool_system", type = AccountType.GROUP, balance = BigDecimal("400000"))
+        every { accountRepository.findByUserIdAndType("sacco_pool_system", AccountType.GROUP) } returns poolAccount
+        every { shareholdingRepository.findAll() } returns listOf(
+            SaccoShareholding(id = "share_1", userId = "user_1", accountId = "account_1", sharesHeld = BigDecimal("500000")),
+        )
+
+        When("getPoolStatus runs") {
+            val status = service.getPoolStatus()
+
+            Then("it real-reports insolvent -- the exact real invariant an operator needs to see before ever declaring a dividend") {
+                status.solvent shouldBe false
+            }
+        }
+    }
 })

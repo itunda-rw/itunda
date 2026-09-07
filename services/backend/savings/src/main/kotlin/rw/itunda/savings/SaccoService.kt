@@ -32,6 +32,7 @@ class SaccoInsufficientSharesException(message: String) : RuntimeException(messa
 class SaccoNoSharesOutstandingException(message: String) : RuntimeException(message)
 
 data class SaccoShareholdingView(val shareholding: SaccoShareholding, val currentValue: BigDecimal)
+data class SaccoPoolStatusView(val poolAccountBalance: BigDecimal, val totalSharesOutstanding: BigDecimal, val solvent: Boolean)
 
 // Real per-user sentinel that owns the one shared "itunda SACCO" pool account -- not a
 // real registered account. `Account.userId` carries no DB foreign-key constraint (a
@@ -216,6 +217,19 @@ class SaccoService(
      * second concurrent call now blocks until the first's transaction commits, then
      * correctly sees the first's already-saved distribution on its own fresh read.
      */
+    // Real admin-visible solvency indicator (2026-09-07, Savings/Account
+    // product-completeness pass) -- the exact invariant declareDividend's own
+    // pool-account-lock fix protects (poolAccountBalance == totalSharesOutstanding)
+    // was never exposed anywhere an operator could actually see it before this.
+    // Same "findAll()-then-filter honesty" convention declareDividend's own
+    // allShareholdings computation already establishes -- this system's real data
+    // scale doesn't yet justify an indexed SUM() query.
+    fun getPoolStatus(): SaccoPoolStatusView {
+        val poolAccountBalance = getOrCreatePoolAccount().balance
+        val totalSharesOutstanding = shareholdingRepository.findAll().fold(BigDecimal.ZERO) { acc, s -> acc.add(s.sharesHeld) }
+        return SaccoPoolStatusView(poolAccountBalance, totalSharesOutstanding, solvent = poolAccountBalance >= totalSharesOutstanding)
+    }
+
     @Transactional
     fun declareDividend(): SaccoDividendDistribution {
         val allShareholdings = shareholdingRepository.findAll().filter { it.sharesHeld > BigDecimal.ZERO }

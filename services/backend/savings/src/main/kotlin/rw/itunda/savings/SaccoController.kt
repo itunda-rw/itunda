@@ -68,6 +68,19 @@ class SaccoController(
     fun myDividendHistory(@AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true, "payouts" to saccoService.getMyDividendHistory(currentUser.userId)))
 
+    // Real admin-visible solvency indicator -- see SaccoService.getPoolStatus's own
+    // doc comment. Same inline @PreAuthorize convention as declareDividend below.
+    @GetMapping("/pool-status")
+    @PreAuthorize("hasRole('ADMIN')")
+    fun poolStatus(): ResponseEntity<Map<String, Any?>> {
+        val status = saccoService.getPoolStatus()
+        return ResponseEntity.ok(mapOf("success" to true) + mapOf(
+            "poolAccountBalance" to status.poolAccountBalance,
+            "totalSharesOutstanding" to status.totalSharesOutstanding,
+            "solvent" to status.solvent,
+        ))
+    }
+
     // Real admin lever closing a disclosed half-built-feature gap -- see
     // SaccoService.declareDividend's own doc comment: the underwriting/solvency logic
     // was already real and hardened, but had no caller anywhere, since WHEN a
