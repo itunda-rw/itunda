@@ -2,6 +2,7 @@ package rw.itunda.savings
 
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -66,6 +67,22 @@ class SaccoController(
     @GetMapping("/dividends/me")
     fun myDividendHistory(@AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true, "payouts" to saccoService.getMyDividendHistory(currentUser.userId)))
+
+    // Real admin lever closing a disclosed half-built-feature gap -- see
+    // SaccoService.declareDividend's own doc comment: the underwriting/solvency logic
+    // was already real and hardened, but had no caller anywhere, since WHEN a
+    // cooperative declares a dividend is a governance decision, not an engineering
+    // one. This is that governance lever, not a unilateral engineering decision about
+    // timing. Same inline @PreAuthorize convention this module already establishes
+    // (WeeklySavingsController.processDue/Grow31SavingsController.processDue/
+    // UpfrontInterestDepositController.processDue) -- this route doesn't live under
+    // /api/v1/system/**, so it doesn't inherit SecurityConfig's blanket ADMIN gate there.
+    @PostMapping("/declare-dividend")
+    @PreAuthorize("hasRole('ADMIN')")
+    fun declareDividend(): ResponseEntity<Map<String, Any?>> {
+        val distribution = saccoService.declareDividend()
+        return ResponseEntity.ok(mapOf("success" to true, "distribution" to distribution))
+    }
 
     @ExceptionHandler(SaccoNoAccountException::class)
     fun handleNoAccount(ex: SaccoNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
