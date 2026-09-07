@@ -1103,6 +1103,77 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  # Real, fifteenth product-level dashboard (2026-09-07, Vehicle product-
+  # completeness pass) -- see docs/ARCHITECTURE.md's dated follow-up. This
+  # product spans two real routes: `:vehicle`/`:vehicle-service` (the 7th
+  # independently-deployable backend extraction, a pure B2C valuation
+  # tracker) and the real B2B2C vehicle-inspection escrow feature, which
+  # lives inside the shared `:marketplace` module under a different route
+  # prefix -- both covered by one regex, same route-filtered request-rate/
+  # error-rate/latency panel shape as itunda-card/itunda-certificate (no
+  # per-service JVM panel). Scoped to /api/v1/vehicles(/.*)? and
+  # /api/v1/marketplace/inspections(/.*)?, confirmed by reading
+  # VehicleController.kt's and VehicleInspectionController.kt's own
+  # @RequestMapping directly. Deliberately distinct from itunda-shop's
+  # existing dashboard, which is scoped to /api/v1/orders(/.*)? and does
+  # not touch either of these routes.
+  name: grafana-dashboard-itunda-vehicle
+  namespace: monitoring
+data:
+  itunda-vehicle.json: |
+    {
+      "title": "itunda Vehicle",
+      "uid": "itunda-vehicle",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Vehicle request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(vehicles|marketplace/inspections)(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Vehicle error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(vehicles|marketplace/inspections)(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Vehicle request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(vehicles|marketplace/inspections)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(vehicles|marketplace/inspections)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: grafana-dashboard-itunda-private-cloud
   namespace: monitoring
 data:
@@ -1276,6 +1347,8 @@ spec:
               name: grafana-dashboard-itunda-transit
           - configMap:
               name: grafana-dashboard-itunda-certificate
+          - configMap:
+              name: grafana-dashboard-itunda-vehicle
           - configMap:
               name: grafana-dashboard-itunda-private-cloud
 ---
