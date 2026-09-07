@@ -193,6 +193,13 @@ struct ContentView: View {
     @State private var showGrow31Savings = false
     @State private var showUpfrontDeposit = false
     @State private var showCreditScore = false
+    // Real gap found 2026-09-07 (Savings/Account product-completeness pass):
+    // YouthAccountScreenView/GroupAccountScreenView were fully built and API-wired
+    // but only reachable from MenuTabContent's own local @State, the exact same
+    // gap class the 2026-09-06 fix above already closed for Weekly/Grow31/
+    // Upfront/CreditScore -- never extended to these two.
+    @State private var showYouthAccount = false
+    @State private var showGroupAccounts = false
     // Real architectural fix (2026-08-13, matching the identical Android fix same
     // session, direct user directive): "all itunda product features are independent
     // and isolated -- itunda bank is a complete product... tabs are not products,
@@ -276,6 +283,17 @@ struct ContentView: View {
             CooperativeRowData(title: "Credit score", subtitle: "Free check, see what's helping or hurting it", symbol: "star.fill", tint: Color.accentIndigo.opacity(0.15), onTap: {
                 NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "credit_score")
                 showCreditScore = true
+            }),
+            // Real gap found 2026-09-07 (Savings/Account product-completeness pass) --
+            // reuse the exact same, already-built, already-API-wired screens
+            // MenuTabContent.swift already presents; only the entry point is new.
+            CooperativeRowData(title: "Youth account", subtitle: "A starter account for under-18s, parent-supervised", symbol: "figure.child", tint: Color.accentOrange.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "youth_account")
+                showYouthAccount = true
+            }),
+            CooperativeRowData(title: "Group accounts", subtitle: "Shared savings for family, church or cooperative groups", symbol: "person.3.fill", tint: Color.accentIndigo.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "group_accounts")
+                showGroupAccounts = true
             }),
         ]
     }
@@ -573,6 +591,12 @@ struct ContentView: View {
                         }
                         .sheet(isPresented: $showCreditScore) {
                             CreditScoreScreenView(onBack: { showCreditScore = false })
+                        }
+                        .sheet(isPresented: $showYouthAccount) {
+                            YouthAccountScreenView(onBack: { showYouthAccount = false })
+                        }
+                        .sheet(isPresented: $showGroupAccounts) {
+                            GroupAccountScreenView(onBack: { showGroupAccounts = false })
                         }
                         .fullScreenCover(isPresented: $showAccountManage) {
                             AccountManageScreen(
