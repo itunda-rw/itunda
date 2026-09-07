@@ -97,6 +97,9 @@ struct MenuTabContent: View {
     @State private var showAgentCashOut = false
     @State private var showForeignCurrency = false
     @State private var showSupport = false
+    // Real USSD basic-banking access (USSD product-completeness pass, 2026-09-08) --
+    // first iOS entry point for the "Set USSD PIN" screen bank-mfe already has.
+    @State private var showUssdSettings = false
     // Real "report an issue" hand-off from a completed ride (Support product-
     // completeness pass, 2026-09-08) -- same pending-hand-off shape bank-mfe's
     // BankDashboard.tsx already established (pendingRideIssueTransactionId), see
@@ -160,7 +163,8 @@ struct MenuTabContent: View {
             onOpenFloatMarketplace: { showFloatMarketplace = true },
             onOpenAgentCashOut: { showAgentCashOut = true },
             onOpenForeignCurrency: { showForeignCurrency = true },
-            onOpenSupport: { showSupport = true }
+            onOpenSupport: { showSupport = true },
+            onOpenUssdSettings: { showUssdSettings = true }
         )
         .sheet(isPresented: $showTransit) {
             TransitScreenView(onBack: { showTransit = false }, onOpenCollect: { showTransitCollect = true })
@@ -337,6 +341,9 @@ struct MenuTabContent: View {
                 initialCategory: pendingRideIssueTransactionId != nil ? "RIDE_ISSUE" : nil,
                 onConsumedInitial: { pendingRideIssueTransactionId = nil }
             )
+        }
+        .sheet(isPresented: $showUssdSettings) {
+            UssdSettingsScreenView(onBack: { showUssdSettings = false })
         }
     }
 }

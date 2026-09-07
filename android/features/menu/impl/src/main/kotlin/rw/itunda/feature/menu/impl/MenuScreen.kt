@@ -57,6 +57,7 @@ fun MenuScreen(
     onOpenOverview: () -> Unit = {},
     onOpenLoans: () -> Unit = {},
     onOpenSupport: () -> Unit = {},
+    onOpenUssdSettings: () -> Unit = {},
     onOpenCreditScore: () -> Unit = {},
     onOpenCertificate: () -> Unit = {},
     onOpenIdentity: () -> Unit = {},
@@ -136,6 +137,7 @@ fun MenuScreen(
         onOpenTrustScore = onOpenTrustScore, onOpenKnowledge = onOpenKnowledge,
         onOpenAgentOperator = onOpenAgentOperator, onOpenFloatMarketplace = onOpenFloatMarketplace,
         onClaimInterest = onClaimInterest, onSwitchToTalk = onSwitchToTalk, onOpenSupport = onOpenSupport,
+        onOpenUssdSettings = onOpenUssdSettings,
     )
 
     LazyColumn(

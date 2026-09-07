@@ -527,6 +527,9 @@ fun ItundaAppScreen(
         // BankDashboard.tsx already established (pendingRideIssueTransactionId), see
         // SupportScreen.kt's own doc comment for the full account.
         var pendingRideIssueTransactionId by rememberSaveable { mutableStateOf<String?>(null) }
+        // Real USSD basic-banking access (USSD product-completeness pass, 2026-09-08) --
+        // first Android entry point for the "Set USSD PIN" screen bank-mfe already has.
+        var showUssdSettings by rememberSaveable { mutableStateOf(false) }
         var showCreditScore by rememberSaveable { mutableStateOf(false) }
         var showCertificate by rememberSaveable { mutableStateOf(false) }
         var showIdentity by rememberSaveable { mutableStateOf(false) }
@@ -1381,6 +1384,11 @@ fun ItundaAppScreen(
             )
             return@IdsTheme
         }
+        if (showUssdSettings) {
+            BackHandler { showUssdSettings = false }
+            UssdSettingsScreen(onBack = { showUssdSettings = false })
+            return@IdsTheme
+        }
         if (showCreditScore) {
             BackHandler { showCreditScore = false }
             CreditScoreScreen(onBack = { showCreditScore = false })
@@ -1903,6 +1911,7 @@ fun ItundaAppScreen(
                             onOpenOverview = { showOverview = true },
                             onOpenLoans = { showLoans = true },
                             onOpenSupport = { showSupport = true },
+                            onOpenUssdSettings = { showUssdSettings = true },
                             onOpenCreditScore = { showCreditScore = true },
                             onOpenCertificate = { showCertificate = true },
                             onOpenIdentity = { showIdentity = true },

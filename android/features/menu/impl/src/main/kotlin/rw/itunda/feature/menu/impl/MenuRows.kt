@@ -75,6 +75,7 @@ internal fun menuSections(
     onOpenTrustScore: () -> Unit, onOpenKnowledge: () -> Unit,
     onOpenAgentOperator: () -> Unit, onOpenFloatMarketplace: () -> Unit,
     onClaimInterest: () -> Unit, onSwitchToTalk: () -> Unit, onOpenSupport: () -> Unit,
+    onOpenUssdSettings: () -> Unit,
 ): List<Pair<String, List<FlatRow>>> {
     val quickLinksEverydayRows = listOf(
         FlatRow("Shop", subtitle = "Coupang-style commerce", glyph = { ShoppingBagGlyph(size = 28.dp) }, onClick = onOpenShop),
@@ -198,7 +199,12 @@ internal fun menuSections(
         FlatRow("Call support", glyph = { ObjectMobilePhone(size = 28.dp) }),
         FlatRow("Report an issue with a transaction", glyph = { WarningGlyph(size = 28.dp) }, showChevron = true, onClick = onOpenSupport),
         FlatRow("My support tickets", glyph = { VoucherTicket(size = 28.dp) }, showChevron = true, onClick = onOpenSupport),
-        FlatRow("Announcements", glyph = { BellGlyph(size = 28.dp) })
+        FlatRow("Announcements", glyph = { BellGlyph(size = 28.dp) }),
+        // Real USSD basic-banking access (USSD product-completeness pass, 2026-09-08) --
+        // first Android entry point for this, mirrors bank-mfe's own "USSD access" row
+        // (grouped under its own "More" section there; grouped here under Support since
+        // this app has no separate "More" section).
+        FlatRow("USSD access", glyph = { ObjectMobilePhone(size = 28.dp) }, showChevron = true, onClick = onOpenUssdSettings)
     )
     return listOf(
         "Everyday" to quickLinksEverydayRows,

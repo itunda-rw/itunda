@@ -376,4 +376,17 @@
     <string name="support_submit_ticket">Submit ticket</string>
     <string name="support_your_tickets">Your tickets</string>
     <string name="support_no_tickets">You have no support tickets.</string>
+
+    <!-- Real localization for UssdSettingsScreen.kt (USSD product-completeness pass,
+         2026-09-08): first Android client for USSD PIN setup, ported from bank-mfe's
+         UssdSettingsView.tsx. Scoped to the primary surface: title, description, PIN
+         fields, and submit button. -->
+    <string name="ussd_settings_title">USSD access</string>
+    <string name="ussd_settings_description">Roughly two-thirds of people in Rwanda have a feature phone, not a smartphone. Set a real 4-6 digit USSD PIN so you can check your balance and send money from any phone, no app or internet needed.</string>
+    <string name="ussd_settings_honest_scope">Honestly scoped: the real menu, PIN check, and money transfer are fully built and working today. Dialing a short code like *123# to reach them needs a real partnership with a mobile network operator this project doesn\'t have yet -- the same honest limitation as our ID-verification integration.</string>
+    <string name="ussd_settings_pin_placeholder">New USSD PIN (4-6 digits)</string>
+    <string name="ussd_settings_confirm_pin_placeholder">Confirm PIN</string>
+    <string name="ussd_settings_saving">Saving…</string>
+    <string name="ussd_settings_submit">Set USSD PIN</string>
+    <string name="ussd_settings_saved">Your USSD PIN has been set.</string>
 </resources>

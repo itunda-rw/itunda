@@ -59,7 +59,8 @@ extension EntireMenuScreen {
         onOpenFloatMarketplace: @escaping () -> Void = {},
         onOpenAgentCashOut: @escaping () -> Void = {},
         onOpenForeignCurrency: @escaping () -> Void = {},
-        onOpenSupport: @escaping () -> Void = {}
+        onOpenSupport: @escaping () -> Void = {},
+        onOpenUssdSettings: @escaping () -> Void = {}
     ) {
         self.onOpenSettings = onOpenSettings
         self.onClaimInterest = onClaimInterest
@@ -117,5 +118,6 @@ extension EntireMenuScreen {
         self.onOpenAgentCashOut = onOpenAgentCashOut
         self.onOpenForeignCurrency = onOpenForeignCurrency
         self.onOpenSupport = onOpenSupport
+        self.onOpenUssdSettings = onOpenUssdSettings
     }
 }

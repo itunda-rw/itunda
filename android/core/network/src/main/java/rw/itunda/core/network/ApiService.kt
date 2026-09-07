@@ -2323,6 +2323,15 @@ data class SupportTicketDto(
 data class CreateSupportTicketResponse(val success: Boolean, val ticket: SupportTicketDto)
 data class SupportTicketsResponse(val success: Boolean, val tickets: List<SupportTicketDto>)
 
+// Real USSD basic-banking access (item 231, rw.itunda.ussd) -- the real menu, PIN
+// check, and money transfer (send money/check balance/pay a merchant) are fully built
+// and working on the backend; only the real MNO/telco short-code partnership needed
+// to dial *XXX# is missing (bank-mfe's own UssdSettingsView.tsx honestly discloses
+// this). This is the smartphone-side companion: a real, separate 4-6 digit PIN (not
+// the account password, M-Pesa-style convention) a user sets here so they can later
+// use any basic phone. First Android client for this -- bank-mfe shipped first.
+data class SetUssdPinRequest(val pin: String)
+
 // Real "alternative data" credit score (rw.itunda.creditscore, computation lives in
 // :core's CreditScoreService so LoansService's real risk-gating can share it) --
 // found 2026-07-22 fully built on the backend with zero client UI anywhere. Not a
@@ -4420,6 +4429,9 @@ interface ApiService {
 
     @GET("api/v1/support/tickets")
     suspend fun getSupportTickets(): SupportTicketsResponse
+
+    @POST("api/v1/ussd/pin")
+    suspend fun setUssdPin(@Body request: SetUssdPinRequest): SuccessResponse
 
     @GET("api/v1/credit-score")
     suspend fun getCreditScore(): CreditScoreResponse

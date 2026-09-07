@@ -291,4 +291,13 @@
     <string name="support_submit_ticket">Envoyer le ticket</string>
     <string name="support_your_tickets">Vos tickets</string>
     <string name="support_no_tickets">Vous n\'avez aucun ticket d\'assistance.</string>
+
+    <string name="ussd_settings_title">Accès USSD</string>
+    <string name="ussd_settings_description">Environ deux tiers des habitants du Rwanda ont un téléphone basique, pas un smartphone. Définissez un vrai code PIN USSD à 4-6 chiffres pour consulter votre solde et envoyer de l\'argent depuis n\'importe quel téléphone, sans application ni internet.</string>
+    <string name="ussd_settings_honest_scope">Honnêtement limité : le vrai menu, la vérification du PIN et le transfert d\'argent sont entièrement fonctionnels dès aujourd\'hui. Composer un code court comme *123# pour y accéder nécessite un vrai partenariat avec un opérateur mobile que ce projet n\'a pas encore -- la même limitation honnête que notre intégration de vérification d\'identité.</string>
+    <string name="ussd_settings_pin_placeholder">Nouveau PIN USSD (4-6 chiffres)</string>
+    <string name="ussd_settings_confirm_pin_placeholder">Confirmer le PIN</string>
+    <string name="ussd_settings_saving">Enregistrement…</string>
+    <string name="ussd_settings_submit">Définir le PIN USSD</string>
+    <string name="ussd_settings_saved">Votre PIN USSD a été défini.</string>
 </resources>

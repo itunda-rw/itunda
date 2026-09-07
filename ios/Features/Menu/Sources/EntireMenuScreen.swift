@@ -91,6 +91,7 @@ public struct EntireMenuScreen: View {
     public var onOpenAgentCashOut: () -> Void
     public var onOpenForeignCurrency: () -> Void
     public var onOpenSupport: () -> Void
+    public var onOpenUssdSettings: () -> Void
 
     // Real fix (2026-08-10) -- see IdsSearchBar's own doc comment for the full
     // account of the fake-search-bar bug this closes.
@@ -423,6 +424,10 @@ public struct EntireMenuScreen: View {
                         FlatRow(title: "Report an issue with a transaction", glyph: { AnyView(WarningGlyph(size: 28)) }, showChevron: true, action: onOpenSupport),
                         FlatRow(title: "My support tickets", showChevron: true, action: onOpenSupport),
                         FlatRow(title: "Announcements"),
+                        // Real USSD basic-banking access (USSD product-completeness pass,
+                        // 2026-09-08) -- first iOS entry point for this, mirrors bank-mfe's
+                        // own "USSD access" row.
+                        FlatRow(title: "USSD access", glyph: { AnyView(ObjectMobilePhone(size: 28)) }, showChevron: true, action: onOpenUssdSettings),
                     ], isExpanded: expandedMenuSection == "Support", onToggle: { expandedMenuSection = (expandedMenuSection == "Support") ? nil : "Support" })
                 }
             }

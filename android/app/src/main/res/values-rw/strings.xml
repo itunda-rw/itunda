@@ -292,4 +292,13 @@
     <string name="support_submit_ticket">Ohereza ikibazo</string>
     <string name="support_your_tickets">Ibibazo byawe</string>
     <string name="support_no_tickets">Nta bibazo wigeze wohereza.</string>
+
+    <string name="ussd_settings_title">Kwinjira ukoresheje USSD</string>
+    <string name="ussd_settings_description">Hafi bibiri bya gatatu by\'abantu mu Rwanda bafite telefoni idasanzwe (feature phone), atari smartphone. Shyiraho PIN nyayo ya USSD ifite imibare 4-6 kugira ngo urebe amafaranga ufite kandi wohereze amafaranga uva kuri telefoni iyo ari yo yose, nta porogaramu cyangwa interineti bikenewe.</string>
+    <string name="ussd_settings_honest_scope">Byagenwe neza: menu nyayo, kugenzura PIN, no kohereza amafaranga byuzuye kandi birakora none. Guhamagara ikoodi ngufi nka *123# kugira ngo ubigereho bisaba ubufatanye nyabwo n\'uwatanga serivisi za terefone (MNO) uyu mushinga utaragira -- ni imbogamizi imwe n\'iyo dufite ku kwemeza indangamuntu.</string>
+    <string name="ussd_settings_pin_placeholder">PIN nshya ya USSD (imibare 4-6)</string>
+    <string name="ussd_settings_confirm_pin_placeholder">Emeza PIN</string>
+    <string name="ussd_settings_saving">Kubika…</string>
+    <string name="ussd_settings_submit">Shyiraho PIN ya USSD</string>
+    <string name="ussd_settings_saved">PIN yawe ya USSD yashyizweho.</string>
 </resources>

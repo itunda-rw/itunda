@@ -7318,6 +7318,15 @@ public struct SupportTicketDto: Decodable, Identifiable {
 public struct CreateSupportTicketResponse: Decodable { public let success: Bool; public let ticket: SupportTicketDto }
 public struct SupportTicketsResponse: Decodable { public let success: Bool; public let tickets: [SupportTicketDto] }
 
+// Real USSD basic-banking access (item 231, rw.itunda.ussd) -- the real menu, PIN
+// check, and money transfer are fully built and working on the backend; only the real
+// MNO/telco short-code partnership needed to dial *XXX# is missing (bank-mfe's own
+// UssdSettingsView.tsx honestly discloses this). This is the smartphone-side
+// companion: a real, separate 4-6 digit PIN (not the account password, M-Pesa-style
+// convention) a user sets here so they can later use any basic phone. First iOS
+// client for this -- bank-mfe shipped first.
+public struct SetUssdPinRequest: Encodable { public let pin: String }
+
 public struct CreateSplitBillRequest: Encodable {
     public let totalAmount: Double; public let description: String; public let participantUserIds: [String]
     // Real KakaoPay 사다리타기 (ladder-game) mode (2026-07-25) -- see backend

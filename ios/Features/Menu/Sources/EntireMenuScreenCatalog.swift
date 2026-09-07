@@ -189,6 +189,7 @@ extension EntireMenuScreen {
                 FlatRow(title: "Report an issue with a transaction", glyph: { AnyView(WarningGlyph(size: 28)) }, showChevron: true, action: onOpenSupport),
                 FlatRow(title: "My support tickets", showChevron: true, action: onOpenSupport),
                 FlatRow(title: "Announcements"),
+                FlatRow(title: "USSD access", glyph: { AnyView(ObjectMobilePhone(size: 28)) }, showChevron: true, action: onOpenUssdSettings),
             ]),
         ]
     }

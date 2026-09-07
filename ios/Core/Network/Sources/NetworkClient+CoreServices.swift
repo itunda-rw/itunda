@@ -383,6 +383,10 @@ extension NetworkClient {
 
     public func getSupportTickets() async throws -> SupportTicketsResponse { try await get("api/v1/support/tickets") }
 
+    public func setUssdPin(_ pin: String) async throws -> SuccessResponse {
+        try await authenticatedPost("api/v1/ussd/pin", body: SetUssdPinRequest(pin: pin))
+    }
+
     // Real gap found 2026-09-04: SplitBillService has a genuinely rich real message
     // surface ("A split bill needs at least one other real participant", "Every
     // participant must be a real member of this group", "This share has already been
