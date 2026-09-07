@@ -1502,6 +1502,63 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name: grafana-dashboard-itunda-analytics
+  namespace: monitoring
+data:
+  itunda-analytics.json: |
+    {
+      "title": "itunda Analytics",
+      "uid": "itunda-analytics",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Analytics request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/analytics(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Analytics error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/analytics(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Analytics request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/analytics(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/analytics(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: grafana-dashboard-itunda-private-cloud
   namespace: monitoring
 data:
@@ -1687,6 +1744,8 @@ spec:
               name: grafana-dashboard-itunda-knowledge
           - configMap:
               name: grafana-dashboard-itunda-notifications
+          - configMap:
+              name: grafana-dashboard-itunda-analytics
           - configMap:
               name: grafana-dashboard-itunda-private-cloud
 ---
