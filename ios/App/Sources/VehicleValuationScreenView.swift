@@ -14,8 +14,14 @@ import CoreNetwork
 struct VehicleValuationScreenView: View {
     var onBack: () -> Void = {}
 
-    @State private var vehicles: [VehicleDto] = []
+    @State private var vehicles: [VehicleDto]?
     @State private var valuations: [String: VehicleValuationDto] = [:]
+    // Real fix (2026-09-07, Vehicle product-completeness pass) -- a failed load
+    // previously fell through to `vehicles = []`, indistinguishable from a genuine
+    // zero-vehicles user and with no way to retry. `vehicles` is now nil until the
+    // first real load succeeds or fails, matching Android's own already-correct
+    // `list == null` -> "Loading…" handling.
+    @State private var loadError: String?
     @State private var showCreate = false
     @State private var make = ""
     @State private var model = ""
@@ -76,10 +82,19 @@ struct VehicleValuationScreenView: View {
                         Text(error).font(.footnote).foregroundColor(.red)
                     }
 
-                    if vehicles.isEmpty {
+                    if let loadError {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(loadError).font(.caption).foregroundColor(.red)
+                            Button("Retry", action: { Task { await load() } }).font(.caption).bold().foregroundColor(IDS.Colors.brand)
+                        }
+                        .padding().frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color(.secondarySystemBackground)).cornerRadius(12)
+                    } else if vehicles == nil {
+                        ProgressView().frame(maxWidth: .infinity).padding()
+                    } else if vehicles?.isEmpty == true {
                         EmptyStateView("No vehicles added yet — add one to track its value and get real offers.")
                     } else {
-                        ForEach(vehicles) { v in
+                        ForEach(vehicles ?? []) { v in
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack(alignment: .top) {
                                     VStack(alignment: .leading, spacing: 2) {
@@ -135,6 +150,7 @@ struct VehicleValuationScreenView: View {
     }
 
     private func load() async {
+        loadError = nil
         do {
             let list = try await NetworkClient.shared.getMyVehicles().vehicles
             vehicles = list
@@ -146,7 +162,7 @@ struct VehicleValuationScreenView: View {
             }
             valuations = results
         } catch {
-            vehicles = []
+            loadError = "Could not load your vehicles."
         }
     }
 
