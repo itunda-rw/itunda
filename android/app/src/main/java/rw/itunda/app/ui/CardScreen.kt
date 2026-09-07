@@ -249,7 +249,7 @@ fun CardScreen(onBack: () -> Unit) {
         error = null
         coroutineScope.launch {
             try {
-                card = NetworkClient.apiService.reissueCard().card
+                card = NetworkClient.apiService.reissueCard(UUID.randomUUID().toString()).card
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {

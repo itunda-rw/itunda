@@ -109,8 +109,16 @@ export const closeMyCard = () =>
 
 // Real "카드 재발급" (reissue) -- only allowed once a card is lost or closed;
 // regenerates last4 and clears the old PIN in place.
+// Real, live bug found 2026-09-07 (Certificate product-completeness pass, incidental
+// discovery): the backend requires Idempotency-Key with no default, but this call had
+// none -- every real reissue-card tap on web has been hard-failing with 400
+// IDEMPOTENCY_KEY_REQUIRED since the Card pass added the backend requirement. Same fix
+// Android (ApiService.kt) and iOS (NetworkClient+CoreServices.swift) needed too.
 export const reissueCard = () =>
-  apiFetch<{ success: boolean; card: Card }>('/api/v1/card/reissue', { method: 'POST' }).then((r) => r.card);
+  apiFetch<{ success: boolean; card: Card }>('/api/v1/card/reissue', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  }).then((r) => r.card);
 
 // Real "카드 비밀번호 변경" (change card PIN) -- a real, separate 4-digit debit-card
 // PIN, distinct from the login password/PIN. Requires the current login credential as

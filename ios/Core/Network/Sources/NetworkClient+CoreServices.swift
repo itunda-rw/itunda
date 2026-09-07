@@ -191,8 +191,12 @@ extension NetworkClient {
 
     // Real "카드 재발급" (reissue) -- only allowed once a card is lost or closed;
     // regenerates last4 and clears the old PIN in place.
+    // Real, live bug found 2026-09-07 (Certificate product-completeness pass, incidental
+    // discovery): the backend requires Idempotency-Key with no default, but this call
+    // had none -- every real reissue-card tap on iOS has been hard-failing with 400
+    // IDEMPOTENCY_KEY_REQUIRED since the Card pass added the backend requirement.
     public func reissueCard() async throws -> CardResponse {
-        try await authenticatedPostWithMessage("api/v1/card/reissue", body: EmptyRequest())
+        try await authenticatedPostWithMessage("api/v1/card/reissue", body: EmptyRequest(), idempotencyKey: UUID().uuidString)
     }
 
     // Real "카드 비밀번호 변경" (change card PIN) -- a real, separate 4-digit

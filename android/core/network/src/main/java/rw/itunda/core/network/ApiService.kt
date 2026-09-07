@@ -4325,8 +4325,14 @@ interface ApiService {
     @POST("api/v1/card/close")
     suspend fun closeCard(): CardResponse
 
+    // Real, live bug found 2026-09-07 (Certificate product-completeness pass, incidental
+    // discovery): the backend's /api/v1/card/reissue requires Idempotency-Key with no
+    // default, but this call had none -- every real reissue-card tap on Android has been
+    // hard-failing with 400 IDEMPOTENCY_KEY_REQUIRED since the Card pass added the
+    // backend requirement. Same fix web (lib/card.ts) and iOS (NetworkClient+
+    // CoreServices.swift) needed too.
     @POST("api/v1/card/reissue")
-    suspend fun reissueCard(): CardResponse
+    suspend fun reissueCard(@Header("Idempotency-Key") idempotencyKey: String): CardResponse
 
     @PUT("api/v1/card/pin")
     suspend fun setCardPin(@Body request: SetCardPinRequest): CardResponse

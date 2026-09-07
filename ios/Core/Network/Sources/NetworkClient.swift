@@ -2502,15 +2502,25 @@ extension NetworkClient {
     // Stocks step-up, not just this one screen. Same additive-function shape as
     // postP2p/authenticatedPutWithMessage -- never widen the plain authenticatedPost
     // used by ~230 other unaudited callers.
+    // idempotencyKey added 2026-09-07 (Certificate product-completeness pass, incidental
+    // discovery): reissueCard() below needs it and this was the only shared POST
+    // function it could use without losing real server error-message decoding -- same
+    // additive-optional-param shape authenticatedPostWithCode's own idempotencyKey
+    // param already established, default nil so the ~15 other existing callers are
+    // unaffected.
     func authenticatedPostWithMessage<Body: Encodable, Response: Decodable>(
         _ path: String,
-        body: Body
+        body: Body,
+        idempotencyKey: String? = nil
     ) async throws -> Response {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token = KeychainTokenStore.shared.getAccessToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        if let idempotencyKey {
+            request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
         }
         request.httpBody = try encoder.encode(body)
         let (data, response) = try await dataWithRefresh(for: request)
