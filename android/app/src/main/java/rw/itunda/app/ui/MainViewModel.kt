@@ -196,6 +196,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 } catch (e: retrofit2.HttpException) {
                     _partnerMiniApps.value = emptyList()
                 }
+
+                // Real bug found live (2026-09-07): getNotifications() used to only ever
+                // be called from loadSettingsData(), itself only triggered by opening the
+                // Settings screen -- so the Home tab's own bell badge, and the feed opened
+                // directly from that same bell, both read a StateFlow that stayed at its
+                // default (0/empty) until the user had separately visited Settings at
+                // least once. Scoped in its own try/catch, same discipline as
+                // getMiniAppCatalog's fetch above: a notifications hiccup must never block
+                // the rest of Home from loading real data.
+                try {
+                    val notificationsRes = NetworkClient.apiService.getNotifications()
+                    if (notificationsRes.success) {
+                        _notifications.value = notificationsRes.notifications
+                        _unreadNotificationCount.value = notificationsRes.unreadCount
+                    }
+                } catch (e: retrofit2.HttpException) {
+                    // Leave whatever Home already had rather than clobber it with 0/empty.
+                }
                 _isOffline.value = false
             } catch (e: retrofit2.HttpException) {
                 // Real stale-session crash (found 2026-07-22): a cached access token

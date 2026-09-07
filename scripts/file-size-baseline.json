@@ -2,7 +2,7 @@
   "android/app/src/main/java/rw/itunda/app/miniapps/SaroniteBridge.kt": 989,
   "android/app/src/main/java/rw/itunda/app/ui/ItundaAppScreen.kt": 2398,
   "android/app/src/main/java/rw/itunda/app/ui/LoginScreen.kt": 663,
-  "android/app/src/main/java/rw/itunda/app/ui/MainViewModel.kt": 674,
+  "android/app/src/main/java/rw/itunda/app/ui/MainViewModel.kt": 689,
   "android/app/src/main/java/rw/itunda/app/ui/SettingsScreen.kt": 834,
   "android/app/src/main/java/rw/itunda/app/ui/SuperAppTabs.kt": 656,
   "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/HoodShared.kt": 631,
