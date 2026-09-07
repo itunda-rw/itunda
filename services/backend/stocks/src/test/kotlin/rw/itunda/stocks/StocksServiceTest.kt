@@ -13,6 +13,7 @@ import rw.itunda.core.domain.StockTrade
 import rw.itunda.core.domain.StockWatchlist
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.HoldingRepository
@@ -40,7 +41,8 @@ class StocksServiceTest : BehaviorSpec({
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService, rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService, rateLimiter, fraudRuleEngine)
 
         every { accountRepository.findByUserIdAndType("user_1", AccountType.INVESTMENT) } returns investmentAccount()
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
@@ -75,6 +77,11 @@ class StocksServiceTest : BehaviorSpec({
             // buyStock runs without the mock complaining.
             Then("it checks the real 30/hour rate limit for this user's buys") {
                 verify { rateLimiter.checkLimit("stocks:buy:user_1", limit = 30, window = Duration.ofHours(1)) }
+            }
+            // Real gap found live (2026-09-08): every sibling money-leaves-account flow
+            // already runs through FraudRuleEngine.evaluate -- stock buy/sell never did.
+            Then("it real-evaluates the buy against the fraud-rule engine, with no named recipient") {
+                verify { fraudRuleEngine.evaluate("user_1", null, bokPrice.multiply(BigDecimal("10")).setScale(2, java.math.RoundingMode.HALF_UP), "ledgertxn_1") }
             }
         }
 
@@ -143,6 +150,11 @@ class StocksServiceTest : BehaviorSpec({
             Then("it checks the real 30/hour rate limit for this user's sells") {
                 verify { rateLimiter.checkLimit("stocks:sell:user_1", limit = 30, window = Duration.ofHours(1)) }
             }
+            // Real gap found live (2026-09-08) -- see buyStock's own identical test above.
+            Then("it real-evaluates the sell against the fraud-rule engine, with no named recipient") {
+                val bokPrice = StockCatalog.find("s1")!!.price
+                verify { fraudRuleEngine.evaluate("user_1", null, bokPrice.multiply(BigDecimal("4")), "ledgertxn_1") }
+            }
         }
 
         When("selling more shares than are held") {
@@ -182,7 +194,8 @@ class StocksServiceTest : BehaviorSpec({
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService, rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService, rateLimiter, fraudRuleEngine)
 
         When("watching a real stock for the first time") {
             every { stockWatchlistRepository.findByUserIdAndStockId("user_1", "s1") } returns null
@@ -252,7 +265,8 @@ class StocksServiceTest : BehaviorSpec({
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService, rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService, rateLimiter, fraudRuleEngine)
 
         When("requesting a real 30-day window") {
             val history = service.getPriceHistory("s1", 30)
@@ -305,7 +319,8 @@ class StocksServiceTest : BehaviorSpec({
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService, rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService, rateLimiter, fraudRuleEngine)
 
         When("a single real buy happened 3 real days ago") {
             val buy = StockTrade(
@@ -386,7 +401,8 @@ class StocksServiceTest : BehaviorSpec({
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService, rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService, rateLimiter, fraudRuleEngine)
 
         val mainAccount = Account(
             id = "account_main", userId = "user_1", accountNumber = "ACC-MAIN", accountName = "Main",
@@ -446,7 +462,8 @@ class StocksServiceTest : BehaviorSpec({
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService, rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService, rateLimiter, fraudRuleEngine)
 
         val mainAccount = Account(
             id = "account_main", userId = "user_2", accountNumber = "ACC-MAIN2", accountName = "Main",
@@ -476,7 +493,8 @@ class StocksServiceTest : BehaviorSpec({
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService, rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService, rateLimiter, fraudRuleEngine)
         every { stockWatchlistRepository.save(any()) } answers { firstArg() }
 
         When("no watchlist row exists yet for that stock") {
@@ -536,7 +554,8 @@ class StocksServiceTest : BehaviorSpec({
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService, rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService, rateLimiter, fraudRuleEngine)
 
         When("an active alert exists") {
             val existing = StockWatchlist(
@@ -571,7 +590,8 @@ class StocksServiceTest : BehaviorSpec({
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService, rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService, rateLimiter, fraudRuleEngine)
         every { stockWatchlistRepository.save(any()) } answers { firstArg() }
         // Explicit stub even though notificationRepository is relaxed -- mockk's relaxed
         // default can't correctly infer JpaRepository's generic `<S extends T> S save(S)`

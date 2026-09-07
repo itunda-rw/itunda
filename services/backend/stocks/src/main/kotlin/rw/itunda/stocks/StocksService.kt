@@ -10,6 +10,7 @@ import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.StockTrade
 import rw.itunda.core.domain.StockWatchlist
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
@@ -46,6 +47,7 @@ class StocksService(
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
     private val rateLimiter: RateLimiter,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     fun getStocks() = StockCatalog.stocks
 
@@ -146,6 +148,13 @@ class StocksService(
                 LedgerLeg("securities_suspense", LedgerAccountType.SECURITIES_SUSPENSE, LedgerDirection.CREDIT, cost, "Custody for $shares ${stock.symbol}"),
             ),
         )
+        // Real gap found live (2026-09-08): every sibling money-leaves-account flow
+        // (P2P, Marketplace escrow, Bills, Ride, ...) already runs through
+        // FraudRuleEngine.evaluate -- stock buy/sell never did. recipientUserId is
+        // null since the counterparty is the internal securities_suspense account,
+        // not a named itunda user, matching BillsService/RideTripService's own
+        // null-recipient convention (see FraudRuleEngine's own doc comment).
+        fraudRuleEngine.evaluate(userId, null, cost, result.transactionId)
 
         val holding = holdingRepository.findByUserIdAndStockId(userId, stock.id)
             ?: Holding(id = "hold_${UUID.randomUUID()}", userId = userId, accountId = account.id, stockId = stock.id, shares = BigDecimal.ZERO, avgPrice = stock.price)
@@ -183,6 +192,8 @@ class StocksService(
                 LedgerLeg(holding.accountId, LedgerAccountType.WALLET, LedgerDirection.CREDIT, proceeds, "Sell $shares ${stock.symbol}"),
             ),
         )
+        // Real gap found live (2026-09-08) -- see buyStock's own identical comment above.
+        fraudRuleEngine.evaluate(userId, null, proceeds, result.transactionId)
 
         holding.shares = holding.shares.subtract(shares)
         holdingRepository.save(holding)
