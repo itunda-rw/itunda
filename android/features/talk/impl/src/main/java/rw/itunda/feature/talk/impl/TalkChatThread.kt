@@ -45,6 +45,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
+import rw.itunda.feature.talk.impl.R
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -539,7 +541,7 @@ internal fun ChatThreadView(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     GiftThemeGlyph(giftTheme, size = 16.dp)
-                    Text("Send a gift", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Ids.colors.textPrimary)
+                    Text(stringResource(R.string.gift_composer_title), fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Ids.colors.textPrimary)
                 }
                 IdsTextField(
                     value = giftAmount,
@@ -700,7 +702,7 @@ internal fun ChatThreadView(
                     DropdownMenuItem(text = { Text("Photo") }, leadingIcon = { CameraGlyph(size = 18.dp) }, onClick = { attachMenuOpen = false; pickChatPhoto.launch("image/*") })
                     DropdownMenuItem(text = { Text("Emoji") }, leadingIcon = { SmileySlight(size = 18.dp) }, onClick = { attachMenuOpen = false; emojiPickerOpen = !emojiPickerOpen })
                     DropdownMenuItem(text = { Text("😊 Emoticon") }, onClick = { attachMenuOpen = false; emoticonPickerOpen = !emoticonPickerOpen })
-                    DropdownMenuItem(text = { Text("Gift") }, leadingIcon = { GiftThemeGlyph(null, size = 18.dp) }, onClick = { attachMenuOpen = false; giftComposerOpen = !giftComposerOpen })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.gift_menu_item)) }, leadingIcon = { GiftThemeGlyph(null, size = 18.dp) }, onClick = { attachMenuOpen = false; giftComposerOpen = !giftComposerOpen })
                     DropdownMenuItem(text = { Text("Gift voucher") }, leadingIcon = { VoucherTicket(size = 18.dp) }, onClick = { attachMenuOpen = false; voucherComposerOpen = !voucherComposerOpen })
                 }
             }

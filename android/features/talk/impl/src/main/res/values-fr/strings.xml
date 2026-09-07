@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="gift_composer_title">Envoyer un cadeau</string>
+    <string name="gift_menu_item">Cadeau</string>
+</resources>
