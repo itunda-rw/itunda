@@ -30,11 +30,11 @@ export function UssdSettingsView() {
     e.preventDefault();
     setError(null);
     if (!/^\d{4,6}$/.test(pin)) {
-      setError('PIN must be 4-6 digits.');
+      setError(t('ussd.pinLengthError'));
       return;
     }
     if (pin !== confirmPin) {
-      setError('PINs did not match.');
+      setError(t('ussd.pinMismatchError'));
       return;
     }
     setSubmitting(true);
@@ -42,7 +42,7 @@ export function UssdSettingsView() {
       await setUssdPin(pin);
       setPin('');
       setConfirmPin('');
-      showToast('Your USSD PIN has been set.');
+      showToast(t('ussd.saved'));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
@@ -53,21 +53,18 @@ export function UssdSettingsView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div>
-        <p style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, marginBottom: '4px' }}>USSD access</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, marginBottom: '4px' }}>{t('ussd.title')}</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
-          Roughly two-thirds of people in Rwanda have a feature phone, not a smartphone. Set a real 4-6 digit
-          USSD PIN so you can check your balance and send money from any phone, no app or internet needed.
+          {t('ussd.description')}
         </p>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
-          Honestly scoped: the real menu, PIN check, and money transfer are fully built and working today. Dialing
-          a short code like <code>*123#</code> to reach them needs a real partnership with a mobile network operator
-          this project doesn't have yet -- the same honest limitation as our ID-verification integration.
+          {t('ussd.honestScope')}
         </p>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div style={{ position: 'relative' }}>
             <input
               type={pinVisible ? 'text' : 'password'} inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value)}
-              placeholder="New USSD PIN (4-6 digits)" maxLength={6}
+              placeholder={t('ussd.pinPlaceholder')} maxLength={6}
               style={{ width: '100%', boxSizing: 'border-box', padding: '12px 40px 12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-15-size)' }}
             />
             <button
@@ -81,12 +78,12 @@ export function UssdSettingsView() {
           </div>
           <input
             type={pinVisible ? 'text' : 'password'} inputMode="numeric" value={confirmPin} onChange={(e) => setConfirmPin(e.target.value)}
-            placeholder="Confirm PIN" maxLength={6}
+            placeholder={t('ussd.confirmPinPlaceholder')} maxLength={6}
             style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-15-size)' }}
           />
           {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
           <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
-            {submitting ? 'Saving…' : 'Set USSD PIN'}
+            {submitting ? t('ussd.saving') : t('ussd.submit')}
           </button>
         </form>
       </div>

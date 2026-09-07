@@ -527,6 +527,20 @@ export type TranslationKey =
   | 'support.submitting'
   | 'support.submitTicket'
   | 'support.yourTickets'
-  | 'support.noTickets';
+  | 'support.noTickets'
+  // Real USSD product-completeness pass (2026-09-08): UssdSettingsView.tsx only ever
+  // used t() for the one generic shared error string -- every USSD-specific string
+  // was hardcoded English. Scoped to the primary surface: title, description, PIN
+  // fields, and submit button.
+  | 'ussd.title'
+  | 'ussd.description'
+  | 'ussd.honestScope'
+  | 'ussd.pinPlaceholder'
+  | 'ussd.confirmPinPlaceholder'
+  | 'ussd.saving'
+  | 'ussd.submit'
+  | 'ussd.saved'
+  | 'ussd.pinLengthError'
+  | 'ussd.pinMismatchError';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = { en, rw, fr };
