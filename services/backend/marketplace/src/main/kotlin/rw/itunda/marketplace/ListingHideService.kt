@@ -1,13 +1,28 @@
 package rw.itunda.marketplace
 
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.ListingHide
 import rw.itunda.core.repository.ListingHideRepository
 import rw.itunda.core.repository.ListingRepository
+import java.math.BigDecimal
+import java.time.Instant
 import java.util.UUID
 
 class HideListingNotFoundException(message: String) : RuntimeException(message)
+
+// Real "Hidden listings" list (Hood product-completeness pass, 2026-09-07) -- see
+// ListingHideRepository.findByUserIdOrderByCreatedAtDesc's own doc comment for why
+// this exists now. Mirrors FavoriteListing's exact shape.
+data class HiddenListing(
+    val listingId: String,
+    val title: String,
+    val price: BigDecimal,
+    val category: String,
+    val hiddenAt: Instant,
+)
 
 // Real Karrot "이 글 숨기기" (hide this post) -- see careers.daangn.com's own real,
 // sourced blog post on Karrot's feed product: hiding a listing is a real, named,
@@ -39,5 +54,22 @@ class ListingHideService(
     @Transactional
     fun unhideListing(userId: String, listingId: String) {
         listingHideRepository.deleteByUserIdAndListingId(userId, listingId)
+    }
+
+    // Real batch-resolve of listing info via one findAllById call, the same N+1-avoiding
+    // shape ListingFavoriteService.getMyFavorites already establishes.
+    fun getMyHiddenListings(userId: String, pageable: Pageable): Page<HiddenListing> {
+        val page = listingHideRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+        val listingsById = listingRepository.findAllById(page.content.map { it.listingId }).associateBy { it.id }
+        return page.map { hide ->
+            val listing = listingsById[hide.listingId]
+            HiddenListing(
+                listingId = hide.listingId,
+                title = listing?.title ?: "Listing no longer available",
+                price = listing?.price ?: BigDecimal.ZERO,
+                category = listing?.category ?: "",
+                hiddenAt = hide.createdAt,
+            )
+        }
     }
 }

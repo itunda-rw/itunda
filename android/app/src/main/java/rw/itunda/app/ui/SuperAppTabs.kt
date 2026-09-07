@@ -470,7 +470,7 @@ internal fun HoodSectionScreen(
                         .padding(vertical = 8.dp),
                 ) {
                     if (mode == HoodMode.MARKETPLACE) {
-                        listOf("My listings" to "MINE", "Purchases" to "PURCHASES", "Wishlist" to "WISHLIST", "Alerts" to "ALERTS").forEach { (label, key) ->
+                        listOf("My listings" to "MINE", "Purchases" to "PURCHASES", "Wishlist" to "WISHLIST", "Alerts" to "ALERTS", "Hidden listings" to "HIDDEN").forEach { (label, key) ->
                             Text(
                                 label,
                                 color = Ids.colors.textPrimary,

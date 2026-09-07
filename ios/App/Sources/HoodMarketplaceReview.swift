@@ -198,6 +198,74 @@ struct ListingWishlistView: View {
     }
 }
 
+// Real "Hidden listings" view (2026-09-08 Hood product-completeness pass) -- a user
+// could hide a listing on all 3 platforms (real endpoint + real client bindings) but
+// never see or undo it anywhere; mirrors ListingWishlistView above field-for-field,
+// same as Android's HiddenListingsView composable.
+struct HiddenListingsView: View {
+    @State private var hidden: [HiddenListingDto]?
+    @State private var error: String?
+    @State private var unhidingId: String?
+
+    var body: some View {
+        Group {
+            if let error {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(error).foregroundColor(.red).font(.subheadline)
+                    Button("Retry") { Task { await load() } }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(20)
+            } else if hidden == nil {
+                HoodFeedSkeleton()
+            } else if hidden!.isEmpty {
+                EmptyStateView("No hidden listings -- listings you hide will show up here.")
+                    .foregroundColor(IDS.Colors.textSecondary)
+            } else {
+                ForEach(hidden!) { h in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(h.title).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                            Text("\(h.category) · \(formatAmount(Int(h.price))) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                        Spacer()
+                        Button(action: { Task { await unhide(h.listingId) } }) {
+                            Text(unhidingId == h.listingId ? "Unhiding…" : "Unhide")
+                                .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                .padding(.horizontal, 12).padding(.vertical, 8)
+                                .background(IDS.Colors.chipBackground).cornerRadius(10)
+                        }
+                        .disabled(unhidingId == h.listingId)
+                    }
+                    .padding(.vertical, 10)
+                }
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        do {
+            let res = try await NetworkClient.shared.getMyHiddenListings()
+            hidden = res.hidden
+            error = nil
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func unhide(_ listingId: String) async {
+        unhidingId = listingId
+        defer { unhidingId = nil }
+        do {
+            _ = try await NetworkClient.shared.unhideListing(listingId)
+            hidden = hidden?.filter { $0.listingId != listingId }
+        } catch {
+            self.error = "Couldn't unhide this item. Check your connection and try again."
+        }
+    }
+}
+
 // Real 당근마켓 Keyword Alert (키워드 알림) -- first iOS client for this feature (item
 // 116, found via a content-grep sweep: bank-mfe had it since item 114, Android
 // ported it the same day as item 115, iOS never did). Mirrors bank-mfe's

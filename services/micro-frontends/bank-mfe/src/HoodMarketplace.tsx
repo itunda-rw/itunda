@@ -3,10 +3,11 @@ import { ErrorCard } from './EmptyState';
 import { useI18n } from './i18n/I18nContext';
 import { HeartOutline } from './icons/ItundaFaceHearts';
 import { BellGlyph, WrenchGlyph } from './icons/ItundaFaceMisc';
+import { IconEyeOff } from './icons/ItundaIcons';
 import { ApiError, getStoredUser } from './lib/api';
 import { addListingFavorite, fetchListings, fetchListingsMyNeighborhood, fetchMarketplaceCategories, fetchMyFavoriteListings, fetchMyListings, fetchMyPurchases, removeListingFavorite, type Listing, type TrustScores } from './lib/marketplace';
 import { fetchProfile } from './lib/neighborhood';
-import { NewListingCard, ListingWishlistView, KeywordAlertsView } from './HoodMarketplaceCards';
+import { NewListingCard, ListingWishlistView, KeywordAlertsView, HiddenListingsView } from './HoodMarketplaceCards';
 import { VehicleInspectionsView } from './VehicleInspectionsView';
 import { ListingCard } from './HoodListingCard';
 import { NeighborhoodSetupPrompt, NeighborhoodSwitcherRow } from './BankDashboard';
@@ -16,7 +17,7 @@ export function MarketplaceView({ onMessageSeller }: { onMessageSeller: (convers
   const { t } = useI18n();
   // Real "My purchases" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
   // recommendation #6, see backend ListingRepository's own doc comment.
-  const [view, setView] = useState<'BROWSE' | 'MINE' | 'PURCHASES' | 'NEIGHBORHOOD' | 'WISHLIST' | 'ALERTS' | 'INSPECTIONS'>('BROWSE');
+  const [view, setView] = useState<'BROWSE' | 'MINE' | 'PURCHASES' | 'NEIGHBORHOOD' | 'WISHLIST' | 'ALERTS' | 'HIDDEN' | 'INSPECTIONS'>('BROWSE');
   const [listings, setListings] = useState<Listing[] | null>(null);
   const showListingsSkeleton = useDeferredLoading(listings === null);
   // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc comment.
@@ -69,7 +70,7 @@ export function MarketplaceView({ onMessageSeller }: { onMessageSeller: (convers
         });
       return;
     }
-    if (view === 'WISHLIST' || view === 'ALERTS' || view === 'INSPECTIONS') return;
+    if (view === 'WISHLIST' || view === 'ALERTS' || view === 'HIDDEN' || view === 'INSPECTIONS') return;
     const fetcher = view === 'BROWSE' ? fetchListings(selectedCategory ?? undefined) : view === 'PURCHASES' ? fetchMyPurchases() : fetchMyListings();
     fetcher
       .then((result) => {
@@ -103,7 +104,7 @@ export function MarketplaceView({ onMessageSeller }: { onMessageSeller: (convers
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
-        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'PURCHASES', 'WISHLIST', 'ALERTS', 'INSPECTIONS'] as const).map((v) => (
+        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'PURCHASES', 'WISHLIST', 'ALERTS', 'HIDDEN', 'INSPECTIONS'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -113,7 +114,7 @@ export function MarketplaceView({ onMessageSeller }: { onMessageSeller: (convers
               backgroundColor: view === v ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'PURCHASES' ? 'Purchases' : v === 'WISHLIST' ? <><HeartOutline size={12} /> Wishlist</> : v === 'ALERTS' ? <><BellGlyph size={12} /> Alerts</> : <><WrenchGlyph size={12} /> Inspections</>}
+            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'PURCHASES' ? 'Purchases' : v === 'WISHLIST' ? <><HeartOutline size={12} /> Wishlist</> : v === 'ALERTS' ? <><BellGlyph size={12} /> Alerts</> : v === 'HIDDEN' ? <><IconEyeOff size={12} /> Hidden</> : <><WrenchGlyph size={12} /> Inspections</>}
           </button>
         ))}
       </div>
@@ -150,6 +151,8 @@ export function MarketplaceView({ onMessageSeller }: { onMessageSeller: (convers
         <ListingWishlistView />
       ) : view === 'ALERTS' ? (
         <KeywordAlertsView />
+      ) : view === 'HIDDEN' ? (
+        <HiddenListingsView />
       ) : view === 'INSPECTIONS' ? (
         <VehicleInspectionsView />
       ) : (

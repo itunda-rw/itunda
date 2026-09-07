@@ -971,6 +971,12 @@ data class ToggleLikeResponse(val success: Boolean, val liked: Boolean)
 data class FavoriteListingDto(val listingId: String, val title: String, val price: Double, val category: String, val favoritedAt: String)
 data class FavoriteListingsResponse(val success: Boolean, val favorites: List<FavoriteListingDto>)
 
+// Real "Hidden listings" list (Hood product-completeness pass, 2026-09-07) --
+// hideListing/unhideListing below existed with no way to ever see or undo what was
+// hidden. Mirrors FavoriteListingDto's exact shape.
+data class HiddenListingDto(val listingId: String, val title: String, val price: Double, val category: String, val hiddenAt: String)
+data class HiddenListingsResponse(val success: Boolean, val hidden: List<HiddenListingDto>)
+
 // Real 당근-style price-offer negotiation (2026-07-19) -- see PriceOfferService's own
 // doc comment. Each offer/counter/accept/reject is a real message in the same real
 // conversation contactSeller establishes, rendered inline as an offer bubble.
@@ -3188,6 +3194,11 @@ interface ApiService {
 
     @DELETE("api/v1/marketplace/listings/{id}/hide")
     suspend fun unhideListing(@Path("id") listingId: String): AddFavoriteResponse
+
+    // Real "Hidden listings" list (Hood product-completeness pass, 2026-09-07) -- see
+    // HiddenListingDto's own doc comment.
+    @GET("api/v1/marketplace/listings/hidden")
+    suspend fun getMyHiddenListings(): HiddenListingsResponse
 
     // Real 당근마켓-style Keyword Alert (rw.itunda.marketplace.KeywordAlertService, real
     // since before this session) -- first Android client for this feature (item 115,

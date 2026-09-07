@@ -402,6 +402,18 @@ class MarketplaceController(
         return ResponseEntity.ok(mapOf("success" to true, "favorites" to page.content) + pageMeta(page))
     }
 
+    // Real "Hidden listings" list (Hood product-completeness pass, 2026-09-07) --
+    // hideListing/unhideListing above existed with no way to ever see or undo what was
+    // hidden, on any of the 3 real clients that already call both.
+    @GetMapping("/listings/hidden")
+    fun getMyHiddenListings(
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = listingHideService.getMyHiddenListings(currentUser.userId, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "hidden" to page.content) + pageMeta(page))
+    }
+
     @PostMapping("/listings/{listingId}/contact-seller")
     fun contactSeller(
         @PathVariable listingId: String,

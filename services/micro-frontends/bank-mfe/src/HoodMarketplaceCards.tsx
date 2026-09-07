@@ -3,7 +3,7 @@ import { EmptyState, ErrorCard } from './EmptyState';
 import { showToast } from './Toast';
 import { useI18n } from './i18n/I18nContext';
 import { ApiError } from './lib/api';
-import { addKeywordAlert, createListing, emptyVehicleFieldsState, fetchKeywordAlertQuietHours, fetchKeywordAlerts, fetchMyFavoriteListings, removeKeywordAlert, removeListingFavorite, setKeywordAlertQuietHours, vehicleFieldsToRequest, type FavoriteListing, type KeywordAlert, type KeywordAlertQuietHours, type VehicleFieldsState } from './lib/marketplace';
+import { addKeywordAlert, createListing, emptyVehicleFieldsState, fetchKeywordAlertQuietHours, fetchKeywordAlerts, fetchMyFavoriteListings, fetchMyHiddenListings, removeKeywordAlert, removeListingFavorite, setKeywordAlertQuietHours, unhideListing, vehicleFieldsToRequest, type FavoriteListing, type HiddenListing, type KeywordAlert, type KeywordAlertQuietHours, type VehicleFieldsState } from './lib/marketplace';
 import { uploadFile } from './lib/upload';
 import { VehicleListingFieldsForm } from './HoodVehicleFields';
 import { useDeferredLoading } from './useDeferredLoading';
@@ -212,6 +212,64 @@ export function ListingWishlistView() {
             style={{ padding: '8px 12px', fontSize: 'var(--itunda-type-scale-12-size)' }}
           >
             {removingId === f.listingId ? 'Removing…' : 'Remove'}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Real "Hidden listings" view (2026-09-08 Hood product-completeness pass) -- a user
+// could hide a listing on all 3 platforms (real endpoint + real client bindings) but
+// never see or undo it anywhere; mirrors ListingWishlistView above field-for-field.
+export function HiddenListingsView() {
+  const { t } = useI18n();
+  const [hidden, setHidden] = useState<HiddenListing[] | null>(null);
+  const showSkeleton = useDeferredLoading(hidden === null);
+  const [error, setError] = useState<string | null>(null);
+  const [unhidingId, setUnhidingId] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchMyHiddenListings().then(setHidden).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+  };
+  useEffect(load, []);
+
+  const handleUnhide = async (listingId: string) => {
+    setUnhidingId(listingId);
+    try {
+      await unhideListing(listingId);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setUnhidingId(null);
+    }
+  };
+
+  if (error) {
+    return (
+      <ErrorCard message={error} onRetry={load} />
+    );
+  }
+  if (hidden === null) return showSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
+  if (hidden.length === 0) return <EmptyState message="No hidden listings -- listings you hide will show up here." />;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {hidden.map((h) => (
+        <div key={h.listingId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
+          <div>
+            <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{h.title}</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{h.category} · {h.price.toLocaleString('en-US')} RWF</p>
+          </div>
+          <button
+            className="itunda-btn itunda-btn-secondary"
+            disabled={unhidingId === h.listingId}
+            onClick={() => handleUnhide(h.listingId)}
+            style={{ padding: '8px 12px', fontSize: 'var(--itunda-type-scale-12-size)' }}
+          >
+            {unhidingId === h.listingId ? 'Unhiding…' : 'Unhide'}
           </button>
         </div>
       ))}

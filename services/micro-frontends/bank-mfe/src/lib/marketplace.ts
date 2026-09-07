@@ -382,6 +382,20 @@ export const hideListing = (listingId: string) =>
 export const unhideListing = (listingId: string) =>
   apiFetch<{ success: boolean }>(`/api/v1/marketplace/listings/${listingId}/hide`, { method: 'DELETE' });
 
+// Real "Hidden listings" list (2026-09-08 Hood product-completeness pass) -- mirrors
+// FavoriteListing's exact shape; see backend ListingHideService.getMyHiddenListings's
+// own doc comment (built by mirroring ListingFavoriteService.getMyFavorites field-for-field).
+export interface HiddenListing {
+  listingId: string;
+  title: string;
+  price: number;
+  category: string;
+  hiddenAt: string;
+}
+
+export const fetchMyHiddenListings = () =>
+  apiFetch<{ success: boolean; hidden: HiddenListing[] }>('/api/v1/marketplace/listings/hidden').then((r) => r.hidden);
+
 // Real 당근마켓-style Keyword Alert (rw.itunda.marketplace.KeywordAlertService, real
 // since before this session) -- first client UI for this feature on any platform
 // (item 114, found via a content-grep sweep confirming zero client anywhere).

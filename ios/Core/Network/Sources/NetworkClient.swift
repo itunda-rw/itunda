@@ -3733,6 +3733,19 @@ public struct FavoriteListingDto: Decodable, Identifiable {
 }
 public struct FavoriteListingsResponse: Decodable { public let success: Bool; public let favorites: [FavoriteListingDto] }
 
+// Real "Hidden listings" list (2026-09-08 Hood product-completeness pass) -- mirrors
+// FavoriteListingDto exactly; see backend ListingHideService.getMyHiddenListings's own
+// doc comment (built by mirroring ListingFavoriteService.getMyFavorites field-for-field).
+public struct HiddenListingDto: Decodable, Identifiable {
+    public let listingId: String
+    public let title: String
+    public let price: Double
+    public let category: String
+    public let hiddenAt: String
+    public var id: String { listingId }
+}
+public struct HiddenListingsResponse: Decodable { public let success: Bool; public let hidden: [HiddenListingDto] }
+
 public struct FavoriteJobPostDto: Decodable, Identifiable {
     public let jobPostId: String
     public let title: String
@@ -5545,6 +5558,8 @@ extension NetworkClient {
     public func unhideListing(_ listingId: String) async throws -> SuccessResponse {
         try await authenticatedDelete("api/v1/marketplace/listings/\(listingId)/hide")
     }
+
+    public func getMyHiddenListings() async throws -> HiddenListingsResponse { try await get("api/v1/marketplace/listings/hidden") }
 
     // Real KakaoTalk-style gift send/claim (2026-07-20) -- see GiftService.
     // Real gap found 2026-09-04: GiftService.sendGift's real "No itunda account

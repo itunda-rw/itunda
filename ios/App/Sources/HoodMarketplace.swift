@@ -16,7 +16,7 @@ struct MarketplaceContent: View {
     // below for the full account.
     // Real "My purchases" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
     // recommendation #6, see backend ListingRepository's own doc comment.
-    private enum HoodView { case browse, nearby, neighborhood, mine, purchases, wishlist, alerts }
+    private enum HoodView { case browse, nearby, neighborhood, mine, purchases, wishlist, alerts, hidden }
 
     @State private var view: HoodView = .browse
     @State private var listings: [ListingDto]?
@@ -56,6 +56,7 @@ struct MarketplaceContent: View {
                     Text("Purchases").tag(HoodView.purchases)
                     Text("Wishlist").tag(HoodView.wishlist)
                     Text("Alerts").tag(HoodView.alerts)
+                    Text("Hidden").tag(HoodView.hidden)
                 }
                 .pickerStyle(.segmented)
 
@@ -94,6 +95,8 @@ struct MarketplaceContent: View {
                     ListingWishlistView(onRemoved: { Task { await loadFavoriteIds() } })
                 } else if view == .alerts {
                     KeywordAlertsView()
+                } else if view == .hidden {
+                    HiddenListingsView()
                 } else if let error {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(error).foregroundColor(.red).font(.subheadline)
@@ -163,6 +166,11 @@ struct MarketplaceContent: View {
         }
         if view == .alerts {
             // KeywordAlertsView below owns its own fetch -- nothing to load into
+            // `listings` here.
+            return
+        }
+        if view == .hidden {
+            // HiddenListingsView below owns its own fetch -- nothing to load into
             // `listings` here.
             return
         }

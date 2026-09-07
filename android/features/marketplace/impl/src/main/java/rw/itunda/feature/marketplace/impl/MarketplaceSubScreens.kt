@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -57,7 +55,6 @@ import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.network.AddKeywordAlertRequest
 import rw.itunda.core.network.CreateListingRequest
-import rw.itunda.core.network.FavoriteListingDto
 import rw.itunda.core.network.KeywordAlertDto
 import rw.itunda.core.network.KeywordAlertQuietHoursDto
 import rw.itunda.core.network.NetworkClient
@@ -65,77 +62,11 @@ import rw.itunda.core.network.SetKeywordAlertQuietHoursRequest
 import rw.itunda.core.network.superAppErrorMessage
 
 // Real fix (2026-08-26): split out of MarketplaceScreen.kt once that file grew
-// past its file-size-lint baseline. Three self-contained sub-screens (wishlist,
-// keyword alerts, new listing form) only rendered inside MarketplaceContent's own
-// sheet/tab flow. Same package, so zero import changes anywhere.
-
-// Real Marketplace listing wishlist view (2026-07-21) -- Android port of bank-mfe's
-// ListingWishlistView, same day. Lists every real favorited listing (title/price/
-// category straight from the favorites endpoint, an honest "Listing no longer
-// available" fallback for a favorited-then-deleted listing is the backend's own
-// responsibility -- ListingFavoriteService.kt already resolves that server-side).
-@Composable
-internal fun ListingWishlistView(onRemoved: () -> Unit) {
-    var favorites by remember { mutableStateOf<List<FavoriteListingDto>?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var removingId by remember { mutableStateOf<String?>(null) }
-    val coroutineScope = rememberCoroutineScope()
-
-    fun load() {
-        coroutineScope.launch {
-            try {
-                val res = NetworkClient.apiService.getMyFavoriteListings()
-                if (res.success) favorites = res.favorites
-                error = null
-            } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
-            } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
-            }
-        }
-    }
-    LaunchedEffect(Unit) { load() }
-
-    when {
-        error != null -> ErrorCard(error!!, onRetry = ::load)
-        favorites == null -> SkeletonBlock()
-        favorites!!.isEmpty() -> EmptyState("No saved listings yet -- tap ♡ on any listing to save it here.", icon = Icons.Outlined.FavoriteBorder)
-        else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card --
-            // an entity list a user manages (saved listings), no divider, matching
-            // GroupAccountScreen's identical entity-list conversion
-            // (docs/UI_UX_GUIDELINES.md §10).
-            favorites!!.forEach { f ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column {
-                        Text(f.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text(String.format(Locale.US, "${f.category} · %,.0f RWF", f.price), color = Ids.colors.textSecondary, fontSize = 13.sp)
-                    }
-                    ListingActionButton(if (removingId == f.listingId) "Removing…" else "Remove", removingId == f.listingId) {
-                        removingId = f.listingId
-                        coroutineScope.launch {
-                            try {
-                                NetworkClient.apiService.removeListingFavorite(f.listingId)
-                                favorites = favorites?.filterNot { it.listingId == f.listingId }
-                                onRemoved()
-                            } catch (e: HttpException) {
-                                error = superAppErrorMessage(e)
-                            } catch (e: IOException) {
-                                error = "Couldn't reach itunda. Check your connection and try again."
-                            } finally {
-                                removingId = null
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+// past its file-size-lint baseline. Self-contained sub-screens (keyword alerts, new
+// listing form) only rendered inside MarketplaceContent's own sheet/tab flow. Same
+// package, so zero import changes anywhere. ListingWishlistView/HiddenListingsView
+// moved out to MarketplaceSavedListingsViews.kt (2026-09-08) once this file crossed
+// the 500-line file-size-lint guideline.
 
 // Real 당근마켓-style Keyword Alert -- first Android client for this feature (item 115,
 // found via a content-grep sweep confirming zero client anywhere; bank-mfe ported it

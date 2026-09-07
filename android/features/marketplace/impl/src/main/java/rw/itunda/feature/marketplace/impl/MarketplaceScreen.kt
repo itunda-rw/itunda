@@ -129,7 +129,7 @@ import java.util.UUID
 // recommendation #6: Karrot's real screen splits a user's own activity into labeled
 // sales/purchases/wishlist tabs, "specifically to avoid one overloaded list mixing
 // different user intents." Only newly buildable now that buyerId is captured.
-private enum class HoodView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, PURCHASES, WISHLIST, ALERTS }
+private enum class HoodView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, PURCHASES, WISHLIST, ALERTS, HIDDEN }
 
 private fun HoodView.label() = when (this) {
     HoodView.BROWSE -> "Browse"
@@ -139,6 +139,7 @@ private fun HoodView.label() = when (this) {
     HoodView.PURCHASES -> "Purchases"
     HoodView.WISHLIST -> "Wishlist"
     HoodView.ALERTS -> "Alerts"
+    HoodView.HIDDEN -> "Hidden listings"
 }
 
 @Composable
@@ -200,6 +201,7 @@ fun MarketplaceContent(
                 "PURCHASES" -> HoodView.PURCHASES
                 "WISHLIST" -> HoodView.WISHLIST
                 "ALERTS" -> HoodView.ALERTS
+                "HIDDEN" -> HoodView.HIDDEN
                 else -> view
             }
         }
@@ -366,9 +368,10 @@ fun MarketplaceContent(
             requestNearbyLocation()
             return
         }
-        if (view == HoodView.WISHLIST || view == HoodView.ALERTS) {
-            // ListingWishlistView/KeywordAlertsView below own their own fetch (neither
-            // needs the ListingDto shape) -- nothing to load into `listings` here.
+        if (view == HoodView.WISHLIST || view == HoodView.ALERTS || view == HoodView.HIDDEN) {
+            // ListingWishlistView/KeywordAlertsView/HiddenListingsView below own their
+            // own fetch (none need the ListingDto shape) -- nothing to load into
+            // `listings` here.
             return
         }
         if (view == HoodView.NEIGHBORHOOD) {
@@ -619,6 +622,8 @@ fun MarketplaceContent(
             item { ListingWishlistView(onRemoved = ::loadFavoriteIds) }
         } else if (view == HoodView.ALERTS) {
             item { KeywordAlertsView() }
+        } else if (view == HoodView.HIDDEN) {
+            item { HiddenListingsView() }
         } else if (error != null) {
             item { ErrorCard(error!!, onRetry = ::load) }
         } else if (listings == null) {
@@ -640,6 +645,7 @@ fun MarketplaceContent(
                         HoodView.PURCHASES -> "No purchases recorded yet — items you buy will show up here."
                         HoodView.WISHLIST -> "No saved listings yet — tap ♡ on any listing to save it here."
                         HoodView.ALERTS -> "" // unreachable -- ALERTS is intercepted earlier
+                        HoodView.HIDDEN -> "" // unreachable -- HIDDEN is intercepted earlier
                     },
                     icon = Icons.Outlined.ShoppingBag,
                     // Real fix (2026-08-15): the copy above told the user to "try
