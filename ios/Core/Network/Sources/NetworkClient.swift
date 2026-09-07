@@ -7222,6 +7222,12 @@ public struct VerifyCertificateSignatureResponse: Decodable {
     public let success: Bool; public let signatureValid: Bool; public let certificateStatus: String; public let userId: String; public let serialNumber: String
 }
 
+// Real "verify with itunda" identity-verification-for-partners flow -- mirrors
+// Android's own IdentityVerificationRequestResponse (ApiService.kt) exactly.
+public struct IdentityVerificationRequestResponse: Decodable {
+    public let success: Bool; public let partnerName: String; public let status: String; public let expiresAt: String; public let requestedFields: [String]
+}
+
 public struct SubmitIdentityRequest: Encodable { public let documentType: String; public let documentNumber: String; public let documentReference: String }
 public struct KycSubmissionDto: Decodable, Identifiable {
     public let id: String; public let userId: String; public let documentType: String; public let documentNumber: String; public let documentReference: String

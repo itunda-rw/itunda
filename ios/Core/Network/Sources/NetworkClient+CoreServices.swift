@@ -347,6 +347,25 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/certificate/verify", body: VerifyCertificateSignatureRequest(serialNumber: serialNumber, payload: payload, signature: signature))
     }
 
+    // Real "verify with itunda" identity-verification-for-partners flow (Partners
+    // product-completeness pass, 2026-09-07) -- ported from Android's own real,
+    // already-live-verified ItundaAppScreen.kt IdentityVerificationConsentScreen.
+    // Genuinely distinct from submitIdentity/getIdentityStatus above (personal KYC,
+    // rw.itunda.identity): this is itunda vouching for a user's real identity TO a
+    // third-party partner, reached via an itunda://verify/{requestId} deep link a
+    // partner's own site shows, never itunda's own IdentityScreenView.
+    public func getIdentityVerificationRequest(_ requestId: String) async throws -> IdentityVerificationRequestResponse {
+        try await get("api/v1/identity/verification/\(requestId)")
+    }
+
+    public func approveIdentityVerification(_ requestId: String) async throws -> SuccessResponse {
+        try await authenticatedPost("api/v1/identity/verification/\(requestId)/approve", body: EmptyRequest())
+    }
+
+    public func declineIdentityVerification(_ requestId: String) async throws -> SuccessResponse {
+        try await authenticatedPost("api/v1/identity/verification/\(requestId)/decline", body: EmptyRequest())
+    }
+
     public func submitIdentity(documentType: String, documentNumber: String, documentReference: String) async throws -> SubmitIdentityResponse {
         try await authenticatedPost("api/v1/identity/submit", body: SubmitIdentityRequest(documentType: documentType, documentNumber: documentNumber, documentReference: documentReference))
     }

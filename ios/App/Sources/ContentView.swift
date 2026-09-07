@@ -148,6 +148,15 @@ struct ContentView: View {
     // this since 2026-08-14; iOS never did until now). Mutually exclusive with a plain
     // search link -- see the onOpenURL handler below.
     @State private var mapSharedFolderFromDeepLink: (ownerId: String, folderName: String)?
+    // Real "verify with itunda" identity-verification-for-partners deep link
+    // (Partners product-completeness pass, 2026-09-07) -- resolves a real
+    // itunda://verify/{requestId} link, the exact `verifyUrl` the backend itself
+    // hands a partner (IdentityVerificationService.createRequest), confirmed
+    // against a real response rather than assumed. Android already resolved this
+    // since 2026-08-14; iOS never did until now. Separate host from maps, so it's
+    // parsed on its own rather than inside the maps-only gate below.
+    @State private var identityVerifyRequestId: String?
+    @State private var showIdentityVerifyFromDeepLink = false
     // My's own real content (orders/favorites/listings) is its own primary tab now
     // (ItundaTab.You, 2026-08-10) -- no overlay state needed to reach it anymore.
     // Real Toss Bank 송금 (Transfer) full page (2026-07-24) -- reachable from the
@@ -700,9 +709,21 @@ struct ContentView: View {
         .fullScreenCover(isPresented: $showMapFromDeepLink) {
             MapScreenView(initialSearchQuery: mapSearchFromDeepLink, initialSharedFolder: mapSharedFolderFromDeepLink)
         }
+        .fullScreenCover(isPresented: $showIdentityVerifyFromDeepLink) {
+            if let identityVerifyRequestId {
+                IdentityVerificationConsentView(requestId: identityVerifyRequestId, onDone: { showIdentityVerifyFromDeepLink = false })
+            }
+        }
         .onOpenURL { url in
-            guard url.scheme?.caseInsensitiveCompare("itunda") == .orderedSame,
-                  url.host?.caseInsensitiveCompare("maps") == .orderedSame else { return }
+            guard url.scheme?.caseInsensitiveCompare("itunda") == .orderedSame else { return }
+            if url.host?.caseInsensitiveCompare("verify") == .orderedSame {
+                if let id = url.path.split(separator: "/").first.map(String.init)?.trimmingCharacters(in: .whitespacesAndNewlines), !id.isEmpty {
+                    identityVerifyRequestId = id
+                    showIdentityVerifyFromDeepLink = true
+                }
+                return
+            }
+            guard url.host?.caseInsensitiveCompare("maps") == .orderedSame else { return }
             // Real shared-folder link (2026-08-18) -- itunda://maps/shared/{userId}/{folderName},
             // matching Android's own identical path-shape check and bank-mfe's own
             // ?sharedOwner=&sharedFolder= query-param equivalent.

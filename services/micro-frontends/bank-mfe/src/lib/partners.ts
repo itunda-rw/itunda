@@ -21,3 +21,26 @@ export interface PartnerMiniApp {
 
 export const fetchMiniAppCatalog = () =>
   apiFetch<{ success: boolean; miniApps: PartnerMiniApp[] }>('/api/v1/mini-apps/catalog?size=20').then((r) => r.miniApps);
+
+// Real "verify with itunda" identity-verification-for-partners consent flow
+// (Partners product-completeness pass, 2026-09-07) -- ported from Android's own
+// real, already-live-verified IdentityVerificationConsentScreen (ItundaAppScreen.kt).
+// Genuinely distinct from lib/verification.ts (email/phone verification) and the
+// unrelated personal-KYC Identity tab -- this is itunda vouching for a user's real
+// identity TO a third-party partner, reached via a `?verifyRequestId=` URL param
+// (bank-mfe's own analog to the native apps' itunda://verify/{requestId} deep link).
+export interface IdentityVerificationRequest {
+  partnerName: string;
+  status: 'PENDING' | 'APPROVED' | 'DECLINED' | 'EXPIRED';
+  expiresAt: string;
+  requestedFields: string[];
+}
+
+export const getIdentityVerificationRequest = (requestId: string) =>
+  apiFetch<{ success: boolean } & IdentityVerificationRequest>(`/api/v1/identity/verification/${encodeURIComponent(requestId)}`);
+
+export const approveIdentityVerification = (requestId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/identity/verification/${encodeURIComponent(requestId)}/approve`, { method: 'POST' });
+
+export const declineIdentityVerification = (requestId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/identity/verification/${encodeURIComponent(requestId)}/decline`, { method: 'POST' });

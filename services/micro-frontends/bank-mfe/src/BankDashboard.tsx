@@ -42,6 +42,7 @@ import { BucketDetailScreen } from './BucketDetailScreen';
 import { transactionsToBucketTransactions } from './lib/bucketTransaction';
 import { resolveRecipient, sendDirect, type P2pRecipientPreview } from './lib/p2p';
 import { CertificateView } from './CertificateView';
+import { IdentityVerificationConsentView } from './IdentityVerificationConsentView';
 import { LoansView, type LoansMode } from './LoansView';
 import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreFactor, type CreditScoreSuggestion } from './lib/creditScore';
 import { CreditScoreView, TrustScoreView } from './ScoreViews';
@@ -2692,6 +2693,19 @@ const saveRecentTab = (id: Tab, current: Tab[]): Tab[] => {
 };
 
 export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
+  // Real "verify with itunda" identity-verification-for-partners deep link
+  // (Partners product-completeness pass, 2026-09-07) -- web's own analog to the
+  // native apps' itunda://verify/{requestId} deep link, resolved via a
+  // `?verifyRequestId=` URL param instead (bank-mfe's own established pattern for a
+  // param-triggered full-screen view independent of `tab`, mirroring
+  // TalkGroupsAndFriends.tsx's/EatsView.tsx's own ?joinChatCode=/?joinEatsCode=
+  // precedent). The actual early return is below the rest of this component's own
+  // hooks (Rules of Hooks -- every hook here must run unconditionally on every
+  // render). All real UI lives in IdentityVerificationConsentView.tsx.
+  const [verifyRequestId, setVerifyRequestId] = useState<string | null>(
+    () => new URLSearchParams(window.location.search).get('verifyRequestId'),
+  );
+
   const [tab, setTabState] = useState<Tab>(() => readTabFromUrl());
   // Keeps `tab` deep-linkable: every real navigation both updates state and pushes a
   // real URL (?tab=X) so refresh/share/back-button all land where the user actually
@@ -2928,6 +2942,10 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     setTab(id);
     setRecentMoreTabs(saveRecentTab(id, recentMoreTabs));
   };
+
+  if (verifyRequestId) {
+    return <IdentityVerificationConsentView requestId={verifyRequestId} onDone={() => setVerifyRequestId(null)} />;
+  }
 
   return (
     <div style={{ padding: '20px', paddingBottom: '100px', maxWidth: '480px', margin: '0 auto' }}>
