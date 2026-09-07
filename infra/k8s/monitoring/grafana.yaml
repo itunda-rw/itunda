@@ -1174,6 +1174,75 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  # Real, sixteenth product-level dashboard (2026-09-07, Partners product-
+  # completeness pass) -- see docs/ARCHITECTURE.md's dated follow-up. `:partners`/
+  # `:partners-service` is the 8th independently-deployable backend extraction
+  # (own Gradle module, own bootJar/Dockerfile/k8s Deployment), same shared-MySQL-
+  # schema shape as the other extracted services. This product spans 4 real route
+  # prefixes -- partner-facing (/api/v1/partners, including its /identity
+  # sub-path), the published catalog (/api/v1/mini-apps), the itunda-user-facing
+  # identity-verification consent side (/api/v1/identity/verification), and the
+  # ADMIN-only review/moderation queue (/api/v1/system/partners) -- confirmed by
+  # reading each of the 5 real controllers' own @RequestMapping directly. Same
+  # route-filtered request-rate/error-rate/latency panel shape as itunda-card/
+  # itunda-vehicle (no per-service JVM panel).
+  name: grafana-dashboard-itunda-partners
+  namespace: monitoring
+data:
+  itunda-partners.json: |
+    {
+      "title": "itunda Partners",
+      "uid": "itunda-partners",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Partners request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(partners|mini-apps|identity/verification|system/partners)(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Partners error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(partners|mini-apps|identity/verification|system/partners)(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Partners request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(partners|mini-apps|identity/verification|system/partners)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(partners|mini-apps|identity/verification|system/partners)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: grafana-dashboard-itunda-private-cloud
   namespace: monitoring
 data:
@@ -1349,6 +1418,8 @@ spec:
               name: grafana-dashboard-itunda-certificate
           - configMap:
               name: grafana-dashboard-itunda-vehicle
+          - configMap:
+              name: grafana-dashboard-itunda-partners
           - configMap:
               name: grafana-dashboard-itunda-private-cloud
 ---
