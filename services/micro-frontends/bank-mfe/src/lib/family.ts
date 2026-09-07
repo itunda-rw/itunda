@@ -16,6 +16,10 @@ export interface FamilyLink {
   status: FamilyLinkStatus;
   createdAt: string;
   respondedAt: string | null;
+  // Real spend-limit enforcement (Family product-completeness pass, 2026-09-08) --
+  // already enforced server-side and already surfaced on Android; web was missing
+  // this field entirely.
+  dailySpendLimit: number | null;
 }
 
 export interface FamilyLinkView {
@@ -57,3 +61,12 @@ export const fetchChildOverview = (childUserId: string) =>
 
 export const revokeFamilyLink = (id: string) =>
   apiFetch<{ success: boolean; link: FamilyLink }>(`/api/v1/family/links/${id}/revoke`, { method: 'POST' }).then((r) => r.link);
+
+// Real spend-limit enforcement (Family product-completeness pass, 2026-09-08) -- see
+// FamilyLink.dailySpendLimit's own doc comment. Not money-moving itself, no
+// Idempotency-Key requirement, same convention as every other settings-style endpoint.
+export const setSpendLimit = (childUserId: string, dailySpendLimit: number | null) =>
+  apiFetch<{ success: boolean; link: FamilyLink }>(`/api/v1/family/children/${childUserId}/spend-limit`, {
+    method: 'POST',
+    body: JSON.stringify({ dailySpendLimit }),
+  }).then((r) => r.link);

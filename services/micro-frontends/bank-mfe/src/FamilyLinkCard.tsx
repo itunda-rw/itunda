@@ -13,7 +13,7 @@ import { useI18n } from './i18n/I18nContext';
 import { ApiError } from './lib/api';
 import { EmptyState } from './EmptyState';
 import {
-  fetchChildOverview, fetchMyChildren, fetchMyGuardians, fetchMyInvites, inviteChild, respondToInvite, revokeFamilyLink,
+  fetchChildOverview, fetchMyChildren, fetchMyGuardians, fetchMyInvites, inviteChild, respondToInvite, revokeFamilyLink, setSpendLimit,
   type ChildOverview, type FamilyLinkView,
 } from './lib/family';
 import { sendToFamilyMember } from './lib/p2p';
@@ -36,6 +36,13 @@ export function FamilyLinkCard() {
   const [sendAmount, setSendAmount] = useState('');
   const [sendBusy, setSendBusy] = useState(false);
   const [sendDone, setSendDone] = useState(false);
+  // Real spend-limit enforcement (Family product-completeness pass, 2026-09-08) --
+  // see FamilyLink.dailySpendLimit's own doc comment: already enforced server-side on
+  // every P2P send a child makes, but a guardian had no way to ever set one on web
+  // until now.
+  const [editingLimitFor, setEditingLimitFor] = useState<string | null>(null);
+  const [limitInput, setLimitInput] = useState('');
+  const [limitBusyId, setLimitBusyId] = useState<string | null>(null);
 
   const load = () => {
     fetchMyInvites().then(setInvites).catch(() => {});
@@ -101,6 +108,23 @@ export function FamilyLinkCard() {
       setOverview(await fetchChildOverview(childUserId));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.loadError'));
+    }
+  };
+
+  const handleSetSpendLimit = async (childUserId: string) => {
+    setLimitBusyId(childUserId);
+    setError(null);
+    const trimmed = limitInput.trim();
+    const limit = trimmed === '' ? null : Number(trimmed);
+    try {
+      await setSpendLimit(childUserId, limit);
+      setEditingLimitFor(null);
+      setLimitInput('');
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setLimitBusyId(null);
     }
   };
 
@@ -177,6 +201,41 @@ export function FamilyLinkCard() {
                   </button>
                 </div>
               </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
+                  {c.link.dailySpendLimit != null ? `Daily limit: ${c.link.dailySpendLimit.toLocaleString('en-US')} RWF` : 'No daily spend limit set'}
+                </p>
+                <button
+                  className="itunda-btn itunda-btn-secondary"
+                  onClick={() => {
+                    if (editingLimitFor === c.link.childUserId) {
+                      setEditingLimitFor(null);
+                    } else {
+                      setEditingLimitFor(c.link.childUserId);
+                      setLimitInput(c.link.dailySpendLimit != null ? String(c.link.dailySpendLimit) : '');
+                    }
+                  }}
+                  style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '4px 8px' }}
+                >
+                  {editingLimitFor === c.link.childUserId ? 'Cancel' : 'Edit'}
+                </button>
+              </div>
+              {editingLimitFor === c.link.childUserId && (
+                <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+                  <input
+                    type="number" min={0} placeholder="Daily limit (RWF, blank = no limit)" value={limitInput}
+                    onChange={(e) => setLimitInput(e.target.value)}
+                    style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-12-size)' }}
+                  />
+                  <button
+                    className="itunda-btn itunda-btn-primary" disabled={limitBusyId === c.link.childUserId}
+                    onClick={() => handleSetSpendLimit(c.link.childUserId)}
+                    style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '8px 12px' }}
+                  >
+                    {limitBusyId === c.link.childUserId ? '…' : 'Save'}
+                  </button>
+                </div>
+              )}
               {openOverviewFor === c.link.childUserId && overview && (
                 <div style={{ marginTop: '6px', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
                   <p>Balance: <strong style={{ color: 'var(--itunda-grey-900)' }}>{overview.accountBalance.toLocaleString('en-US')} RWF</strong></p>
