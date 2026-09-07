@@ -24,11 +24,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
+import rw.itunda.app.R
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.IdsTextField
@@ -73,6 +75,12 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
     var tapMessage by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
+    // Prefetched here (LoginScreen.kt's checkingPhoneError convention): stringResource()
+    // can only be called during composition, not inside these coroutine-launch bodies.
+    val networkError = stringResource(R.string.transit_network_error)
+    val topUpValidationError = stringResource(R.string.transit_top_up_error)
+    val tapMessageTemplate = stringResource(R.string.transit_tap_message)
+
     fun load() {
         coroutineScope.launch {
             try {
@@ -86,7 +94,7 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
                     error = superAppErrorMessage(e)
                 }
             } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
+                error = networkError
             }
         }
     }
@@ -95,7 +103,7 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
     fun topUp() {
         val amount = topUpAmount.trim().toBigDecimalOrNull()
         if (amount == null || amount <= BigDecimal.ZERO) {
-            error = "Enter a real, positive top-up amount."
+            error = topUpValidationError
             return
         }
         busy = true
@@ -108,7 +116,7 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
+                error = networkError
             } finally {
                 busy = false
             }
@@ -123,12 +131,12 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
             try {
                 val result = NetworkClient.apiService.tapTransitFare(UUID.randomUUID().toString(), TapFareRequest(operator, fareAmount))
                 balance = result.balance
-                tapMessage = "Tapped ${formatMoneyTransit(result.trip.fare)} RWF at ${result.trip.operator}"
+                tapMessage = String.format(tapMessageTemplate, formatMoneyTransit(result.trip.fare), result.trip.operator)
                 load()
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
+                error = networkError
             } finally {
                 busy = false
             }
@@ -136,7 +144,7 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        BackTopBar(title = "Transit", onBack = onBack)
+        BackTopBar(title = stringResource(R.string.transit_title), onBack = onBack)
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
@@ -148,7 +156,7 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
                 TransitMode.NO_BALANCE, TransitMode.ACTIVE -> {
                     item {
                         Column {
-                            Text("itunda Transit balance", fontSize = 13.sp, color = Ids.colors.textSecondary)
+                            Text(stringResource(R.string.transit_balance_label), fontSize = 13.sp, color = Ids.colors.textSecondary)
                             Text(
                                 "${formatMoneyTransit(balance?.balance ?: BigDecimal.ZERO)} RWF",
                                 fontSize = 28.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
@@ -157,14 +165,11 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
                     }
                     item {
                         Text(
-                            "Kigali's real public buses (Kigali Bus Services, Royal Express) run on a real " +
-                                "contactless fare system called Tap&Go, built by AC Group. itunda has no real " +
-                                "partnership with them -- this is itunda's own simulated transit balance: real " +
-                                "money moves, real fares apply, it just isn't carried by a real bus card reader.",
+                            stringResource(R.string.transit_disclosure),
                             fontSize = 11.sp, color = Ids.colors.textSecondary,
                         )
                         Text(
-                            "Collecting fares for Kigali Bus Services or Royal Express? Open the collector →",
+                            stringResource(R.string.transit_open_collector_cta),
                             fontSize = 12.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                             color = Ids.colors.brand,
                             modifier = Modifier.padding(top = 8.dp).pressScaleClickable(onClick = onOpenCollect),
@@ -175,10 +180,10 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
                                 .padding(16.dp),
                         ) {
-                            Text("Top up", fontSize = 15.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            Text(stringResource(R.string.transit_top_up_title), fontSize = 15.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 IdsTextField(
-                                    label = "Amount (RWF)", value = topUpAmount, onValueChange = { topUpAmount = it },
+                                    label = stringResource(R.string.transit_amount_placeholder), value = topUpAmount, onValueChange = { topUpAmount = it },
                                     modifier = Modifier.weight(1f),
                                 )
                             }
@@ -189,7 +194,10 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
                                     .padding(vertical = 14.dp),
                                 horizontalArrangement = Arrangement.Center,
                             ) {
-                                Text(if (busy) "Topping up…" else "Top up", color = androidx.compose.ui.graphics.Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                Text(
+                                    if (busy) stringResource(R.string.transit_topping_up) else stringResource(R.string.transit_top_up),
+                                    color = androidx.compose.ui.graphics.Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                )
                             }
                         }
                     }
@@ -199,10 +207,9 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
                                     .padding(16.dp),
                             ) {
-                                Text("Tap to pay your fare", fontSize = 15.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                Text(stringResource(R.string.transit_tap_title), fontSize = 15.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                                 Text(
-                                    "Pick your real operator and fare -- Kigali's real fares run 200-500 RWF " +
-                                        "depending on distance; itunda has no GPS-derived distance to calculate one automatically.",
+                                    stringResource(R.string.transit_tap_disclosure),
                                     fontSize = 11.sp, color = Ids.colors.textSecondary,
                                 )
                                 tapMessage?.let { Text(it, fontSize = 12.sp, color = Ids.colors.success) }
@@ -236,16 +243,20 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
                                     horizontalArrangement = Arrangement.Center,
                                 ) {
                                     Text(
-                                        if (insufficientBalance) "Balance too low" else if (busy) "Tapping…" else "Tap ${formatMoneyTransit(fare)} RWF",
+                                        when {
+                                            insufficientBalance -> stringResource(R.string.transit_tap_balance_too_low)
+                                            busy -> stringResource(R.string.transit_tapping)
+                                            else -> String.format(stringResource(R.string.transit_tap_fare), formatMoneyTransit(fare))
+                                        },
                                         color = if (insufficientBalance) Ids.colors.textSecondary else androidx.compose.ui.graphics.Color.White,
                                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                                     )
                                 }
                             }
                         }
-                        item { Text("Ride history", fontSize = 15.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) }
+                        item { Text(stringResource(R.string.transit_ride_history), fontSize = 15.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) }
                         if (trips.isEmpty()) {
-                            item { EmptyState(message = "No transit taps yet — once you tap to pay a fare, they'll show up here.") }
+                            item { EmptyState(message = stringResource(R.string.transit_no_taps_yet)) }
                         } else {
                             items(trips) { trip ->
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

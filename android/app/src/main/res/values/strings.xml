@@ -331,4 +331,35 @@
     <string name="card_explainer_subtitle">A real debit card for your itunda balance -- no paperwork, no waiting.</string>
     <string name="card_explainer_issuing">Issuing…</string>
     <string name="card_explainer_get_card">Get your %1$s card</string>
+
+    <string name="transit_title">Transit</string>
+    <string name="transit_top_up_error">Enter a real, positive top-up amount.</string>
+    <string name="transit_network_error">Couldn\'t reach itunda. Check your connection and try again.</string>
+    <string name="transit_balance_label">itunda Transit balance</string>
+    <string name="transit_disclosure">Kigali\'s real public buses (Kigali Bus Services, Royal Express) run on a real contactless fare system called Tap&amp;Go, built by AC Group. itunda has no real partnership with them -- this is itunda\'s own simulated transit balance: real money moves, real fares apply, it just isn\'t carried by a real bus card reader.</string>
+    <string name="transit_open_collector_cta">Collecting fares for Kigali Bus Services or Royal Express? Open the collector →</string>
+    <string name="transit_top_up_title">Top up</string>
+    <string name="transit_amount_placeholder">Amount (RWF)</string>
+    <string name="transit_topping_up">Topping up…</string>
+    <string name="transit_top_up">Top up</string>
+    <string name="transit_tap_title">Tap to pay your fare</string>
+    <string name="transit_tap_disclosure">Pick your real operator and fare -- Kigali\'s real fares run 200-500 RWF depending on distance; itunda has no GPS-derived distance to calculate one automatically.</string>
+    <string name="transit_tap_message">Tapped %1$s RWF at %2$s</string>
+    <string name="transit_tap_balance_too_low">Balance too low</string>
+    <string name="transit_tapping">Tapping…</string>
+    <string name="transit_tap_fare">Tap %1$s RWF</string>
+    <string name="transit_ride_history">Ride history</string>
+    <string name="transit_no_taps_yet">No transit taps yet — once you tap to pay a fare, they\'ll show up here.</string>
+
+    <string name="transit_collect_title">Collect fare</string>
+    <string name="transit_collect_network_error">Couldn\'t reach itunda. Check your connection and try again.</string>
+    <string name="transit_collect_collected">Collected</string>
+    <string name="transit_collect_next">Collect next fare</string>
+    <string name="transit_collect_scan_title">Scan the rider\'s payment code</string>
+    <string name="transit_collect_scan_subtitle">Ask the rider to open itunda and tap to show their payment code, then hold your phones back-to-back. No NFC? Point your camera at their QR instead.</string>
+    <string name="transit_collect_manual_entry_toggle">Camera not working? Enter code manually</string>
+    <string name="transit_collect_code_placeholder">Payment code</string>
+    <string name="transit_collect_use_this_code">Use this code</string>
+    <string name="transit_collect_collecting">Collecting…</string>
+    <string name="transit_collect_fare">Collect %1$s RWF</string>
 </resources>

@@ -27,13 +27,6 @@ import {
 } from './lib/transit';
 import { useDeferredLoading } from './useDeferredLoading';
 
-function tapButtonLabel(balance: TransitBalance | null, fare: number, busy: boolean): string {
-  if (balance === null) return 'Top up first';
-  if (balance.balance < fare) return 'Balance too low';
-  if (busy) return 'Tapping…';
-  return `Tap ${fare.toLocaleString('en-US')} RWF`;
-}
-
 export function TransitScreen({ onOpenCollect }: { onOpenCollect: () => void }) {
   const { t } = useI18n();
   const [balance, setBalance] = useState<TransitBalance | null | undefined>(undefined);
@@ -74,6 +67,13 @@ export function TransitScreen({ onOpenCollect }: { onOpenCollect: () => void }) 
     }
   };
 
+  const tapButtonLabel = (): string => {
+    if (!balance) return t('transit.tapTopUpFirst');
+    if (balance.balance < fare) return t('transit.tapBalanceTooLow');
+    if (busy) return t('transit.tapping');
+    return t('transit.tapFare', { fare: fare.toLocaleString('en-US') });
+  };
+
   const handleTap = async () => {
     setBusy(true);
     setTapMessage(null);
@@ -81,7 +81,7 @@ export function TransitScreen({ onOpenCollect }: { onOpenCollect: () => void }) 
     try {
       const result = await tapTransitFare(operator, fare);
       setBalance(result.balance);
-      setTapMessage(`Tapped ${result.trip.fare.toLocaleString('en-US')} RWF at ${result.trip.operator}`);
+      setTapMessage(t('transit.tapMessage', { fare: result.trip.fare.toLocaleString('en-US'), operator: result.trip.operator }));
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -100,7 +100,7 @@ export function TransitScreen({ onOpenCollect }: { onOpenCollect: () => void }) 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
       <div style={{ marginBottom: '12px' }}>
-        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>itunda Transit balance</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{t('transit.balanceLabel')}</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '4px 0 0' }}>
           {(balance?.balance ?? 0).toLocaleString('en-US')} RWF
         </p>
@@ -108,36 +108,32 @@ export function TransitScreen({ onOpenCollect }: { onOpenCollect: () => void }) 
 
       <div className="itunda-flat-section">
         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
-          Kigali&apos;s real public buses (Kigali Bus Services, Royal Express) run on a real contactless
-          fare system called Tap&amp;Go, built by AC Group. itunda has no real partnership with them --
-          this is itunda&apos;s own simulated transit balance: real money moves, real fares apply, it just
-          isn&apos;t carried by a real bus card reader.
+          {t('transit.disclosure')}
         </p>
         <button onClick={onOpenCollect} style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-indigo-500)' }}>
-          Collecting fares for Kigali Bus Services or Royal Express? Open the collector →
+          {t('transit.openCollectorCta')}
         </button>
       </div>
 
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
 
       <div className="itunda-flat-section">
-        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>Top up</h3>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>{t('transit.topUpTitle')}</h3>
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
-            type="number" placeholder="Amount (RWF)" value={topUpAmount} onChange={(e) => setTopUpAmount(e.target.value)} min="1"
+            type="number" placeholder={t('transit.amountPlaceholder')} value={topUpAmount} onChange={(e) => setTopUpAmount(e.target.value)} min="1"
             style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
           />
           <button className="itunda-btn itunda-btn-primary" disabled={busy || Number(topUpAmount) <= 0} onClick={handleTopUp}>
-            {busy ? 'Topping up…' : 'Top up'}
+            {busy ? t('transit.toppingUp') : t('transit.topUp')}
           </button>
         </div>
       </div>
 
       <div className="itunda-flat-section">
-        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Tap to pay your fare</h3>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>{t('transit.tapTitle')}</h3>
         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
-          Pick your real operator and fare -- Kigali&apos;s real fares run 200-500 RWF depending on
-          distance; itunda has no GPS-derived distance to calculate one for you automatically.
+          {t('transit.tapDisclosure')}
         </p>
         {tapMessage && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-green)', marginBottom: '8px' }}>{tapMessage}</p>}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
@@ -165,14 +161,14 @@ export function TransitScreen({ onOpenCollect }: { onOpenCollect: () => void }) 
           disabled={busy || balance === null || (balance?.balance ?? 0) < fare}
           onClick={handleTap}
         >
-          {tapButtonLabel(balance, fare, busy)}
+          {tapButtonLabel()}
         </button>
       </div>
 
       <div className="itunda-flat-section">
-        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>Ride history</h3>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>{t('transit.rideHistory')}</h3>
         {trips.length === 0 ? (
-          <EmptyState message="No transit taps yet — once you tap to pay a fare, they'll show up here." />
+          <EmptyState message={t('transit.noTapsYet')} />
         ) : (
           trips.map((trip) => (
             <div key={trip.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>

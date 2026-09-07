@@ -24,12 +24,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
+import rw.itunda.app.R
 import rw.itunda.app.nfc.TransitNfcListener
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.CameraQrScanner
@@ -82,6 +84,10 @@ fun TransitCollectScreen(onBack: () -> Unit) {
     var collected by remember { mutableStateOf<TransitCollectResultDto?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
+    // Prefetched here (LoginScreen.kt's checkingPhoneError convention): stringResource()
+    // can only be called during composition, not inside the coroutine-launch body below.
+    val networkError = stringResource(R.string.transit_collect_network_error)
+
     fun reset() {
         code = null
         collected = null
@@ -103,7 +109,7 @@ fun TransitCollectScreen(onBack: () -> Unit) {
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
+                error = networkError
             } finally {
                 busy = false
             }
@@ -111,7 +117,7 @@ fun TransitCollectScreen(onBack: () -> Unit) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        BackTopBar(title = "Collect fare", onBack = onBack)
+        BackTopBar(title = stringResource(R.string.transit_collect_title), onBack = onBack)
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
@@ -122,22 +128,22 @@ fun TransitCollectScreen(onBack: () -> Unit) {
                     collected != null -> {
                         val result = collected!!
                         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Collected", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Ids.colors.success)
+                            Text(stringResource(R.string.transit_collect_collected), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Ids.colors.success)
                             Text("${formatMoneyTransitCollect(result.fare)} RWF · ${result.operator}", fontSize = 16.sp)
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(top = 16.dp).clip(RoundedCornerShape(10.dp))
                                     .background(Ids.colors.brand).pressScaleClickable(onClick = ::reset).padding(vertical = 14.dp),
                                 horizontalArrangement = Arrangement.Center,
                             ) {
-                                Text("Collect next fare", color = Color.White, fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.transit_collect_next), color = Color.White, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
                     code == null -> {
                         Column {
-                            Text("Scan the rider's payment code", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.transit_collect_scan_title), fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             Text(
-                                "Ask the rider to open itunda and tap to show their payment code, then hold your phones back-to-back. No NFC? Point your camera at their QR instead.",
+                                stringResource(R.string.transit_collect_scan_subtitle),
                                 fontSize = 11.sp, color = Ids.colors.textSecondary,
                             )
                             TransitNfcListener(onCodeRead = { code = it }, onUnavailable = { nfcUnavailable = true })
@@ -148,13 +154,13 @@ fun TransitCollectScreen(onBack: () -> Unit) {
                                 }
                                 if (!showManualEntry) {
                                     Text(
-                                        "Camera not working? Enter code manually",
+                                        stringResource(R.string.transit_collect_manual_entry_toggle),
                                         color = Ids.colors.textSecondary, fontSize = 12.sp,
                                         modifier = Modifier.padding(top = 8.dp).pressScaleClickable(onClick = { showManualEntry = true }),
                                     )
                                 } else {
                                     Column(modifier = Modifier.padding(top = 8.dp)) {
-                                        IdsTextField(value = manualCodeInput, onValueChange = { manualCodeInput = it }, label = "Payment code", modifier = Modifier.fillMaxWidth())
+                                        IdsTextField(value = manualCodeInput, onValueChange = { manualCodeInput = it }, label = stringResource(R.string.transit_collect_code_placeholder), modifier = Modifier.fillMaxWidth())
                                         Row(
                                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp).clip(RoundedCornerShape(10.dp))
                                                 .background(if (manualCodeInput.isBlank()) Ids.colors.textTertiary else Ids.colors.brand)
@@ -162,7 +168,7 @@ fun TransitCollectScreen(onBack: () -> Unit) {
                                                 .padding(vertical = 12.dp),
                                             horizontalArrangement = Arrangement.Center,
                                         ) {
-                                            Text("Use this code", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                            Text(stringResource(R.string.transit_collect_use_this_code), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                         }
                                     }
                                 }
@@ -171,7 +177,7 @@ fun TransitCollectScreen(onBack: () -> Unit) {
                     }
                     else -> {
                         Column {
-                            Text("Collect fare", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.transit_collect_title), fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 TRANSIT_OPERATORS.forEach { op ->
@@ -200,7 +206,10 @@ fun TransitCollectScreen(onBack: () -> Unit) {
                                     .padding(vertical = 14.dp),
                                 horizontalArrangement = Arrangement.Center,
                             ) {
-                                Text(if (busy) "Collecting…" else "Collect ${formatMoneyTransitCollect(fare)} RWF", color = Color.White, fontWeight = FontWeight.Bold)
+                                Text(
+                                    if (busy) stringResource(R.string.transit_collect_collecting) else String.format(stringResource(R.string.transit_collect_fare), formatMoneyTransitCollect(fare)),
+                                    color = Color.White, fontWeight = FontWeight.Bold,
+                                )
                             }
                         }
                     }

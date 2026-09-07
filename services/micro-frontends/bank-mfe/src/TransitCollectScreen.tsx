@@ -13,6 +13,7 @@
 
 import { useState } from 'react';
 import { ApiError } from './lib/api';
+import { useI18n } from './i18n/I18nContext';
 import { QrScanCamera } from './QrScanCamera';
 import {
   tapTransitFareByCode,
@@ -24,6 +25,7 @@ import {
 } from './lib/transit';
 
 export function TransitCollectScreen() {
+  const { t } = useI18n();
   const [code, setCode] = useState<string | null>(null);
   const [scanUnavailable, setScanUnavailable] = useState(false);
   const [manualCode, setManualCode] = useState('');
@@ -48,7 +50,7 @@ export function TransitCollectScreen() {
       const result = await tapTransitFareByCode(code, operator, fare);
       setCollected(result);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not collect this fare.');
+      setError(err instanceof ApiError ? err.message : t('transitCollect.collectError'));
     } finally {
       setBusy(false);
     }
@@ -57,10 +59,10 @@ export function TransitCollectScreen() {
   if (collected) {
     return (
       <div className="itunda-flat-section" style={{ textAlign: 'center' }}>
-        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, color: 'var(--itunda-green)' }}>Collected</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, color: 'var(--itunda-green)' }}>{t('transitCollect.collected')}</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-16-size)', marginTop: '4px' }}>{collected.fare.toLocaleString('en-US')} RWF · {collected.operator}</p>
         <button className="itunda-btn itunda-btn-primary" style={{ marginTop: '16px', width: '100%' }} onClick={reset}>
-          Collect next fare
+          {t('transitCollect.collectNext')}
         </button>
       </div>
     );
@@ -69,24 +71,23 @@ export function TransitCollectScreen() {
   if (!code) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Scan the rider&apos;s payment code</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>{t('transitCollect.scanTitle')}</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
-          Ask the rider to open itunda and tap to show their payment code, then point your camera at it.
-          On the Android app, an NFC tap does the same thing without a camera.
+          {t('transitCollect.scanSubtitle')}
         </p>
         {!scanUnavailable ? (
           <QrScanCamera onDetect={setCode} onUnavailable={() => setScanUnavailable(true)} />
         ) : (
           <div className="itunda-flat-section">
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '8px' }}>
-              Camera unavailable -- enter the rider&apos;s code instead.
+              {t('transitCollect.cameraUnavailable')}
             </p>
             <input
-              placeholder="Payment code" value={manualCode} onChange={(e) => setManualCode(e.target.value)}
+              placeholder={t('transitCollect.codePlaceholder')} value={manualCode} onChange={(e) => setManualCode(e.target.value)}
               style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', marginBottom: '8px' }}
             />
             <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} disabled={!manualCode.trim()} onClick={() => setCode(manualCode.trim())}>
-              Use this code
+              {t('transitCollect.useThisCode')}
             </button>
           </div>
         )}
@@ -96,7 +97,7 @@ export function TransitCollectScreen() {
 
   return (
     <div className="itunda-flat-section">
-      <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>Collect fare</p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>{t('transitCollect.collectTitle')}</p>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
         {TRANSIT_OPERATORS.map((op) => (
@@ -119,10 +120,10 @@ export function TransitCollectScreen() {
         <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, minWidth: '84px', textAlign: 'right' }}>{fare.toLocaleString('en-US')} RWF</span>
       </div>
       <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} disabled={busy} onClick={handleCollect}>
-        {busy ? 'Collecting…' : `Collect ${fare.toLocaleString('en-US')} RWF`}
+        {busy ? t('transitCollect.collecting') : t('transitCollect.collectFare', { fare: fare.toLocaleString('en-US') })}
       </button>
       <button onClick={reset} style={{ width: '100%', marginTop: '8px', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
-        Scan a different code
+        {t('transitCollect.scanDifferentCode')}
       </button>
     </div>
   );

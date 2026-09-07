@@ -251,4 +251,35 @@
     <string name="card_explainer_subtitle">Une vraie carte de débit pour votre solde itunda -- sans paperasse, sans attente.</string>
     <string name="card_explainer_issuing">Émission en cours…</string>
     <string name="card_explainer_get_card">Obtenez votre carte %1$s</string>
+
+    <string name="transit_title">Transport</string>
+    <string name="transit_top_up_error">Saisissez un montant de recharge réel et positif.</string>
+    <string name="transit_network_error">Impossible de joindre itunda. Vérifiez votre connexion et réessayez.</string>
+    <string name="transit_balance_label">Solde itunda Transit</string>
+    <string name="transit_disclosure">Les vrais bus publics de Kigali (Kigali Bus Services, Royal Express) fonctionnent avec un vrai système de paiement sans contact appelé Tap&amp;Go, construit par AC Group. itunda n\'a pas de partenariat réel avec eux -- ceci est le propre solde de transport simulé d\'itunda : de l\'argent réel est transféré, les vrais tarifs s\'appliquent, il n\'est simplement pas traité par un vrai lecteur de carte de bus.</string>
+    <string name="transit_open_collector_cta">Vous collectez des tarifs pour Kigali Bus Services ou Royal Express ? Ouvrez le collecteur →</string>
+    <string name="transit_top_up_title">Recharger</string>
+    <string name="transit_amount_placeholder">Montant (RWF)</string>
+    <string name="transit_topping_up">Rechargement en cours…</string>
+    <string name="transit_top_up">Recharger</string>
+    <string name="transit_tap_title">Tapez pour payer votre tarif</string>
+    <string name="transit_tap_disclosure">Choisissez votre opérateur et votre tarif réels -- les vrais tarifs de Kigali vont de 200 à 500 RWF selon la distance ; itunda n\'a pas de distance dérivée du GPS pour en calculer un automatiquement.</string>
+    <string name="transit_tap_message">Tarif de %1$s RWF payé chez %2$s</string>
+    <string name="transit_tap_balance_too_low">Solde insuffisant</string>
+    <string name="transit_tapping">Paiement en cours…</string>
+    <string name="transit_tap_fare">Payer %1$s RWF</string>
+    <string name="transit_ride_history">Historique des trajets</string>
+    <string name="transit_no_taps_yet">Aucun trajet pour l\'instant — dès que vous paierez un tarif, il apparaîtra ici.</string>
+
+    <string name="transit_collect_title">Collecter le tarif</string>
+    <string name="transit_collect_network_error">Impossible de joindre itunda. Vérifiez votre connexion et réessayez.</string>
+    <string name="transit_collect_collected">Collecté</string>
+    <string name="transit_collect_next">Collecter le tarif suivant</string>
+    <string name="transit_collect_scan_title">Scannez le code de paiement du passager</string>
+    <string name="transit_collect_scan_subtitle">Demandez au passager d\'ouvrir itunda et de taper pour afficher son code de paiement, puis tenez vos téléphones dos à dos. Pas de NFC ? Pointez votre caméra sur son QR à la place.</string>
+    <string name="transit_collect_manual_entry_toggle">La caméra ne fonctionne pas ? Saisissez le code manuellement</string>
+    <string name="transit_collect_code_placeholder">Code de paiement</string>
+    <string name="transit_collect_use_this_code">Utiliser ce code</string>
+    <string name="transit_collect_collecting">Collecte en cours…</string>
+    <string name="transit_collect_fare">Collecter %1$s RWF</string>
 </resources>

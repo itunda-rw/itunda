@@ -252,4 +252,35 @@
     <string name="card_explainer_subtitle">Ikarita nyayo y\'amafaranga ku konti yawe ya itunda -- nta mpapuro, nta gutegereza.</string>
     <string name="card_explainer_issuing">Iratangwa…</string>
     <string name="card_explainer_get_card">Bona ikarita yawe ya %1$s</string>
+
+    <string name="transit_title">Ubwikorezi</string>
+    <string name="transit_top_up_error">Andika umubare nyawe, uruta zeru, wo kongeramo.</string>
+    <string name="transit_network_error">Ntibishoboka kugera kuri itunda. Reba interineti yawe hanyuma ugerageze.</string>
+    <string name="transit_balance_label">Amafaranga ya itunda Transit</string>
+    <string name="transit_disclosure">Bisi nyazo za Kigali (Kigali Bus Services, Royal Express) zikoresha sisitemu nyayo yo kwishyura idakoresha amaboko (Tap&amp;Go), yakozwe na AC Group. Itunda ntabwo ifite amasezerano na bo -- iyi ni amafaranga y\'ubwikorezi y\'ikigereranyo ya itunda ubwayo: amafaranga nyayo agenda, amafaranga y\'urugendo nyayo akurikizwa, gusa ntabwo anyuze mu gikoresho nyacyo cyo gusoma ikarita ya bisi.</string>
+    <string name="transit_open_collector_cta">Uraakusanya amafaranga y\'urugendo kuri Kigali Bus Services cyangwa Royal Express? Fungura ukusanya →</string>
+    <string name="transit_top_up_title">Ongeramo amafaranga</string>
+    <string name="transit_amount_placeholder">Umubare (RWF)</string>
+    <string name="transit_topping_up">Kongeramo…</string>
+    <string name="transit_top_up">Ongeramo amafaranga</string>
+    <string name="transit_tap_title">Kanda kugira ngo wishyure urugendo rwawe</string>
+    <string name="transit_tap_disclosure">Hitamo uwukwiyemera nyawe n\'amafaranga y\'urugendo -- amafaranga nyayo ya Kigali agera kuri 200-500 RWF bitewe n\'intera; itunda ntabwo ifite intera ya GPS yo kubara ayo mafaranga wenyine.</string>
+    <string name="transit_tap_message">Wakanze %1$s RWF kuri %2$s</string>
+    <string name="transit_tap_balance_too_low">Amafaranga make cyane</string>
+    <string name="transit_tapping">Gukanda…</string>
+    <string name="transit_tap_fare">Kanda %1$s RWF</string>
+    <string name="transit_ride_history">Amateka y\'urugendo</string>
+    <string name="transit_no_taps_yet">Nta rugendo wakoze na rumwe — igihe uzakanda kwishyura urugendo, bizagaragara hano.</string>
+
+    <string name="transit_collect_title">Kusanya urugendo</string>
+    <string name="transit_collect_network_error">Ntibishoboka kugera kuri itunda. Reba interineti yawe hanyuma ugerageze.</string>
+    <string name="transit_collect_collected">Byakusanyijwe</string>
+    <string name="transit_collect_next">Kusanya urugendo rukurikira</string>
+    <string name="transit_collect_scan_title">Skana ikoodi y\'umugenzi</string>
+    <string name="transit_collect_scan_subtitle">Saba umugenzi gufungura itunda maze akande kugira ngo yerekane ikoodi ye yo kwishyura, hanyuma ushyire telefone zanyu inyuma na inyuma. Nta NFC? Shyira kamera yawe kuri QR ye aho.</string>
+    <string name="transit_collect_manual_entry_toggle">Kamera ntikora? Andika ikoodi ubwawe</string>
+    <string name="transit_collect_code_placeholder">Ikoodi yo kwishyura</string>
+    <string name="transit_collect_use_this_code">Koresha iyi koodi</string>
+    <string name="transit_collect_collecting">Kwakira…</string>
+    <string name="transit_collect_fare">Kusanya %1$s RWF</string>
 </resources>
