@@ -21,6 +21,18 @@ struct FamilyLinkScreenView: View {
     @State private var error: String?
     @State private var openOverviewFor: String?
     @State private var overview: ChildOverviewDto?
+    // Real spend-limit enforcement (2026-08-04 on other platforms) -- see
+    // FamilyLinkDto.dailySpendLimit's own doc comment: already enforced server-side on
+    // every P2P send a child makes, but a guardian had no way to ever set one on iOS
+    // until now.
+    @State private var editingLimitFor: String?
+    @State private var limitInput = ""
+    @State private var limitBusyId: String?
+    // Real Naver Pay "가족 공유 자산 관리" -- instant transfer to a linked family
+    // member, see NetworkClient.sendToFamilyMember's own doc comment.
+    @State private var sendAmountInput = ""
+    @State private var sendBusy = false
+    @State private var sendDone = false
 
     private var hasAnything: Bool { !invites.isEmpty || !children.isEmpty || !guardians.isEmpty }
 
@@ -106,6 +118,33 @@ struct FamilyLinkScreenView: View {
                                     }
                                     .disabled(busyId == c.link.id)
                                 }
+                                HStack(spacing: 6) {
+                                    Text(c.link.dailySpendLimit.map { "Daily limit: \(formatAmount(Int($0))) RWF" } ?? "No daily spend limit set")
+                                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                    Spacer()
+                                    Button(action: {
+                                        if editingLimitFor == c.link.childUserId {
+                                            editingLimitFor = nil
+                                        } else {
+                                            editingLimitFor = c.link.childUserId
+                                            limitInput = c.link.dailySpendLimit.map { String(format: "%.0f", $0) } ?? ""
+                                        }
+                                    }) {
+                                        Text(editingLimitFor == c.link.childUserId ? "Cancel" : "Edit")
+                                            .font(.caption).bold().foregroundColor(IDS.Colors.brand)
+                                    }
+                                }
+                                if editingLimitFor == c.link.childUserId {
+                                    HStack(spacing: 8) {
+                                        IdsTextField("Daily limit (RWF, blank = no limit)", text: $limitInput, keyboardType: .decimalPad)
+                                        Button(action: { Task { await setSpendLimit(c.link.childUserId) } }) {
+                                            Text(limitBusyId == c.link.childUserId ? "…" : "Save").bold().foregroundColor(.white)
+                                                .padding(.horizontal, 16).padding(.vertical, 14)
+                                                .background(IDS.Colors.brand).cornerRadius(10)
+                                        }
+                                        .disabled(limitBusyId == c.link.childUserId)
+                                    }
+                                }
                                 if openOverviewFor == c.link.childUserId, let overview, overview.childUserId == c.link.childUserId {
                                     Text("Balance: \(formatAmount(Int(overview.accountBalance))) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                                     if overview.recentTransactions.isEmpty {
@@ -114,6 +153,22 @@ struct FamilyLinkScreenView: View {
                                         ForEach(overview.recentTransactions.prefix(5), id: \.id) { t in
                                             Text("\(t.description) · \(formatAmount(Int(t.amount))) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                         }
+                                    }
+                                    // Real Naver Pay "family shared asset management" --
+                                    // instant transfer to this linked family member.
+                                    HStack(spacing: 8) {
+                                        IdsTextField("Amount (RWF)", text: $sendAmountInput, keyboardType: .decimalPad)
+                                            .onChange(of: sendAmountInput) { _ in sendDone = false }
+                                        Button(action: { Task { await sendToChild(c.link.childUserId) } }) {
+                                            Text(sendBusy ? "…" : "Send").bold().foregroundColor(.white)
+                                                .padding(.horizontal, 16).padding(.vertical, 14)
+                                                .background(sendBusy || sendAmountInput.isEmpty ? IDS.Colors.textTertiary : IDS.Colors.brand)
+                                                .cornerRadius(10)
+                                        }
+                                        .disabled(sendBusy || sendAmountInput.isEmpty)
+                                    }
+                                    if sendDone {
+                                        Text("Sent.").font(.caption).foregroundColor(IDS.Colors.success)
                                     }
                                 }
                             }
@@ -202,10 +257,42 @@ struct FamilyLinkScreenView: View {
             return
         }
         openOverviewFor = childUserId
+        sendAmountInput = ""
+        sendDone = false
         do {
             overview = try await NetworkClient.shared.getChildOverview(childUserId).overview
         } catch {
             self.error = "Could not load this overview."
+        }
+    }
+
+    private func setSpendLimit(_ childUserId: String) async {
+        limitBusyId = childUserId
+        defer { limitBusyId = nil }
+        let trimmed = limitInput.trimmingCharacters(in: .whitespaces)
+        let limit = trimmed.isEmpty ? nil : Double(trimmed)
+        do {
+            _ = try await NetworkClient.shared.setFamilySpendLimit(childUserId: childUserId, dailySpendLimit: limit)
+            editingLimitFor = nil
+            limitInput = ""
+            await load()
+        } catch {
+            self.error = "Could not update this spend limit."
+        }
+    }
+
+    private func sendToChild(_ childUserId: String) async {
+        guard let amount = Double(sendAmountInput.trimmingCharacters(in: .whitespaces)), amount > 0 else { return }
+        sendBusy = true
+        error = nil
+        defer { sendBusy = false }
+        do {
+            _ = try await NetworkClient.shared.sendToFamilyMember(childUserId: childUserId, amount: amount, description: "Sent from Family")
+            sendDone = true
+            sendAmountInput = ""
+            overview = try await NetworkClient.shared.getChildOverview(childUserId).overview
+        } catch {
+            self.error = "Could not send this transfer."
         }
     }
 }

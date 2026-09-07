@@ -1311,7 +1311,16 @@ public struct FamilyLinkDto: Decodable, Identifiable {
     public let status: String
     public let createdAt: String
     public let respondedAt: String?
+    // Real spend-limit enforcement (Family product-completeness pass, 2026-09-08) --
+    // already enforced server-side and already surfaced on Android/web; iOS was the
+    // one client missing this field entirely.
+    public let dailySpendLimit: Double?
 }
+public struct SetSpendLimitRequest: Encodable { public let dailySpendLimit: Double? }
+// Real Naver Pay "가족 공유 자산 관리" -- instant transfer to a linked family member,
+// mirrors Android's SendToFamilyMemberRequest/Response exactly.
+public struct SendToFamilyMemberRequest: Encodable { public let childUserId: String; public let amount: Double; public let description: String }
+public struct SendToFamilyMemberResponse: Decodable { public let success: Bool; public let message: String; public let transaction: TransactionDto; public let newBalance: Double }
 public struct FamilyLinkViewDto: Decodable, Identifiable {
     public let link: FamilyLinkDto
     public let guardianName: String
@@ -1979,6 +1988,13 @@ extension NetworkClient {
     public func getChildOverview(_ childUserId: String) async throws -> ChildOverviewResponse { try await get("api/v1/family/children/\(childUserId)/overview") }
     public func revokeFamilyLink(_ id: String) async throws -> FamilyLinkResponse {
         try await authenticatedPost("api/v1/family/links/\(id)/revoke", body: EmptyBody())
+    }
+    // Real spend-limit enforcement (Family product-completeness pass, 2026-09-08) --
+    // see FamilyLinkDto.dailySpendLimit's own doc comment: already enforced
+    // server-side, iOS had no way to set one until now. Not money-moving itself, no
+    // Idempotency-Key requirement, matching the backend controller's own signature.
+    public func setFamilySpendLimit(childUserId: String, dailySpendLimit: Double?) async throws -> FamilyLinkResponse {
+        try await authenticatedPost("api/v1/family/children/\(childUserId)/spend-limit", body: SetSpendLimitRequest(dailySpendLimit: dailySpendLimit))
     }
 
     public func getSavingsGoals() async throws -> SavingsGoalsResponse { try await get("api/v1/savings/goals") }
@@ -3132,6 +3148,17 @@ extension NetworkClient {
         try await postP2p(
             "api/v1/p2p/send",
             body: SendDirectP2pRequest(recipient: recipient, amount: amount, description: memo, fromAccountId: fromAccountId),
+            idempotencyKey: UUID().uuidString
+        )
+    }
+
+    // Real Naver Pay "가족 공유 자산 관리" -- instant transfer to a linked family
+    // member, see SendToFamilyMemberRequest's own doc comment. Real money movement --
+    // idempotency-protected the same way sendDirect above is.
+    public func sendToFamilyMember(childUserId: String, amount: Double, description: String = "") async throws -> SendToFamilyMemberResponse {
+        try await postP2p(
+            "api/v1/p2p/send-to-family",
+            body: SendToFamilyMemberRequest(childUserId: childUserId, amount: amount, description: description),
             idempotencyKey: UUID().uuidString
         )
     }
