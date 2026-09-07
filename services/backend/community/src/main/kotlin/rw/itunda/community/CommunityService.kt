@@ -56,6 +56,13 @@ data class CommunityCategory(val id: String, val label: String)
 data class CommunityPostDetail(val post: CommunityPost, val authorName: String, val likedByMe: Boolean)
 data class CommunityCommentWithAuthor(val comment: CommunityComment, val authorName: String)
 
+// Real "who attended" view (Hood product-completeness pass, 2026-09-08) -- see
+// CommunityService.getSessionAttendance's own doc comment: the endpoint returned raw
+// MeetupAttendance (userId only, no display name) with zero UI caller on any platform.
+// Mirrors CommunityCommentWithAuthor's exact shape, reusing the same resolveNames
+// helper this service already established for authorName/commenterName.
+data class MeetupAttendanceWithName(val attendance: MeetupAttendance, val userName: String)
+
 /**
  * A real 동네생활 (Danggeun/Karrot "Neighborhood Life")-style community board -- see
  * `CommunityPost`'s own doc comment for the full account of why this is a distinct
@@ -517,14 +524,16 @@ class CommunityService(
      * `checkIntoSession` already establishes: only a real joined member of the
      * meetup's own group chat can see who else checked in.
      */
-    fun getSessionAttendance(userId: String, sessionId: String): List<MeetupAttendance> {
+    fun getSessionAttendance(userId: String, sessionId: String): List<MeetupAttendanceWithName> {
         val session = meetupSessionRepository.findById(sessionId).orElseThrow { MeetupSessionNotFoundException("Session not found") }
         val post = postRepository.findById(session.postId).orElseThrow { CommunityPostNotFoundException("Post not found") }
         val groupId = post.groupConversationId
         if (groupId == null || groupConversationMemberRepository.findByGroupConversationIdAndUserId(groupId, userId) == null) {
             throw MeetupAttendanceNotAMemberException("Join this meetup before viewing session attendance")
         }
-        return meetupAttendanceRepository.findBySessionId(sessionId)
+        val attendance = meetupAttendanceRepository.findBySessionId(sessionId)
+        val names = resolveNames(attendance.map { it.userId })
+        return attendance.map { MeetupAttendanceWithName(it, names[it.userId] ?: "Unknown user") }
     }
 
     /**

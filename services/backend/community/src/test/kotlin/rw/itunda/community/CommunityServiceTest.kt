@@ -717,12 +717,14 @@ class CommunityServiceTest : BehaviorSpec({
                 rw.itunda.core.domain.GroupConversationMember(id = "gm_1", groupConversationId = "group_1", userId = "member_1")
             every { meetupAttendanceRepository.findBySessionId("session_1") } returns
                 listOf(rw.itunda.core.domain.MeetupAttendance(id = "attendance_1", sessionId = "session_1", userId = "member_1"))
+            every { userRepository.findAllById(listOf("member_1")) } returns listOf(realUser("member_1", "Jane", "Doe"))
 
             val attendance = service.getSessionAttendance("member_1", "session_1")
 
-            Then("it returns the real attendance list") {
+            Then("it returns the real attendance list with each attendee's real resolved name") {
                 attendance.size shouldBe 1
-                attendance[0].userId shouldBe "member_1"
+                attendance[0].attendance.userId shouldBe "member_1"
+                attendance[0].userName shouldBe "Jane Doe"
             }
         }
     }

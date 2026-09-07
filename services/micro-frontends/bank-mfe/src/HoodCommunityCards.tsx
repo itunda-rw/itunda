@@ -4,7 +4,7 @@ import { showToast } from './Toast';
 import { useI18n } from './i18n/I18nContext';
 import { HeartFilled } from './icons/ItundaFaceHearts';
 import { ApiError } from './lib/api';
-import { checkIntoMeetupSession, createCommunityPost, fetchCommentNotificationsEnabled, fetchMeetupSessions, finalizeGroupBuy, removeCommunityPost, scheduleMeetupSessions, setCommentNotificationsEnabled, type CommunityCategory, type CommunityPost, type MeetupSession } from './lib/community';
+import { checkIntoMeetupSession, createCommunityPost, fetchCommentNotificationsEnabled, fetchMeetupSessions, fetchSessionAttendance, finalizeGroupBuy, removeCommunityPost, scheduleMeetupSessions, setCommentNotificationsEnabled, type CommunityCategory, type CommunityPost, type MeetupSession, type SessionAttendee } from './lib/community';
 import { HoodReportButton } from './BankDashboard';
 import { useDeferredLoading } from './useDeferredLoading';
 
@@ -278,6 +278,11 @@ export function MeetupSessionsSection({ post, currentUserId }: { post: Community
   const [scheduling, setScheduling] = useState(false);
   const [checkingInId, setCheckingInId] = useState<string | null>(null);
   const [checkedInIds, setCheckedInIds] = useState<Set<string>>(new Set());
+  // Real "who attended" view (Hood product-completeness pass, 2026-09-08) -- a real
+  // joined member could always check in, but nobody could ever see who else did.
+  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
+  const [attendanceBySession, setAttendanceBySession] = useState<Record<string, SessionAttendee[]>>({});
+  const [loadingAttendanceId, setLoadingAttendanceId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = () => {
@@ -317,6 +322,24 @@ export function MeetupSessionsSection({ post, currentUserId }: { post: Community
     }
   };
 
+  const handleToggleAttendance = async (sessionId: string) => {
+    if (expandedSessionId === sessionId) {
+      setExpandedSessionId(null);
+      return;
+    }
+    setExpandedSessionId(sessionId);
+    if (attendanceBySession[sessionId]) return;
+    setLoadingAttendanceId(sessionId);
+    try {
+      const attendees = await fetchSessionAttendance(sessionId);
+      setAttendanceBySession((prev) => ({ ...prev, [sessionId]: attendees }));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.loadError'));
+    } finally {
+      setLoadingAttendanceId(null);
+    }
+  };
+
   return (
     <div style={{ marginTop: '16px' }}>
       <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>Sessions</h3>
@@ -327,15 +350,36 @@ export function MeetupSessionsSection({ post, currentUserId }: { post: Community
       {sessions !== null && sessions.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '12px' }}>
           {sessions.map((s) => (
-            <div key={s.id} className="itunda-flat-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{new Date(s.scheduledFor).toLocaleString()}</p>
+            <div key={s.id} className="itunda-flat-section">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{new Date(s.scheduledFor).toLocaleString()}</p>
+                <button
+                  className="itunda-btn itunda-btn-secondary" style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 12px' }}
+                  disabled={checkingInId === s.id || checkedInIds.has(s.id)}
+                  onClick={() => handleCheckIn(s.id)}
+                >
+                  {checkedInIds.has(s.id) ? '✓ Checked in' : checkingInId === s.id ? '…' : 'Check in'}
+                </button>
+              </div>
               <button
-                className="itunda-btn itunda-btn-secondary" style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 12px' }}
-                disabled={checkingInId === s.id || checkedInIds.has(s.id)}
-                onClick={() => handleCheckIn(s.id)}
+                onClick={() => handleToggleAttendance(s.id)}
+                style={{ background: 'none', border: 'none', padding: 0, marginTop: '4px', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)', cursor: 'pointer' }}
               >
-                {checkedInIds.has(s.id) ? '✓ Checked in' : checkingInId === s.id ? '…' : 'Check in'}
+                {expandedSessionId === s.id ? 'Hide attendance' : 'View attendance'}
               </button>
+              {expandedSessionId === s.id && (
+                loadingAttendanceId === s.id ? (
+                  <div className="skeleton" style={{ height: '20px', borderRadius: 'var(--itunda-radius-md)', marginTop: '6px' }} />
+                ) : (attendanceBySession[s.id]?.length ?? 0) === 0 ? (
+                  <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginTop: '6px' }}>No one has checked in yet.</p>
+                ) : (
+                  <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    {attendanceBySession[s.id].map((a) => (
+                      <p key={a.attendance.id} style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>✓ {a.userName}</p>
+                    ))}
+                  </div>
+                )
+              )}
             </div>
           ))}
         </div>

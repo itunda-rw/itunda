@@ -73,6 +73,7 @@ import rw.itunda.core.network.FinalizeGroupBuyRequest
 import rw.itunda.core.network.MeetupSessionDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.ScheduleMeetupSessionsRequest
+import rw.itunda.core.network.SessionAttendeeDto
 import rw.itunda.core.network.TokenStore
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
@@ -97,6 +98,11 @@ internal fun MeetupSessionsSection(post: CommunityPostDto, currentUserId: String
     var scheduling by remember { mutableStateOf(false) }
     var checkingInId by remember { mutableStateOf<String?>(null) }
     var checkedInIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    // Real "who attended" view (Hood product-completeness pass, 2026-09-08) -- a real
+    // joined member could always check in, but nobody could ever see who else did.
+    var expandedSessionId by remember { mutableStateOf<String?>(null) }
+    var attendanceBySession by remember { mutableStateOf<Map<String, List<SessionAttendeeDto>>>(emptyMap()) }
+    var loadingAttendanceId by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val isAuthor = currentUserId != null && currentUserId == post.authorId
@@ -125,25 +131,60 @@ internal fun MeetupSessionsSection(post: CommunityPostDto, currentUserId: String
         // separates entries with spacing alone.
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             list.forEach { s ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(s.scheduledFor.replace("T", " ").take(16), color = Ids.colors.textPrimary, fontSize = 13.sp)
-                        ListingActionButton(
-                            if (checkedInIds.contains(s.id)) "✓ Checked in" else if (checkingInId == s.id) "…" else "Check in",
-                            checkingInId == s.id || checkedInIds.contains(s.id),
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            checkingInId = s.id
-                            coroutineScope.launch {
-                                try {
-                                    NetworkClient.apiService.checkIntoMeetupSession(s.id)
-                                    checkedInIds = checkedInIds + s.id
-                                } catch (e: HttpException) {
-                                    error = superAppErrorMessage(e)
-                                } finally {
-                                    checkingInId = null
+                            Text(s.scheduledFor.replace("T", " ").take(16), color = Ids.colors.textPrimary, fontSize = 13.sp)
+                            ListingActionButton(
+                                if (checkedInIds.contains(s.id)) "✓ Checked in" else if (checkingInId == s.id) "…" else "Check in",
+                                checkingInId == s.id || checkedInIds.contains(s.id),
+                            ) {
+                                checkingInId = s.id
+                                coroutineScope.launch {
+                                    try {
+                                        NetworkClient.apiService.checkIntoMeetupSession(s.id)
+                                        checkedInIds = checkedInIds + s.id
+                                    } catch (e: HttpException) {
+                                        error = superAppErrorMessage(e)
+                                    } finally {
+                                        checkingInId = null
+                                    }
+                                }
+                            }
+                        }
+                        TextButton(onClick = {
+                            if (expandedSessionId == s.id) {
+                                expandedSessionId = null
+                            } else {
+                                expandedSessionId = s.id
+                                if (!attendanceBySession.containsKey(s.id)) {
+                                    loadingAttendanceId = s.id
+                                    coroutineScope.launch {
+                                        try {
+                                            val attendees = NetworkClient.apiService.getSessionAttendance(s.id).attendance
+                                            attendanceBySession = attendanceBySession + (s.id to attendees)
+                                        } catch (e: HttpException) {
+                                            error = superAppErrorMessage(e)
+                                        } finally {
+                                            loadingAttendanceId = null
+                                        }
+                                    }
+                                }
+                            }
+                        }) {
+                            Text(if (expandedSessionId == s.id) "Hide attendance" else "View attendance", fontSize = 12.sp)
+                        }
+                        if (expandedSessionId == s.id) {
+                            when {
+                                loadingAttendanceId == s.id -> SkeletonBlock()
+                                attendanceBySession[s.id]?.isEmpty() == true -> Text("No one has checked in yet.", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                                else -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    attendanceBySession[s.id]?.forEach { a ->
+                                        Text("✓ ${a.userName}", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                                    }
                                 }
                             }
                         }

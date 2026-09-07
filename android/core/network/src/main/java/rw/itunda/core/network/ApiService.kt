@@ -1111,6 +1111,13 @@ data class MeetupSessionDto(val id: String, val postId: String, val sequence: In
 data class MeetupSessionsResponse(val success: Boolean, val sessions: List<MeetupSessionDto>)
 data class MeetupAttendanceDto(val id: String, val sessionId: String, val userId: String, val checkedInAt: String)
 data class MeetupAttendanceResponse(val success: Boolean, val attendance: MeetupAttendanceDto)
+
+// Real "who attended" view (Hood product-completeness pass, 2026-09-08) -- see backend
+// CommunityService.getSessionAttendance's own doc comment: real endpoint + zero client
+// anywhere. Mirrors MeetupAttendanceDto but nested, matching the backend's own real
+// MeetupAttendanceWithName response shape (each attendance plus its resolved userName).
+data class SessionAttendeeDto(val attendance: MeetupAttendanceDto, val userName: String)
+data class SessionAttendanceResponse(val success: Boolean, val attendance: List<SessionAttendeeDto>)
 data class FinalizeGroupBuyRequest(val totalAmount: java.math.BigDecimal, val description: String)
 
 // Real 당근알바-style local job board (2026-07-19) -- see rw.itunda.jobs.web.JobPostController.
@@ -3353,6 +3360,9 @@ interface ApiService {
 
     @POST("api/v1/community/sessions/{sessionId}/check-in")
     suspend fun checkIntoMeetupSession(@Path("sessionId") sessionId: String): MeetupAttendanceResponse
+
+    @GET("api/v1/community/sessions/{sessionId}/attendance")
+    suspend fun getSessionAttendance(@Path("sessionId") sessionId: String): SessionAttendanceResponse
 
     // Real 당근마켓 같이사요 (Karrot "Let's Buy Together") -- see
     // rw.itunda.community.CommunityService.finalizeGroupBuy's own doc comment. bank-mfe

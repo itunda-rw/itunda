@@ -172,6 +172,15 @@ export interface MeetupAttendance {
   checkedInAt: string;
 }
 
+// Real "who attended" view (Hood product-completeness pass, 2026-09-08) -- see backend
+// CommunityService.getSessionAttendance's own doc comment: the endpoint returned raw
+// MeetupAttendance (userId only, no display name) with zero UI caller anywhere. Mirrors
+// the backend's own real MeetupAttendanceWithName response shape.
+export interface SessionAttendee {
+  attendance: MeetupAttendance;
+  userName: string;
+}
+
 export const scheduleMeetupSessions = (postId: string, dates: string[]) =>
   apiFetch<{ success: boolean; sessions: MeetupSession[] }>(`/api/v1/community/posts/${postId}/sessions`, {
     method: 'POST',
@@ -187,7 +196,7 @@ export const checkIntoMeetupSession = (sessionId: string) =>
   }).then((r) => r.attendance);
 
 export const fetchSessionAttendance = (sessionId: string) =>
-  apiFetch<{ success: boolean; attendance: MeetupAttendance[] }>(`/api/v1/community/sessions/${sessionId}/attendance`).then((r) => r.attendance);
+  apiFetch<{ success: boolean; attendance: SessionAttendee[] }>(`/api/v1/community/sessions/${sessionId}/attendance`).then((r) => r.attendance);
 
 // Real 당근마켓 같이사요 (Karrot "Let's Buy Together") -- see the backend's
 // CommunityService.finalizeGroupBuy doc comment. Reuses the already-real SplitBill

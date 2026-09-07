@@ -3891,6 +3891,17 @@ public struct MeetupSessionsResponse: Decodable { public let success: Bool; publ
 public struct MeetupAttendanceDto: Decodable { public let id: String; public let sessionId: String; public let userId: String; public let checkedInAt: String }
 public struct MeetupAttendanceResponse: Decodable { public let success: Bool; public let attendance: MeetupAttendanceDto }
 
+// Real "who attended" view (Hood product-completeness pass, 2026-09-08) -- see backend
+// CommunityService.getSessionAttendance's own doc comment: real endpoint + zero iOS
+// binding at all until now. Mirrors MeetupAttendanceDto but nested, matching the
+// backend's own real MeetupAttendanceWithName response shape.
+public struct SessionAttendeeDto: Decodable, Identifiable {
+    public let attendance: MeetupAttendanceDto
+    public let userName: String
+    public var id: String { attendance.id }
+}
+public struct SessionAttendanceResponse: Decodable { public let success: Bool; public let attendance: [SessionAttendeeDto] }
+
 // Real 당근마켓 같이사요 (Karrot "Let's Buy Together") -- see
 // rw.itunda.community.CommunityService.finalizeGroupBuy's own doc comment. bank-mfe/
 // Android already have this; this is the first iOS client.
@@ -5696,6 +5707,9 @@ extension NetworkClient {
     }
     public func checkIntoMeetupSession(_ sessionId: String) async throws -> MeetupAttendanceResponse {
         try await authenticatedPost("api/v1/community/sessions/\(sessionId)/check-in", body: EmptyBody())
+    }
+    public func getSessionAttendance(_ sessionId: String) async throws -> SessionAttendanceResponse {
+        try await get("api/v1/community/sessions/\(sessionId)/attendance")
     }
     // Real gap found 2026-09-04: finalizeGroupBuy delegates into SplitBillService
     // .createSplitBill's own rich real validation (needs at least one other real
