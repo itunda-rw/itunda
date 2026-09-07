@@ -14,19 +14,25 @@ import rw.itunda.core.repository.DeviceTokenRepository
  * whatever triggered it had failed.
  *
  * **Deliberately not wired into every existing `Notification` call site in this pass**
- * (a repo-wide grep found 19 of them) -- rewiring all 19 in one pass would touch a lot
- * of already-tested, unrelated call sites at once. Wired into three real, named, sourced
- * gaps so far: `MerchantBookingService`'s "new booking request" notify (2026-07-26, per
- * Naver Smart Place's own real "push notifications on new bookings" feature),
- * `MerchantBookingReviewService`'s owner-reply notify (2026-07-27, the sibling gap that
- * same research line named), and `FraudReviewService.decide`'s confirmed-fraud security
- * alert (2026-07-28, per Toss's own real customer-facing FDS flow -- a security alert is
- * exactly the kind of thing that shouldn't wait for the next in-app poll), and
- * `P2pService.notifyMoneyReceived`'s real-time "money received" push (2026-07-28) -- of
- * every notification type in this backend, this is the one closest to real Toss's own
- * signature, most-relied-on notification, picked as the highest-priority remaining site
- * from the ~16 named above. The remaining ~15 sites stay a real, valuable, still-open
- * follow-up rather than silently left unaddressed.
+ * (a repo-wide grep found 19 of them at the time) -- rewiring all of them in one pass
+ * would touch a lot of already-tested, unrelated call sites at once. Wired into three
+ * real, named, sourced gaps so far: `MerchantBookingService`'s "new booking request"
+ * notify (2026-07-26, per Naver Smart Place's own real "push notifications on new
+ * bookings" feature), `MerchantBookingReviewService`'s owner-reply notify (2026-07-27,
+ * the sibling gap that same research line named), and `FraudReviewService.decide`'s
+ * confirmed-fraud security alert (2026-07-28, per Toss's own real customer-facing FDS
+ * flow -- a security alert is exactly the kind of thing that shouldn't wait for the
+ * next in-app poll), and `P2pService.notifyMoneyReceived`'s real-time "money received"
+ * push (2026-07-28) -- of every notification type in this backend, this is the one
+ * closest to real Toss's own signature, most-relied-on notification, picked as the
+ * highest-priority remaining site at the time. Doc-comment currency check (2026-09-07,
+ * Notifications product-completeness pass): the real count has grown to 97 call sites
+ * across 54 files as the backend has grown -- the dominant pattern at nearly all of
+ * them is already a direct `notificationRepository.save(...)` +
+ * `pushNotificationService.sendToUser(...)` pair in the same method (confirmed by
+ * spot-checking Eats/Messaging/Merchant/Fraud/P2P), so most of that growth is already
+ * correctly wired through this service by each call site itself, not a still-open
+ * backlog of exactly "~15 remaining" sites frozen from the original 2026-07-28 count.
  */
 @Service
 class PushNotificationService(
