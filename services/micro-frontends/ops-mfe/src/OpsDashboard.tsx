@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, Banknote, Building2, CircleDollarSign, Flag, Gauge, HeartPulse, Home, Landmark, LifeBuoy, LogOut, Megaphone, MessageCircleWarning, Percent, Puzzle, Scale, ShieldCheck, Siren, Store, Users, Wrench, Webhook } from 'lucide-react';
+import { AlertTriangle, Banknote, BarChart3, Building2, CircleDollarSign, Flag, Gauge, HeartPulse, Home, Landmark, LifeBuoy, LogOut, Megaphone, MessageCircleWarning, Percent, Puzzle, Scale, ShieldCheck, Siren, Store, Users, Wrench, Webhook } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
 import OverviewView from './queues/OverviewView';
 import FraudQueue from './queues/FraudQueue';
@@ -22,12 +22,13 @@ import FeeWaiverQueue from './queues/FeeWaiverQueue';
 import WebhookFailuresQueue from './queues/WebhookFailuresQueue';
 import ChatReportsQueue from './queues/ChatReportsQueue';
 import NotificationBroadcastView from './queues/NotificationBroadcastView';
+import AnalyticsView from './queues/AnalyticsView';
 
 type Tab =
   | 'overview' | 'fraud' | 'compliance' | 'incidents' | 'reconciliation' | 'support' | 'insurance' | 'partners'
   | 'escrow' | 'agents' | 'hood-reports' | 'property-verification' | 'agents-management' | 'merchants' | 'loan-default'
   | 'fee-waiver' | 'webhook-failures' | 'chat-reports' | 'vehicle-inspection-mechanics' | 'partner-accounts'
-  | 'notification-broadcast';
+  | 'notification-broadcast' | 'analytics';
 
 const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'overview', label: 'Overview', icon: Gauge },
@@ -51,6 +52,7 @@ const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'webhook-failures', label: 'Webhook failures', icon: Webhook },
   { id: 'chat-reports', label: 'Talk message reports', icon: MessageCircleWarning },
   { id: 'notification-broadcast', label: 'Send announcement', icon: Megaphone },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
 ];
 
 export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
@@ -138,6 +140,7 @@ export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
         {tab === 'webhook-failures' && <WebhookFailuresQueue />}
         {tab === 'chat-reports' && <ChatReportsQueue />}
         {tab === 'notification-broadcast' && <NotificationBroadcastView />}
+        {tab === 'analytics' && <AnalyticsView />}
       </main>
     </div>
   );
