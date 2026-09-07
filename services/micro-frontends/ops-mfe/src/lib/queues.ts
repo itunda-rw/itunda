@@ -344,7 +344,7 @@ export interface SupportTicket {
   id: string;
   userId: string;
   transactionId: string | null;
-  category: 'GENERAL' | 'PAYMENT_DISPUTE' | 'ACCOUNT_TAKEOVER' | 'RIDE_ISSUE';
+  category: 'GENERAL' | 'PAYMENT_DISPUTE' | 'ACCOUNT_TAKEOVER' | 'RIDE_ISSUE' | 'EATS_ORDER_ISSUE';
   description: string;
   status: 'OPEN' | 'RESOLVED';
   resolution: 'REFUNDED' | 'REJECTED' | null;

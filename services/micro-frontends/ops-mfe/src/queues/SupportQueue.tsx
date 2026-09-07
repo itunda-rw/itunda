@@ -12,6 +12,11 @@ const CATEGORY_LABEL: Record<SupportTicket['category'], string> = {
   // Real Uber "trip issue report" category (2026-08-16) -- see backend
   // SupportTicketCategory.RIDE_ISSUE's own doc comment.
   RIDE_ISSUE: 'Ride issue',
+  // Real gap found (Support product-completeness pass, 2026-09-08): this backend
+  // category has existed since the Eats pass (2026-09-06) and is already
+  // creatable via bank-mfe, but this admin queue never learned about it -- a real
+  // EATS_ORDER_ISSUE ticket rendered with an undefined category label here.
+  EATS_ORDER_ISSUE: 'Eats order issue',
 };
 
 function isOverdue(dueBy: string) {
