@@ -23,12 +23,13 @@ import WebhookFailuresQueue from './queues/WebhookFailuresQueue';
 import ChatReportsQueue from './queues/ChatReportsQueue';
 import NotificationBroadcastView from './queues/NotificationBroadcastView';
 import AnalyticsView from './queues/AnalyticsView';
+import SaccoOversightView from './queues/SaccoOversightView';
 
 type Tab =
   | 'overview' | 'fraud' | 'compliance' | 'incidents' | 'reconciliation' | 'support' | 'insurance' | 'partners'
   | 'escrow' | 'agents' | 'hood-reports' | 'property-verification' | 'agents-management' | 'merchants' | 'loan-default'
   | 'fee-waiver' | 'webhook-failures' | 'chat-reports' | 'vehicle-inspection-mechanics' | 'partner-accounts'
-  | 'notification-broadcast' | 'analytics';
+  | 'notification-broadcast' | 'analytics' | 'sacco-oversight';
 
 const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'overview', label: 'Overview', icon: Gauge },
@@ -53,6 +54,7 @@ const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'chat-reports', label: 'Talk message reports', icon: MessageCircleWarning },
   { id: 'notification-broadcast', label: 'Send announcement', icon: Megaphone },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'sacco-oversight', label: 'SACCO oversight', icon: Landmark },
 ];
 
 export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
@@ -141,6 +143,7 @@ export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
         {tab === 'chat-reports' && <ChatReportsQueue />}
         {tab === 'notification-broadcast' && <NotificationBroadcastView />}
         {tab === 'analytics' && <AnalyticsView />}
+        {tab === 'sacco-oversight' && <SaccoOversightView />}
       </main>
     </div>
   );
