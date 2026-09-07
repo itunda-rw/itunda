@@ -129,6 +129,7 @@ class OverdraftServiceTest : BehaviorSpec({
 
         val account = OverdraftAccount(id = "overdraft_1", userId = "user_1", accountId = "account_1", creditLimit = BigDecimal("100000"), interestRate = 8.0)
         every { overdraftAccountRepository.findByUserIdAndStatus("user_1", OverdraftAccountStatus.ACTIVE) } returns account
+        every { overdraftAccountRepository.findByIdForUpdate("overdraft_1") } returns Optional.of(account)
         every { accountRepository.findById("account_1") } returns Optional.of(account("account_1", "user_1"))
         every { overdraftAccountRepository.save(any()) } answers { firstArg() }
         // Given-level, not per-When: IsolationMode.InstancePerLeaf reruns this whole
@@ -142,6 +143,10 @@ class OverdraftServiceTest : BehaviorSpec({
             every { ledgerService.postLedgerTransaction(any(), capture(legsSlot)) } returns LedgerPostResult("ledgertxn_draw_1", emptyList())
 
             val result = service.draw("user_1", BigDecimal("30000"))
+
+            Then("it real-locks the account row before mutating it, not just an unlocked read") {
+                verify(exactly = 1) { overdraftAccountRepository.findByIdForUpdate("overdraft_1") }
+            }
 
             Then("it real-credits the account and real-increases the drawn balance") {
                 account.drawnBalance shouldBe BigDecimal("30000")
@@ -235,6 +240,7 @@ class OverdraftServiceTest : BehaviorSpec({
         val service = OverdraftService(overdraftAccountRepository, accountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
 
         val account = OverdraftAccount(id = "overdraft_1", userId = "user_1", accountId = "account_1", creditLimit = BigDecimal("100000"), interestRate = 8.0, drawnBalance = BigDecimal("36500"))
+        every { overdraftAccountRepository.findByIdForUpdate("overdraft_1") } returns Optional.of(account)
         every { overdraftAccountRepository.save(any()) } answers { firstArg() }
 
         When("accrueInterest runs for one real day at a real 8% annual rate on a real 36,500 RWF balance") {
@@ -242,6 +248,10 @@ class OverdraftServiceTest : BehaviorSpec({
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_interest_1", emptyList())
 
             service.accrueInterest(account)
+
+            Then("it real-locks the account row before mutating it, not the detached scheduler-batch object directly") {
+                verify(exactly = 1) { overdraftAccountRepository.findByIdForUpdate("overdraft_1") }
+            }
 
             Then("it real-accrues exactly 8 RWF (36500 * 0.08 / 365) onto the real drawn balance") {
                 account.drawnBalance shouldBe BigDecimal("36508.00")

@@ -113,8 +113,12 @@ class PostpaidCreditService(
     @Transactional
     fun spend(userId: String, amount: BigDecimal): Map<String, Any?> {
         if (amount <= BigDecimal.ZERO) throw PostpaidCreditInvalidAmountException("Amount must be greater than zero")
-        val line = postpaidCreditLineRepository.findByUserId(userId)
+        val existing = postpaidCreditLineRepository.findByUserId(userId)
             ?: throw PostpaidCreditNotActiveException("No postpaid credit line found -- apply first")
+        // Real lost-update fix (2026-09-07) -- see PostpaidCreditLineRepository
+        // .findByIdForUpdate's own doc comment: two concurrent spends could otherwise
+        // both read the same currentBalance, jointly exceeding creditLimit.
+        val line = postpaidCreditLineRepository.findByIdForUpdate(existing.id).orElseThrow { PostpaidCreditNotActiveException("No postpaid credit line found -- apply first") }
         if (line.status != PostpaidCreditLineStatus.ACTIVE) {
             throw PostpaidCreditSuspendedException("Your postpaid credit line is suspended pending repayment of an overdue balance")
         }
@@ -151,8 +155,11 @@ class PostpaidCreditService(
     @Transactional
     fun repay(userId: String, amount: BigDecimal): Map<String, Any?> {
         if (amount <= BigDecimal.ZERO) throw PostpaidCreditInvalidAmountException("Amount must be greater than zero")
-        val line = postpaidCreditLineRepository.findByUserId(userId)
+        val existing = postpaidCreditLineRepository.findByUserId(userId)
             ?: throw PostpaidCreditNotActiveException("No postpaid credit line found")
+        // Real lost-update fix (2026-09-07) -- see PostpaidCreditLineRepository
+        // .findByIdForUpdate's own doc comment.
+        val line = postpaidCreditLineRepository.findByIdForUpdate(existing.id).orElseThrow { PostpaidCreditNotActiveException("No postpaid credit line found") }
 
         val repayAmount = amount.min(line.currentBalance)
         val account = accountRepository.findById(line.accountId).orElseThrow { PostpaidCreditNoAccountException("Account not found") }
@@ -200,7 +207,14 @@ class PostpaidCreditService(
         }
 
     @Transactional
-    fun accrueLateFee(line: PostpaidCreditLine) {
+    fun accrueLateFee(lineArg: PostpaidCreditLine) {
+        // Real lost-update fix (2026-09-07) -- lineArg was loaded by
+        // PostpaidCreditAccrualScheduler's own earlier, already-committed transaction (a
+        // batch query), so it's detached by the time this method's own @Transactional
+        // starts. Re-fetching locked here closes the same race
+        // VendorCashAdvanceService.runDailyCollection's own identical fix closes -- a
+        // manual spend/repay racing this scheduled accrual on the same line.
+        val line = postpaidCreditLineRepository.findByIdForUpdate(lineArg.id).orElse(null) ?: return
         val dailyRate = BigDecimal.valueOf(LATE_FEE_ANNUAL_RATE).divide(BigDecimal(100), 10, RoundingMode.HALF_UP).divide(BigDecimal(365), 10, RoundingMode.HALF_UP)
         val lateFee = line.currentBalance.multiply(dailyRate).setScale(2, RoundingMode.HALF_UP)
         if (lateFee > BigDecimal.ZERO) {

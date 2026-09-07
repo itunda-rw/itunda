@@ -115,8 +115,12 @@ class OverdraftService(
     @Transactional
     fun draw(userId: String, amount: BigDecimal): Map<String, Any?> {
         if (amount <= BigDecimal.ZERO) throw OverdraftInvalidAmountException("Amount must be greater than zero")
-        val overdraftAccount = overdraftAccountRepository.findByUserIdAndStatus(userId, OverdraftAccountStatus.ACTIVE)
+        val existing = overdraftAccountRepository.findByUserIdAndStatus(userId, OverdraftAccountStatus.ACTIVE)
             ?: throw OverdraftNotActiveException("No active overdraft account found")
+        // Real lost-update fix (2026-09-07) -- see OverdraftAccountRepository
+        // .findByIdForUpdate's own doc comment: two concurrent draws could otherwise
+        // both read the same drawnBalance, jointly exceeding creditLimit.
+        val overdraftAccount = overdraftAccountRepository.findByIdForUpdate(existing.id).orElseThrow { OverdraftNotActiveException("No active overdraft account found") }
 
         val availableCredit = overdraftAccount.creditLimit.subtract(overdraftAccount.drawnBalance)
         if (amount > availableCredit) {
@@ -145,8 +149,11 @@ class OverdraftService(
     @Transactional
     fun repay(userId: String, amount: BigDecimal): Map<String, Any?> {
         if (amount <= BigDecimal.ZERO) throw OverdraftInvalidAmountException("Amount must be greater than zero")
-        val overdraftAccount = overdraftAccountRepository.findByUserIdAndStatus(userId, OverdraftAccountStatus.ACTIVE)
+        val existing = overdraftAccountRepository.findByUserIdAndStatus(userId, OverdraftAccountStatus.ACTIVE)
             ?: throw OverdraftNotActiveException("No active overdraft account found")
+        // Real lost-update fix (2026-09-07) -- see OverdraftAccountRepository
+        // .findByIdForUpdate's own doc comment.
+        val overdraftAccount = overdraftAccountRepository.findByIdForUpdate(existing.id).orElseThrow { OverdraftNotActiveException("No active overdraft account found") }
 
         val repayAmount = amount.min(overdraftAccount.drawnBalance)
         val account = accountRepository.findById(overdraftAccount.accountId).orElseThrow { OverdraftNoAccountException("Account not found") }
@@ -188,7 +195,14 @@ class OverdraftService(
         }
 
     @Transactional
-    fun accrueInterest(account: OverdraftAccount) {
+    fun accrueInterest(accountArg: OverdraftAccount) {
+        // Real lost-update fix (2026-09-07) -- accountArg was loaded by
+        // OverdraftInterestAccrualScheduler's own earlier, already-committed
+        // transaction (a batch query), so it's detached by the time this method's own
+        // @Transactional starts. Re-fetching locked here closes the same race
+        // VendorCashAdvanceService.runDailyCollection's own identical fix closes -- a
+        // manual draw/repay racing this scheduled accrual on the same account.
+        val account = overdraftAccountRepository.findByIdForUpdate(accountArg.id).orElse(null) ?: return
         val dailyRate = BigDecimal.valueOf(account.interestRate).divide(BigDecimal(100), 10, RoundingMode.HALF_UP).divide(BigDecimal(365), 10, RoundingMode.HALF_UP)
         val interest = account.drawnBalance.multiply(dailyRate).setScale(2, RoundingMode.HALF_UP)
         if (interest <= BigDecimal.ZERO) return

@@ -122,6 +122,7 @@ class PostpaidCreditServiceTest : BehaviorSpec({
 
         val line = PostpaidCreditLine(id = "postpaid_1", userId = "user_1", accountId = "account_1", creditLimit = BigDecimal("100000"))
         every { postpaidCreditLineRepository.findByUserId("user_1") } returns line
+        every { postpaidCreditLineRepository.findByIdForUpdate("postpaid_1") } returns Optional.of(line)
         every { accountRepository.findById("account_1") } returns Optional.of(account("account_1", "user_1"))
         every { postpaidCreditLineRepository.save(any()) } answers { firstArg() }
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
@@ -131,6 +132,10 @@ class PostpaidCreditServiceTest : BehaviorSpec({
             every { ledgerService.postLedgerTransaction(any(), capture(legsSlot)) } returns LedgerPostResult("ledgertxn_spend_1", emptyList())
 
             val result = service.spend("user_1", BigDecimal("30000"))
+
+            Then("it real-locks the line row before mutating it, not just an unlocked read") {
+                verify(exactly = 1) { postpaidCreditLineRepository.findByIdForUpdate("postpaid_1") }
+            }
 
             Then("it real-credits the account, real-increases the balance, and real-opens a 30-day cycle due date") {
                 line.currentBalance shouldBe BigDecimal("30000")
@@ -199,6 +204,7 @@ class PostpaidCreditServiceTest : BehaviorSpec({
             currentBalance = BigDecimal("30000"), status = PostpaidCreditLineStatus.SUSPENDED,
         )
         every { postpaidCreditLineRepository.findByUserId("user_1") } returns line
+        every { postpaidCreditLineRepository.findByIdForUpdate("postpaid_1") } returns Optional.of(line)
 
         When("attempting to spend while real overdue") {
             Then("it's real-blocked, matching Naver Pay's own sourced 'service unusable while overdue' rule") {
@@ -228,6 +234,7 @@ class PostpaidCreditServiceTest : BehaviorSpec({
             id = "postpaid_1", userId = "user_1", accountId = "account_1", creditLimit = BigDecimal("100000"),
             currentBalance = BigDecimal("36500"), cycleDueAt = Instant.now().minusSeconds(3600),
         )
+        every { postpaidCreditLineRepository.findByIdForUpdate("postpaid_1") } returns Optional.of(line)
         every { postpaidCreditLineRepository.save(any()) } answers { firstArg() }
 
         When("accrueLateFee runs for one real day at the real sourced 12% annual rate on a real 36,500 RWF balance") {
@@ -235,6 +242,10 @@ class PostpaidCreditServiceTest : BehaviorSpec({
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_latefee_1", emptyList())
 
             service.accrueLateFee(line)
+
+            Then("it real-locks the line row before mutating it, not the detached scheduler-batch object directly") {
+                verify(exactly = 1) { postpaidCreditLineRepository.findByIdForUpdate("postpaid_1") }
+            }
 
             Then("it real-accrues exactly 12 RWF (36500 * 0.12 / 365) onto the real balance and real-suspends the line") {
                 line.currentBalance shouldBe BigDecimal("36512.00")
