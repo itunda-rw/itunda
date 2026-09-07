@@ -70,6 +70,15 @@ class GiftServiceTest : BehaviorSpec({
                 gift.status shouldBe GiftStatus.PENDING
                 verify(exactly = 1) { messagingService.sendMessage("user_sender", "conversation_1", any()) }
             }
+
+            // Real gap found live (Gift product-completeness pass, 2026-09-08): every
+            // rateLimiter/fraudRuleEngine mock in this file was relaxed = true with zero
+            // verify{} anywhere, so a future accidental removal of either real call
+            // would have compiled and passed silently.
+            Then("the real rate limiter and real fraud engine are actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("gift:send:user_sender", limit = 20, window = java.time.Duration.ofHours(1)) }
+                verify(exactly = 1) { fraudRuleEngine.evaluate("user_sender", "user_recipient", BigDecimal("5000"), any()) }
+            }
         }
 
         When("the sender doesn't have enough balance") {
@@ -237,6 +246,10 @@ class GiftServiceTest : BehaviorSpec({
             Then("it moves the real escrowed amount into their account and marks it CLAIMED") {
                 claimed.status shouldBe GiftStatus.CLAIMED
                 (claimed.claimedAt != null) shouldBe true
+            }
+
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("gift:claim:user_recipient", limit = 30, window = java.time.Duration.ofHours(1)) }
             }
         }
 

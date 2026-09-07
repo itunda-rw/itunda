@@ -76,7 +76,12 @@ class GiftVoucherServiceTest : BehaviorSpec({
         every { transactionRepository.save(any()) } answers { firstArg() }
         val ledgerService = mockk<LedgerService>()
         val messagingService = mockk<MessagingService>()
-        val svc = service(giftVoucherRepository, merchantRepository, merchantProductRepository, accountRepository, userRepository, transactionRepository, ledgerService, messagingService)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val svc = service(
+            giftVoucherRepository, merchantRepository, merchantProductRepository, accountRepository, userRepository,
+            transactionRepository, ledgerService, messagingService, rateLimiter, fraudRuleEngine,
+        )
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
         val product = MerchantProduct(id = "product_1", merchantId = "merchant_1", name = "Iced Latte", price = BigDecimal("3000"))
@@ -103,6 +108,15 @@ class GiftVoucherServiceTest : BehaviorSpec({
                 voucher.productNameSnapshot shouldBe "Iced Latte"
                 voucher.status shouldBe GiftVoucherStatus.ACTIVE
                 verify(exactly = 1) { messagingService.sendMessage("user_purchaser", "conversation_1", any()) }
+            }
+
+            // Real gap found live (Gift product-completeness pass, 2026-09-08): every
+            // rateLimiter/fraudRuleEngine mock in this file was relaxed = true with zero
+            // verify{} anywhere, so a future accidental removal of either real call
+            // would have compiled and passed silently.
+            Then("the real rate limiter and real fraud engine are actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("giftvoucher:purchase:user_purchaser", limit = 20, window = java.time.Duration.ofHours(1)) }
+                verify(exactly = 1) { fraudRuleEngine.evaluate("user_purchaser", "user_recipient", BigDecimal("3000"), any()) }
             }
         }
 
