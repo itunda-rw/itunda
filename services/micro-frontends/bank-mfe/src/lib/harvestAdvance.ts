@@ -55,6 +55,20 @@ export const joinCooperative = (cooperativeId: string) =>
 export const fetchMyCooperativeMemberships = () =>
   apiFetch<{ success: boolean; memberships: CooperativeMembership[] }>('/api/v1/cooperatives/my-memberships').then((r) => r.memberships);
 
+export interface CooperativeOverview {
+  cooperative: Cooperative;
+  myMembership: CooperativeMembership;
+  memberCount: number;
+}
+
+// Real gap found live (2026-09-07, Loans product-completeness pass): Android's
+// HarvestAdvanceScreen.kt already fixed this exact gap ("a member could
+// request/repay advances but never actually saw their own cooperative's name, crop
+// type, or member count") -- web never got the same fix, so a membership row only
+// ever showed the raw cooperativeId.
+export const fetchCooperativeOverview = (cooperativeId: string) =>
+  apiFetch<{ success: boolean } & CooperativeOverview>(`/api/v1/cooperatives/${cooperativeId}/overview`);
+
 // Idempotency-Key added 2026-09-05 -- matching disburseHarvestAdvance/
 // repayHarvestAdvance below. Worse than a mere confusing-error risk without it:
 // CooperativeService.requestAdvance has no "already pending" guard at all, so a

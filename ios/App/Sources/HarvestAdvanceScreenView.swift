@@ -21,6 +21,11 @@ struct HarvestAdvanceScreenView: View {
 
     @State private var memberships: [CooperativeMembershipDto]?
     @State private var advances: [HarvestAdvanceDto]?
+    // Real gap found live (2026-09-07, Loans product-completeness pass): Android's
+    // HarvestAdvanceScreen.kt already fixed this exact gap ("a member could
+    // request/repay advances but never actually saw their own cooperative's name,
+    // crop type, or member count") -- iOS never got the same fix.
+    @State private var overview: CooperativeOverviewResponse?
     @State private var error: String?
     @State private var busy = false
 
@@ -77,6 +82,10 @@ struct HarvestAdvanceScreenView: View {
                         .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
                     } else if let membership = memberships?.first {
                         VStack(alignment: .leading, spacing: 8) {
+                            if let overview {
+                                Text("\(overview.cooperative.name) · \(overview.cooperative.cropType)").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                Text("\(overview.memberCount) member\(overview.memberCount == 1 ? "" : "s")").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            }
                             Text("Request an advance").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                             IdsTextField("Amount (RWF, max 500,000)", text: $advanceAmount, keyboardType: .numberPad)
                             IdsTextField("Purpose (INPUT_FINANCING / POST_HARVEST)", text: $advancePurpose)
@@ -142,8 +151,15 @@ struct HarvestAdvanceScreenView: View {
 
     private func load() async {
         do {
-            memberships = try await NetworkClient.shared.getMyCooperativeMemberships().memberships
+            let memberships = try await NetworkClient.shared.getMyCooperativeMemberships().memberships
+            self.memberships = memberships
             advances = try await NetworkClient.shared.getMyHarvestAdvances().advances
+            // Purely informational -- must never block the rest of this screen from
+            // loading real data, same discipline BankViewModel's own Discover-items
+            // fetch already establishes.
+            if let cooperativeId = memberships.first?.cooperativeId {
+                overview = try? await NetworkClient.shared.getCooperativeOverview(cooperativeId: cooperativeId)
+            }
             error = nil
         } catch {
             self.error = "Could not load your cooperative data."

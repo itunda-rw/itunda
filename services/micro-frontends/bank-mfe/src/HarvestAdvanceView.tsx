@@ -8,9 +8,9 @@ import { useEffect, useState } from 'react';
 import { useI18n } from './i18n/I18nContext';
 import { ApiError } from './lib/api';
 import {
-  disburseHarvestAdvance, fetchMyCooperativeMemberships, fetchMyHarvestAdvances, joinCooperative,
+  disburseHarvestAdvance, fetchCooperativeOverview, fetchMyCooperativeMemberships, fetchMyHarvestAdvances, joinCooperative,
   registerCooperative, repayHarvestAdvance, requestHarvestAdvance,
-  type CooperativeMembership, type HarvestAdvance,
+  type CooperativeMembership, type CooperativeOverview, type HarvestAdvance,
 } from './lib/harvestAdvance';
 import { useDeferredLoading } from './useDeferredLoading';
 
@@ -149,8 +149,7 @@ export function HarvestAdvanceView() {
       ) : (
         memberships.map((m) => (
           <div key={m.id} style={{ padding: '12px 0' }}>
-            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>Cooperative membership {m.cooperativeId}</p>
-            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Member since {new Date(m.memberSince).toLocaleDateString()}</p>
+            <CooperativeMembershipHeader membership={m} />
             <input
               type="number" value={advanceAmount} onChange={(e) => setAdvanceAmount(e.target.value)} placeholder="Advance amount (RWF)"
               style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
@@ -205,5 +204,31 @@ export function HarvestAdvanceView() {
         </div>
       )}
     </div>
+  );
+}
+
+// Real gap found live (2026-09-07, Loans product-completeness pass): a member could
+// request/repay advances but never actually saw their own cooperative's name, crop
+// type, or member count -- only the raw cooperativeId. Android's own
+// HarvestAdvanceScreen.kt already fixed this exact gap; this ports the same fix to
+// web. Self-fetches its own minimal real data, same pattern BankView's own
+// depositProtection/linkedAccounts already establish.
+function CooperativeMembershipHeader({ membership }: { membership: CooperativeMembership }) {
+  const [overview, setOverview] = useState<CooperativeOverview | null>(null);
+
+  useEffect(() => {
+    fetchCooperativeOverview(membership.cooperativeId).then(setOverview).catch(() => {});
+  }, [membership.cooperativeId]);
+
+  return (
+    <>
+      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>
+        {overview ? `${overview.cooperative.name} · ${overview.cooperative.cropType}` : `Cooperative membership ${membership.cooperativeId}`}
+      </p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
+        Member since {new Date(membership.memberSince).toLocaleDateString()}
+        {overview ? ` · ${overview.memberCount.toLocaleString('en-US')} member${overview.memberCount === 1 ? '' : 's'}` : ''}
+      </p>
+    </>
   );
 }

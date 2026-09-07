@@ -317,6 +317,16 @@ public struct CooperativeMembershipResponse: Decodable { public let success: Boo
 public struct CooperativeMembershipsResponse: Decodable { public let success: Bool; public let memberships: [CooperativeMembershipDto] }
 public struct HarvestAdvanceResponse: Decodable { public let success: Bool; public let advance: HarvestAdvanceDto }
 public struct HarvestAdvancesResponse: Decodable { public let success: Bool; public let advances: [HarvestAdvanceDto] }
+// Real gap found live (2026-09-07, Loans product-completeness pass): Android's
+// ApiService.kt/HarvestAdvanceScreen.kt already closed this exact gap ("a member
+// could request/repay advances but never actually saw their own cooperative's
+// name, crop type, or member count") -- iOS never got the same fix.
+public struct CooperativeOverviewResponse: Decodable {
+    public let success: Bool
+    public let cooperative: CooperativeDto
+    public let myMembership: CooperativeMembershipDto
+    public let memberCount: Int
+}
 
 // Real Rwanda VUP (Vision 2020 Umurenge Programme) Financial Services means-tested
 // microloan -- sourced beyond this session's usual Toss/Kakao/Naver/Coupang reference
@@ -2200,6 +2210,10 @@ extension NetworkClient {
     }
 
     public func getMyCooperativeMemberships() async throws -> CooperativeMembershipsResponse { try await get("api/v1/cooperatives/my-memberships") }
+
+    public func getCooperativeOverview(cooperativeId: String) async throws -> CooperativeOverviewResponse {
+        try await get("api/v1/cooperatives/\(cooperativeId)/overview")
+    }
 
     // Idempotency-Key added 2026-09-05 -- matching disburseHarvestAdvance/
     // repayHarvestAdvance below. Worse than a mere confusing-error risk without it:
