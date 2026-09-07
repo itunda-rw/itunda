@@ -91,6 +91,11 @@ class FamilyLinkService(
 
     @Transactional
     fun respondToInvite(childUserId: String, linkId: String, accept: Boolean): FamilyLink {
+        // Real gap found live (Family product-completeness pass, 2026-09-08): every
+        // other write action in this service already had a rate limit except this one
+        // -- a generous 20/hr, matching ChatReportService's own precedent for a
+        // comparable occasional, non-money-moving user action.
+        rateLimiter.checkLimit("family:respond:$childUserId", limit = 20, window = Duration.ofHours(1))
         val link = familyLinkRepository.findByIdAndChildUserId(linkId, childUserId) ?: throw FamilyLinkNotFoundException("Invitation not found")
         if (link.status != FamilyLinkStatus.PENDING) throw FamilyLinkNotPendingException("This invitation has already been responded to")
         link.status = if (accept) FamilyLinkStatus.ACTIVE else FamilyLinkStatus.DECLINED
@@ -131,6 +136,9 @@ class FamilyLinkService(
 
     @Transactional
     fun revokeLink(userId: String, linkId: String): FamilyLink {
+        // Real gap found live (Family product-completeness pass, 2026-09-08) -- see
+        // respondToInvite's own identical comment above.
+        rateLimiter.checkLimit("family:revoke:$userId", limit = 20, window = Duration.ofHours(1))
         val link = familyLinkRepository.findByIdAndGuardianUserId(linkId, userId)
             ?: familyLinkRepository.findByIdAndChildUserId(linkId, userId)
             ?: throw FamilyLinkNotFoundException("Family link not found")
@@ -146,6 +154,9 @@ class FamilyLinkService(
     // null clears the limit (an honest, explicit opt-out, not just "very large number").
     @Transactional
     fun setSpendLimit(guardianUserId: String, childUserId: String, dailySpendLimit: BigDecimal?): FamilyLink {
+        // Real gap found live (Family product-completeness pass, 2026-09-08) -- see
+        // respondToInvite's own identical comment above.
+        rateLimiter.checkLimit("family:spend-limit:$guardianUserId", limit = 20, window = Duration.ofHours(1))
         val link = familyLinkRepository.findByGuardianUserIdAndChildUserIdAndStatus(guardianUserId, childUserId, FamilyLinkStatus.ACTIVE)
             ?: throw FamilyLinkUnauthorizedException("No active family link with this account")
         if (dailySpendLimit != null && dailySpendLimit <= BigDecimal.ZERO) {

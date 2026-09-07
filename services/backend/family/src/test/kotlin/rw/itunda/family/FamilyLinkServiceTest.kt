@@ -133,6 +133,16 @@ class FamilyLinkServiceTest : BehaviorSpec({
             Then("the real guardian also gets a real push notification, not just the in-app one") {
                 io.mockk.verify(exactly = 1) { pushNotificationService.sendToUser("guardian_1", "Family link accepted", any(), any()) }
             }
+
+            // Real gap found live (Family product-completeness pass, 2026-09-08):
+            // respondToInvite had no rate limit at all, unlike every other write
+            // action in this service. This is a regression test that proves the
+            // real call actually fires -- rateLimiter was relaxed = true with zero
+            // verify{} anywhere in this file, so a future accidental removal of the
+            // checkLimit call would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                io.mockk.verify(exactly = 1) { rateLimiter.checkLimit("family:respond:child_1", limit = 20, window = java.time.Duration.ofHours(1)) }
+            }
         }
 
         When("the child declines") {
@@ -242,6 +252,10 @@ class FamilyLinkServiceTest : BehaviorSpec({
             Then("it persists the real limit on the link") {
                 savedSlot.first().dailySpendLimit shouldBe BigDecimal("5000")
             }
+
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                io.mockk.verify(exactly = 1) { rateLimiter.checkLimit("family:spend-limit:guardian_1", limit = 20, window = java.time.Duration.ofHours(1)) }
+            }
         }
 
         When("the guardian clears a real spend limit with null") {
@@ -279,6 +293,68 @@ class FamilyLinkServiceTest : BehaviorSpec({
                     service.setSpendLimit("stranger_1", "child_1", BigDecimal("5000"))
                     throw AssertionError("expected FamilyLinkUnauthorizedException")
                 } catch (e: FamilyLinkUnauthorizedException) {
+                    // expected
+                }
+            }
+        }
+
+        // Real gap found live (Family product-completeness pass, 2026-09-08):
+        // revokeLink had zero dedicated test coverage of any kind before this pass,
+        // unlike every other write action in this service.
+        When("the guardian revokes a real active link") {
+            val active = FamilyLink(id = "familylink_1", guardianUserId = "guardian_1", childUserId = "child_1", status = FamilyLinkStatus.ACTIVE)
+            every { familyLinkRepository.findByIdAndGuardianUserId("familylink_1", "guardian_1") } returns active
+            val savedSlot = mutableListOf<FamilyLink>()
+            every { familyLinkRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            service.revokeLink("guardian_1", "familylink_1")
+
+            Then("it becomes REVOKED") {
+                savedSlot.first().status shouldBe FamilyLinkStatus.REVOKED
+            }
+
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                io.mockk.verify(exactly = 1) { rateLimiter.checkLimit("family:revoke:guardian_1", limit = 20, window = java.time.Duration.ofHours(1)) }
+            }
+        }
+
+        When("the child revokes a real active link (either side can end it)") {
+            val active = FamilyLink(id = "familylink_1", guardianUserId = "guardian_1", childUserId = "child_1", status = FamilyLinkStatus.ACTIVE)
+            every { familyLinkRepository.findByIdAndGuardianUserId("familylink_1", "child_1") } returns null
+            every { familyLinkRepository.findByIdAndChildUserId("familylink_1", "child_1") } returns active
+            val savedSlot = mutableListOf<FamilyLink>()
+            every { familyLinkRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            service.revokeLink("child_1", "familylink_1")
+
+            Then("it becomes REVOKED") {
+                savedSlot.first().status shouldBe FamilyLinkStatus.REVOKED
+            }
+        }
+
+        When("revoking a link that isn't ACTIVE") {
+            val pending = FamilyLink(id = "familylink_1", guardianUserId = "guardian_1", childUserId = "child_1", status = FamilyLinkStatus.PENDING)
+            every { familyLinkRepository.findByIdAndGuardianUserId("familylink_1", "guardian_1") } returns pending
+
+            Then("it's rejected") {
+                try {
+                    service.revokeLink("guardian_1", "familylink_1")
+                    throw AssertionError("expected FamilyLinkNotActiveException")
+                } catch (e: FamilyLinkNotActiveException) {
+                    // expected
+                }
+            }
+        }
+
+        When("a stranger with no real relationship to the link tries to revoke it") {
+            every { familyLinkRepository.findByIdAndGuardianUserId("familylink_1", "stranger_1") } returns null
+            every { familyLinkRepository.findByIdAndChildUserId("familylink_1", "stranger_1") } returns null
+
+            Then("it's honestly rejected, not leaked") {
+                try {
+                    service.revokeLink("stranger_1", "familylink_1")
+                    throw AssertionError("expected FamilyLinkNotFoundException")
+                } catch (e: FamilyLinkNotFoundException) {
                     // expected
                 }
             }
