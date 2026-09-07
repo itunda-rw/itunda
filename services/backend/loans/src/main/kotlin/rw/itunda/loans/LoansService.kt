@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.creditscore.CreditScoreService
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
@@ -19,6 +20,7 @@ import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.AccountRepository
 import org.slf4j.LoggerFactory
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -57,6 +59,7 @@ class LoansService(
     private val creditScoreService: CreditScoreService,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
+    private val rateLimiter: RateLimiter,
 ) {
     private val log = LoggerFactory.getLogger(LoansService::class.java)
 
@@ -79,6 +82,10 @@ class LoansService(
 
     @Transactional
     fun applyForLoan(userId: String, loanId: String, amount: BigDecimal): Map<String, Any?> {
+        // Real anti-spam/cost limit -- same "apply" convention every other loan product
+        // in this module already establishes (StudentLoanService/VupLoanService/
+        // VendorCashAdvanceService), never wired in here until now.
+        rateLimiter.checkLimit("loans:apply:$userId", limit = 5, window = Duration.ofDays(1))
         val offer = LoanCatalog.find(loanId) ?: throw LoanOfferNotFoundException("Loan offer not found")
         if (amount <= BigDecimal.ZERO || amount > offer.maxAmount) {
             throw LoanAmountInvalidException("Amount must be between 1 and ${offer.maxAmount} for ${offer.name}")
@@ -211,6 +218,10 @@ class LoansService(
     // row lock -- two concurrent repayments could both cap at the same stale `outstanding`.
     @Transactional
     fun repayLoan(userId: String, loanId: String, amount: BigDecimal): Map<String, Any?> {
+        // Real anti-spam/cost limit -- same "frequent, repeatable money-movement action"
+        // convention P2pService.sendMoney/AccountService.confirmTransfer already
+        // establish, never wired in here until now.
+        rateLimiter.checkLimit("loans:repay:$userId", limit = 30, window = Duration.ofHours(1))
         val loan = loanAccountRepository.findByIdForUpdate(loanId).orElseThrow { LoanNotFoundException("Loan not found") }
         // Real residual-IDOR fix (2026-09-03): this used to throw a distinct
         // LoanNotOwnedException, mapped to a 404 but with its own "LOAN_NOT_OWNED" error
@@ -278,6 +289,8 @@ class LoansService(
     // each disbursing a real new loan and paying off the old one twice.
     @Transactional
     fun refinanceLoan(userId: String, loanId: String): Map<String, Any?> {
+        // Real anti-spam/cost limit -- same convention repayLoan above now establishes.
+        rateLimiter.checkLimit("loans:refinance:$userId", limit = 30, window = Duration.ofHours(1))
         val loan = loanAccountRepository.findByIdForUpdate(loanId).orElseThrow { LoanNotFoundException("Loan not found") }
         // Real residual-IDOR fix (2026-09-03): this used to throw a distinct
         // LoanNotOwnedException, mapped to a 404 but with its own "LOAN_NOT_OWNED" error

@@ -52,7 +52,7 @@ class LoansServiceTest : BehaviorSpec({
         // stub declared inside one When block never applies to a different When's leaf.
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = LoansService(accountRepository, loanAccountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
+        val service = LoansService(accountRepository, loanAccountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService, mockk(relaxed = true))
 
         When("applying for a high amount (80% of the offer's max) with a real qualifying score") {
             every { loanAccountRepository.findByUserId("user_1") } returns emptyList()
@@ -404,7 +404,7 @@ class LoansServiceTest : BehaviorSpec({
         val creditScoreService = mockk<CreditScoreService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = LoansService(accountRepository, loanAccountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
+        val service = LoansService(accountRepository, loanAccountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService, mockk(relaxed = true))
 
         When("listing all offers with no lender filter") {
             val offers = service.getOffers()
@@ -441,7 +441,7 @@ class LoansServiceTest : BehaviorSpec({
         val creditScoreService = mockk<CreditScoreService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = LoansService(accountRepository, loanAccountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
+        val service = LoansService(accountRepository, loanAccountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService, mockk(relaxed = true))
         every { loanAccountRepository.findByUserId("user_after_commit") } returns emptyList()
         every { creditScoreService.computeScore("user_after_commit") } returns CreditScoreResult(700, emptyList(), Instant.now())
         every { accountRepository.findByUserIdAndType("user_after_commit", AccountType.MAIN) } returns account("account_after_commit", "user_after_commit")

@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.creditscore.CreditScoreService
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
@@ -44,6 +45,7 @@ class OverdraftService(
     private val creditScoreService: CreditScoreService,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
+    private val rateLimiter: RateLimiter,
 ) {
     companion object {
         // Real underwriting reuses LoansService's own exact real gate (same score a
@@ -61,6 +63,10 @@ class OverdraftService(
 
     @Transactional
     fun openOverdraft(userId: String, requestedLimit: BigDecimal): OverdraftAccount {
+        // Real anti-spam/cost limit -- same "apply" convention every other loan product
+        // in this module already establishes (StudentLoanService/VupLoanService/
+        // VendorCashAdvanceService), never wired in here until now.
+        rateLimiter.checkLimit("overdraft:open:$userId", limit = 5, window = Duration.ofDays(1))
         if (requestedLimit <= BigDecimal.ZERO || requestedLimit > MAX_CREDIT_LIMIT) {
             throw OverdraftLimitInvalidException("Requested limit must be between 1 and $MAX_CREDIT_LIMIT RWF")
         }
@@ -115,6 +121,10 @@ class OverdraftService(
     @Transactional
     fun draw(userId: String, amount: BigDecimal): Map<String, Any?> {
         if (amount <= BigDecimal.ZERO) throw OverdraftInvalidAmountException("Amount must be greater than zero")
+        // Real anti-spam/cost limit -- same "frequent, repeatable money-movement action"
+        // convention P2pService.sendMoney/AccountService.confirmTransfer already
+        // establish, never wired in here until now.
+        rateLimiter.checkLimit("overdraft:draw:$userId", limit = 30, window = Duration.ofHours(1))
         val existing = overdraftAccountRepository.findByUserIdAndStatus(userId, OverdraftAccountStatus.ACTIVE)
             ?: throw OverdraftNotActiveException("No active overdraft account found")
         // Real lost-update fix (2026-09-07) -- see OverdraftAccountRepository
@@ -149,6 +159,8 @@ class OverdraftService(
     @Transactional
     fun repay(userId: String, amount: BigDecimal): Map<String, Any?> {
         if (amount <= BigDecimal.ZERO) throw OverdraftInvalidAmountException("Amount must be greater than zero")
+        // Real anti-spam/cost limit -- same convention draw above now establishes.
+        rateLimiter.checkLimit("overdraft:repay:$userId", limit = 30, window = Duration.ofHours(1))
         val existing = overdraftAccountRepository.findByUserIdAndStatus(userId, OverdraftAccountStatus.ACTIVE)
             ?: throw OverdraftNotActiveException("No active overdraft account found")
         // Real lost-update fix (2026-09-07) -- see OverdraftAccountRepository

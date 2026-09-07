@@ -2,6 +2,7 @@ package rw.itunda.loans
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.creditscore.CreditScoreService
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
@@ -42,6 +43,7 @@ class PostpaidCreditService(
     private val creditScoreService: CreditScoreService,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
+    private val rateLimiter: RateLimiter,
 ) {
     companion object {
         // Real BNPL's own defining market position: every registered account
@@ -88,6 +90,10 @@ class PostpaidCreditService(
 
     @Transactional
     fun applyForPostpaidCredit(userId: String): PostpaidCreditLine {
+        // Real anti-spam/cost limit -- same "apply" convention every other loan product
+        // in this module already establishes (StudentLoanService/VupLoanService/
+        // VendorCashAdvanceService), never wired in here until now.
+        rateLimiter.checkLimit("postpaid-credit:apply:$userId", limit = 5, window = Duration.ofDays(1))
         if (postpaidCreditLineRepository.findByUserId(userId) != null) {
             throw PostpaidCreditAlreadyOpenException("You already have a real postpaid credit line")
         }
@@ -113,6 +119,10 @@ class PostpaidCreditService(
     @Transactional
     fun spend(userId: String, amount: BigDecimal): Map<String, Any?> {
         if (amount <= BigDecimal.ZERO) throw PostpaidCreditInvalidAmountException("Amount must be greater than zero")
+        // Real anti-spam/cost limit -- same "frequent, repeatable money-movement action"
+        // convention P2pService.sendMoney/AccountService.confirmTransfer already
+        // establish, never wired in here until now.
+        rateLimiter.checkLimit("postpaid-credit:spend:$userId", limit = 30, window = Duration.ofHours(1))
         val existing = postpaidCreditLineRepository.findByUserId(userId)
             ?: throw PostpaidCreditNotActiveException("No postpaid credit line found -- apply first")
         // Real lost-update fix (2026-09-07) -- see PostpaidCreditLineRepository
@@ -155,6 +165,8 @@ class PostpaidCreditService(
     @Transactional
     fun repay(userId: String, amount: BigDecimal): Map<String, Any?> {
         if (amount <= BigDecimal.ZERO) throw PostpaidCreditInvalidAmountException("Amount must be greater than zero")
+        // Real anti-spam/cost limit -- same convention spend above now establishes.
+        rateLimiter.checkLimit("postpaid-credit:repay:$userId", limit = 30, window = Duration.ofHours(1))
         val existing = postpaidCreditLineRepository.findByUserId(userId)
             ?: throw PostpaidCreditNotActiveException("No postpaid credit line found")
         // Real lost-update fix (2026-09-07) -- see PostpaidCreditLineRepository

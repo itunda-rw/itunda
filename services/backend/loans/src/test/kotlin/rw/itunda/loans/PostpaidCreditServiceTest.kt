@@ -8,6 +8,8 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.creditscore.CreditScoreResult
 import rw.itunda.core.creditscore.CreditScoreService
 import rw.itunda.core.domain.LedgerAccountType
@@ -50,7 +52,7 @@ class PostpaidCreditServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>()
         val service = PostpaidCreditService(
             postpaidCreditLineRepository, accountRepository, ledgerService, creditScoreService,
-            notificationRepository, pushNotificationService,
+            notificationRepository, pushNotificationService, mockk(relaxed = true),
         )
 
         every { postpaidCreditLineRepository.findByUserId("user_1") } returns null
@@ -90,7 +92,7 @@ class PostpaidCreditServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>()
         val service = PostpaidCreditService(
             postpaidCreditLineRepository, accountRepository, ledgerService, creditScoreService,
-            notificationRepository, pushNotificationService,
+            notificationRepository, pushNotificationService, mockk(relaxed = true),
         )
 
         every { postpaidCreditLineRepository.findByUserId("user_1") } returns
@@ -117,7 +119,7 @@ class PostpaidCreditServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>()
         val service = PostpaidCreditService(
             postpaidCreditLineRepository, accountRepository, ledgerService, creditScoreService,
-            notificationRepository, pushNotificationService,
+            notificationRepository, pushNotificationService, mockk(relaxed = true),
         )
 
         val line = PostpaidCreditLine(id = "postpaid_1", userId = "user_1", accountId = "account_1", creditLimit = BigDecimal("100000"))
@@ -187,6 +189,33 @@ class PostpaidCreditServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a real caller who has already exceeded a real postpaid credit rate limit") {
+        val postpaidCreditLineRepository = mockk<PostpaidCreditLineRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val creditScoreService = mockk<CreditScoreService>()
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = PostpaidCreditService(
+            postpaidCreditLineRepository, accountRepository, ledgerService, creditScoreService,
+            notificationRepository, pushNotificationService, rateLimiter,
+        )
+
+        When("spending against a real postpaid credit line") {
+            every { rateLimiter.checkLimit("postpaid-credit:spend:user_1", limit = 30, window = any()) } throws RateLimitExceededException("Too many requests")
+
+            Then("a real RateLimitExceededException fires before ever touching the real line row") {
+                try {
+                    service.spend("user_1", BigDecimal("1000"))
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { postpaidCreditLineRepository.findByUserId(any()) }
+                }
+            }
+        }
+    }
+
     Given("a real SUSPENDED postpaid credit line, blocking further spend") {
         val postpaidCreditLineRepository = mockk<PostpaidCreditLineRepository>()
         val accountRepository = mockk<AccountRepository>()
@@ -196,7 +225,7 @@ class PostpaidCreditServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>()
         val service = PostpaidCreditService(
             postpaidCreditLineRepository, accountRepository, ledgerService, creditScoreService,
-            notificationRepository, pushNotificationService,
+            notificationRepository, pushNotificationService, mockk(relaxed = true),
         )
 
         val line = PostpaidCreditLine(
@@ -227,7 +256,7 @@ class PostpaidCreditServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>()
         val service = PostpaidCreditService(
             postpaidCreditLineRepository, accountRepository, ledgerService, creditScoreService,
-            notificationRepository, pushNotificationService,
+            notificationRepository, pushNotificationService, mockk(relaxed = true),
         )
 
         val line = PostpaidCreditLine(
@@ -267,7 +296,7 @@ class PostpaidCreditServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>()
         val service = PostpaidCreditService(
             postpaidCreditLineRepository, accountRepository, ledgerService, creditScoreService,
-            notificationRepository, pushNotificationService,
+            notificationRepository, pushNotificationService, mockk(relaxed = true),
         )
 
         val overdue = PostpaidCreditLine(id = "postpaid_a", userId = "user_a", accountId = "account_a", creditLimit = BigDecimal("100000"), currentBalance = BigDecimal("10000"), cycleDueAt = Instant.now().minusSeconds(3600))
@@ -293,7 +322,7 @@ class PostpaidCreditServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>()
         val service = PostpaidCreditService(
             postpaidCreditLineRepository, accountRepository, ledgerService, creditScoreService,
-            notificationRepository, pushNotificationService,
+            notificationRepository, pushNotificationService, mockk(relaxed = true),
         )
 
         val dueSoon = PostpaidCreditLine(id = "postpaid_a", userId = "user_a", accountId = "account_a", creditLimit = BigDecimal("100000"), currentBalance = BigDecimal("10000"), cycleDueAt = Instant.now().plus(java.time.Duration.ofDays(2)))
@@ -320,7 +349,7 @@ class PostpaidCreditServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>()
         val service = PostpaidCreditService(
             postpaidCreditLineRepository, accountRepository, ledgerService, creditScoreService,
-            notificationRepository, pushNotificationService,
+            notificationRepository, pushNotificationService, mockk(relaxed = true),
         )
 
         val line = PostpaidCreditLine(

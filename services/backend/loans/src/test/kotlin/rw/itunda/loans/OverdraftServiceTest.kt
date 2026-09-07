@@ -6,6 +6,8 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.creditscore.CreditScoreResult
 import rw.itunda.core.creditscore.CreditScoreService
 import rw.itunda.core.domain.LedgerAccountType
@@ -44,7 +46,7 @@ class OverdraftServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
-        val service = OverdraftService(overdraftAccountRepository, accountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
+        val service = OverdraftService(overdraftAccountRepository, accountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService, mockk(relaxed = true))
 
         every { overdraftAccountRepository.findByUserIdAndStatus("user_1", OverdraftAccountStatus.ACTIVE) } returns null
         every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
@@ -101,7 +103,7 @@ class OverdraftServiceTest : BehaviorSpec({
         val creditScoreService = mockk<CreditScoreService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = OverdraftService(overdraftAccountRepository, accountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
+        val service = OverdraftService(overdraftAccountRepository, accountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService, mockk(relaxed = true))
 
         every { overdraftAccountRepository.findByUserIdAndStatus("user_1", OverdraftAccountStatus.ACTIVE) } returns
             OverdraftAccount(id = "overdraft_1", userId = "user_1", accountId = "account_1", creditLimit = BigDecimal("100000"), interestRate = 8.0)
@@ -125,7 +127,7 @@ class OverdraftServiceTest : BehaviorSpec({
         val creditScoreService = mockk<CreditScoreService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = OverdraftService(overdraftAccountRepository, accountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
+        val service = OverdraftService(overdraftAccountRepository, accountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService, mockk(relaxed = true))
 
         val account = OverdraftAccount(id = "overdraft_1", userId = "user_1", accountId = "account_1", creditLimit = BigDecimal("100000"), interestRate = 8.0)
         every { overdraftAccountRepository.findByUserIdAndStatus("user_1", OverdraftAccountStatus.ACTIVE) } returns account
@@ -214,7 +216,7 @@ class OverdraftServiceTest : BehaviorSpec({
         val creditScoreService = mockk<CreditScoreService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = OverdraftService(overdraftAccountRepository, accountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
+        val service = OverdraftService(overdraftAccountRepository, accountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService, mockk(relaxed = true))
 
         every { overdraftAccountRepository.findByUserIdAndStatus("user_2", OverdraftAccountStatus.ACTIVE) } returns null
 
@@ -230,6 +232,30 @@ class OverdraftServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a real caller who has already exceeded a real overdraft rate limit") {
+        val overdraftAccountRepository = mockk<OverdraftAccountRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val creditScoreService = mockk<CreditScoreService>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>()
+        val service = OverdraftService(overdraftAccountRepository, accountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService, rateLimiter)
+
+        When("drawing against a real overdraft account") {
+            every { rateLimiter.checkLimit("overdraft:draw:user_1", limit = 30, window = any()) } throws RateLimitExceededException("Too many requests")
+
+            Then("a real RateLimitExceededException fires before ever touching the real account row") {
+                try {
+                    service.draw("user_1", BigDecimal("1000"))
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { overdraftAccountRepository.findByUserIdAndStatus(any(), any()) }
+                }
+            }
+        }
+    }
+
     Given("a real overdraft account with a real nonzero drawn balance, due for real daily interest accrual") {
         val overdraftAccountRepository = mockk<OverdraftAccountRepository>()
         val accountRepository = mockk<AccountRepository>()
@@ -237,7 +263,7 @@ class OverdraftServiceTest : BehaviorSpec({
         val creditScoreService = mockk<CreditScoreService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = OverdraftService(overdraftAccountRepository, accountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
+        val service = OverdraftService(overdraftAccountRepository, accountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService, mockk(relaxed = true))
 
         val account = OverdraftAccount(id = "overdraft_1", userId = "user_1", accountId = "account_1", creditLimit = BigDecimal("100000"), interestRate = 8.0, drawnBalance = BigDecimal("36500"))
         every { overdraftAccountRepository.findByIdForUpdate("overdraft_1") } returns Optional.of(account)
@@ -271,7 +297,7 @@ class OverdraftServiceTest : BehaviorSpec({
         val creditScoreService = mockk<CreditScoreService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = OverdraftService(overdraftAccountRepository, accountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
+        val service = OverdraftService(overdraftAccountRepository, accountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService, mockk(relaxed = true))
 
         val neverAccrued = OverdraftAccount(id = "overdraft_a", userId = "user_a", accountId = "account_a", creditLimit = BigDecimal("100000"), interestRate = 8.0, drawnBalance = BigDecimal("10000"))
         val zeroBalance = OverdraftAccount(id = "overdraft_b", userId = "user_b", accountId = "account_b", creditLimit = BigDecimal("100000"), interestRate = 8.0, drawnBalance = BigDecimal.ZERO)
@@ -294,7 +320,7 @@ class OverdraftServiceTest : BehaviorSpec({
         val creditScoreService = mockk<CreditScoreService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = OverdraftService(overdraftAccountRepository, accountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
+        val service = OverdraftService(overdraftAccountRepository, accountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService, mockk(relaxed = true))
         every { overdraftAccountRepository.findByUserIdAndStatus("user_after_commit", OverdraftAccountStatus.ACTIVE) } returns null
         every { creditScoreService.computeScore("user_after_commit") } returns CreditScoreResult(700, emptyList(), Instant.now())
         every { accountRepository.findByUserIdAndType("user_after_commit", AccountType.MAIN) } returns account("account_after_commit", "user_after_commit")
