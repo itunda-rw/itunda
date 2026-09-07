@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -102,7 +103,11 @@ fun InvestScreen(onBack: () -> Unit) {
             modifier = Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp)
                 .clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(4.dp),
         ) {
-            listOf(InvestMode.MARKET to "Market", InvestMode.PORTFOLIO to "Portfolio", InvestMode.WATCHLIST to "Watchlist").forEach { (m, label) ->
+            listOf(
+                InvestMode.MARKET to stringResource(R.string.invest_tab_market),
+                InvestMode.PORTFOLIO to stringResource(R.string.invest_tab_portfolio),
+                InvestMode.WATCHLIST to stringResource(R.string.invest_tab_watchlist),
+            ).forEach { (m, label) ->
                 val selected = mode == m
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))

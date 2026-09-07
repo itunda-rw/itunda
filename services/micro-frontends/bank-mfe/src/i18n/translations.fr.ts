@@ -406,4 +406,11 @@ export const fr: Record<TranslationKey, string> = {
     'hood.listing.hideTitle': 'Masquer cette annonce -- vous ne la reverrez plus',
     'hood.listing.offerPlaceholder': 'Votre offre (RWF)',
     'hood.listing.deliveryAddressPlaceholder': 'Adresse de livraison (facultatif, pour un article expédié)',
+    'stocks.tabMarket': 'Marché',
+    'stocks.tabPortfolio': 'Portefeuille',
+    'stocks.tabWatchlist': 'Liste de suivi',
+    'stocks.buy': 'Acheter',
+    'stocks.sell': 'Vendre',
+    'stocks.working': 'Traitement…',
+    'stocks.addFunds': 'Ajouter des fonds',
 };

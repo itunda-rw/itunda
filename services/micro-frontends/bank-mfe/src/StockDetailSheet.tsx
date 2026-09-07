@@ -173,7 +173,7 @@ export function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchT
               backgroundColor: mode === m ? (m === 'BUY' ? 'var(--itunda-indigo)' : 'var(--itunda-red)') : 'transparent',
             }}
           >
-            {m === 'BUY' ? 'Buy' : 'Sell'}
+            {m === 'BUY' ? t('stocks.buy') : t('stocks.sell')}
           </button>
         ))}
       </div>
@@ -184,7 +184,7 @@ export function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchT
           style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
         />
         <button type="submit" className={mode === 'BUY' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn'} style={mode === 'SELL' ? { backgroundColor: 'var(--itunda-red)', color: 'white' } : undefined} disabled={submitting}>
-          {submitting ? 'Working…' : mode === 'BUY' ? 'Buy' : 'Sell'}
+          {submitting ? t('stocks.working') : mode === 'BUY' ? t('stocks.buy') : t('stocks.sell')}
         </button>
       </form>
       {needsDeviceVerification ? (

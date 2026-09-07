@@ -5,7 +5,7 @@
      :features:maps:impl all ship real values-rw/values-fr). Deliberately scoped to
      the primary, always-visible surface (the "+ Post a job" CTA and its own
      create-job form's title/description fields and submit button), not every
-     secondary/edge-case string in this module's screens -- matching the Maps i18n
+     secondary/edge-case string in this module's screens, matching the Maps i18n
      pass's own scoping precedent. All translations here are a good-faith, careful
      effort, NOT verified by a native speaker of either language, and should get
      real native-speaker review before being treated as production-final, same

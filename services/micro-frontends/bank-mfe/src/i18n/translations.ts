@@ -503,6 +503,18 @@ export type TranslationKey =
   | 'hood.inspection.findingsPlaceholder'
   | 'hood.listing.hideTitle'
   | 'hood.listing.offerPlaceholder'
-  | 'hood.listing.deliveryAddressPlaceholder';
+  | 'hood.listing.deliveryAddressPlaceholder'
+  // Real Stocks product-completeness pass (2026-09-08): StocksView.tsx/
+  // StockDetailSheet.tsx only ever used t() for generic shared error copy --
+  // every Stocks-specific string was hardcoded English. Scoped to the primary
+  // surface (tab labels, Buy/Sell + its working state, Add funds CTA), matching
+  // the Hood/Maps i18n passes' own scoping precedent.
+  | 'stocks.tabMarket'
+  | 'stocks.tabPortfolio'
+  | 'stocks.tabWatchlist'
+  | 'stocks.buy'
+  | 'stocks.sell'
+  | 'stocks.working'
+  | 'stocks.addFunds';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = { en, rw, fr };

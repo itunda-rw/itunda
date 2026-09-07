@@ -420,4 +420,11 @@ export const en: Record<TranslationKey, string> = {
     'hood.listing.hideTitle': "Hide this listing -- you won't see it again",
     'hood.listing.offerPlaceholder': 'Your offer (RWF)',
     'hood.listing.deliveryAddressPlaceholder': 'Delivery address (optional, for a shipped item)',
+    'stocks.tabMarket': 'Market',
+    'stocks.tabPortfolio': 'Portfolio',
+    'stocks.tabWatchlist': 'Watchlist',
+    'stocks.buy': 'Buy',
+    'stocks.sell': 'Sell',
+    'stocks.working': 'Working…',
+    'stocks.addFunds': 'Add funds',
 };

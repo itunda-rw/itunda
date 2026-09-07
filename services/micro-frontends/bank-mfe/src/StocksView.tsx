@@ -68,7 +68,7 @@ function AddFundsCard({ onFunded }: { onFunded: () => void }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>Investment cash</p>
         <button onClick={() => { setExpanded(!expanded); setError(null); }} style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>
-          {expanded ? 'Cancel' : 'Add funds'}
+          {expanded ? 'Cancel' : t('stocks.addFunds')}
         </button>
       </div>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Move money from your main account into your investment account.</p>
@@ -183,7 +183,7 @@ export function StocksView() {
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
-        {([{ id: 'MARKET', label: 'Market' }, { id: 'PORTFOLIO', label: 'Portfolio' }, { id: 'WATCHLIST', label: 'Watchlist' }] as const).map(({ id, label }) => (
+        {([{ id: 'MARKET', label: t('stocks.tabMarket') }, { id: 'PORTFOLIO', label: t('stocks.tabPortfolio') }, { id: 'WATCHLIST', label: t('stocks.tabWatchlist') }] as const).map(({ id, label }) => (
           <button
             key={id}
             onClick={() => setSubTab(id)}

@@ -414,4 +414,11 @@ export const rw: Record<TranslationKey, string> = {
     'hood.listing.hideTitle': "Hisha iyi ntandaro -- ntuzongera kuyibona",
     'hood.listing.offerPlaceholder': 'Igitambo cyawe (RWF)',
     'hood.listing.deliveryAddressPlaceholder': "Aderesi yo kohereza (si ngombwa, ku bintu byoherezwa)",
+    'stocks.tabMarket': 'Isoko',
+    'stocks.tabPortfolio': 'Ibyo ufite',
+    'stocks.tabWatchlist': 'Ibyo ukurikirana',
+    'stocks.buy': 'Gura',
+    'stocks.sell': 'Gurisha',
+    'stocks.working': 'Birakora…',
+    'stocks.addFunds': 'Ongeramo amafaranga',
 };

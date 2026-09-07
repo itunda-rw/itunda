@@ -6,7 +6,7 @@
      values-rw/values-fr). Deliberately scoped to the primary, always-visible surface
      (the "+ List an item" CTA and its own create-listing form's title/description
      fields and submit button), not every secondary/edge-case string in this module's
-     screens -- matching the Maps i18n pass's own scoping precedent. All translations
+     screens, matching the Maps i18n pass's own scoping precedent. All translations
      here are a good-faith, careful effort, NOT verified by a native speaker of either
      language, and should get real native-speaker review before being treated as
      production-final, same honesty standard every other localized module in this repo

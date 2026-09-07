@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -218,7 +219,7 @@ internal fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: (
         Row(
             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(4.dp),
         ) {
-            listOf(true to "Buy", false to "Sell").forEach { (isBuy, label) ->
+            listOf(true to stringResource(R.string.invest_buy), false to stringResource(R.string.invest_sell)).forEach { (isBuy, label) ->
                 val selected = buyMode == isBuy
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
@@ -240,7 +241,10 @@ internal fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: (
                     .pressScaleClickable(enabled = !submitting) { trade() }
                     .padding(horizontal = 20.dp, vertical = 14.dp),
             ) {
-                Text(if (submitting) "Working…" else if (buyMode) "Buy" else "Sell", color = Color.White, fontWeight = FontWeight.Bold)
+                Text(
+                    if (submitting) stringResource(R.string.invest_working) else if (buyMode) stringResource(R.string.invest_buy) else stringResource(R.string.invest_sell),
+                    color = Color.White, fontWeight = FontWeight.Bold,
+                )
             }
         }
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp)) }
