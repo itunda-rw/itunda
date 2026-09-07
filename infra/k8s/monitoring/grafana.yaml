@@ -1880,6 +1880,71 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  # Real, twenty-ninth product-level dashboard (2026-09-08, Family product-
+  # completeness pass) -- :family stays inside the :app monolith (real
+  # reverse coupling from :p2p's sendToFamilyMember rules out extraction,
+  # see docs/ARCHITECTURE.md's own candidate-pool note), so this reuses the
+  # same zero-new-instrumentation request-rate/error-rate/latency panel
+  # shape as itunda-card/itunda-maps/itunda-hood/itunda-support/itunda-ussd,
+  # scoped to the real route confirmed by reading FamilyLinkController's
+  # own @RequestMapping directly.
+  name: grafana-dashboard-itunda-family
+  namespace: monitoring
+data:
+  itunda-family.json: |
+    {
+      "title": "itunda Family",
+      "uid": "itunda-family",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Family request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/family(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Family error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/family(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Family request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/family(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/family(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: grafana-dashboard-itunda-private-cloud
   namespace: monitoring
 data:
@@ -2077,6 +2142,8 @@ spec:
               name: grafana-dashboard-itunda-support
           - configMap:
               name: grafana-dashboard-itunda-ussd
+          - configMap:
+              name: grafana-dashboard-itunda-family
           - configMap:
               name: grafana-dashboard-itunda-private-cloud
 ---
