@@ -362,4 +362,18 @@
     <string name="transit_collect_use_this_code">Use this code</string>
     <string name="transit_collect_collecting">Collecting…</string>
     <string name="transit_collect_fare">Collect %1$s RWF</string>
+
+    <!-- Real localization for SupportScreen.kt (Support product-completeness pass,
+         2026-09-08): this screen had zero string-resource localization at all, unlike
+         other android/app-hosted screens (SettingsScreen.kt, TransitCollectScreen.kt
+         above). Scoped to the primary surface: the "Report an issue" CTA, the ticket
+         form's own labels/submit button, and the "Your tickets" section header. -->
+    <string name="support_report_issue_cta">Report an issue with a transaction</string>
+    <string name="support_which_transaction">Which transaction?</string>
+    <string name="support_category">Category</string>
+    <string name="support_describe_issue">Describe the issue</string>
+    <string name="support_submitting">Submitting…</string>
+    <string name="support_submit_ticket">Submit ticket</string>
+    <string name="support_your_tickets">Your tickets</string>
+    <string name="support_no_tickets">You have no support tickets.</string>
 </resources>

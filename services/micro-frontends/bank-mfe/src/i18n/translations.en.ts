@@ -427,4 +427,12 @@ export const en: Record<TranslationKey, string> = {
     'stocks.sell': 'Sell',
     'stocks.working': 'Working…',
     'stocks.addFunds': 'Add funds',
+    'support.reportIssueCta': 'Report an issue with a transaction',
+    'support.whichTransaction': 'Which transaction?',
+    'support.category': 'Category',
+    'support.describeIssue': 'Describe the issue',
+    'support.submitting': 'Submitting…',
+    'support.submitTicket': 'Submit ticket',
+    'support.yourTickets': 'Your tickets',
+    'support.noTickets': 'You have no support tickets.',
 };

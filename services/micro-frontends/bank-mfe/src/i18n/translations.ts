@@ -515,6 +515,18 @@ export type TranslationKey =
   | 'stocks.buy'
   | 'stocks.sell'
   | 'stocks.working'
-  | 'stocks.addFunds';
+  | 'stocks.addFunds'
+  // Real Support product-completeness pass (2026-09-08): SupportView.tsx only ever
+  // used t() for generic shared error copy -- every Support-specific string was
+  // hardcoded English. Scoped to the primary surface (the "Report an issue" CTA,
+  // the ticket form's own labels/submit button, and the "Your tickets" section).
+  | 'support.reportIssueCta'
+  | 'support.whichTransaction'
+  | 'support.category'
+  | 'support.describeIssue'
+  | 'support.submitting'
+  | 'support.submitTicket'
+  | 'support.yourTickets'
+  | 'support.noTickets';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = { en, rw, fr };

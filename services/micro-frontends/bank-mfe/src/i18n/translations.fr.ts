@@ -413,4 +413,12 @@ export const fr: Record<TranslationKey, string> = {
     'stocks.sell': 'Vendre',
     'stocks.working': 'Traitement…',
     'stocks.addFunds': 'Ajouter des fonds',
+    'support.reportIssueCta': 'Signaler un problème avec une transaction',
+    'support.whichTransaction': 'Quelle transaction ?',
+    'support.category': 'Catégorie',
+    'support.describeIssue': 'Décrivez le problème',
+    'support.submitting': 'Envoi…',
+    'support.submitTicket': 'Envoyer le ticket',
+    'support.yourTickets': 'Vos tickets',
+    'support.noTickets': "Vous n'avez aucun ticket d'assistance.",
 };

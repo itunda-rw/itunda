@@ -421,4 +421,12 @@ export const rw: Record<TranslationKey, string> = {
     'stocks.sell': 'Gurisha',
     'stocks.working': 'Birakora…',
     'stocks.addFunds': 'Ongeramo amafaranga',
+    'support.reportIssueCta': 'Menyesha ikibazo ku ivunjisha',
+    'support.whichTransaction': 'Ni irihe vunjisha?',
+    'support.category': 'Icyiciro',
+    'support.describeIssue': 'Sobanura ikibazo',
+    'support.submitting': 'Kohereza…',
+    'support.submitTicket': 'Ohereza ikibazo',
+    'support.yourTickets': 'Ibibazo byawe',
+    'support.noTickets': 'Nta bibazo wigeze wohereza.',
 };

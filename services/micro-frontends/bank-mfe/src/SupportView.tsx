@@ -73,7 +73,7 @@ export function SupportView({ initialTransactionId, initialCategory, onConsumedI
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {!showNewForm ? (
-        <button className="itunda-btn itunda-btn-primary" onClick={() => setShowNewForm(true)}>Report an issue with a transaction</button>
+        <button className="itunda-btn itunda-btn-primary" onClick={() => setShowNewForm(true)}>{t('support.reportIssueCta')}</button>
       ) : (
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {initialTransactionId && (
@@ -81,14 +81,14 @@ export function SupportView({ initialTransactionId, initialCategory, onConsumedI
               🚗 Reporting an issue with this ride's payment
             </p>
           )}
-          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700 }}>Which transaction?</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700 }}>{t('support.whichTransaction')}</p>
           {transactions.slice(0, 10).map((tx) => (
             <label key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)' }}>
               {tx.description} · {tx.currency} {tx.amount.toLocaleString('en-US')}
               <input type="radio" name="tx" checked={selectedTransactionId === tx.id} onChange={() => setSelectedTransactionId(tx.id)} />
             </label>
           ))}
-          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700 }}>Category</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700 }}>{t('support.category')}</p>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             {SUPPORT_CATEGORIES.map((c) => (
               <button
@@ -101,17 +101,17 @@ export function SupportView({ initialTransactionId, initialCategory, onConsumedI
             ))}
           </div>
           <textarea
-            value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the issue" required
+            value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t('support.describeIssue')} required
             style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
           />
           <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy || !selectedTransactionId || !description}>
-            {busy ? 'Submitting…' : 'Submit ticket'}
+            {busy ? t('support.submitting') : t('support.submitTicket')}
           </button>
         </form>
       )}
-      <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Your tickets</h3>
+      <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{t('support.yourTickets')}</h3>
       {tickets === null ? (showSkeleton ? <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} /> : null) :
-        tickets.length === 0 ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>You have no support tickets.</p> :
+        tickets.length === 0 ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{t('support.noTickets')}</p> :
         tickets.map((t) => (
           <div key={t.id} className="itunda-flat-section">
             <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{t.category}</h4>

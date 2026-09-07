@@ -282,4 +282,13 @@
     <string name="transit_collect_use_this_code">Utiliser ce code</string>
     <string name="transit_collect_collecting">Collecte en cours…</string>
     <string name="transit_collect_fare">Collecter %1$s RWF</string>
+
+    <string name="support_report_issue_cta">Signaler un problème avec une transaction</string>
+    <string name="support_which_transaction">Quelle transaction ?</string>
+    <string name="support_category">Catégorie</string>
+    <string name="support_describe_issue">Décrivez le problème</string>
+    <string name="support_submitting">Envoi…</string>
+    <string name="support_submit_ticket">Envoyer le ticket</string>
+    <string name="support_your_tickets">Vos tickets</string>
+    <string name="support_no_tickets">Vous n\'avez aucun ticket d\'assistance.</string>
 </resources>

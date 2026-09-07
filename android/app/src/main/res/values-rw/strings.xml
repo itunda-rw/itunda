@@ -283,4 +283,13 @@
     <string name="transit_collect_use_this_code">Koresha iyi koodi</string>
     <string name="transit_collect_collecting">Kwakira…</string>
     <string name="transit_collect_fare">Kusanya %1$s RWF</string>
+
+    <string name="support_report_issue_cta">Menyesha ikibazo ku ivunjisha</string>
+    <string name="support_which_transaction">Ni irihe vunjisha?</string>
+    <string name="support_category">Icyiciro</string>
+    <string name="support_describe_issue">Sobanura ikibazo</string>
+    <string name="support_submitting">Kohereza…</string>
+    <string name="support_submit_ticket">Ohereza ikibazo</string>
+    <string name="support_your_tickets">Ibibazo byawe</string>
+    <string name="support_no_tickets">Nta bibazo wigeze wohereza.</string>
 </resources>
