@@ -29,6 +29,13 @@ struct TransitCollectScreenView: View {
     @State private var error: String?
     @State private var collected: TransitCollectResultDto?
     @State private var nfcReader = TransitNfcReader()
+    // Real gap closed 2026-09-07 (Transit product-completeness pass): bank-mfe's
+    // TransitCollectScreen.tsx has had a real 3rd-tier manual-code-entry fallback
+    // since it was built; iOS already had the scanUnavailable signal (unlike
+    // Android's CameraQrScanner) but only ever showed a dead-end message
+    // suggesting the collector "ask the rider to read their code aloud" with no
+    // actual way to type it in.
+    @State private var manualCodeInput = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -75,8 +82,13 @@ struct TransitCollectScreenView: View {
                 .font(.caption2).foregroundColor(IDS.Colors.textTertiary)
             if nfcUnavailable {
                 if scanUnavailable {
-                    Text("Camera unavailable -- try again or ask the rider to read their code aloud.")
-                        .font(.caption).foregroundColor(.red)
+                    Text("Camera unavailable -- enter the rider's code instead.")
+                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    TextField("Payment code", text: $manualCodeInput)
+                        .padding(10).background(IDS.Colors.backgroundPrimary).cornerRadius(8)
+                    CardActionButton(title: "Use this code", disabled: manualCodeInput.trimmingCharacters(in: .whitespaces).isEmpty, action: {
+                        code = manualCodeInput.trimmingCharacters(in: .whitespaces)
+                    })
                 } else {
                     QrScanCameraView(onDetect: { code = $0 }, onUnavailable: { scanUnavailable = true })
                         .frame(height: 320)
@@ -125,6 +137,7 @@ struct TransitCollectScreenView: View {
         error = nil
         nfcUnavailable = false
         scanUnavailable = false
+        manualCodeInput = ""
         nfcReader.start()
     }
 

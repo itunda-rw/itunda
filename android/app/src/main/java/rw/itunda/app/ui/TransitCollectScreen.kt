@@ -33,6 +33,7 @@ import retrofit2.HttpException
 import rw.itunda.app.nfc.TransitNfcListener
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.CameraQrScanner
+import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.NetworkClient
@@ -64,6 +65,16 @@ fun TransitCollectScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     var code by remember { mutableStateOf<String?>(null) }
     var nfcUnavailable by remember { mutableStateOf(false) }
+    // Real gap closed 2026-09-07 (Transit product-completeness pass): bank-mfe's
+    // TransitCollectScreen.tsx has had a real 3rd-tier manual-code-entry fallback
+    // since it was built; Android only ever had NFC-then-camera, with no recovery
+    // path if both fail. CameraQrScanner has no onUnavailable signal the way web's
+    // QrScanCamera does, so this is an always-visible opt-in toggle rather than one
+    // gated behind a scanner-failure callback -- same "QR/NFC first, manual entry
+    // only as a last resort" discipline, just reachable any time scanning isn't
+    // working (denied permission, dirty QR, bad lighting), not only on a hard fail.
+    var showManualEntry by remember { mutableStateOf(false) }
+    var manualCodeInput by remember { mutableStateOf("") }
     var operator by remember { mutableStateOf(TRANSIT_OPERATORS[0]) }
     var fare by remember { mutableStateOf(MIN_FARE.toFloat()) }
     var busy by remember { mutableStateOf(false) }
@@ -75,6 +86,8 @@ fun TransitCollectScreen(onBack: () -> Unit) {
         code = null
         collected = null
         error = null
+        showManualEntry = false
+        manualCodeInput = ""
     }
 
     fun collect() {
@@ -132,6 +145,26 @@ fun TransitCollectScreen(onBack: () -> Unit) {
                                 error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
                                 Column(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(16.dp))) {
                                     CameraQrScanner(onScanned = { code = it }, modifier = Modifier.fillMaxSize())
+                                }
+                                if (!showManualEntry) {
+                                    Text(
+                                        "Camera not working? Enter code manually",
+                                        color = Ids.colors.textSecondary, fontSize = 12.sp,
+                                        modifier = Modifier.padding(top = 8.dp).pressScaleClickable(onClick = { showManualEntry = true }),
+                                    )
+                                } else {
+                                    Column(modifier = Modifier.padding(top = 8.dp)) {
+                                        IdsTextField(value = manualCodeInput, onValueChange = { manualCodeInput = it }, label = "Payment code", modifier = Modifier.fillMaxWidth())
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp).clip(RoundedCornerShape(10.dp))
+                                                .background(if (manualCodeInput.isBlank()) Ids.colors.textTertiary else Ids.colors.brand)
+                                                .pressScaleClickable(enabled = manualCodeInput.isNotBlank(), onClick = { code = manualCodeInput.trim() })
+                                                .padding(vertical = 12.dp),
+                                            horizontalArrangement = Arrangement.Center,
+                                        ) {
+                                            Text("Use this code", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        }
+                                    }
                                 }
                             }
                         }
