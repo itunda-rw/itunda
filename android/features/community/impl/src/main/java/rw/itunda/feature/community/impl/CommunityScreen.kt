@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -384,7 +385,7 @@ fun CommunityContent(
                     Box(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ids.colors.brand).pressScaleClickable { showNewPost = true }.padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
-                    ) { Text("+ Write a post", color = Color.White, fontWeight = FontWeight.Bold) }
+                    ) { Text(stringResource(R.string.community_new_post_cta), color = Color.White, fontWeight = FontWeight.Bold) }
                 } else {
                     NewCommunityPostForm(categories, onCreated = { showNewPost = false; load() }, onCancel = { showNewPost = false })
                 }
@@ -529,8 +530,8 @@ private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreat
                     ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary) }
                 }
             }
-            IdsTextField(value = title, onValueChange = { title = it }, label = "Title", singleLine = true, modifier = Modifier.fillMaxWidth())
-            IdsTextField(value = body, onValueChange = { body = it }, label = "What's going on in the neighborhood?", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = title, onValueChange = { title = it }, label = stringResource(R.string.community_title_placeholder), singleLine = true, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = body, onValueChange = { body = it }, label = stringResource(R.string.community_body_placeholder), modifier = Modifier.fillMaxWidth())
             if (category == "meetup") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     IdsTextField(
@@ -606,7 +607,7 @@ private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreat
                         }
                         .padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center,
-                ) { Text(if (submitting) "Posting…" else "Post", color = Color.White, fontWeight = FontWeight.Bold) }
+                ) { Text(if (submitting) stringResource(R.string.community_posting) else stringResource(R.string.community_post), color = Color.White, fontWeight = FontWeight.Bold) }
             }
     }
 }

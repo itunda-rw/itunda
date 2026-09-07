@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -352,7 +353,7 @@ fun JobsContent(
                     Box(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ids.colors.brand).pressScaleClickable { showNewPost = true }.padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
-                    ) { Text("+ Post a job", color = Color.White, fontWeight = FontWeight.Bold) }
+                    ) { Text(stringResource(R.string.jobs_new_post_cta), color = Color.White, fontWeight = FontWeight.Bold) }
                 } else {
                     NewJobPostForm(categories, onCreated = { showNewPost = false; load() }, onCancel = { showNewPost = false })
                 }

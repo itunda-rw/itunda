@@ -49,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -606,7 +607,7 @@ fun MarketplaceContent(
                     Box(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ids.colors.brand).pressScaleClickable { showNewListing = true }.padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
-                    ) { Text("+ List an item", color = Color.White, fontWeight = FontWeight.Bold) }
+                    ) { Text(stringResource(R.string.marketplace_new_listing_cta), color = Color.White, fontWeight = FontWeight.Bold) }
                 } else {
                     NewListingForm(onCreated = { showNewListing = false; load() }, onCancel = { showNewListing = false })
                 }

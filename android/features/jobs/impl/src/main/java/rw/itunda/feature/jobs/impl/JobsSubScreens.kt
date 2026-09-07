@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -220,8 +221,8 @@ internal fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> U
                     ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary) }
                 }
             }
-            IdsTextField(value = title, onValueChange = { title = it }, label = "What do you need done?", singleLine = true, modifier = Modifier.fillMaxWidth())
-            IdsTextField(value = description, onValueChange = { description = it }, label = "Describe the work", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = title, onValueChange = { title = it }, label = stringResource(R.string.jobs_title_placeholder), singleLine = true, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = description, onValueChange = { description = it }, label = stringResource(R.string.jobs_description_placeholder), modifier = Modifier.fillMaxWidth())
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 listOf("HOURLY" to "Per hour", "FIXED" to "Fixed price").forEach { (v, label) ->
                     val selected = payType == v
@@ -277,7 +278,7 @@ internal fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> U
                         }
                         .padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center,
-                ) { Text(if (submitting) "Posting…" else "Post job", color = Color.White, fontWeight = FontWeight.Bold) }
+                ) { Text(if (submitting) stringResource(R.string.jobs_posting) else stringResource(R.string.jobs_post_job), color = Color.White, fontWeight = FontWeight.Bold) }
             }
     }
 }

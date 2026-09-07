@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="jobs_new_post_cta">+ Shyiraho akazi</string>
+    <string name="jobs_title_placeholder">Ni iki ukeneye ko gikorwa?</string>
+    <string name="jobs_description_placeholder">Sobanura akazi</string>
+    <string name="jobs_posting">Kohereza…</string>
+    <string name="jobs_post_job">Ohereza akazi</string>
+</resources>

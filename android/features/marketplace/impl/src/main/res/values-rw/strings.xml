@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="marketplace_new_listing_cta">+ Gurisha ikintu</string>
+    <string name="marketplace_title_placeholder">Ni iki ugurisha?</string>
+    <string name="marketplace_description_placeholder">Ibisobanuro</string>
+    <string name="marketplace_listing">Kohereza…</string>
+    <string name="marketplace_list_it">Ohereza</string>
+</resources>

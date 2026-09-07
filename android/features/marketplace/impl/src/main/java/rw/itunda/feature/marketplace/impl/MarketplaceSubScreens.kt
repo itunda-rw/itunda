@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -277,8 +278,8 @@ internal fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
     // screen's own main content, a lone form (docs/UI_UX_GUIDELINES.md §10).
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("List an item", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            IdsTextField(value = title, onValueChange = { title = it }, label = "What are you selling?", singleLine = true, modifier = Modifier.fillMaxWidth())
-            IdsTextField(value = description, onValueChange = { description = it }, label = "Description", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = title, onValueChange = { title = it }, label = stringResource(R.string.marketplace_title_placeholder), singleLine = true, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = description, onValueChange = { description = it }, label = stringResource(R.string.marketplace_description_placeholder), modifier = Modifier.fillMaxWidth())
             // Real photo picker (2026-07-24) -- a real photo is what a Karrot-style
             // listing card actually needs most, see ListingCard's own header comment.
             Box(
@@ -385,7 +386,7 @@ internal fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
                         }
                         .padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center,
-                ) { Text(if (submitting) "Listing…" else "List it", color = Color.White, fontWeight = FontWeight.Bold) }
+                ) { Text(if (submitting) stringResource(R.string.marketplace_listing) else stringResource(R.string.marketplace_list_it), color = Color.White, fontWeight = FontWeight.Bold) }
             }
     }
 }

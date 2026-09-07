@@ -49,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -374,7 +375,7 @@ fun PropertyContent(
                     Box(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ids.colors.brand).pressScaleClickable { showNewListing = true }.padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
-                    ) { Text("+ List a property", color = Color.White, fontWeight = FontWeight.Bold) }
+                    ) { Text(stringResource(R.string.property_new_listing_cta), color = Color.White, fontWeight = FontWeight.Bold) }
                 } else {
                     NewPropertyListingForm(propertyTypes, onCreated = { showNewListing = false; load() }, onCancel = { showNewListing = false })
                 }
@@ -514,8 +515,8 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
                     ) { Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary) }
                 }
             }
-            IdsTextField(value = title, onValueChange = { title = it }, label = "e.g. 2-bedroom apartment in Kacyiru", singleLine = true, modifier = Modifier.fillMaxWidth())
-            IdsTextField(value = description, onValueChange = { description = it }, label = "Describe the property", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = title, onValueChange = { title = it }, label = stringResource(R.string.property_title_placeholder), singleLine = true, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = description, onValueChange = { description = it }, label = stringResource(R.string.property_description_placeholder), modifier = Modifier.fillMaxWidth())
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 IdsTextField(
                     value = price, onValueChange = { price = it },
@@ -568,7 +569,7 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
                         }
                         .padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center,
-                ) { Text(if (submitting) "Listing…" else "List it", color = Color.White, fontWeight = FontWeight.Bold) }
+                ) { Text(if (submitting) stringResource(R.string.property_listing) else stringResource(R.string.property_list_it), color = Color.White, fontWeight = FontWeight.Bold) }
             }
     }
 }

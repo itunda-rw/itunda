@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="property_new_listing_cta">+ Publier un bien</string>
+    <string name="property_title_placeholder">ex. appartement 2 chambres à Kacyiru</string>
+    <string name="property_description_placeholder">Décrivez le bien</string>
+    <string name="property_listing">Publication…</string>
+    <string name="property_list_it">Publier</string>
+</resources>
