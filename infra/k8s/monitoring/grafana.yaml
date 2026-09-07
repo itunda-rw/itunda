@@ -1616,6 +1616,75 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  # Real, twenty-third product-level dashboard (2026-09-07, Maps product-
+  # completeness pass) -- see docs/ARCHITECTURE.md's dated follow-up. `:maps`
+  # is NOT one of the independently-deployable extracted services (bundled
+  # inside the monolith, real reverse Gradle coupling from :eats/:merchant --
+  # see MapsPlaceDetailService's own doc comment), but still gets the same
+  # route-filtered request-rate/error-rate/latency panel shape as
+  # itunda-card/itunda-loans, since it has real, previously-zero monitoring
+  # coverage otherwise. Scoped to /api/v1/maps(/.*)? -- confirmed by reading
+  # MapsController.kt's own @RequestMapping directly. Deliberately excludes
+  # /api/v1/system/transit/import-gtfs (TransitGtfsAdminController), same
+  # "different feature entirely" reasoning itunda-transit's own doc comment
+  # already gives for excluding it there too.
+  name: grafana-dashboard-itunda-maps
+  namespace: monitoring
+data:
+  itunda-maps.json: |
+    {
+      "title": "itunda Maps",
+      "uid": "itunda-maps",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Maps request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/maps(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Maps error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/maps(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Maps request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/maps(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/maps(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: grafana-dashboard-itunda-private-cloud
   namespace: monitoring
 data:
@@ -1805,6 +1874,8 @@ spec:
               name: grafana-dashboard-itunda-analytics
           - configMap:
               name: grafana-dashboard-itunda-loans
+          - configMap:
+              name: grafana-dashboard-itunda-maps
           - configMap:
               name: grafana-dashboard-itunda-private-cloud
 ---
