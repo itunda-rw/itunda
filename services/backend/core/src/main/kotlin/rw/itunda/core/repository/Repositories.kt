@@ -183,6 +183,12 @@ interface UserRepository : JpaRepository<User, String> {
     fun findByReferralCode(referralCode: String): User?
     fun findAllByReferredByUserId(referredByUserId: String): List<User>
 
+    // Real admin broadcast-announcement feature (2026-09-07) -- a lightweight ID
+    // projection so a system-wide broadcast doesn't have to load every real User
+    // entity into memory just to know who to notify.
+    @Query("select u.id from User u")
+    fun findAllUserIds(): List<String>
+
     // Batch form of findByPhoneNumber -- GroupMessagingService.createGroupByPhoneNumbers
     // uses this to resolve every invited member in one round trip instead of one
     // findByPhoneNumber call per invitee (a real N+1 found in a 2026-07-19 sweep, same

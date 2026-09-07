@@ -505,6 +505,7 @@ app.use('/api/v1/overview', upstreamProxy(OVERVIEW_SERVICE_URL));
 app.use('/api/v1/accounts', upstreamProxy(OVERVIEW_SERVICE_URL));
 app.use('/api/v1/knowledge', upstreamProxy(KNOWLEDGE_SERVICE_URL));
 app.use('/api/v1/talk/service-channel', upstreamProxy(NOTIFICATIONS_SERVICE_URL));
+app.use('/api/v1/system/notifications', upstreamProxy(NOTIFICATIONS_SERVICE_URL));
 app.use('/api/v1/notifications', upstreamProxy(NOTIFICATIONS_SERVICE_URL));
 app.use('/api/v1/analytics', upstreamProxy(ANALYTICS_SERVICE_URL));
 app.use('/api/v1/system/loans', upstreamProxy(LOANS_SERVICE_URL));

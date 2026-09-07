@@ -472,6 +472,12 @@ export const resolveSupportTicket = (ticketId: string, resolution: 'REFUNDED' | 
     body: JSON.stringify({ resolution, notes }),
   });
 
+export const broadcastNotification = (title: string, body: string) =>
+  apiFetch<{ success: boolean; sentCount: number }>('/api/v1/system/notifications/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({ title, body }),
+  });
+
 // SystemDashboard/PaymentRail/MtnMomoConnectivity/AutoPaySweep (OverviewView.tsx's
 // own concern) moved to lib/system.ts (2026-09-07, Bills product-completeness pass)
 // once this file crossed the file-size-lint 500-line guideline -- see that file's
