@@ -4244,8 +4244,11 @@ interface ApiService {
     @GET("api/v1/overview")
     suspend fun getOverview(): OverviewResponse
 
+    // Idempotency-Key added 2026-09-07 (Overview product-completeness pass) -- a lost
+    // response after a real successful link previously created a genuine duplicate
+    // LinkedAccount row and burned a second real simulated ProviderConnector call.
     @POST("api/v1/accounts/link")
-    suspend fun linkAccount(@Body request: LinkAccountRequest): LinkAccountResponse
+    suspend fun linkAccount(@Header("Idempotency-Key") idempotencyKey: String, @Body request: LinkAccountRequest): LinkAccountResponse
 
     @GET("api/v1/accounts/linked")
     suspend fun getLinkedAccounts(): LinkedAccountsResponse

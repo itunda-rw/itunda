@@ -51,6 +51,7 @@ import rw.itunda.core.network.LinkedAccountEntityDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.superAppErrorMessage
 import rw.itunda.core.network.OverviewResponse
+import java.util.UUID
 
 // Real "My assets" tab-by-tab redesign (2026-08-27, direct user reference: 3 real
 // Toss "총자산" screenshots, "this is how my asset screen should look like"). Toss's
@@ -317,7 +318,7 @@ fun OverviewScreen(
                                     busy = true
                                     scope.launch {
                                         try {
-                                            val linked = NetworkClient.apiService.linkAccount(LinkAccountRequest(providerText, accountNumberText)).linkedAccount
+                                            val linked = NetworkClient.apiService.linkAccount(UUID.randomUUID().toString(), LinkAccountRequest(providerText, accountNumberText)).linkedAccount
                                             val submittedProvider = providerText
                                             providerText = ""; accountNumberText = ""; showLinkForm = false
                                             refresh()

@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Real Toss-style unified account overview (rw.itunda.overview.OverviewService) --
 // found 2026-07-22 fully built on the backend with zero client UI anywhere (Android,
@@ -108,9 +109,13 @@ export interface LinkedAccount {
 export const fetchLinkedAccounts = () =>
   apiFetch<{ success: boolean; linkedAccounts: LinkedAccount[] }>('/api/v1/accounts/linked').then((r) => r.linkedAccounts);
 
+// Idempotency-Key added 2026-09-07 (Overview product-completeness pass) -- a lost
+// response after a real successful link previously created a genuine duplicate
+// LinkedAccount row and burned a second real simulated ProviderConnector call.
 export const linkAccount = (provider: string, externalAccountNumber: string) =>
   apiFetch<{ success: boolean; linkedAccount: LinkedAccount }>('/api/v1/accounts/link', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ provider, externalAccountNumber }),
   }).then((r) => r.linkedAccount);
 

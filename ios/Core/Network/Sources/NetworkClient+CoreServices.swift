@@ -14,8 +14,11 @@ extension NetworkClient {
 
     public func getLinkedAccounts() async throws -> LinkedAccountsResponse { try await get("api/v1/accounts/linked") }
 
+    // Idempotency-Key added 2026-09-07 (Overview product-completeness pass) -- a lost
+    // response after a real successful link previously created a genuine duplicate
+    // LinkedAccount row and burned a second real simulated ProviderConnector call.
     public func linkAccount(provider: String, externalAccountNumber: String) async throws -> LinkAccountResponse {
-        try await authenticatedPost("api/v1/accounts/link", body: LinkAccountRequest(provider: provider, externalAccountNumber: externalAccountNumber))
+        try await authenticatedPost("api/v1/accounts/link", body: LinkAccountRequest(provider: provider, externalAccountNumber: externalAccountNumber), idempotencyKey: UUID().uuidString)
     }
 
     public func unlinkAccount(accountId: String) async throws -> LinkAccountResponse {
