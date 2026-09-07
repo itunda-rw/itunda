@@ -448,6 +448,9 @@ export type TranslationKey =
   | 'toast.weeklyPlanStarted'
   | 'toast.grow31PlanStarted'
   | 'toast.facePayEnrollFailed'
-  | 'toast.facePayDisableFailed';
+  | 'toast.facePayDisableFailed'
+  | 'notifications.title'
+  | 'notifications.markAllRead'
+  | 'notifications.empty';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = { en, rw, fr };

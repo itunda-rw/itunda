@@ -357,4 +357,7 @@ export const fr: Record<TranslationKey, string> = {
     'toast.grow31PlanStarted': 'Plan de 31 jours démarré.',
     'toast.facePayEnrollFailed': "Impossible de s'inscrire à FacePay. Réessayez.",
     'toast.facePayDisableFailed': 'Impossible de désactiver FacePay. Réessayez.',
+    'notifications.title': 'Notifications',
+    'notifications.markAllRead': 'Tout marquer comme lu',
+    'notifications.empty': 'Vous êtes à jour — les nouvelles activités s\'afficheront ici.',
 };

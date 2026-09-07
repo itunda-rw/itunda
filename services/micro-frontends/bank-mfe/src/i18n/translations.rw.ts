@@ -365,4 +365,7 @@ export const rw: Record<TranslationKey, string> = {
     'toast.grow31PlanStarted': "Gahunda y'iminsi 31 yatangiye.",
     'toast.facePayEnrollFailed': 'Ntibishoboka kwiyandikisha muri FacePay. Wongere ugerageze.',
     'toast.facePayDisableFailed': 'Ntibishoboka kuzimya FacePay. Wongere ugerageze.',
+    'notifications.title': 'Amamenyesha',
+    'notifications.markAllRead': 'Yose yasomwe',
+    'notifications.empty': 'Nta kindi gisigaye — ibikorwa bishya bizagaragara hano.',
 };

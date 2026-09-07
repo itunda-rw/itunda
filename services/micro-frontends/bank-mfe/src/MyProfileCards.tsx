@@ -22,6 +22,7 @@ import { confirmEmailVerification, confirmPhoneVerification, requestEmailVerific
 // lib/notifications.ts's own doc comment. Already ported to Android (SettingsScreen.kt)
 // and iOS (SettingsViewModel.swift), but bank-mfe had zero client for the inbox itself.
 export function NotificationsCard() {
+  const { t } = useI18n();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -50,19 +51,19 @@ export function NotificationsCard() {
   return (
     <div className="itunda-flat-section">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>Notifications</h3>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{t('notifications.title')}</h3>
         {unreadCount > 0 && (
           <span
             role="button"
             onClick={handleReadAll}
             style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-indigo)', cursor: 'pointer' }}
           >
-            Mark all read
+            {t('notifications.markAllRead')}
           </span>
         )}
       </div>
       {notifications.length === 0 ? (
-        <EmptyState message="You're all caught up — new activity will show up here." />
+        <EmptyState message={t('notifications.empty')} />
       ) : (
         notifications.slice(0, 10).map((n) => (
           <div

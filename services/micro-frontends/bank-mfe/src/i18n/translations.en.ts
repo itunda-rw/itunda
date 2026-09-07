@@ -371,4 +371,7 @@ export const en: Record<TranslationKey, string> = {
     'toast.grow31PlanStarted': '31-day plan started.',
     'toast.facePayEnrollFailed': "Couldn't enroll in FacePay. Try again.",
     'toast.facePayDisableFailed': "Couldn't turn off FacePay. Try again.",
+    'notifications.title': 'Notifications',
+    'notifications.markAllRead': 'Mark all read',
+    'notifications.empty': "You're all caught up — new activity will show up here.",
 };
