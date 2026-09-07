@@ -172,6 +172,26 @@ export const searchNearbyPlaces = (category: string, lat: number, lng: number, r
     `/api/v1/maps/nearby?category=${encodeURIComponent(category)}&lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`,
   ).then((r) => r.places);
 
+// Real "Smart Around"-style default map state (Maps product-completeness pass,
+// 2026-09-07) -- Android already has this (MapsScreen.kt's loadAroundMe/
+// aroundMePlaces/trendingPlaces); ports it here, same honest 2-of-5-Naver-sections
+// scope decision (see the backend's MapsService.getAroundMe/getTrendingSavedPlaces own
+// doc comments).
+export const fetchMapAroundMe = (lat: number, lng: number, radiusKm = 2.0) =>
+  apiFetch<{ success: boolean; places: NearbyPlace[] }>(
+    `/api/v1/maps/around-me?lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`,
+  ).then((r) => r.places);
+
+export interface TrendingPlace {
+  displayName: string;
+  latitude: number;
+  longitude: number;
+  saveCount: number;
+}
+
+export const fetchMapTrending = (days = 7, limit = 10) =>
+  apiFetch<{ success: boolean; places: TrendingPlace[] }>(`/api/v1/maps/trending?days=${days}&limit=${limit}`).then((r) => r.places);
+
 // Real customer-facing itunda cash-agent discovery (item 157, found via a fresh full
 // @RequestMapping sweep) -- AgentDiscoveryController's own real, itunda-native location
 // data (distinct from the OSM-backed category search above). Android already treats this

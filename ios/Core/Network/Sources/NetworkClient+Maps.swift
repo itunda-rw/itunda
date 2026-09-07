@@ -31,6 +31,14 @@ public struct MapsTransitDirectionsResponse: Decodable { public let success: Boo
 public struct MapCategoryDto: Decodable { public let id: String; public let label: String }
 public struct MapCategoriesResponse: Decodable { public let success: Bool; public let categories: [MapCategoryDto] }
 
+// Real "Smart Around"-style default map state (Maps product-completeness pass,
+// 2026-09-07) -- Android already has this (MapsScreen.kt's loadAroundMe); iOS never
+// got it, missing the merged-category "around me" view and the cross-user
+// trending-saved-places aggregate Android's default state already shows.
+public struct MapAroundMeResponse: Decodable { public let success: Bool; public let places: [NearbyPlaceDto] }
+public struct TrendingPlaceDto: Decodable, Identifiable { public let displayName: String; public let latitude: Double; public let longitude: Double; public let saveCount: Int; public var id: String { "\(displayName)_\(latitude)_\(longitude)" } }
+public struct MapTrendingResponse: Decodable { public let success: Bool; public let places: [TrendingPlaceDto] }
+
 public struct MapPlaceRatingDto: Decodable { public let average: Double?; public let count: Int }
 public struct MapPlaceMenuItemDto: Decodable { public let id: String; public let name: String; public let price: Double; public let imageUrl: String?; public let active: Bool }
 public struct MapPlaceUpdateDto: Decodable {
@@ -100,6 +108,21 @@ extension NetworkClient {
     // fallback as the real source of truth once fetched.
     public func getMapCategories() async throws -> MapCategoriesResponse {
         try await get("api/v1/maps/categories")
+    }
+
+    public func getMapAroundMe(lat: Double, lng: Double, radiusKm: Double = 2.0) async throws -> MapAroundMeResponse {
+        try await get("api/v1/maps/around-me", query: [
+            URLQueryItem(name: "lat", value: String(lat)),
+            URLQueryItem(name: "lng", value: String(lng)),
+            URLQueryItem(name: "radiusKm", value: String(radiusKm)),
+        ])
+    }
+
+    public func getMapTrending(days: Int = 7, limit: Int = 10) async throws -> MapTrendingResponse {
+        try await get("api/v1/maps/trending", query: [
+            URLQueryItem(name: "days", value: String(days)),
+            URLQueryItem(name: "limit", value: String(limit)),
+        ])
     }
 
     public func getRestaurantGoodPoints(_ restaurantId: String) async throws -> EatsGoodPointsResponse {

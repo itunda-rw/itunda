@@ -254,6 +254,12 @@ public struct MapScreenView: View {
     // replaced by the real fetched list below (with the client-only ITUNDA_AGENT
     // category re-appended, since the backend enum doesn't define it).
     @State private var categories: [MapPlaceCategory] = mapNearbyCategories
+    // Real "Smart Around"-style default state (Maps product-completeness pass,
+    // 2026-09-07) -- Android already has this (MapsScreen.kt's loadAroundMe/
+    // aroundMePlaces/trendingPlaces); ports it here, same honest 2-of-5-Naver-sections
+    // scope decision (see MapAroundMeResponse's own doc comment on the backend).
+    @State private var aroundMePlaces: [NearbyPlaceDto]?
+    @State private var trendingPlaces: [TrendingPlaceDto]?
     @State private var showSteps = false
     @State private var routing = false
     @State private var error: String?
@@ -694,6 +700,44 @@ public struct MapScreenView: View {
                                             ? "Search a real place or pick a category above to explore Rwanda."
                                             : "\(merchants.count) real merchant\(merchants.count == 1 ? "" : "s") on the map. Search a place or pick a category above to explore.")
                                             .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+
+                                        // Real "Smart Around"-style default state (2026-09-07) --
+                                        // see aroundMePlaces's own doc comment for the real
+                                        // Naver Map sourcing and honest scope.
+                                        if let aroundMePlaces, !aroundMePlaces.isEmpty {
+                                            Text("주변 · Nearby").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary).padding(.top, 8)
+                                            ScrollView(.horizontal, showsIndicators: false) {
+                                                HStack(spacing: 8) {
+                                                    ForEach(Array(aroundMePlaces.enumerated()), id: \.offset) { _, place in
+                                                        VStack(alignment: .leading, spacing: 2) {
+                                                            Text(place.displayName.split(separator: ",").first.map(String.init) ?? place.displayName)
+                                                                .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary).lineLimit(2)
+                                                            Text(String(format: "%.1f km", place.distanceKm)).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                                        }
+                                                        .padding(10).frame(width: 140, alignment: .leading)
+                                                        .background(IDS.Colors.chipBackground).cornerRadius(10)
+                                                        .onTapGesture { selectPlace(PlaceSearchResultDto(displayName: place.displayName, latitude: place.latitude, longitude: place.longitude)) }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if let trendingPlaces, !trendingPlaces.isEmpty {
+                                            Text("이번 주에 많이 저장한 · Popular this week").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary).padding(.top, 8)
+                                            ScrollView(.horizontal, showsIndicators: false) {
+                                                HStack(spacing: 8) {
+                                                    ForEach(trendingPlaces) { place in
+                                                        VStack(alignment: .leading, spacing: 2) {
+                                                            Text(place.displayName.split(separator: ",").first.map(String.init) ?? place.displayName)
+                                                                .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary).lineLimit(2)
+                                                            Text("★ saved by \(place.saveCount)").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                                        }
+                                                        .padding(10).frame(width: 140, alignment: .leading)
+                                                        .background(IDS.Colors.chipBackground).cornerRadius(10)
+                                                        .onTapGesture { selectPlace(PlaceSearchResultDto(displayName: place.displayName, latitude: place.latitude, longitude: place.longitude)) }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
 
                                     Text("★ Your saved places").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary).padding(.top, 8)
@@ -865,6 +909,11 @@ public struct MapScreenView: View {
                 } catch {
                     // Honest partial failure -- the hardcoded default above still renders.
                 }
+            }
+            .task {
+                let center = locationFetcher.coordinate ?? CLLocationCoordinate2D(latitude: rwandaCenterLat, longitude: rwandaCenterLng)
+                aroundMePlaces = try? await NetworkClient.shared.getMapAroundMe(lat: center.latitude, lng: center.longitude).places
+                trendingPlaces = try? await NetworkClient.shared.getMapTrending().places
             }
             .onChange(of: locationFetcher.errorMessage) { newValue in
                 if let newValue { error = newValue }

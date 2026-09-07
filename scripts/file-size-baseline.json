@@ -29,7 +29,7 @@
   "ios/App/Sources/WeeklySavingsScreenView.swift": 538,
   "ios/Core/Network/Sources/NetworkClient.swift": 7335,
   "ios/Features/Banking/Sources/BankView.swift": 572,
-  "ios/Features/Maps/Sources/MapScreenView.swift": 1587,
+  "ios/Features/Maps/Sources/MapScreenView.swift": 1631,
   "ios/Features/Payments/Sources/TransferFlowScreens.swift": 702,
   "ios/MerchantApp/Sources/BusinessAccountScreen.swift": 594,
   "ios/MerchantApp/Sources/MerchantHomeScreen.swift": 549,
@@ -72,7 +72,7 @@
   "services/micro-frontends/bank-mfe/src/ConversationThread.tsx": 814,
   "services/micro-frontends/bank-mfe/src/GroupThread.tsx": 516,
   "services/micro-frontends/bank-mfe/src/i18n/translations.ts": 899,
-  "services/micro-frontends/maps-mfe/src/MapView.tsx": 2052,
+  "services/micro-frontends/maps-mfe/src/MapView.tsx": 2109,
   "services/micro-frontends/merchant-mfe/src/i18n/translations.ts": 2391,
   "services/micro-frontends/merchant-mfe/src/lib/merchant.ts": 865,
   "services/micro-frontends/merchant-mfe/src/screens/SettingsScreen.tsx": 898

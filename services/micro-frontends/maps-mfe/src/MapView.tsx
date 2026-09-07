@@ -13,6 +13,8 @@ import {
   fetchNearbyAgents,
   NEARBY_CATEGORIES,
   fetchMapCategories,
+  fetchMapAroundMe,
+  fetchMapTrending,
   fetchMyMapBookmarks,
   addMapBookmark,
   removeMapBookmark,
@@ -40,6 +42,7 @@ import {
   type TransitJourney,
   type KigaliWeather,
   type MapPlaceCategory,
+  type TrendingPlace,
 } from './lib/maps';
 import { fetchShoppingCatalog, type ShoppingMerchant } from './lib/shopping';
 import { searchBusTrips, type BusTrip } from './lib/bus';
@@ -313,6 +316,11 @@ export default function MapView() {
   // NEARBY_CATEGORIES's own doc comment. Starts as that hardcoded default, then
   // replaced by the real fetched list below.
   const [categories, setCategories] = useState<MapPlaceCategory[]>(NEARBY_CATEGORIES);
+  // Real "Smart Around"-style default map state (Maps product-completeness pass,
+  // 2026-09-07) -- Android already has this (MapsScreen.kt's loadAroundMe); ports it
+  // here for cross-platform parity, same honest 2-of-5-Naver-sections scope decision.
+  const [aroundMePlaces, setAroundMePlaces] = useState<NearbyPlace[] | null>(null);
+  const [trendingPlaces, setTrendingPlaces] = useState<TrendingPlace[] | null>(null);
   // Real Naver Map-style transit tab (2026-08-12, direct user screenshot) -- see the
   // Android/iOS ports' own doc comments for the full account: itunda has no live
   // bus-GPS or transit-schedule feed, so this surfaces the real, already-shipped
@@ -456,6 +464,12 @@ export default function MapView() {
       .catch(() => {
         // Honest partial failure -- the hardcoded default above still renders.
       });
+  }, []);
+
+  useEffect(() => {
+    const [lat, lng] = myLocationRef.current ?? [RWANDA_CENTER[1], RWANDA_CENTER[0]];
+    fetchMapAroundMe(lat, lng).then(setAroundMePlaces).catch(() => setAroundMePlaces(null));
+    fetchMapTrending().then(setTrendingPlaces).catch(() => setTrendingPlaces(null));
   }, []);
 
   useEffect(() => {
@@ -1836,6 +1850,49 @@ export default function MapView() {
                     ? 'Search a real place or pick a category above to explore Rwanda.'
                     : `${merchantCount} real merchant${merchantCount === 1 ? '' : 's'} on the map. Search a place or pick a category above to explore.`}
                 </p>
+              )}
+
+              {/* Real "Smart Around"-style default state (2026-09-07) -- see
+                  fetchMapAroundMe's own doc comment for the real Naver Map sourcing
+                  and honest scope. Android already has this (MapsScreen.kt's
+                  loadAroundMe); ports it here for cross-platform parity. */}
+              {aroundMePlaces !== null && aroundMePlaces.length > 0 && (
+                <>
+                  <p style={{ fontSize: '12px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY, marginTop: '8px' }}>주변 · Nearby</p>
+                  <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '2px' }}>
+                    {aroundMePlaces.map((place, i) => (
+                      <button
+                        key={`${place.latitude}-${place.longitude}-${i}`}
+                        onClick={() => selectPlace({ displayName: place.displayName, latitude: place.latitude, longitude: place.longitude })}
+                        style={{ textAlign: 'left', flexShrink: 0, width: '140px', padding: '10px', borderRadius: '10px', background: '#F2F4F6' }}
+                      >
+                        <p style={{ fontSize: '12px', fontWeight: 600, color: MAP_CARD_TEXT, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                          {place.displayName.split(',')[0]}
+                        </p>
+                        <p style={{ fontSize: '11px', color: MAP_CARD_TEXT_SECONDARY, marginTop: '2px' }}>{place.distanceKm.toFixed(1)} km</p>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              {trendingPlaces !== null && trendingPlaces.length > 0 && (
+                <>
+                  <p style={{ fontSize: '12px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY, marginTop: '8px' }}>이번 주에 많이 저장한 · Popular this week</p>
+                  <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '2px' }}>
+                    {trendingPlaces.map((place, i) => (
+                      <button
+                        key={`${place.latitude}-${place.longitude}-${i}`}
+                        onClick={() => selectPlace({ displayName: place.displayName, latitude: place.latitude, longitude: place.longitude })}
+                        style={{ textAlign: 'left', flexShrink: 0, width: '140px', padding: '10px', borderRadius: '10px', background: '#F2F4F6' }}
+                      >
+                        <p style={{ fontSize: '12px', fontWeight: 600, color: MAP_CARD_TEXT, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                          {place.displayName.split(',')[0]}
+                        </p>
+                        <p style={{ fontSize: '11px', color: MAP_CARD_TEXT_SECONDARY, marginTop: '2px' }}>★ saved by {place.saveCount}</p>
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
 
               <p style={{ fontSize: '12px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY, marginTop: '8px' }}>★ Your saved places</p>
