@@ -389,4 +389,36 @@
     <string name="ussd_settings_saving">Saving…</string>
     <string name="ussd_settings_submit">Set USSD PIN</string>
     <string name="ussd_settings_saved">Your USSD PIN has been set.</string>
+
+    <!-- Real localization for FamilyLinkScreen.kt (Family product-completeness pass,
+         2026-09-08): this screen had zero string-resource localization at all. Scoped
+         to the primary surface: title, section headers, invite/accept/decline/unlink/
+         view/hide buttons, spend-limit label+edit+save, send-amount+send button, and
+         the empty state. -->
+    <string name="family_title">Family</string>
+    <string name="family_link_a_member">Link a family member</string>
+    <string name="family_link_cta">+ Link</string>
+    <string name="family_cancel">Cancel</string>
+    <string name="family_phone_placeholder">Phone number</string>
+    <string name="family_invite">Invite</string>
+    <string name="family_pending_invitations">Pending invitations</string>
+    <string name="family_link_request">Family link request</string>
+    <string name="family_accept">Accept</string>
+    <string name="family_decline">Decline</string>
+    <string name="family_linked_children">Linked children</string>
+    <string name="family_view">View</string>
+    <string name="family_hide">Hide</string>
+    <string name="family_unlink">Unlink</string>
+    <string name="family_daily_limit_set">Daily limit: %1$s RWF</string>
+    <string name="family_no_daily_limit">No daily spend limit set</string>
+    <string name="family_edit">Edit</string>
+    <string name="family_daily_limit_placeholder">Daily limit (RWF, blank = no limit)</string>
+    <string name="family_save">Save</string>
+    <string name="family_balance">Balance: %1$s RWF</string>
+    <string name="family_no_transactions">No transactions yet.</string>
+    <string name="family_amount_placeholder">Amount (RWF)</string>
+    <string name="family_send">Send</string>
+    <string name="family_sent">Sent.</string>
+    <string name="family_your_guardians">Your guardians</string>
+    <string name="family_empty_state">No family members linked yet — invite one above.</string>
 </resources>

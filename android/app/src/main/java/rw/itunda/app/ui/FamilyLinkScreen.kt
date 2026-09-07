@@ -25,6 +25,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
+import rw.itunda.app.R
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -198,7 +200,7 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
     val hasAnything = !invites.isNullOrEmpty() || !children.isNullOrEmpty() || !guardians.isNullOrEmpty()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        BackTopBar(title = "Family", onBack = onBack)
+        BackTopBar(title = stringResource(R.string.family_title), onBack = onBack)
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
@@ -210,22 +212,22 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Link a family member", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(stringResource(R.string.family_link_a_member), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     Box(
                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
                             .pressScaleClickable { showInvite = !showInvite }.padding(horizontal = 12.dp, vertical = 8.dp),
-                    ) { Text(if (showInvite) "Cancel" else "+ Link", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                    ) { Text(if (showInvite) stringResource(R.string.family_cancel) else stringResource(R.string.family_link_cta), color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                 }
             }
             if (showInvite) {
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        IdsTextField(value = childPhone, onValueChange = { childPhone = it }, label = "Phone number", modifier = Modifier.weight(1f))
+                        IdsTextField(value = childPhone, onValueChange = { childPhone = it }, label = stringResource(R.string.family_phone_placeholder), modifier = Modifier.weight(1f))
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(10.dp))
                                 .background(if (busy || childPhone.isBlank()) Ids.colors.textTertiary else Ids.colors.brand)
                                 .pressScaleClickable(enabled = !busy && childPhone.isNotBlank()) { invite() }.padding(horizontal = 20.dp, vertical = 14.dp),
-                        ) { Text(if (busy) "…" else "Invite", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                        ) { Text(if (busy) "…" else stringResource(R.string.family_invite), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                     }
                 }
             }
@@ -233,7 +235,7 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
 
             val pending = invites
             if (!pending.isNullOrEmpty()) {
-                item { Text("Pending invitations", color = Ids.colors.textSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                item { Text(stringResource(R.string.family_pending_invitations), color = Ids.colors.textSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                 // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card,
                 // matching GroupAccountScreen's identical entity-list conversion
                 // (docs/UI_UX_GUIDELINES.md §10) -- no divider, this is a people list,
@@ -244,16 +246,16 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Family link request", color = Ids.colors.textPrimary, fontSize = 13.sp)
+                        Text(stringResource(R.string.family_link_request), color = Ids.colors.textPrimary, fontSize = 13.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.brand)
                                     .pressScaleClickable(enabled = busyId != inv.id) { respond(inv.id, true) }.padding(horizontal = 12.dp, vertical = 8.dp),
-                            ) { Text("Accept", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                            ) { Text(stringResource(R.string.family_accept), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
                                     .pressScaleClickable(enabled = busyId != inv.id) { respond(inv.id, false) }.padding(horizontal = 12.dp, vertical = 8.dp),
-                            ) { Text("Decline", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                            ) { Text(stringResource(R.string.family_decline), color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
                     }
                 }
@@ -261,7 +263,7 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
 
             val childList = children
             if (!childList.isNullOrEmpty()) {
-                item { Text("Linked children", color = Ids.colors.textSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                item { Text(stringResource(R.string.family_linked_children), color = Ids.colors.textSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                 // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card.
                 items(childList, key = { "child_${it.link.id}" }) { c ->
                     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -271,20 +273,20 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                                     Box(
                                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
                                             .pressScaleClickable { toggleOverview(c.link.childUserId) }.padding(horizontal = 12.dp, vertical = 8.dp),
-                                    ) { Text(if (openOverviewFor == c.link.childUserId) "Hide" else "View", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                                    ) { Text(if (openOverviewFor == c.link.childUserId) stringResource(R.string.family_hide) else stringResource(R.string.family_view), color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                                     Box(
                                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
                                             .pressScaleClickable(enabled = busyId != c.link.id) { revoke(c.link.id) }.padding(horizontal = 12.dp, vertical = 8.dp),
-                                    ) { Text("Unlink", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                                    ) { Text(stringResource(R.string.family_unlink), color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                                 }
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
                                 Text(
-                                    c.link.dailySpendLimit?.let { "Daily limit: ${String.format(Locale.US, "%,.0f", it)} RWF" } ?: "No daily spend limit set",
+                                    c.link.dailySpendLimit?.let { stringResource(R.string.family_daily_limit_set, String.format(Locale.US, "%,.0f", it)) } ?: stringResource(R.string.family_no_daily_limit),
                                     color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f),
                                 )
                                 Text(
-                                    if (editingLimitFor == c.link.childUserId) "Cancel" else "Edit",
+                                    if (editingLimitFor == c.link.childUserId) stringResource(R.string.family_cancel) else stringResource(R.string.family_edit),
                                     color = Ids.colors.brand, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
                                     modifier = Modifier.pressScaleClickable {
                                         if (editingLimitFor == c.link.childUserId) {
@@ -298,22 +300,22 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                             }
                             if (editingLimitFor == c.link.childUserId) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                                    IdsTextField(value = limitInput, onValueChange = { limitInput = it }, label = "Daily limit (RWF, blank = no limit)", modifier = Modifier.weight(1f))
+                                    IdsTextField(value = limitInput, onValueChange = { limitInput = it }, label = stringResource(R.string.family_daily_limit_placeholder), modifier = Modifier.weight(1f))
                                     Box(
                                         modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                             .pressScaleClickable(enabled = limitBusyId != c.link.childUserId) {
                                                 setSpendLimit(c.link.childUserId, limitInput.trim().ifBlank { null }?.toBigDecimalOrNull())
                                             }
                                             .padding(horizontal = 16.dp, vertical = 14.dp),
-                                    ) { Text(if (limitBusyId == c.link.childUserId) "…" else "Save", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                                    ) { Text(if (limitBusyId == c.link.childUserId) "…" else stringResource(R.string.family_save), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                                 }
                             }
                             if (openOverviewFor == c.link.childUserId) {
                                 val o = overview
                                 if (o != null && o.childUserId == c.link.childUserId) {
-                                    Text("Balance: ${String.format(Locale.US, "%,.0f", o.accountBalance)} RWF", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Text(stringResource(R.string.family_balance, String.format(Locale.US, "%,.0f", o.accountBalance)), color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                     if (o.recentTransactions.isEmpty()) {
-                                        Text("No transactions yet.", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                                        Text(stringResource(R.string.family_no_transactions), color = Ids.colors.textSecondary, fontSize = 12.sp)
                                     } else {
                                         o.recentTransactions.take(5).forEach { t ->
                                             Text("${t.description} · ${String.format(Locale.US, "%,.0f", t.amount)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
@@ -322,16 +324,16 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                                     // Real Naver Pay "family shared asset management" --
                                     // instant transfer to this linked family member.
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                                        IdsTextField(value = sendAmountInput, onValueChange = { sendAmountInput = it; sendDone = false }, label = "Amount (RWF)", modifier = Modifier.weight(1f))
+                                        IdsTextField(value = sendAmountInput, onValueChange = { sendAmountInput = it; sendDone = false }, label = stringResource(R.string.family_amount_placeholder), modifier = Modifier.weight(1f))
                                         Box(
                                             modifier = Modifier.clip(RoundedCornerShape(10.dp))
                                                 .background(if (sendBusy || sendAmountInput.isBlank()) Ids.colors.textTertiary else Ids.colors.brand)
                                                 .pressScaleClickable(enabled = !sendBusy && sendAmountInput.isNotBlank()) { sendToChild(c.link.childUserId) }
                                                 .padding(horizontal = 16.dp, vertical = 14.dp),
-                                        ) { Text(if (sendBusy) "…" else "Send", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                                        ) { Text(if (sendBusy) "…" else stringResource(R.string.family_send), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                                     }
                                     if (sendDone) {
-                                        Text("Sent.", color = Ids.colors.success, fontSize = 12.sp)
+                                        Text(stringResource(R.string.family_sent), color = Ids.colors.success, fontSize = 12.sp)
                                     }
                                 }
                             }
@@ -341,7 +343,7 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
 
             val guardianList = guardians
             if (!guardianList.isNullOrEmpty()) {
-                item { Text("Your guardians", color = Ids.colors.textSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                item { Text(stringResource(R.string.family_your_guardians), color = Ids.colors.textSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                 // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card.
                 items(guardianList, key = { "guardian_${it.link.id}" }) { g ->
                     Row(
@@ -353,13 +355,13 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
                                 .pressScaleClickable(enabled = busyId != g.link.id) { revoke(g.link.id) }.padding(horizontal = 12.dp, vertical = 8.dp),
-                        ) { Text("Unlink", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                        ) { Text(stringResource(R.string.family_unlink), color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                     }
                 }
             }
 
             if (!hasAnything) {
-                item { EmptyState("No family members linked yet — invite one above.") }
+                item { EmptyState(stringResource(R.string.family_empty_state)) }
             }
         }
     }

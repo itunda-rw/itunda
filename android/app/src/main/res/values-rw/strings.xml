@@ -301,4 +301,31 @@
     <string name="ussd_settings_saving">Kubika…</string>
     <string name="ussd_settings_submit">Shyiraho PIN ya USSD</string>
     <string name="ussd_settings_saved">PIN yawe ya USSD yashyizweho.</string>
+
+    <string name="family_title">Umuryango</string>
+    <string name="family_link_a_member">Huza umunyamuryango</string>
+    <string name="family_link_cta">+ Huza</string>
+    <string name="family_cancel">Kureka</string>
+    <string name="family_phone_placeholder">Nimero ya telefoni</string>
+    <string name="family_invite">Tumira</string>
+    <string name="family_pending_invitations">Ubutumire butegereje</string>
+    <string name="family_link_request">Ubusabe bwo guhuza umuryango</string>
+    <string name="family_accept">Kwemera</string>
+    <string name="family_decline">Kwanga</string>
+    <string name="family_linked_children">Abana bahujwe</string>
+    <string name="family_view">Reba</string>
+    <string name="family_hide">Hisha</string>
+    <string name="family_unlink">Kuraho ihuza</string>
+    <string name="family_daily_limit_set">Ikigero cya buri munsi: %1$s RWF</string>
+    <string name="family_no_daily_limit">Nta kigero cy\'amafaranga ya buri munsi cyashyizweho</string>
+    <string name="family_edit">Hindura</string>
+    <string name="family_daily_limit_placeholder">Ikigero cya buri munsi (RWF, ubusa = nta kigero)</string>
+    <string name="family_save">Bika</string>
+    <string name="family_balance">Amafaranga asigaye: %1$s RWF</string>
+    <string name="family_no_transactions">Nta vunjisha rihari.</string>
+    <string name="family_amount_placeholder">Amafaranga (RWF)</string>
+    <string name="family_send">Ohereza</string>
+    <string name="family_sent">Byoherejwe.</string>
+    <string name="family_your_guardians">Abarinzi bawe</string>
+    <string name="family_empty_state">Nta munyamuryango uhuje na wowe -- tumira umwe hejuru.</string>
 </resources>

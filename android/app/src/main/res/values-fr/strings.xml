@@ -300,4 +300,31 @@
     <string name="ussd_settings_saving">Enregistrement…</string>
     <string name="ussd_settings_submit">Définir le PIN USSD</string>
     <string name="ussd_settings_saved">Votre PIN USSD a été défini.</string>
+
+    <string name="family_title">Famille</string>
+    <string name="family_link_a_member">Associer un membre de la famille</string>
+    <string name="family_link_cta">+ Associer</string>
+    <string name="family_cancel">Annuler</string>
+    <string name="family_phone_placeholder">Numéro de téléphone</string>
+    <string name="family_invite">Inviter</string>
+    <string name="family_pending_invitations">Invitations en attente</string>
+    <string name="family_link_request">Demande de lien familial</string>
+    <string name="family_accept">Accepter</string>
+    <string name="family_decline">Refuser</string>
+    <string name="family_linked_children">Enfants associés</string>
+    <string name="family_view">Voir</string>
+    <string name="family_hide">Masquer</string>
+    <string name="family_unlink">Dissocier</string>
+    <string name="family_daily_limit_set">Limite quotidienne : %1$s RWF</string>
+    <string name="family_no_daily_limit">Aucune limite de dépenses quotidienne définie</string>
+    <string name="family_edit">Modifier</string>
+    <string name="family_daily_limit_placeholder">Limite quotidienne (RWF, vide = aucune limite)</string>
+    <string name="family_save">Enregistrer</string>
+    <string name="family_balance">Solde : %1$s RWF</string>
+    <string name="family_no_transactions">Aucune transaction pour le moment.</string>
+    <string name="family_amount_placeholder">Montant (RWF)</string>
+    <string name="family_send">Envoyer</string>
+    <string name="family_sent">Envoyé.</string>
+    <string name="family_your_guardians">Vos tuteurs</string>
+    <string name="family_empty_state">Aucun membre de la famille associé pour le moment -- invitez-en un ci-dessus.</string>
 </resources>

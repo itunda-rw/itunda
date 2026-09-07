@@ -152,19 +152,19 @@ export function FamilyLinkCard() {
   return (
     <div className="itunda-flat-section">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>Family</h3>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{t('family.title')}</h3>
         <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowInvite((v) => !v)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>
-          {showInvite ? 'Cancel' : '+ Link a family member'}
+          {showInvite ? t('family.cancel') : t('family.linkCta')}
         </button>
       </div>
 
       {showInvite && (
         <form onSubmit={handleInvite} style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
           <input
-            type="text" placeholder="Phone number" value={childPhone} onChange={(e) => setChildPhone(e.target.value)} required
+            type="text" placeholder={t('family.phonePlaceholder')} value={childPhone} onChange={(e) => setChildPhone(e.target.value)} required
             style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
           />
-          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? '…' : 'Invite'}</button>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? '…' : t('family.invite')}</button>
         </form>
       )}
 
@@ -172,13 +172,13 @@ export function FamilyLinkCard() {
 
       {(invites ?? []).length > 0 && (
         <div style={{ marginBottom: '10px' }}>
-          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-grey-500)', marginBottom: '6px' }}>Pending invitations</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-grey-500)', marginBottom: '6px' }}>{t('family.pendingInvitations')}</p>
           {(invites ?? []).map((inv) => (
             <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0' }}>
-              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>Family link request</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('family.linkRequest')}</p>
               <div style={{ display: 'flex', gap: '6px' }}>
-                <button className="itunda-btn itunda-btn-primary" disabled={busyId === inv.id} onClick={() => handleRespond(inv.id, true)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>Accept</button>
-                <button className="itunda-btn itunda-btn-secondary" disabled={busyId === inv.id} onClick={() => handleRespond(inv.id, false)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>Decline</button>
+                <button className="itunda-btn itunda-btn-primary" disabled={busyId === inv.id} onClick={() => handleRespond(inv.id, true)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>{t('family.accept')}</button>
+                <button className="itunda-btn itunda-btn-secondary" disabled={busyId === inv.id} onClick={() => handleRespond(inv.id, false)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>{t('family.decline')}</button>
               </div>
             </div>
           ))}
@@ -187,23 +187,23 @@ export function FamilyLinkCard() {
 
       {(children ?? []).length > 0 && (
         <div style={{ marginBottom: '10px' }}>
-          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-grey-500)', marginBottom: '6px' }}>Linked children</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-grey-500)', marginBottom: '6px' }}>{t('family.linkedChildren')}</p>
           {(children ?? []).map((c) => (
             <div key={c.link.id} style={{ padding: '6px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{c.childName}</p>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   <button className="itunda-btn itunda-btn-secondary" onClick={() => handleToggleOverview(c.link.childUserId)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>
-                    {openOverviewFor === c.link.childUserId ? 'Hide' : 'View'}
+                    {openOverviewFor === c.link.childUserId ? t('family.hide') : t('family.view')}
                   </button>
                   <button className="itunda-btn itunda-btn-secondary" disabled={busyId === c.link.id} onClick={() => handleRevoke(c.link.id)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>
-                    Unlink
+                    {t('family.unlink')}
                   </button>
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
                 <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
-                  {c.link.dailySpendLimit != null ? `Daily limit: ${c.link.dailySpendLimit.toLocaleString('en-US')} RWF` : 'No daily spend limit set'}
+                  {c.link.dailySpendLimit != null ? t('family.dailyLimitSet', { amount: c.link.dailySpendLimit.toLocaleString('en-US') }) : t('family.noDailyLimit')}
                 </p>
                 <button
                   className="itunda-btn itunda-btn-secondary"
@@ -217,13 +217,13 @@ export function FamilyLinkCard() {
                   }}
                   style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '4px 8px' }}
                 >
-                  {editingLimitFor === c.link.childUserId ? 'Cancel' : 'Edit'}
+                  {editingLimitFor === c.link.childUserId ? t('family.cancel') : t('family.edit')}
                 </button>
               </div>
               {editingLimitFor === c.link.childUserId && (
                 <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
                   <input
-                    type="number" min={0} placeholder="Daily limit (RWF, blank = no limit)" value={limitInput}
+                    type="number" min={0} placeholder={t('family.dailyLimitPlaceholder')} value={limitInput}
                     onChange={(e) => setLimitInput(e.target.value)}
                     style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-12-size)' }}
                   />
@@ -232,22 +232,22 @@ export function FamilyLinkCard() {
                     onClick={() => handleSetSpendLimit(c.link.childUserId)}
                     style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '8px 12px' }}
                   >
-                    {limitBusyId === c.link.childUserId ? '…' : 'Save'}
+                    {limitBusyId === c.link.childUserId ? '…' : t('family.save')}
                   </button>
                 </div>
               )}
               {openOverviewFor === c.link.childUserId && overview && (
                 <div style={{ marginTop: '6px', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
-                  <p>Balance: <strong style={{ color: 'var(--itunda-grey-900)' }}>{overview.accountBalance.toLocaleString('en-US')} RWF</strong></p>
-                  {overview.recentTransactions.slice(0, 5).map((t) => (
-                    <p key={t.id}>{t.description} · {t.amount.toLocaleString('en-US')} RWF</p>
+                  <p>{t('family.balance', { amount: overview.accountBalance.toLocaleString('en-US') })}</p>
+                  {overview.recentTransactions.slice(0, 5).map((tx) => (
+                    <p key={tx.id}>{tx.description} · {tx.amount.toLocaleString('en-US')} RWF</p>
                   ))}
                   {overview.recentTransactions.length === 0 && <EmptyState message="Nothing here yet — your activity will show up as you use itunda." />}
                   {/* Real Naver Pay "family shared asset management" -- instant transfer
                       to this linked family member, see lib/p2p.ts's own doc comment. */}
                   <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
                     <input
-                      type="number" min={1} placeholder="Amount (RWF)" value={sendAmount}
+                      type="number" min={1} placeholder={t('family.amountPlaceholder')} value={sendAmount}
                       onChange={(e) => { setSendAmount(e.target.value); setSendDone(false); }}
                       style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-12-size)' }}
                     />
@@ -256,10 +256,10 @@ export function FamilyLinkCard() {
                       onClick={() => handleSendToChild(c.link.childUserId)}
                       style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '8px 12px' }}
                     >
-                      {sendBusy ? '…' : 'Send'}
+                      {sendBusy ? '…' : t('family.send')}
                     </button>
                   </div>
-                  {sendDone && <p style={{ color: 'var(--itunda-green)', marginTop: '4px' }}>Sent.</p>}
+                  {sendDone && <p style={{ color: 'var(--itunda-green)', marginTop: '4px' }}>{t('family.sent')}</p>}
                 </div>
               )}
             </div>
@@ -269,19 +269,19 @@ export function FamilyLinkCard() {
 
       {(guardians ?? []).length > 0 && (
         <div>
-          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-grey-500)', marginBottom: '6px' }}>Your guardians</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-grey-500)', marginBottom: '6px' }}>{t('family.yourGuardians')}</p>
           {(guardians ?? []).map((g) => (
             <div key={g.link.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{g.guardianName}</p>
               <button className="itunda-btn itunda-btn-secondary" disabled={busyId === g.link.id} onClick={() => handleRevoke(g.link.id)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>
-                Unlink
+                {t('family.unlink')}
               </button>
             </div>
           ))}
         </div>
       )}
 
-      {!hasAnything && <EmptyState message="No family members linked yet — invite one to manage their spending together." />}
+      {!hasAnything && <EmptyState message={t('family.emptyState')} />}
     </div>
   );
 }
