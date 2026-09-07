@@ -18,10 +18,13 @@ import rw.itunda.core.domain.VehicleInspectionMechanic
 import rw.itunda.core.domain.VehicleInspectionStatus
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.ListingRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.VehicleInspectionBookingRepository
 import rw.itunda.core.repository.VehicleInspectionMechanicRepository
@@ -51,8 +54,12 @@ class VehicleInspectionServiceTest : BehaviorSpec({
         transactionRepository: TransactionRepository = mockk<TransactionRepository>(relaxed = true).also { every { it.save(any()) } answers { firstArg() } },
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
+        fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
+        notificationRepository: NotificationRepository = mockk(relaxed = true),
+        pushNotificationService: PushNotificationService = mockk(relaxed = true),
     ) = VehicleInspectionService(
         vehicleInspectionMechanicRepository, vehicleInspectionBookingRepository, listingRepository, accountRepository, transactionRepository, ledgerService, rateLimiter,
+        fraudRuleEngine, notificationRepository, pushNotificationService,
     )
 
     Given("a real user registering as a mechanic") {
@@ -95,9 +102,11 @@ class VehicleInspectionServiceTest : BehaviorSpec({
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = newService(
             vehicleInspectionMechanicRepository = vehicleInspectionMechanicRepository, vehicleInspectionBookingRepository = vehicleInspectionBookingRepository,
             listingRepository = listingRepository, accountRepository = accountRepository, ledgerService = ledgerService, rateLimiter = rateLimiter,
+            fraudRuleEngine = fraudRuleEngine,
         )
 
         val listing = Listing(
@@ -125,6 +134,12 @@ class VehicleInspectionServiceTest : BehaviorSpec({
                 creditLeg.accountType shouldBe LedgerAccountType.VEHICLE_INSPECTION_HOLDING
                 val debitLeg = legsSlot.first().first { it.direction == LedgerDirection.DEBIT }
                 debitLeg.accountId shouldBe "account_buyer"
+            }
+            // Real gap closed 2026-09-07 (Vehicle product-completeness pass): a real
+            // money-to-a-named-recipient flow, same evaluate-before-save ordering
+            // MarketplaceService.escrowPay already establishes for the identical shape.
+            Then("the real inspection fee is evaluated against the buyer's own fraud history") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("buyer_1", "mechanic_user_1", BigDecimal("15000"), "ledgertxn_inspect_1") }
             }
         }
 
@@ -168,14 +183,57 @@ class VehicleInspectionServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a real mechanic with a real REQUESTED booking, accepting it") {
+        val vehicleInspectionMechanicRepository = mockk<VehicleInspectionMechanicRepository>()
+        val vehicleInspectionBookingRepository = mockk<VehicleInspectionBookingRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(
+            vehicleInspectionMechanicRepository = vehicleInspectionMechanicRepository, vehicleInspectionBookingRepository = vehicleInspectionBookingRepository,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
+        )
+
+        val mechanic = VehicleInspectionMechanic(id = "mechanic_1", userId = "mechanic_user_1", accountId = "account_mechanic", businessName = "Kigali Auto Care")
+        val booking = VehicleInspectionBooking(
+            id = "inspection_1", listingId = "listing_1", buyerId = "buyer_1", mechanicId = "mechanic_1",
+            fee = BigDecimal("15000"), platformFee = BigDecimal("225"), scheduledFor = Instant.now().plusSeconds(86400), holdTransactionId = "ledgertxn_1",
+        )
+        every { vehicleInspectionMechanicRepository.findByUserId("mechanic_user_1") } returns mechanic
+        every { vehicleInspectionBookingRepository.findById("inspection_1") } returns Optional.of(booking)
+        every { vehicleInspectionBookingRepository.save(any()) } answers { firstArg() }
+        // relaxed=true mishandles JpaRepository's generic `<S extends T> S save(S)` and
+        // returns a raw Object, ClassCastException-ing at the call site -- same fix as
+        // this codebase's other documented instances of this exact pitfall.
+        every { notificationRepository.save(any()) } answers { firstArg() }
+
+        When("accepting it") {
+            val accepted = service.acceptInspection("mechanic_user_1", "inspection_1")
+
+            Then("it real-transitions to ACCEPTED") {
+                accepted.status shouldBe VehicleInspectionStatus.ACCEPTED
+            }
+            // Real gap closed 2026-09-07 (Vehicle product-completeness pass): the buyer
+            // previously had no way to know a booking was accepted except re-polling --
+            // same real Notification-row + push shape MerchantBookingService's own
+            // booking-lifecycle notify already establishes.
+            Then("the real buyer is notified") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_1" && it.type == "VEHICLE_INSPECTION_UPDATE" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("buyer_1", any(), any(), any()) }
+            }
+        }
+    }
+
     Given("a real mechanic with a real ACCEPTED booking, completing the inspection") {
         val vehicleInspectionMechanicRepository = mockk<VehicleInspectionMechanicRepository>()
         val vehicleInspectionBookingRepository = mockk<VehicleInspectionBookingRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             vehicleInspectionMechanicRepository = vehicleInspectionMechanicRepository, vehicleInspectionBookingRepository = vehicleInspectionBookingRepository,
             accountRepository = accountRepository, ledgerService = ledgerService,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
         )
 
         val mechanic = VehicleInspectionMechanic(id = "mechanic_1", userId = "mechanic_user_1", accountId = "account_mechanic", businessName = "Kigali Auto Care")
@@ -189,6 +247,7 @@ class VehicleInspectionServiceTest : BehaviorSpec({
         every { vehicleInspectionMechanicRepository.findById("mechanic_1") } returns Optional.of(mechanic)
         every { accountRepository.findById("account_mechanic") } returns Optional.of(account("account_mechanic", "mechanic_user_1"))
         every { vehicleInspectionBookingRepository.save(any()) } answers { firstArg() }
+        every { notificationRepository.save(any()) } answers { firstArg() }
 
         When("marking it complete with real findings") {
             val legsSlot = mutableListOf<List<LedgerLeg>>()
@@ -202,22 +261,36 @@ class VehicleInspectionServiceTest : BehaviorSpec({
                 val creditLeg = legsSlot.first().first { it.accountId == "account_mechanic" }
                 creditLeg.amount shouldBe BigDecimal("14775")
             }
+            Then("the real buyer is notified that findings are ready") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_1" && it.type == "VEHICLE_INSPECTION_UPDATE" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("buyer_1", any(), any(), any()) }
+            }
         }
     }
 
     Given("a real buyer cancelling a real REQUESTED booking") {
+        val vehicleInspectionMechanicRepository = mockk<VehicleInspectionMechanicRepository>()
         val vehicleInspectionBookingRepository = mockk<VehicleInspectionBookingRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(vehicleInspectionBookingRepository = vehicleInspectionBookingRepository, accountRepository = accountRepository, ledgerService = ledgerService)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(
+            vehicleInspectionMechanicRepository = vehicleInspectionMechanicRepository, vehicleInspectionBookingRepository = vehicleInspectionBookingRepository,
+            accountRepository = accountRepository, ledgerService = ledgerService,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
+        )
 
+        val mechanic = VehicleInspectionMechanic(id = "mechanic_1", userId = "mechanic_user_1", accountId = "account_mechanic", businessName = "Kigali Auto Care")
         val booking = VehicleInspectionBooking(
             id = "inspection_1", listingId = "listing_1", buyerId = "buyer_1", mechanicId = "mechanic_1",
             fee = BigDecimal("15000"), platformFee = BigDecimal("225"), scheduledFor = Instant.now(), holdTransactionId = "ledgertxn_1",
         )
         every { vehicleInspectionBookingRepository.findById("inspection_1") } returns Optional.of(booking)
         every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns account("account_buyer", "buyer_1")
+        every { vehicleInspectionMechanicRepository.findById("mechanic_1") } returns Optional.of(mechanic)
         every { vehicleInspectionBookingRepository.save(any()) } answers { firstArg() }
+        every { notificationRepository.save(any()) } answers { firstArg() }
 
         When("cancelling before the mechanic accepts") {
             val legsSlot = mutableListOf<List<LedgerLeg>>()
@@ -230,6 +303,10 @@ class VehicleInspectionServiceTest : BehaviorSpec({
                 val creditLeg = legsSlot.first().first { it.direction == LedgerDirection.CREDIT }
                 creditLeg.accountId shouldBe "account_buyer"
                 creditLeg.amount shouldBe BigDecimal("15000")
+            }
+            Then("the real mechanic is notified the booking was cancelled") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "mechanic_user_1" && it.type == "VEHICLE_INSPECTION_UPDATE" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("mechanic_user_1", any(), any(), any()) }
             }
         }
     }

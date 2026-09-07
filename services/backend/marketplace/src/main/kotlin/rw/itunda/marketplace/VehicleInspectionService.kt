@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
@@ -12,9 +13,12 @@ import rw.itunda.core.domain.VehicleInspectionBooking
 import rw.itunda.core.domain.VehicleInspectionMechanic
 import rw.itunda.core.domain.VehicleInspectionStatus
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.ListingRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.VehicleInspectionBookingRepository
 import rw.itunda.core.repository.VehicleInspectionMechanicRepository
@@ -48,6 +52,9 @@ class VehicleInspectionService(
     private val transactionRepository: TransactionRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val fraudRuleEngine: FraudRuleEngine,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     companion object {
         // Consolidated 2026-09-06 into core/pricing/PlatformFees -- see its own doc comment.
@@ -115,6 +122,11 @@ class VehicleInspectionService(
                 LedgerLeg("vehicle_inspection_holding", LedgerAccountType.VEHICLE_INSPECTION_HOLDING, LedgerDirection.CREDIT, fee, "Inspection fee held - ${listing.title}"),
             ),
         )
+        // Real gap closed 2026-09-07 (Vehicle product-completeness pass) -- a real
+        // money-to-a-named-recipient flow, same evaluate-before-save ordering
+        // MarketplaceService.escrowPay (this same module's own sibling trade escrow)
+        // already establishes for the identical shape.
+        fraudRuleEngine.evaluate(buyerId, mechanic.userId, fee, result.transactionId)
         transactionRepository.save(
             Transaction(
                 id = result.transactionId,
@@ -168,7 +180,9 @@ class VehicleInspectionService(
         }
         booking.status = VehicleInspectionStatus.ACCEPTED
         booking.updatedAt = Instant.now()
-        return vehicleInspectionBookingRepository.save(booking)
+        val saved = vehicleInspectionBookingRepository.save(booking)
+        notifyBookingUpdate(booking.buyerId, "Your inspection request was accepted", "A mechanic accepted your inspection request. They'll be in touch to confirm the details.", booking.id)
+        return saved
     }
 
     /** Real release -- the mechanic delivered the real inspection, paid out of holding
@@ -197,7 +211,9 @@ class VehicleInspectionService(
         booking.resolutionTransactionId = result.transactionId
         booking.findings = findings?.trim()?.take(2000)?.ifBlank { null }
         booking.updatedAt = Instant.now()
-        return vehicleInspectionBookingRepository.save(booking)
+        val saved = vehicleInspectionBookingRepository.save(booking)
+        notifyBookingUpdate(booking.buyerId, "Your inspection is complete", "The mechanic has finished the inspection. Open your booking to see their findings.", booking.id)
+        return saved
     }
 
     /** Real full refund, no fee -- the trade genuinely didn't happen, same "an explicit
@@ -225,7 +241,27 @@ class VehicleInspectionService(
         booking.status = VehicleInspectionStatus.CANCELLED
         booking.resolutionTransactionId = result.transactionId
         booking.updatedAt = Instant.now()
-        return vehicleInspectionBookingRepository.save(booking)
+        val saved = vehicleInspectionBookingRepository.save(booking)
+        vehicleInspectionMechanicRepository.findById(booking.mechanicId).orElse(null)?.let { mechanic ->
+            notifyBookingUpdate(mechanic.userId, "An inspection booking was cancelled", "The buyer cancelled a scheduled inspection.", booking.id)
+        }
+        return saved
+    }
+
+    /** Real, best-effort booking-lifecycle notification -- same `Notification`-row +
+     * push shape `MerchantBookingService`'s own real "new booking request"/"owner
+     * reply" notify already establishes for its structurally identical prepay-booking
+     * lifecycle. Push is auxiliary by design (see `PushNotificationService`'s own doc
+     * comment) -- never throws, never blocks the real ledger action that triggered it. */
+    private fun notifyBookingUpdate(userId: String, title: String, body: String, bookingId: String) {
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = userId, type = "VEHICLE_INSPECTION_UPDATE",
+                title = title, body = body, isRead = false, createdAt = Instant.now(),
+                dataJson = "{\"bookingId\":\"$bookingId\"}",
+            ),
+        )
+        pushNotificationService.sendToUser(userId, title, body, mapOf("bookingId" to bookingId))
     }
 
     /** Real no-show poll target -- see VehicleInspectionNoShowScheduler's own doc
