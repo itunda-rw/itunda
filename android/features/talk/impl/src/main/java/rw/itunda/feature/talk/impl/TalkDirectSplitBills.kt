@@ -77,6 +77,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
+import rw.itunda.feature.talk.impl.R
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -196,13 +198,13 @@ internal fun DirectSplitBillsView(
     LaunchedEffect(otherUserId) { refresh() }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        BackTopBar("Split bills with $otherUserName", onBack)
+        BackTopBar(stringResource(R.string.splitbill_title_direct, otherUserName), onBack)
         Spacer(modifier = Modifier.height(8.dp))
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             error?.let { item { Text(it, color = Ids.colors.danger, fontSize = 13.sp) } }
             item {
                 if (!showNewForm) {
-                    IdsButton(text = "Split a bill", onClick = { showNewForm = true })
+                    IdsButton(text = stringResource(R.string.splitbill_cta), onClick = { showNewForm = true })
                 } else {
                     Column {
                         IdsTextField(amountText, { amountText = it }, label = "Total amount (RWF)", keyboardType = KeyboardType.Number, isAmount = true, modifier = Modifier.fillMaxWidth())
@@ -245,7 +247,7 @@ internal fun DirectSplitBillsView(
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         IdsButton(
-                            text = if (busyId == "new") "Creating…" else "Create split bill",
+                            text = if (busyId == "new") stringResource(R.string.splitbill_creating) else stringResource(R.string.splitbill_create),
                             enabled = busyId == null && amountText.toBigDecimalOrNull()?.let { it > java.math.BigDecimal.ZERO } == true &&
                                 descriptionText.isNotBlank(),
                             onClick = {
@@ -275,7 +277,7 @@ internal fun DirectSplitBillsView(
             }
             val current = splitBills
             if (current == null) item { SkeletonBlock() }
-            else if (current.isEmpty()) item { Text("No split bills with $otherUserName yet.", color = Ids.colors.textSecondary, fontSize = 13.sp) }
+            else if (current.isEmpty()) item { Text(stringResource(R.string.splitbill_empty_direct, otherUserName), color = Ids.colors.textSecondary, fontSize = 13.sp) }
             else items(current, key = { it.splitBill.id }) { entry ->
                 val myShare = entry.participants.find { it.userId == currentUserId }
                 val isOrganizer = entry.splitBill.organizerId == currentUserId
@@ -306,7 +308,7 @@ internal fun DirectSplitBillsView(
                         if (myShare != null && myShare.status == "PENDING") {
                             Spacer(modifier = Modifier.height(8.dp))
                             IdsButton(
-                                text = if (busyId == entry.splitBill.id) "Paying…" else "Pay my share (${String.format(Locale.US, "%,.0f", myShare.shareAmount)} RWF)",
+                                text = if (busyId == entry.splitBill.id) stringResource(R.string.splitbill_paying) else stringResource(R.string.splitbill_pay_share, String.format(Locale.US, "%,.0f", myShare.shareAmount)),
                                 enabled = busyId == null,
                                 onClick = {
                                     busyId = entry.splitBill.id

@@ -11,4 +11,19 @@
 <resources>
     <string name="gift_composer_title">Send a gift</string>
     <string name="gift_menu_item">Gift</string>
+
+    <!-- Real localization for TalkGroupSplitBills.kt/TalkDirectSplitBills.kt (Splitbill
+         product-completeness pass, 2026-09-08): scoped to the primary, always-visible
+         surface only (title, main CTA, create/cancel, pay-my-share, empty state), not
+         the ladder-mode/receipt-attach/next-round secondary controls, matching this
+         sweep's own established narrower-scope precedent for large screens. -->
+    <string name="splitbill_title_group">Split bills</string>
+    <string name="splitbill_title_direct">Split bills with %1$s</string>
+    <string name="splitbill_cta">Split a bill</string>
+    <string name="splitbill_creating">Creating…</string>
+    <string name="splitbill_create">Create split bill</string>
+    <string name="splitbill_paying">Paying…</string>
+    <string name="splitbill_pay_share">Pay my share (%1$s RWF)</string>
+    <string name="splitbill_empty_group">No split bills in this group yet.</string>
+    <string name="splitbill_empty_direct">No split bills with %1$s yet.</string>
 </resources>

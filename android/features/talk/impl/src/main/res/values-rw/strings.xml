@@ -2,4 +2,14 @@
 <resources>
     <string name="gift_composer_title">Ohereza impano</string>
     <string name="gift_menu_item">Impano</string>
+
+    <string name="splitbill_title_group">Gusaranganya fagitire</string>
+    <string name="splitbill_title_direct">Gusaranganya fagitire na %1$s</string>
+    <string name="splitbill_cta">Saranganya fagitire</string>
+    <string name="splitbill_creating">Kurema…</string>
+    <string name="splitbill_create">Rema isaranganywa</string>
+    <string name="splitbill_paying">Kwishyura…</string>
+    <string name="splitbill_pay_share">Ishyura umugabane wawe (%1$s RWF)</string>
+    <string name="splitbill_empty_group">Nta masaranganywa ari muri iki kigo ubu.</string>
+    <string name="splitbill_empty_direct">Nta masaranganywa hagati yawe na %1$s ubu.</string>
 </resources>
