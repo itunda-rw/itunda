@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.AutoMode
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,6 +53,7 @@ fun TransferHubScreen(
     onSendMoney: () -> Unit,
     onOpenAutoTransfers: () -> Unit,
     onOpenScheduledTransfers: () -> Unit,
+    onOpenDelayedTransfers: () -> Unit,
     onSplitBill: () -> Unit,
     onOpenHistory: () -> Unit,
 ) {
@@ -81,6 +83,16 @@ fun TransferHubScreen(
                 title = "Scheduled transfer",
                 subtitle = "Send on a future date, one time",
                 onClick = onOpenScheduledTransfers,
+            )
+            Spacer(Modifier.height(8.dp))
+            // Real Korean 지연이체서비스 (Delayed Transfer Service) row -- see
+            // DelayedTransferListScreen.kt's own doc comment. Already real on iOS/web;
+            // this closes the Android-only gap.
+            TransferHubRow(
+                icon = Icons.Outlined.Shield,
+                title = "Delayed transfer",
+                subtitle = "Send safely, cancel within a few hours",
+                onClick = onOpenDelayedTransfers,
             )
             Spacer(Modifier.height(8.dp))
             // Real 더치페이 (Split bill) row (2026-07-24) -- completes real Toss's

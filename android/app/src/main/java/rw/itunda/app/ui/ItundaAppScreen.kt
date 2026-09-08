@@ -191,6 +191,7 @@ import rw.itunda.feature.banking.impl.Grow31SavingsScreen
 import rw.itunda.feature.banking.impl.WeeklySavingsScreen
 import rw.itunda.feature.home.impl.HomeTab
 import rw.itunda.feature.pay.impl.AutoTransferListScreen
+import rw.itunda.feature.pay.impl.DelayedTransferListScreen
 import rw.itunda.feature.pay.impl.PayTab
 import rw.itunda.feature.pay.impl.ScheduledTransferListScreen
 import rw.itunda.feature.pay.impl.TransferHubScreen
@@ -636,6 +637,11 @@ fun ItundaAppScreen(
         // Real Toss 예약송금 (scheduled/reserved one-time transfer) -- see
         // ScheduledTransferListScreen's own doc comment for the full sourced account.
         var showScheduledTransfers by rememberSaveable { mutableStateOf(false) }
+        // Real Korean 지연이체서비스 (Delayed Transfer Service) -- see
+        // DelayedTransferListScreen's own doc comment for the full sourced account.
+        // Already real on iOS/web; this closes the Android-only gap (P2P
+        // product-completeness pass, 2026-09-08).
+        var showDelayedTransfers by rememberSaveable { mutableStateOf(false) }
         var autoTransferCount by remember { mutableStateOf(0) }
         LaunchedEffect(showTransferHub) {
             if (showTransferHub) {
@@ -1767,6 +1773,8 @@ fun ItundaAppScreen(
                 )
             } else if (showScheduledTransfers) {
                 ScheduledTransferListScreen(onBack = { showScheduledTransfers = false })
+            } else if (showDelayedTransfers) {
+                DelayedTransferListScreen(onBack = { showDelayedTransfers = false })
             } else {
                 TransferHubScreen(
                     autoTransferCount = autoTransferCount,
@@ -1774,6 +1782,7 @@ fun ItundaAppScreen(
                     onSendMoney = { showTransferHub = false; transferStep = TransferStep.Recipient; transferFromAccount = null },
                     onOpenAutoTransfers = { showAutoTransfers = true },
                     onOpenScheduledTransfers = { showScheduledTransfers = true },
+                    onOpenDelayedTransfers = { showDelayedTransfers = true },
                     onSplitBill = { showTransferHub = false; selectedTab = ItundaTab.Messages },
                     onOpenHistory = { showTransferHub = false; showTransactionHistory = true },
                 )

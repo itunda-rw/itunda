@@ -611,6 +611,29 @@ data class CreateScheduledTransferRequest(
 data class ScheduledTransferResponse(val success: Boolean, val scheduledTransfer: ScheduledTransferDto)
 data class ScheduledTransfersListResponse(val success: Boolean, val scheduledTransfers: List<ScheduledTransferDto>)
 
+// Real Korean 지연이체서비스 (Delayed Transfer Service) -- see backend
+// P2pDelayedTransfer.kt's own doc comment for the full sourced account (a real,
+// government-documented anti-voice-phishing safeguard every major Korean bank offers).
+// Genuinely distinct from ScheduledTransfer above (a user-chosen FUTURE send date):
+// this is a SAFETY delay on a transfer the sender wants to send right now. Already
+// shipped on iOS (DelayedTransferListScreen.swift) and web (DelayedTransfersCard in
+// PayTransferCards.tsx) -- Android had zero client anywhere until now despite the
+// backend being fully built. Mirrors P2pController's real DTOs exactly.
+enum class DelayedTransferStatus { PENDING, COMPLETED, CANCELLED }
+data class DelayedTransferDto(
+    val id: String,
+    val senderUserId: String,
+    val recipientUserId: String,
+    val amount: java.math.BigDecimal,
+    val description: String,
+    val status: DelayedTransferStatus,
+    val releaseAt: String,
+    val createdAt: String,
+)
+data class SendDelayedTransferRequest(val recipient: String, val amount: java.math.BigDecimal, val description: String = "")
+data class DelayedTransferResponse(val success: Boolean, val transfer: DelayedTransferDto)
+data class DelayedTransfersListResponse(val success: Boolean, val transfers: List<DelayedTransferDto>)
+
 // Real Toss 사기계좌 조회 (fraud-account lookup before transfer) -- see backend
 // ScamReportService's own doc comment. itunda's own crowd-sourced report registry,
 // not a real police-database integration. Real on bank-mfe only until now (2026-07-31).
@@ -2828,6 +2851,18 @@ interface ApiService {
 
     @POST("api/v1/p2p/scheduled-transfers/{id}/cancel")
     suspend fun cancelScheduledTransfer(@Path("id") id: String): ScheduledTransferResponse
+
+    // Real Korean 지연이체서비스 (Delayed Transfer Service) -- see DelayedTransferDto's
+    // own doc comment. Already real on iOS/web; Android had zero client anywhere until
+    // now despite the backend being fully built.
+    @POST("api/v1/p2p/send-delayed")
+    suspend fun sendDelayed(@Header("Idempotency-Key") idempotencyKey: String, @Body request: SendDelayedTransferRequest): DelayedTransferResponse
+
+    @GET("api/v1/p2p/delayed-transfers")
+    suspend fun getMyDelayedTransfers(): DelayedTransfersListResponse
+
+    @POST("api/v1/p2p/delayed-transfers/{id}/cancel")
+    suspend fun cancelDelayedTransfer(@Path("id") id: String): DelayedTransferResponse
 
     @GET("api/v1/p2p/scam-reports/check")
     suspend fun checkScamStatus(@Query("identifier") identifier: String): ScamCheckResponse
