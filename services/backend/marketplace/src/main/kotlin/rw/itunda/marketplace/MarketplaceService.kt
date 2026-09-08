@@ -709,16 +709,23 @@ class MarketplaceService(
      * legitimate), `false` refunds the buyer in full, no fee charged, and reopens the
      * listing for sale again (the trade genuinely didn't happen). */
     @Transactional
-    fun resolveDispute(escrowId: String, release: Boolean): MarketplaceEscrow {
+    fun resolveDispute(escrowId: String, release: Boolean, adminUserId: String): MarketplaceEscrow {
         val escrow = marketplaceEscrowRepository.findById(escrowId).orElseThrow { MarketplaceEscrowNotFoundException("Escrow not found") }
         if (escrow.status != MarketplaceEscrowStatus.DISPUTED) {
             throw InvalidEscrowStatusException("Only a DISPUTED escrow can be resolved -- this one is ${escrow.status}")
         }
-        return if (release) {
+        // Real admin-accountability gap closed (Bank/Merchant product-completeness
+        // pass, cycle 2, 2026-09-09): resolvedBy is set here, not inside
+        // releaseEscrowToSeller/refundEscrowToBuyer -- those 2 private helpers are
+        // shared with confirmReceipt (buyer-driven) and autoReleaseEscrow (scheduler-
+        // driven), neither of which has a real admin acting.
+        val resolved = if (release) {
             releaseEscrowToSeller(escrow)
         } else {
             refundEscrowToBuyer(escrow)
         }
+        resolved.resolvedBy = adminUserId
+        return marketplaceEscrowRepository.save(resolved)
     }
 
     private fun releaseEscrowToSeller(escrow: MarketplaceEscrow): MarketplaceEscrow {

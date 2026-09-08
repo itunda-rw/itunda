@@ -78,6 +78,15 @@ class MarketplaceEscrow(
     @Column(name = "dispute_reason", length = 500)
     var disputeReason: String? = null,
 
+    // Real admin-accountability gap closed (Bank/Merchant cycle-2 pass, 2026-09-09):
+    // MarketplaceEscrowAdminController.resolve had zero record of which admin decided
+    // a real money release-vs-refund dispute, unlike the identical-shape decide()-style
+    // admin actions elsewhere (VupLoanService.decide etc.) that already persist
+    // reviewedBy. The highest-stakes of the 3 gaps found this pass -- resolveDispute
+    // moves real money either to the seller or back to the buyer.
+    @Column(name = "resolved_by", length = 64)
+    var resolvedBy: String? = null,
+
     // Real gap closed 2026-08-15: escrow always assumed an in-person handoff (buyer
     // "confirms receipt" in person) -- a real, sourced 당근마켓 (Karrot) 바로구매-style
     // shipped-item trade had no field to say where a non-local item should go. Nullable

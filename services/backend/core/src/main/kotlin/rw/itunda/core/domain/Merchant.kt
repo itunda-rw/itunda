@@ -303,6 +303,25 @@ class Merchant(
 
     @Column(name = "ai_summary_generated_at")
     var aiSummaryGeneratedAt: Instant? = null,
+
+    // Real admin-accountability gap closed (Bank/Merchant cycle-2 pass, 2026-09-09):
+    // MerchantModerationAdminController.suspend/reactivate/revoke-fee-waiver had zero
+    // record of which admin acted, unlike the identical-shape decide()-style admin
+    // actions elsewhere (VupLoanService.decide, IdentityService.decide, etc.) that all
+    // already persist reviewedBy/reviewedAt. Nullable: legacy status changes made
+    // before this field existed have no historical value to backfill, same convention
+    // reviewedBy/reviewedAt fields elsewhere in this codebase already use.
+    @Column(name = "status_changed_by", length = 64)
+    var statusChangedBy: String? = null,
+
+    @Column(name = "status_changed_at")
+    var statusChangedAt: Instant? = null,
+
+    @Column(name = "fee_waiver_revoked_by", length = 64)
+    var feeWaiverRevokedBy: String? = null,
+
+    @Column(name = "fee_waiver_revoked_at")
+    var feeWaiverRevokedAt: Instant? = null,
 ) {
     protected constructor() : this(id = "", ownerUserId = "", accountId = "", businessName = "")
 

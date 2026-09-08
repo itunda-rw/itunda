@@ -45,6 +45,15 @@ class VehicleInspectionMechanic(
     @Column(nullable = false)
     var suspended: Boolean = false,
 
+    // Real admin-accountability gap closed (Bank/Merchant cycle-2 pass, 2026-09-09):
+    // VehicleInspectionMechanicModerationAdminController.suspend/reactivate had zero
+    // record of which admin acted, same class of gap as Merchant.statusChangedBy above.
+    @Column(name = "suspended_by", length = 64)
+    var suspendedBy: String? = null,
+
+    @Column(name = "suspended_at")
+    var suspendedAt: Instant? = null,
+
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 ) {

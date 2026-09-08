@@ -3,6 +3,7 @@ package rw.itunda.marketplace
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -106,10 +107,15 @@ class VehicleInspectionServiceTest : BehaviorSpec({
         every { vehicleInspectionMechanicRepository.save(any()) } answers { firstArg() }
 
         When("suspending") {
-            val suspended = service.suspendMechanic("mechanic_1")
+            val suspended = service.suspendMechanic("mechanic_1", "admin_1")
 
             Then("it real-flips the separate suspended field, not the mechanic's own available toggle") {
                 suspended.suspended shouldBe true
+            }
+
+            Then("it records which admin acted, not a silent status flip") {
+                suspended.suspendedBy shouldBe "admin_1"
+                suspended.suspendedAt shouldNotBe null
             }
         }
     }
@@ -122,10 +128,15 @@ class VehicleInspectionServiceTest : BehaviorSpec({
         every { vehicleInspectionMechanicRepository.save(any()) } answers { firstArg() }
 
         When("reactivating") {
-            val reactivated = service.reactivateMechanic("mechanic_1")
+            val reactivated = service.reactivateMechanic("mechanic_1", "admin_2")
 
             Then("it real-clears suspended") {
                 reactivated.suspended shouldBe false
+            }
+
+            Then("it records which admin reactivated, not a silent status flip") {
+                reactivated.suspendedBy shouldBe "admin_2"
+                reactivated.suspendedAt shouldNotBe null
             }
         }
     }

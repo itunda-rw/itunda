@@ -2,12 +2,14 @@ package rw.itunda.marketplace.web
 
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.marketplace.MechanicNotFoundException
 import rw.itunda.marketplace.VehicleInspectionService
@@ -33,13 +35,16 @@ class VehicleInspectionMechanicModerationAdminController(
         return ResponseEntity.ok(mapOf("success" to true, "mechanics" to mechanics))
     }
 
+    // Real admin-accountability gap closed (Bank/Merchant product-completeness pass,
+    // cycle 2, 2026-09-09) -- see VehicleInspectionService.suspendMechanic's own doc
+    // comment.
     @PostMapping("/{mechanicId}/suspend")
-    fun suspend(@PathVariable mechanicId: String): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "mechanic" to vehicleInspectionService.suspendMechanic(mechanicId)))
+    fun suspend(@PathVariable mechanicId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "mechanic" to vehicleInspectionService.suspendMechanic(mechanicId, currentUser.userId)))
 
     @PostMapping("/{mechanicId}/reactivate")
-    fun reactivate(@PathVariable mechanicId: String): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "mechanic" to vehicleInspectionService.reactivateMechanic(mechanicId)))
+    fun reactivate(@PathVariable mechanicId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "mechanic" to vehicleInspectionService.reactivateMechanic(mechanicId, currentUser.userId)))
 
     @ExceptionHandler(MechanicNotFoundException::class)
     fun handleNotFound(ex: MechanicNotFoundException) =

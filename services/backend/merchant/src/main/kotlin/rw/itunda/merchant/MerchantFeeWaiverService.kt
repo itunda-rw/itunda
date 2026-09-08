@@ -102,12 +102,14 @@ class MerchantFeeWaiverService(
 
     /** Real admin action closing the gap: an explicit revoke, never automatic. */
     @Transactional
-    fun revokeFeeWaiver(merchantId: String): Merchant {
+    fun revokeFeeWaiver(merchantId: String, adminUserId: String): Merchant {
         val merchant = merchantRepository.findById(merchantId).orElseThrow { MerchantNotFoundException("Merchant not found") }
         if (merchant.feeRateOverride != WAIVED_FEE_RATE) {
             throw MerchantNotWaivedException("This merchant does not have an active fee waiver to revoke")
         }
         merchant.feeRateOverride = null
+        merchant.feeWaiverRevokedBy = adminUserId
+        merchant.feeWaiverRevokedAt = Instant.now()
         return merchantRepository.save(merchant)
     }
 }

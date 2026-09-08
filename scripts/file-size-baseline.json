@@ -49,7 +49,7 @@
   "services/backend/eats/src/test/kotlin/rw/itunda/eats/EatsOrderServiceTest.kt": 2636,
   "services/backend/insurance/src/test/kotlin/rw/itunda/insurance/InsuranceServiceTest.kt": 683,
   "services/backend/maps/src/test/kotlin/rw/itunda/maps/MapsServiceTest.kt": 687,
-  "services/backend/marketplace/src/main/kotlin/rw/itunda/marketplace/MarketplaceService.kt": 926,
+  "services/backend/marketplace/src/main/kotlin/rw/itunda/marketplace/MarketplaceService.kt": 931,
   "services/backend/marketplace/src/main/kotlin/rw/itunda/marketplace/web/MarketplaceController.kt": 590,
   "services/backend/marketplace/src/test/kotlin/rw/itunda/marketplace/MarketplaceServiceTest.kt": 1176,
   "services/backend/merchant/src/main/kotlin/rw/itunda/merchant/MerchantController.kt": 574,

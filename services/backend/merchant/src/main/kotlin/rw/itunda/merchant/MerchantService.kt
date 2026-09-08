@@ -163,16 +163,20 @@ class MerchantService(
     // Suspend/reactivate rather than delete -- reversible, same lifecycle status a real
     // merchant already has, not a new destructive capability.
     @Transactional
-    fun suspendMerchant(merchantId: String): Merchant {
+    fun suspendMerchant(merchantId: String, adminUserId: String): Merchant {
         val merchant = merchantRepository.findById(merchantId).orElseThrow { MerchantNotFoundException("Merchant not found") }
         merchant.status = MerchantStatus.SUSPENDED
+        merchant.statusChangedBy = adminUserId
+        merchant.statusChangedAt = Instant.now()
         return merchantRepository.save(merchant)
     }
 
     @Transactional
-    fun reactivateMerchant(merchantId: String): Merchant {
+    fun reactivateMerchant(merchantId: String, adminUserId: String): Merchant {
         val merchant = merchantRepository.findById(merchantId).orElseThrow { MerchantNotFoundException("Merchant not found") }
         merchant.status = MerchantStatus.ACTIVE
+        merchant.statusChangedBy = adminUserId
+        merchant.statusChangedAt = Instant.now()
         return merchantRepository.save(merchant)
     }
 

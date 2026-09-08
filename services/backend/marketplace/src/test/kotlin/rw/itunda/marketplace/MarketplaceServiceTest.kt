@@ -1077,11 +1077,12 @@ class MarketplaceServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
 
         When("resolveDispute is called with release=true") {
-            val result = service.resolveDispute("escrow_e", release = true)
+            val result = service.resolveDispute("escrow_e", release = true, adminUserId = "admin_e")
 
             Then("it releases the real payout to the seller and notifies both real parties") {
                 result.status shouldBe rw.itunda.core.domain.MarketplaceEscrowStatus.RELEASED
                 result.resolutionTransactionId shouldBe "ledgertxn_release_e"
+                result.resolvedBy shouldBe "admin_e"
 
                 val notifSlots = mutableListOf<rw.itunda.core.domain.Notification>()
                 verify(exactly = 2) { notificationRepository.save(capture(notifSlots)) }
@@ -1141,11 +1142,12 @@ class MarketplaceServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
 
         When("resolveDispute is called with release=false") {
-            val result = service.resolveDispute("escrow_f", release = false)
+            val result = service.resolveDispute("escrow_f", release = false, adminUserId = "admin_f")
 
             Then("it refunds the real buyer, reopens the listing, and notifies both real parties") {
                 result.status shouldBe rw.itunda.core.domain.MarketplaceEscrowStatus.REFUNDED
                 result.resolutionTransactionId shouldBe "ledgertxn_refund_f"
+                result.resolvedBy shouldBe "admin_f"
                 listing.status shouldBe ListingStatus.ACTIVE
                 listing.buyerId shouldBe null
 

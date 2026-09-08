@@ -929,6 +929,56 @@ class MerchantServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real admin-accountability gap closed (Bank/Merchant product-completeness pass,
+    // cycle 2, 2026-09-09): suspendMerchant/reactivateMerchant had ZERO test coverage
+    // at all before this pass (confirmed by grep) -- first coverage now, matching this
+    // same fix's own new statusChangedBy/statusChangedAt fields.
+    Given("an admin suspending a real merchant") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val service = MerchantService(
+            merchantRepository, mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
+            mockk(relaxed = true), mockk(relaxed = true), DemoCardAuthorizationService(), mockk(relaxed = true), mockk(relaxed = true),
+            mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
+            mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
+        )
+        val merchant = Merchant(id = "merchant_s1", ownerUserId = "owner_s1", accountId = "account_s1", businessName = "Active Shop")
+        every { merchantRepository.findById("merchant_s1") } returns Optional.of(merchant)
+        every { merchantRepository.save(any()) } answers { firstArg() }
+
+        When("suspending") {
+            val result = service.suspendMerchant("merchant_s1", "admin_1")
+
+            Then("it flips status to SUSPENDED and records which admin acted") {
+                result.status shouldBe MerchantStatus.SUSPENDED
+                result.statusChangedBy shouldBe "admin_1"
+                result.statusChangedAt shouldNotBe null
+            }
+        }
+    }
+
+    Given("an admin reactivating a real suspended merchant") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val service = MerchantService(
+            merchantRepository, mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
+            mockk(relaxed = true), mockk(relaxed = true), DemoCardAuthorizationService(), mockk(relaxed = true), mockk(relaxed = true),
+            mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
+            mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
+        )
+        val merchant = Merchant(id = "merchant_s2", ownerUserId = "owner_s2", accountId = "account_s2", businessName = "Suspended Shop", status = MerchantStatus.SUSPENDED)
+        every { merchantRepository.findById("merchant_s2") } returns Optional.of(merchant)
+        every { merchantRepository.save(any()) } answers { firstArg() }
+
+        When("reactivating") {
+            val result = service.reactivateMerchant("merchant_s2", "admin_2")
+
+            Then("it flips status to ACTIVE and records which admin acted") {
+                result.status shouldBe MerchantStatus.ACTIVE
+                result.statusChangedBy shouldBe "admin_2"
+                result.statusChangedAt shouldNotBe null
+            }
+        }
+    }
 }) {
     // Same reasoning as LedgerServiceTest.kt: fresh fixtures per leaf test so mutation
     // in one When (e.g. marking an intent EXPIRED) can't leak into a sibling test.

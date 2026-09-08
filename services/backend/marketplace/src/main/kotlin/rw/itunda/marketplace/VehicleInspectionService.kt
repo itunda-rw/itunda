@@ -88,16 +88,20 @@ class VehicleInspectionService(
      * money-receiving business actors (same shape as `Merchant`) that previously had
      * no admin lever at all, unlike `MerchantService.suspendMerchant`. */
     @Transactional
-    fun suspendMechanic(mechanicId: String): VehicleInspectionMechanic {
+    fun suspendMechanic(mechanicId: String, adminUserId: String): VehicleInspectionMechanic {
         val mechanic = vehicleInspectionMechanicRepository.findById(mechanicId).orElseThrow { MechanicNotFoundException("Mechanic not found") }
         mechanic.suspended = true
+        mechanic.suspendedBy = adminUserId
+        mechanic.suspendedAt = Instant.now()
         return vehicleInspectionMechanicRepository.save(mechanic)
     }
 
     @Transactional
-    fun reactivateMechanic(mechanicId: String): VehicleInspectionMechanic {
+    fun reactivateMechanic(mechanicId: String, adminUserId: String): VehicleInspectionMechanic {
         val mechanic = vehicleInspectionMechanicRepository.findById(mechanicId).orElseThrow { MechanicNotFoundException("Mechanic not found") }
         mechanic.suspended = false
+        mechanic.suspendedBy = adminUserId
+        mechanic.suspendedAt = Instant.now()
         return vehicleInspectionMechanicRepository.save(mechanic)
     }
 

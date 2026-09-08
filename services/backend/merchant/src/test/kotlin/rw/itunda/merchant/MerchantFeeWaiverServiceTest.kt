@@ -4,6 +4,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -144,10 +145,15 @@ class MerchantFeeWaiverServiceTest : BehaviorSpec({
         every { merchantRepository.save(any()) } answers { firstArg() }
 
         When("the admin revokes it") {
-            val result = service.revokeFeeWaiver("merchant_6")
+            val result = service.revokeFeeWaiver("merchant_6", "admin_6")
 
             Then("the waiver is real-cleared back to null, not just zeroed again") {
                 result.feeRateOverride shouldBe null
+            }
+
+            Then("it records which admin revoked it, not a silent field clear") {
+                result.feeWaiverRevokedBy shouldBe "admin_6"
+                result.feeWaiverRevokedAt shouldNotBe null
             }
         }
     }
@@ -163,7 +169,7 @@ class MerchantFeeWaiverServiceTest : BehaviorSpec({
 
         When("an admin tries to revoke it anyway") {
             Then("the status guard fires -- nothing to revoke") {
-                shouldThrow<MerchantNotWaivedException> { service.revokeFeeWaiver("merchant_7") }
+                shouldThrow<MerchantNotWaivedException> { service.revokeFeeWaiver("merchant_7", "admin_7") }
             }
         }
     }

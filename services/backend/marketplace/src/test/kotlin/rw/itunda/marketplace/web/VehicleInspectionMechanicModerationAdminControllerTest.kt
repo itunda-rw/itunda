@@ -8,6 +8,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import org.springframework.http.HttpStatus
 import rw.itunda.core.domain.VehicleInspectionMechanic
+import rw.itunda.core.security.CurrentUser
 import rw.itunda.marketplace.MechanicNotFoundException
 import rw.itunda.marketplace.VehicleInspectionService
 
@@ -39,17 +40,21 @@ class VehicleInspectionMechanicModerationAdminControllerTest : BehaviorSpec({
         }
     }
 
+    // Real admin-accountability gap closed (Bank/Merchant product-completeness pass,
+    // cycle 2, 2026-09-09): these 2 endpoints now capture the acting admin's id, same
+    // pattern VupLoanAdminControllerTest's own decide() coverage already establishes.
     Given("an admin suspending a real mechanic") {
         val service = mockk<VehicleInspectionService>()
         val controller = VehicleInspectionMechanicModerationAdminController(service)
+        val currentUser = CurrentUser(userId = "admin_1")
         val suspended = VehicleInspectionMechanic(id = "mechanic_1", userId = "user_1", accountId = "account_1", businessName = "Kigali Auto Care", suspended = true)
-        every { service.suspendMechanic("mechanic_1") } returns suspended
+        every { service.suspendMechanic("mechanic_1", "admin_1") } returns suspended
 
         When("suspending") {
-            val response = controller.suspend("mechanic_1")
+            val response = controller.suspend("mechanic_1", currentUser)
 
-            Then("it real-delegates to the service") {
-                verify(exactly = 1) { service.suspendMechanic("mechanic_1") }
+            Then("it real-delegates to the service with the acting admin's id") {
+                verify(exactly = 1) { service.suspendMechanic("mechanic_1", "admin_1") }
                 response.body?.get("mechanic") shouldBe suspended
             }
         }
@@ -58,14 +63,15 @@ class VehicleInspectionMechanicModerationAdminControllerTest : BehaviorSpec({
     Given("an admin reactivating a real mechanic") {
         val service = mockk<VehicleInspectionService>()
         val controller = VehicleInspectionMechanicModerationAdminController(service)
+        val currentUser = CurrentUser(userId = "admin_2")
         val reactivated = VehicleInspectionMechanic(id = "mechanic_1", userId = "user_1", accountId = "account_1", businessName = "Kigali Auto Care", suspended = false)
-        every { service.reactivateMechanic("mechanic_1") } returns reactivated
+        every { service.reactivateMechanic("mechanic_1", "admin_2") } returns reactivated
 
         When("reactivating") {
-            val response = controller.reactivate("mechanic_1")
+            val response = controller.reactivate("mechanic_1", currentUser)
 
-            Then("it real-delegates to the service") {
-                verify(exactly = 1) { service.reactivateMechanic("mechanic_1") }
+            Then("it real-delegates to the service with the acting admin's id") {
+                verify(exactly = 1) { service.reactivateMechanic("mechanic_1", "admin_2") }
                 response.body?.get("mechanic") shouldBe reactivated
             }
         }
