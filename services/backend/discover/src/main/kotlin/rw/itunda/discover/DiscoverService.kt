@@ -186,23 +186,29 @@ class DiscoverService(
         // to at most one recorded impression per item per rolling 24h window, so the cap
         // means "shown across 4 distinct days," matching this method's own stated intent
         // ("if 4 impressions haven't converted...") instead of "4 raw polls."
+        // Real N+1 fix (2026-09-08) -- this used to call
+        // existsByUserIdAndEventNameAndMetadataJsonAndCreatedAtAfter once per ranked
+        // item (a real hot path: Home fetches this on every cold launch), an N-query
+        // cost that grows with the feed's own item count. One batched IN-query plus
+        // one saveAll() instead.
         val impressionWindowStart = Instant.now().minus(1, ChronoUnit.DAYS)
-        rankedItems.forEach { item ->
-            val alreadyRecordedToday = analyticsEventRepository.existsByUserIdAndEventNameAndMetadataJsonAndCreatedAtAfter(
-                userId, "discover_banner_impression", item.id, impressionWindowStart,
-            )
-            if (!alreadyRecordedToday) {
-                analyticsEventRepository.save(
-                    AnalyticsEvent(
-                        id = "analytics_event_${UUID.randomUUID()}",
-                        userId = userId,
-                        eventName = "discover_banner_impression",
-                        platform = "server",
-                        metadataJson = item.id,
-                    ),
-                )
-            }
+        val alreadyRecordedTodayIds = if (rankedItems.isEmpty()) {
+            emptySet()
+        } else {
+            analyticsEventRepository.findByUserIdAndEventNameAndMetadataJsonInAndCreatedAtAfter(
+                userId, "discover_banner_impression", rankedItems.map { it.id }, impressionWindowStart,
+            ).mapNotNull { it.metadataJson }.toSet()
         }
+        val newImpressions = rankedItems.filter { it.id !in alreadyRecordedTodayIds }.map { item ->
+            AnalyticsEvent(
+                id = "analytics_event_${UUID.randomUUID()}",
+                userId = userId,
+                eventName = "discover_banner_impression",
+                platform = "server",
+                metadataJson = item.id,
+            )
+        }
+        if (newImpressions.isNotEmpty()) analyticsEventRepository.saveAll(newImpressions)
 
         return DiscoverResult(items = rankedItems, banners = banners)
     }

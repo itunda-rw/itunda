@@ -42,4 +42,18 @@ interface AnalyticsEventRepository : JpaRepository<AnalyticsEvent, String> {
     // API calls, not genuine sightings, and a handful of app relaunches in one day
     // permanently exhausts MAX_IMPRESSIONS for every item.
     fun existsByUserIdAndEventNameAndMetadataJsonAndCreatedAtAfter(userId: String, eventName: String, metadataJson: String, after: Instant): Boolean
+
+    // Real N+1 fix (2026-09-08) -- DiscoverService.getDiscoverFeed used to call
+    // existsByUserIdAndEventNameAndMetadataJsonAndCreatedAtAfter above once per
+    // ranked item on EVERY Home cold-launch fetch. Unlike the per-user
+    // findFirstByUserIdAndEventNameOrderByCreatedAtAsc query above (a rarely-called
+    // admin-analytics lookup, where itunda's real data volume genuinely doesn't
+    // justify a batch query's added complexity), this one is a real hot path --
+    // batching the per-item existence check into one IN-query is worth it here.
+    fun findByUserIdAndEventNameAndMetadataJsonInAndCreatedAtAfter(
+        userId: String,
+        eventName: String,
+        metadataJsonIn: List<String>,
+        after: Instant,
+    ): List<AnalyticsEvent>
 }

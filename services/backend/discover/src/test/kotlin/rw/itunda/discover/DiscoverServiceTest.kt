@@ -9,6 +9,7 @@ import java.math.BigDecimal
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Optional
+import rw.itunda.core.domain.AnalyticsEvent
 import rw.itunda.core.domain.IkiminaMember
 import rw.itunda.core.domain.LoanAccount
 import rw.itunda.core.domain.SaccoShareholding
@@ -45,8 +46,10 @@ class DiscoverServiceTest : BehaviorSpec({
         // T>(S): S signature is generic, and a relaxed mock's default answer can't
         // infer/cast it correctly (throws ClassCastException at call time) without
         // this explicit stub -- same pattern MenuOptionServiceTest.kt already
-        // establishes for the identical situation.
+        // establishes for the identical situation. saveAll has the same generic
+        // shape (2026-09-08 N+1 fix batched the per-item save into one saveAll).
         every { repository.save(any()) } answers { firstArg() }
+        every { repository.saveAll(any<List<AnalyticsEvent>>()) } answers { firstArg() }
         return repository
     }
 
@@ -74,7 +77,11 @@ class DiscoverServiceTest : BehaviorSpec({
     Given("a user who has already been shown an item earlier today") {
         val analyticsEventRepository = mockAnalyticsEventRepository()
         every { analyticsEventRepository.countByUserIdAndEventNameAndMetadataJson("user_1", "discover_banner_impression", any()) } returns 1
-        every { analyticsEventRepository.existsByUserIdAndEventNameAndMetadataJsonAndCreatedAtAfter("user_1", "discover_banner_impression", "d_1", any()) } returns true
+        // Real N+1 fix (2026-09-08): the per-item existsBy... check is now one
+        // batched findBy...In query -- stub it to report d_1 as already recorded.
+        every { analyticsEventRepository.findByUserIdAndEventNameAndMetadataJsonInAndCreatedAtAfter(any(), any(), any(), any()) } returns listOf(
+            AnalyticsEvent(id = "analytics_event_seed", userId = "user_1", eventName = "discover_banner_impression", platform = "server", metadataJson = "d_1"),
+        )
         val service = buildService(analyticsEventRepository)
 
         When("fetching Discover a second time the same day") {
@@ -84,7 +91,7 @@ class DiscoverServiceTest : BehaviorSpec({
                 result.items.any { it.id == "d_1" } shouldBe true
             }
             Then("no duplicate impression row is recorded for it") {
-                verify(exactly = 0) { analyticsEventRepository.save(match { it.metadataJson == "d_1" }) }
+                verify(exactly = 0) { analyticsEventRepository.saveAll(match<List<AnalyticsEvent>> { it.any { e -> e.metadataJson == "d_1" } }) }
             }
         }
     }
@@ -92,14 +99,26 @@ class DiscoverServiceTest : BehaviorSpec({
     Given("a user seeing an item for the first time today") {
         val analyticsEventRepository = mockAnalyticsEventRepository()
         every { analyticsEventRepository.countByUserIdAndEventNameAndMetadataJson("user_1", "discover_banner_impression", any()) } returns 0
-        every { analyticsEventRepository.existsByUserIdAndEventNameAndMetadataJsonAndCreatedAtAfter(any(), any(), any(), any()) } returns false
+        every { analyticsEventRepository.findByUserIdAndEventNameAndMetadataJsonInAndCreatedAtAfter(any(), any(), any(), any()) } returns emptyList()
         val service = buildService(analyticsEventRepository)
 
         When("fetching Discover") {
             service.getDiscoverFor("user_1")
 
-            Then("a real impression row is recorded once per item") {
-                verify(exactly = 1) { analyticsEventRepository.save(match { it.metadataJson == "d_1" }) }
+            Then("a real impression row is recorded once per item, batched into one saveAll") {
+                verify(exactly = 1) { analyticsEventRepository.saveAll(match<List<AnalyticsEvent>> { it.any { e -> e.metadataJson == "d_1" } }) }
+            }
+
+            // Real N+1 fix (2026-09-08) -- this used to be one existsBy... query plus
+            // up to one save() per ranked item; proves it's now exactly one batched
+            // findBy...In query and one saveAll(), regardless of how many of the real
+            // 8 staticFallback items are new today.
+            Then("it queries for already-recorded impressions exactly once, not once per item") {
+                verify(exactly = 1) { analyticsEventRepository.findByUserIdAndEventNameAndMetadataJsonInAndCreatedAtAfter(any(), any(), any(), any()) }
+            }
+            Then("it writes every new impression in exactly one saveAll call, never a per-item save") {
+                verify(exactly = 1) { analyticsEventRepository.saveAll(any<List<AnalyticsEvent>>()) }
+                verify(exactly = 0) { analyticsEventRepository.save(any()) }
             }
         }
     }
@@ -108,7 +127,7 @@ class DiscoverServiceTest : BehaviorSpec({
         val analyticsEventRepository = mockAnalyticsEventRepository()
         every { analyticsEventRepository.countByUserIdAndEventNameAndMetadataJson("user_1", "discover_banner_impression", "d_1") } returns 4
         every { analyticsEventRepository.countByUserIdAndEventNameAndMetadataJson("user_1", "discover_banner_impression", match { it != "d_1" }) } returns 0
-        every { analyticsEventRepository.existsByUserIdAndEventNameAndMetadataJsonAndCreatedAtAfter(any(), any(), any(), any()) } returns false
+        every { analyticsEventRepository.findByUserIdAndEventNameAndMetadataJsonInAndCreatedAtAfter(any(), any(), any(), any()) } returns emptyList()
         val service = buildService(analyticsEventRepository)
 
         When("fetching Discover") {
