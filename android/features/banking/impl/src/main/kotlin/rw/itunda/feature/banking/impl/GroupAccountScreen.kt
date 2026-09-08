@@ -6,7 +6,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,7 +27,6 @@ import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.IdsButton
-import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.IdsToast
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -46,7 +44,7 @@ import java.io.IOException
 // did). Same no-ViewModel, direct-NetworkClient-call convention as
 // WeeklySavingsScreen.kt/YouthAccountScreen.kt. Mirrors bank-mfe's
 // GroupAccountsSection/GroupAccountDetailView/CreateGroupAccountForm exactly.
-private enum class GroupAccountMode { LIST, DETAIL }
+private enum class GroupAccountMode { LIST, INTRO, CREATE, DETAIL }
 
 @Composable
 fun GroupAccountScreen(onBack: () -> Unit) {
@@ -56,29 +54,115 @@ fun GroupAccountScreen(onBack: () -> Unit) {
     var refreshKey by remember { mutableStateOf(0) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        val backAction: () -> Unit = if (mode == GroupAccountMode.DETAIL) {
-            { mode = GroupAccountMode.LIST; selectedId = null; refreshKey++ }
-        } else onBack
-        BackTopBar(title = "Group accounts", onBack = backAction)
+        val title = when (mode) {
+            GroupAccountMode.DETAIL -> "Group account detail"
+            GroupAccountMode.INTRO -> "Group account"
+            GroupAccountMode.CREATE -> "New group account"
+            GroupAccountMode.LIST -> "Group accounts"
+        }
+        val backAction: () -> Unit = when (mode) {
+            GroupAccountMode.DETAIL -> { { mode = GroupAccountMode.LIST; selectedId = null; refreshKey++ } }
+            GroupAccountMode.CREATE -> { { mode = GroupAccountMode.INTRO } }
+            GroupAccountMode.INTRO -> { { mode = GroupAccountMode.LIST } }
+            GroupAccountMode.LIST -> onBack
+        }
+        BackTopBar(title = title, onBack = backAction)
 
-        if (mode == GroupAccountMode.DETAIL && selectedId != null) {
-            GroupAccountDetailContent(id = selectedId!!)
-        } else {
-            GroupAccountListContent(
+        when {
+            mode == GroupAccountMode.DETAIL && selectedId != null -> GroupAccountDetailContent(id = selectedId!!)
+            mode == GroupAccountMode.INTRO -> GroupAccountIntroContent(onContinue = { mode = GroupAccountMode.CREATE })
+            mode == GroupAccountMode.CREATE -> GroupAccountCreateContent(onCreated = { mode = GroupAccountMode.LIST; refreshKey++ })
+            else -> GroupAccountListContent(
                 refreshKey = refreshKey,
                 onOpen = { selectedId = it; mode = GroupAccountMode.DETAIL },
+                onStartCreate = { mode = GroupAccountMode.INTRO },
             )
         }
     }
 }
 
+// Real Toss product-intro pattern (docs/UI_UX_GUIDELINES.md rule 13) -- see
+// IkiminaScreen.kt's identical IkiminaIntroContent for the established convention.
+// Real mechanics sourced from GroupAccountService.kt's own doc comment: Kakao Bank's
+// real 모임통장 (shared account) -- the creator keeps real withdrawal authority,
+// invited members can view and deposit but never withdraw, capped at a real 100
+// members, with optional monthly dues tracking/reminders (setDuesAmount/getDuesStatus).
 @Composable
-private fun GroupAccountListContent(refreshKey: Int, onOpen: (String) -> Unit) {
-    var accounts by remember { mutableStateOf<List<GroupAccountDto>?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var showCreate by remember { mutableStateOf(false) }
+private fun GroupAccountIntroContent(onContinue: () -> Unit) {
+    rw.itunda.core.designsystem.components.FixedBottomCta(
+        content = {
+            Text(
+                "One shared account, money everyone can see",
+                color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp,
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Anyone you invite can deposit", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(
+                    "Great for roommates, a family fund, or a shared trip -- everyone can add money and see the real balance and every contribution.",
+                    color = Ids.colors.textSecondary, fontSize = 13.sp,
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Only you can withdraw", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(
+                    "As the creator, you keep sole withdrawal authority -- members can add money but never take it out, so the fund can't be drained by anyone but you.",
+                    color = Ids.colors.textSecondary, fontSize = 13.sp,
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Optional monthly dues, with automatic reminders", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(
+                    "Set a monthly dues amount later if you want -- itunda will remind anyone who hasn't paid yet this cycle. Up to 100 members per group.",
+                    color = Ids.colors.textSecondary, fontSize = 13.sp,
+                )
+            }
+        },
+        cta = {
+            IdsButton(text = "Continue", onClick = onContinue)
+        },
+    )
+}
+
+@Composable
+private fun GroupAccountCreateContent(onCreated: () -> Unit) {
     var name by remember { mutableStateOf("") }
     var creating by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun create() {
+        if (name.isBlank()) return
+        creating = true
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.createGroupAccount(CreateGroupAccountRequest(name.trim()))
+                IdsToast.show(coroutineScope, "Group account created.")
+                onCreated()
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                creating = false
+            }
+        }
+    }
+
+    rw.itunda.core.designsystem.components.FixedBottomCta(
+        content = {
+            IdsTextField(value = name, onValueChange = { name = it }, label = "Group name (e.g. Roommates)", modifier = Modifier.fillMaxWidth())
+            error?.let { msg -> Text(msg, color = Ids.colors.danger, fontSize = 13.sp) }
+        },
+        cta = {
+            IdsButton(text = if (creating) "Creating…" else "Create", onClick = { create() }, enabled = !creating)
+        },
+    )
+}
+
+@Composable
+private fun GroupAccountListContent(refreshKey: Int, onOpen: (String) -> Unit, onStartCreate: () -> Unit) {
+    var accounts by remember { mutableStateOf<List<GroupAccountDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
@@ -96,49 +180,13 @@ private fun GroupAccountListContent(refreshKey: Int, onOpen: (String) -> Unit) {
     }
     LaunchedEffect(refreshKey) { load() }
 
-    fun create() {
-        if (name.isBlank()) return
-        creating = true
-        coroutineScope.launch {
-            try {
-                NetworkClient.apiService.createGroupAccount(CreateGroupAccountRequest(name.trim()))
-                name = ""
-                showCreate = false
-                load()
-                IdsToast.show(coroutineScope, "Group account created.")
-            } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
-            } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
-            } finally {
-                creating = false
-            }
-        }
-    }
-
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
-            if (!showCreate) {
-                IdsButton(text = "+ New group account", onClick = { showCreate = true })
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    IdsTextField(value = name, onValueChange = { name = it }, label = "Group name (e.g. Roommates)", modifier = Modifier.fillMaxWidth())
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        IdsButton(
-                            text = "Cancel", onClick = { showCreate = false; name = "" },
-                            variant = IdsButtonVariant.Tinted, modifier = Modifier.weight(1f),
-                        )
-                        IdsButton(
-                            text = if (creating) "Creating…" else "Create", onClick = { create() },
-                            enabled = !creating, modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-            }
+            IdsButton(text = "+ New group account", onClick = onStartCreate)
         }
         error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
         when {

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { IconAdd } from './icons/ItundaIcons';
+import { IconAdd, IconClose } from './icons/ItundaIcons';
 import { EmptyState } from './EmptyState';
 import { DeviceStepUpPrompt } from './DeviceStepUpPrompt';
+import { FullScreenFlow } from './FullScreenFlow';
+import { IdsButton } from './IdsButton';
 import { showToast } from './Toast';
 import { useCountUp } from './hooks/useCountUp';
 import { useI18n } from './i18n/I18nContext';
@@ -284,19 +286,27 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
   );
 }
 
+type CreateGroupAccountStep = 'closed' | 'intro' | 'form';
+
 function CreateGroupAccountForm({ onCreated }: { onCreated: () => void }) {
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<CreateGroupAccountStep>('closed');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!open) {
+  const reset = () => {
+    setStep('closed');
+    setName('');
+    setError(null);
+  };
+
+  if (step === 'closed') {
     return (
       <button
         className="itunda-btn itunda-btn-secondary"
         style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-        onClick={() => setOpen(true)}
+        onClick={() => setStep('intro')}
       >
         <IconAdd size={16} /> New group account
       </button>
@@ -309,8 +319,7 @@ function CreateGroupAccountForm({ onCreated }: { onCreated: () => void }) {
     setError(null);
     try {
       await createGroupAccount(name);
-      setName('');
-      setOpen(false);
+      reset();
       showToast(t('toast.groupAccountCreated'));
       onCreated();
     } catch (err) {
@@ -320,16 +329,56 @@ function CreateGroupAccountForm({ onCreated }: { onCreated: () => void }) {
     }
   };
 
+  // Real Toss product-intro pattern (rule 13), applied to group accounts -- see
+  // BankIkimina.tsx's identical CreateIkiminaForm intro step for the established
+  // convention. Real mechanics sourced from GroupAccountService.kt's own doc
+  // comment: Kakao Bank's real 모임통장 (shared account) -- the creator keeps real
+  // withdrawal authority, invited members can view and deposit but never withdraw,
+  // capped at a real 100 members, with optional monthly dues tracking/reminders
+  // (GroupAccountService.setDuesAmount/getDuesStatus).
+  if (step === 'intro') {
+    return (
+      <FullScreenFlow bottomCTA={<IdsButton fullWidth onClick={() => setStep('form')}>Continue</IdsButton>}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+          <h2 style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700, maxWidth: '260px' }}>One shared account, money everyone can see</h2>
+          <button type="button" aria-label="Close" onClick={reset} style={{ background: 'none', border: 'none', display: 'flex', padding: '4px' }}>
+            <IconClose size={22} color="var(--itunda-grey-500)" />
+          </button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div>
+            <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Anyone you invite can deposit</h3>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', lineHeight: 1.5 }}>
+              Great for roommates, a family fund, or a shared trip -- everyone can add money and see the real balance and every contribution.
+            </p>
+          </div>
+          <div>
+            <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Only you can withdraw</h3>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', lineHeight: 1.5 }}>
+              As the creator, you keep sole withdrawal authority -- members can add money but never take it out, so the fund can't be drained by anyone but you.
+            </p>
+          </div>
+          <div>
+            <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Optional monthly dues, with automatic reminders</h3>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', lineHeight: 1.5 }}>
+              Set a monthly dues amount later if you want -- itunda will remind anyone who hasn't paid yet this cycle. Up to 100 members per group.
+            </p>
+          </div>
+        </div>
+      </FullScreenFlow>
+    );
+  }
+
   // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- a lone toggled
   // form section (docs/UI_UX_GUIDELINES.md §10).
   return (
     <form onSubmit={handleSubmit} className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <input
-        type="text" required placeholder="Group name (e.g. Roommates)" value={name} onChange={(e) => setName(e.target.value)}
+        type="text" required autoFocus placeholder="Group name (e.g. Roommates)" value={name} onChange={(e) => setName(e.target.value)}
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
       />
       <div style={{ display: 'flex', gap: '8px' }}>
-        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={reset}>Cancel</button>
         <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
       </div>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}

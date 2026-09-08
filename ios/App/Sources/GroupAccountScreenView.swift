@@ -10,18 +10,26 @@ import CoreNetwork
 // YouthAccountScreenView.swift. Mirrors bank-mfe's GroupAccountsSection/
 // GroupAccountDetailView/CreateGroupAccountForm exactly.
 
+private enum GroupAccountMode { case list, intro, create }
+
 struct GroupAccountScreenView: View {
     var onBack: () -> Void = {}
     @State private var selectedId: String?
+    @State private var mode: GroupAccountMode = .list
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Button(action: { selectedId != nil ? (selectedId = nil) : onBack() }) {
+                Button(action: {
+                    if selectedId != nil { selectedId = nil }
+                    else if mode == .create { mode = .intro }
+                    else if mode == .intro { mode = .list }
+                    else { onBack() }
+                }) {
                     IDS.Icons.back(size: 17, color: IDS.Colors.textPrimary, relativeTo: .body)
                 }.accessibilityLabel("Back")
                 Spacer()
-                Text("Group accounts").font(.headline).foregroundColor(IDS.Colors.textPrimary)
+                Text(selectedId != nil ? "Group account detail" : mode == .create ? "New group account" : "Group accounts").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()
                 Color.clear.frame(width: 20)
             }
@@ -29,9 +37,13 @@ struct GroupAccountScreenView: View {
 
             if let id = selectedId {
                 GroupAccountDetailContent(id: id)
+            } else if mode == .intro {
+                GroupAccountIntroContent(onContinue: { mode = .create })
+            } else if mode == .create {
+                GroupAccountCreateContent(onCreated: { mode = .list })
             } else {
                 ScrollView {
-                    GroupAccountListContent(onOpen: { selectedId = $0 })
+                    GroupAccountListContent(onOpen: { selectedId = $0 }, onStartCreate: { mode = .intro })
                 }
             }
         }
@@ -39,29 +51,93 @@ struct GroupAccountScreenView: View {
     }
 }
 
+// Real Toss product-intro pattern (docs/UI_UX_GUIDELINES.md rule 13) -- see
+// IkiminaScreenView.swift's identical IkiminaIntroContent for the established
+// convention. Real mechanics sourced from GroupAccountService.kt's own doc comment:
+// Kakao Bank's real 모임통장 (shared account) -- the creator keeps real withdrawal
+// authority, invited members can view and deposit but never withdraw, capped at a
+// real 100 members, with optional monthly dues tracking/reminders (setDuesAmount/
+// getDuesStatus). Matches Android's identical GroupAccountIntroContent.
+private struct GroupAccountIntroContent: View {
+    let onContinue: () -> Void
+
+    var body: some View {
+        FixedBottomCTA {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("One shared account, money everyone can see")
+                    .font(.title3).bold().foregroundColor(IDS.Colors.textPrimary)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Anyone you invite can deposit")
+                        .font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    Text("Great for roommates, a family fund, or a shared trip -- everyone can add money and see the real balance and every contribution.")
+                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Only you can withdraw")
+                        .font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    Text("As the creator, you keep sole withdrawal authority -- members can add money but never take it out, so the fund can't be drained by anyone but you.")
+                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Optional monthly dues, with automatic reminders")
+                        .font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    Text("Set a monthly dues amount later if you want -- itunda will remind anyone who hasn't paid yet this cycle. Up to 100 members per group.")
+                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                }
+            }
+            .padding()
+        } cta: {
+            IdsButton(text: "Continue", action: onContinue)
+        }
+    }
+}
+
+private struct GroupAccountCreateContent: View {
+    let onCreated: () -> Void
+
+    @State private var name = ""
+    @State private var creating = false
+    @State private var error: String?
+
+    var body: some View {
+        FixedBottomCTA {
+            VStack(spacing: 8) {
+                IdsTextField("Group name (e.g. Roommates)", text: $name)
+                if let error {
+                    Text(error).font(.caption).foregroundColor(.red)
+                }
+            }
+            .padding()
+        } cta: {
+            IdsButton(text: creating ? "Creating…" : "Create", isEnabled: !creating, action: { Task { await create() } })
+        }
+    }
+
+    private func create() async {
+        guard !name.isEmpty else { return }
+        creating = true
+        do {
+            _ = try await NetworkClient.shared.createGroupAccount(name: name)
+            onCreated()
+        } catch {
+            self.error = "Could not create this group account."
+        }
+        creating = false
+    }
+}
+
 private struct GroupAccountListContent: View {
     let onOpen: (String) -> Void
+    let onStartCreate: () -> Void
 
     @State private var accounts: [GroupAccountDto] = []
     @State private var loaded = false
     @State private var error: String?
-    @State private var showCreate = false
-    @State private var name = ""
-    @State private var creating = false
 
     var body: some View {
         VStack(spacing: 10) {
-            if showCreate {
-                VStack(spacing: 8) {
-                    IdsTextField("Group name (e.g. Roommates)", text: $name)
-                    HStack(spacing: 8) {
-                        IdsButton(text: "Cancel", action: { showCreate = false; name = "" })
-                        IdsButton(text: creating ? "Creating…" : "Create", isEnabled: !creating, action: { Task { await create() } })
-                    }
-                }
-            } else {
-                IdsButton(text: "+ New group account", action: { showCreate = true })
-            }
+            IdsButton(text: "+ New group account", action: onStartCreate)
 
             if let error {
                 Text(error).font(.caption).foregroundColor(.red)
@@ -101,20 +177,6 @@ private struct GroupAccountListContent: View {
             self.error = "Could not load your group accounts."
         }
         loaded = true
-    }
-
-    private func create() async {
-        guard !name.isEmpty else { return }
-        creating = true
-        do {
-            _ = try await NetworkClient.shared.createGroupAccount(name: name)
-            name = ""
-            showCreate = false
-            await load()
-        } catch {
-            self.error = "Could not create this group account."
-        }
-        creating = false
     }
 }
 
