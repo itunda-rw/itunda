@@ -58,6 +58,14 @@ class JobApplicationServiceTest : BehaviorSpec({
             Then("it real-locks the job post row before creating the application") {
                 verify(exactly = 1) { jobPostRepository.findByIdForUpdate("job_post_1") }
             }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08): rateLimiter was relaxed = true with zero verify{} anywhere
+            // in this file, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("jobs:application:applicant_1", limit = 10, window = java.time.Duration.ofHours(1)) }
+            }
         }
     }
 

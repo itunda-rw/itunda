@@ -110,6 +110,14 @@ class MerchantBillingServiceTest : BehaviorSpec({
             Then("the customer also gets a real mobile push notification, not just the in-app one") {
                 verify(exactly = 1) { pushNotificationService.sendToUser("customer_1", "Subscription charged", any(), any()) }
             }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08): rateLimiter was relaxed = true with zero verify{} anywhere
+            // in this file, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("merchant-billing:subscribe:customer_1", limit = 20, window = java.time.Duration.ofHours(1)) }
+            }
         }
 
         // Real Toss Bank/Toss Pay separation (2026-08-21) -- a subscription charge is

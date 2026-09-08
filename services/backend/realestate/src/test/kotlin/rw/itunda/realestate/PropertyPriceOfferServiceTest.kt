@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.Message
@@ -55,6 +56,14 @@ class PropertyPriceOfferServiceTest : BehaviorSpec({
                 offer.status shouldBe PriceOfferStatus.PENDING
                 offer.conversationId shouldBe "conversation_1"
                 offer.messageId shouldBe "message_1"
+            }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08): rateLimiter was relaxed = true with zero verify{} anywhere
+            // in this file, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("realestate:offer:inquirer_1", limit = 20, window = java.time.Duration.ofHours(1)) }
             }
         }
 
@@ -144,6 +153,14 @@ class PropertyPriceOfferServiceTest : BehaviorSpec({
                 result.status shouldBe PriceOfferStatus.ACCEPTED
                 (result.respondedAt != null) shouldBe true
                 bodySlot.captured shouldBe "✅ Offer accepted: 220,000 RWF"
+            }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08): rateLimiter was relaxed = true with zero verify{} anywhere
+            // in this file, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("realestate:offer-response:lister_1", limit = 30, window = java.time.Duration.ofHours(1)) }
             }
         }
 

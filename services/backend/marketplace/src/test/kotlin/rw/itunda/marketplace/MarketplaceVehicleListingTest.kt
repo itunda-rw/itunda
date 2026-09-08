@@ -5,6 +5,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Listing
 import rw.itunda.core.fraud.FraudRuleEngine
@@ -71,6 +72,14 @@ class MarketplaceVehicleListingTest : BehaviorSpec({
                 listing.vehicleMileageKm shouldBe 60
                 listing.leaseRemainingMonths shouldBe 46
                 listing.leaseTotalMonths shouldBe 48
+            }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08): rateLimiter was relaxed = true with zero verify{} anywhere
+            // in this file, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("marketplace:create:seller_1", limit = 10, window = java.time.Duration.ofHours(1)) }
             }
         }
 

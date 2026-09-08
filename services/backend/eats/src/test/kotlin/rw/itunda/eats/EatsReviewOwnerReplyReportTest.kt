@@ -141,6 +141,14 @@ class EatsReviewOwnerReplyReportTest : BehaviorSpec({
                 review.riderComment shouldBe null
                 review.restaurantRating shouldBe 5
             }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08): rateLimiter was relaxed = true with zero verify{} anywhere
+            // in this file, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("eats:review:submit:buyer_1", limit = 20, window = java.time.Duration.ofHours(1)) }
+            }
         }
 
         When("a caller passes a rider rating anyway for a PICKUP order with no real rider") {
@@ -186,6 +194,14 @@ class EatsReviewOwnerReplyReportTest : BehaviorSpec({
                 helpful shouldBe true
                 verify(exactly = 1) { eatsReviewHelpfulVoteRepository.save(match { it.reviewId == "eats_review_1" && it.userId == "viewer_1" }) }
                 review.helpfulCount shouldBe 4
+            }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08): rateLimiter was relaxed = true with zero verify{} anywhere
+            // in this file, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("eats:review:helpful:viewer_1", limit = 60, window = java.time.Duration.ofMinutes(1)) }
             }
         }
 
@@ -276,6 +292,14 @@ class EatsReviewOwnerReplyReportTest : BehaviorSpec({
                 report.details shouldBe "contains a real name"
                 review.hidden shouldBe false
                 verify(exactly = 0) { eatsReviewRepository.save(any()) }
+            }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08): rateLimiter was relaxed = true with zero verify{} anywhere
+            // in this file, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("eats:review:report:reporter_1", limit = 20, window = java.time.Duration.ofMinutes(1)) }
             }
         }
 

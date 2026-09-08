@@ -296,6 +296,14 @@ class DeviceServiceTest : BehaviorSpec({
                 result.verifiedAt shouldNotBe null
                 result.publicKey shouldBe publicKeyBase64
             }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08): rateLimiter was relaxed = true with zero verify{} anywhere
+            // in this file, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("auth:device-verify:user_5", limit = 5, window = java.time.Duration.ofMinutes(1)) }
+            }
         }
 
         When("the real password is wrong") {
@@ -342,6 +350,14 @@ class DeviceServiceTest : BehaviorSpec({
             Then("it's a real random 32-byte nonce, base64-encoded, stored in Redis with a real TTL") {
                 Base64.getDecoder().decode(challenge).size shouldBe 32
                 verify(exactly = 1) { valueOperations.set("device-challenge:user_6:device_6", challenge, java.time.Duration.ofMinutes(2)) }
+            }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08): rateLimiter was relaxed = true with zero verify{} anywhere
+            // in this file, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("auth:device-challenge:user_6", limit = 10, window = java.time.Duration.ofMinutes(1)) }
             }
         }
 

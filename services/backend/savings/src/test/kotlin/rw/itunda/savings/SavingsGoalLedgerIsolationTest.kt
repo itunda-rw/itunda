@@ -69,6 +69,14 @@ class SavingsGoalLedgerIsolationTest : BehaviorSpec({
                 verify(exactly = 1) { ledgerAccountRepository.save(match { it.id == "sg_ledger_sg_new_1" }) }
                 verify(exactly = 1) { ledgerService.postLedgerTransaction(any(), any()) }
             }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08): rateLimiter was relaxed = true with zero verify{} anywhere
+            // in this file, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("savings:goal:deposit:user_1", limit = 30, window = java.time.Duration.ofHours(1)) }
+            }
         }
 
         When("a pre-existing goal (already holding real money in the old shared pool) gets its first deposit after this feature ships") {

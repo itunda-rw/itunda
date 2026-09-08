@@ -85,6 +85,15 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
             Then("it awards the real 5% subscription discount on the real order total") {
                 verify(exactly = 1) { shoppingCashbackService.awardCashback(customerAccount, BigDecimal("10000"), "Kigali Mart", ProductSubscriptionService.SUBSCRIPTION_DISCOUNT_RATE) }
             }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08, following the same latent-regression class Family/Gift/
+            // Splitbill/P2P already closed): rateLimiter was relaxed = true with zero
+            // verify{} anywhere in this file, so a future accidental removal of the
+            // real checkLimit call would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("productsubscription:subscribe:customer_1", limit = 20, window = java.time.Duration.ofHours(1)) }
+            }
         }
 
         When("the interval exceeds Coupang's own real 6-month (180-day) ceiling") {

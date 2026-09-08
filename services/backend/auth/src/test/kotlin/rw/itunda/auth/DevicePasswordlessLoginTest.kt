@@ -92,6 +92,14 @@ class DevicePasswordlessLoginTest : BehaviorSpec({
                 challenge.isNotBlank() shouldBe true
                 verify(exactly = 1) { redisValueOps.set(any(), challenge, any<java.time.Duration>()) }
             }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08): rateLimiter was relaxed = true with zero verify{} anywhere
+            // in this file, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("auth:login-challenge:+250788000010", limit = 10, window = java.time.Duration.ofMinutes(1)) }
+            }
         }
 
         When("issuing a login challenge for a phone number with no account at all") {
@@ -135,6 +143,14 @@ class DevicePasswordlessLoginTest : BehaviorSpec({
 
             Then("it returns the real user -- AuthService.loginWithDeviceSignature issues a fresh session from this, no password or PIN involved") {
                 result.id shouldBe "user_10"
+            }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08): rateLimiter was relaxed = true with zero verify{} anywhere
+            // in this file, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("auth:login-verify:+250788000010", limit = 5, window = java.time.Duration.ofMinutes(1)) }
             }
         }
 

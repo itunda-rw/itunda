@@ -57,6 +57,14 @@ class MenuOptionServiceTest : BehaviorSpec({
                 view.choices.first { it.name == "Small" }.priceDelta shouldBe BigDecimal.ZERO
                 view.choices.first { it.name == "Large" }.priceDelta shouldBe BigDecimal("1000")
             }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08): rateLimiter was relaxed = true with zero verify{} anywhere
+            // in this file, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                io.mockk.verify(exactly = 1) { rateLimiter.checkLimit("merchant:menu-option-group:owner_1", limit = 30, window = java.time.Duration.ofHours(1)) }
+            }
         }
 
         When("adding a group with zero choices") {

@@ -137,6 +137,14 @@ class MerchantFollowServiceTest : BehaviorSpec({
                 verify(exactly = 1) { pushNotificationService.sendToUser("follower_1", "20% off today", "Come visit us for a real discount!", any()) }
                 verify(exactly = 1) { pushNotificationService.sendToUser("follower_2", "20% off today", "Come visit us for a real discount!", any()) }
             }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08): rateLimiter was relaxed = true with zero verify{} anywhere
+            // in this file, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("merchant:broadcast:merchant_1", limit = MerchantFollowService.BROADCAST_LIMIT, window = MerchantFollowService.BROADCAST_WINDOW) }
+            }
         }
 
         When("broadcasting with an empty title") {
