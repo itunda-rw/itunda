@@ -55,11 +55,19 @@ Returns the certificate's current \`status\`/\`expiresAt\`/\`issuedAt\`/\`public
 without needing a signature to check against — useful for looking up a certificate before
 you have a signed payload in hand yet.
 
+## Rate limiting
+
+Both endpoints above are limited to 20 requests per minute, per \`serialNumber\`. Every
+response carries \`X-RateLimit-Limit\` / \`X-RateLimit-Remaining\` / \`X-RateLimit-Reset\`
+headers — check these before you hit a 429, not just after. An actual 429 also carries the
+standard \`Retry-After\` header (the same seconds-until-reset value).
+
 ## Errors
 
 | Code | Status | Meaning |
 | --- | --- | --- |
 | \`CERTIFICATE_NOT_FOUND\` | 404 | Unknown \`serialNumber\` |
+| \`RATE_LIMITED\` | 429 | Too many requests — back off and retry |
 
 ## Questions
 

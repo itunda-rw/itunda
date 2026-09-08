@@ -148,8 +148,11 @@ matching HTTP status:
 | \`IDEMPOTENCY_KEY_REQUIRED\` | 400 | Missing \`Idempotency-Key\` on a POST that requires one |
 | \`INVALID_CHECKOUT_REQUEST\` | 400 | Bad amount, description, or redirect URL |
 | \`PAYMENT_NOT_FOUND\` | 404 | Unknown \`paymentKey\`, or it belongs to a different merchant |
+| \`MERCHANT_NOT_FOUND\` | 404 | Your API key resolved, but the merchant account behind it no longer exists |
 | \`PAYMENT_NOT_REFUNDABLE\` | 409 | Trying to cancel something that isn't in a cancellable state |
+| \`INVALID_CANCEL_REQUEST\` | 400 | \`cancelReason\` is empty/too long, or \`cancelAmount\` is non-positive or exceeds what's left to refund |
 | \`IDEMPOTENCY_KEY_CONFLICT\` | 409 | Same \`Idempotency-Key\` reused with a different request body |
+| \`IDEMPOTENT_REQUEST_PROCESSING\` | 409 | The original request with this \`Idempotency-Key\` is still being processed — retry shortly |
 | \`RATE_LIMITED\` | 429 | Too many requests — back off and retry |
 
 ## Questions
