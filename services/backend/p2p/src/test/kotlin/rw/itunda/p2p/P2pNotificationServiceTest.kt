@@ -111,4 +111,43 @@ class P2pNotificationServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real proactive-expiry gap (Bank product-completeness pass, cycle 2, 2026-09-09) --
+    // see P2pService.markExpired/P2pPaymentRequestExpiryScheduler's own doc comments.
+    Given("a requester whose payment request just expired unpaid") {
+        val userRepository = mockk<UserRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = P2pNotificationService(userRepository, notificationRepository, pushNotificationService)
+        val notificationSlot = slot<Notification>()
+        every { notificationRepository.save(capture(notificationSlot)) } answers { firstArg() }
+
+        When("notifyRequestExpired is called") {
+            service.notifyRequestExpired("requester_10", BigDecimal("3000"))
+
+            Then("a real in-app notification is saved with plain, everyday copy") {
+                notificationSlot.captured.userId shouldBe "requester_10"
+                notificationSlot.captured.type shouldBe "P2P_REQUEST_EXPIRED"
+                notificationSlot.captured.body shouldBe "Your request for 3000 RWF expired unpaid. You can send a new one anytime."
+            }
+
+            Then("a real push notification is also sent with the same real content") {
+                verify(exactly = 1) {
+                    pushNotificationService.sendToUser(
+                        "requester_10", "Request expired",
+                        "Your request for 3000 RWF expired unpaid. You can send a new one anytime.",
+                        any(), type = "P2P_REQUEST_EXPIRED",
+                    )
+                }
+            }
+        }
+
+        When("the notification save fails") {
+            every { notificationRepository.save(any()) } throws RuntimeException("db down")
+
+            Then("it's swallowed, not propagated -- the status flip already succeeded") {
+                service.notifyRequestExpired("requester_10", BigDecimal("3000"))
+            }
+        }
+    }
 })

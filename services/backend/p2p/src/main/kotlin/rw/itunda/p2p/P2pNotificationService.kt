@@ -162,4 +162,32 @@ class P2pNotificationService(
             override fun afterCommit() = send()
         })
     }
+
+    // Real proactive-expiry notification (Bank product-completeness pass, cycle 2,
+    // 2026-09-09) -- see P2pService.markExpired/P2pPaymentRequestExpiryScheduler's own
+    // doc comments. Plain, everyday copy over jargon like "invalidated" or "voided"
+    // (Toss's "Casual Concept" writing principle, same rewrite this session already
+    // applied to the write-off notification copy).
+    fun notifyRequestExpired(requesterUserId: String, amount: BigDecimal) {
+        try {
+            val title = "Request expired"
+            val body = "Your request for $amount RWF expired unpaid. You can send a new one anytime."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}",
+                    userId = requesterUserId,
+                    type = "P2P_REQUEST_EXPIRED",
+                    title = title,
+                    body = body,
+                    isRead = false,
+                    createdAt = Instant.now(),
+                    dataJson = "{\"amount\":\"$amount\"}",
+                ),
+            )
+            pushNotificationService.sendToUser(requesterUserId, title, body, mapOf("amount" to amount.toString()), type = "P2P_REQUEST_EXPIRED")
+        } catch (e: Exception) {
+            // Non-critical -- the status flip already succeeded.
+            log.warn("Failed to notify user {} of expired request", requesterUserId, e)
+        }
+    }
 }

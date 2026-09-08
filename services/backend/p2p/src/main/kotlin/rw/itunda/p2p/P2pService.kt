@@ -82,6 +82,26 @@ class P2pService(
     fun getMyRequests(requesterUserId: String): List<P2pPaymentRequest> =
         p2pPaymentRequestRepository.findByRequesterUserIdOrderByCreatedAtDesc(requesterUserId)
 
+    // Real proactive-expiry gap (Bank product-completeness pass, cycle 2, 2026-09-09):
+    // the EXPIRED transition below was real code, but only ever ran lazily inside
+    // payRequest when a payer attempted to pay a request whose expiresAt had already
+    // passed. A request nobody ever attempts to pay stayed PENDING in the database --
+    // and in the requester's own "My Requests" list (bank-mfe's PayRequestAndTopUp.tsx
+    // trusts the backend's status field directly, no client-side freshness check) --
+    // indefinitely, even long after its real 15-minute expiresAt. Same class of gap as
+    // Harvest Advance's own dead OVERDUE status (project_itunda_bank_product_completeness,
+    // cycle 2), except here the transition itself was real, just never proactively driven.
+    // Mirrors CooperativeService.getAdvancesDueForOverdueCheck/markOverdue exactly.
+    fun getRequestsDueForExpiryCheck(): List<P2pPaymentRequest> =
+        p2pPaymentRequestRepository.findByStatusAndExpiresAtBefore(P2pPaymentRequestStatus.PENDING, Instant.now())
+
+    @Transactional
+    fun markExpired(request: P2pPaymentRequest) {
+        request.status = P2pPaymentRequestStatus.EXPIRED
+        p2pPaymentRequestRepository.save(request)
+        p2pNotificationService.notifyRequestExpired(request.requesterUserId, request.amount)
+    }
+
     @Transactional
     fun payRequest(payerUserId: String, requestId: String): Pair<Transaction, BigDecimal> {
         val request = p2pPaymentRequestRepository.findById(requestId)

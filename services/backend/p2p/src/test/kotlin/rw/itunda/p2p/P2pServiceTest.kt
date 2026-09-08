@@ -1023,6 +1023,52 @@ class P2pServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real proactive-expiry gap (Bank product-completeness pass, cycle 2, 2026-09-09) --
+    // see P2pService.getRequestsDueForExpiryCheck/markExpired's own doc comments.
+    Given("a real pending payment request whose expiresAt has already passed") {
+        val p2pPaymentRequestRepository = mockk<P2pPaymentRequestRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val p2pNotificationService = mockk<P2pNotificationService>(relaxed = true)
+        val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>(relaxed = true)
+        val autoTopUpService = mockk<AutoTopUpService>(relaxed = true)
+        val p2pTransferLimitService = mockk<P2pTransferLimitService>(relaxed = true)
+        val service = P2pService(
+            p2pPaymentRequestRepository, accountRepository, userRepository, transactionRepository, ledgerService,
+            fraudRuleEngine, rateLimiter, roundUpService, familyLinkService, autoTopUpService,
+            p2pTransferLimitService, p2pNotificationService,
+        )
+        val expiredRequest = P2pPaymentRequest(
+            id = "p2p_expiring", requesterUserId = "requester_10", amount = BigDecimal("3000"),
+            description = "Lunch", expiresAt = Instant.now().minusSeconds(60),
+        )
+        every { p2pPaymentRequestRepository.findByStatusAndExpiresAtBefore(P2pPaymentRequestStatus.PENDING, any()) } returns listOf(expiredRequest)
+        every { p2pPaymentRequestRepository.save(any()) } answers { firstArg() }
+
+        When("the scheduler asks which requests are due for expiry") {
+            val due = service.getRequestsDueForExpiryCheck()
+
+            Then("it returns the expired-but-still-PENDING request") {
+                due shouldBe listOf(expiredRequest)
+            }
+        }
+
+        When("markExpired is called") {
+            service.markExpired(expiredRequest)
+
+            Then("the request's status flips to EXPIRED, is saved, and the requester is notified") {
+                expiredRequest.status shouldBe P2pPaymentRequestStatus.EXPIRED
+                verify(exactly = 1) { p2pPaymentRequestRepository.save(expiredRequest) }
+                verify(exactly = 1) { p2pNotificationService.notifyRequestExpired("requester_10", BigDecimal("3000")) }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }
