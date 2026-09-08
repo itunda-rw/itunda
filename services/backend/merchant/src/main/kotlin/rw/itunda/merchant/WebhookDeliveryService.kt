@@ -27,9 +27,10 @@ import javax.crypto.spec.SecretKeySpec
  *
  * Real persistent retry (2026-07-13), replacing the previous single-attempt,
  * fire-and-log design docs/PAYMENTS.md explicitly named as the gap versus Toss's actual
- * documented scheme: up to 7 attempts total, intervals 1, 4, 16, 64, 256, 1024, 4096
- * minutes (each 4x the last -- sourced from docs.tosspayments.com/en/webhooks), a
- * ~2.8-day retry window. Every delivery is persisted as pending and delivered by
+ * documented scheme: the initial delivery plus up to 7 retries (8 attempts total),
+ * intervals 1, 4, 16, 64, 256, 1024, 4096 minutes apart (each 4x the last -- sourced from
+ * docs.tosspayments.com/en/webhooks), a ~3.8-day retry window. Every delivery is
+ * persisted as pending and delivered by
  * [WebhookRetryScheduler] after the
  * transaction commits. This means a receiver can never observe an event for a
  * rolled-back payment, and a slow receiver cannot delay the payment response. This
@@ -63,9 +64,13 @@ class WebhookDeliveryService(
     companion object {
         // Real Toss Payments schedule (docs.tosspayments.com/en/webhooks): "resends the
         // webhook up to 7 times" over "exponentially increasing" intervals from 1 to
-        // 4096 minutes -- each attempt's wait is 4x the previous one's.
+        // 4096 minutes -- each attempt's wait is 4x the previous one's. "Resends... up
+        // to 7 times" means 7 retries AFTER the initial delivery, so MAX_ATTEMPTS is 8
+        // (1 initial + 7 retries) -- every one of the 7 configured intervals must
+        // actually get used, including the final 4096-minute one, or the real retry
+        // window silently shrinks from ~3.8 days to under 24 hours.
         val RETRY_INTERVALS_MINUTES = listOf(1L, 4L, 16L, 64L, 256L, 1024L, 4096L)
-        const val MAX_ATTEMPTS = 7
+        const val MAX_ATTEMPTS = 8
     }
 
     fun deliverPaymentStatusChanged(merchantId: String, webhookUrl: String?, data: Map<String, Any?>, webhookSecret: String? = null) =

@@ -124,8 +124,13 @@ retry-backed delivery notifications instead of making you poll:
 
 Envelope: \`{ eventId, eventType, createdAt, data }\`. Your own \`orderId\` is included in
 every payment webhook so you can correlate it back to your order record without a second
-API call. Retries run up to 7 attempts (1, 4, 16, 64, 256, 1024, 4096 minutes apart — about
-2.8 days total) if your endpoint doesn't return a 2xx.
+API call. Retries run up to 8 attempts (the first delivery plus up to 7 retries, 1, 4, 16,
+64, 256, 1024, 4096 minutes apart — about 3.8 days total) if your endpoint doesn't return
+a 2xx.
+
+Every delivery also carries \`X-Itunda-Delivery-Id\` (same value as the payload's
+\`eventId\` — dedupe on this header alone if you'd rather not parse the body) and
+\`X-Itunda-Event-Type\` (route without parsing JSON first).
 
 **Always verify the signature.** Generate a webhook secret (\`POST
 /api/v1/merchant/webhook-secret/generate\`, shown exactly once) and check the

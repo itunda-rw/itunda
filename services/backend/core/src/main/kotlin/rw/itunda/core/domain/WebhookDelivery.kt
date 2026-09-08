@@ -16,7 +16,7 @@ enum class WebhookDeliveryStatus { PENDING, DELIVERED, EXHAUSTED }
  * increasing intervals (1 to 4096 minutes)") and docs/TOSS_PARITY_MATRIX.md's Merchant
  * row, which named single-attempt delivery as the honest gap versus that real scheme.
  * A persisted row, not an in-memory retry loop, for the same reason [OutboxEventEntity]
- * exists: a multi-hour (up to ~2.8-day) retry window can't survive a process restart
+ * exists: a multi-hour (up to ~3.8-day) retry window can't survive a process restart
  * otherwise.
  */
 @Entity

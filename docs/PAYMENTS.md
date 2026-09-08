@@ -123,8 +123,9 @@ itunda Pay, itunda Shop, and itunda Eats are three different money-moving produc
 sharing one honest webhook infrastructure (`Merchant.webhookUrl`/`webhookSecret`,
 `WebhookDeliveryService`), not three bespoke ones -- a restaurant is the same real
 `Merchant` entity a Commerce seller or a Pay integrator is. Envelope: `{ eventId, eventType, createdAt,
-data }`. Retry schedule matches Toss's own documented scheme exactly: up to 7 attempts,
-intervals 1, 4, 16, 64, 256, 1024, 4096 minutes (each 4× the last), a ~2.8-day window.
+data }`. Retry schedule matches Toss's own documented scheme exactly: the initial delivery
+plus up to 7 retries (8 attempts total), intervals 1, 4, 16, 64, 256, 1024, 4096 minutes
+apart (each 4× the last), a ~3.8-day window.
 `orderId` is included in every payment webhook so a receiver can correlate back to its own
 order record without a second API call.
 

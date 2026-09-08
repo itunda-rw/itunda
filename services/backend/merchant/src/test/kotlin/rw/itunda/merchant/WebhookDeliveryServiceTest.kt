@@ -3,6 +3,7 @@ package rw.itunda.merchant
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.longs.shouldBeLessThan
 import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
@@ -203,6 +204,57 @@ class WebhookDeliveryServiceTest : BehaviorSpec({
             Then("it real-looks-up the merchant's CURRENT webhookUrl server-side, not a client-supplied one") {
                 result["replayOf"] shouldBe "whd_original"
                 saved.captured.webhookUrl shouldBe "https://current.example.test/webhook"
+            }
+        }
+    }
+
+    // Real off-by-one found during the Merchant developer-center audit: MAX_ATTEMPTS
+    // used to be 7, one short of the 8 attempts (1 initial + 7 retries) Toss's own
+    // documented scheme actually needs to use every configured interval, including the
+    // final 4096-minute one -- silently shrinking the real retry window from ~3.8 days
+    // to under 24 hours.
+    Given("a delivery that has already failed 6 times in a row") {
+        val repository = mockk<WebhookDeliveryRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
+        every { repository.save(any()) } answers { firstArg() }
+        val service = WebhookDeliveryService(ObjectMapper(), repository, merchantRepository)
+        // A loopback URL always fails WebhookUrlPolicy's public-address check --
+        // deterministic, instant, no real network call, no MockWebServer needed.
+        val delivery = WebhookDelivery(
+            id = "whd_flaky", merchantId = "merchant_1", eventType = "PAYMENT_STATUS_CHANGED",
+            webhookUrl = "https://127.0.0.1/webhook", payload = "{}",
+            attemptCount = 6, status = WebhookDeliveryStatus.PENDING, nextAttemptAt = Instant.now(),
+        )
+
+        When("its 7th attempt also fails") {
+            service.retry(delivery)
+
+            Then("it schedules the real final 4096-minute interval instead of exhausting early") {
+                delivery.attemptCount shouldBe 7
+                delivery.status shouldBe WebhookDeliveryStatus.PENDING
+                val expected = Instant.now().plusSeconds(4096L * 60)
+                Math.abs(delivery.nextAttemptAt.epochSecond - expected.epochSecond) shouldBeLessThan 5L
+            }
+        }
+    }
+
+    Given("a delivery that has already failed 7 times in a row") {
+        val repository = mockk<WebhookDeliveryRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
+        every { repository.save(any()) } answers { firstArg() }
+        val service = WebhookDeliveryService(ObjectMapper(), repository, merchantRepository)
+        val delivery = WebhookDelivery(
+            id = "whd_flaky", merchantId = "merchant_1", eventType = "PAYMENT_STATUS_CHANGED",
+            webhookUrl = "https://127.0.0.1/webhook", payload = "{}",
+            attemptCount = 7, status = WebhookDeliveryStatus.PENDING, nextAttemptAt = Instant.now(),
+        )
+
+        When("its 8th and final attempt also fails") {
+            service.retry(delivery)
+
+            Then("it exhausts, having used the full documented retry window") {
+                delivery.attemptCount shouldBe 8
+                delivery.status shouldBe WebhookDeliveryStatus.EXHAUSTED
             }
         }
     }
