@@ -43,16 +43,42 @@ export function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ posts: JobPost[]; trustScores: TrustScores } | null>(null);
   const [searching, setSearching] = useState(false);
+  // Real pagination-discard fix (2026-09-09) -- separate from the main
+  // browse/mine/worked/neighborhood page/hasMore state above since search
+  // results are their own independent list.
+  const [searchPage, setSearchPage] = useState(0);
+  const [searchHasMore, setSearchHasMore] = useState(false);
+  const [searchLoadingMore, setSearchLoadingMore] = useState(false);
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setSearching(true);
     try {
-      setSearchResults(await searchJobPosts(searchQuery.trim()));
+      const result = await searchJobPosts(searchQuery.trim(), 0);
+      setSearchResults({ posts: result.posts, trustScores: result.trustScores });
+      setSearchPage(0);
+      setSearchHasMore(result.page + 1 < result.totalPages);
     } catch {
       setSearchResults({ posts: [], trustScores: {} });
+      setSearchHasMore(false);
     } finally {
       setSearching(false);
     }
+  };
+
+  const loadMoreSearchResults = () => {
+    const nextPage = searchPage + 1;
+    setSearchLoadingMore(true);
+    searchJobPosts(searchQuery.trim(), nextPage)
+      .then((result) => {
+        setSearchResults((prev) => ({
+          posts: [...(prev?.posts ?? []), ...result.posts],
+          trustScores: { ...(prev?.trustScores ?? {}), ...result.trustScores },
+        }));
+        setSearchPage(nextPage);
+        setSearchHasMore(result.page + 1 < result.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setSearchLoadingMore(false));
   };
 
   useEffect(() => {
@@ -268,7 +294,15 @@ export function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId
                       post={post}
                       categoryLabel={categoryLabel(post.category)}
                       isMine={post.posterId === currentUser?.id}
-                      onChanged={() => searchJobPosts(searchQuery.trim()).then(setSearchResults).catch(() => {})}
+                      onChanged={() => {
+                        searchJobPosts(searchQuery.trim(), 0)
+                          .then((result) => {
+                            setSearchResults({ posts: result.posts, trustScores: result.trustScores });
+                            setSearchPage(0);
+                            setSearchHasMore(result.page + 1 < result.totalPages);
+                          })
+                          .catch(() => {});
+                      }}
                       onContact={() => handleContact(post.id)}
                       favorited={favoriteIds.has(post.id)}
                       favoriteBusy={favoritingId === post.id}
@@ -276,6 +310,11 @@ export function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId
                       posterTrustScore={searchResults.trustScores[post.posterId]}
                     />
                   ))}
+                  {searchHasMore && (
+                    <button className="itunda-btn itunda-btn-secondary" disabled={searchLoadingMore} onClick={loadMoreSearchResults}>
+                      {searchLoadingMore ? 'Loading…' : 'Load more'}
+                    </button>
+                  )}
                 </div>
               )}
             </>

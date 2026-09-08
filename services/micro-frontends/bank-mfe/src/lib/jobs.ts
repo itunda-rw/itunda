@@ -91,10 +91,16 @@ export const fetchJobPostsMyNeighborhood = (category?: string, page = 0, size = 
 // never ported to web, the same real gap Toss Shopping's own banner carousel already
 // closed once for lib/shopping.ts (see that file's own doc comment). Mirrors
 // searchProducts's own real cross-merchant search shape field-for-field.
-export const searchJobPosts = (q: string) =>
-  apiFetch<{ success: boolean; posts: JobPost[]; trustScores: TrustScores }>(
-    `/api/v1/jobs/posts/search?q=${encodeURIComponent(q)}`,
-  ).then((r) => ({ posts: r.posts, trustScores: r.trustScores }));
+//
+// Real pagination-discard fix (2026-09-09, same systemic gap as
+// fetchJobPosts/etc -- see project_itunda_pagination_discard_sweep memory)
+// -- named as a real, disclosed follow-up when the main Jobs feeds were
+// fixed, since search results are a separate state shape, not a trivial
+// extension of that fix. Picked up here.
+export const searchJobPosts = (q: string, page = 0, size = 20) =>
+  apiFetch<{ success: boolean; posts: JobPost[]; trustScores: TrustScores; page: number; totalPages: number }>(
+    `/api/v1/jobs/posts/search?q=${encodeURIComponent(q)}&page=${page}&size=${size}`,
+  );
 
 export const createJobPost = (
   category: string,
