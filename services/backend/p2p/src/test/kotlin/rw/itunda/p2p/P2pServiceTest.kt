@@ -121,6 +121,17 @@ class P2pServiceTest : BehaviorSpec({
                 request.paidByUserId shouldBe "payer_1"
                 newBalance shouldBe BigDecimal("8000")
             }
+
+            // Real repo-wide FraudRuleEngine-verify re-sweep (2026-09-09): unlike
+            // sendDirect (which returns fraudRuleEngine.evaluate's result directly, so a
+            // deleted call would already fail an existing return-value assertion),
+            // payRequest's own evaluate() call at line ~172 is a fire-and-forget side
+            // effect -- its return value is never used, so nothing in this file
+            // previously verified it fires at all. A real regression silently deleting
+            // it would have gone undetected.
+            Then("the real fraud engine is evaluated with the real payer/requester/amount/transaction, not silently skipped") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("payer_1", "requester_1", BigDecimal("2000"), transaction.id) }
+            }
         }
     }
 
