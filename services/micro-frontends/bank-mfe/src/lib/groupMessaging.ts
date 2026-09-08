@@ -76,8 +76,15 @@ export const joinGroupByCode = (joinCode: string) =>
     body: JSON.stringify({ joinCode }),
   }).then((r) => r.group);
 
-export const fetchGroups = () =>
-  apiFetch<{ success: boolean; groups: GroupSummary[] }>('/api/v1/messages/groups').then((r) => r.groups);
+// Real pagination-discard fix (2026-09-09, same systemic gap fixed for
+// MessagingController.listConversations -- see
+// project_itunda_pagination_discard_sweep memory) -- GroupMessagingController's
+// GET /groups is a real Spring Pageable endpoint, but every client discarded
+// page/totalPages and only ever showed the first 20 group chats.
+export const fetchGroups = (page = 0, size = 20) =>
+  apiFetch<{ success: boolean; groups: GroupSummary[]; page: number; totalPages: number }>(
+    `/api/v1/messages/groups?page=${page}&size=${size}`,
+  );
 
 export const fetchGroupMessages = (groupId: string) =>
   apiFetch<{ success: boolean; messages: GroupMessage[] }>(`/api/v1/messages/groups/${groupId}/messages`).then(

@@ -24,12 +24,33 @@ export function GroupsList({ initialConversationId, onConsumedInitial }: { initi
   const showSkeleton = useDeferredLoading(groups === null);
   const [error, setError] = useState<string | null>(null);
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
+  // Real pagination-discard fix (2026-09-09) -- a request never asked past
+  // page 0, so any user with more than 20 real group chats couldn't reach
+  // anything past the first page.
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const load = () => {
     setError(null);
-    fetchGroups()
-      .then(setGroups)
+    setPage(0);
+    setHasMore(false);
+    fetchGroups(0)
+      .then((r) => { setGroups(r.groups); setHasMore(r.page + 1 < r.totalPages); })
       .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+  };
+
+  const loadMore = () => {
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    fetchGroups(nextPage)
+      .then((r) => {
+        setGroups((prev) => [...(prev ?? []), ...r.groups]);
+        setPage(nextPage);
+        setHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
   };
 
   useEffect(load, []);
@@ -105,6 +126,11 @@ export function GroupsList({ initialConversationId, onConsumedInitial }: { initi
               )}
             </button>
           ))}
+          {hasMore && (
+            <button className="itunda-btn itunda-btn-secondary" disabled={loadingMore} onClick={loadMore}>
+              {loadingMore ? 'Loading…' : 'Load more'}
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -139,8 +165,8 @@ export function MessagesView({ initialConversationId, onConsumedInitial }: { ini
   useEffect(() => {
     if (!initialConversationId) return;
     fetchGroups()
-      .then((groups) => {
-        if (groups.some((g) => g.groupId === initialConversationId)) setMode('GROUPS');
+      .then((r) => {
+        if (r.groups.some((g) => g.groupId === initialConversationId)) setMode('GROUPS');
       })
       .catch(() => {});
   }, [initialConversationId]);

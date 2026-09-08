@@ -2770,9 +2770,9 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       // which doesn't exist yet -- named here rather than silently
       // papered over, not attempted this pass.
       Promise.all([fetchConversations(false), fetchGroups()])
-        .then(([conversationsRes, groups]) => {
+        .then(([conversationsRes, groupsRes]) => {
           if (cancelled) return;
-          const total = conversationsRes.conversations.reduce((sum, c) => sum + c.unreadCount, 0) + groups.reduce((sum, g) => sum + g.unreadCount, 0);
+          const total = conversationsRes.conversations.reduce((sum, c) => sum + c.unreadCount, 0) + groupsRes.groups.reduce((sum, g) => sum + g.unreadCount, 0);
           setMessagesUnreadCount(total);
         })
         .catch(() => {

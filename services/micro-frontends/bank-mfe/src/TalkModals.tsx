@@ -58,7 +58,7 @@ export function ForwardPickerModal({ onForward, onClose }: { onForward: (destina
 
   useEffect(() => {
     fetchConversations().then((r) => setConversations(r.conversations)).catch(() => setConversations([]));
-    fetchGroups().then(setGroups).catch(() => setGroups([]));
+    fetchGroups().then((r) => setGroups(r.groups)).catch(() => setGroups([]));
   }, []);
 
   // Real fix (full-app audit, docs/UI_UX_GUIDELINES.md rule 1) -- same dark-overlay-
