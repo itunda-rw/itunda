@@ -18,10 +18,12 @@ import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.CooperativeMembershipRepository
 import rw.itunda.core.repository.CooperativeRepository
 import rw.itunda.core.repository.HarvestAdvanceRepository
 import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.repository.NotificationRepository
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.Optional
@@ -49,7 +51,12 @@ class CooperativeServiceTest : BehaviorSpec({
         accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = CooperativeService(cooperativeRepository, membershipRepository, advanceRepository, accountRepository, ledgerService, rateLimiter)
+        notificationRepository: NotificationRepository = mockk(relaxed = true),
+        pushNotificationService: PushNotificationService = mockk(relaxed = true),
+    ) = CooperativeService(
+        cooperativeRepository, membershipRepository, advanceRepository, accountRepository, ledgerService, rateLimiter,
+        notificationRepository, pushNotificationService,
+    )
 
     Given("a cooperative registration") {
         val cooperativeRepository = mockk<CooperativeRepository>()
@@ -252,6 +259,152 @@ class CooperativeServiceTest : BehaviorSpec({
                     service.repayAdvance("user_1", "harvestadv_2", BigDecimal("1"))
                 }
                 verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+    }
+
+    // Real overdue detection + admin review queue (Bank product-completeness pass,
+    // cycle 2, 2026-09-08) -- HarvestAdvanceStatus.OVERDUE existed and was already
+    // defensively checked in repayAdvance's own guard, but nothing ever set it.
+    // Mirrors VupLoanServiceTest's equivalent cases 1:1.
+    Given("harvest advances due for an overdue check") {
+        val advanceRepository = mockk<HarvestAdvanceRepository>()
+        val service = newService(advanceRepository = advanceRepository)
+
+        val overdueOne = HarvestAdvance(
+            id = "harvestadv_overdue", membershipId = "coopmem_1", accountId = "account_1", principalAmount = BigDecimal("50000"),
+            purpose = "INPUT_FINANCING", expectedHarvestDate = Instant.now(), repaymentDueDate = Instant.now().minusSeconds(3600),
+            status = HarvestAdvanceStatus.DISBURSED,
+        )
+        val notYetDue = HarvestAdvance(
+            id = "harvestadv_future", membershipId = "coopmem_1", accountId = "account_1", principalAmount = BigDecimal("50000"),
+            purpose = "INPUT_FINANCING", expectedHarvestDate = Instant.now(), repaymentDueDate = Instant.now().plusSeconds(3600),
+            status = HarvestAdvanceStatus.DISBURSED,
+        )
+        val alreadyRepaid = HarvestAdvance(
+            id = "harvestadv_repaid", membershipId = "coopmem_1", accountId = "account_1", principalAmount = BigDecimal("50000"),
+            purpose = "INPUT_FINANCING", expectedHarvestDate = Instant.now(), repaymentDueDate = Instant.now().minusSeconds(3600),
+            status = HarvestAdvanceStatus.REPAID,
+        )
+        every { advanceRepository.findAll() } returns listOf(overdueOne, notYetDue, alreadyRepaid)
+
+        When("checking which advances are due for an overdue flag") {
+            val due = service.getAdvancesDueForOverdueCheck()
+
+            Then("it includes only the DISBURSED advance whose real due date has already passed") {
+                due.map { it.id } shouldBe listOf("harvestadv_overdue")
+            }
+        }
+    }
+
+    Given("a real DISBURSED harvest advance being marked overdue") {
+        val membershipRepository = mockk<CooperativeMembershipRepository>()
+        val advanceRepository = mockk<HarvestAdvanceRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(
+            membershipRepository = membershipRepository, advanceRepository = advanceRepository,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
+        )
+        val membership = CooperativeMembership(id = "coopmem_1", cooperativeId = "coop_1", userId = "user_1", accountId = "account_1")
+        val advance = HarvestAdvance(
+            id = "harvestadv_1", membershipId = "coopmem_1", accountId = "account_1", principalAmount = BigDecimal("50000"),
+            purpose = "INPUT_FINANCING", expectedHarvestDate = Instant.now(), repaymentDueDate = Instant.now().minusSeconds(3600),
+            status = HarvestAdvanceStatus.DISBURSED,
+        )
+        every { membershipRepository.findById("coopmem_1") } returns Optional.of(membership)
+        every { advanceRepository.save(any()) } answers { firstArg() }
+        every { notificationRepository.save(any()) } answers { firstArg() }
+
+        When("the scheduler flags it") {
+            service.markOverdue(advance)
+
+            Then("it flips the status and notifies the real farmer, not just a server log line") {
+                advance.status shouldBe HarvestAdvanceStatus.OVERDUE
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_1" && it.type == "HARVEST_ADVANCE_OVERDUE" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any()) }
+            }
+        }
+    }
+
+    // Each scenario below gets its OWN Given block with a fresh advance instance --
+    // same discipline this file's own repayAdvance tests already established
+    // ("Kotest's BehaviorSpec shares the same mutable advance instance across
+    // sibling Whens under one Given"): decide() mutates status in place, so two
+    // sibling Whens sharing one instance would make each test's outcome depend on
+    // declaration order.
+    fun overdueAdvanceFixture() = HarvestAdvance(
+        id = "harvestadv_overdue", membershipId = "coopmem_1", accountId = "account_1", principalAmount = BigDecimal("50000"),
+        purpose = "INPUT_FINANCING", expectedHarvestDate = Instant.now(), repaymentDueDate = Instant.now().minusSeconds(3600),
+        status = HarvestAdvanceStatus.OVERDUE,
+    )
+    val reviewerMembership = CooperativeMembership(id = "coopmem_1", cooperativeId = "coop_1", userId = "user_1", accountId = "account_1")
+
+    Given("an OVERDUE harvest advance an admin just acknowledges") {
+        val advanceRepository = mockk<HarvestAdvanceRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val service = newService(advanceRepository = advanceRepository, notificationRepository = notificationRepository)
+        every { advanceRepository.findById("harvestadv_overdue") } returns Optional.of(overdueAdvanceFixture())
+        every { advanceRepository.save(any()) } answers { firstArg() }
+
+        When("the admin acknowledges it, without writing it off") {
+            val result = service.decide("harvestadv_overdue", "admin_1", writeOff = false, note = "Farmer contacted, promised payment")
+
+            Then("it records the review without touching the status") {
+                result.status shouldBe HarvestAdvanceStatus.OVERDUE
+                result.reviewedBy shouldBe "admin_1"
+                verify(exactly = 0) { notificationRepository.save(any()) }
+            }
+        }
+    }
+
+    Given("an OVERDUE harvest advance an admin writes off") {
+        val advanceRepository = mockk<HarvestAdvanceRepository>()
+        val membershipRepository = mockk<CooperativeMembershipRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val service = newService(advanceRepository = advanceRepository, membershipRepository = membershipRepository, notificationRepository = notificationRepository)
+        every { advanceRepository.findById("harvestadv_overdue") } returns Optional.of(overdueAdvanceFixture())
+        every { membershipRepository.findById("coopmem_1") } returns Optional.of(reviewerMembership)
+        every { advanceRepository.save(any()) } answers { firstArg() }
+        every { notificationRepository.save(any()) } answers { firstArg() }
+
+        When("the admin writes it off") {
+            val result = service.decide("harvestadv_overdue", "admin_1", writeOff = true, note = null)
+
+            Then("it marks WRITTEN_OFF and notifies the real farmer") {
+                result.status shouldBe HarvestAdvanceStatus.WRITTEN_OFF
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_1" && it.type == "HARVEST_ADVANCE_WRITTEN_OFF" }) }
+            }
+        }
+    }
+
+    Given("a non-OVERDUE harvest advance someone tries to review") {
+        val advanceRepository = mockk<HarvestAdvanceRepository>()
+        val service = newService(advanceRepository = advanceRepository)
+        val disbursed = overdueAdvanceFixture().also { it.status = HarvestAdvanceStatus.DISBURSED }
+        every { advanceRepository.findById("harvestadv_overdue") } returns Optional.of(disbursed)
+
+        When("someone tries to review it here") {
+            Then("it throws HarvestAdvanceNotOverdueException before touching anything") {
+                shouldThrow<HarvestAdvanceNotOverdueException> {
+                    service.decide("harvestadv_overdue", "admin_1", writeOff = false, note = null)
+                }
+                verify(exactly = 0) { advanceRepository.save(any()) }
+            }
+        }
+    }
+
+    Given("an OVERDUE harvest advance reviewed with a too-long note") {
+        val advanceRepository = mockk<HarvestAdvanceRepository>()
+        val service = newService(advanceRepository = advanceRepository)
+        every { advanceRepository.findById("harvestadv_overdue") } returns Optional.of(overdueAdvanceFixture())
+
+        When("the review note exceeds the real 255-char bound") {
+            Then("it throws InvalidHarvestAdvanceReviewNoteException before touching anything") {
+                shouldThrow<InvalidHarvestAdvanceReviewNoteException> {
+                    service.decide("harvestadv_overdue", "admin_1", writeOff = false, note = "x".repeat(256))
+                }
+                verify(exactly = 0) { advanceRepository.save(any()) }
             }
         }
     }

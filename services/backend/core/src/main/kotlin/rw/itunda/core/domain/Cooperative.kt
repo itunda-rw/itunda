@@ -76,7 +76,7 @@ class CooperativeMembership(
     protected constructor() : this(id = "", cooperativeId = "", userId = "", accountId = "")
 }
 
-enum class HarvestAdvanceStatus { REQUESTED, DISBURSED, REPAID, OVERDUE }
+enum class HarvestAdvanceStatus { REQUESTED, DISBURSED, REPAID, OVERDUE, WRITTEN_OFF }
 
 /**
  * A real itunda-to-farmer harvest advance -- a direct lending relationship (itunda
@@ -133,6 +133,19 @@ class HarvestAdvance(
 
     @Column(name = "repayment_transaction_id", length = 64)
     var repaymentTransactionId: String? = null,
+
+    // Real admin-review audit trail (Bank product-completeness pass, cycle 2,
+    // 2026-09-08) -- see CooperativeService.decide's own doc comment. Same shape
+    // as VupLoan.reviewedBy/reviewNote/reviewedAt: all three default to NULL,
+    // populated only once an admin actually reviews this advance.
+    @Column(name = "reviewed_by", length = 64)
+    var reviewedBy: String? = null,
+
+    @Column(name = "review_note")
+    var reviewNote: String? = null,
+
+    @Column(name = "reviewed_at")
+    var reviewedAt: Instant? = null,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),

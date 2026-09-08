@@ -1,6 +1,8 @@
 package rw.itunda.core.repository
 
 import jakarta.persistence.LockModeType
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
@@ -8,6 +10,7 @@ import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.Cooperative
 import rw.itunda.core.domain.CooperativeMembership
 import rw.itunda.core.domain.HarvestAdvance
+import rw.itunda.core.domain.HarvestAdvanceStatus
 import java.util.Optional
 
 interface CooperativeRepository : JpaRepository<Cooperative, String>
@@ -29,4 +32,10 @@ interface HarvestAdvanceRepository : JpaRepository<HarvestAdvance, String> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from HarvestAdvance a where a.id = :id")
     fun findByIdForUpdate(@Param("id") id: String): Optional<HarvestAdvance>
+
+    // Real ops loan-default review queue (Bank product-completeness pass, cycle 2,
+    // 2026-09-08) -- same convention VupLoanRepository.findByStatusAndReviewedAtIsNull
+    // already establishes: reviewedAt IS NULL rather than a separate boolean, so an
+    // advance drops off the queue whether it was written off or just acknowledged.
+    fun findByStatusAndReviewedAtIsNull(status: HarvestAdvanceStatus, pageable: Pageable): Page<HarvestAdvance>
 }

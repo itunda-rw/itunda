@@ -1,5 +1,7 @@
 package rw.itunda.loans
 
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
@@ -10,12 +12,15 @@ import rw.itunda.core.domain.HarvestAdvanceStatus
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.CooperativeMembershipRepository
 import rw.itunda.core.repository.CooperativeRepository
 import rw.itunda.core.repository.HarvestAdvanceRepository
 import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.repository.NotificationRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -29,6 +34,8 @@ class HarvestAdvanceNoAccountException(message: String) : RuntimeException(messa
 class HarvestAdvanceInvalidAmountException(message: String) : RuntimeException(message)
 class HarvestAdvanceNotFoundException(message: String) : RuntimeException(message)
 class HarvestAdvanceInvalidStatusException(message: String) : RuntimeException(message)
+class HarvestAdvanceNotOverdueException(message: String) : RuntimeException(message)
+class InvalidHarvestAdvanceReviewNoteException(message: String) : RuntimeException(message)
 
 // itunda's own real, honest cap on a single harvest advance -- a real-world-sane bound,
 // not a fabricated one; roughly what a smallholder coffee plot's seasonal input cost
@@ -59,6 +66,8 @@ class CooperativeService(
     private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     @Transactional
     fun registerCooperative(name: String, cropType: String, registrationNumber: String?): Cooperative {
@@ -184,6 +193,80 @@ class CooperativeService(
         advance.repaidAt = Instant.now()
         advance.repaymentTransactionId = result.transactionId
         return advanceRepository.save(advance)
+    }
+
+    // Real overdue detection (Bank product-completeness pass, cycle 2, 2026-09-08) --
+    // HarvestAdvance.repaymentDueDate has been stored on every row since this feature
+    // shipped but was never checked against anything; HarvestAdvanceStatus.OVERDUE
+    // existed and was already defensively checked in repayAdvance's own guard above,
+    // but nothing in the codebase ever set it. Same shape as
+    // VupLoanService.getLoansDueForOverdueCheck -- small table, plain findAll().filter
+    // is correct here, not a premature optimization.
+    fun getAdvancesDueForOverdueCheck(): List<HarvestAdvance> {
+        val now = Instant.now()
+        return advanceRepository.findAll().filter {
+            it.status == HarvestAdvanceStatus.DISBURSED && it.repaymentDueDate.isBefore(now)
+        }
+    }
+
+    @Transactional
+    fun markOverdue(advance: HarvestAdvance) {
+        advance.status = HarvestAdvanceStatus.OVERDUE
+        advanceRepository.save(advance)
+        val membership = membershipRepository.findById(advance.membershipId).orElse(null) ?: return
+        val title = "Harvest advance payment overdue"
+        val body = "Your harvest advance (${advance.principalAmount} RWF outstanding) is now overdue. Repay from the Cooperative tab to avoid further delay."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = membership.userId, type = "HARVEST_ADVANCE_OVERDUE",
+                title = title, body = body,
+                isRead = false, createdAt = Instant.now(), dataJson = "{\"advanceId\":\"${advance.id}\"}",
+            ),
+        )
+        pushNotificationService.sendToUser(membership.userId, title, body, mapOf("advanceId" to advance.id))
+    }
+
+    // Real ops loan-default review queue -- mirrors VupLoanService.getDefaultReviewQueue/
+    // decide exactly, including the deliberate scope-down: this does NOT touch the
+    // ledger on write-off. Booking a bad-debt expense against itunda's own P&L needs a
+    // real ledger account this pass doesn't invent, same as VUP's own honest limitation.
+    fun getDefaultReviewQueue(pageable: Pageable): Page<HarvestAdvance> =
+        advanceRepository.findByStatusAndReviewedAtIsNull(HarvestAdvanceStatus.OVERDUE, pageable)
+
+    @Transactional
+    fun decide(advanceId: String, reviewerId: String, writeOff: Boolean, note: String?): HarvestAdvance {
+        val advance = advanceRepository.findById(advanceId).orElseThrow { HarvestAdvanceNotFoundException("Advance not found") }
+        if (advance.status != HarvestAdvanceStatus.OVERDUE) {
+            throw HarvestAdvanceNotOverdueException("Only an OVERDUE advance can be reviewed here -- this advance is ${advance.status}")
+        }
+        if (note != null && note.length > 255) {
+            throw InvalidHarvestAdvanceReviewNoteException("Review note must be 255 characters or fewer")
+        }
+
+        advance.reviewedBy = reviewerId
+        advance.reviewedAt = Instant.now()
+        advance.reviewNote = note
+        if (writeOff) {
+            advance.status = HarvestAdvanceStatus.WRITTEN_OFF
+        }
+        advanceRepository.save(advance)
+
+        if (writeOff) {
+            val membership = membershipRepository.findById(advance.membershipId).orElse(null)
+            if (membership != null) {
+                val title = "Harvest advance written off"
+                val body = "Your harvest advance has been written off by itunda and is no longer being pursued for repayment."
+                notificationRepository.save(
+                    Notification(
+                        id = "notif_${UUID.randomUUID()}", userId = membership.userId, type = "HARVEST_ADVANCE_WRITTEN_OFF",
+                        title = title, body = body,
+                        isRead = false, createdAt = Instant.now(), dataJson = "{\"advanceId\":\"${advance.id}\"}",
+                    ),
+                )
+                pushNotificationService.sendToUser(membership.userId, title, body, mapOf("advanceId" to advance.id))
+            }
+        }
+        return advance
     }
 
     fun getMyAdvances(userId: String): List<HarvestAdvance> {

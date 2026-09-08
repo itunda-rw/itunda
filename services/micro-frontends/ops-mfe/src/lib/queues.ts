@@ -16,7 +16,9 @@ export interface PagedQueue<T> {
   hasMore: boolean;
 }
 
-function toPagedQueue<T>(response: { queue: T[]; totalElements: number; totalPages: number; page: number }): PagedQueue<T> {
+// Exported so lib/loansQueues.ts (extracted 2026-09-08 once this file crossed the
+// 500-line guideline) can reuse the exact same pagination shape.
+export function toPagedQueue<T>(response: { queue: T[]; totalElements: number; totalPages: number; page: number }): PagedQueue<T> {
   return { items: response.queue, totalElements: response.totalElements, hasMore: response.page + 1 < response.totalPages };
 }
 
@@ -111,33 +113,9 @@ export const decidePropertyOwnership = (submissionId: string, approve: boolean, 
     body: JSON.stringify({ approve, reason }),
   });
 
-// Real Bank product-completeness pass (2026-09-06) -- Bank's first ops-mfe review
-// queue (see VupLoanAdminController's own doc comment for why it's scoped to VUP
-// loans only). Same real human-review-queue shape as PropertyOwnershipSubmission
-// above: a flagged row, decide with an optional note.
-export interface VupLoanReview {
-  id: string;
-  userId: string;
-  principalAmount: number;
-  outstandingPrincipal: number;
-  interestRate: number;
-  status: string;
-  dueDate: string | null;
-  reviewedBy: string | null;
-  reviewedAt: string | null;
-  reviewNote: string | null;
-}
-
-export const fetchVupLoanReviewQueue = (page = 0) =>
-  apiFetch<{ success: boolean; queue: VupLoanReview[]; page: number; totalElements: number; totalPages: number }>(
-    `/api/v1/system/loans/vup-overdue?page=${page}`,
-  ).then(toPagedQueue);
-
-export const decideVupLoanReview = (loanId: string, writeOff: boolean, note?: string) =>
-  apiFetch(`/api/v1/system/loans/vup-overdue/${loanId}/decide`, {
-    method: 'POST',
-    body: JSON.stringify({ writeOff, note }),
-  });
+// Real Bank product-completeness pass (2026-09-06/2026-09-08) -- the VUP loan and
+// Harvest Advance admin review queues moved to lib/loansQueues.ts once this file
+// crossed the 500-line file-size-lint guideline (see that file's own header).
 
 // Real Hood (Marketplace/Community/Jobs/PropertyListing/messaging) content-moderation
 // report queue (item 127) -- `HoodReportAdminController` had zero client anywhere
