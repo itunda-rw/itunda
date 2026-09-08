@@ -190,7 +190,11 @@ public struct MyTabView: View {
             if let res = try? await NetworkClient.shared.getMyFavoriteJobPosts() { favoriteJobPostsCount = res.favorites.count }
             if let res = try? await NetworkClient.shared.getMyFavoritePropertyListings() { favoritePropertyListingsCount = res.favorites.count }
             if let res = try? await NetworkClient.shared.getMyFavoriteRestaurants() { favoriteRestaurantsCount = res.favorites.count }
-            if let res = try? await NetworkClient.shared.getMyListings() { myListingsCount = res.listings.count }
+            // Real accuracy fix (2026-09-09, same pass as getMyListings's
+            // pagination fix): this badge previously showed page 1's item
+            // count (capped at 20), not the real total, for any user with
+            // more than 20 real listings.
+            if let res = try? await NetworkClient.shared.getMyListings() { myListingsCount = res.totalElements }
             if let res = try? await NetworkClient.shared.getMyJobPosts() { myJobPostsCount = res.posts.count }
             if let res = try? await NetworkClient.shared.getMyPropertyListings() { myPropertyListingsCount = res.listings.count }
             if let res = try? await NetworkClient.shared.getMyAffiliateLinks() { affiliateLinks = res.links }

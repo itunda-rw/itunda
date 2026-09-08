@@ -3769,7 +3769,14 @@ public struct DisputeEscrowRequest: Encodable { public let reason: String }
 // (rw.itunda.core.web.TrustScoreSupport), but no client ever parsed or rendered it.
 // A sellerId/posterId/listerId -> User.trustScore map (Karrot-Score-style, 0-1000,
 // starting at 30). Optional since not every endpoint sharing this struct spreads it.
-public struct ListingsResponse: Decodable { public let success: Bool; public let listings: [ListingDto]; public let trustScores: [String: Int]? }
+public struct ListingsResponse: Decodable {
+    public let success: Bool
+    public let listings: [ListingDto]
+    public let trustScores: [String: Int]?
+    public let page: Int
+    public let totalPages: Int
+    public let totalElements: Int
+}
 
 // Real Marketplace listing wishlist (2026-07-21 backend + bank-mfe, ported here) --
 // mirrors FavoriteRestaurantDto's exact shape; see ListingFavoriteService.kt's own doc
@@ -5494,28 +5501,47 @@ extension NetworkClient {
         try await authenticatedPostWithMessage("api/v1/marketplace/listings", body: CreateListingRequest(title: title, description: description, price: price, category: category, latitude: latitude, longitude: longitude, meetingPlace: meetingPlace, photoUrl: photoUrl, vehicleMileageKm: vehicleMileageKm, vehicleInsuranceClaimCount: vehicleInsuranceClaimCount, vehicleIsLeaseTakeover: vehicleIsLeaseTakeover, leaseTotalAcquisitionCost: leaseTotalAcquisitionCost, leaseRemainingMonths: leaseRemainingMonths, leaseTotalMonths: leaseTotalMonths, leaseMonthlyPayment: leaseMonthlyPayment, leaseSubsidyAmount: leaseSubsidyAmount, leaseReturnFee: leaseReturnFee))
     }
 
-    public func browseListings(category: String? = nil) async throws -> ListingsResponse {
-        var path = "api/v1/marketplace/listings"
-        if let category, !category.isEmpty {
-            path += "?category=\(category.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? category)"
-        }
-        return try await get(path)
+    // Real pagination-discard fix (same systemic gap fixed for Knowledge/
+    // Community/Marketplace-web/Marketplace-Android, 2026-09-09 -- see
+    // project_itunda_pagination_discard_sweep memory) -- page/size just
+    // weren't ever sent, silently capping every Marketplace feed at its
+    // first 20 listings.
+    public func browseListings(category: String? = nil, page: Int = 0, size: Int = 20) async throws -> ListingsResponse {
+        try await get("api/v1/marketplace/listings", query: [
+            URLQueryItem(name: "category", value: category),
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
     }
 
     public func getNearbyListings(lat: Double, lng: Double, radiusKm: Double = 3) async throws -> ListingsResponse {
         try await get("api/v1/marketplace/listings/nearby", query: [URLQueryItem(name: "latitude", value: String(lat)), URLQueryItem(name: "longitude", value: String(lng)), URLQueryItem(name: "radiusKm", value: String(radiusKm))])
     }
 
-    public func getMyListings() async throws -> ListingsResponse { try await get("api/v1/marketplace/my-listings") }
+    public func getMyListings(page: Int = 0, size: Int = 20) async throws -> ListingsResponse {
+        try await get("api/v1/marketplace/my-listings", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     // Real "My purchases" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
     // recommendation #6. See backend ListingRepository's own doc comment.
-    public func getMyPurchases() async throws -> ListingsResponse { try await get("api/v1/marketplace/my-purchases") }
+    public func getMyPurchases(page: Int = 0, size: Int = 20) async throws -> ListingsResponse {
+        try await get("api/v1/marketplace/my-purchases", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see setNeighborhood.
     // Real 400 on the caller's own neighborhood-not-set case, matching Android/web.
-    public func getListingsMyNeighborhood(category: String? = nil) async throws -> ListingsResponse {
-        try await get("api/v1/marketplace/listings/my-neighborhood", query: [URLQueryItem(name: "category", value: category)])
+    public func getListingsMyNeighborhood(category: String? = nil, page: Int = 0, size: Int = 20) async throws -> ListingsResponse {
+        try await get("api/v1/marketplace/listings/my-neighborhood", query: [
+            URLQueryItem(name: "category", value: category),
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
     }
 
     public func markListingSold(_ listingId: String, buyerPhoneNumber: String? = nil) async throws -> ListingResponse {

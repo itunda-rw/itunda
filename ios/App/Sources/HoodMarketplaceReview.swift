@@ -404,5 +404,40 @@ struct KeywordAlertsView: View {
     }
 }
 
+// Real Karrot-Score-style numeric trust/reputation badge (2026-07-24) -- backend
+// (User.trustScore, TrustScoreService) and the trustScores map on every Hood browse
+// endpoint have existed since 2026-07-21, but no client rendered it anywhere -- closes
+// docs/DESIGN_REFERENCES.md Section 4 recommendation #1. Deliberately a plain 0-1000
+// number, never a manner-temperature/Celsius metaphor (see backend User.kt's own doc
+// comment on why that's specifically wrong for a non-Korean market). Shared by
+// ListingCard (HoodMarketplaceCard.swift)/JobPostCard/PropertyListingCard -- moved
+// here from HoodMarketplace.swift 2026-09-09 (file-size-lint extraction) since it was
+// never actually Marketplace-specific.
+struct TrustBadge: View {
+    let score: Int
+
+    var body: some View {
+        Text("Trust \(score)")
+            .font(.caption2).fontWeight(.semibold)
+            .foregroundColor(IDS.Colors.textSecondary)
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .background(IDS.Colors.chipBackground)
+            .cornerRadius(6)
+    }
+}
+
+// Real post-transaction review preset checklist labels (2026-07-24) -- ids must match
+// backend HoodReviewService.GOOD_POINTS/UNCOMFORTABLE_POINTS exactly. Moved here from
+// HoodMarketplace.swift 2026-09-09 (file-size-lint extraction) -- this file is the
+// real semantic home for review-related declarations.
+let hoodGoodPointLabels: [(String, String)] = [
+    ("RESPONSIVE", "Quick to respond"), ("AS_DESCRIBED", "As described"), ("ON_TIME", "On time"),
+    ("FRIENDLY", "Friendly"), ("FAIR_PRICE", "Fair price"),
+]
+let hoodUncomfortablePointLabels: [(String, String)] = [
+    ("LATE", "Was late"), ("NOT_AS_DESCRIBED", "Not as described"), ("UNRESPONSIVE", "Hard to reach"),
+    ("RUDE", "Rude"), ("PRICE_ISSUE", "Price disagreement"),
+]
+
 // ============================== COMMUNITY (동네생활) ==============================
 

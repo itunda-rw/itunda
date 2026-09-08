@@ -38,6 +38,15 @@ struct MarketplaceContent: View {
     @State private var favoritingId: String?
 
     @State private var favoriteNotice: String?
+    // Real pagination-discard fix (same systemic gap fixed for Knowledge/
+    // Community/Marketplace-web/Marketplace-Android, 2026-09-09) -- a
+    // request never asked past page 0 across browse/mine/purchases/
+    // neighborhood, so any feed with more than 20 real listings was
+    // silently unreachable beyond the first page. `.nearby` is a separate
+    // location-driven flow (loadNearby below), not covered by this state.
+    @State private var page = 0
+    @State private var hasMore = false
+    @State private var loadingMore = false
 
     var body: some View {
         ScrollView {
@@ -136,6 +145,14 @@ struct MarketplaceContent: View {
                             currentUserId: currentUserId
                         )
                     }
+                    if hasMore && view != .nearby {
+                        Button(action: { Task { await loadMore() } }) {
+                            Text(loadingMore ? "Loading…" : "Load more").bold().font(.caption)
+                                .frame(maxWidth: .infinity).padding(.vertical, 12)
+                                .background(Color(.secondarySystemBackground)).cornerRadius(10)
+                        }
+                        .disabled(loadingMore)
+                    }
                 }
             }
             .padding(.horizontal, IDS.Layout.screenHorizontal)
@@ -158,6 +175,8 @@ struct MarketplaceContent: View {
 
     private func load() async {
         listings = nil
+        page = 0
+        hasMore = false
         if view == .wishlist {
             // ListingWishlistView below owns its own fetch (it needs title/price/
             // category straight from the favorites endpoint, not the ListingDto
@@ -182,10 +201,11 @@ struct MarketplaceContent: View {
             neighborhoodChecked = false
             do {
                 let profile = try await NetworkClient.shared.getProfile()
-                let res = try await NetworkClient.shared.getListingsMyNeighborhood()
+                let res = try await NetworkClient.shared.getListingsMyNeighborhood(page: 0)
                 neighborhoodName = profile.user.neighborhood
                 listings = res.listings
                 trustScores = res.trustScores ?? [:]
+                hasMore = res.page + 1 < res.totalPages
                 error = nil
             } catch let NetworkError.httpError(statusCode) where statusCode == 400 {
                 neighborhoodName = nil
@@ -200,15 +220,38 @@ struct MarketplaceContent: View {
         do {
             let res: ListingsResponse
             switch view {
-            case .browse: res = try await NetworkClient.shared.browseListings()
-            case .purchases: res = try await NetworkClient.shared.getMyPurchases()
-            default: res = try await NetworkClient.shared.getMyListings()
+            case .browse: res = try await NetworkClient.shared.browseListings(page: 0)
+            case .purchases: res = try await NetworkClient.shared.getMyPurchases(page: 0)
+            default: res = try await NetworkClient.shared.getMyListings(page: 0)
             }
             listings = res.listings
             trustScores = res.trustScores ?? [:]
+            hasMore = res.page + 1 < res.totalPages
             error = nil
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func loadMore() async {
+        let nextPage = page + 1
+        loadingMore = true
+        defer { loadingMore = false }
+        do {
+            let res: ListingsResponse
+            switch view {
+            case .neighborhood: res = try await NetworkClient.shared.getListingsMyNeighborhood(page: nextPage)
+            case .browse: res = try await NetworkClient.shared.browseListings(page: nextPage)
+            case .purchases: res = try await NetworkClient.shared.getMyPurchases(page: nextPage)
+            default: res = try await NetworkClient.shared.getMyListings(page: nextPage)
+            }
+            listings = (listings ?? []) + res.listings
+            trustScores.merge(res.trustScores ?? [:]) { _, new in new }
+            page = nextPage
+            hasMore = res.page + 1 < res.totalPages
+        } catch {
+            // Non-critical -- the already-loaded page stays visible; the user
+            // can retry by tapping "Load more" again.
         }
     }
 
@@ -426,34 +469,10 @@ struct NewListingForm: View {
     }
 }
 
-// Real Karrot-Score-style numeric trust/reputation badge (2026-07-24) -- backend
-// (User.trustScore, TrustScoreService) and the trustScores map on every Hood browse
-// endpoint have existed since 2026-07-21, but no client rendered it anywhere -- closes
-// docs/DESIGN_REFERENCES.md Section 4 recommendation #1. Deliberately a plain 0-1000
-// number, never a manner-temperature/Celsius metaphor (see backend User.kt's own doc
-// comment on why that's specifically wrong for a non-Korean market). Shared by
-// ListingCard/JobPostCard/PropertyListingCard, all in this file.
-struct TrustBadge: View {
-    let score: Int
-
-    var body: some View {
-        Text("Trust \(score)")
-            .font(.caption2).fontWeight(.semibold)
-            .foregroundColor(IDS.Colors.textSecondary)
-            .padding(.horizontal, 6).padding(.vertical, 2)
-            .background(IDS.Colors.chipBackground)
-            .cornerRadius(6)
-    }
-}
-
-// Real post-transaction review preset checklist labels (2026-07-24) -- ids must match
-// backend HoodReviewService.GOOD_POINTS/UNCOMFORTABLE_POINTS exactly.
-let hoodGoodPointLabels: [(String, String)] = [
-    ("RESPONSIVE", "Quick to respond"), ("AS_DESCRIBED", "As described"), ("ON_TIME", "On time"),
-    ("FRIENDLY", "Friendly"), ("FAIR_PRICE", "Fair price"),
-]
-let hoodUncomfortablePointLabels: [(String, String)] = [
-    ("LATE", "Was late"), ("NOT_AS_DESCRIBED", "Not as described"), ("UNRESPONSIVE", "Hard to reach"),
-    ("RUDE", "Rude"), ("PRICE_ISSUE", "Price disagreement"),
-]
+// TrustBadge and the hood*PointLabels arrays moved to HoodMarketplaceReview.swift
+// (2026-09-09, file-size-lint extraction -- this file crossed 500 lines for the
+// first time while adding the pagination-discard fix) -- both are genuinely
+// cross-feature (ListingCard/JobPostCard/PropertyListingCard/the review flow),
+// not Marketplace-specific, so this doc comment's own old "all in this file"
+// claim was already stale before the move.
 
