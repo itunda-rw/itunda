@@ -148,6 +148,13 @@ export function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: 
   const [secondNeighborhoodName, setSecondNeighborhoodName] = useState<string | null>(null);
   const [showSecondNeighborhoodPrompt, setShowSecondNeighborhoodPrompt] = useState(false);
   const currentUser = getStoredUser();
+  // Real pagination-discard fix (named as the systemic sibling of the Knowledge
+  // gap fixed in 134758cf/30741887/a2dc88dc) -- a request never asked past page
+  // 0 across all 3 views (Browse/Mine/Neighborhood), so any feed with more than
+  // 20 real posts was silently unreachable beyond the first page.
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     fetchCommunityCategories().then(setCategories).catch(() => { /* chips just won't render, browse still works */ });
@@ -170,14 +177,17 @@ export function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: 
   const load = () => {
     setError(null);
     setPosts(null);
+    setPage(0);
+    setHasMore(false);
     loadUpcomingMeetups();
     if (view === 'NEIGHBORHOOD') {
-      Promise.all([fetchProfile(), fetchCommunityPostsMyNeighborhood(activeCategory ?? undefined)])
+      Promise.all([fetchProfile(), fetchCommunityPostsMyNeighborhood(activeCategory ?? undefined, 0)])
         .then(([profile, result]) => {
           setNeighborhoodName(profile.neighborhood);
           setSecondNeighborhoodName(profile.secondNeighborhood);
           setPosts(result.posts);
           setJoinedCounts(result.joinedCounts);
+          setHasMore(result.page + 1 < result.totalPages);
         })
         .catch((err) => {
           if (err instanceof ApiError && err.code === 'NEIGHBORHOOD_NOT_SET') {
@@ -189,10 +199,36 @@ export function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: 
         });
       return;
     }
-    const fetcher = view === 'BROWSE' ? fetchCommunityPosts(activeCategory ?? undefined, activeTopic ?? undefined) : fetchMyCommunityPosts();
+    const fetcher = view === 'BROWSE' ? fetchCommunityPosts(activeCategory ?? undefined, activeTopic ?? undefined, 0) : fetchMyCommunityPosts(0);
     fetcher
-      .then((result) => { setPosts(result.posts); setJoinedCounts(result.joinedCounts); })
+      .then((result) => {
+        setPosts(result.posts);
+        setJoinedCounts(result.joinedCounts);
+        setHasMore(result.page + 1 < result.totalPages);
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+  };
+
+  const loadMore = () => {
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    let fetcher;
+    if (view === 'NEIGHBORHOOD') {
+      fetcher = fetchCommunityPostsMyNeighborhood(activeCategory ?? undefined, nextPage);
+    } else if (view === 'BROWSE') {
+      fetcher = fetchCommunityPosts(activeCategory ?? undefined, activeTopic ?? undefined, nextPage);
+    } else {
+      fetcher = fetchMyCommunityPosts(nextPage);
+    }
+    fetcher
+      .then((result) => {
+        setPosts((prev) => [...(prev ?? []), ...result.posts]);
+        setJoinedCounts((prevCounts) => ({ ...prevCounts, ...result.joinedCounts }));
+        setPage(nextPage);
+        setHasMore(result.page + 1 < result.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
   };
 
   useEffect(load, [view, activeCategory, activeTopic]);
@@ -349,6 +385,11 @@ export function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: 
               </>
             )}
             {regular.map(renderCard)}
+            {hasMore && (
+              <button className="itunda-btn itunda-btn-secondary" disabled={loadingMore} onClick={loadMore}>
+                {loadingMore ? 'Loading…' : 'Load more'}
+              </button>
+            )}
           </div>
         );
       })()}

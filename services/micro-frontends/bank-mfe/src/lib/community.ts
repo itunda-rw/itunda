@@ -62,14 +62,19 @@ export const fetchCommunityTopics = () =>
 // Section 4 recommendation #4.
 export type JoinedCounts = Record<string, number>;
 
-export const fetchCommunityPosts = (category?: string, topic?: string) => {
+// Real pagination-discard fix (named as the systemic sibling of the Knowledge
+// gap fixed in 134758cf/30741887/a2dc88dc -- CommunityController's real
+// Pageable/pageMeta endpoints were always there; page/size just weren't sent,
+// silently capping every Hood feed at its first 20 posts).
+export const fetchCommunityPosts = (category?: string, topic?: string, page = 0, size = 20) => {
   const params = new URLSearchParams();
   if (category) params.set('category', category);
   if (topic) params.set('topic', topic);
-  const qs = params.toString();
-  return apiFetch<{ success: boolean; posts: CommunityPost[]; joinedCounts: JoinedCounts }>(
-    `/api/v1/community/posts${qs ? `?${qs}` : ''}`,
-  ).then((r) => ({ posts: r.posts, joinedCounts: r.joinedCounts }));
+  params.set('page', String(page));
+  params.set('size', String(size));
+  return apiFetch<{ success: boolean; posts: CommunityPost[]; joinedCounts: JoinedCounts; page: number; totalPages: number }>(
+    `/api/v1/community/posts?${params.toString()}`,
+  );
 };
 
 // Real 당근모임-style "upcoming meetups" browse (backend 2026-07-25,
@@ -86,17 +91,18 @@ export const fetchUpcomingMeetups = () =>
     '/api/v1/community/meetups/upcoming',
   ).then((r) => ({ posts: r.posts, joinedCounts: r.joinedCounts }));
 
-export const fetchMyCommunityPosts = () =>
-  apiFetch<{ success: boolean; posts: CommunityPost[]; joinedCounts: JoinedCounts }>('/api/v1/community/my-posts')
-    .then((r) => ({ posts: r.posts, joinedCounts: r.joinedCounts }));
+export const fetchMyCommunityPosts = (page = 0, size = 20) =>
+  apiFetch<{ success: boolean; posts: CommunityPost[]; joinedCounts: JoinedCounts; page: number; totalPages: number }>(
+    `/api/v1/community/my-posts?page=${page}&size=${size}`,
+  );
 
 // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see lib/neighborhood.ts's own
 // doc comment. Throws ApiError with code NEIGHBORHOOD_NOT_SET (real 400) if the caller
 // hasn't set one yet.
-export const fetchCommunityPostsMyNeighborhood = (category?: string) =>
-  apiFetch<{ success: boolean; posts: CommunityPost[]; joinedCounts: JoinedCounts }>(
-    `/api/v1/community/posts/my-neighborhood${category ? `?category=${encodeURIComponent(category)}` : ''}`,
-  ).then((r) => ({ posts: r.posts, joinedCounts: r.joinedCounts }));
+export const fetchCommunityPostsMyNeighborhood = (category?: string, page = 0, size = 20) =>
+  apiFetch<{ success: boolean; posts: CommunityPost[]; joinedCounts: JoinedCounts; page: number; totalPages: number }>(
+    `/api/v1/community/posts/my-neighborhood?page=${page}&size=${size}${category ? `&category=${encodeURIComponent(category)}` : ''}`,
+  );
 
 // Real bug fix, found live while wiring 같이사요 (2026-07-31): this function never
 // accepted/sent eventDate/capacity at all, so a real 'meetup' post created from this
