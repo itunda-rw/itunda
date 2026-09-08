@@ -1,0 +1,12 @@
+-- Real performance gap found in this same cycle's own earlier work (Bank
+-- product-completeness pass, cycle 2, 2026-09-08 commit d018782a): the new
+-- overdue-detection scheduler (CooperativeService.getAdvancesDueForOverdueCheck)
+-- and admin review queue (getDefaultReviewQueue -> findByStatusAndReviewedAtIsNull)
+-- both filter harvest_advances by status (plus repayment_due_date for the
+-- scheduler), but the table only ever had an index on membership_id -- V216's
+-- own sibling vup_loans table got a real (status, due_date) composite index for
+-- the identical access pattern at the time VUP's overdue feature shipped; this
+-- one was missed when the same feature was ported to Harvest Advance. Every
+-- scheduler poll (every 60s) and every admin queue page load was a full table
+-- scan without this.
+CREATE INDEX idx_harvest_advances_status_due_date ON harvest_advances (status, repayment_due_date);
