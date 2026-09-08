@@ -334,7 +334,7 @@ class EatsOrderDeliveryBrowseTest : BehaviorSpec({
             }
         }
 
-        When("the 30-day tip window has expired") {
+        When("the real 40-day Eats tip window has expired") {
             every { eatsOrderRepository.findByIdForUpdate("eats_order_1") } returns Optional.of(deliveredOrder(updatedAt = java.time.Instant.now().minus(EatsOrderService.TIP_WINDOW).minusSeconds(60)))
 
             Then("it throws EatsOrderTipWindowExpiredException") {
@@ -344,6 +344,25 @@ class EatsOrderDeliveryBrowseTest : BehaviorSpec({
                 } catch (e: EatsOrderTipWindowExpiredException) {
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
+            }
+        }
+
+        // Real bug found+fixed 2026-09-08 (see TipPolicy.kt's own doc comment): a
+        // 2026-09-06 consolidation pass wrongly merged Eats' real 40-day Uber Eats
+        // tip window with the ride tip's separate real 30-day Uber window into one
+        // shared 30-day constant -- silently cutting 10 real days off Eats buyers'
+        // tip window. This pins the real, distinct 40-day value: a delivery 35 days
+        // ago is INSIDE the real Eats window (would have wrongly been rejected under
+        // the incorrect 30-day merge).
+        When("a delivery 35 days ago is still inside the real 40-day Eats tip window") {
+            every { eatsOrderRepository.findByIdForUpdate("eats_order_1") } returns Optional.of(deliveredOrder(updatedAt = java.time.Instant.now().minus(java.time.Duration.ofDays(35))))
+            val legsSlot = slot<List<rw.itunda.core.ledger.LedgerLeg>>()
+            every { ledgerService.postLedgerTransaction(any(), capture(legsSlot)) } returns rw.itunda.core.ledger.LedgerPostResult("ledgertxn_tip_1", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            Then("it does not reject the tip as expired") {
+                service.tipRider("buyer_1", "eats_order_1", BigDecimal("500"))
+                legsSlot.captured.size shouldBe 2
             }
         }
 

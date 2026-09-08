@@ -147,11 +147,13 @@ class RideTripService(
         // currently-live cap on extra waypoints between pickup and dropoff.
         const val MAX_STOPS = 3
 
-        // Consolidated 2026-09-06 into core/pricing/TipPolicy -- see its own doc
-        // comment. itunda's real trip has no separate completedAt column -- updatedAt
-        // is only ever touched again after COMPLETED by a tip itself, so it's the
-        // honest real completion timestamp to measure from.
-        val TIP_WINDOW: Duration = TipPolicy.TIP_WINDOW
+        // Consolidated 2026-09-06 into core/pricing/TipPolicy, corrected 2026-09-08
+        // (see TipPolicy's own doc comment -- ride and Eats tip windows are genuinely
+        // different real Uber policies, not one shared value). itunda's real trip has
+        // no separate completedAt column -- updatedAt is only ever touched again after
+        // COMPLETED by a tip itself, so it's the honest real completion timestamp to
+        // measure from.
+        val TIP_WINDOW: Duration = TipPolicy.RIDE_TIP_WINDOW
 
         // Consolidated 2026-09-06 into core/pricing/CancellationPolicy -- see its own doc comment.
         val CANCELLATION_FEE_GRACE_PERIOD: Duration = CancellationPolicy.CANCELLATION_FEE_GRACE_PERIOD
