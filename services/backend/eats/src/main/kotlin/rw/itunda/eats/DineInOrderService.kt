@@ -145,6 +145,14 @@ class DineInOrderService(
         var buyerAccount = accountRepository.findByUserIdAndType(buyerId, AccountType.PAY)
             ?: throw DineInBuyerNoAccountException("No itunda Pay money found for this account")
 
+        // Validate before touching the DB at all -- a malformed request shouldn't cost
+        // a real query first.
+        items.forEach { req ->
+            if (req.quantity <= 0) {
+                throw InvalidDineInQuantityException("Quantity must be at least 1")
+            }
+        }
+
         val distinctMenuItemIds = items.map { it.menuItemId }.distinct()
         val groupsByProduct = if (distinctMenuItemIds.isNotEmpty()) {
             menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(distinctMenuItemIds).groupBy { it.productId }
@@ -154,14 +162,19 @@ class DineInOrderService(
         val choicesByGroup = groupsByProduct.values.flatten().map { it.id }.let { groupIds ->
             if (groupIds.isEmpty()) emptyMap() else menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(groupIds).groupBy { it.groupId }
         }
+        // Real N+1 fix -- the menu-options batching above already avoided a per-item
+        // query, but the menu item lookup itself didn't: batch it the same way instead
+        // of one findById per line item.
+        val menuItemsById = if (distinctMenuItemIds.isNotEmpty()) {
+            merchantProductRepository.findAllById(distinctMenuItemIds).associateBy { it.id }
+        } else {
+            emptyMap()
+        }
 
         data class Resolved(val productId: String, val name: String, val unitPrice: BigDecimal, val quantity: Int, val selectedOptionsJson: String?)
         val resolved = items.map { req ->
-            if (req.quantity <= 0) {
-                throw InvalidDineInQuantityException("Quantity must be at least 1")
-            }
-            val menuItem = merchantProductRepository.findById(req.menuItemId)
-                .orElseThrow { DineInMenuItemNotFoundException("Menu item not found") }
+            val menuItem = menuItemsById[req.menuItemId]
+                ?: throw DineInMenuItemNotFoundException("Menu item not found")
             if (menuItem.merchantId != restaurantId || !menuItem.active) {
                 throw DineInMenuItemNotFoundException("Menu item not found")
             }

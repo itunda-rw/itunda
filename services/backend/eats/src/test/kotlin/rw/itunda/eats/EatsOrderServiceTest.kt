@@ -137,7 +137,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_1", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
@@ -193,7 +193,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_short", AccountType.PAY) } returns shortAccount
             every { autoTopUpService.ensureSufficientPayBalance("buyer_short", shortAccount, BigDecimal("6500")) } returns toppedUpAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_topup", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
@@ -210,7 +210,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_no_promo", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
@@ -233,7 +233,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_platform_member", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
             every { platformMembershipService.hasActiveMembership("buyer_1") } returns true
@@ -253,7 +253,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_after_commit", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
 
@@ -286,7 +286,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_pickup", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
@@ -319,7 +319,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithPickupDiscount)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_pickup_discount", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
@@ -370,7 +370,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithFullPickupDiscount)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
 
             Then("it's rejected before ever touching the ledger, not silently committed as a free order") {
                 try {
@@ -396,7 +396,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithPickupDiscount)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_delivery_no_pickup_discount", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
 
@@ -415,7 +415,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithMin)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
 
             Then("it's honestly rejected -- this real, already-shipped field was never actually enforced anywhere before") {
                 try {
@@ -435,7 +435,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithMin)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_minexact", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
 
@@ -454,7 +454,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(schedulingRestaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_sched", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
             val scheduledFor = Instant.now().plus(1, java.time.temporal.ChronoUnit.HOURS)
@@ -529,7 +529,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
 
@@ -594,7 +594,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_2") } returns Optional.of(otherItem)
+            every { merchantProductRepository.findAllById(listOf("item_2")) } returns listOf(otherItem)
 
             Then("it throws MenuItemNotFoundException, not silently mixing restaurants into one order") {
                 try {
@@ -611,7 +611,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_3") } returns Optional.of(soldOutItem)
+            every { merchantProductRepository.findAllById(listOf("item_3")) } returns listOf(soldOutItem)
 
             Then("it throws MenuItemSoldOutException, distinct from MenuItemNotFoundException -- the item is real and still shown") {
                 try {
@@ -636,7 +636,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_expired_surplus") } returns Optional.of(expiredDealItem)
+            every { merchantProductRepository.findAllById(listOf("item_expired_surplus")) } returns listOf(expiredDealItem)
 
             Then("it throws MenuItemSurplusDealExpiredException, distinct from MenuItemNotFoundException") {
                 try {
@@ -672,7 +672,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(listOf("item_1")) } returns listOf(group)
             every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(listOf("group_1")) } returns choices
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_opt1", emptyList())
@@ -695,7 +695,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(listOf("item_1")) } returns listOf(group)
             every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(listOf("group_1")) } returns choices
 
@@ -715,7 +715,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(listOf("item_1")) } returns listOf(group)
             every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(listOf("group_1")) } returns choices
 
@@ -733,7 +733,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_opt2", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
 
@@ -753,7 +753,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithLocation)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_2", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
@@ -785,7 +785,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithLocation)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_3", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
             // A real road distance is longer than the straight line between the same two
@@ -813,7 +813,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithLocation)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_5", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
             every { nominatimGeocodingClient.geocode("KG 9 Ave") } returns GeocodeResult(-1.9941, 30.0619)
@@ -832,7 +832,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_6", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
             every { nominatimGeocodingClient.geocode("some unrecognizable scribble") } returns null
@@ -854,7 +854,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithLocation)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_4", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
 

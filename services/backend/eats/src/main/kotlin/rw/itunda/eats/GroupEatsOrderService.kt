@@ -165,9 +165,14 @@ class GroupEatsOrderService(
             if (item.quantity <= 0) throw InvalidEatsQuantityException("Quantity must be at least 1")
         }
         groupEatsOrderItemRepository.deleteByGroupOrderIdAndUserId(groupOrder.id, userId)
+        // Real N+1 fix -- batch the menu-item lookup instead of one findById per line
+        // item, same discipline this file's own getDetail() below already applies.
+        val menuItemsById = items.map { it.menuItemId }.distinct().let { ids ->
+            if (ids.isEmpty()) emptyMap() else merchantProductRepository.findAllById(ids).associateBy { it.id }
+        }
         val resolved = items.map { item ->
-            val product = merchantProductRepository.findById(item.menuItemId)
-                .orElseThrow { MenuItemNotFoundException("Menu item not found") }
+            val product = menuItemsById[item.menuItemId]
+                ?: throw MenuItemNotFoundException("Menu item not found")
             val choiceDeltaSum = if (item.selectedChoiceIds.isEmpty()) {
                 BigDecimal.ZERO
             } else {

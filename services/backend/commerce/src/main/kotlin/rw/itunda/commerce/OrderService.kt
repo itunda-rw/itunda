@@ -161,6 +161,14 @@ class OrderService(
         var buyerAccount = accountRepository.findByUserIdAndType(buyerId, AccountType.PAY)
             ?: throw BuyerNoAccountException("No itunda Pay money found for this account")
 
+        // Validate before touching the DB at all -- a malformed request shouldn't cost
+        // a real query first.
+        items.forEach { req ->
+            if (req.quantity <= 0) {
+                throw InvalidQuantityException("Quantity must be at least 1")
+            }
+        }
+
         // Real prices read from the live catalog row -- never trusted from the client
         // (see this class's own doc comment on why) -- and snapshotted onto each
         // OrderItem below so the receipt stays accurate even if the catalog changes later.
@@ -174,15 +182,20 @@ class OrderService(
         } else {
             emptyMap()
         }
+        // Real N+1 fix -- the price-tier batching above already avoided a per-item
+        // query, but the product lookup itself didn't: batch it the same way instead
+        // of one findById per line item.
+        val productsById = if (distinctProductIds.isNotEmpty()) {
+            merchantProductRepository.findAllById(distinctProductIds).associateBy { it.id }
+        } else {
+            emptyMap()
+        }
 
         data class Resolved(val product: MerchantProduct, val productId: String, val name: String, val unitPrice: BigDecimal, val quantity: Int)
         val now = Instant.now()
         val resolved = items.map { req ->
-            if (req.quantity <= 0) {
-                throw InvalidQuantityException("Quantity must be at least 1")
-            }
-            val product = merchantProductRepository.findById(req.productId)
-                .orElseThrow { OrderProductNotFoundException("Product not found") }
+            val product = productsById[req.productId]
+                ?: throw OrderProductNotFoundException("Product not found")
             if (product.merchantId != merchantId || !product.active) {
                 // Same "don't reveal a resource exists" 404, not a more specific error --
                 // a product from a different merchant or a deactivated one is equally
@@ -606,8 +619,15 @@ class OrderService(
         // same transaction as the reversal and status change: a refund without a
         // restock (or the reverse) would leave the merchant's live availability wrong.
         val itemsByProduct = orderItemRepository.findByOrderId(order.id).groupBy { it.productId }
+        // Real N+1 fix -- batch this restock lookup instead of one findById per
+        // distinct product on the cancelled order, same discipline as placeOrder above.
+        val productsToRestockById = if (itemsByProduct.isNotEmpty()) {
+            merchantProductRepository.findAllById(itemsByProduct.keys.toList()).associateBy { it.id }
+        } else {
+            emptyMap()
+        }
         val restockedProducts = itemsByProduct.mapNotNull { (productId, items) ->
-            val product = merchantProductRepository.findById(productId).orElse(null) ?: return@mapNotNull null
+            val product = productsToRestockById[productId] ?: return@mapNotNull null
             product.stockQuantity?.let { available ->
                 product.stockQuantity = Math.addExact(available, items.sumOf { it.quantity })
                 product

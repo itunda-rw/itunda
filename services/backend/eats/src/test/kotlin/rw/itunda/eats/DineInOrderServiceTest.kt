@@ -85,7 +85,7 @@ class DineInOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_1", emptyList())
 
@@ -132,7 +132,7 @@ class DineInOrderServiceTest : BehaviorSpec({
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_short", AccountType.PAY) } returns shortAccount
             every { autoTopUpService.ensureSufficientPayBalance("buyer_short", shortAccount, BigDecimal("6000")) } returns toppedUpAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_topup", emptyList())
 
@@ -206,7 +206,7 @@ class DineInOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_expired_surplus") } returns Optional.of(expiredDealItem)
+            every { merchantProductRepository.findAllById(listOf("item_expired_surplus")) } returns listOf(expiredDealItem)
 
             Then("it throws DineInMenuItemSurplusDealExpiredException before debiting a account") {
                 try {
@@ -222,7 +222,7 @@ class DineInOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { merchantProductRepository.findAllById(listOf("item_1")) } returns listOf(menuItem)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_after_commit", emptyList())
 
             TransactionSynchronizationManager.initSynchronization()

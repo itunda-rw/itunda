@@ -353,6 +353,14 @@ class EatsOrderService(
         var buyerAccount = accountRepository.findByUserIdAndType(buyerId, AccountType.PAY)
             ?: throw EatsBuyerNoAccountException("No itunda Pay money found for this account")
 
+        // Validate before touching the DB at all -- a malformed request shouldn't cost
+        // a real query first.
+        items.forEach { req ->
+            if (req.quantity <= 0) {
+                throw InvalidEatsQuantityException("Quantity must be at least 1")
+            }
+        }
+
         // Real menu-options resolution (2026-07-21) -- batched up front for every
         // distinct menu item in this order, not one pair of queries per line item (same
         // N+1 discipline as ShoppingController.getMerchantProducts' own enrichment).
@@ -365,6 +373,14 @@ class EatsOrderService(
         val choicesByGroup = groupsByProduct.values.flatten().map { it.id }.let { groupIds ->
             if (groupIds.isEmpty()) emptyMap() else menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(groupIds).groupBy { it.groupId }
         }
+        // Real N+1 fix -- the menu-options batching above already avoided a per-item
+        // query, but the menu item lookup itself didn't: batch it the same way instead
+        // of one findById per line item.
+        val menuItemsById = if (distinctMenuItemIds.isNotEmpty()) {
+            merchantProductRepository.findAllById(distinctMenuItemIds).associateBy { it.id }
+        } else {
+            emptyMap()
+        }
 
         // Real prices read from the live menu row at checkout time -- never trusted from
         // the client, same price-tampering prevention as commerce's OrderService.
@@ -374,11 +390,8 @@ class EatsOrderService(
         // purely an additional human-readable breakdown, never a second pricing source.
         data class Resolved(val productId: String, val name: String, val unitPrice: BigDecimal, val quantity: Int, val selectedOptionsJson: String?)
         val resolved = items.map { req ->
-            if (req.quantity <= 0) {
-                throw InvalidEatsQuantityException("Quantity must be at least 1")
-            }
-            val menuItem = merchantProductRepository.findById(req.menuItemId)
-                .orElseThrow { MenuItemNotFoundException("Menu item not found") }
+            val menuItem = menuItemsById[req.menuItemId]
+                ?: throw MenuItemNotFoundException("Menu item not found")
             if (menuItem.merchantId != restaurantId || !menuItem.active) {
                 throw MenuItemNotFoundException("Menu item not found")
             }

@@ -102,7 +102,7 @@ class OrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("product_stocked") } returns Optional.of(stockedProduct)
+            every { merchantProductRepository.findAllById(listOf("product_stocked")) } returns listOf(stockedProduct)
 
             Then("it rejects before debiting a account or mutating the available stock") {
                 try {
@@ -176,7 +176,7 @@ class OrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("product_soldout") } returns Optional.of(soldOutProduct)
+            every { merchantProductRepository.findAllById(listOf("product_soldout")) } returns listOf(soldOutProduct)
 
             Then("it rejects with ProductSoldOutException before debiting a account") {
                 try {
@@ -204,7 +204,7 @@ class OrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("product_expired_surplus") } returns Optional.of(expiredDealProduct)
+            every { merchantProductRepository.findAllById(listOf("product_expired_surplus")) } returns listOf(expiredDealProduct)
 
             Then("it rejects with SurplusDealExpiredException before debiting a account or decrementing stock") {
                 try {
@@ -230,7 +230,7 @@ class OrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("product_active_surplus") } returns Optional.of(activeDealProduct)
+            every { merchantProductRepository.findAllById(listOf("product_active_surplus")) } returns listOf(activeDealProduct)
             every { merchantProductRepository.saveAll(any<List<MerchantProduct>>()) } answers { firstArg() }
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_test2", emptyList())
             every { orderRepository.save(any()) } answers { firstArg() }
@@ -246,7 +246,7 @@ class OrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
+            every { merchantProductRepository.findAllById(listOf("product_1")) } returns listOf(product)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_test", emptyList())
             every { orderRepository.save(any()) } answers { firstArg() }
@@ -287,6 +287,30 @@ class OrderServiceTest : BehaviorSpec({
             }
         }
 
+        // Real N+1 fix, Merchant developer-center/architecture audit (2026-09-08):
+        // the per-item product lookup used to be one findById call per line item.
+        When("a real buyer places a real order with 2 different products") {
+            val productB = MerchantProduct(id = "product_multi_2", merchantId = "merchant_1", name = "Tea leaves", price = BigDecimal("1000"))
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+            every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
+            every { merchantProductRepository.findAllById(listOf("product_1", "product_multi_2")) } returns listOf(product, productB)
+            every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_multi", emptyList())
+            every { orderRepository.save(any()) } answers { firstArg() }
+
+            val detail = service.placeOrder(
+                "buyer_1", "merchant_1",
+                listOf(OrderItemRequest("product_1", 2), OrderItemRequest("product_multi_2", 1)),
+                "KG 123 St",
+            )
+
+            Then("it batches the product lookup into ONE call instead of one findById per line item") {
+                detail.order.totalAmount shouldBe BigDecimal("5000")
+                verify(exactly = 1) { merchantProductRepository.findAllById(listOf("product_1", "product_multi_2")) }
+                verify(exactly = 0) { merchantProductRepository.findById(any()) }
+            }
+        }
+
         // Real Toss Bank/Toss Pay separation (2026-08-21) -- a Commerce order is real
         // merchant collection, same as MerchantService.collect()'s own QR path, so it
         // gets the same auto-topup-from-Bank-if-short treatment.
@@ -297,7 +321,7 @@ class OrderServiceTest : BehaviorSpec({
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
             every { accountRepository.findByUserIdAndType("buyer_short", AccountType.PAY) } returns shortAccount
             every { autoTopUpService.ensureSufficientPayBalance("buyer_short", shortAccount, BigDecimal("6000")) } returns toppedUpAccount
-            every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
+            every { merchantProductRepository.findAllById(listOf("product_1")) } returns listOf(product)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_topup", emptyList())
             every { orderRepository.save(any()) } answers { firstArg() }
@@ -314,7 +338,7 @@ class OrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
+            every { merchantProductRepository.findAllById(listOf("product_1")) } returns listOf(product)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_after_commit", emptyList())
             every { orderRepository.save(any()) } answers { firstArg() }
 
@@ -351,7 +375,7 @@ class OrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchantWithMin)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
+            every { merchantProductRepository.findAllById(listOf("product_1")) } returns listOf(product)
 
             Then("it's honestly rejected -- this real, already-shipped field was never actually enforced anywhere before") {
                 try {
@@ -371,7 +395,7 @@ class OrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchantWithMin)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
+            every { merchantProductRepository.findAllById(listOf("product_1")) } returns listOf(product)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_minexact", emptyList())
             every { orderRepository.save(any()) } answers { firstArg() }
 
@@ -386,7 +410,7 @@ class OrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
+            every { merchantProductRepository.findAllById(listOf("product_1")) } returns listOf(product)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_deal", emptyList())
             every { orderRepository.save(any()) } answers { firstArg() }
             val deal = TimeDeal(
@@ -410,7 +434,7 @@ class OrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
+            every { merchantProductRepository.findAllById(listOf("product_1")) } returns listOf(product)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_falloff", emptyList())
             every { orderRepository.save(any()) } answers { firstArg() }
             val scarceDeal = TimeDeal(
@@ -446,7 +470,7 @@ class OrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
             every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
-            every { merchantProductRepository.findById("product_2") } returns Optional.of(otherProduct)
+            every { merchantProductRepository.findAllById(listOf("product_2")) } returns listOf(otherProduct)
 
             Then("it throws OrderProductNotFoundException, not silently mixing merchants into one order") {
                 try {
@@ -622,7 +646,7 @@ class OrderServiceTest : BehaviorSpec({
             every { orderItemRepository.findByOrderId("order_1") } returns listOf(
                 OrderItem("line_1", "order_1", "product_limited", "Limited beans", BigDecimal("2000"), 2),
             )
-            every { merchantProductRepository.findById("product_limited") } returns Optional.of(stockedProduct)
+            every { merchantProductRepository.findAllById(listOf("product_limited")) } returns listOf(stockedProduct)
             every { merchantProductRepository.saveAll(any<List<MerchantProduct>>()) } answers { firstArg() }
 
             val result = service.cancelOrder("buyer_1", "order_1")
