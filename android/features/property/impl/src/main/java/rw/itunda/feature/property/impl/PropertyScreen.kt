@@ -59,6 +59,9 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.HoodReviewForm
@@ -126,6 +129,15 @@ fun PropertyContent(
     // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc comment.
     var trustScores by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Real pagination-discard fix (same systemic gap fixed for Knowledge/
+    // Community/Marketplace/Jobs/RealEstate-web, 2026-09-09) -- a request
+    // never asked past page 0 across BROWSE/MINE/ACQUIRED/NEIGHBORHOOD, so
+    // any feed with more than 20 real listings was silently unreachable
+    // beyond the first page. NEARBY is a separate location-driven flow, not
+    // covered here.
+    var page by remember { mutableStateOf(0) }
+    var hasMore by remember { mutableStateOf(false) }
+    var loadingMore by remember { mutableStateOf(false) }
     var showNewListing by remember { mutableStateOf(false) }
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
     var neighborhoodChecked by remember { mutableStateOf(false) }
@@ -189,6 +201,8 @@ fun PropertyContent(
 
     fun load() {
         listings = null
+        page = 0
+        hasMore = false
         if (view == PropertyView.SAVED || view == PropertyView.VALUATION) { listings = emptyList(); error = null; return }
         if (view == PropertyView.NEARBY) {
             requestNearbyLocation()
@@ -199,9 +213,9 @@ fun PropertyContent(
             coroutineScope.launch {
                 try {
                     val profileRes = NetworkClient.authApi.getProfile()
-                    val res = NetworkClient.apiService.getPropertyListingsMyNeighborhood()
+                    val res = NetworkClient.apiService.getPropertyListingsMyNeighborhood(page = 0)
                     neighborhoodName = profileRes.user.neighborhood
-                    if (res.success) { listings = res.listings; trustScores = res.trustScores }
+                    if (res.success) { listings = res.listings; trustScores = res.trustScores; hasMore = res.page + 1 < res.totalPages }
                     error = null
                 } catch (e: HttpException) {
                     if (e.code() == 400) {
@@ -222,16 +236,42 @@ fun PropertyContent(
         coroutineScope.launch {
             try {
                 val res = when (view) {
-                    PropertyView.BROWSE -> NetworkClient.apiService.browsePropertyListings(listingTypeFilter, propertyTypeFilter)
-                    PropertyView.ACQUIRED -> NetworkClient.apiService.getMyAcquiredPropertyListings()
-                    else -> NetworkClient.apiService.getMyPropertyListings()
+                    PropertyView.BROWSE -> NetworkClient.apiService.browsePropertyListings(listingTypeFilter, propertyTypeFilter, page = 0)
+                    PropertyView.ACQUIRED -> NetworkClient.apiService.getMyAcquiredPropertyListings(page = 0)
+                    else -> NetworkClient.apiService.getMyPropertyListings(page = 0)
                 }
-                if (res.success) { listings = res.listings; trustScores = res.trustScores }
+                if (res.success) { listings = res.listings; trustScores = res.trustScores; hasMore = res.page + 1 < res.totalPages }
                 error = null
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
                 error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+
+    fun loadMore() {
+        val nextPage = page + 1
+        loadingMore = true
+        coroutineScope.launch {
+            try {
+                val res = when (view) {
+                    PropertyView.NEIGHBORHOOD -> NetworkClient.apiService.getPropertyListingsMyNeighborhood(page = nextPage)
+                    PropertyView.BROWSE -> NetworkClient.apiService.browsePropertyListings(listingTypeFilter, propertyTypeFilter, page = nextPage)
+                    PropertyView.ACQUIRED -> NetworkClient.apiService.getMyAcquiredPropertyListings(page = nextPage)
+                    else -> NetworkClient.apiService.getMyPropertyListings(page = nextPage)
+                }
+                if (res.success) {
+                    listings = (listings ?: emptyList()) + res.listings
+                    trustScores = trustScores + res.trustScores
+                    page = nextPage
+                    hasMore = res.page + 1 < res.totalPages
+                }
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded page stays visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMore = false
             }
         }
     }
@@ -455,6 +495,17 @@ fun PropertyContent(
                     favorited = listing.id in favoriteIds,
                     onToggleFavorite = { coroutineScope.launch { try { if (listing.id in favoriteIds) { NetworkClient.apiService.removePropertyListingFavorite(listing.id); favoriteIds = favoriteIds - listing.id; rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, "Removed from saved properties") } else { NetworkClient.apiService.addPropertyListingFavorite(listing.id); favoriteIds = favoriteIds + listing.id; rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, "Saved to your properties list") } } catch (e: Exception) { error = "Couldn't update your saved properties. Check your connection and try again." } } },
                 )
+            }
+            if (hasMore && view != PropertyView.NEARBY) {
+                item {
+                    IdsButton(
+                        text = if (loadingMore) "Loading…" else "Load more",
+                        onClick = ::loadMore,
+                        enabled = !loadingMore,
+                        variant = IdsButtonVariant.Tinted,
+                        size = IdsButtonSize.Medium,
+                    )
+                }
             }
         }
         }

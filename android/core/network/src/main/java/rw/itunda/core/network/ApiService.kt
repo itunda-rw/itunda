@@ -1231,7 +1231,7 @@ data class CreatePropertyListingRequest(
     val bedrooms: Int? = null, val sizeSqm: Double? = null, val latitude: Double? = null, val longitude: Double? = null,
 )
 data class PropertyListingResponse(val success: Boolean, val listing: PropertyListingDto)
-data class PropertyListingsResponse(val success: Boolean, val listings: List<PropertyListingDto>, val trustScores: Map<String, Int> = emptyMap())
+data class PropertyListingsResponse(val success: Boolean, val listings: List<PropertyListingDto>, val trustScores: Map<String, Int> = emptyMap(), val page: Int = 0, val totalPages: Int = 1, val totalElements: Int = 0)
 data class FavoritePropertyListingDto(val propertyListingId: String, val title: String, val price: Double, val listingType: String, val favoritedAt: String)
 data class FavoritePropertyListingsResponse(val success: Boolean, val favorites: List<FavoritePropertyListingDto>)
 data class PropertyTypesResponse(val success: Boolean, val propertyTypes: List<PropertyTypeDto>)
@@ -3513,10 +3513,17 @@ interface ApiService {
     @POST("api/v1/realestate/listings")
     suspend fun createPropertyListing(@Body request: CreatePropertyListingRequest): PropertyListingResponse
 
+    // Real pagination-discard fix (same systemic gap fixed for Knowledge/
+    // Community/Marketplace/Jobs/RealEstate-web, 2026-09-09 -- see
+    // project_itunda_pagination_discard_sweep memory) -- page/size just
+    // weren't ever sent, silently capping every RealEstate feed at its
+    // first 20 listings.
     @GET("api/v1/realestate/listings")
     suspend fun browsePropertyListings(
         @Query("listingType") listingType: String? = null,
         @Query("propertyType") propertyType: String? = null,
+        @Query("page") page: Int = 0,
+        @Query("size") size: Int = 20,
     ): PropertyListingsResponse
 
     @GET("api/v1/realestate/valuation")
@@ -3537,12 +3544,12 @@ interface ApiService {
     ): PropertyListingsResponse
 
     @GET("api/v1/realestate/my-listings")
-    suspend fun getMyPropertyListings(): PropertyListingsResponse
+    suspend fun getMyPropertyListings(@Query("page") page: Int = 0, @Query("size") size: Int = 20): PropertyListingsResponse
 
     // Real "Places I got" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
     // recommendation #6. See backend PropertyListingRepository's own doc comment.
     @GET("api/v1/realestate/my-acquired-listings")
-    suspend fun getMyAcquiredPropertyListings(): PropertyListingsResponse
+    suspend fun getMyAcquiredPropertyListings(@Query("page") page: Int = 0, @Query("size") size: Int = 20): PropertyListingsResponse
     @POST("api/v1/realestate/listings/{id}/favorite") suspend fun addPropertyListingFavorite(@Path("id") id: String): SuccessResponse
     @DELETE("api/v1/realestate/listings/{id}/favorite") suspend fun removePropertyListingFavorite(@Path("id") id: String): SuccessResponse
     @GET("api/v1/realestate/listings/favorites") suspend fun getMyFavoritePropertyListings(): FavoritePropertyListingsResponse
@@ -3551,7 +3558,7 @@ interface ApiService {
     // Deliberately not combined with listingType/propertyType filters -- an honest v1
     // scoping choice, same as the real backend endpoint this calls.
     @GET("api/v1/realestate/listings/my-neighborhood")
-    suspend fun getPropertyListingsMyNeighborhood(): PropertyListingsResponse
+    suspend fun getPropertyListingsMyNeighborhood(@Query("page") page: Int = 0, @Query("size") size: Int = 20): PropertyListingsResponse
 
     // Real relevance-ranked search (2026-08-14) -- see backend PropertyListingService
     // .search's own doc comment.
