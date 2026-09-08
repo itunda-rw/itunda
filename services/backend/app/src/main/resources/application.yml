@@ -51,6 +51,28 @@ spring:
     # developer container.
     password: ${DB_PASSWORD:itunda_password}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      # Real Kakao Bank precedent (tech.kakaobank.com's messaging-hub hexagonal-
+      # architecture article, 2023-11): their multi-service messaging hub hit exactly
+      # this problem -- every service instance opened its own uncoordinated DB pool
+      # against one shared, connection-limited database, blocking safe horizontal
+      # scale-out. itunda's own 14 extracted services (card/insurance/agents/transit/
+      # certificate/bills/vehicle/partners/identity/overview/knowledge/notifications/
+      # analytics/loans) plus :app share this exact same `itunda` MySQL schema (see
+      # this file's own datasource url comment) but had ZERO explicit pool sizing
+      # anywhere -- every instance silently ran HikariCP's bare default (10), no
+      # coordinated total budget. Real coordinated budget: :app 25 + 14 extracted
+      # services x 6 each = 109, comfortably under MySQL 8's default
+      # max_connections (151), leaving ~40 of headroom for Flyway (this app is the
+      # sole schema owner, see the jpa.hibernate.ddl-auto: validate note on every
+      # extracted service's own application.yml), admin/mysqld-exporter connections,
+      # and `services/microservices`' own separate database (not this one). This
+      # budget assumes 1 replica per service, matching every infra/k8s/staging/*.yaml
+      # today -- if a service is ever scaled beyond 1 replica, divide ITS OWN
+      # maximum-pool-size by its new replica count to keep that service's total
+      # budget constant, rather than leaving this value as a per-pod constant.
+      maximum-pool-size: 25
+      minimum-idle: 5
   data:
     redis:
       host: ${REDIS_HOST:localhost}

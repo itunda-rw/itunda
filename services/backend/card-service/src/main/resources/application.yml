@@ -24,6 +24,15 @@ spring:
     username: ${DB_USER:itunda}
     password: ${DB_PASSWORD:itunda_password}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      # Real, coordinated pool budget -- see :app's application.yml for the full
+      # arithmetic (Kakao Bank messaging-hub precedent, tech.kakaobank.com, 2023-11:
+      # uncoordinated per-service DB pools against one shared, connection-limited
+      # database blocks safe horizontal scale-out). This service's slice: 6 of the
+      # shared `itunda` schema's 109-connection total budget (assumes 1 replica, per
+      # infra/k8s/staging/*.yaml today -- divide by replica count if that changes).
+      maximum-pool-size: 6
+      minimum-idle: 2
   data:
     redis:
       # Real infra RateLimiter (:auth) and TokenBlocklistService (:auth) both need --
