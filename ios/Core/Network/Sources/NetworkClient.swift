@@ -4072,7 +4072,14 @@ public struct CreatePropertyListingRequest: Encodable {
     public let bedrooms: Int?; public let sizeSqm: Double?; public let latitude: Double?; public let longitude: Double?
 }
 public struct PropertyListingResponse: Decodable { public let success: Bool; public let listing: PropertyListingDto }
-public struct PropertyListingsResponse: Decodable { public let success: Bool; public let listings: [PropertyListingDto]; public let trustScores: [String: Int]? }
+public struct PropertyListingsResponse: Decodable {
+    public let success: Bool
+    public let listings: [PropertyListingDto]
+    public let trustScores: [String: Int]?
+    public let page: Int
+    public let totalPages: Int
+    public let totalElements: Int
+}
 public struct FavoritePropertyListingDto: Decodable, Identifiable { public let propertyListingId: String; public let title: String; public let price: Double; public let listingType: String; public let favoritedAt: String; public var id: String { propertyListingId } }
 public struct FavoritePropertyListingsResponse: Decodable { public let success: Bool; public let favorites: [FavoritePropertyListingDto] }
 public struct PropertyTypesResponse: Decodable { public let success: Bool; public let propertyTypes: [PropertyTypeDto] }
@@ -5982,10 +5989,17 @@ extension NetworkClient {
         )
     }
 
-    public func browsePropertyListings(listingType: String? = nil, propertyType: String? = nil) async throws -> PropertyListingsResponse {
+    // Real pagination-discard fix (same systemic gap fixed for Knowledge/
+    // Community/Marketplace/Jobs/RealEstate-web/RealEstate-Android,
+    // 2026-09-09 -- see project_itunda_pagination_discard_sweep memory) --
+    // page/size just weren't ever sent, silently capping every RealEstate
+    // feed at its first 20 listings.
+    public func browsePropertyListings(listingType: String? = nil, propertyType: String? = nil, page: Int = 0, size: Int = 20) async throws -> PropertyListingsResponse {
         try await get("api/v1/realestate/listings", query: [
             URLQueryItem(name: "listingType", value: listingType),
             URLQueryItem(name: "propertyType", value: propertyType),
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
         ])
     }
 
@@ -6004,11 +6018,21 @@ extension NetworkClient {
         try await get("api/v1/realestate/listings/nearby", query: [URLQueryItem(name: "latitude", value: String(lat)), URLQueryItem(name: "longitude", value: String(lng)), URLQueryItem(name: "radiusKm", value: String(radiusKm))])
     }
 
-    public func getMyPropertyListings() async throws -> PropertyListingsResponse { try await get("api/v1/realestate/my-listings") }
+    public func getMyPropertyListings(page: Int = 0, size: Int = 20) async throws -> PropertyListingsResponse {
+        try await get("api/v1/realestate/my-listings", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     // Real "Places I got" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
     // recommendation #6. See backend PropertyListingRepository's own doc comment.
-    public func getMyAcquiredPropertyListings() async throws -> PropertyListingsResponse { try await get("api/v1/realestate/my-acquired-listings") }
+    public func getMyAcquiredPropertyListings(page: Int = 0, size: Int = 20) async throws -> PropertyListingsResponse {
+        try await get("api/v1/realestate/my-acquired-listings", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
     public func addPropertyListingFavorite(_ id: String) async throws -> SuccessResponse { try await authenticatedPost("api/v1/realestate/listings/\(id)/favorite", body: EmptyBody()) }
     public func removePropertyListingFavorite(_ id: String) async throws -> SuccessResponse { try await authenticatedDelete("api/v1/realestate/listings/\(id)/favorite") }
     public func getMyFavoritePropertyListings() async throws -> FavoritePropertyListingsResponse { try await get("api/v1/realestate/listings/favorites") }
@@ -6016,8 +6040,11 @@ extension NetworkClient {
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see setNeighborhood.
     // Deliberately not combined with listingType/propertyType filters -- an honest v1
     // scoping choice, same as the real backend endpoint this calls.
-    public func getPropertyListingsMyNeighborhood() async throws -> PropertyListingsResponse {
-        try await get("api/v1/realestate/listings/my-neighborhood")
+    public func getPropertyListingsMyNeighborhood(page: Int = 0, size: Int = 20) async throws -> PropertyListingsResponse {
+        try await get("api/v1/realestate/listings/my-neighborhood", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
     }
 
     public func markPropertyListingTaken(_ propertyListingId: String, counterpartyPhoneNumber: String? = nil) async throws -> PropertyListingResponse {

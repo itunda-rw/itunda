@@ -200,7 +200,11 @@ public struct MyTabView: View {
             // count (capped at 20), not the real total, for any user with
             // more than 20 real job posts.
             if let res = try? await NetworkClient.shared.getMyJobPosts() { myJobPostsCount = res.totalElements }
-            if let res = try? await NetworkClient.shared.getMyPropertyListings() { myPropertyListingsCount = res.listings.count }
+            // Real accuracy fix (2026-09-09, same pass as
+            // getMyPropertyListings's pagination fix): this badge previously
+            // showed page 1's item count (capped at 20), not the real total,
+            // for any user with more than 20 real property listings.
+            if let res = try? await NetworkClient.shared.getMyPropertyListings() { myPropertyListingsCount = res.totalElements }
             if let res = try? await NetworkClient.shared.getMyAffiliateLinks() { affiliateLinks = res.links }
             if let res = try? await NetworkClient.shared.getMyAffiliateCommissions() { affiliateCommissions = res.commissions }
             if let res = try? await NetworkClient.shared.getMyScamReports() { myScamReports = res.reports }
