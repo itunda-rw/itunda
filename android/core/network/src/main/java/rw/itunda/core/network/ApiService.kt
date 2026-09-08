@@ -985,7 +985,7 @@ data class ListingResponse(val success: Boolean, val listing: ListingDto)
 // browse/nearby (deliberately unauthenticated, guest-browsable) -- an honest gap, not
 // a client bug; the heart's count is always real either way, just starts unfilled on
 // those two endpoints until a real tap.
-data class ListingsResponse(val success: Boolean, val listings: List<ListingDto>, val trustScores: Map<String, Int> = emptyMap(), val likedByMe: Set<String> = emptySet())
+data class ListingsResponse(val success: Boolean, val listings: List<ListingDto>, val trustScores: Map<String, Int> = emptyMap(), val likedByMe: Set<String> = emptySet(), val page: Int = 0, val totalPages: Int = 1, val totalElements: Int = 0)
 data class ToggleLikeResponse(val success: Boolean, val liked: Boolean)
 
 // Real Marketplace listing wishlist (2026-07-21 backend + bank-mfe, ported here) --
@@ -3128,8 +3128,13 @@ interface ApiService {
     @GET("api/v1/marketplace/listings/{id}")
     suspend fun getListing(@Path("id") listingId: String): ListingResponse
 
+    // Real pagination-discard fix (same systemic gap fixed for Knowledge/
+    // Community/Marketplace-web/Jobs-web/RealEstate-web, 2026-09-09 -- see
+    // project_itunda_pagination_discard_sweep memory) -- page/size just
+    // weren't ever sent, silently capping every Marketplace feed at its
+    // first 20 listings.
     @GET("api/v1/marketplace/listings")
-    suspend fun browseListings(@Query("category") category: String? = null): ListingsResponse
+    suspend fun browseListings(@Query("category") category: String? = null, @Query("page") page: Int = 0, @Query("size") size: Int = 20): ListingsResponse
 
     @GET("api/v1/marketplace/listings/nearby")
     suspend fun getNearbyListings(
@@ -3139,17 +3144,17 @@ interface ApiService {
     ): ListingsResponse
 
     @GET("api/v1/marketplace/my-listings")
-    suspend fun getMyListings(): ListingsResponse
+    suspend fun getMyListings(@Query("page") page: Int = 0, @Query("size") size: Int = 20): ListingsResponse
 
     // Real "My purchases" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
     // recommendation #6. See backend ListingRepository's own doc comment.
     @GET("api/v1/marketplace/my-purchases")
-    suspend fun getMyPurchases(): ListingsResponse
+    suspend fun getMyPurchases(@Query("page") page: Int = 0, @Query("size") size: Int = 20): ListingsResponse
 
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see AuthApi.setNeighborhood.
     // Real 400 NEIGHBORHOOD_NOT_SET if the caller hasn't set one yet.
     @GET("api/v1/marketplace/listings/my-neighborhood")
-    suspend fun getListingsMyNeighborhood(@Query("category") category: String? = null): ListingsResponse
+    suspend fun getListingsMyNeighborhood(@Query("category") category: String? = null, @Query("page") page: Int = 0, @Query("size") size: Int = 20): ListingsResponse
 
     // Real relevance-ranked search (2026-08-14) -- see backend MarketplaceService
     // .search's own doc comment. Not neighborhood-scoped, unlike the browse above.

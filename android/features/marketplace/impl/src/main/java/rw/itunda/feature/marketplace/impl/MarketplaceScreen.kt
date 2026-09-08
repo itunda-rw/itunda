@@ -70,6 +70,9 @@ import retrofit2.HttpException
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.designsystem.itundaface.CameraGlyph
 import rw.itunda.core.designsystem.itundaface.LockGlyph
@@ -183,6 +186,15 @@ fun MarketplaceContent(
     // reference it; Kotlin locals must be declared before any use, even inside a
     // lambda that only runs later.
     var likedListingIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    // Real pagination-discard fix (same systemic gap fixed for Knowledge/
+    // Community/Marketplace-web/Jobs-web/RealEstate-web, 2026-09-09) -- a
+    // request never asked past page 0 across BROWSE/MINE/PURCHASES/
+    // NEIGHBORHOOD, so any feed with more than 20 real listings was silently
+    // unreachable beyond the first page. NEARBY is a separate location-driven
+    // flow (requestNearbyLocation below), not covered by this state.
+    var page by remember { mutableStateOf(0) }
+    var hasMore by remember { mutableStateOf(false) }
+    var loadingMore by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var showNewListing by remember { mutableStateOf(false) }
     if (showNewListing) {
@@ -365,6 +377,8 @@ fun MarketplaceContent(
 
     fun load() {
         listings = null
+        page = 0
+        hasMore = false
         if (view == HoodView.NEARBY) {
             requestNearbyLocation()
             return
@@ -380,9 +394,9 @@ fun MarketplaceContent(
             coroutineScope.launch {
                 try {
                     val profileRes = NetworkClient.authApi.getProfile()
-                    val res = NetworkClient.apiService.getListingsMyNeighborhood()
+                    val res = NetworkClient.apiService.getListingsMyNeighborhood(page = 0)
                     neighborhoodName = profileRes.user.neighborhood
-                    if (res.success) { listings = res.listings; trustScores = res.trustScores; likedListingIds = res.likedByMe ?: emptySet() }
+                    if (res.success) { listings = res.listings; trustScores = res.trustScores; likedListingIds = res.likedByMe ?: emptySet(); hasMore = res.page + 1 < res.totalPages }
                     error = null
                 } catch (e: HttpException) {
                     if (e.code() == 400) {
@@ -403,16 +417,43 @@ fun MarketplaceContent(
         coroutineScope.launch {
             try {
                 val res = when (view) {
-                    HoodView.BROWSE -> NetworkClient.apiService.browseListings()
-                    HoodView.PURCHASES -> NetworkClient.apiService.getMyPurchases()
-                    else -> NetworkClient.apiService.getMyListings()
+                    HoodView.BROWSE -> NetworkClient.apiService.browseListings(page = 0)
+                    HoodView.PURCHASES -> NetworkClient.apiService.getMyPurchases(page = 0)
+                    else -> NetworkClient.apiService.getMyListings(page = 0)
                 }
-                if (res.success) { listings = res.listings; trustScores = res.trustScores; likedListingIds = res.likedByMe ?: emptySet() }
+                if (res.success) { listings = res.listings; trustScores = res.trustScores; likedListingIds = res.likedByMe ?: emptySet(); hasMore = res.page + 1 < res.totalPages }
                 error = null
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
                 error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+
+    fun loadMore() {
+        val nextPage = page + 1
+        loadingMore = true
+        coroutineScope.launch {
+            try {
+                val res = when (view) {
+                    HoodView.NEIGHBORHOOD -> NetworkClient.apiService.getListingsMyNeighborhood(page = nextPage)
+                    HoodView.BROWSE -> NetworkClient.apiService.browseListings(page = nextPage)
+                    HoodView.PURCHASES -> NetworkClient.apiService.getMyPurchases(page = nextPage)
+                    else -> NetworkClient.apiService.getMyListings(page = nextPage)
+                }
+                if (res.success) {
+                    listings = (listings ?: emptyList()) + res.listings
+                    trustScores = trustScores + res.trustScores
+                    likedListingIds = likedListingIds + (res.likedByMe ?: emptySet())
+                    page = nextPage
+                    hasMore = res.page + 1 < res.totalPages
+                }
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded page stays visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMore = false
             }
         }
     }
@@ -674,6 +715,17 @@ fun MarketplaceContent(
                     onOpen = { selectedListing = listing },
                     isScrollTouched = marketplaceTouchedKey.value == listing.id,
                 )
+            }
+            if (hasMore && view != HoodView.NEARBY) {
+                item {
+                    IdsButton(
+                        text = if (loadingMore) "Loading…" else "Load more",
+                        onClick = ::loadMore,
+                        enabled = !loadingMore,
+                        variant = IdsButtonVariant.Tinted,
+                        size = IdsButtonSize.Medium,
+                    )
+                }
             }
         }
         }
