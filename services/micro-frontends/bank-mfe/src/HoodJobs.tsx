@@ -29,6 +29,13 @@ export function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [favoritingId, setFavoritingId] = useState<string | null>(null);
   const currentUser = getStoredUser();
+  // Real pagination-discard fix (same systemic gap fixed for Knowledge/Community/
+  // Marketplace, 2026-09-09) -- a request never asked past page 0 across
+  // BROWSE/MINE/WORKED/NEIGHBORHOOD, so any feed with more than 20 real posts
+  // was silently unreachable beyond the first page.
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Real relevance-ranked search (2026-08-14) -- see lib/jobs.ts's own doc comment: this
   // endpoint shipped Android-only and was never ported to web until now. Mirrors
@@ -61,14 +68,17 @@ export function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId
   const load = () => {
     setError(null);
     setPosts(null);
+    setPage(0);
+    setHasMore(false);
     loadFavoriteIds();
     if (view === 'NEIGHBORHOOD') {
-      Promise.all([fetchProfile(), fetchJobPostsMyNeighborhood(activeCategory ?? undefined)])
+      Promise.all([fetchProfile(), fetchJobPostsMyNeighborhood(activeCategory ?? undefined, 0)])
         .then(([profile, result]) => {
           setNeighborhoodName(profile.neighborhood);
           setSecondNeighborhoodName(profile.secondNeighborhood);
           setPosts(result.posts);
           setTrustScores(result.trustScores);
+          setHasMore(result.page + 1 < result.totalPages);
         })
         .catch((err) => {
           if (err instanceof ApiError && err.code === 'NEIGHBORHOOD_NOT_SET') {
@@ -81,10 +91,45 @@ export function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId
       return;
     }
     if (view === 'WISHLIST' || view === 'APPLICATIONS' || view === 'RESUME') return;
-    const fetcher = view === 'BROWSE' ? fetchJobPosts(activeCategory ?? undefined) : view === 'WORKED' ? fetchMyWorkedJobPosts() : fetchMyJobPosts();
+    let fetcher;
+    if (view === 'BROWSE') {
+      fetcher = fetchJobPosts(activeCategory ?? undefined, 0);
+    } else if (view === 'WORKED') {
+      fetcher = fetchMyWorkedJobPosts(0);
+    } else {
+      fetcher = fetchMyJobPosts(0);
+    }
     fetcher
-      .then((result) => { setPosts(result.posts); setTrustScores(result.trustScores); })
+      .then((result) => {
+        setPosts(result.posts);
+        setTrustScores(result.trustScores);
+        setHasMore(result.page + 1 < result.totalPages);
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+  };
+
+  const loadMore = () => {
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    let fetcher;
+    if (view === 'NEIGHBORHOOD') {
+      fetcher = fetchJobPostsMyNeighborhood(activeCategory ?? undefined, nextPage);
+    } else if (view === 'BROWSE') {
+      fetcher = fetchJobPosts(activeCategory ?? undefined, nextPage);
+    } else if (view === 'WORKED') {
+      fetcher = fetchMyWorkedJobPosts(nextPage);
+    } else {
+      fetcher = fetchMyJobPosts(nextPage);
+    }
+    fetcher
+      .then((result) => {
+        setPosts((prev) => [...(prev ?? []), ...result.posts]);
+        setTrustScores((prev) => ({ ...prev, ...result.trustScores }));
+        setPage(nextPage);
+        setHasMore(result.page + 1 < result.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
   };
 
   useEffect(load, [view, activeCategory]);
@@ -267,6 +312,11 @@ export function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId
                       posterTrustScore={trustScores[post.posterId]}
                     />
                   ))}
+                  {hasMore && (
+                    <button className="itunda-btn itunda-btn-secondary" disabled={loadingMore} onClick={loadMore}>
+                      {loadingMore ? 'Loading…' : 'Load more'}
+                    </button>
+                  )}
                 </div>
               )}
             </>

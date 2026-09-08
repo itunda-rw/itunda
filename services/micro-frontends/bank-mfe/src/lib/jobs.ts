@@ -51,28 +51,40 @@ export const fetchJobCategories = () =>
 // than exporting a duplicate.
 import type { TrustScores } from './marketplace';
 
-export const fetchJobPosts = (category?: string) =>
-  apiFetch<{ success: boolean; posts: JobPost[]; trustScores: TrustScores }>(
-    `/api/v1/jobs/posts${category ? `?category=${encodeURIComponent(category)}` : ''}`,
-  ).then((r) => ({ posts: r.posts, trustScores: r.trustScores }));
+// Real pagination-discard fix (same systemic gap fixed for Knowledge/Community/
+// Marketplace, 2026-09-09 -- see project_itunda_pagination_discard_sweep memory)
+// -- JobPostController's real Pageable/pageMeta endpoints were always there;
+// page/size just weren't sent, silently capping every browse/mine/worked/
+// neighborhood feed at its first 20 posts.
+export const fetchJobPosts = (category?: string, page = 0, size = 20) => {
+  const params = new URLSearchParams();
+  if (category) params.set('category', category);
+  params.set('page', String(page));
+  params.set('size', String(size));
+  return apiFetch<{ success: boolean; posts: JobPost[]; trustScores: TrustScores; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/jobs/posts?${params.toString()}`,
+  );
+};
 
-export const fetchMyJobPosts = () =>
-  apiFetch<{ success: boolean; posts: JobPost[]; trustScores: TrustScores }>('/api/v1/jobs/my-posts')
-    .then((r) => ({ posts: r.posts, trustScores: r.trustScores }));
+export const fetchMyJobPosts = (page = 0, size = 20) =>
+  apiFetch<{ success: boolean; posts: JobPost[]; trustScores: TrustScores; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/jobs/my-posts?page=${page}&size=${size}`,
+  );
 
 // Real "Jobs I did" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
 // recommendation #6. See backend JobPostRepository's own doc comment.
-export const fetchMyWorkedJobPosts = () =>
-  apiFetch<{ success: boolean; posts: JobPost[]; trustScores: TrustScores }>('/api/v1/jobs/my-worked-posts')
-    .then((r) => ({ posts: r.posts, trustScores: r.trustScores }));
+export const fetchMyWorkedJobPosts = (page = 0, size = 20) =>
+  apiFetch<{ success: boolean; posts: JobPost[]; trustScores: TrustScores; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/jobs/my-worked-posts?page=${page}&size=${size}`,
+  );
 
 // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see lib/neighborhood.ts's own
 // doc comment. Throws ApiError with code NEIGHBORHOOD_NOT_SET (real 400) if the caller
 // hasn't set one yet.
-export const fetchJobPostsMyNeighborhood = (category?: string) =>
-  apiFetch<{ success: boolean; posts: JobPost[]; trustScores: TrustScores }>(
-    `/api/v1/jobs/posts/my-neighborhood${category ? `?category=${encodeURIComponent(category)}` : ''}`,
-  ).then((r) => ({ posts: r.posts, trustScores: r.trustScores }));
+export const fetchJobPostsMyNeighborhood = (category?: string, page = 0, size = 20) =>
+  apiFetch<{ success: boolean; posts: JobPost[]; trustScores: TrustScores; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/jobs/posts/my-neighborhood?page=${page}&size=${size}${category ? `&category=${encodeURIComponent(category)}` : ''}`,
+  );
 
 // Real relevance-ranked search (2026-08-14, backend JobPostController's own doc
 // comment) -- shipped Android-only (rw.itunda.app's own searchJobPosts call site) and

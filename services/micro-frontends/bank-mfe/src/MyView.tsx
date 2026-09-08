@@ -76,7 +76,10 @@ export function MyView() {
     // fix): this badge previously showed page 1's item count (capped at 20),
     // not the real total, for any user with more than 20 real listings.
     fetchMyListings().then((r) => setMyListingsCount(r.totalElements)).catch(() => {});
-    fetchMyJobPosts().then((r) => setMyJobPostsCount(r.posts.length)).catch(() => {});
+    // Real accuracy fix (2026-09-09, same pass as fetchMyJobPosts's pagination
+    // fix): this badge previously showed page 1's item count (capped at 20),
+    // not the real total, for any user with more than 20 real job posts.
+    fetchMyJobPosts().then((r) => setMyJobPostsCount(r.totalElements)).catch(() => {});
     fetchMyPropertyListings().then((r) => setMyPropertyListingsCount(r.listings.length)).catch(() => {});
     fetchMiniAppCatalog().then(setMiniApps).catch(() => {});
     fetchMyScamReports().then(setMyScamReports).catch(() => {});
