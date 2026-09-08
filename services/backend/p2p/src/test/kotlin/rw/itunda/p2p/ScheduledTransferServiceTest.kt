@@ -70,6 +70,15 @@ class ScheduledTransferServiceTest : BehaviorSpec({
                 result.scheduledDate shouldBe futureDate
                 result.amount shouldBe BigDecimal("10000")
             }
+
+            // Real gap found live (P2P product-completeness pass, 2026-09-08): this
+            // file's own rateLimiter mock was relaxed = true with zero verify{}
+            // anywhere, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently. Same latent-regression class
+            // Family/Gift/Splitbill/AutoTransferServiceTest already closed.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("scheduledtransfer:create:sender_1", limit = 20, window = java.time.Duration.ofHours(1)) }
+            }
         }
 
         When("the recipient has a real long firstName+lastName") {
