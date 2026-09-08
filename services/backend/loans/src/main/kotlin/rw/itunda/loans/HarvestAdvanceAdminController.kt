@@ -55,4 +55,11 @@ class HarvestAdvanceAdminController(private val cooperativeService: CooperativeS
     @ExceptionHandler(InvalidHarvestAdvanceReviewNoteException::class)
     fun handleInvalidReviewNote(ex: InvalidHarvestAdvanceReviewNoteException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_REVIEW_NOTE", ex.message ?: "Invalid review note"))
+
+    // Real bad-debt accounting (Bank product-completeness pass, cycle 2, 2026-09-08)
+    // -- decide() now looks up the account to post the write-off ledger entry, same
+    // defensive reasoning as VupLoanAdminController's identical handler.
+    @ExceptionHandler(HarvestAdvanceNoAccountException::class)
+    fun handleNoAccount(ex: HarvestAdvanceNoAccountException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 }

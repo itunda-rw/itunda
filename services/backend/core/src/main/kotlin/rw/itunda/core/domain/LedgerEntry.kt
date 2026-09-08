@@ -146,6 +146,17 @@ enum class LedgerAccountType {
     // partnership with them or with AC Group (Tap&Go's real operator), same honest
     // boundary CARD_SPEND_EXPENSE's own doc comment already draws for card purchases.
     TRANSIT_FARE_EXPENSE,
+    // Real bad-debt write-off (Bank product-completeness pass, cycle 2, 2026-09-08) --
+    // see VupLoanService.decide/CooperativeService.decide's own doc comments. Both
+    // named this as a deliberate, disclosed limitation ("writing off a loan's real
+    // accounting treatment ... needs a real ledger account this pass doesn't invent")
+    // until this pass finally built it: writing off a loan/advance still owed to
+    // itunda's own LOAN_PAYABLE receivable needs a real double-entry pair, the same
+    // "itunda's own money, not the counterparty's" expense shape REWARDS_EXPENSE/
+    // PROMOTION_EXPENSE already establish -- itunda absorbs the loss as a real
+    // expense, the LOAN_PAYABLE receivable is credited down to reflect it's no
+    // longer being pursued for repayment.
+    BAD_DEBT_EXPENSE,
 }
 
 /**

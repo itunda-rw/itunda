@@ -252,6 +252,23 @@ class CooperativeService(
         advanceRepository.save(advance)
 
         if (writeOff) {
+            // Real bad-debt accounting (Bank product-completeness pass, cycle 2,
+            // 2026-09-08) -- see BAD_DEBT_EXPENSE's own doc comment. Writing off an
+            // advance doesn't erase the real LOAN_PAYABLE receivable itunda already
+            // booked at disbursement -- it needs a real double-entry pair crediting
+            // that receivable down and debiting the loss as a real expense.
+            // HarvestAdvance repayment is full-settlement-only (no partial
+            // repayment support), so principalAmount is always the correct real
+            // remaining loss here, unlike VUP's own outstandingPrincipal.
+            val account = accountRepository.findById(advance.accountId).orElseThrow { HarvestAdvanceNoAccountException("Account not found") }
+            ledgerService.postLedgerTransaction(
+                account.currency,
+                listOf(
+                    LedgerLeg("bad_debt_expense", LedgerAccountType.BAD_DEBT_EXPENSE, LedgerDirection.DEBIT, advance.principalAmount, "Harvest advance written off"),
+                    LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.CREDIT, advance.principalAmount, "Harvest advance written off"),
+                ),
+            )
+
             val membership = membershipRepository.findById(advance.membershipId).orElse(null)
             if (membership != null) {
                 val title = "Harvest advance written off"

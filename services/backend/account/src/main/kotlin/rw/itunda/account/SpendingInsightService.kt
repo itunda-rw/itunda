@@ -223,7 +223,13 @@ class SpendingInsightService(
                 // credit), never touching a user's ACCOUNT debit directly (that already
                 // happened, into TRANSIT_BALANCE_PAYABLE, at top-up time) -- unreachable
                 // in practice but still required for exhaustiveness.
-                LedgerAccountType.REWARDS_EXPENSE, LedgerAccountType.INTEREST_EXPENSE, LedgerAccountType.INSURANCE_CLAIMS_EXPENSE, LedgerAccountType.INTEREST_INCOME, LedgerAccountType.AGENT_COMMISSION_EXPENSE, LedgerAccountType.DEPOSIT_PROTECTION_RESERVE, LedgerAccountType.DEPOSIT_PROTECTION_EXPENSE, LedgerAccountType.TRANSIT_FARE_EXPENSE, null -> "Other"
+                // BAD_DEBT_EXPENSE (Bank product-completeness pass, cycle 2, 2026-09-08) --
+                // same shape: VupLoanService.decide/CooperativeService.decide's write-off
+                // posting is entirely between itunda's own two internal accounts
+                // (bad_debt_expense debit / loan_payable credit), never touching the
+                // borrower's own ACCOUNT at all -- unreachable in practice but still
+                // required for exhaustiveness.
+                LedgerAccountType.REWARDS_EXPENSE, LedgerAccountType.INTEREST_EXPENSE, LedgerAccountType.INSURANCE_CLAIMS_EXPENSE, LedgerAccountType.INTEREST_INCOME, LedgerAccountType.AGENT_COMMISSION_EXPENSE, LedgerAccountType.DEPOSIT_PROTECTION_RESERVE, LedgerAccountType.DEPOSIT_PROTECTION_EXPENSE, LedgerAccountType.TRANSIT_FARE_EXPENSE, LedgerAccountType.BAD_DEBT_EXPENSE, null -> "Other"
                 LedgerAccountType.WALLET -> "Other"
             }
             totals[category] = (totals[category] ?: BigDecimal.ZERO) + debit.amount

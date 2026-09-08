@@ -295,6 +295,25 @@ class VupLoanService(
         vupLoanRepository.save(loan)
 
         if (writeOff) {
+            // Real bad-debt accounting (Bank product-completeness pass, cycle 2,
+            // 2026-09-08) -- see BAD_DEBT_EXPENSE's own doc comment. Writing off a
+            // loan doesn't erase the real LOAN_PAYABLE receivable itunda already
+            // booked at disbursement -- it needs a real double-entry pair crediting
+            // that receivable down and debiting the loss as a real expense. Uses
+            // outstandingPrincipal, not principalAmount -- a partially-repaid loan's
+            // real remaining loss is smaller than what was originally disbursed.
+            if (loan.outstandingPrincipal > BigDecimal.ZERO) {
+                val account = accountRepository.findByUserIdAndType(loan.userId, AccountType.MAIN)
+                    ?: throw VupLoanNoAccountException("No account found for this account")
+                ledgerService.postLedgerTransaction(
+                    account.currency,
+                    listOf(
+                        LedgerLeg("bad_debt_expense", LedgerAccountType.BAD_DEBT_EXPENSE, LedgerDirection.DEBIT, loan.outstandingPrincipal, "VUP Financial Services loan written off"),
+                        LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.CREDIT, loan.outstandingPrincipal, "VUP Financial Services loan written off"),
+                    ),
+                )
+            }
+
             val title = "VUP loan written off"
             val body = "Your VUP Financial Services loan has been written off by itunda and is no longer being pursued for repayment."
             notificationRepository.save(

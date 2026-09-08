@@ -361,10 +361,17 @@ class CooperativeServiceTest : BehaviorSpec({
     Given("an OVERDUE harvest advance an admin writes off") {
         val advanceRepository = mockk<HarvestAdvanceRepository>()
         val membershipRepository = mockk<CooperativeMembershipRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val ledgerService = mockk<LedgerService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = newService(advanceRepository = advanceRepository, membershipRepository = membershipRepository, notificationRepository = notificationRepository)
+        val service = newService(
+            advanceRepository = advanceRepository, membershipRepository = membershipRepository,
+            accountRepository = accountRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
+        )
         every { advanceRepository.findById("harvestadv_overdue") } returns Optional.of(overdueAdvanceFixture())
         every { membershipRepository.findById("coopmem_1") } returns Optional.of(reviewerMembership)
+        every { accountRepository.findById("account_1") } returns Optional.of(account("account_1", "user_1"))
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_writeoff", emptyList())
         every { advanceRepository.save(any()) } answers { firstArg() }
         every { notificationRepository.save(any()) } answers { firstArg() }
 
@@ -374,6 +381,15 @@ class CooperativeServiceTest : BehaviorSpec({
             Then("it marks WRITTEN_OFF and notifies the real farmer") {
                 result.status shouldBe HarvestAdvanceStatus.WRITTEN_OFF
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_1" && it.type == "HARVEST_ADVANCE_WRITTEN_OFF" }) }
+            }
+
+            Then("it real-books the loss as a bad-debt expense, crediting down the real LOAN_PAYABLE receivable") {
+                verify(exactly = 1) {
+                    ledgerService.postLedgerTransaction(any(), match { legs ->
+                        legs.any { it.accountType == LedgerAccountType.BAD_DEBT_EXPENSE && it.direction == LedgerDirection.DEBIT && it.amount == BigDecimal("50000") } &&
+                            legs.any { it.accountId == "loan_payable" && it.accountType == LedgerAccountType.LOAN_PAYABLE && it.direction == LedgerDirection.CREDIT && it.amount == BigDecimal("50000") }
+                    })
+                }
             }
         }
     }

@@ -238,16 +238,20 @@ class VupLoanServiceTest : BehaviorSpec({
     }
 
     // Real ops loan-default review queue (2026-09-06, Bank product-completeness
-    // pass) -- see VupLoanService.decide's own doc comment for why this
-    // deliberately never touches the ledger. Separate Given blocks, not sibling
+    // pass), real bad-debt ledger accounting added cycle 2 (2026-09-08, see
+    // BAD_DEBT_EXPENSE's own doc comment). Separate Given blocks, not sibling
     // Whens -- same "shared mutable loan instance leaks mutation across Whens"
     // reasoning the repay tests above already document.
     Given("a real OVERDUE VUP loan being written off by an admin") {
         val vupLoanRepository = mockk<VupLoanRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val ledgerService = mockk<LedgerService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             vupLoanRepository = vupLoanRepository,
+            accountRepository = accountRepository,
+            ledgerService = ledgerService,
             notificationRepository = notificationRepository,
             pushNotificationService = pushNotificationService,
         )
@@ -257,6 +261,8 @@ class VupLoanServiceTest : BehaviorSpec({
         )
         every { vupLoanRepository.findById("vuploan_5") } returns Optional.of(loan)
         every { vupLoanRepository.save(any()) } answers { firstArg() }
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_writeoff", emptyList())
         // Relaxed mockk's default generic-method auto-answer doesn't satisfy
         // JpaRepository.save's own <S extends T> S signature -- a real
         // ClassCastException at runtime, not just a style preference. Same
@@ -273,6 +279,50 @@ class VupLoanServiceTest : BehaviorSpec({
                 (result.reviewedAt != null) shouldBe true
                 result.outstandingPrincipal shouldBe BigDecimal("100000")
                 verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any()) }
+            }
+
+            Then("it real-books the loss as a bad-debt expense, crediting down the real LOAN_PAYABLE receivable") {
+                verify(exactly = 1) {
+                    ledgerService.postLedgerTransaction(any(), match { legs ->
+                        legs.any { it.accountType == LedgerAccountType.BAD_DEBT_EXPENSE && it.direction == LedgerDirection.DEBIT && it.amount == BigDecimal("100000") } &&
+                            legs.any { it.accountId == "loan_payable" && it.accountType == LedgerAccountType.LOAN_PAYABLE && it.direction == LedgerDirection.CREDIT && it.amount == BigDecimal("100000") }
+                    })
+                }
+            }
+        }
+    }
+
+    // Real correctness guard: a partially-repaid loan's real remaining loss is
+    // smaller than what was originally disbursed -- the write-off must book
+    // outstandingPrincipal, never the original principalAmount.
+    Given("a partially-repaid OVERDUE VUP loan being written off by an admin") {
+        val vupLoanRepository = mockk<VupLoanRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val service = newService(
+            vupLoanRepository = vupLoanRepository, accountRepository = accountRepository,
+            ledgerService = ledgerService, notificationRepository = notificationRepository,
+        )
+        val loan = VupLoan(
+            id = "vuploan_7", userId = "user_1", declaredUbudeheCategory = 2, purpose = VupLoanPurpose.FARMING,
+            principalAmount = BigDecimal("100000"), outstandingPrincipal = BigDecimal("40000"), status = VupLoanStatus.OVERDUE,
+        )
+        every { vupLoanRepository.findById("vuploan_7") } returns Optional.of(loan)
+        every { vupLoanRepository.save(any()) } answers { firstArg() }
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_writeoff", emptyList())
+        every { notificationRepository.save(any()) } answers { firstArg() }
+
+        When("an admin writes it off") {
+            service.decide("vuploan_7", "admin_1", writeOff = true, note = null)
+
+            Then("it books only the real remaining 40,000 loss, not the original 100,000 principal") {
+                verify(exactly = 1) {
+                    ledgerService.postLedgerTransaction(any(), match { legs ->
+                        legs.all { it.amount == BigDecimal("40000") }
+                    })
+                }
             }
         }
     }

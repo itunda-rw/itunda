@@ -58,4 +58,13 @@ class VupLoanAdminController(private val vupLoanService: VupLoanService) {
     @ExceptionHandler(InvalidVupLoanReviewNoteException::class)
     fun handleInvalidReviewNote(ex: InvalidVupLoanReviewNoteException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_REVIEW_NOTE", ex.message ?: "Invalid review note"))
+
+    // Real bad-debt accounting (Bank product-completeness pass, cycle 2, 2026-09-08)
+    // -- decide() now looks up the borrower's account to post the write-off ledger
+    // entry, reachable here even though disburse() already guarantees it exists at
+    // disbursement time (defensive, matching VupLoanController's own handler for
+    // the same exception -- never a generic 500 on an admin action).
+    @ExceptionHandler(VupLoanNoAccountException::class)
+    fun handleNoAccount(ex: VupLoanNoAccountException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 }
