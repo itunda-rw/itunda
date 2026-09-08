@@ -3903,7 +3903,13 @@ public struct CreateCommunityPostRequest: Encodable {
 public struct CommunityPostResponse: Decodable { public let success: Bool; public let post: CommunityPostDto }
 // joinedCounts added 2026-07-24 -- postId -> real member count of that meetup's group
 // chat, closing docs/DESIGN_REFERENCES.md Section 4 recommendation #4.
-public struct CommunityPostsResponse: Decodable { public let success: Bool; public let posts: [CommunityPostDto]; public let joinedCounts: [String: Int]? }
+public struct CommunityPostsResponse: Decodable {
+    public let success: Bool
+    public let posts: [CommunityPostDto]
+    public let joinedCounts: [String: Int]?
+    public let page: Int
+    public let totalPages: Int
+}
 public struct CommunityCategoriesResponse: Decodable { public let success: Bool; public let categories: [CommunityCategoryDto] }
 // Real Karrot 동네생활 "새 댓글 알림 끄기" (turn off new-comment notifications) -- ported
 // from bank-mfe (2026-09-03). Scoped to MY posts only.
@@ -5695,15 +5701,30 @@ extension NetworkClient {
         )
     }
 
-    public func browseCommunityPosts(category: String? = nil, topic: String? = nil) async throws -> CommunityPostsResponse {
-        try await get("api/v1/community/posts", query: [URLQueryItem(name: "category", value: category), URLQueryItem(name: "topic", value: topic)])
+    // Real pagination-discard fix (named as the systemic sibling of the
+    // Knowledge gap fixed on web/Android/iOS 2026-09-09; ported to
+    // HoodCommunity.tsx and Android's CommunityScreen.kt first, commits
+    // 4ebba547/e57e12a9) -- page/size just weren't ever sent, silently
+    // capping every Hood feed at its first 20 posts.
+    public func browseCommunityPosts(category: String? = nil, topic: String? = nil, page: Int = 0, size: Int = 20) async throws -> CommunityPostsResponse {
+        try await get("api/v1/community/posts", query: [
+            URLQueryItem(name: "category", value: category),
+            URLQueryItem(name: "topic", value: topic),
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
     }
 
     public func getNearbyCommunityPosts(lat: Double, lng: Double, radiusKm: Double = 3) async throws -> CommunityPostsResponse {
         try await get("api/v1/community/posts/nearby", query: [URLQueryItem(name: "latitude", value: String(lat)), URLQueryItem(name: "longitude", value: String(lng)), URLQueryItem(name: "radiusKm", value: String(radiusKm))])
     }
 
-    public func getMyCommunityPosts() async throws -> CommunityPostsResponse { try await get("api/v1/community/my-posts") }
+    public func getMyCommunityPosts(page: Int = 0, size: Int = 20) async throws -> CommunityPostsResponse {
+        try await get("api/v1/community/my-posts", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     // Real 당근모임-style "upcoming meetups" browse (backend 2026-07-25,
     // CommunityController.upcomingMeetups) -- excludes meetups whose eventDate has
@@ -5722,8 +5743,12 @@ extension NetworkClient {
     }
 
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see setNeighborhood.
-    public func getCommunityPostsMyNeighborhood(category: String? = nil) async throws -> CommunityPostsResponse {
-        try await get("api/v1/community/posts/my-neighborhood", query: [URLQueryItem(name: "category", value: category)])
+    public func getCommunityPostsMyNeighborhood(category: String? = nil, page: Int = 0, size: Int = 20) async throws -> CommunityPostsResponse {
+        try await get("api/v1/community/posts/my-neighborhood", query: [
+            URLQueryItem(name: "category", value: category),
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
     }
 
     public func getCommunityPost(_ postId: String) async throws -> CommunityPostDetailResponse { try await get("api/v1/community/posts/\(postId)") }

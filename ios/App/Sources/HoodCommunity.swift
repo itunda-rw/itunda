@@ -47,6 +47,16 @@ struct CommunityContent: View {
     private let currentUserId = KeychainTokenStore.shared.getUserId()
     @State private var favoriteIds: Set<String> = []
     @State private var favoritingId: String?
+    // Real pagination-discard fix (named as the systemic sibling of the
+    // Knowledge gap fixed on web/Android/iOS 2026-09-09; ported to
+    // HoodCommunity.tsx and Android's CommunityScreen.kt first, commits
+    // 4ebba547/e57e12a9) -- a request never asked past page 0 across
+    // browse/neighborhood/mine, so any feed with more than 20 real posts was
+    // silently unreachable beyond the first page. `.nearby` is a separate
+    // location-driven flow (loadNearby below), not covered by this state.
+    @State private var page = 0
+    @State private var hasMore = false
+    @State private var loadingMore = false
 
     var body: some View {
         if let openPostId {
@@ -195,6 +205,14 @@ struct CommunityContent: View {
                                 onJoin: { Task { await joinMeetup(post.id) } }
                             )
                         }
+                        if hasMore && view != .nearby {
+                            Button(action: { Task { await loadMore() } }) {
+                                Text(loadingMore ? "Loading…" : "Load more").bold().font(.caption)
+                                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+                                    .background(Color(.secondarySystemBackground)).cornerRadius(10)
+                            }
+                            .disabled(loadingMore)
+                        }
                     }
                 }
                 .padding(.horizontal, IDS.Layout.screenHorizontal)
@@ -239,6 +257,8 @@ struct CommunityContent: View {
 
     private func load() async {
         posts = nil
+        page = 0
+        hasMore = false
         await loadUpcomingMeetups()
         if view == .nearby {
             locationFetcher.requestLocation()
@@ -248,10 +268,11 @@ struct CommunityContent: View {
             neighborhoodChecked = false
             do {
                 let profile = try await NetworkClient.shared.getProfile()
-                let res = try await NetworkClient.shared.getCommunityPostsMyNeighborhood(category: activeCategory)
+                let res = try await NetworkClient.shared.getCommunityPostsMyNeighborhood(category: activeCategory, page: 0)
                 neighborhoodName = profile.user.neighborhood
                 posts = res.posts
                 joinedCounts = res.joinedCounts ?? [:]
+                hasMore = res.page + 1 < res.totalPages
                 error = nil
             } catch let NetworkError.httpError(statusCode) where statusCode == 400 {
                 neighborhoodName = nil
@@ -264,12 +285,39 @@ struct CommunityContent: View {
             return
         }
         do {
-            let res = view == .browse ? try await NetworkClient.shared.browseCommunityPosts(category: activeCategory, topic: activeTopic) : try await NetworkClient.shared.getMyCommunityPosts()
+            let res = view == .browse
+                ? try await NetworkClient.shared.browseCommunityPosts(category: activeCategory, topic: activeTopic, page: 0)
+                : try await NetworkClient.shared.getMyCommunityPosts(page: 0)
             posts = res.posts
             joinedCounts = res.joinedCounts ?? [:]
+            hasMore = res.page + 1 < res.totalPages
             error = nil
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func loadMore() async {
+        let nextPage = page + 1
+        loadingMore = true
+        defer { loadingMore = false }
+        do {
+            let res: CommunityPostsResponse
+            switch view {
+            case .neighborhood:
+                res = try await NetworkClient.shared.getCommunityPostsMyNeighborhood(category: activeCategory, page: nextPage)
+            case .browse:
+                res = try await NetworkClient.shared.browseCommunityPosts(category: activeCategory, topic: activeTopic, page: nextPage)
+            case .mine, .nearby:
+                res = try await NetworkClient.shared.getMyCommunityPosts(page: nextPage)
+            }
+            posts = (posts ?? []) + res.posts
+            joinedCounts.merge(res.joinedCounts ?? [:]) { _, new in new }
+            page = nextPage
+            hasMore = res.page + 1 < res.totalPages
+        } catch {
+            // Non-critical -- the already-loaded page stays visible; the user
+            // can retry by tapping "Load more" again.
         }
     }
 
