@@ -56,6 +56,9 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.HoodReviewForm
 import rw.itunda.core.designsystem.components.HoodReviewResultView
@@ -118,6 +121,14 @@ fun JobsContent(
     // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc comment.
     var trustScores by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Real pagination-discard fix (same systemic gap fixed for Knowledge/
+    // Community/Marketplace/Jobs-web, 2026-09-09) -- a request never asked
+    // past page 0 across BROWSE/MINE/WORKED/NEIGHBORHOOD, so any feed with
+    // more than 20 real posts was silently unreachable beyond the first
+    // page. NEARBY is a separate location-driven flow, not covered here.
+    var page by remember { mutableStateOf(0) }
+    var hasMore by remember { mutableStateOf(false) }
+    var loadingMore by remember { mutableStateOf(false) }
     var showNewPost by remember { mutableStateOf(false) }
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
     var neighborhoodChecked by remember { mutableStateOf(false) }
@@ -183,6 +194,8 @@ fun JobsContent(
 
     fun load() {
         posts = null
+        page = 0
+        hasMore = false
         if (view == JobsView.SAVED) { posts = emptyList(); error = null; return }
         if (view == JobsView.APPLICATIONS) { posts = emptyList(); error = null; return }
         if (view == JobsView.RESUME) { posts = emptyList(); error = null; return }
@@ -195,9 +208,9 @@ fun JobsContent(
             coroutineScope.launch {
                 try {
                     val profileRes = NetworkClient.authApi.getProfile()
-                    val res = NetworkClient.apiService.getJobPostsMyNeighborhood(activeCategory)
+                    val res = NetworkClient.apiService.getJobPostsMyNeighborhood(activeCategory, page = 0)
                     neighborhoodName = profileRes.user.neighborhood
-                    if (res.success) { posts = res.posts; trustScores = res.trustScores }
+                    if (res.success) { posts = res.posts; trustScores = res.trustScores; hasMore = res.page + 1 < res.totalPages }
                     error = null
                 } catch (e: HttpException) {
                     if (e.code() == 400) {
@@ -218,16 +231,42 @@ fun JobsContent(
         coroutineScope.launch {
             try {
                 val res = when (view) {
-                    JobsView.BROWSE -> NetworkClient.apiService.browseJobPosts(activeCategory)
-                    JobsView.WORKED -> NetworkClient.apiService.getMyWorkedJobPosts()
-                    else -> NetworkClient.apiService.getMyJobPosts()
+                    JobsView.BROWSE -> NetworkClient.apiService.browseJobPosts(activeCategory, page = 0)
+                    JobsView.WORKED -> NetworkClient.apiService.getMyWorkedJobPosts(page = 0)
+                    else -> NetworkClient.apiService.getMyJobPosts(page = 0)
                 }
-                if (res.success) { posts = res.posts; trustScores = res.trustScores }
+                if (res.success) { posts = res.posts; trustScores = res.trustScores; hasMore = res.page + 1 < res.totalPages }
                 error = null
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
                 error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+
+    fun loadMore() {
+        val nextPage = page + 1
+        loadingMore = true
+        coroutineScope.launch {
+            try {
+                val res = when (view) {
+                    JobsView.NEIGHBORHOOD -> NetworkClient.apiService.getJobPostsMyNeighborhood(activeCategory, page = nextPage)
+                    JobsView.BROWSE -> NetworkClient.apiService.browseJobPosts(activeCategory, page = nextPage)
+                    JobsView.WORKED -> NetworkClient.apiService.getMyWorkedJobPosts(page = nextPage)
+                    else -> NetworkClient.apiService.getMyJobPosts(page = nextPage)
+                }
+                if (res.success) {
+                    posts = (posts ?: emptyList()) + res.posts
+                    trustScores = trustScores + res.trustScores
+                    page = nextPage
+                    hasMore = res.page + 1 < res.totalPages
+                }
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded page stays visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMore = false
             }
         }
     }
@@ -434,6 +473,17 @@ fun JobsContent(
                         }
                     },
                 )
+            }
+            if (hasMore && view != JobsView.NEARBY) {
+                item {
+                    IdsButton(
+                        text = if (loadingMore) "Loading…" else "Load more",
+                        onClick = ::loadMore,
+                        enabled = !loadingMore,
+                        variant = IdsButtonVariant.Tinted,
+                        size = IdsButtonSize.Medium,
+                    )
+                }
             }
         }
         }

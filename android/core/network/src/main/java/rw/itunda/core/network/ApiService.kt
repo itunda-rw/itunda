@@ -1168,7 +1168,7 @@ data class CreateJobPostRequest(
 )
 data class JobPostResponse(val success: Boolean, val post: JobPostDto)
 data class SuccessResponse(val success: Boolean)
-data class JobPostsResponse(val success: Boolean, val posts: List<JobPostDto>, val trustScores: Map<String, Int> = emptyMap())
+data class JobPostsResponse(val success: Boolean, val posts: List<JobPostDto>, val trustScores: Map<String, Int> = emptyMap(), val page: Int = 0, val totalPages: Int = 1, val totalElements: Int = 0)
 data class JobCategoriesResponse(val success: Boolean, val categories: List<JobCategoryDto>)
 data class FavoriteJobPostDto(val jobPostId: String, val title: String, val payAmount: Double, val category: String, val favoritedAt: String)
 
@@ -3430,8 +3430,13 @@ interface ApiService {
     @POST("api/v1/jobs/posts")
     suspend fun createJobPost(@Body request: CreateJobPostRequest): JobPostResponse
 
+    // Real pagination-discard fix (same systemic gap fixed for Knowledge/
+    // Community/Marketplace/Jobs-web, 2026-09-09 -- see
+    // project_itunda_pagination_discard_sweep memory) -- page/size just
+    // weren't ever sent, silently capping every Jobs feed at its first 20
+    // posts.
     @GET("api/v1/jobs/posts")
-    suspend fun browseJobPosts(@Query("category") category: String? = null): JobPostsResponse
+    suspend fun browseJobPosts(@Query("category") category: String? = null, @Query("page") page: Int = 0, @Query("size") size: Int = 20): JobPostsResponse
 
     @GET("api/v1/jobs/posts/nearby")
     suspend fun getNearbyJobPosts(
@@ -3441,12 +3446,12 @@ interface ApiService {
     ): JobPostsResponse
 
     @GET("api/v1/jobs/my-posts")
-    suspend fun getMyJobPosts(): JobPostsResponse
+    suspend fun getMyJobPosts(@Query("page") page: Int = 0, @Query("size") size: Int = 20): JobPostsResponse
 
     // Real "Jobs I did" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
     // recommendation #6. See backend JobPostRepository's own doc comment.
     @GET("api/v1/jobs/my-worked-posts")
-    suspend fun getMyWorkedJobPosts(): JobPostsResponse
+    suspend fun getMyWorkedJobPosts(@Query("page") page: Int = 0, @Query("size") size: Int = 20): JobPostsResponse
 
     @POST("api/v1/jobs/posts/{id}/favorite")
     suspend fun addJobPostFavorite(@Path("id") jobPostId: String): SuccessResponse
@@ -3459,7 +3464,7 @@ interface ApiService {
 
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see AuthApi.setNeighborhood.
     @GET("api/v1/jobs/posts/my-neighborhood")
-    suspend fun getJobPostsMyNeighborhood(@Query("category") category: String? = null): JobPostsResponse
+    suspend fun getJobPostsMyNeighborhood(@Query("category") category: String? = null, @Query("page") page: Int = 0, @Query("size") size: Int = 20): JobPostsResponse
 
     // Real relevance-ranked search (2026-08-14) -- see backend JobPostService
     // .search's own doc comment.

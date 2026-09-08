@@ -80,7 +80,10 @@ fun MyTab(
         // fix): this badge previously showed page 1's item count (capped at 20),
         // not the real total, for any user with more than 20 real listings.
         try { myListingsCount = rw.itunda.core.network.NetworkClient.apiService.getMyListings().totalElements } catch (_: Exception) { }
-        try { myJobPostsCount = rw.itunda.core.network.NetworkClient.apiService.getMyJobPosts().posts.size } catch (_: Exception) { }
+        // Real accuracy fix (2026-09-09, same pass as getMyJobPosts's pagination
+        // fix): this badge previously showed page 1's item count (capped at 20),
+        // not the real total, for any user with more than 20 real job posts.
+        try { myJobPostsCount = rw.itunda.core.network.NetworkClient.apiService.getMyJobPosts().totalElements } catch (_: Exception) { }
         try { myPropertyListingsCount = rw.itunda.core.network.NetworkClient.apiService.getMyPropertyListings().listings.size } catch (_: Exception) { }
         try { affiliateLinks = rw.itunda.core.network.NetworkClient.apiService.getMyAffiliateLinks().links } catch (_: Exception) { }
         try { affiliateCommissions = rw.itunda.core.network.NetworkClient.apiService.getMyAffiliateCommissions().commissions } catch (_: Exception) { }
