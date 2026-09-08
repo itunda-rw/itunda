@@ -52,33 +52,41 @@ export const fetchPropertyTypes = () =>
 // lib/marketplace.ts's own TrustScores type (same Record<string, number> shape).
 import type { HoodReview, TrustScores } from './marketplace';
 
-export const fetchPropertyListings = (listingType?: PropertyListingType, propertyType?: string) => {
+// Real pagination-discard fix (same systemic gap fixed for Knowledge/Community/
+// Marketplace/Jobs, 2026-09-09 -- see project_itunda_pagination_discard_sweep
+// memory) -- PropertyListingController's real Pageable/pageMeta endpoints were
+// always there; page/size just weren't sent, silently capping every browse/
+// mine/acquired/neighborhood feed at its first 20 listings.
+export const fetchPropertyListings = (listingType?: PropertyListingType, propertyType?: string, page = 0, size = 20) => {
   const params = new URLSearchParams();
   if (listingType) params.set('listingType', listingType);
   if (propertyType) params.set('propertyType', propertyType);
-  const qs = params.toString();
-  return apiFetch<{ success: boolean; listings: PropertyListing[]; trustScores: TrustScores }>(`/api/v1/realestate/listings${qs ? `?${qs}` : ''}`).then(
-    (r) => ({ listings: r.listings, trustScores: r.trustScores }),
+  params.set('page', String(page));
+  params.set('size', String(size));
+  return apiFetch<{ success: boolean; listings: PropertyListing[]; trustScores: TrustScores; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/realestate/listings?${params.toString()}`,
   );
 };
 
-export const fetchMyPropertyListings = () =>
-  apiFetch<{ success: boolean; listings: PropertyListing[]; trustScores: TrustScores }>('/api/v1/realestate/my-listings')
-    .then((r) => ({ listings: r.listings, trustScores: r.trustScores }));
+export const fetchMyPropertyListings = (page = 0, size = 20) =>
+  apiFetch<{ success: boolean; listings: PropertyListing[]; trustScores: TrustScores; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/realestate/my-listings?page=${page}&size=${size}`,
+  );
 
 // Real "Places I got" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
 // recommendation #6. See backend PropertyListingRepository's own doc comment.
-export const fetchMyAcquiredPropertyListings = () =>
-  apiFetch<{ success: boolean; listings: PropertyListing[]; trustScores: TrustScores }>('/api/v1/realestate/my-acquired-listings')
-    .then((r) => ({ listings: r.listings, trustScores: r.trustScores }));
+export const fetchMyAcquiredPropertyListings = (page = 0, size = 20) =>
+  apiFetch<{ success: boolean; listings: PropertyListing[]; trustScores: TrustScores; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/realestate/my-acquired-listings?page=${page}&size=${size}`,
+  );
 
 // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see lib/neighborhood.ts's own
 // doc comment. Throws ApiError with code NEIGHBORHOOD_NOT_SET (real 400) if the caller
 // hasn't set one yet. Deliberately not combined with listingType/propertyType filters --
 // PropertyListingRepository's own doc comment names this as an honest v1 scoping choice.
-export const fetchPropertyListingsMyNeighborhood = () =>
-  apiFetch<{ success: boolean; listings: PropertyListing[]; trustScores: TrustScores }>('/api/v1/realestate/listings/my-neighborhood').then(
-    (r) => ({ listings: r.listings, trustScores: r.trustScores }),
+export const fetchPropertyListingsMyNeighborhood = (page = 0, size = 20) =>
+  apiFetch<{ success: boolean; listings: PropertyListing[]; trustScores: TrustScores; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/realestate/listings/my-neighborhood?page=${page}&size=${size}`,
   );
 
 export const createPropertyListing = (

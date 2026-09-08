@@ -29,6 +29,13 @@ export function PropertyView({ onMessageLister }: { onMessageLister: (conversati
   const [showSecondNeighborhoodPrompt, setShowSecondNeighborhoodPrompt] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [favoritingId, setFavoritingId] = useState<string | null>(null);
+  // Real pagination-discard fix (same systemic gap fixed for Knowledge/Community/
+  // Marketplace/Jobs, 2026-09-09) -- a request never asked past page 0 across
+  // BROWSE/MINE/ACQUIRED/NEIGHBORHOOD, so any feed with more than 20 real
+  // listings was silently unreachable beyond the first page.
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const currentUser = getStoredUser();
 
   useEffect(() => {
@@ -44,14 +51,17 @@ export function PropertyView({ onMessageLister }: { onMessageLister: (conversati
   const load = () => {
     setError(null);
     setListings(null);
+    setPage(0);
+    setHasMore(false);
     loadFavoriteIds();
     if (view === 'NEIGHBORHOOD') {
-      Promise.all([fetchProfile(), fetchPropertyListingsMyNeighborhood()])
+      Promise.all([fetchProfile(), fetchPropertyListingsMyNeighborhood(0)])
         .then(([profile, result]) => {
           setNeighborhoodName(profile.neighborhood);
           setSecondNeighborhoodName(profile.secondNeighborhood);
           setListings(result.listings);
           setTrustScores(result.trustScores);
+          setHasMore(result.page + 1 < result.totalPages);
         })
         .catch((err) => {
           if (err instanceof ApiError && err.code === 'NEIGHBORHOOD_NOT_SET') {
@@ -64,14 +74,45 @@ export function PropertyView({ onMessageLister }: { onMessageLister: (conversati
       return;
     }
     if (view === 'WISHLIST' || view === 'VALUATION') return;
-    const fetcher = view === 'BROWSE'
-      ? fetchPropertyListings(listingTypeFilter ?? undefined, propertyTypeFilter ?? undefined)
-      : view === 'ACQUIRED'
-        ? fetchMyAcquiredPropertyListings()
-        : fetchMyPropertyListings();
+    let fetcher;
+    if (view === 'BROWSE') {
+      fetcher = fetchPropertyListings(listingTypeFilter ?? undefined, propertyTypeFilter ?? undefined, 0);
+    } else if (view === 'ACQUIRED') {
+      fetcher = fetchMyAcquiredPropertyListings(0);
+    } else {
+      fetcher = fetchMyPropertyListings(0);
+    }
     fetcher
-      .then((result) => { setListings(result.listings); setTrustScores(result.trustScores); })
+      .then((result) => {
+        setListings(result.listings);
+        setTrustScores(result.trustScores);
+        setHasMore(result.page + 1 < result.totalPages);
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+  };
+
+  const loadMore = () => {
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    let fetcher;
+    if (view === 'NEIGHBORHOOD') {
+      fetcher = fetchPropertyListingsMyNeighborhood(nextPage);
+    } else if (view === 'BROWSE') {
+      fetcher = fetchPropertyListings(listingTypeFilter ?? undefined, propertyTypeFilter ?? undefined, nextPage);
+    } else if (view === 'ACQUIRED') {
+      fetcher = fetchMyAcquiredPropertyListings(nextPage);
+    } else {
+      fetcher = fetchMyPropertyListings(nextPage);
+    }
+    fetcher
+      .then((result) => {
+        setListings((prev) => [...(prev ?? []), ...result.listings]);
+        setTrustScores((prev) => ({ ...prev, ...result.trustScores }));
+        setPage(nextPage);
+        setHasMore(result.page + 1 < result.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
   };
 
   useEffect(load, [view, listingTypeFilter, propertyTypeFilter]);
@@ -225,6 +266,11 @@ export function PropertyView({ onMessageLister }: { onMessageLister: (conversati
                   listerTrustScore={trustScores[listing.listerId]}
                 />
               ))}
+              {hasMore && (
+                <button className="itunda-btn itunda-btn-secondary" disabled={loadingMore} onClick={loadMore}>
+                  {loadingMore ? 'Loading…' : 'Load more'}
+                </button>
+              )}
             </div>
           )}
         </>
