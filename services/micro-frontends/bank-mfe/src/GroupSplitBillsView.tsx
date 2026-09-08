@@ -118,11 +118,11 @@ export function GroupSplitBillsView({
         <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to group">
           <IconBack size={20} />
         </button>
-        <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>Split bills</h3>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>{t('splitbill.titleGroup')}</h3>
       </div>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {!showNewForm ? (
-        <button className="itunda-btn itunda-btn-primary" onClick={() => setShowNewForm(true)}>Split a bill</button>
+        <button className="itunda-btn itunda-btn-primary" onClick={() => setShowNewForm(true)}>{t('splitbill.cta')}</button>
       ) : (
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px 0' }}>
           <input
@@ -180,16 +180,16 @@ export function GroupSplitBillsView({
             </div>
           )}
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setShowNewForm(false)}>Cancel</button>
+            <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setShowNewForm(false)}>{t('splitbill.cancel')}</button>
             <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busyId === 'new' || selectedIds.size === 0}>
-              {busyId === 'new' ? 'Creating…' : 'Create'}
+              {busyId === 'new' ? t('splitbill.creating') : t('splitbill.create')}
             </button>
           </div>
         </form>
       )}
       {splitBills === null && showSkeleton && <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />}
       {splitBills !== null && splitBills.length === 0 && (
-        <EmptyState message="No split bills in this group yet — split one to divide a shared expense evenly." />
+        <EmptyState message={t('splitbill.emptyGroup')} />
       )}
       {splitBills?.map(({ splitBill, participants }) => {
         const myShare = participants.find((p) => p.userId === currentUserId);
@@ -222,7 +222,7 @@ export function GroupSplitBillsView({
                 disabled={busyId === splitBill.id}
                 onClick={() => handlePay(splitBill.id)}
               >
-                {busyId === splitBill.id ? 'Paying…' : `Pay my share (${myShare.shareAmount.toLocaleString('en-US')} RWF)`}
+                {busyId === splitBill.id ? t('splitbill.paying') : t('splitbill.payShare', { amount: myShare.shareAmount.toLocaleString('en-US') })}
               </button>
             )}
             {isOrganizer && (

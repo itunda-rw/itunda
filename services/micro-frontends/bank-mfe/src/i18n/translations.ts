@@ -577,6 +577,16 @@ export type TranslationKey =
   | 'gift.voucherExpired'
   | 'gift.expiresOn'
   | 'gift.couldNotExtend'
-  | 'gift.extendExpiry';
+  | 'gift.extendExpiry'
+  | 'splitbill.titleGroup'
+  | 'splitbill.titleDirect'
+  | 'splitbill.cta'
+  | 'splitbill.cancel'
+  | 'splitbill.creating'
+  | 'splitbill.create'
+  | 'splitbill.paying'
+  | 'splitbill.payShare'
+  | 'splitbill.emptyGroup'
+  | 'splitbill.emptyDirect';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = { en, rw, fr };
