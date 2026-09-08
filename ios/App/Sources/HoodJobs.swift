@@ -28,6 +28,15 @@ struct JobsContent: View {
     @State private var favoritingId: String?
     @State private var favoriteNotice: String?
     @State private var nearbyRadiusKm = 3.0
+    // Real pagination-discard fix (same systemic gap fixed for Knowledge/
+    // Community/Marketplace/Jobs-web/Jobs-Android, 2026-09-09) -- a request
+    // never asked past page 0 across browse/mine/worked/neighborhood, so any
+    // feed with more than 20 real posts was silently unreachable beyond the
+    // first page. `.nearby` is a separate location-driven flow (loadNearby
+    // below), not covered by this state.
+    @State private var page = 0
+    @State private var hasMore = false
+    @State private var loadingMore = false
     // Real relevance-ranked search (2026-08-14) -- see NetworkClient.searchJobPosts's
     // own doc comment: this endpoint shipped Android-only and was never ported here
     // until now. Mirrors ShopScreen's own real cross-merchant product-search shape
@@ -187,6 +196,14 @@ struct JobsContent: View {
                             currentUserId: currentUserId
                         )
                     }
+                    if hasMore && view != .nearby {
+                        Button(action: { Task { await loadMore() } }) {
+                            Text(loadingMore ? "Loading…" : "Load more").bold().font(.caption)
+                                .frame(maxWidth: .infinity).padding(.vertical, 12)
+                                .background(Color(.secondarySystemBackground)).cornerRadius(10)
+                        }
+                        .disabled(loadingMore)
+                    }
                 }
             }
             .padding(.horizontal, IDS.Layout.screenHorizontal)
@@ -213,6 +230,8 @@ struct JobsContent: View {
 
     private func load() async {
         posts = nil
+        page = 0
+        hasMore = false
         if view == .wishlist || view == .applications || view == .resume {
             posts = []
             error = nil
@@ -226,10 +245,11 @@ struct JobsContent: View {
             neighborhoodChecked = false
             do {
                 let profile = try await NetworkClient.shared.getProfile()
-                let res = try await NetworkClient.shared.getJobPostsMyNeighborhood(category: activeCategory)
+                let res = try await NetworkClient.shared.getJobPostsMyNeighborhood(category: activeCategory, page: 0)
                 neighborhoodName = profile.user.neighborhood
                 posts = res.posts
                 trustScores = res.trustScores ?? [:]
+                hasMore = res.page + 1 < res.totalPages
                 error = nil
             } catch let NetworkError.httpError(statusCode) where statusCode == 400 {
                 neighborhoodName = nil
@@ -244,15 +264,38 @@ struct JobsContent: View {
         do {
             let res: JobPostsResponse
             switch view {
-            case .browse: res = try await NetworkClient.shared.browseJobPosts(category: activeCategory)
-            case .worked: res = try await NetworkClient.shared.getMyWorkedJobPosts()
-            default: res = try await NetworkClient.shared.getMyJobPosts()
+            case .browse: res = try await NetworkClient.shared.browseJobPosts(category: activeCategory, page: 0)
+            case .worked: res = try await NetworkClient.shared.getMyWorkedJobPosts(page: 0)
+            default: res = try await NetworkClient.shared.getMyJobPosts(page: 0)
             }
             posts = res.posts
             trustScores = res.trustScores ?? [:]
+            hasMore = res.page + 1 < res.totalPages
             error = nil
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func loadMore() async {
+        let nextPage = page + 1
+        loadingMore = true
+        defer { loadingMore = false }
+        do {
+            let res: JobPostsResponse
+            switch view {
+            case .neighborhood: res = try await NetworkClient.shared.getJobPostsMyNeighborhood(category: activeCategory, page: nextPage)
+            case .browse: res = try await NetworkClient.shared.browseJobPosts(category: activeCategory, page: nextPage)
+            case .worked: res = try await NetworkClient.shared.getMyWorkedJobPosts(page: nextPage)
+            default: res = try await NetworkClient.shared.getMyJobPosts(page: nextPage)
+            }
+            posts = (posts ?? []) + res.posts
+            trustScores.merge(res.trustScores ?? [:]) { _, new in new }
+            page = nextPage
+            hasMore = res.page + 1 < res.totalPages
+        } catch {
+            // Non-critical -- the already-loaded page stays visible; the user
+            // can retry by tapping "Load more" again.
         }
     }
 

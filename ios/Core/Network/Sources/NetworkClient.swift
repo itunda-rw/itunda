@@ -4000,7 +4000,14 @@ public struct CreateJobPostRequest: Encodable {
 }
 public struct MarkFilledRequest: Encodable { public let workerPhoneNumber: String? }
 public struct JobPostResponse: Decodable { public let success: Bool; public let post: JobPostDto }
-public struct JobPostsResponse: Decodable { public let success: Bool; public let posts: [JobPostDto]; public let trustScores: [String: Int]? }
+public struct JobPostsResponse: Decodable {
+    public let success: Bool
+    public let posts: [JobPostDto]
+    public let trustScores: [String: Int]?
+    public let page: Int
+    public let totalPages: Int
+    public let totalElements: Int
+}
 public struct JobCategoriesResponse: Decodable { public let success: Bool; public let categories: [JobCategoryDto] }
 public struct ContactPosterResponse: Decodable { public let success: Bool; public let conversation: ConversationDto }
 
@@ -5838,8 +5845,17 @@ extension NetworkClient {
         try await authenticatedPostWithMessage("api/v1/jobs/posts", body: CreateJobPostRequest(category: category, title: title, description: description, payType: payType, payAmount: payAmount, latitude: latitude, longitude: longitude))
     }
 
-    public func browseJobPosts(category: String? = nil) async throws -> JobPostsResponse {
-        try await get("api/v1/jobs/posts", query: [URLQueryItem(name: "category", value: category)])
+    // Real pagination-discard fix (same systemic gap fixed for Knowledge/
+    // Community/Marketplace/Jobs-web/Jobs-Android, 2026-09-09 -- see
+    // project_itunda_pagination_discard_sweep memory) -- page/size just
+    // weren't ever sent, silently capping every Jobs feed at its first 20
+    // posts.
+    public func browseJobPosts(category: String? = nil, page: Int = 0, size: Int = 20) async throws -> JobPostsResponse {
+        try await get("api/v1/jobs/posts", query: [
+            URLQueryItem(name: "category", value: category),
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
     }
 
     // Real relevance-ranked search (2026-08-14, backend JobPostController's own doc
@@ -5853,11 +5869,21 @@ extension NetworkClient {
         try await get("api/v1/jobs/posts/nearby", query: [URLQueryItem(name: "latitude", value: String(lat)), URLQueryItem(name: "longitude", value: String(lng)), URLQueryItem(name: "radiusKm", value: String(radiusKm))])
     }
 
-    public func getMyJobPosts() async throws -> JobPostsResponse { try await get("api/v1/jobs/my-posts") }
+    public func getMyJobPosts(page: Int = 0, size: Int = 20) async throws -> JobPostsResponse {
+        try await get("api/v1/jobs/my-posts", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     // Real "Jobs I did" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
     // recommendation #6. See backend JobPostRepository's own doc comment.
-    public func getMyWorkedJobPosts() async throws -> JobPostsResponse { try await get("api/v1/jobs/my-worked-posts") }
+    public func getMyWorkedJobPosts(page: Int = 0, size: Int = 20) async throws -> JobPostsResponse {
+        try await get("api/v1/jobs/my-worked-posts", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     public func addJobPostFavorite(_ jobPostId: String) async throws -> SuccessResponse {
         try await authenticatedPost("api/v1/jobs/posts/\(jobPostId)/favorite", body: EmptyBody())
@@ -5870,8 +5896,12 @@ extension NetworkClient {
     public func getMyFavoriteJobPosts() async throws -> FavoriteJobPostsResponse { try await get("api/v1/jobs/posts/favorites") }
 
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see setNeighborhood.
-    public func getJobPostsMyNeighborhood(category: String? = nil) async throws -> JobPostsResponse {
-        try await get("api/v1/jobs/posts/my-neighborhood", query: [URLQueryItem(name: "category", value: category)])
+    public func getJobPostsMyNeighborhood(category: String? = nil, page: Int = 0, size: Int = 20) async throws -> JobPostsResponse {
+        try await get("api/v1/jobs/posts/my-neighborhood", query: [
+            URLQueryItem(name: "category", value: category),
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
     }
 
     public func markJobPostFilled(_ jobPostId: String, workerPhoneNumber: String? = nil) async throws -> JobPostResponse {
