@@ -1838,7 +1838,7 @@ export function ShareFavoritesModal({
   const showSkeleton = useDeferredLoading(conversations === null);
 
   useEffect(() => {
-    fetchConversations().then(setConversations).catch(() => setConversations([]));
+    fetchConversations().then((r) => setConversations(r.conversations)).catch(() => setConversations([]));
   }, []);
 
   return (
@@ -2760,10 +2760,19 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   useEffect(() => {
     let cancelled = false;
     const poll = () => {
+      // Real, pre-existing accuracy gap (not introduced by the 2026-09-09
+      // pagination fix, just now more visible since fetchConversations's
+      // return shape changed): this only sums unreadCount across each list's
+      // own first page (20 rows), so a user with more than 20 real
+      // conversations or groups gets an undercounted badge. Fixing this
+      // properly needs a real dedicated total-unread-count backend endpoint
+      // (summing across ALL of a user's conversations/groups, not a page),
+      // which doesn't exist yet -- named here rather than silently
+      // papered over, not attempted this pass.
       Promise.all([fetchConversations(false), fetchGroups()])
-        .then(([conversations, groups]) => {
+        .then(([conversationsRes, groups]) => {
           if (cancelled) return;
-          const total = conversations.reduce((sum, c) => sum + c.unreadCount, 0) + groups.reduce((sum, g) => sum + g.unreadCount, 0);
+          const total = conversationsRes.conversations.reduce((sum, c) => sum + c.unreadCount, 0) + groups.reduce((sum, g) => sum + g.unreadCount, 0);
           setMessagesUnreadCount(total);
         })
         .catch(() => {

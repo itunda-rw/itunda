@@ -65,10 +65,19 @@ export interface Message {
   replyCount?: number;
 }
 
-export const fetchConversations = (archived = false) =>
-  apiFetch<{ success: boolean; conversations: ConversationSummary[] }>(
-    `/api/v1/messages/conversations?archived=${archived}`,
-  ).then((r) => r.conversations);
+// Real pagination-discard fix (2026-09-09, same systemic gap as the
+// Hood/Knowledge features fixed earlier -- see
+// project_itunda_pagination_discard_sweep memory) -- MessagingController's
+// GET /conversations is a real Spring Pageable endpoint (found while
+// re-deriving the sweep's real remaining candidate list from the backend's
+// own pageMeta call sites, not a frontend grep), but every client discarded
+// page/totalPages and only ever showed the first 20 conversations -- itunda's
+// own core Talk chat inbox, a real, high-severity instance of this bug class,
+// not a secondary Hood feed.
+export const fetchConversations = (archived = false, page = 0, size = 20) =>
+  apiFetch<{ success: boolean; conversations: ConversationSummary[]; page: number; totalPages: number }>(
+    `/api/v1/messages/conversations?archived=${archived}&page=${page}&size=${size}`,
+  );
 
 export const fetchTalkContacts = () =>
   apiFetch<{ success: boolean; contacts: TalkContact[] }>('/api/v1/messages/contacts').then((r) => r.contacts);

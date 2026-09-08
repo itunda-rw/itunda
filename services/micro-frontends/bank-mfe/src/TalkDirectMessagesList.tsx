@@ -94,6 +94,14 @@ export function DirectMessagesList({ initialConversationId, onConsumedInitial }:
   // "Archived (N)" toggle has a real count without an extra round-trip.
   const [archivedConversations, setArchivedConversations] = useState<ConversationSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Real pagination-discard fix (2026-09-09) -- separate page/hasMore state
+  // per list (active vs archived), since a user can load more of one while
+  // the other stays at its first page.
+  const [activePage, setActivePage] = useState(0);
+  const [activeHasMore, setActiveHasMore] = useState(false);
+  const [archivedPage, setArchivedPage] = useState(0);
+  const [archivedHasMore, setArchivedHasMore] = useState(false);
+  const [loadingMoreConversations, setLoadingMoreConversations] = useState(false);
   const [openConversationId, setOpenConversationId] = useState<string | null>(null);
   const [presence, setPresence] = useState<Record<string, boolean>>({});
   // Real fix, found live 2026-08-05 (same audit that found the identical bug on
@@ -118,10 +126,33 @@ export function DirectMessagesList({ initialConversationId, onConsumedInitial }:
 
   const load = () => {
     setError(null);
-    fetchConversations()
-      .then(setConversations)
+    setActivePage(0);
+    setArchivedPage(0);
+    fetchConversations(false, 0)
+      .then((r) => { setConversations(r.conversations); setActiveHasMore(r.page + 1 < r.totalPages); })
       .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
-    fetchConversations(true).then(setArchivedConversations).catch(() => {});
+    fetchConversations(true, 0)
+      .then((r) => { setArchivedConversations(r.conversations); setArchivedHasMore(r.page + 1 < r.totalPages); })
+      .catch(() => {});
+  };
+
+  const loadMoreConversations = () => {
+    const nextPage = (showArchived ? archivedPage : activePage) + 1;
+    setLoadingMoreConversations(true);
+    fetchConversations(showArchived, nextPage)
+      .then((r) => {
+        if (showArchived) {
+          setArchivedConversations((prev) => [...(prev ?? []), ...r.conversations]);
+          setArchivedPage(nextPage);
+          setArchivedHasMore(r.page + 1 < r.totalPages);
+        } else {
+          setConversations((prev) => [...(prev ?? []), ...r.conversations]);
+          setActivePage(nextPage);
+          setActiveHasMore(r.page + 1 < r.totalPages);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreConversations(false));
   };
 
   const toggleArchived = (conversationId: string, archived: boolean) => {
@@ -226,6 +257,7 @@ export function DirectMessagesList({ initialConversationId, onConsumedInitial }:
     : [...conversations].sort((a, b) => Number(b.pinnedToTop) - Number(a.pinnedToTop))) as ConversationSummaryWithFavorite[];
   const visibleConversations = filterTab === 'unread' ? activeConversations.filter((c) => c.unreadCount > 0) : activeConversations;
   const archivedCount = archivedConversations?.length ?? 0;
+  const visibleHasMore = showArchived ? archivedHasMore : activeHasMore;
 
   return (
     <div>
@@ -353,6 +385,11 @@ export function DirectMessagesList({ initialConversationId, onConsumedInitial }:
               </button>
             </motion.div>
           ))}
+          {visibleHasMore && (
+            <button className="itunda-btn itunda-btn-secondary" disabled={loadingMoreConversations} onClick={loadMoreConversations}>
+              {loadingMoreConversations ? 'Loading…' : 'Load more'}
+            </button>
+          )}
         </div>
       )}
         </>

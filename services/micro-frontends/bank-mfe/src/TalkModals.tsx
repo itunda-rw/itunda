@@ -57,7 +57,7 @@ export function ForwardPickerModal({ onForward, onClose }: { onForward: (destina
   const showSkeleton = useDeferredLoading(conversations === null || groups === null);
 
   useEffect(() => {
-    fetchConversations().then(setConversations).catch(() => setConversations([]));
+    fetchConversations().then((r) => setConversations(r.conversations)).catch(() => setConversations([]));
     fetchGroups().then(setGroups).catch(() => setGroups([]));
   }, []);
 
