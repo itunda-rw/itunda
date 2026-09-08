@@ -38,13 +38,22 @@ export const postKnowledgeQuestion = (category: string, title: string, body: str
     body: JSON.stringify({ category, title, body }),
   }).then((r) => r.question);
 
-export const fetchKnowledgeQuestions = (category?: string) =>
-  apiFetch<{ success: boolean; questions: KnowledgeQuestion[] }>(
-    `/api/v1/knowledge/questions${category ? `?category=${encodeURIComponent(category)}` : ''}`,
-  ).then((r) => r.questions);
+// Real pagination-discard fix (systemic gap named in the Knowledge
+// product-completeness pass, 2026-09-07 -- confirmed cross-cutting via
+// lib/community.ts's identical shape, deferred at the time; picked up here as
+// the first concrete instance). The backend's real Pageable/pageMeta
+// convention was always there; this just stops throwing away `page`/
+// `totalPages` so a real "Load more" can page past the first 20 questions,
+// matching lib/card.ts's own fetchCardTransactions(page, size) shape.
+export const fetchKnowledgeQuestions = (category?: string, page = 0, size = 20) =>
+  apiFetch<{ success: boolean; questions: KnowledgeQuestion[]; page: number; totalPages: number }>(
+    `/api/v1/knowledge/questions?page=${page}&size=${size}${category ? `&category=${encodeURIComponent(category)}` : ''}`,
+  );
 
-export const fetchMyKnowledgeQuestions = () =>
-  apiFetch<{ success: boolean; questions: KnowledgeQuestion[] }>('/api/v1/knowledge/questions/my-questions').then((r) => r.questions);
+export const fetchMyKnowledgeQuestions = (page = 0, size = 20) =>
+  apiFetch<{ success: boolean; questions: KnowledgeQuestion[]; page: number; totalPages: number }>(
+    `/api/v1/knowledge/questions/my-questions?page=${page}&size=${size}`,
+  );
 
 export const fetchMyKnowledgeAnswers = () =>
   apiFetch<{ success: boolean; answers: KnowledgeAnswer[] }>('/api/v1/knowledge/answers/my-answers').then((r) => r.answers);

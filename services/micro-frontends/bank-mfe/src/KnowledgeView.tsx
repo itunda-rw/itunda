@@ -27,6 +27,13 @@ export function KnowledgeView() {
   const [reputation, setReputation] = useState<number | null>(null);
   const [openQuestionId, setOpenQuestionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Real pagination-discard fix (Knowledge product-completeness pass named
+  // this systemic; a request never asks past page 0, so any category/list
+  // with more than 20 real questions was silently unreachable beyond the
+  // first page).
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     fetchKnowledgeCategories().then(setCategories).catch(() => {});
@@ -36,14 +43,38 @@ export function KnowledgeView() {
   const load = () => {
     setError(null);
     setQuestions(null);
+    setPage(0);
+    setHasMore(false);
     if (subTab === 'MINE') {
-      fetchMyKnowledgeQuestions().then(setQuestions).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+      fetchMyKnowledgeQuestions(0)
+        .then((r) => {
+          setQuestions(r.questions);
+          setHasMore(r.page + 1 < r.totalPages);
+        })
+        .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
       fetchMyKnowledgeAnswers().then(setMyAnswers).catch(() => {});
       return;
     }
-    fetchKnowledgeQuestions(activeCategory ?? undefined)
-      .then(setQuestions)
+    fetchKnowledgeQuestions(activeCategory ?? undefined, 0)
+      .then((r) => {
+        setQuestions(r.questions);
+        setHasMore(r.page + 1 < r.totalPages);
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+  };
+
+  const loadMore = () => {
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    const fetcher = subTab === 'MINE' ? fetchMyKnowledgeQuestions(nextPage) : fetchKnowledgeQuestions(activeCategory ?? undefined, nextPage);
+    fetcher
+      .then((r) => {
+        setQuestions((prev) => [...(prev ?? []), ...r.questions]);
+        setPage(nextPage);
+        setHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
   };
 
   useEffect(load, [subTab, activeCategory]);
@@ -115,6 +146,16 @@ export function KnowledgeView() {
               </p>
             </button>
           ))}
+          {hasMore && (
+            <button
+              className="itunda-btn itunda-btn-secondary"
+              style={{ marginTop: '8px' }}
+              disabled={loadingMore}
+              onClick={loadMore}
+            >
+              {loadingMore ? 'Loading…' : 'Load more'}
+            </button>
+          )}
         </div>
       )}
       {subTab === 'MINE' && myAnswers !== null && myAnswers.length > 0 && (
