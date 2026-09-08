@@ -1945,72 +1945,6 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  # Real, thirtieth product-level dashboard (2026-09-08, Gift product-
-  # completeness pass) -- :gift stays inside the :app monolith (real
-  # RealtimeMessagePublisher-reachability blocker ruled out extraction, see
-  # docs/ARCHITECTURE.md's "Fifteenth extraction attempt"), so this reuses
-  # the same zero-new-instrumentation request-rate/error-rate/latency panel
-  # shape as itunda-card/itunda-maps/itunda-hood/itunda-support/itunda-ussd/
-  # itunda-family, covering both real route prefixes this module owns
-  # (/api/v1/gifts, /api/v1/gift-vouchers) via one regex alternation, same
-  # multi-prefix shape itunda-loans already established.
-  name: grafana-dashboard-itunda-gift
-  namespace: monitoring
-data:
-  itunda-gift.json: |
-    {
-      "title": "itunda Gift",
-      "uid": "itunda-gift",
-      "schemaVersion": 39,
-      "timezone": "browser",
-      "time": { "from": "now-1h", "to": "now" },
-      "panels": [
-        {
-          "id": 1,
-          "title": "Gift request rate by route",
-          "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
-          "targets": [
-            {
-              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(gifts|gift-vouchers)(/.*)?\"}[1m])) by (uri)",
-              "legendFormat": "{{uri}}"
-            }
-          ]
-        },
-        {
-          "id": 2,
-          "title": "Gift error rate (5xx) by route",
-          "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
-          "targets": [
-            {
-              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(gifts|gift-vouchers)(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
-              "legendFormat": "{{uri}}"
-            }
-          ]
-        },
-        {
-          "id": 3,
-          "title": "Gift request latency p50/p95",
-          "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
-          "targets": [
-            {
-              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(gifts|gift-vouchers)(/.*)?\"}[5m])) by (le))",
-              "legendFormat": "p50"
-            },
-            {
-              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(gifts|gift-vouchers)(/.*)?\"}[5m])) by (le))",
-              "legendFormat": "p95"
-            }
-          ]
-        }
-      ]
-    }
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
   name: grafana-dashboard-itunda-private-cloud
   namespace: monitoring
 data:
@@ -2210,8 +2144,6 @@ spec:
               name: grafana-dashboard-itunda-ussd
           - configMap:
               name: grafana-dashboard-itunda-family
-          - configMap:
-              name: grafana-dashboard-itunda-gift
           - configMap:
               name: grafana-dashboard-itunda-private-cloud
 ---
