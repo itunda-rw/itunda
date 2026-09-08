@@ -34,6 +34,9 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.KnowledgeAnswerDto
 import rw.itunda.core.network.KnowledgeCategory
@@ -64,23 +67,58 @@ fun KnowledgeScreen(onBack: () -> Unit) {
     var reputation by remember { mutableStateOf<Int?>(null) }
     var openQuestionId by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Real pagination-discard fix (Knowledge product-completeness pass named this
+    // systemic; ported to web first, 2026-09-09, commit 134758cf) -- a request
+    // never asked past page 0, so any category/list with more than 20 real
+    // questions was silently unreachable beyond the first page.
+    var page by remember { mutableStateOf(0) }
+    var hasMore by remember { mutableStateOf(false) }
+    var loadingMore by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
         error = null
         questions = null
+        page = 0
+        hasMore = false
         coroutineScope.launch {
             try {
                 questions = if (tab == KnowledgeTab.MINE) {
                     myAnswers = NetworkClient.apiService.getMyKnowledgeAnswers().answers
-                    NetworkClient.apiService.getMyKnowledgeQuestions().questions
+                    val response = NetworkClient.apiService.getMyKnowledgeQuestions(page = 0)
+                    hasMore = response.page + 1 < response.totalPages
+                    response.questions
                 } else {
-                    NetworkClient.apiService.getKnowledgeQuestions(activeCategory).questions
+                    val response = NetworkClient.apiService.getKnowledgeQuestions(activeCategory, page = 0)
+                    hasMore = response.page + 1 < response.totalPages
+                    response.questions
                 }
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
                 error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+
+    fun loadMore() {
+        val nextPage = page + 1
+        loadingMore = true
+        coroutineScope.launch {
+            try {
+                val response = if (tab == KnowledgeTab.MINE) {
+                    NetworkClient.apiService.getMyKnowledgeQuestions(page = nextPage)
+                } else {
+                    NetworkClient.apiService.getKnowledgeQuestions(activeCategory, page = nextPage)
+                }
+                questions = (questions ?: emptyList()) + response.questions
+                page = nextPage
+                hasMore = response.page + 1 < response.totalPages
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded first page stays visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMore = false
             }
         }
     }
@@ -182,6 +220,17 @@ fun KnowledgeScreen(onBack: () -> Unit) {
                                 color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp,
                             )
                             Text(categories.find { it.id == q.category }?.label ?: q.category, color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    }
+                }
+                if (hasMore) {
+                    item {
+                        IdsButton(
+                            text = if (loadingMore) "Loading…" else "Load more",
+                            onClick = ::loadMore,
+                            enabled = !loadingMore,
+                            variant = IdsButtonVariant.Tinted,
+                            size = IdsButtonSize.Medium,
+                        )
                     }
                 }
             }

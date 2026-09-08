@@ -4963,11 +4963,15 @@ interface ApiService {
     @POST("api/v1/knowledge/questions")
     suspend fun postKnowledgeQuestion(@Body request: PostKnowledgeQuestionRequest): KnowledgeQuestionResponse
 
+    // Real pagination-discard fix (Knowledge product-completeness pass named this
+    // systemic; ported to web first, 2026-09-09, commit 134758cf) -- the backend's
+    // real Pageable/pageMeta convention was always there; page/size just weren't
+    // ever sent, silently capping every Knowledge list at its first 20 rows.
     @GET("api/v1/knowledge/questions")
-    suspend fun getKnowledgeQuestions(@Query("category") category: String? = null): KnowledgeQuestionsResponse
+    suspend fun getKnowledgeQuestions(@Query("category") category: String? = null, @Query("page") page: Int = 0, @Query("size") size: Int = 20): KnowledgeQuestionsResponse
 
     @GET("api/v1/knowledge/questions/my-questions")
-    suspend fun getMyKnowledgeQuestions(): KnowledgeQuestionsResponse
+    suspend fun getMyKnowledgeQuestions(@Query("page") page: Int = 0, @Query("size") size: Int = 20): KnowledgeQuestionsResponse
 
     @GET("api/v1/knowledge/answers/my-answers")
     suspend fun getMyKnowledgeAnswers(): KnowledgeAnswersResponse
@@ -5489,7 +5493,7 @@ data class KnowledgeQuestionDto(
     val adoptedAnswerId: String?, val createdAt: String,
 )
 data class KnowledgeQuestionResponse(val success: Boolean, val question: KnowledgeQuestionDto)
-data class KnowledgeQuestionsResponse(val success: Boolean, val questions: List<KnowledgeQuestionDto>)
+data class KnowledgeQuestionsResponse(val success: Boolean, val questions: List<KnowledgeQuestionDto>, val page: Int = 0, val totalPages: Int = 1)
 data class PostKnowledgeAnswerRequest(val body: String)
 data class KnowledgeAnswerDto(
     val id: String, val questionId: String, val answererId: String, val body: String,
