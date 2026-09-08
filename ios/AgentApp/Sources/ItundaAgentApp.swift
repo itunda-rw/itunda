@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreDesignSystem
 
 private enum AgentScreen: Equatable {
     case loading
@@ -8,13 +9,30 @@ private enum AgentScreen: Equatable {
 
 @main
 struct ItundaAgentApp: App {
+    // Real App Switcher privacy cover -- see PrivacySnapshotCover's own doc comment
+    // (CoreDesignSystem) for the full sourced account (Apple Tech Note QA1838).
+    // A real cash-in/cash-out agent screen showing a customer's amount/phone number
+    // is exactly the kind of content that shouldn't sit in the task-switcher
+    // snapshot, matching Android's own real FLAG_SECURE protection on this same app
+    // (MainActivity.kt, 2026-08-09).
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var showingPrivacyCover = false
+
     var body: some Scene {
         WindowGroup {
-            AgentRootView()
-                // Matches RiderApp/MerchantApp's own brand decision (see
-                // ItundaApp.swift's own comment) -- explicit at the app boundary
-                // rather than left to the simulator/device's own appearance setting.
-                .preferredColorScheme(.dark)
+            ZStack {
+                AgentRootView()
+                if showingPrivacyCover {
+                    PrivacySnapshotCover().transition(.identity)
+                }
+            }
+            .onChange(of: scenePhase) { newPhase in
+                showingPrivacyCover = newPhase == .background
+            }
+            // Matches RiderApp/MerchantApp's own brand decision (see
+            // ItundaApp.swift's own comment) -- explicit at the app boundary
+            // rather than left to the simulator/device's own appearance setting.
+            .preferredColorScheme(.dark)
         }
     }
 }

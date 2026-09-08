@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreDesignSystem
 
 private enum MerchantScreen: Equatable {
     case loading
@@ -17,13 +18,29 @@ private enum MerchantScreen: Equatable {
 
 @main
 struct ItundaMerchantApp: App {
+    // Real App Switcher privacy cover -- see PrivacySnapshotCover's own doc comment
+    // (CoreDesignSystem) for the full sourced account (Apple Tech Note QA1838),
+    // matching Android's own real FLAG_SECURE protection on this same app
+    // (MainActivity.kt, 2026-08-09). A real POS charge screen/customer amount
+    // shouldn't sit in the task-switcher snapshot.
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var showingPrivacyCover = false
+
     var body: some Scene {
         WindowGroup {
-            MerchantRootView()
-                // Matches the real app's own brand decision (see ItundaApp.swift's
-                // own comment) -- explicit at the app boundary so this app can't
-                // visually diverge based on the simulator/device's own appearance.
-                .preferredColorScheme(.dark)
+            ZStack {
+                MerchantRootView()
+                if showingPrivacyCover {
+                    PrivacySnapshotCover().transition(.identity)
+                }
+            }
+            .onChange(of: scenePhase) { newPhase in
+                showingPrivacyCover = newPhase == .background
+            }
+            // Matches the real app's own brand decision (see ItundaApp.swift's
+            // own comment) -- explicit at the app boundary so this app can't
+            // visually diverge based on the simulator/device's own appearance.
+            .preferredColorScheme(.dark)
         }
     }
 }
