@@ -72,7 +72,10 @@ export function MyView() {
     fetchMyFavoriteJobPosts().then((r) => setFavoriteJobPostsCount(r.length)).catch(() => {});
     fetchMyFavoritePropertyListings().then((r) => setFavoritePropertyListingsCount(r.length)).catch(() => {});
     fetchMyFavoriteRestaurants().then((r) => setFavoriteRestaurantsCount(r.length)).catch(() => {});
-    fetchMyListings().then((r) => setMyListingsCount(r.listings.length)).catch(() => {});
+    // Real accuracy fix (2026-09-09, same pass as the fetchMyListings pagination
+    // fix): this badge previously showed page 1's item count (capped at 20),
+    // not the real total, for any user with more than 20 real listings.
+    fetchMyListings().then((r) => setMyListingsCount(r.totalElements)).catch(() => {});
     fetchMyJobPosts().then((r) => setMyJobPostsCount(r.posts.length)).catch(() => {});
     fetchMyPropertyListings().then((r) => setMyPropertyListingsCount(r.listings.length)).catch(() => {});
     fetchMiniAppCatalog().then(setMiniApps).catch(() => {});

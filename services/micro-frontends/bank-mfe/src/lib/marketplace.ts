@@ -140,10 +140,20 @@ export interface HoodReview {
 // page itself (see MarketplaceController's own doc comment) -- never fetched per-card.
 export type TrustScores = Record<string, number>;
 
-export const fetchListings = (category?: string) =>
-  apiFetch<{ success: boolean; listings: Listing[]; trustScores: TrustScores }>(
-    `/api/v1/marketplace/listings${category ? `?category=${encodeURIComponent(category)}` : ''}`,
-  ).then((r) => ({ listings: r.listings, trustScores: r.trustScores }));
+// Real pagination-discard fix (same systemic gap fixed for Knowledge/Community
+// across all 3 platforms, 2026-09-09) -- MarketplaceController's real
+// Pageable/pageMeta endpoints were always there; page/size just weren't sent,
+// silently capping every browse/my-listings/my-purchases/neighborhood feed at
+// its first 20 listings.
+export const fetchListings = (category?: string, page = 0, size = 20) => {
+  const params = new URLSearchParams();
+  if (category) params.set('category', category);
+  params.set('page', String(page));
+  params.set('size', String(size));
+  return apiFetch<{ success: boolean; listings: Listing[]; trustScores: TrustScores; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/marketplace/listings?${params.toString()}`,
+  );
+};
 
 // Real per-listing detail fetch (2026-08-16) -- GET /marketplace/listings/{id} existed
 // on the backend already (sellerTrustScore comes from here) but had zero real caller
@@ -161,24 +171,26 @@ export const fetchListingDetail = (listingId: string) =>
 export const fetchMarketplaceCategories = () =>
   apiFetch<{ success: boolean; categories: string[] }>('/api/v1/marketplace/categories').then((r) => r.categories);
 
-export const fetchMyListings = () =>
-  apiFetch<{ success: boolean; listings: Listing[]; trustScores: TrustScores }>('/api/v1/marketplace/my-listings')
-    .then((r) => ({ listings: r.listings, trustScores: r.trustScores }));
+export const fetchMyListings = (page = 0, size = 20) =>
+  apiFetch<{ success: boolean; listings: Listing[]; trustScores: TrustScores; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/marketplace/my-listings?page=${page}&size=${size}`,
+  );
 
 // Real "My purchases" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
 // recommendation #6. See backend ListingRepository's own doc comment.
-export const fetchMyPurchases = () =>
-  apiFetch<{ success: boolean; listings: Listing[]; trustScores: TrustScores }>('/api/v1/marketplace/my-purchases')
-    .then((r) => ({ listings: r.listings, trustScores: r.trustScores }));
+export const fetchMyPurchases = (page = 0, size = 20) =>
+  apiFetch<{ success: boolean; listings: Listing[]; trustScores: TrustScores; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/marketplace/my-purchases?page=${page}&size=${size}`,
+  );
 
 // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see lib/neighborhood.ts's own
 // doc comment for the full account. Throws ApiError with code NEIGHBORHOOD_NOT_SET
 // (real 400) if the caller hasn't set one yet -- callers should catch that specific
 // code and prompt for setup, not treat it as a generic load failure.
-export const fetchListingsMyNeighborhood = (category?: string) =>
-  apiFetch<{ success: boolean; listings: Listing[]; trustScores: TrustScores }>(
-    `/api/v1/marketplace/listings/my-neighborhood${category ? `?category=${encodeURIComponent(category)}` : ''}`,
-  ).then((r) => ({ listings: r.listings, trustScores: r.trustScores }));
+export const fetchListingsMyNeighborhood = (category?: string, page = 0, size = 20) =>
+  apiFetch<{ success: boolean; listings: Listing[]; trustScores: TrustScores; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/marketplace/listings/my-neighborhood?page=${page}&size=${size}${category ? `&category=${encodeURIComponent(category)}` : ''}`,
+  );
 
 export const createListing = (
   title: string,
