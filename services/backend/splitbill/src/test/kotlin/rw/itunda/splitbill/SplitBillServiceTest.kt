@@ -92,6 +92,14 @@ class SplitBillServiceTest : BehaviorSpec({
                 result.participants.sumOf { it.shareAmount } shouldBe BigDecimal("1000.00")
                 verify(exactly = 1) { groupMessagingService.sendMessage("user_organizer", "group_1", any()) }
             }
+
+            // Real gap found live (Splitbill product-completeness pass, 2026-09-08):
+            // every rateLimiter mock in this file was relaxed = true with zero
+            // verify{} anywhere, so a future accidental removal of the real
+            // checkLimit call would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("splitbill:create:user_organizer", limit = 20, window = java.time.Duration.ofHours(1)) }
+            }
         }
 
         When("the organizer lists themselves as a participant of their own split bill") {
@@ -192,6 +200,15 @@ class SplitBillServiceTest : BehaviorSpec({
             Then("it moves the real share directly into the organizer's account and marks it PAID, but the bill stays OPEN since Bob hasn't paid yet") {
                 paid.status shouldBe SplitBillParticipantStatus.PAID
                 splitBill.status shouldBe SplitBillStatus.OPEN
+            }
+
+            // Real gap found live (Splitbill product-completeness pass, 2026-09-08):
+            // every rateLimiter/fraudRuleEngine mock in this file was relaxed = true
+            // with zero verify{} anywhere, so a future accidental removal of either
+            // real call would have compiled and passed silently.
+            Then("the real rate limiter and real fraud engine are actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("splitbill:pay:user_a", limit = 30, window = java.time.Duration.ofHours(1)) }
+                verify(exactly = 1) { fraudRuleEngine.evaluate("user_a", splitBill.organizerId, BigDecimal("500.00"), any()) }
             }
         }
 
