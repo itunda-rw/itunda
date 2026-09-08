@@ -108,6 +108,20 @@ export function IdentityVerificationConsentView({ requestId, onDone }: { request
               <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginTop: '8px' }}>
                 Nothing is shared unless you approve. itunda never shares your PIN, balance, or transaction history.
               </p>
+              {/* Real defense-in-depth (deep-link/phishing-clone finding, 2026-09-08 --
+                  see project_itunda_deeplink_scheme_hijacking memory's own named
+                  partial mitigation, already shipped on Android/iOS commit 4d72df12).
+                  A convincing fake clone of this page (a lookalike domain, not the
+                  scheme-hijacking vector native apps face, but the same real risk on
+                  web) could still try to social-engineer a credential out of the user
+                  once they believe they're on the real page -- this closes that
+                  specific escalation. Reuses the same red-tint warning box shape
+                  already established for the scam-warning callout (BankDashboard.tsx). */}
+              <div style={{ backgroundColor: 'var(--itunda-red-light)', border: '1px solid var(--itunda-red)', borderRadius: '8px', padding: '8px 10px', marginTop: '8px' }}>
+                <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-700)', margin: 0 }}>
+                  This screen will never ask you to type your PIN, password, or a one-time code. If it ever does, close it — you're not on the real itunda site.
+                </p>
+              </div>
             </div>
             <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={handleApprove}>
               {busy ? '…' : 'Approve and share'}
