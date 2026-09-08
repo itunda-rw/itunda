@@ -21,6 +21,13 @@ struct KnowledgeScreenView: View {
     @State private var reputation: Int?
     @State private var openQuestionId: String?
     @State private var error: String?
+    // Real pagination-discard fix (Knowledge product-completeness pass named
+    // this systemic; ported to web 134758cf and Android 30741887, 2026-09-09)
+    // -- a request never asked past page 0, so any category/list with more
+    // than 20 real questions was silently unreachable beyond the first page.
+    @State private var page = 0
+    @State private var hasMore = false
+    @State private var loadingMore = false
 
     var body: some View {
         if let openId = openQuestionId {
@@ -89,6 +96,14 @@ struct KnowledgeScreenView: View {
                                     }
                                     .padding(.vertical, 10)
                                 }
+                                if hasMore {
+                                    Button(action: loadMore) {
+                                        Text(loadingMore ? "Loading…" : "Load more").bold().font(.caption)
+                                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                                            .background(Color(.secondarySystemBackground)).cornerRadius(10)
+                                    }
+                                    .disabled(loadingMore)
+                                }
                             }
                         } else {
                             Text("Loading…").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
@@ -124,16 +139,41 @@ struct KnowledgeScreenView: View {
     private func load() {
         error = nil
         questions = nil
+        page = 0
+        hasMore = false
         Task {
             do {
                 if tab == .mine {
                     myAnswers = try await NetworkClient.shared.getMyKnowledgeAnswers().answers
-                    questions = try await NetworkClient.shared.getMyKnowledgeQuestions().questions
+                    let response = try await NetworkClient.shared.getMyKnowledgeQuestions(page: 0)
+                    questions = response.questions
+                    hasMore = response.page + 1 < response.totalPages
                 } else {
-                    questions = try await NetworkClient.shared.getKnowledgeQuestions(category: activeCategory).questions
+                    let response = try await NetworkClient.shared.getKnowledgeQuestions(category: activeCategory, page: 0)
+                    questions = response.questions
+                    hasMore = response.page + 1 < response.totalPages
                 }
             } catch {
                 self.error = "Could not load questions."
+            }
+        }
+    }
+
+    private func loadMore() {
+        let nextPage = page + 1
+        loadingMore = true
+        Task {
+            defer { loadingMore = false }
+            do {
+                let response = tab == .mine
+                    ? try await NetworkClient.shared.getMyKnowledgeQuestions(page: nextPage)
+                    : try await NetworkClient.shared.getKnowledgeQuestions(category: activeCategory, page: nextPage)
+                questions = (questions ?? []) + response.questions
+                page = nextPage
+                hasMore = response.page + 1 < response.totalPages
+            } catch {
+                // Non-critical -- the already-loaded page stays visible; the
+                // user can retry by tapping "Load more" again.
             }
         }
     }

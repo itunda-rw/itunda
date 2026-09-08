@@ -1202,7 +1202,12 @@ public struct KnowledgeQuestionDto: Decodable, Identifiable {
     public let createdAt: String
 }
 public struct KnowledgeQuestionResponse: Decodable { public let success: Bool; public let question: KnowledgeQuestionDto }
-public struct KnowledgeQuestionsResponse: Decodable { public let success: Bool; public let questions: [KnowledgeQuestionDto] }
+public struct KnowledgeQuestionsResponse: Decodable {
+    public let success: Bool
+    public let questions: [KnowledgeQuestionDto]
+    public let page: Int
+    public let totalPages: Int
+}
 public struct PostKnowledgeAnswerRequest: Encodable { public let body: String }
 public struct KnowledgeAnswerDto: Decodable, Identifiable {
     public let id: String
@@ -1873,13 +1878,26 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/knowledge/questions", body: PostKnowledgeQuestionRequest(category: category, title: title, body: body))
     }
 
-    public func getKnowledgeQuestions(category: String?) async throws -> KnowledgeQuestionsResponse {
-        var query: [URLQueryItem] = []
+    // Real pagination-discard fix (Knowledge product-completeness pass named this
+    // systemic; ported to web 134758cf and Android 30741887, 2026-09-09) -- the
+    // backend's real Pageable/pageMeta convention was always there; page/size
+    // just weren't ever sent, silently capping every Knowledge list at its first
+    // 20 rows with no way to reach anything past that.
+    public func getKnowledgeQuestions(category: String?, page: Int = 0, size: Int = 20) async throws -> KnowledgeQuestionsResponse {
+        var query: [URLQueryItem] = [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ]
         if let category, !category.isEmpty { query.append(URLQueryItem(name: "category", value: category)) }
         return try await get("api/v1/knowledge/questions", query: query)
     }
 
-    public func getMyKnowledgeQuestions() async throws -> KnowledgeQuestionsResponse { try await get("api/v1/knowledge/questions/my-questions") }
+    public func getMyKnowledgeQuestions(page: Int = 0, size: Int = 20) async throws -> KnowledgeQuestionsResponse {
+        try await get("api/v1/knowledge/questions/my-questions", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     public func getMyKnowledgeAnswers() async throws -> KnowledgeAnswersResponse { try await get("api/v1/knowledge/answers/my-answers") }
 
