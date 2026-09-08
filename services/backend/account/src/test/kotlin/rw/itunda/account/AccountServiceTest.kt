@@ -123,6 +123,16 @@ class AccountServiceTest : BehaviorSpec({
             Then("it checks the real 30/hour rate limit for this user's transfer confirms") {
                 verify { rateLimiter.checkLimit("account:confirm-transfer:user_1", limit = 30, window = Duration.ofHours(1)) }
             }
+
+            // Real gap found live (repo-wide fraud-engine-verification sweep,
+            // 2026-09-08, following the same latent-regression class the rate-limiter
+            // sweep just closed): fraudRuleEngine was relaxed = true with zero
+            // verify{} anywhere in this file, so a future accidental removal of the
+            // real fraudRuleEngine.evaluate call would have compiled and passed
+            // silently.
+            Then("the real fraud engine is actually consulted, not just mocked away") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("user_1", null, BigDecimal("1000"), "ledgertxn_1") }
+            }
         }
 
         When("confirming the same quote twice") {

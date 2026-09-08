@@ -102,6 +102,14 @@ class MerchantChargeByCustomerCodeTest : BehaviorSpec({
                 legsSlot.captured.first { it.accountId == "account_paycode_1" }.amount shouldBe BigDecimal("3000")
                 verify(exactly = 1) { autoTopUpService.ensureSufficientPayBalance("payer_code_1", payerPayAccount, BigDecimal("3000")) }
             }
+
+            // Real gap found live (repo-wide fraud-engine-verification sweep,
+            // 2026-09-08): fraudRuleEngine was relaxed = true with zero verify{}
+            // anywhere in this file, so a future accidental removal of the real
+            // fraudRuleEngine.evaluate call would have compiled and passed silently.
+            Then("the real fraud engine is actually consulted, not just mocked away") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("payer_code_1", "owner_1", BigDecimal("3000"), "ledgertxn_code_1") }
+            }
         }
 
         When("charging a customer's presented code with no explicit account and Pay money is short") {

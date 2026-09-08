@@ -277,6 +277,14 @@ class OrderServiceTest : BehaviorSpec({
             Then("the merchant owner also gets a real push notification, not just the in-app one") {
                 verify(exactly = 1) { pushNotificationService.sendToUser("seller_1", "New order received", any(), any()) }
             }
+
+            // Real gap found live (repo-wide fraud-engine-verification sweep,
+            // 2026-09-08): fraudRuleEngine was relaxed = true with zero verify{}
+            // anywhere in this file, so a future accidental removal of the real
+            // fraudRuleEngine.evaluate call would have compiled and passed silently.
+            Then("the real fraud engine is actually consulted, not just mocked away") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("buyer_1", "seller_1", BigDecimal("6000"), "ledgertxn_test") }
+            }
         }
 
         // Real Toss Bank/Toss Pay separation (2026-08-21) -- a Commerce order is real

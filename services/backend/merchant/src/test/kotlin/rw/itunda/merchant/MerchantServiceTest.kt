@@ -252,6 +252,14 @@ class MerchantServiceTest : BehaviorSpec({
             Then("real Toss Place-style loyalty points are accrued on the real final charge amount") {
                 verify(exactly = 1) { merchantLoyaltyPointsService.accrue(merchant, "payer_1", BigDecimal("5000")) }
             }
+
+            // Real gap found live (repo-wide fraud-engine-verification sweep,
+            // 2026-09-08): fraudRuleEngine was relaxed = true with zero verify{}
+            // anywhere in this file, so a future accidental removal of the real
+            // fraudRuleEngine.evaluate call would have compiled and passed silently.
+            Then("the real fraud engine is actually consulted, not just mocked away") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("payer_1", "owner_1", BigDecimal("5000"), "ledgertxn_test") }
+            }
         }
 
         // Real Naver Pay Money "결제 시 부족분 자동 충전" (auto-charge the shortfall at
