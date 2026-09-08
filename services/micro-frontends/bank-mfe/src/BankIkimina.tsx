@@ -73,8 +73,16 @@ export function IkiminaSection() {
 // indicator, matching the exact convention CreateGoalForm (Section 198) already
 // established. All 4 fields are genuinely required (unlike CreateGoalForm's optional
 // final step), so each gets its own real step rather than being grouped.
-type CreateIkiminaStep = 'closed' | 'name' | 'contribution' | 'frequency' | 'members';
+type CreateIkiminaStep = 'closed' | 'intro' | 'name' | 'contribution' | 'frequency' | 'members';
 const IKIMINA_STEP_LABELS = ['Name', 'Contribution', 'Frequency', 'Members'];
+// Real Toss product-intro pattern (rule 13), applied to Ikimina -- see
+// BankGrow31Savings.tsx's identical CreateGrow31SavingsPlanForm intro step for the
+// established convention. Real mechanics sourced from IkiminaService.kt's own doc
+// comment/constants: Rwanda's own real rotating savings & credit association (ROSCA),
+// the same mechanic a real existing Rwandan startup (smartikimina.rw) already
+// digitizes; MIN_MEMBERS_TO_START=2, MAX_MEMBERS=15.
+const IKIMINA_MIN_MEMBERS = 2;
+const IKIMINA_MAX_MEMBERS = 15;
 
 function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
   const { t } = useI18n();
@@ -100,7 +108,7 @@ function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
       <button
         className="itunda-btn itunda-btn-secondary"
         style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-        onClick={() => setStep('name')}
+        onClick={() => setStep('intro')}
       >
         <IconAdd size={16} /> New ikimina
       </button>
@@ -122,16 +130,49 @@ function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
     }
   };
 
+  if (step === 'intro') {
+    return (
+      <FullScreenFlow bottomCTA={<IdsButton fullWidth onClick={() => setStep('name')}>Continue</IdsButton>}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+          <h2 style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700, maxWidth: '260px' }}>A rotating fund your whole group takes turns receiving</h2>
+          <button type="button" aria-label="Close" onClick={reset} style={{ background: 'none', border: 'none', display: 'flex', padding: '4px' }}>
+            <IconClose size={22} color="var(--itunda-grey-500)" />
+          </button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div>
+            <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Everyone contributes the same amount, every round</h3>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', lineHeight: 1.5 }}>
+              This is ikimina -- Rwanda's own real rotating savings and credit association, the same mechanic communities here have used for generations, now digital.
+            </p>
+          </div>
+          <div>
+            <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>One member takes home the full pot, in turn</h3>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', lineHeight: 1.5 }}>
+              You go first as the organizer. Every member you invite joins the payout queue in the order you invite them -- each round, the whole pooled contribution goes to whoever's next.
+            </p>
+          </div>
+          <div>
+            <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>The cycle completes once everyone's been paid once</h3>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', lineHeight: 1.5 }}>
+              Groups need {IKIMINA_MIN_MEMBERS}-{IKIMINA_MAX_MEMBERS} members to start. You can invite people after creating the group, before the first round begins.
+            </p>
+          </div>
+        </div>
+      </FullScreenFlow>
+    );
+  }
+
   if (step === 'name') {
     return (
       <form onSubmit={(e) => { e.preventDefault(); if (name.trim()) setStep('contribution'); }}>
         <FullScreenFlow bottomCTA={<IdsButton type="submit" fullWidth disabled={!name.trim()}>Next</IdsButton>}>
           <ProgressStepper activeStepIndex={0} steps={IKIMINA_STEP_LABELS} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>What's your group called?</h3>
-            <button type="button" aria-label="Cancel" onClick={reset} style={{ background: 'none', border: 'none' }}>
-              <IconClose size={20} color="var(--itunda-grey-500)" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button type="button" aria-label="Back" onClick={() => setStep('intro')} style={{ background: 'none', border: 'none', display: 'flex' }}>
+              <IconBack size={20} color="var(--itunda-grey-700)" />
             </button>
+            <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>What's your group called?</h3>
           </div>
           <input
             type="text" required autoFocus placeholder="e.g. Umuryango" value={name} onChange={(e) => setName(e.target.value)}
