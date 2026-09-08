@@ -1111,7 +1111,7 @@ data class CommunityPostResponse(val success: Boolean, val post: CommunityPostDt
 // joinedCounts added 2026-07-24 -- postId -> real member count of that meetup's group
 // chat, closing docs/DESIGN_REFERENCES.md Section 4 recommendation #4's "같이해요
 // (join-together) posts get a dedicated pinned mid-feed slot."
-data class CommunityPostsResponse(val success: Boolean, val posts: List<CommunityPostDto>, val joinedCounts: Map<String, Int> = emptyMap())
+data class CommunityPostsResponse(val success: Boolean, val posts: List<CommunityPostDto>, val joinedCounts: Map<String, Int> = emptyMap(), val page: Int = 0, val totalPages: Int = 1)
 data class CommunityCategoriesResponse(val success: Boolean, val categories: List<CommunityCategoryDto>)
 data class CommunityTopicsResponse(val success: Boolean, val topics: List<CommunityCategoryDto>)
 data class CommentNotificationsEnabledResponse(val success: Boolean, val commentNotificationsEnabled: Boolean)
@@ -3342,8 +3342,12 @@ interface ApiService {
     @GET("api/v1/community/meetups/upcoming")
     suspend fun getUpcomingMeetups(): CommunityPostsResponse
 
+    // Real pagination-discard fix (named as the systemic sibling of the
+    // Knowledge gap fixed on web/Android/iOS 2026-09-09; ported to bank-mfe's
+    // own HoodCommunity.tsx first, commit 4ebba547) -- page/size just weren't
+    // ever sent, silently capping every Hood feed at its first 20 posts.
     @GET("api/v1/community/posts")
-    suspend fun browseCommunityPosts(@Query("category") category: String? = null, @Query("topic") topic: String? = null): CommunityPostsResponse
+    suspend fun browseCommunityPosts(@Query("category") category: String? = null, @Query("topic") topic: String? = null, @Query("page") page: Int = 0, @Query("size") size: Int = 20): CommunityPostsResponse
 
     @GET("api/v1/community/posts/nearby")
     suspend fun getNearbyCommunityPosts(
@@ -3353,7 +3357,7 @@ interface ApiService {
     ): CommunityPostsResponse
 
     @GET("api/v1/community/my-posts")
-    suspend fun getMyCommunityPosts(): CommunityPostsResponse
+    suspend fun getMyCommunityPosts(@Query("page") page: Int = 0, @Query("size") size: Int = 20): CommunityPostsResponse
 
     // Real Karrot 동네생활 "새 댓글 알림 끄기" (turn off new-comment notifications) -- ported
     // from bank-mfe (2026-09-03). Scoped to MY posts only (the preference only affects
@@ -3366,7 +3370,7 @@ interface ApiService {
 
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see AuthApi.setNeighborhood.
     @GET("api/v1/community/posts/my-neighborhood")
-    suspend fun getCommunityPostsMyNeighborhood(@Query("category") category: String? = null): CommunityPostsResponse
+    suspend fun getCommunityPostsMyNeighborhood(@Query("category") category: String? = null, @Query("page") page: Int = 0, @Query("size") size: Int = 20): CommunityPostsResponse
 
     // Real relevance-ranked search (2026-08-14) -- see backend CommunityService
     // .search's own doc comment.

@@ -54,6 +54,9 @@ import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.ListingActionButton
@@ -130,6 +133,16 @@ fun CommunityContent(
     var openPostId by remember { mutableStateOf<String?>(null) }
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
     var neighborhoodChecked by remember { mutableStateOf(false) }
+    // Real pagination-discard fix (named as the systemic sibling of the
+    // Knowledge gap fixed on web/Android/iOS 2026-09-09; ported to bank-mfe's
+    // own HoodCommunity.tsx first, commit 4ebba547) -- a request never asked
+    // past page 0 across BROWSE/MINE/NEIGHBORHOOD, so any feed with more than
+    // 20 real posts was silently unreachable beyond the first page. NEARBY is
+    // a separate location-driven flow (requestNearbyLocation below), not
+    // covered by this state.
+    var page by remember { mutableStateOf(0) }
+    var hasMore by remember { mutableStateOf(false) }
+    var loadingMore by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
     val requestNearbyLocation = rememberRealLocationRequester(
@@ -198,6 +211,8 @@ fun CommunityContent(
 
     fun load() {
         posts = null
+        page = 0
+        hasMore = false
         loadUpcomingMeetups()
         if (view == CommunityView.NEARBY) {
             requestNearbyLocation()
@@ -208,9 +223,9 @@ fun CommunityContent(
             coroutineScope.launch {
                 try {
                     val profileRes = NetworkClient.authApi.getProfile()
-                    val res = NetworkClient.apiService.getCommunityPostsMyNeighborhood(activeCategory)
+                    val res = NetworkClient.apiService.getCommunityPostsMyNeighborhood(activeCategory, page = 0)
                     neighborhoodName = profileRes.user.neighborhood
-                    if (res.success) { posts = res.posts; joinedCounts = res.joinedCounts }
+                    if (res.success) { posts = res.posts; joinedCounts = res.joinedCounts; hasMore = res.page + 1 < res.totalPages }
                     error = null
                 } catch (e: HttpException) {
                     if (e.code() == 400) {
@@ -230,13 +245,38 @@ fun CommunityContent(
         }
         coroutineScope.launch {
             try {
-                val res = if (view == CommunityView.BROWSE) NetworkClient.apiService.browseCommunityPosts(activeCategory, activeTopic) else NetworkClient.apiService.getMyCommunityPosts()
-                if (res.success) { posts = res.posts; joinedCounts = res.joinedCounts }
+                val res = if (view == CommunityView.BROWSE) NetworkClient.apiService.browseCommunityPosts(activeCategory, activeTopic, page = 0) else NetworkClient.apiService.getMyCommunityPosts(page = 0)
+                if (res.success) { posts = res.posts; joinedCounts = res.joinedCounts; hasMore = res.page + 1 < res.totalPages }
                 error = null
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
                 error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+
+    fun loadMore() {
+        val nextPage = page + 1
+        loadingMore = true
+        coroutineScope.launch {
+            try {
+                val res = when (view) {
+                    CommunityView.NEIGHBORHOOD -> NetworkClient.apiService.getCommunityPostsMyNeighborhood(activeCategory, page = nextPage)
+                    CommunityView.BROWSE -> NetworkClient.apiService.browseCommunityPosts(activeCategory, activeTopic, page = nextPage)
+                    else -> NetworkClient.apiService.getMyCommunityPosts(page = nextPage)
+                }
+                if (res.success) {
+                    posts = (posts ?: emptyList()) + res.posts
+                    joinedCounts = joinedCounts + res.joinedCounts
+                    page = nextPage
+                    hasMore = res.page + 1 < res.totalPages
+                }
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded page stays visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMore = false
             }
         }
     }
@@ -470,6 +510,17 @@ fun CommunityContent(
                     onOpen = { openPostId = post.id },
                     onRemoved = ::load,
                 )
+            }
+            if (hasMore && view != CommunityView.NEARBY) {
+                item {
+                    IdsButton(
+                        text = if (loadingMore) "Loading…" else "Load more",
+                        onClick = ::loadMore,
+                        enabled = !loadingMore,
+                        variant = IdsButtonVariant.Tinted,
+                        size = IdsButtonSize.Medium,
+                    )
+                }
             }
         }
         }
