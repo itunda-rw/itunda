@@ -271,8 +271,11 @@ class CooperativeService(
 
             val membership = membershipRepository.findById(advance.membershipId).orElse(null)
             if (membership != null) {
-                val title = "Harvest advance written off"
-                val body = "Your harvest advance has been written off by itunda and is no longer being pursued for repayment."
+                // Real UX-writing pass (Bank product-completeness cycle 2, 2026-09-08)
+                // -- see VupLoanService.decide's identical copy fix for the full
+                // reasoning (Toss's own Casual Concept/Easy to Answer principles).
+                val title = "Your advance has been forgiven"
+                val body = "itunda will no longer collect this advance -- you don't owe this money anymore."
                 notificationRepository.save(
                     Notification(
                         id = "notif_${UUID.randomUUID()}", userId = membership.userId, type = "HARVEST_ADVANCE_WRITTEN_OFF",

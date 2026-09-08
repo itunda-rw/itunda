@@ -314,8 +314,15 @@ class VupLoanService(
                 )
             }
 
-            val title = "VUP loan written off"
-            val body = "Your VUP Financial Services loan has been written off by itunda and is no longer being pursued for repayment."
+            // Real UX-writing pass (Bank product-completeness cycle 2, 2026-09-08):
+            // "written off"/"no longer being pursued" is accounting jargon that
+            // doesn't clearly answer the one question the borrower actually has --
+            // "do I still owe this money?" Toss's own real writing principles
+            // (Casual Concept: everyday language over jargon; Easy to Answer: a
+            // question a user has should be answerable in the message itself) --
+            // this is genuinely good news for the borrower, so say so plainly.
+            val title = "Your loan has been forgiven"
+            val body = "itunda will no longer collect this loan -- you don't owe this money anymore."
             notificationRepository.save(
                 Notification(
                     id = "notif_${UUID.randomUUID()}", userId = loan.userId, type = "VUP_LOAN_WRITTEN_OFF",
