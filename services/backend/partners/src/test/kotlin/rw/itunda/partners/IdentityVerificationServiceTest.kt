@@ -6,6 +6,8 @@ import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.IdentityVerificationRequest
 import rw.itunda.core.domain.IdentityVerificationStatus
@@ -177,6 +179,36 @@ class IdentityVerificationServiceTest : BehaviorSpec({
                     error("expected IdentityVerificationRequestNotFoundException")
                 } catch (e: IdentityVerificationRequestNotFoundException) {
                     // expected
+                }
+            }
+        }
+    }
+
+    // Real repo-wide rate-limiter-verify sweep (2026-09-09) -- every other Given block
+    // in this file goes through buildService's shared, permissively-stubbed rateLimiter
+    // (`checkLimit(any(), any(), any()) returns Unit`), so nothing anywhere in this file
+    // ever exercised createRequest's own real rateLimiter.checkLimit call -- a real
+    // regression (the check silently deleted) would have gone undetected. Same
+    // throw-and-catch convention this codebase's other rate-limited services already
+    // establish; constructs the service directly (not via buildService) so this one
+    // Given gets its own strict, throwing rateLimiter mock.
+    Given("a real partner who has exceeded the real identity-verification-request rate limit") {
+        val requestRepository = mockk<IdentityVerificationRequestRepository>()
+        val partnerRepository = mockk<PartnerRepository>()
+        val userRepository = mockk<UserRepository>()
+        every { partnerRepository.findByApiKeyHash(any()) } returns partner
+        val rateLimiter = mockk<RateLimiter>()
+        every { rateLimiter.checkLimit("identity:create:partner_1", limit = 30, window = any()) } throws RateLimitExceededException("Too many requests")
+        val partnerService = PartnerService(partnerRepository, mockk<PartnerMiniAppRepository>(), rateLimiter)
+        val service = IdentityVerificationService(requestRepository, partnerRepository, userRepository, partnerService, IdentitySigningKeyProvider(), rateLimiter)
+
+        When("creating a request") {
+            Then("a real RateLimitExceededException fires before ever saving a real request row") {
+                try {
+                    service.createRequest("sk_test_realkey")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { requestRepository.save(any()) }
                 }
             }
         }

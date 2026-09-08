@@ -7,6 +7,7 @@ import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.CallEndReason
 import rw.itunda.core.domain.CallSession
@@ -106,6 +107,32 @@ class CallServiceTest : BehaviorSpec({
             Then("it real-returns the already-ended call unchanged, no duplicate push") {
                 val result = service.endCall("user_a", "call_ended", CallEndReason.CANCELLED)
                 result.endReason shouldBe CallEndReason.COMPLETED
+            }
+        }
+    }
+
+    // Real repo-wide rate-limiter-verify sweep (2026-09-09) -- rateLimiter was mocked
+    // relaxed = true everywhere else in this file, with no test anywhere exercising
+    // initiateCall's own real rateLimiter.checkLimit call -- a real regression (the
+    // check silently deleted) would have gone undetected. Same throw-and-catch
+    // convention this codebase's other rate-limited services already establish
+    // (OverdraftServiceTest/Grow31SavingsServiceTest etc.), not a verify{} call.
+    Given("a caller who has exceeded the real call-initiation rate limit") {
+        val callSessionRepository = mockk<CallSessionRepository>()
+        val conversationRepository = mockk<ConversationRepository>()
+        val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>()
+        val service = CallService(callSessionRepository, conversationRepository, realtimeMessagePublisher, rateLimiter, "test-turn-secret")
+        every { rateLimiter.checkLimit("call:initiate:user_a", limit = 10, window = any()) } throws RateLimitExceededException("Too many requests")
+
+        When("initiating a real call") {
+            Then("a real RateLimitExceededException fires before ever touching a real conversation row") {
+                try {
+                    service.initiateCall("user_a", "conversation_1", CallType.VOICE)
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { conversationRepository.findById(any()) }
+                }
             }
         }
     }

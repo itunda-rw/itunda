@@ -5,6 +5,8 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Vehicle
 import rw.itunda.core.repository.VehicleRepository
@@ -74,6 +76,29 @@ class VehicleValuationServiceTest : BehaviorSpec({
                     throw AssertionError("expected InvalidVehicleException")
                 } catch (e: InvalidVehicleException) {
                     // expected
+                }
+            }
+        }
+    }
+
+    // Real repo-wide rate-limiter-verify sweep (2026-09-09) -- rateLimiter was mocked
+    // relaxed = true everywhere else in this file, with no test anywhere exercising
+    // registerVehicle's own real rateLimiter.checkLimit call -- a real regression (the
+    // check silently deleted) would have gone undetected. Same throw-and-catch
+    // convention this codebase's other rate-limited services already establish.
+    Given("a user who has exceeded the real vehicle-registration rate limit") {
+        val vehicleRepository = mockk<VehicleRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = VehicleValuationService(vehicleRepository, rateLimiter)
+        every { rateLimiter.checkLimit("vehicle:register:user_1", limit = 10, window = any()) } throws RateLimitExceededException("Too many requests")
+
+        When("registering a vehicle") {
+            Then("a real RateLimitExceededException fires before ever saving a real vehicle row") {
+                try {
+                    service.registerVehicle("user_1", "Toyota", "RAV4", 2022, BigDecimal("20000000"), LocalDate.now().minusYears(1), 15000)
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { vehicleRepository.save(any()) }
                 }
             }
         }
