@@ -36,6 +36,7 @@ import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Agriculture
 import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.ArrowDownward
@@ -2386,6 +2387,24 @@ private fun IdentityVerificationConsentScreen(requestId: String, onDone: () -> U
                             "Nothing is shared unless you approve. itunda never shares your PIN, balance, or transaction history.",
                             color = Ids.colors.textSecondary, fontSize = 12.sp,
                         )
+                        // Real defense-in-depth (deep-link scheme-hijacking finding,
+                        // 2026-09-08 -- see project_itunda_deeplink_scheme_hijacking
+                        // memory's own named partial mitigation). itunda:// is a plain
+                        // custom URL scheme on both platforms, not a domain-verified
+                        // App Link/Universal Link, so another app COULD register the
+                        // same scheme and render its own fake version of this exact
+                        // screen before the real itunda app ever sees the tap. Fixing
+                        // that for real needs a real hosted domain itunda doesn't have
+                        // yet -- this doesn't close that gap, but it does close the
+                        // most damaging thing a convincing fake screen could still try:
+                        // asking the user to "confirm" by typing a real credential.
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = Ids.colors.warning, modifier = Modifier.size(16.dp))
+                            Text(
+                                "This screen will never ask you to type your PIN, password, or a one-time code. If it ever does, close it -- you're not in the real itunda app.",
+                                color = Ids.colors.textSecondary, fontSize = 12.sp,
+                            )
+                        }
                     }
                 }
                 IdsButton(

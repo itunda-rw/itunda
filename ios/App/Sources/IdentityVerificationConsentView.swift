@@ -69,6 +69,22 @@ struct IdentityVerificationConsentView: View {
                         }
                         Text("Nothing is shared unless you approve. itunda never shares your PIN, balance, or transaction history.")
                             .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        // Real defense-in-depth (deep-link scheme-hijacking finding,
+                        // 2026-09-08 -- see project_itunda_deeplink_scheme_hijacking
+                        // memory's own named partial mitigation). itunda:// is a plain
+                        // custom URL scheme on both platforms, not a domain-verified
+                        // Universal Link/App Link, so another app COULD register the
+                        // same scheme and render its own fake version of this exact
+                        // screen before the real itunda app ever sees the tap. Fixing
+                        // that for real needs a real hosted domain itunda doesn't have
+                        // yet -- this doesn't close that gap, but it does close the
+                        // most damaging thing a convincing fake screen could still try:
+                        // asking the user to "confirm" by typing a real credential.
+                        HStack(alignment: .top, spacing: 6) {
+                            Image(systemName: "exclamationmark.shield.fill").foregroundColor(.orange).font(.caption)
+                            Text("This screen will never ask you to type your PIN, password, or a one-time code. If it ever does, close it -- you're not in the real itunda app.")
+                                .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        }
                     }
                     Button(action: { Task { await approve() } }) {
                         Text(busy ? "…" : "Approve and share").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(.vertical, 12)
