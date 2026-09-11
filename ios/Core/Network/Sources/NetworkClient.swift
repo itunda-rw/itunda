@@ -4822,7 +4822,14 @@ public struct OrderDto: Decodable, Identifiable {
 }
 public struct OrderItemDto: Decodable, Identifiable { public let id: String; public let orderId: String; public let productId: String; public let productName: String; public let unitPrice: Double; public let quantity: Int }
 public struct OrderDetailResponse: Decodable { public let success: Bool; public let order: OrderDto; public let items: [OrderItemDto] }
-public struct OrdersResponse: Decodable { public let success: Bool; public let orders: [OrderDto] }
+// Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix,
+// c6e470fb, and Android's port, 72f0c297 -- see
+// project_itunda_pagination_discard_sweep memory) -- getMyOrders/
+// getMerchantOrders are real Pageable-backed on the backend, but page was
+// never sent, silently capping order history at 20 rows. Safe to extend
+// this struct directly (grepped every usage first): used ONLY by these two
+// endpoints, both Pageable-backed.
+public struct OrdersResponse: Decodable { public let success: Bool; public let orders: [OrderDto]; public let page: Int; public let totalPages: Int }
 
 // Real Coupang-style post-delivery Return & Exchange requests (item 166/175) -- see
 // OrderReturnService's own doc comment. bank-mfe (item 166) and Android buyer side
@@ -6604,7 +6611,12 @@ extension NetworkClient {
         try await postP2p("api/v1/orders", body: request, idempotencyKey: UUID().uuidString)
     }
 
-    public func getMyOrders() async throws -> OrdersResponse { try await get("api/v1/orders/my-orders") }
+    public func getMyOrders(page: Int = 0, size: Int = 20) async throws -> OrdersResponse {
+        try await get("api/v1/orders/my-orders", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     public func getOrder(_ orderId: String) async throws -> OrderDetailResponse { try await get("api/v1/orders/\(orderId)") }
 
@@ -6650,7 +6662,12 @@ extension NetworkClient {
     /// Android's own port (this same series, 2026-08-05). A real itunda user who also
     /// runs a merchant storefront could manage their store's orders on bank-mfe/Android
     /// but had zero client anywhere on iOS.
-    public func getMerchantOrders() async throws -> OrdersResponse { try await get("api/v1/orders/merchant-orders") }
+    public func getMerchantOrders(page: Int = 0, size: Int = 20) async throws -> OrdersResponse {
+        try await get("api/v1/orders/merchant-orders", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     public func updateOrderStatus(_ orderId: String, status: String) async throws -> OrderDetailResponse {
         try await authenticatedPost("api/v1/orders/\(orderId)/status", body: UpdateOrderStatusRequest(status: status))

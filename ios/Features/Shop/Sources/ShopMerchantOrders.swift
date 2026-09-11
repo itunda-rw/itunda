@@ -37,6 +37,17 @@ struct MerchantOrdersView: View {
     @State private var orders: [OrderDto]?
     @State private var error: String?
     @State private var busyOrderId: String?
+    // Real pagination fix (2026-09-11, ported from bank-mfe's own fix and
+    // Android's port -- see project_itunda_pagination_discard_sweep memory):
+    // page 0 is polled every 4s for real-time order-status accuracy, so it
+    // must always stay a live, page-0-only fetch. olderOrders is a separate
+    // accumulator populated only by loadMore, never touched by the poll.
+    @State private var olderOrders: [OrderDto] = []
+    @State private var ordersPage = 0
+    @State private var ordersHasMore = false
+    @State private var loadingMoreOrders = false
+
+    private var allOrders: [OrderDto] { (orders ?? []) + olderOrders }
 
     var body: some View {
         Group {
@@ -49,10 +60,10 @@ struct MerchantOrdersView: View {
                 // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
                 // a lone error state.
                 .padding(20)
-            } else if let orders, !orders.isEmpty {
+            } else if orders != nil, !allOrders.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Orders for your store").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                    ForEach(orders) { order in
+                    ForEach(allOrders) { order in
                         let next = nextStatus(order.status)
                         CommerceOrderRow(order: order) {
                             if let next {
@@ -65,6 +76,12 @@ struct MerchantOrdersView: View {
                                 .disabled(busyOrderId == order.id)
                             }
                         }
+                    }
+                    if ordersHasMore {
+                        Button(loadingMoreOrders ? "Loading…" : "Load more") {
+                            Task { await loadMoreOrders() }
+                        }
+                        .disabled(loadingMoreOrders)
                     }
                 }
             }
@@ -84,7 +101,9 @@ struct MerchantOrdersView: View {
 
     private func load() async {
         do {
-            orders = try await NetworkClient.shared.getMerchantOrders().orders
+            let r = try await NetworkClient.shared.getMerchantOrders(page: 0)
+            orders = r.orders
+            ordersHasMore = r.page + 1 < r.totalPages
             error = nil
         } catch NetworkError.httpError(let statusCode) where statusCode == 404 {
             // A real, expected case for any account that hasn't registered as a
@@ -94,6 +113,16 @@ struct MerchantOrdersView: View {
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
+    }
+
+    private func loadMoreOrders() async {
+        let nextPage = ordersPage + 1
+        loadingMoreOrders = true
+        defer { loadingMoreOrders = false }
+        guard let r = try? await NetworkClient.shared.getMerchantOrders(page: nextPage) else { return }
+        olderOrders += r.orders
+        ordersPage = nextPage
+        ordersHasMore = r.page + 1 < r.totalPages
     }
 
     private func advance(_ order: OrderDto, to next: String) async {
@@ -195,6 +224,14 @@ struct MyCommerceOrdersView: View {
     @State private var orders: [OrderDto]?
     @State private var error: String?
     @State private var cancellingId: String?
+    // Same page-0-stays-live + separately-accumulated-older-pages design as
+    // MerchantOrdersView above.
+    @State private var olderOrders: [OrderDto] = []
+    @State private var ordersPage = 0
+    @State private var ordersHasMore = false
+    @State private var loadingMoreOrders = false
+
+    private var allOrders: [OrderDto] { (orders ?? []) + olderOrders }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -211,11 +248,11 @@ struct MyCommerceOrdersView: View {
                     .padding(20)
                 } else if orders == nil {
                     SkeletonBlock(height: 120)
-                } else if orders!.isEmpty {
+                } else if allOrders.isEmpty {
                     EmptyStateView("No orders yet — browse a merchant's shop and your first order will show up here.")
                 } else {
                     VStack(spacing: 10) {
-                        ForEach(orders!) { order in
+                        ForEach(allOrders) { order in
                             CommerceOrderRow(order: order) {
                                 if order.status == "PLACED" {
                                     Button(action: { Task { await cancel(order.id) } }) {
@@ -246,6 +283,12 @@ struct MyCommerceOrdersView: View {
                                 }
                             }
                         }
+                        if ordersHasMore {
+                            Button(loadingMoreOrders ? "Loading…" : "Load more") {
+                                Task { await loadMoreOrders() }
+                            }
+                            .disabled(loadingMoreOrders)
+                        }
                     }
                 }
             }
@@ -261,12 +304,23 @@ struct MyCommerceOrdersView: View {
 
     private func load() async {
         do {
-            let res = try await NetworkClient.shared.getMyOrders()
+            let res = try await NetworkClient.shared.getMyOrders(page: 0)
             orders = res.orders
+            ordersHasMore = res.page + 1 < res.totalPages
             error = nil
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
+    }
+
+    private func loadMoreOrders() async {
+        let nextPage = ordersPage + 1
+        loadingMoreOrders = true
+        defer { loadingMoreOrders = false }
+        guard let res = try? await NetworkClient.shared.getMyOrders(page: nextPage) else { return }
+        olderOrders += res.orders
+        ordersPage = nextPage
+        ordersHasMore = res.page + 1 < res.totalPages
     }
 
     private func cancel(_ orderId: String) async {
