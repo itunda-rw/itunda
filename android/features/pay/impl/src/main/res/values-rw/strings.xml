@@ -7,6 +7,7 @@
     <string name="overview_teaser_cards_cta">Bona ikarita</string>
     <string name="pay_points_pay_money_row">Amanota · Pay Money</string>
     <string name="pay_your_coupons_row">Amakuponi yawe</string>
+    <string name="pay_request_money_row">Saba amafaranga</string>
     <string name="pay_coupon_box_title">Agasanduku k\'amakuponi</string>
     <string name="pay_coupons_received">Amakuponi yakiriwe %1$d</string>
     <string name="pay_coupons_used_expired">Yakoreshejwe / yarangiye %1$d</string>

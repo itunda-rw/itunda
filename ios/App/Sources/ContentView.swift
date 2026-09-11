@@ -475,7 +475,8 @@ struct ContentView: View {
                 onSwitchToYou: { selectedTab = 4 },
                 onOpenRewardsMiniApp: { showRewardTasksMiniApp = true },
                 cardDestination: { dismiss in CardScreenView(onBack: dismiss) },
-                supportDestination: { dismiss in SupportScreenView(onBack: dismiss) }
+                supportDestination: { dismiss in SupportScreenView(onBack: dismiss) },
+                requestMoneyDestination: { dismiss in RequestMoneyScreenView(onBack: dismiss) }
             )
                 .sheet(isPresented: $showRewardTasksMiniApp) {
                     SaroniteRewardTasksView()

@@ -7,6 +7,7 @@
     <string name="overview_teaser_cards_cta">Obtenir une carte</string>
     <string name="pay_points_pay_money_row">Points · Pay Money</string>
     <string name="pay_your_coupons_row">Vos coupons</string>
+    <string name="pay_request_money_row">Demander de l’argent</string>
     <string name="pay_coupon_box_title">Boîte à coupons</string>
     <string name="pay_coupons_received">Coupons reçus %1$d</string>
     <string name="pay_coupons_used_expired">Utilisés / expirés %1$d</string>

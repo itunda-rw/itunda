@@ -1881,6 +1881,7 @@ fun ItundaAppScreen(
                         onOpenRewardsMiniApp = {
                             payContext.startActivity(android.content.Intent(payContext, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java))
                         },
+                        onOpenRequestMoney = { showRequestMoney = true },
                         )
                     }
                     // Seventh and final Feature extraction (2026-07-23) -- see

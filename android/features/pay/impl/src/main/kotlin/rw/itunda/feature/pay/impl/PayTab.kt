@@ -74,6 +74,14 @@ fun PayTab(
     onOpenCard: () -> Unit,
     payAMerchantSection: @Composable () -> Unit,
     onOpenRewardsMiniApp: () -> Unit,
+    // Real IA-consistency fix (2026-09-11, product-completeness cycle 2 --
+    // see project_itunda_pay_product_completeness memory): bank-mfe's own
+    // PayHub.tsx already surfaces Request Money directly in the Pay tab
+    // (RequestMoneyCard); Android only ever reached it via the Explore/Menu
+    // tab. Reuses the existing RequestMoneyScreen (:app) -- no new screen or
+    // duplicated logic, just a second, real navigation entry point matching
+    // web's own placement.
+    onOpenRequestMoney: () -> Unit = {},
 ) {
     var facePayEnrolled by remember { mutableStateOf(false) }
     var facePayBusy by remember { mutableStateOf(false) }
@@ -300,6 +308,15 @@ fun PayTab(
                 horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(stringResource(R.string.pay_your_coupons_row), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Icon(IdsIcons.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp), tint = Ids.colors.textSecondary)
+            }
+        }
+        item {
+            Row(
+                Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenRequestMoney),
+                horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.pay_request_money_row), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 Icon(IdsIcons.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp), tint = Ids.colors.textSecondary)
             }
         }

@@ -13,6 +13,7 @@
     <string name="overview_teaser_cards_cta">Get a card</string>
     <string name="pay_points_pay_money_row">Points · Pay Money</string>
     <string name="pay_your_coupons_row">Your Coupons</string>
+    <string name="pay_request_money_row">Request money</string>
     <string name="pay_coupon_box_title">Coupon box</string>
     <string name="pay_coupons_received">Coupons received %1$d</string>
     <string name="pay_coupons_used_expired">Used / expired %1$d</string>

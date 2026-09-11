@@ -187,7 +187,7 @@ struct RewardsPreviewSection: View {
 // routing to the real SupportScreenView -- rather than fabricating Toss-specific rows
 // ("Toss Prime", "Google gift codes", cross-merchant coupon wallet, external
 // online-merchant integrations) itunda has no real backend for.
-public struct PayScreen<CardDestination: View, SupportDestination: View>: View {
+public struct PayScreen<CardDestination: View, SupportDestination: View, RequestMoneyDestination: View>: View {
     @State private var paymentResult: CollectPaymentResultDto?
     @State private var rewardsTotal: Double = 0
     @State private var rewardTasks: [RewardTaskDto] = []
@@ -210,6 +210,14 @@ public struct PayScreen<CardDestination: View, SupportDestination: View>: View {
     // (showCard/showSupport), not just rely on swipe-to-dismiss.
     @ViewBuilder let cardDestination: (@escaping () -> Void) -> CardDestination
     @ViewBuilder let supportDestination: (@escaping () -> Void) -> SupportDestination
+    // Real IA-consistency fix (2026-09-11, product-completeness cycle 2 --
+    // see project_itunda_pay_product_completeness memory): bank-mfe's own
+    // PayHub.tsx already surfaces Request Money directly in the Pay tab
+    // (RequestMoneyCard); iOS only ever reached it via the Menu tab
+    // (MenuTabContent.swift's own showRequestMoney sheet). Same generic
+    // injection shape as supportDestination above -- RequestMoneyScreenView
+    // lives in :App, not this Feature module.
+    @ViewBuilder let requestMoneyDestination: (@escaping () -> Void) -> RequestMoneyDestination
     // Real injected callback, same onOpenRewards precedent FeatureAssets'
     // OverviewScreenView already established -- SaroniteRewardTasksView is
     // :App-only.
@@ -225,17 +233,20 @@ public struct PayScreen<CardDestination: View, SupportDestination: View>: View {
     @State private var showCard = false
     @State private var showCouponBox = false
     @State private var showMembership = false
+    @State private var showRequestMoney = false
 
     public init(
         onSwitchToYou: @escaping () -> Void = {},
         onOpenRewardsMiniApp: @escaping () -> Void = {},
         @ViewBuilder cardDestination: @escaping (@escaping () -> Void) -> CardDestination,
-        @ViewBuilder supportDestination: @escaping (@escaping () -> Void) -> SupportDestination
+        @ViewBuilder supportDestination: @escaping (@escaping () -> Void) -> SupportDestination,
+        @ViewBuilder requestMoneyDestination: @escaping (@escaping () -> Void) -> RequestMoneyDestination
     ) {
         self.onSwitchToYou = onSwitchToYou
         self.onOpenRewardsMiniApp = onOpenRewardsMiniApp
         self.cardDestination = cardDestination
         self.supportDestination = supportDestination
+        self.requestMoneyDestination = requestMoneyDestination
     }
 
     public var body: some View {
@@ -316,6 +327,17 @@ public struct PayScreen<CardDestination: View, SupportDestination: View>: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 20)
+                // Real IA-consistency fix -- see requestMoneyDestination's own doc
+                // comment above.
+                Button(action: { showRequestMoney = true }) {
+                    HStack {
+                        Text("Request money").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.caption).foregroundColor(IDS.Colors.textTertiary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 20)
                 RewardsPreviewSection(tasks: rewardTasks, claimingId: claimingRewardId, onClaim: claimReward)
                     .padding(.horizontal, 20)
                 GetHelpLinks(onOpenSupport: { showSupport = true })
@@ -350,6 +372,9 @@ public struct PayScreen<CardDestination: View, SupportDestination: View>: View {
         }
         .sheet(isPresented: $showCouponBox) {
             CouponBoxScreenView(onBack: { showCouponBox = false }, onBrowseMerchants: { showCouponBox = false })
+        }
+        .sheet(isPresented: $showRequestMoney) {
+            requestMoneyDestination({ showRequestMoney = false })
         }
         .sheet(isPresented: $showMembership) {
             // Real gap, honestly scoped out for now (same shape as MyPaymentCodeCard.
