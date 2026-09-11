@@ -5111,7 +5111,16 @@ public struct EatsOrderItemDto: Decodable, Identifiable {
     public let selectedOptionsJson: String?
 }
 public struct EatsOrderDetailResponse: Decodable { public let success: Bool; public let order: EatsOrderDto; public let items: [EatsOrderItemDto] }
-public struct EatsOrdersResponse: Decodable { public let success: Bool; public let orders: [EatsOrderDto] }
+// Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix,
+// 918529e4, and Android's port, 01b8e58b -- see
+// project_itunda_pagination_discard_sweep memory) -- all 3 real consumers
+// of this response (getMyEatsOrders, getRiderDeliveries,
+// getAvailableDeliveries) are Pageable-backed on the backend. Only
+// getMyEatsOrders's own client is wired to send page this pass --
+// getRiderDeliveries/getAvailableDeliveries are a real, disclosed
+// follow-up, not touched here (no restaurant-side Eats order queue exists
+// on iOS at all, same gap Android has).
+public struct EatsOrdersResponse: Decodable { public let success: Bool; public let orders: [EatsOrderDto]; public let page: Int; public let totalPages: Int }
 public struct TipEatsOrderRequest: Encodable { public let amount: Double; public init(amount: Double) { self.amount = amount } }
 public struct TipEatsOrderResponse: Decodable { public let success: Bool; public let order: EatsOrderDto }
 
@@ -6769,7 +6778,12 @@ extension NetworkClient {
         try await postEatsOrder("api/v1/eats/orders", body: request, idempotencyKey: UUID().uuidString)
     }
 
-    public func getMyEatsOrders() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/my-orders") }
+    public func getMyEatsOrders(page: Int = 0, size: Int = 20) async throws -> EatsOrdersResponse {
+        try await get("api/v1/eats/orders/my-orders", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     // Real 배달의민족 함께주문 (Baemin "Together Order") -- see GroupEatsOrderDto's own
     // doc comment.

@@ -95,6 +95,17 @@ struct MyEatsOrdersView: View {
     // Real optimistic-hide for TipRiderPrompt -- same pattern bank-mfe's own
     // tippedOrderIds establishes.
     @State private var tippedOrderIds: Set<String> = []
+    // Real pagination fix (2026-09-11, ported from bank-mfe's own fix and
+    // Android's port -- see project_itunda_pagination_discard_sweep memory):
+    // page 0 is polled every 4s for real-time order-status accuracy, so it
+    // must always stay a live, page-0-only fetch. olderOrders is a separate
+    // accumulator populated only by loadMoreOrders, never touched by the poll.
+    @State private var olderOrders: [EatsOrderDto] = []
+    @State private var ordersPage = 0
+    @State private var ordersHasMore = false
+    @State private var loadingMoreOrders = false
+
+    private var allOrders: [EatsOrderDto] { (orders ?? []) + olderOrders }
 
     var body: some View {
         Group {
@@ -109,11 +120,11 @@ struct MyEatsOrdersView: View {
                 .padding(20)
             } else if orders == nil {
                 SkeletonBlock(height: 120)
-            } else if orders!.isEmpty {
+            } else if allOrders.isEmpty {
                 EmptyStateView("No orders yet — order from a nearby restaurant and it'll show up here.")
             } else {
                 VStack(spacing: 10) {
-                    ForEach(orders!) { order in
+                    ForEach(allOrders) { order in
                         EatsOrderRow(order: order, restaurant: restaurants?.first(where: { $0.merchantId == order.restaurantId })) {
                             if order.status == "PLACED" {
                                 Button(action: { Task { await cancel(order.id) } }) {
@@ -136,6 +147,12 @@ struct MyEatsOrdersView: View {
                             }
                         }
                     }
+                    if ordersHasMore {
+                        Button(loadingMoreOrders ? "Loading…" : "Load more") {
+                            Task { await loadMoreOrders() }
+                        }
+                        .disabled(loadingMoreOrders)
+                    }
                 }
             }
         }
@@ -150,12 +167,23 @@ struct MyEatsOrdersView: View {
 
     private func load() async {
         do {
-            let res = try await NetworkClient.shared.getMyEatsOrders()
+            let res = try await NetworkClient.shared.getMyEatsOrders(page: 0)
             orders = res.orders
+            ordersHasMore = res.page + 1 < res.totalPages
             error = nil
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
+    }
+
+    private func loadMoreOrders() async {
+        let nextPage = ordersPage + 1
+        loadingMoreOrders = true
+        defer { loadingMoreOrders = false }
+        guard let res = try? await NetworkClient.shared.getMyEatsOrders(page: nextPage) else { return }
+        olderOrders += res.orders
+        ordersPage = nextPage
+        ordersHasMore = res.page + 1 < res.totalPages
     }
 
     private func cancel(_ orderId: String) async {
