@@ -17548,3 +17548,109 @@ verified: no real seeded partner mini-app exists in this environment to
 click through end-to-end (the catalog is legitimately empty by default) --
 each screen's own "renders nothing when empty" path was the actual verified
 state.
+
+## 279. Bank Manage/Card screen re-audit against a fuller Toss screenshot batch -- 2 platform-drift bug fixes, account nickname, change password, all 3 platforms
+
+**2026-09-12.** User sent 12 real Toss Bank screenshots of the 관리 (Manage)
+and 카드 (Card) screens. Direct research found these screens were **not a
+blank gap** -- `AccountManageScreen.tsx`/`.kt`/`.swift` were already built
+from an earlier batch of these exact screenshots (Sections referenced in
+that file's own doc comment, 2026-08-23/09-01) and already carried an
+honest, explicit disclosure of Korea-specific rows with no itunda
+equivalent (Open Banking, tax-free limits, ATM networks, telecom-fraud
+history sharing, Credit Information Usage Policy). This pass was a
+**re-audit against a fuller screenshot set**, not a fresh build.
+
+**Two real, concrete platform-drift bugs, unrelated to any new feature:**
+1. Android's Manage screen had "Scheduled transfers" but was completely
+   missing "Delayed transfers" (Toss's real 지연이체 anti-phishing hold) --
+   web/iOS both already had it, and `DelayedTransferListScreen` already
+   existed and was already wired elsewhere on Android
+   (`TransferHubScreen`). Added the missing row + callback, alongside (not
+   replacing) Scheduled transfers -- both are real, distinct itunda
+   features.
+2. iOS's Card screen detected a successful charge via
+   `chargeMessage.hasPrefix("Paid")` -- the exact string-localization bug
+   class Android already found and fixed in its own `CardScreen.kt` this
+   same session (breaks under rw/fr since those strings never start with
+   "Paid"). Added a real `chargeSucceeded: Bool` set directly from the
+   charge call's outcome, mirroring Android's fix.
+
+**Two new real features, buildable without fabricating Korea-specific
+infrastructure:**
+- **Account nickname** (계좌 별명) -- a real, user-editable label, distinct
+  from the fixed, system-assigned account name. New `nickname: String?`
+  column on `Account` (`V327__account_nickname.sql`, VARCHAR(50)), new
+  `AccountService.setNickname` (reuses `getAccountById`'s existing
+  IDOR-safe ownership check; a blank/whitespace input clears it back to
+  unset, matching `PartnerService.parsePartnerMiniAppCategory`'s established
+  "blank clears" convention), new `PATCH /api/v1/account/{id}/nickname`.
+  Every client gained an "Account nickname" row (Account section) opening a
+  simple text-edit screen, and the account-detail header now shows the
+  nickname as a bold leading line above the existing "itunda Bank {number}"
+  caption when set -- a nickname that's only settable and never displayed
+  anywhere would be the "looks tappable, does nothing more" dead-feature
+  anti-pattern this codebase explicitly guards against elsewhere.
+- **Change password** (비밀번호 변경) -- needed **zero new backend work**.
+  `PUT /api/v1/auth/pin` (`AuthService.setPin`) already re-proves the
+  current credential before replacing it, and was already used for two
+  other real cases (a pre-PIN-era account's one-time upgrade, and a
+  forgot-PIN reset) -- this Manage-screen "change it again" case is the
+  same verified-credential-swap, already fully supported. All 3 clients
+  already had the exact network call wired (`setAccountPin`/
+  `setAccountPin`/`NetworkClient.setAccountPin`) from the earlier PIN-
+  upgrade work, just with zero UI ever calling it from Manage. Reused each
+  platform's existing PIN-entry component (`PinPad`/`PinDots`+`PinKeypad`/
+  `AccountPinPad`) in the exact current-credential -> new-value -> confirm
+  shape each platform's own one-time upgrade prompt
+  (`PinSetupCard.tsx`/`PinUpgradeCard.swift`) already established, minus
+  that prompt's one-time-only gate -- this is a general "change it again"
+  flow reachable any time from Manage, not the first-time upgrade offer.
+  iOS's version needed a plain `onChangePassword` callback threaded from
+  `ContentView.swift` (identical to `PinUpgradeCard`'s own `onUpdatePin`
+  convention) since `SessionManager` is an App-only type FeatureBanking's
+  `AccountManageScreen.swift` can't import directly -- the nickname feature
+  needed no such indirection since `NetworkClient` lives in `CoreNetwork`,
+  already available to every Feature module.
+
+**Also fixed while touching the disclosure text**: web's own
+`AccountManageScreen.tsx` disclosure had miscategorized "changing your
+account password" alongside genuinely Korea-specific gaps (Open Banking,
+ATM networks, etc.) -- it was never actually Korea-specific, just deferred;
+Android's and iOS's identical disclosure strings carried the same
+miscategorization and got the same fix, replaced with the real remaining
+Korea-specific gap (telecom-fraud history sharing) that had fallen out of
+the sentence at some earlier edit.
+
+**Named, disclosed, deliberately not built this pass** (each sized like its
+own feature or blocked on missing infrastructure, matching this screen's
+own established "disclose, don't fabricate" convention): primary/default
+account designation (주로 쓰는 계좌 -- no `isPrimary` concept exists
+anywhere); self-service account closing (통장 해지하기 -- the only existing
+mechanism is a support-staff fraud-response freeze, not real user-initiated
+closing, and is genuinely irreversible); card funding-account choice
+(`CardService.chargeWithCard` is hardcoded to `AccountType.MAIN`); card
+suspicious-transaction reporting (부정사용 의심신고 -- would mirror P2P's
+real `ScamReportService` pattern but needs a new entity + admin review
+queue); statements/receipts/certificates (서류 발급 -- zero PDF-generation
+capability exists anywhere in this backend); card OTP, 간편결제 연결,
+후불교통카드, 거래외국환은행 지정, 해외 결제·출금 차단 (Korea-specific
+card/banking infrastructure with no itunda equivalent).
+
+**Reusable technique confirmed again**: sibling-asymmetry detection (one
+platform/row handling a concern correctly while its sibling doesn't) found
+both Part-1 bugs with zero grep required -- Android's "Scheduled transfers"
+row sitting where "Delayed transfers" should also be, and iOS's fragile
+string-prefix check when Android had already fixed the identical bug class
+in its own Card screen this same session.
+
+**What shipped**: `542e21bf1` (2 bug fixes), `8f0769616` (nickname
+backend), `a18f69e34` (nickname + change-password, web),
+`397e9d461` (nickname + change-password, Android).
+
+**Verification**: backend `AccountServiceTest.kt`/`AccountControllerTest.kt`
+(new nickname coverage, discrimination-tested); web `tsc -b` + `oxlint` +
+`accessibility-lint.py` + `vite build` + `file-size-lint.py`; Android
+`:core:network:compileDebugKotlin` + `:app:compileDebugKotlin` +
+`:architecture-test:test` (Konsist) + `file-size-lint.py`; iOS full
+`xcodebuild -scheme ItundaApp` after `tuist generate && pod install`.

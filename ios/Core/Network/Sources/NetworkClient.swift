@@ -704,6 +704,11 @@ public struct Account: Decodable {
     public let userId: String
     public let accountNumber: String
     public let accountName: String
+    // Real Toss Bank reference (2026-09-12, "계좌 별명" -- account nickname) -- a
+    // real, user-editable personal label, distinct from accountName above (a fixed,
+    // system-assigned label set once at creation). See AccountService.setNickname's
+    // own doc comment on the backend.
+    public let nickname: String?
     public let type: String
     public let balance: Double
     public let availableBalance: Double
@@ -712,6 +717,8 @@ public struct Account: Decodable {
 }
 
 public struct AccountsResponse: Decodable { public let success: Bool; public let accounts: [Account] }
+public struct SetAccountNicknameRequest: Encodable { public let nickname: String }
+public struct SetAccountNicknameResponse: Decodable { public let success: Bool; public let account: Account }
 
 // Real 토스뱅크 외화통장 (foreign-currency account) equivalent (item 160) -- see the
 // backend's ForeignCurrencyAccountService.kt doc comment: scoped to USD/EUR/GBP, real
@@ -1502,6 +1509,13 @@ public struct DiscoverResponse: Decodable { public let success: Bool; public let
 /// the "iOS has no real feature data-fetching wired in" gap this comment used to name.
 extension NetworkClient {
     public func getAccounts() async throws -> AccountsResponse { try await get("api/v1/account") }
+
+    // Real Toss Bank reference (2026-09-12, "계좌 별명" -- account nickname) -- see
+    // AccountService.setNickname's own doc comment on the backend. A blank/whitespace
+    // nickname clears it back to unset, matching the backend's own convention.
+    public func setAccountNickname(accountId: String, nickname: String) async throws -> SetAccountNicknameResponse {
+        try await authenticatedPatch("api/v1/account/\(accountId)/nickname", body: SetAccountNicknameRequest(nickname: nickname))
+    }
 
     // Idempotency-Key added 2026-09-05 (see feedback_idempotency_key_sweep memory)
     // -- a lost response after a successful open would previously resubmit here

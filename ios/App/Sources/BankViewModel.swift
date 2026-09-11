@@ -15,6 +15,10 @@ final class BankViewModel: ObservableObject {
     // Real Toss Bank reference (user-provided screenshots, 2026-08-11) -- see
     // AccountSummaryCard's own doc comment in BankView.swift.
     @Published private(set) var accountNumber: String?
+    // Real Toss Bank reference (2026-09-12, "계좌 별명" -- account nickname) -- see
+    // AccountManageScreen.swift's own AccountNicknameScreen doc comment.
+    @Published private(set) var accountId: String?
+    @Published private(set) var accountNickname: String?
     @Published private(set) var savingsRows: [SavingsRowData] = []
     @Published private(set) var discoverRows: [DiscoverRowData] = []
     // Real bug found live (2026-09-11, Toss Bank reference pass): discoverRows above
@@ -131,6 +135,15 @@ final class BankViewModel: ObservableObject {
     /// reachable (any successful load, e.g. the automatic reload ContentView
     /// already triggers when a savings sheet closes), that's a strictly stronger
     /// signal than "the network interface is up" anyway.
+    // Real Toss Bank reference (2026-09-12, "계좌 별명" -- account nickname) -- the
+    // Manage screen's own PATCH call already updated the backend; this just reflects
+    // that same real value into the already-loaded account so the account header can
+    // show it without a full re-fetch. Mirrors Android's MainViewModel
+    // .updatePrimaryAccountNickname exactly.
+    func updateAccountNickname(_ nickname: String?) {
+        accountNickname = nickname
+    }
+
     func load() async {
         await loadInternal()
         if !isOffline {
@@ -144,6 +157,8 @@ final class BankViewModel: ObservableObject {
             if accountsRes.success, let account = accountsRes.accounts.first(where: { $0.type == "MAIN" }) ?? accountsRes.accounts.first {
                 balanceText = formatAmount(account.balance, currency: account.currency)
                 accountNumber = account.accountNumber
+                accountId = account.id
+                accountNickname = account.nickname
                 availableBalance = account.availableBalance
                 balance = account.balance
                 currentUserId = account.userId

@@ -631,7 +631,16 @@ struct ContentView: View {
                         }
                         .fullScreenCover(isPresented: $showAccountManage) {
                             AccountManageScreen(
+                                accountId: bankViewModel.accountId ?? "",
                                 accountNumber: bankViewModel.accountNumber ?? "",
+                                nickname: bankViewModel.accountNickname,
+                                onNicknameChanged: { bankViewModel.updateAccountNickname($0) },
+                                onChangePassword: { currentCredential, newPin in
+                                    switch await SessionManager.shared.updateAccountPin(currentCredential: currentCredential, newPin: newPin) {
+                                    case .success: return nil
+                                    case .failure(let message): return message
+                                    }
+                                },
                                 onBack: { showAccountManage = false },
                                 onOpenCard: { showAccountManage = false; showBankCard = true },
                                 onOpenDevices: { showAccountManage = false; showDeviceList = true },
