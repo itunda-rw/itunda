@@ -53,12 +53,11 @@ public struct MyTabView: View {
     @State private var myBookingReviews: [MerchantBookingReviewDto] = []
     // Real published third-party mini-app catalog (Partners product-completeness
     // pass, 2026-09-07) -- see PartnerMiniAppCatalogCard.swift's own doc comment.
+    // Real Mini-Apps hub pass (2026-09-11) -- this array now backs only the
+    // capped 3-item teaser; MiniAppsHubScreenView ("See all") owns its own
+    // category-filtered fetch. Pagination state removed accordingly.
     @State private var miniApps: [PartnerMiniAppDto] = []
-    // Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix
-    // -- see project_itunda_pagination_discard_sweep memory).
-    @State private var miniAppsPage = 0
-    @State private var miniAppsHasMore = false
-    @State private var loadingMoreMiniApps = false
+    @State private var showMiniAppsHub = false
 
     public init(
         onBack: @escaping () -> Void = {},
@@ -159,12 +158,7 @@ public struct MyTabView: View {
                 MyBookingReviewsSection(reviews: myBookingReviews)
                 MyScamReportsSection(reports: myScamReports)
                 if !miniApps.isEmpty {
-                    PartnerMiniAppCatalogCard(
-                        miniApps: miniApps,
-                        hasMore: miniAppsHasMore,
-                        loadingMore: loadingMoreMiniApps,
-                        onLoadMore: { Task { await loadMoreMiniApps() } }
-                    )
+                    PartnerMiniAppCatalogCard(miniApps: miniApps, onSeeAll: { showMiniAppsHub = true })
                 }
                 // "My account" (My assets/Get a loan/Credit score/etc) deliberately
                 // dropped here (2026-07-24) -- every one of those rows already lives in
@@ -205,21 +199,13 @@ public struct MyTabView: View {
             if let res = try? await NetworkClient.shared.getMyAffiliateCommissions() { affiliateCommissions = res.commissions }
             if let res = try? await NetworkClient.shared.getMyScamReports() { myScamReports = res.reports }
             if let res = try? await NetworkClient.shared.getMyBookingReviews() { myBookingReviews = res.reviews }
-            if let res = try? await NetworkClient.shared.getMiniAppCatalog(page: 0) {
+            if let res = try? await NetworkClient.shared.getMiniAppCatalog() {
                 miniApps = res.miniApps
-                miniAppsHasMore = res.page + 1 < res.totalPages
             }
         }
-    }
-
-    private func loadMoreMiniApps() async {
-        let nextPage = miniAppsPage + 1
-        loadingMoreMiniApps = true
-        defer { loadingMoreMiniApps = false }
-        guard let res = try? await NetworkClient.shared.getMiniAppCatalog(page: nextPage) else { return }
-        miniApps += res.miniApps
-        miniAppsPage = nextPage
-        miniAppsHasMore = res.page + 1 < res.totalPages
+        .sheet(isPresented: $showMiniAppsHub) {
+            MiniAppsHubScreenView(onBack: { showMiniAppsHub = false })
+        }
     }
 
     @ViewBuilder

@@ -7551,13 +7551,18 @@ public struct IdentityVerificationRequestResponse: Decodable {
 // PartnerService.kt's own doc comment).
 public struct PartnerMiniAppDto: Decodable, Identifiable {
     public let id: String; public let partnerId: String; public let name: String; public let description: String
-    public let iconUrl: String?; public let bundleUrl: String; public let permissions: String; public let status: String; public let createdAt: String
+    public let iconUrl: String?; public let bundleUrl: String; public let permissions: String; public let status: String
+    // Real Toss/Kakao mini-app-store reference (2026-09-11, Mini-Apps hub pass) --
+    // matches the backend's own PartnerMiniAppCategory enum names exactly.
+    public let category: String
+    public let createdAt: String
 }
-// Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix,
-// dc23b11f, and Android's port, 934c22d4 -- see
-// project_itunda_pagination_discard_sweep memory) -- this real Pageable
-// endpoint's page was never sent, silently capping the mini-app catalog at
-// the first 20 approved apps.
+// Real Mini-Apps hub pass (2026-09-11) -- was page-based (see this struct's own
+// prior doc comment on the 2026-09-11 pagination-discard fix); replaced with a
+// single size=100 "browse all (optionally category-filtered)" fetch, matching
+// bank-mfe's/Android's identical change: the real catalog is genuinely tiny
+// today (no seed data, no onboarded partners), so real pagination is building
+// ahead of real need.
 public struct MiniAppCatalogResponse: Decodable { public let success: Bool; public let miniApps: [PartnerMiniAppDto]; public let page: Int; public let totalPages: Int }
 
 public struct SubmitIdentityRequest: Encodable { public let documentType: String; public let documentNumber: String; public let documentReference: String }
