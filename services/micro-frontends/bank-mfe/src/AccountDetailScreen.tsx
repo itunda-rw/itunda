@@ -36,6 +36,11 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
   const [error, setError] = useState<string | null>(null);
   const [showManage, setShowManage] = useState(false);
   const [showAssets, setShowAssets] = useState(false);
+  // Real Toss Bank reference (2026-09-12, "계좌 별명" -- account nickname) -- a
+  // local copy so a nickname just set in AccountManageScreen shows here
+  // immediately, without needing the full account list to re-fetch. `account`
+  // itself is prop-drilled read-only from well above this screen.
+  const [nickname, setNickname] = useState(account.nickname);
   const [selectedTransaction, setSelectedTransaction] = useState<{ tx: Transaction; afterBalance: number; isCredit: boolean } | null>(null);
   // Real interest-claim banner (2026-08-31) -- Android's own AccountDetailScreen
   // already had this ("Interest 7 RWF" + "Get interest" chip); web/iOS never did.
@@ -126,7 +131,7 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
           )}
         </div>
         {showManage && onNavigateToTab && (
-          <AccountManageScreen account={account} onBack={() => setShowManage(false)} onNavigateToTab={onNavigateToTab} />
+          <AccountManageScreen account={account} onBack={() => setShowManage(false)} onNavigateToTab={onNavigateToTab} onNicknameChanged={setNickname} />
         )}
         {selectedTransaction && (
           <TransactionDetailScreen entry={selectedTransaction} onBack={() => setSelectedTransaction(null)} />
@@ -137,6 +142,12 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
           {/* Real gap found live (2026-08-31, direct user correction: "it's not itunda
               account number it's itunda bank account number") -- see
               AccountManageScreen.tsx's identical fix for the full account. */}
+          {/* Real Toss Bank reference (2026-09-12, "계좌 별명" -- account nickname):
+              when set, real Toss leads with the nickname and demotes the bank/
+              account-number line underneath it -- matches that exact layout. */}
+          {nickname && (
+            <p style={{ margin: '0 0 2px', fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{nickname}</p>
+          )}
           <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
             itunda Bank {account.accountNumber.match(/.{1,4}/g)?.join('-') ?? account.accountNumber}
           </p>

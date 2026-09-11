@@ -9,6 +9,10 @@ export interface Account {
   userId: string;
   accountNumber: string;
   accountName: string;
+  // Real Toss Bank reference (2026-09-12, "계좌 별명" -- account nickname) -- a
+  // real, user-editable personal label, distinct from accountName above (a
+  // fixed, system-assigned label set once at creation).
+  nickname: string | null;
   type: 'MAIN' | 'PAY' | 'SAVINGS' | 'INVESTMENT' | 'LOAN' | 'MINI' | 'FOREIGN_CURRENCY';
   balance: number;
   availableBalance: number;
@@ -37,6 +41,15 @@ export interface Transaction {
 
 export const fetchAccounts = () =>
   apiFetch<{ success: boolean; accounts: Account[] }>('/api/v1/account').then((r) => r.accounts);
+
+// Real Toss Bank reference (2026-09-12, "계좌 별명" -- account nickname) -- a
+// blank/empty nickname clears it back to unset, matching the backend's own
+// AccountService.setNickname convention.
+export const setAccountNickname = (accountId: string, nickname: string) =>
+  apiFetch<{ success: boolean; account: Account }>(`/api/v1/account/${accountId}/nickname`, {
+    method: 'PATCH',
+    body: JSON.stringify({ nickname }),
+  }).then((r) => r.account);
 
 export const fetchTransactions = () =>
   apiFetch<{ success: boolean; transactions: Transaction[] }>('/api/v1/account/transactions').then((r) => r.transactions);
