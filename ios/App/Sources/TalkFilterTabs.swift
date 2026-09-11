@@ -51,6 +51,9 @@ struct CallHistoryList: View {
     let calls: [CallSessionDto]?
     let error: String?
     let onRetry: () -> Void
+    var hasMore = false
+    var loadingMore = false
+    var onLoadMore: () -> Void = {}
 
     var body: some View {
         ScrollView {
@@ -74,6 +77,12 @@ struct CallHistoryList: View {
                             .padding(.horizontal, IDS.Layout.screenHorizontal)
                             .padding(.vertical, 12)
                         Divider().padding(.leading, IDS.Layout.screenHorizontal + 44)
+                    }
+                    if hasMore {
+                        Button(loadingMore ? "Loading…" : "Load more", action: onLoadMore)
+                            .disabled(loadingMore)
+                            .padding(.horizontal, IDS.Layout.screenHorizontal)
+                            .padding(.vertical, 12)
                     }
                 }
             }

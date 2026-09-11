@@ -35,6 +35,11 @@ struct TalkServiceChannelThread: View {
 
     @State private var bubbles: [ServiceChannelBubbleDto]?
     @State private var error: String?
+    // Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix
+    // -- see project_itunda_pagination_discard_sweep memory).
+    @State private var bubblesPage = 0
+    @State private var bubblesHasMore = false
+    @State private var loadingMoreBubbles = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -61,6 +66,13 @@ struct TalkServiceChannelThread: View {
                             })
                             .padding(.horizontal, IDS.Layout.screenHorizontal)
                         }
+                        if bubblesHasMore {
+                            Button(loadingMoreBubbles ? "Loading…" : "Load more") {
+                                Task { await loadMoreBubbles() }
+                            }
+                            .disabled(loadingMoreBubbles)
+                            .padding(.horizontal, IDS.Layout.screenHorizontal)
+                        }
                     }
                 }
                 .padding(.top, 12)
@@ -72,10 +84,22 @@ struct TalkServiceChannelThread: View {
 
     private func load() async {
         do {
-            bubbles = try await NetworkClient.shared.getServiceChannel().bubbles
+            let res = try await NetworkClient.shared.getServiceChannel(page: 0)
+            bubbles = res.bubbles
+            bubblesHasMore = res.page + 1 < res.totalPages
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
+    }
+
+    private func loadMoreBubbles() async {
+        let nextPage = bubblesPage + 1
+        loadingMoreBubbles = true
+        defer { loadingMoreBubbles = false }
+        guard let res = try? await NetworkClient.shared.getServiceChannel(page: nextPage) else { return }
+        bubbles = (bubbles ?? []) + res.bubbles
+        bubblesPage = nextPage
+        bubblesHasMore = res.page + 1 < res.totalPages
     }
 }
 

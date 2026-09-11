@@ -105,13 +105,31 @@ public struct AiChatHistoryResponse: Decodable {
 public struct SendAiChatMessageRequest: Encodable { public let text: String }
 
 extension NetworkClient {
-    public func getServiceChannel() async throws -> ServiceChannelResponse { try await get("api/v1/talk/service-channel") }
+    // Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix,
+    // d4b2a378 -- see project_itunda_pagination_discard_sweep memory) -- this
+    // real Pageable endpoint's page was never sent, silently capping the
+    // itunda service-channel thread at the most recent 20 notifications.
+    public func getServiceChannel(page: Int = 0, size: Int = 30) async throws -> ServiceChannelResponse {
+        try await get("api/v1/talk/service-channel", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     public func sendAiChatMessage(text: String) async throws -> AiChatSendResponse {
         try await authenticatedPost("api/v1/talk/ai-chat/messages", body: SendAiChatMessageRequest(text: text))
     }
 
-    public func getAiChatHistory() async throws -> AiChatHistoryResponse { try await get("api/v1/talk/ai-chat/messages") }
+    // Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix,
+    // da4cfca4 -- see project_itunda_pagination_discard_sweep memory) -- this
+    // real Pageable endpoint's page was never sent, silently capping the AI
+    // chat thread's scrollback at the most recent 50 messages.
+    public func getAiChatHistory(page: Int = 0, size: Int = 50) async throws -> AiChatHistoryResponse {
+        try await get("api/v1/talk/ai-chat/messages", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     public func getGroupAnnouncement(groupId: String) async throws -> GroupAnnouncementResponse {
         try await get("api/v1/messages/groups/\(groupId)/announcement")

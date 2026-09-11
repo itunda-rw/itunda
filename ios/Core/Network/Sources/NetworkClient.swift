@@ -7539,7 +7539,12 @@ public struct PartnerMiniAppDto: Decodable, Identifiable {
     public let id: String; public let partnerId: String; public let name: String; public let description: String
     public let iconUrl: String?; public let bundleUrl: String; public let permissions: String; public let status: String; public let createdAt: String
 }
-public struct MiniAppCatalogResponse: Decodable { public let success: Bool; public let miniApps: [PartnerMiniAppDto] }
+// Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix,
+// dc23b11f, and Android's port, 934c22d4 -- see
+// project_itunda_pagination_discard_sweep memory) -- this real Pageable
+// endpoint's page was never sent, silently capping the mini-app catalog at
+// the first 20 approved apps.
+public struct MiniAppCatalogResponse: Decodable { public let success: Bool; public let miniApps: [PartnerMiniAppDto]; public let page: Int; public let totalPages: Int }
 
 public struct SubmitIdentityRequest: Encodable { public let documentType: String; public let documentNumber: String; public let documentReference: String }
 public struct KycSubmissionDto: Decodable, Identifiable {

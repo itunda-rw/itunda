@@ -71,6 +71,11 @@ struct TalkScreen: View {
     @State private var listFilter: TalkListFilter = .all
     @State private var calls: [CallSessionDto]?
     @State private var callsError: String?
+    // Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix
+    // -- see project_itunda_pagination_discard_sweep memory).
+    @State private var callsPage = 0
+    @State private var callsHasMore = false
+    @State private var loadingMoreCalls = false
 
     var body: some View {
         Group {
@@ -151,7 +156,11 @@ struct TalkScreen: View {
                         .padding(.horizontal, IDS.Layout.screenHorizontal)
                 }
                 if listFilter == .calls {
-                    CallHistoryList(calls: calls, error: callsError, onRetry: { Task { await loadCalls() } })
+                    CallHistoryList(
+                        calls: calls, error: callsError, onRetry: { Task { await loadCalls() } },
+                        hasMore: callsHasMore, loadingMore: loadingMoreCalls,
+                        onLoadMore: { Task { await loadMoreCalls() } }
+                    )
                         .task { await loadCalls() }
                 } else {
                     DirectMessagesList(
@@ -281,12 +290,23 @@ struct TalkScreen: View {
 
     private func loadCalls() async {
         do {
-            let res = try await NetworkClient.shared.getCallHistory()
+            let res = try await NetworkClient.shared.getCallHistory(page: 0)
             calls = res.calls
+            callsHasMore = res.page + 1 < res.totalPages
             callsError = nil
         } catch {
             callsError = "Couldn't reach itunda. Check your connection and try again."
         }
+    }
+
+    private func loadMoreCalls() async {
+        let nextPage = callsPage + 1
+        loadingMoreCalls = true
+        defer { loadingMoreCalls = false }
+        guard let res = try? await NetworkClient.shared.getCallHistory(page: nextPage) else { return }
+        calls = (calls ?? []) + res.calls
+        callsPage = nextPage
+        callsHasMore = res.page + 1 < res.totalPages
     }
 
     private func loadGroups() async {

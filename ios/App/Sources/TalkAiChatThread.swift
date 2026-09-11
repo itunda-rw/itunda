@@ -53,6 +53,12 @@ struct TalkAiChatThread: View {
     @State private var sending = false
     @State private var busy = false
     @State private var error: String?
+    // Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix
+    // -- see project_itunda_pagination_discard_sweep memory): older pages get
+    // reversed the same way as page 0 and PREPENDED once loaded.
+    @State private var historyPage = 0
+    @State private var olderMessagesHasMore = false
+    @State private var loadingOlderMessages = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -74,6 +80,13 @@ struct TalkAiChatThread: View {
                             EmptyStateView("Ask itunda AI anything -- it's a small, self-hosted assistant, so answers may be brief or imperfect.")
                                 .padding(.horizontal, IDS.Layout.screenHorizontal)
                                 .padding(.top, 40)
+                        }
+                        if olderMessagesHasMore {
+                            Button(loadingOlderMessages ? "Loading…" : "Load older messages") {
+                                Task { await loadOlderMessages() }
+                            }
+                            .disabled(loadingOlderMessages)
+                            .padding(.horizontal, IDS.Layout.screenHorizontal)
                         }
                         ForEach(messages) { message in
                             AiChatBubble(message: message).id(message.id)
@@ -122,7 +135,23 @@ struct TalkAiChatThread: View {
     }
 
     private func loadHistory() async {
-        messages = (try? await NetworkClient.shared.getAiChatHistory().messages.reversed()) ?? []
+        guard let res = try? await NetworkClient.shared.getAiChatHistory(page: 0) else {
+            messages = []
+            return
+        }
+        messages = res.messages.reversed()
+        historyPage = 0
+        olderMessagesHasMore = res.page + 1 < res.totalPages
+    }
+
+    private func loadOlderMessages() async {
+        let nextPage = historyPage + 1
+        loadingOlderMessages = true
+        defer { loadingOlderMessages = false }
+        guard let res = try? await NetworkClient.shared.getAiChatHistory(page: nextPage) else { return }
+        messages = res.messages.reversed() + messages
+        historyPage = nextPage
+        olderMessagesHasMore = res.page + 1 < res.totalPages
     }
 
     private func send() async {

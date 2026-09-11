@@ -33,5 +33,14 @@ public struct CallHistoryResponse: Decodable {
 }
 
 extension NetworkClient {
-    public func getCallHistory() async throws -> CallHistoryResponse { try await get("api/v1/calls/history") }
+    // Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix,
+    // b8bf7bec -- see project_itunda_pagination_discard_sweep memory) -- this
+    // real Pageable endpoint's page was never sent, silently capping the call
+    // log at the most recent 30 calls.
+    public func getCallHistory(page: Int = 0, size: Int = 30) async throws -> CallHistoryResponse {
+        try await get("api/v1/calls/history", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 }

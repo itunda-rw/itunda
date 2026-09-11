@@ -369,7 +369,12 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/identity/verification/\(requestId)/decline", body: EmptyRequest())
     }
 
-    public func getMiniAppCatalog() async throws -> MiniAppCatalogResponse { try await get("api/v1/mini-apps/catalog") }
+    public func getMiniAppCatalog(page: Int = 0, size: Int = 20) async throws -> MiniAppCatalogResponse {
+        try await get("api/v1/mini-apps/catalog", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     public func submitIdentity(documentType: String, documentNumber: String, documentReference: String) async throws -> SubmitIdentityResponse {
         try await authenticatedPost("api/v1/identity/submit", body: SubmitIdentityRequest(documentType: documentType, documentNumber: documentNumber, documentReference: documentReference))

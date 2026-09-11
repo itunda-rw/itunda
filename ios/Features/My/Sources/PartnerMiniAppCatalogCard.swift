@@ -11,6 +11,9 @@ import CoreNetwork
 /// file-size discipline.
 struct PartnerMiniAppCatalogCard: View {
     let miniApps: [PartnerMiniAppDto]
+    var hasMore = false
+    var loadingMore = false
+    var onLoadMore: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -34,6 +37,13 @@ struct PartnerMiniAppCatalogCard: View {
                     }
                     Spacer()
                 }
+            }
+            // Real pagination-discard fix (2026-09-11, ported from bank-mfe's
+            // own fix -- see project_itunda_pagination_discard_sweep memory).
+            if hasMore {
+                Button(loadingMore ? "Loading…" : "Load more", action: onLoadMore)
+                    .disabled(loadingMore)
+                    .font(.caption).bold()
             }
         }
         .padding(.vertical, 10).frame(maxWidth: .infinity, alignment: .leading)
