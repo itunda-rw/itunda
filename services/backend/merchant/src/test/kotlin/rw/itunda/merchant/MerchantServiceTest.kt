@@ -562,6 +562,16 @@ class MerchantServiceTest : BehaviorSpec({
             Then("the real rate limiter is actually consulted, not just mocked away") {
                 verify(exactly = 1) { rateLimiter.checkLimit("merchant:chargeCard:owner_1", limit = 10, window = java.time.Duration.ofMinutes(1)) }
             }
+
+            // Real gap found live (2026-09-11, sibling-asymmetry check against
+            // collect()'s own already-verified fraudRuleEngine.evaluate call above) --
+            // chargeCard mints real ledger balance from a simulated card authorization
+            // with zero FraudRuleEngine coverage. No real itunda payer exists here (the
+            // card is external), so the merchant receiving the value is evaluated
+            // instead -- same real precedent AgentService.cashIn already established.
+            Then("the real fraud engine is actually consulted, not just mocked away") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("owner_1", null, BigDecimal("8000"), "ledgertxn_card_1") }
+            }
         }
 
         When("charging a demo test card that declines") {

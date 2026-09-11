@@ -1019,6 +1019,19 @@ class MerchantService(
             channel = "CARD",
             completedAt = Instant.now(),
         )
+        // Real gap found live (2026-09-11, sibling-asymmetry check against collect()/
+        // chargeByCustomerCode() above, both of which already evaluate the paying
+        // itunda user) -- chargeCard mints real ledger balance from a simulated card
+        // authorization that DemoCardAuthorizationService approves for ~85% of ANY
+        // Luhn-valid card, with zero FraudRuleEngine coverage. There's no real itunda
+        // "payer" here (the card is external, not another itunda account), so this
+        // evaluates the account materially receiving the value instead -- merchant.
+        // ownerUserId -- the same real precedent AgentService.cashIn already
+        // established for an identical "external money enters an itunda account"
+        // shape (deposit-structuring/self-laundering via a scripted burst of fake
+        // charges is the exact risk the rate limit above already names but only
+        // bounds by volume, not by amount).
+        fraudRuleEngine.evaluate(merchant.ownerUserId, null, amount, transaction.id)
         transactionRepository.save(transaction)
 
         val resultMap = mapOf(
