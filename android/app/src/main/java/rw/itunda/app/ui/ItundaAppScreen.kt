@@ -1907,6 +1907,8 @@ fun ItundaAppScreen(
                     // primary tabs now.
                     ItundaTab.Explore -> {
                         val partnerMiniApps by viewModel.partnerMiniApps.collectAsState()
+                        val partnerMiniAppsHasMore by viewModel.partnerMiniAppsHasMore.collectAsState()
+                        val loadingMorePartnerMiniApps by viewModel.loadingMorePartnerMiniApps.collectAsState()
                         val menuContext = androidx.compose.ui.platform.LocalContext.current
                         MenuScreen(
                             onOpenShop = { showShop = true },
@@ -1961,6 +1963,9 @@ fun ItundaAppScreen(
                             onSwitchToTalk = { selectedTab = ItundaTab.Messages },
                             onOpenProperty = { showProperty = true },
                             partnerMiniApps = partnerMiniApps,
+                            partnerMiniAppsHasMore = partnerMiniAppsHasMore,
+                            loadingMorePartnerMiniApps = loadingMorePartnerMiniApps,
+                            onLoadMorePartnerMiniApps = { viewModel.loadMorePartnerMiniApps() },
                             onOpenRewardTasksMiniApp = {
                                 menuContext.startActivity(android.content.Intent(menuContext, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java))
                             },

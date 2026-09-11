@@ -38,6 +38,9 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -61,11 +64,19 @@ internal fun AiChatThreadView(onBack: () -> Unit) {
     var sending by remember { mutableStateOf(false) }
     var busyNotice by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix
+    // -- see project_itunda_pagination_discard_sweep memory): the retrofit
+    // method already accepted page/size, but this screen never sent anything
+    // past page 0 or exposed a way to load older messages. Older pages get
+    // reversed the same way as page 0 and PREPENDED once loaded.
+    var historyPage by remember { mutableStateOf(0) }
+    var olderMessagesHasMore by remember { mutableStateOf(false) }
+    var loadingOlderMessages by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     suspend fun loadHistory() {
         try {
-            val res = NetworkClient.talkApi.getAiChatHistory()
+            val res = NetworkClient.talkApi.getAiChatHistory(page = 0)
             // Real fix, found live on a physical device (2026-08-29): the backend
             // returns history newest-first (a real pagination convention), but this
             // screen renders top-down in chronological reading order like every
@@ -75,12 +86,32 @@ internal fun AiChatThreadView(onBack: () -> Unit) {
             // real chat convention (and inconsistent with the order right after a
             // send, which appends and therefore reads correctly). Reverse once here
             // so `messages` is always oldest-first, matching send()'s own append.
-            if (res.success) messages = res.messages.reversed()
+            if (res.success) {
+                messages = res.messages.reversed()
+                olderMessagesHasMore = res.page + 1 < res.totalPages
+            }
         } catch (_: Exception) {
             messages = emptyList()
         }
     }
     LaunchedEffect(Unit) { loadHistory() }
+
+    suspend fun loadOlderMessages() {
+        val nextPage = historyPage + 1
+        loadingOlderMessages = true
+        try {
+            val res = NetworkClient.talkApi.getAiChatHistory(page = nextPage)
+            if (res.success) {
+                messages = res.messages.reversed() + (messages ?: emptyList())
+                historyPage = nextPage
+                olderMessagesHasMore = res.page + 1 < res.totalPages
+            }
+        } catch (_: Exception) {
+            // Non-critical -- leave state as-is, the button just stays visible to retry.
+        } finally {
+            loadingOlderMessages = false
+        }
+    }
 
     fun send() {
         val text = input.trim()
@@ -118,6 +149,17 @@ internal fun AiChatThreadView(onBack: () -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(vertical = 12.dp),
                 ) {
+                    if (olderMessagesHasMore) {
+                        item {
+                            IdsButton(
+                                text = if (loadingOlderMessages) "Loading…" else "Load older messages",
+                                onClick = { coroutineScope.launch { loadOlderMessages() } },
+                                enabled = !loadingOlderMessages,
+                                variant = IdsButtonVariant.Tinted,
+                                size = IdsButtonSize.Medium,
+                            )
+                        }
+                    }
                     items(messages.orEmpty(), key = { it.id }) { m -> AiChatBubble(m) }
                     if (busyNotice) item { AiSystemNotice("itunda AI is busy right now -- try again shortly.") }
                     if (error != null) item { AiSystemNotice(error!!) }

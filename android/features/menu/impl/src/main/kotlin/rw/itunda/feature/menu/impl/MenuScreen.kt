@@ -97,6 +97,11 @@ fun MenuScreen(
     onSwitchToTalk: () -> Unit = {},
     onOpenProperty: () -> Unit = {},
     partnerMiniApps: List<rw.itunda.core.network.PartnerMiniAppDto>,
+    // Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix
+    // -- see project_itunda_pagination_discard_sweep memory).
+    partnerMiniAppsHasMore: Boolean = false,
+    loadingMorePartnerMiniApps: Boolean = false,
+    onLoadMorePartnerMiniApps: () -> Unit = {},
     // Real injected callbacks (2026-09-02) -- see this file's own header comment.
     onOpenRewardTasksMiniApp: () -> Unit = {},
     onOpenPayBillsMiniApp: () -> Unit = {},
@@ -240,6 +245,19 @@ fun MenuScreen(
                                     }
                                 }
                             )
+                        } + if (partnerMiniAppsHasMore) {
+                            // Real pagination-discard fix (2026-09-11, ported from
+                            // bank-mfe's own fix -- see
+                            // project_itunda_pagination_discard_sweep memory).
+                            listOf(
+                                FlatRow(
+                                    title = if (loadingMorePartnerMiniApps) "Loading…" else "Load more",
+                                    subtitle = null,
+                                    onClick = { if (!loadingMorePartnerMiniApps) onLoadMorePartnerMiniApps() },
+                                )
+                            )
+                        } else {
+                            emptyList()
                         }
                     )
                 }

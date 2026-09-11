@@ -738,7 +738,12 @@ data class PartnerMiniAppDto(
     val createdAt: String,
 )
 
-data class MiniAppCatalogResponse(val success: Boolean, val miniApps: List<PartnerMiniAppDto>)
+// Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix,
+// dc23b11f -- see project_itunda_pagination_discard_sweep memory) --
+// getMiniAppCatalog is real Pageable-backed on the backend, but page was
+// never sent, silently capping the mini-app catalog at the first 20
+// approved apps.
+data class MiniAppCatalogResponse(val success: Boolean, val miniApps: List<PartnerMiniAppDto>, val page: Int, val totalPages: Int)
 
 // Mirrors services/backend/messaging's real DTOs exactly (2026-07-18) -- backs the new
 // "Talk" bottom-nav tab (Kakao-style 1:1 chat). See rw.itunda.messaging.MessagingService
@@ -2950,7 +2955,7 @@ interface ApiService {
     // surface a logged-in itunda user's own client fetches). See
     // miniapps/PartnerMiniAppLoader.kt for what actually happens when one of these is tapped.
     @GET("api/v1/mini-apps/catalog")
-    suspend fun getMiniAppCatalog(): MiniAppCatalogResponse
+    suspend fun getMiniAppCatalog(@Query("page") page: Int = 0, @Query("size") size: Int = 20): MiniAppCatalogResponse
 
     // Real 1:1 messaging (2026-07-18) -- see rw.itunda.messaging.web.MessagingController.
     @POST("api/v1/messages/conversations")

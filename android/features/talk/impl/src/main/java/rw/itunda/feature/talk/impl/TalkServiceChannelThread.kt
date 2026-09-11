@@ -23,6 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,9 +31,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
@@ -53,11 +58,22 @@ internal fun ServiceChannelThreadView(onBack: () -> Unit, onNavigate: (String) -
     BackHandler(onBack = onBack)
     var bubbles by remember { mutableStateOf<List<ServiceChannelBubbleDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix
+    // -- see project_itunda_pagination_discard_sweep memory): the retrofit
+    // method already accepted page/size, but this screen never sent anything
+    // past page 0 or exposed a way to load more.
+    var bubblesPage by remember { mutableStateOf(0) }
+    var bubblesHasMore by remember { mutableStateOf(false) }
+    var loadingMoreBubbles by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     suspend fun load() {
         try {
-            val res = NetworkClient.talkApi.getServiceChannel()
-            if (res.success) bubbles = res.bubbles
+            val res = NetworkClient.talkApi.getServiceChannel(page = 0)
+            if (res.success) {
+                bubbles = res.bubbles
+                bubblesHasMore = res.page + 1 < res.totalPages
+            }
             error = null
         } catch (e: HttpException) {
             error = superAppErrorMessage(e)
@@ -66,6 +82,23 @@ internal fun ServiceChannelThreadView(onBack: () -> Unit, onNavigate: (String) -
         }
     }
     LaunchedEffect(Unit) { load() }
+
+    suspend fun loadMore() {
+        val nextPage = bubblesPage + 1
+        loadingMoreBubbles = true
+        try {
+            val res = NetworkClient.talkApi.getServiceChannel(page = nextPage)
+            if (res.success) {
+                bubbles = (bubbles ?: emptyList()) + res.bubbles
+                bubblesPage = nextPage
+                bubblesHasMore = res.page + 1 < res.totalPages
+            }
+        } catch (_: Exception) {
+            // Non-critical -- leave state as-is, the button just stays visible to retry.
+        } finally {
+            loadingMoreBubbles = false
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         BackTopBar("itunda", onBack)
@@ -79,6 +112,17 @@ internal fun ServiceChannelThreadView(onBack: () -> Unit, onNavigate: (String) -
                 contentPadding = PaddingValues(vertical = 12.dp),
             ) {
                 items(bubbles!!, key = { it.id }) { bubble -> ServiceChannelBubbleRow(bubble, onNavigate) }
+                if (bubblesHasMore) {
+                    item {
+                        IdsButton(
+                            text = if (loadingMoreBubbles) "Loading…" else "Load more",
+                            onClick = { coroutineScope.launch { loadMore() } },
+                            enabled = !loadingMoreBubbles,
+                            variant = IdsButtonVariant.Tinted,
+                            size = IdsButtonSize.Medium,
+                        )
+                    }
+                }
             }
         }
     }
