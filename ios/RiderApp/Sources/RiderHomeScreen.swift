@@ -267,7 +267,11 @@ struct RiderHomeScreen: View {
     }
 
     private func declineOffer(notification: NotificationDto, orderId: String) async {
-        _ = try? await RiderNetworkClient.shared.declineDelivery(orderId)
+        do {
+            _ = try await RiderNetworkClient.shared.declineDelivery(orderId)
+        } catch {
+            self.error = "Couldn't decline this delivery. Try again."
+        }
         try? await RiderNetworkClient.shared.markNotificationRead(notification.id)
         await refreshOffers()
     }

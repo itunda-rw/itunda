@@ -214,7 +214,12 @@ struct CatalogTab: View {
     }
 
     private func remove(_ productId: String) async {
-        _ = try? await MerchantNetworkClient.shared.removeProduct(productId)
+        error = nil
+        do {
+            _ = try await MerchantNetworkClient.shared.removeProduct(productId)
+        } catch {
+            self.error = "Couldn't remove this product. Try again."
+        }
         await load()
     }
 
