@@ -42,6 +42,7 @@ import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.IdsAvatar
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.theme.Ids
@@ -166,6 +167,12 @@ internal fun GroupsList(
     onRetry: () -> Unit,
     onCreated: (String) -> Unit,
     onOpen: (String) -> Unit,
+    // Real pagination-discard fix (same systemic gap fixed on web, 2026-09-11)
+    // -- a request never asked past page 0, so a user with more than 20 real
+    // group chats couldn't reach anything past the first page.
+    hasMore: Boolean = false,
+    loadingMore: Boolean = false,
+    onLoadMore: () -> Unit = {},
 ) {
     var name by remember { mutableStateOf("") }
     var phoneNumbers by remember { mutableStateOf("") }
@@ -235,6 +242,17 @@ internal fun GroupsList(
             item { EmptyState("No groups yet — start one to chat with more than one person at a time.", icon = Icons.Outlined.ChatBubbleOutline) }
         } else {
             items(groups, key = { it.groupId }) { g -> GroupRow(g, onClick = { onOpen(g.groupId) }) }
+            if (hasMore) {
+                item {
+                    IdsButton(
+                        text = if (loadingMore) "Loading…" else "Load more",
+                        onClick = onLoadMore,
+                        enabled = !loadingMore,
+                        variant = IdsButtonVariant.Tinted,
+                        size = IdsButtonSize.Medium,
+                    )
+                }
+            }
         }
     }
 }

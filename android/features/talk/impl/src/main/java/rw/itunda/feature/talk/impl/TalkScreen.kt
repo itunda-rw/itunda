@@ -91,12 +91,30 @@ fun TalkTab(
     // than the 4s message poll. Per-thread real-time push happens in ChatThreadView.
     var presence by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
     val coroutineScope = rememberCoroutineScope()
+    // Real pagination-discard fix (same systemic gap fixed on web, 2026-09-11
+    // -- see project_itunda_pagination_discard_sweep memory) -- a request
+    // never asked past page 0 for any of the 3 real lists here, so a user
+    // with more than 20 conversations, archived chats, or groups couldn't
+    // reach anything past the first page.
+    var conversationsPage by remember { mutableStateOf(0) }
+    var conversationsHasMore by remember { mutableStateOf(false) }
+    var conversationsLoadingMore by remember { mutableStateOf(false) }
+    var archivedPage by remember { mutableStateOf(0) }
+    var archivedHasMore by remember { mutableStateOf(false) }
+    var archivedLoadingMore by remember { mutableStateOf(false) }
+    var groupsPage by remember { mutableStateOf(0) }
+    var groupsHasMore by remember { mutableStateOf(false) }
+    var groupsLoadingMore by remember { mutableStateOf(false) }
 
     fun loadConversations() {
         coroutineScope.launch {
             try {
-                val res = NetworkClient.apiService.getConversations()
-                if (res.success) conversations = res.conversations
+                val res = NetworkClient.apiService.getConversations(page = 0)
+                if (res.success) {
+                    conversations = res.conversations
+                    conversationsPage = 0
+                    conversationsHasMore = res.page + 1 < res.totalPages
+                }
                 conversationsError = null
             } catch (e: HttpException) {
                 conversationsError = superAppErrorMessage(e)
@@ -105,27 +123,90 @@ fun TalkTab(
             }
         }
     }
+    fun loadMoreConversations() {
+        val nextPage = conversationsPage + 1
+        conversationsLoadingMore = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getConversations(page = nextPage)
+                if (res.success) {
+                    conversations = (conversations ?: emptyList()) + res.conversations
+                    conversationsPage = nextPage
+                    conversationsHasMore = res.page + 1 < res.totalPages
+                }
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded page stays visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                conversationsLoadingMore = false
+            }
+        }
+    }
     fun loadArchivedConversations() {
         coroutineScope.launch {
             try {
-                val res = NetworkClient.apiService.getConversations(archived = true)
-                if (res.success) archivedConversations = res.conversations
+                val res = NetworkClient.apiService.getConversations(archived = true, page = 0)
+                if (res.success) {
+                    archivedConversations = res.conversations
+                    archivedPage = 0
+                    archivedHasMore = res.page + 1 < res.totalPages
+                }
             } catch (_: Exception) {
                 // Real, non-critical -- the active list and "Archived (N)" count still
                 // work even if this background fetch fails; retried on next load.
             }
         }
     }
+    fun loadMoreArchivedConversations() {
+        val nextPage = archivedPage + 1
+        archivedLoadingMore = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getConversations(archived = true, page = nextPage)
+                if (res.success) {
+                    archivedConversations = (archivedConversations ?: emptyList()) + res.conversations
+                    archivedPage = nextPage
+                    archivedHasMore = res.page + 1 < res.totalPages
+                }
+            } catch (_: Exception) {
+                // Non-critical, same reasoning as loadMoreConversations above.
+            } finally {
+                archivedLoadingMore = false
+            }
+        }
+    }
     fun loadGroups() {
         coroutineScope.launch {
             try {
-                val res = NetworkClient.apiService.getMyGroups()
-                if (res.success) groups = res.groups
+                val res = NetworkClient.apiService.getMyGroups(page = 0)
+                if (res.success) {
+                    groups = res.groups
+                    groupsPage = 0
+                    groupsHasMore = res.page + 1 < res.totalPages
+                }
                 groupsError = null
             } catch (e: HttpException) {
                 groupsError = superAppErrorMessage(e)
             } catch (e: IOException) {
                 groupsError = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+    fun loadMoreGroups() {
+        val nextPage = groupsPage + 1
+        groupsLoadingMore = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyGroups(page = nextPage)
+                if (res.success) {
+                    groups = (groups ?: emptyList()) + res.groups
+                    groupsPage = nextPage
+                    groupsHasMore = res.page + 1 < res.totalPages
+                }
+            } catch (_: Exception) {
+                // Non-critical, same reasoning as loadMoreConversations above.
+            } finally {
+                groupsLoadingMore = false
             }
         }
     }
@@ -268,6 +349,12 @@ fun TalkTab(
                     onStarted = { conversationId -> loadConversations(); openConversationId = conversationId },
                     onOpen = { openConversationId = it },
                     onArchiveChanged = { loadConversations(); loadArchivedConversations() },
+                    hasMore = conversationsHasMore,
+                    archivedHasMore = archivedHasMore,
+                    loadingMore = conversationsLoadingMore,
+                    archivedLoadingMore = archivedLoadingMore,
+                    onLoadMore = ::loadMoreConversations,
+                    onLoadMoreArchived = ::loadMoreArchivedConversations,
                 )
             }
         } else {
@@ -277,6 +364,9 @@ fun TalkTab(
                 onRetry = ::loadGroups,
                 onCreated = { groupId -> loadGroups(); openGroupId = groupId },
                 onOpen = { openGroupId = it },
+                hasMore = groupsHasMore,
+                loadingMore = groupsLoadingMore,
+                onLoadMore = ::loadMoreGroups,
             )
         }
     }

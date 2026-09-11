@@ -57,6 +57,9 @@ import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.IdsAvatar
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.theme.Ids
@@ -82,6 +85,15 @@ internal fun DirectMessagesList(
     onStarted: (String) -> Unit,
     onOpen: (String) -> Unit,
     onArchiveChanged: () -> Unit,
+    // Real pagination-discard fix (same systemic gap fixed on web, 2026-09-11)
+    // -- independent hasMore/loadingMore per list (active vs archived), since
+    // a user can exhaust one while the other still has more pages.
+    hasMore: Boolean = false,
+    archivedHasMore: Boolean = false,
+    loadingMore: Boolean = false,
+    archivedLoadingMore: Boolean = false,
+    onLoadMore: () -> Unit = {},
+    onLoadMoreArchived: () -> Unit = {},
 ) {
     var startPhoneNumber by remember { mutableStateOf("") }
     var startError by remember { mutableStateOf<String?>(null) }
@@ -273,6 +285,19 @@ internal fun DirectMessagesList(
                     onFavoriteToggle = { toggleFavorite(c.conversationId, !c.favorite) },
                     modifier = Modifier.animateItemPlacement(),
                 )
+            }
+            val listHasMore = if (showArchived) archivedHasMore else hasMore
+            val listLoadingMore = if (showArchived) archivedLoadingMore else loadingMore
+            if (listHasMore) {
+                item {
+                    IdsButton(
+                        text = if (listLoadingMore) "Loading…" else "Load more",
+                        onClick = if (showArchived) onLoadMoreArchived else onLoadMore,
+                        enabled = !listLoadingMore,
+                        variant = IdsButtonVariant.Tinted,
+                        size = IdsButtonSize.Medium,
+                    )
+                }
             }
         }
     }

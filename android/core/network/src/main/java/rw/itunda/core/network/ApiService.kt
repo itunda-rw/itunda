@@ -841,7 +841,7 @@ data class SetConversationQuietRequest(val quiet: Boolean)
 data class ToggleReactionRequest(val emoji: String)
 
 data class ConversationResponse(val success: Boolean, val conversation: ConversationDto)
-data class ConversationsResponse(val success: Boolean, val conversations: List<ConversationSummaryDto>)
+data class ConversationsResponse(val success: Boolean, val conversations: List<ConversationSummaryDto>, val page: Int = 0, val totalPages: Int = 1)
 data class MessagesResponse(val success: Boolean, val messages: List<MessageDto>)
 data class MessageResponse(val success: Boolean, val message: MessageDto)
 // Real message forwarding (2026-08-04) -- see MessagingController.forwardMessage's own
@@ -906,7 +906,7 @@ data class GroupMessageDto(
     val replyCount: Long = 0,
 )
 data class GroupResponse(val success: Boolean, val group: GroupSummaryDto)
-data class GroupsResponse(val success: Boolean, val groups: List<GroupSummaryDto>)
+data class GroupsResponse(val success: Boolean, val groups: List<GroupSummaryDto>, val page: Int = 0, val totalPages: Int = 1)
 
 // Real open-group DTOs (item 244) -- distinct shape from GroupSummaryDto (a real
 // joinCode, but no memberCount/lastMessage/etc. yet since the group was just
@@ -2941,8 +2941,12 @@ interface ApiService {
     @POST("api/v1/messages/conversations")
     suspend fun startConversation(@Body request: StartConversationRequest): ConversationResponse
 
+    // Real pagination-discard fix (same systemic gap fixed on web, 2026-09-11
+    // -- see project_itunda_pagination_discard_sweep memory) -- page/size
+    // just weren't ever sent, silently capping the Talk conversation list at
+    // its first 20 rows.
     @GET("api/v1/messages/conversations")
-    suspend fun getConversations(@Query("archived") archived: Boolean = false): ConversationsResponse
+    suspend fun getConversations(@Query("archived") archived: Boolean = false, @Query("page") page: Int = 0, @Query("size") size: Int = 20): ConversationsResponse
 
     @GET("api/v1/messages/contacts")
     suspend fun getTalkContacts(): TalkContactsResponse
@@ -3039,8 +3043,11 @@ interface ApiService {
     @POST("api/v1/messages/groups")
     suspend fun createGroup(@Body request: CreateGroupRequest): GroupResponse
 
+    // Real pagination-discard fix (same systemic gap fixed on web, 2026-09-11)
+    // -- page/size just weren't ever sent, silently capping the Talk
+    // group-chat list at its first 20 rows.
     @GET("api/v1/messages/groups")
-    suspend fun getMyGroups(): GroupsResponse
+    suspend fun getMyGroups(@Query("page") page: Int = 0, @Query("size") size: Int = 20): GroupsResponse
 
     // Real KakaoTalk 오픈채팅-style open group (Talk-parity port, item 244) -- see
     // GroupMessagingService.createOpenGroup's own doc comment. bank-mfe/iOS already
