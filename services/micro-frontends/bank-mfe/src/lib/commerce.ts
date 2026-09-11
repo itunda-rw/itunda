@@ -108,11 +108,20 @@ export interface OrderRiderLocation {
 export const fetchOrderRiderLocation = (orderId: string) =>
   apiFetch<{ success: boolean; available: boolean; location: OrderRiderLocation | null }>(`/api/v1/orders/${orderId}/rider-location`);
 
-export const fetchMyOrders = () =>
-  apiFetch<{ success: boolean; orders: CommerceOrder[] }>('/api/v1/orders/my-orders').then((r) => r.orders);
+// Real pagination-discard fix (2026-09-11, same systemic gap fixed for
+// Knowledge/Community/Marketplace/Jobs/RealEstate/Talk/Ride -- see
+// project_itunda_pagination_discard_sweep memory) -- OrderController's real
+// Pageable/pageMeta endpoints were always there; page just wasn't ever sent,
+// silently capping order history at the most recent 20 orders.
+export const fetchMyOrders = (page = 0) =>
+  apiFetch<{ success: boolean; orders: CommerceOrder[]; page: number; totalPages: number }>(
+    `/api/v1/orders/my-orders?page=${page}&size=20`,
+  );
 
-export const fetchMerchantOrders = () =>
-  apiFetch<{ success: boolean; orders: CommerceOrder[] }>('/api/v1/orders/merchant-orders').then((r) => r.orders);
+export const fetchMerchantOrders = (page = 0) =>
+  apiFetch<{ success: boolean; orders: CommerceOrder[]; page: number; totalPages: number }>(
+    `/api/v1/orders/merchant-orders?page=${page}&size=20`,
+  );
 
 export const advanceOrderStatus = (orderId: string, status: CommerceOrderStatus) =>
   apiFetch<{ success: boolean; order: CommerceOrder }>(`/api/v1/orders/${orderId}/status`, {

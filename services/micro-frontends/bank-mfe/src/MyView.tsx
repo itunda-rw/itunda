@@ -66,7 +66,7 @@ export function MyView() {
   useEffect(() => {
     // Each fetch independent and best-effort -- one product's API hiccup must never
     // blank the rest of this real personal-activity summary.
-    fetchMyOrders().then(setShopOrders).catch(() => {});
+    fetchMyOrders(0).then((r) => setShopOrders(r.orders)).catch(() => {});
     fetchMyEatsOrders().then(setEatsOrders).catch(() => {});
     fetchMyFavoriteListings().then((r) => setFavoriteListingsCount(r.length)).catch(() => {});
     fetchMyFavoriteJobPosts().then((r) => setFavoriteJobPostsCount(r.length)).catch(() => {});

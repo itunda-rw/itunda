@@ -21,10 +21,34 @@ export function MyCommerceOrdersView({ onReorder, reorderingId }: { onReorder: (
   const showSkeleton = useDeferredLoading(orders === null);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  // Real pagination fix (2026-09-11): page 0 is polled every 4s for real-time
+  // order-status accuracy, so it must always stay a live, page-0-only fetch.
+  // olderOrders is a separate accumulator populated only by loadMoreOrders,
+  // never touched by the poll -- safe to concatenate since both are ordered
+  // by createdAt DESC and never overlap.
+  const [olderOrders, setOlderOrders] = useState<CommerceOrder[]>([]);
+  const [ordersPage, setOrdersPage] = useState(0);
+  const [ordersHasMore, setOrdersHasMore] = useState(false);
+  const [loadingMoreOrders, setLoadingMoreOrders] = useState(false);
 
   const load = () => {
     setError(null);
-    fetchMyOrders().then(setOrders).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+    fetchMyOrders(0)
+      .then((r) => { setOrders(r.orders); setOrdersHasMore(r.page + 1 < r.totalPages); })
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+  };
+
+  const loadMoreOrders = () => {
+    const nextPage = ordersPage + 1;
+    setLoadingMoreOrders(true);
+    fetchMyOrders(nextPage)
+      .then((r) => {
+        setOlderOrders((prev) => [...prev, ...r.orders]);
+        setOrdersPage(nextPage);
+        setOrdersHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreOrders(false));
   };
 
   useEffect(() => {
@@ -52,7 +76,8 @@ export function MyCommerceOrdersView({ onReorder, reorderingId }: { onReorder: (
     );
   }
   if (orders === null) return showSkeleton ? <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
-  if (orders.length === 0) return <EmptyState message="No orders yet — browse a merchant's shop and your first order will show up here." />;
+  const allOrders = [...orders, ...olderOrders];
+  if (allOrders.length === 0) return <EmptyState message="No orders yet — browse a merchant's shop and your first order will show up here." />;
 
   const renderAction = (o: CommerceOrder) => {
     if (o.status === 'PLACED') {
@@ -87,9 +112,14 @@ export function MyCommerceOrdersView({ onReorder, reorderingId }: { onReorder: (
     <div>
       <MyReturnRequestsView />
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      {orders.map((o) => (
+      {allOrders.map((o) => (
         <CommerceOrderCard key={o.id} order={o} action={renderAction(o)} />
       ))}
+      {ordersHasMore && (
+        <button className="itunda-btn itunda-btn-secondary" disabled={loadingMoreOrders} onClick={loadMoreOrders}>
+          {loadingMoreOrders ? 'Loading…' : 'Load more'}
+        </button>
+      )}
       </div>
     </div>
   );
@@ -101,10 +131,16 @@ export function MerchantOrdersView() {
   const showSkeleton = useDeferredLoading(orders === null);
   const [error, setError] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
+  // Same page-0-stays-live + separately-accumulated-older-pages design as
+  // MyCommerceOrdersView above (see its own comment).
+  const [olderMerchantOrders, setOlderMerchantOrders] = useState<CommerceOrder[]>([]);
+  const [merchantOrdersPage, setMerchantOrdersPage] = useState(0);
+  const [merchantOrdersHasMore, setMerchantOrdersHasMore] = useState(false);
+  const [loadingMoreMerchantOrders, setLoadingMoreMerchantOrders] = useState(false);
 
   const load = () => {
-    fetchMerchantOrders()
-      .then(setOrders)
+    fetchMerchantOrders(0)
+      .then((r) => { setOrders(r.orders); setMerchantOrdersHasMore(r.page + 1 < r.totalPages); })
       .catch((err) => {
         // A real, expected error for any account that hasn't registered as a merchant --
         // stays silent rather than alarming the common case of a buyer-only account.
@@ -114,6 +150,19 @@ export function MerchantOrdersView() {
           setError(err instanceof ApiError ? err.message : t('common.loadError'));
         }
       });
+  };
+
+  const loadMoreMerchantOrders = () => {
+    const nextPage = merchantOrdersPage + 1;
+    setLoadingMoreMerchantOrders(true);
+    fetchMerchantOrders(nextPage)
+      .then((r) => {
+        setOlderMerchantOrders((prev) => [...prev, ...r.orders]);
+        setMerchantOrdersPage(nextPage);
+        setMerchantOrdersHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreMerchantOrders(false));
   };
 
   useEffect(() => {
@@ -143,13 +192,14 @@ export function MerchantOrdersView() {
     );
   }
   if (orders === null) return showSkeleton ? <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
-  if (orders.length === 0) return null;
+  const allMerchantOrders = [...orders, ...olderMerchantOrders];
+  if (allMerchantOrders.length === 0) return null;
 
   return (
     <div style={{ marginBottom: '20px' }}>
       <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Orders for your store</h4>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {orders.map((o) => {
+        {allMerchantOrders.map((o) => {
           const next = nextInChain(COMMERCE_STATUS_CHAIN, o.status);
           return (
             <CommerceOrderCard
@@ -163,6 +213,11 @@ export function MerchantOrdersView() {
             />
           );
         })}
+        {merchantOrdersHasMore && (
+          <button className="itunda-btn itunda-btn-secondary" disabled={loadingMoreMerchantOrders} onClick={loadMoreMerchantOrders}>
+            {loadingMoreMerchantOrders ? 'Loading…' : 'Load more'}
+          </button>
+        )}
       </div>
     </div>
   );
