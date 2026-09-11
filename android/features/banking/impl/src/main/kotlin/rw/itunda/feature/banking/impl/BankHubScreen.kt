@@ -192,6 +192,24 @@ fun BankHubScreen(
             }
         }
     }
+    // Real Toss Bank reference (2026-09-11, 7 real account-detail/전체 screenshots) --
+    // Section 65 (docs/DESIGN_REFERENCES.md) named a "추천" (Recommended) rail
+    // leading the product catalog as a gap in 2026-08-13 and it was never built on
+    // any platform. DiscoverService already emits real, per-user, priority-ranked
+    // items -- only these 4 are Bank-catalog-relevant (the rest, plus the
+    // account-identity nudge p_kyc, belong on Home, where they already render via
+    // HomeDiscover.kt's DiscoverSection).
+    var recommendationItems by remember { mutableStateOf<List<rw.itunda.core.network.DiscoverItem>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        try {
+            val ids = setOf("p_first_goal", "p_try_sacco", "p_try_ikimina", "p_try_loan")
+            recommendationItems = rw.itunda.core.network.NetworkClient.apiService.getDiscoverItems().items
+                .filter { it.id in ids }
+                .sortedByDescending { it.priority }
+        } catch (_: Exception) {
+            // Non-critical -- the section just won't render if this fails.
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
@@ -268,6 +286,22 @@ fun BankHubScreen(
                     }
                 }
                 androidx.compose.material3.HorizontalDivider(color = Ids.colors.divider, thickness = 0.5.dp)
+            }
+            if (recommendationItems.isNotEmpty()) {
+                item {
+                    ShellSection(
+                        title = stringResource(R.string.bank_recommendations),
+                        rows = recommendationItems.mapNotNull { discoverItem ->
+                            when (discoverItem.id) {
+                                "p_first_goal" -> ShellRow(discoverItem.title, discoverItem.subtitle, ">", Icons.Outlined.Savings, AccentTeal, onClick = { showNewGoalDialog = true })
+                                "p_try_sacco" -> ShellRow(discoverItem.title, discoverItem.subtitle, ">", Icons.Outlined.AccountBalance, AccentPurple, onClick = onOpenSacco)
+                                "p_try_ikimina" -> ShellRow(discoverItem.title, discoverItem.subtitle, ">", Icons.Outlined.Groups, AccentTeal, onClick = onOpenIkimina)
+                                "p_try_loan" -> ShellRow(discoverItem.title, discoverItem.subtitle, ">", Icons.Outlined.AccountBalanceWallet, AccentIndigo, onClick = onOpenLoans)
+                                else -> null
+                            }
+                        },
+                    )
+                }
             }
             item {
                 val roundUpOff = stringResource(R.string.home_round_up_off)

@@ -40,6 +40,7 @@
     <string name="bank_save_grow">Épargner et faire fructifier</string>
     <string name="bank_borrow">Emprunter</string>
     <string name="bank_insights">Analyses</string>
+    <string name="bank_recommendations">Recommandé pour vous</string>
     <string name="bank_status_disclosure">itunda n\'est pas une banque agréée, et ceci n\'est pas une véritable assurance-dépôts gouvernementale. « itunda Bank » est le nom de produit d\'itunda pour ces fonctionnalités d\'épargne, de SACCO/Ikimina, de prêt et d\'investissement -- ce n\'est pas une entité bancaire agréée distincte.</string>
     <string name="bank_deposit_protection_title">Fonds de protection des dépôts (simulation)</string>
     <string name="bank_deposit_protection_covered">Votre solde couvert</string>
