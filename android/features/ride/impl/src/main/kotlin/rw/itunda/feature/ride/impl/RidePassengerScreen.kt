@@ -94,6 +94,15 @@ internal fun RidePassengerContent(onReportIssue: (String) -> Unit = {}) {
     // Real Kakao T-style multi-stop rides (item 214) -- up to 3 real extra stops.
     val stops = remember { mutableStateListOf<StopInput>() }
     var myTrips by remember { mutableStateOf<List<RideTripDto>?>(null) }
+    // Real pagination fix (2026-09-11, ported from bank-mfe's own fix -- see
+    // project_itunda_pagination_discard_sweep memory): page 0 is polled every
+    // 4s for real-time active-trip tracking, so it must always stay a live,
+    // page-0-only fetch. olderPastTrips is a separate accumulator populated
+    // only by loadMorePastTrips, never touched by the poll.
+    var olderPastTrips by remember { mutableStateOf<List<RideTripDto>>(emptyList()) }
+    var pastTripsPage by remember { mutableStateOf(0) }
+    var pastTripsHasMore by remember { mutableStateOf(false) }
+    var loadingMorePastTrips by remember { mutableStateOf(false) }
     var activeTripStops by remember { mutableStateOf<List<RideTripStopDto>?>(null) }
     var requesting by remember { mutableStateOf(false) }
     var busyTripId by remember { mutableStateOf<String?>(null) }
@@ -188,9 +197,28 @@ internal fun RidePassengerContent(onReportIssue: (String) -> Unit = {}) {
     fun loadTrips() {
         coroutineScope.launch {
             try {
-                myTrips = NetworkClient.apiService.getMyRideTrips().trips
+                val r = NetworkClient.apiService.getMyRideTrips(page = 0)
+                myTrips = r.trips
+                pastTripsHasMore = r.page + 1 < r.totalPages
             } catch (_: Exception) {
                 // Non-critical -- a poll failure just skips this refresh.
+            }
+        }
+    }
+
+    fun loadMorePastTrips() {
+        val nextPage = pastTripsPage + 1
+        loadingMorePastTrips = true
+        coroutineScope.launch {
+            try {
+                val r = NetworkClient.apiService.getMyRideTrips(page = nextPage)
+                olderPastTrips = olderPastTrips + r.trips.filter { it.status == "COMPLETED" || it.status == "CANCELLED" }
+                pastTripsPage = nextPage
+                pastTripsHasMore = r.page + 1 < r.totalPages
+            } catch (_: Exception) {
+                // Non-critical -- leave state as-is, the button just stays visible to retry.
+            } finally {
+                loadingMorePastTrips = false
             }
         }
     }
@@ -203,7 +231,7 @@ internal fun RidePassengerContent(onReportIssue: (String) -> Unit = {}) {
     }
 
     val activeTrip = myTrips?.firstOrNull { it.status == "REQUESTED" || it.status == "DRIVER_ASSIGNED" || it.status == "IN_PROGRESS" }
-    val pastTrips = myTrips?.filter { it.status == "COMPLETED" || it.status == "CANCELLED" } ?: emptyList()
+    val pastTrips = (myTrips?.filter { it.status == "COMPLETED" || it.status == "CANCELLED" } ?: emptyList()) + olderPastTrips
     // Real Uber "Verify Your Ride" PIN -- fetched once a driver is assigned so the
     // passenger can read it aloud before pickup.
     var activeTripPin by remember { mutableStateOf<String?>(null) }
@@ -434,30 +462,31 @@ internal fun RidePassengerContent(onReportIssue: (String) -> Unit = {}) {
                 error = contactError,
             )
         }
-        if (pastTrips.isNotEmpty()) {
-            item { Text("Past rides", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
-            items(pastTrips, key = { it.id }) { trip ->
-                RideTripCard(trip) {
-                    if (trip.status == "COMPLETED" && trip.driverId != null && trip.id !in reviewedTripIds) {
-                        RideReviewRow(busy = busyTripId == trip.id) { rating, comment -> submitReview(trip.id, rating, comment) }
-                    }
-                    if (trip.status == "COMPLETED" && trip.driverId != null && trip.tipAmount == null && trip.id !in tippedTripIds) {
-                        TipDriverPrompt(tripId = trip.id, onTipped = { tippedTripIds = tippedTripIds + trip.id })
-                    }
-                    // Real "report an issue" hand-off (Support product-completeness
-                    // pass, 2026-09-08) -- mirrors bank-mfe's RidePassengerView's own
-                    // identical button, see SupportScreen.kt's own doc comment.
-                    if (trip.status == "COMPLETED") {
-                        Text(
-                            "Report an issue", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Ids.colors.surfaceSoft)
-                                .pressScaleClickable { onReportIssue(trip.transactionId) }
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                        )
-                    }
-                }
+        pastRideTripsSection(
+            trips = pastTrips,
+            title = "Past rides",
+            hasMore = pastTripsHasMore,
+            loadingMore = loadingMorePastTrips,
+            onLoadMore = { loadMorePastTrips() },
+        ) { trip ->
+            if (trip.status == "COMPLETED" && trip.driverId != null && trip.id !in reviewedTripIds) {
+                RideReviewRow(busy = busyTripId == trip.id) { rating, comment -> submitReview(trip.id, rating, comment) }
+            }
+            if (trip.status == "COMPLETED" && trip.driverId != null && trip.tipAmount == null && trip.id !in tippedTripIds) {
+                TipDriverPrompt(tripId = trip.id, onTipped = { tippedTripIds = tippedTripIds + trip.id })
+            }
+            // Real "report an issue" hand-off (Support product-completeness
+            // pass, 2026-09-08) -- mirrors bank-mfe's RidePassengerView's own
+            // identical button, see SupportScreen.kt's own doc comment.
+            if (trip.status == "COMPLETED") {
+                Text(
+                    "Report an issue", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Ids.colors.surfaceSoft)
+                        .pressScaleClickable { onReportIssue(trip.transactionId) }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                )
             }
         }
     }

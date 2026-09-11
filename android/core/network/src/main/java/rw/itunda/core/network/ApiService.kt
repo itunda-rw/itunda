@@ -4749,10 +4749,10 @@ interface ApiService {
     suspend fun getAvailableRideTrips(): RideTripsResponse
 
     @GET("api/v1/rides/trips/my-trips")
-    suspend fun getMyRideTrips(): RideTripsResponse
+    suspend fun getMyRideTrips(@Query("page") page: Int = 0, @Query("size") size: Int = 20): RideTripsPageResponse
 
     @GET("api/v1/rides/trips/my-driver-trips")
-    suspend fun getMyRideDriverTrips(): RideTripsResponse
+    suspend fun getMyRideDriverTrips(@Query("page") page: Int = 0, @Query("size") size: Int = 20): RideTripsPageResponse
 
     @POST("api/v1/rides/trips/{tripId}/accept")
     suspend fun acceptRideTrip(
@@ -5380,6 +5380,11 @@ data class RideTripDto(
 )
 data class RideTripResponse(val success: Boolean, val trip: RideTripDto)
 data class RideTripsResponse(val success: Boolean, val trips: List<RideTripDto>)
+// Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix,
+// fb8f2e3c -- see project_itunda_pagination_discard_sweep memory) --
+// getMyTrips/getMyDriverTrips are real Pageable-backed on the backend, but
+// page was never sent, silently capping trip history at 20 rows.
+data class RideTripsPageResponse(val success: Boolean, val trips: List<RideTripDto>, val page: Int, val totalPages: Int)
 data class StartRideTripRequest(val pin: String)
 data class RideDriverLocationDto(val latitude: Double, val longitude: Double, val updatedAt: String)
 data class RideDriverLocationResponse(val success: Boolean, val location: RideDriverLocationDto?)

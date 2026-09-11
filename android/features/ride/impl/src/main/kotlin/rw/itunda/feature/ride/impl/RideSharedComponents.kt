@@ -230,6 +230,71 @@ internal fun RideTripCard(trip: RideTripDto, stops: List<RideTripStopDto>? = nul
         }
 }
 
+// Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix --
+// see project_itunda_pagination_discard_sweep memory), extracted from
+// RidePassengerScreen/RideDriverScreen (both crossed 500 lines for the first
+// time adding pagination state) into a shared LazyListScope section: the
+// "past trips" list + "Load more" button, identical for both passenger and
+// driver except for the per-trip extra content (review/tip/report vs none).
+internal fun androidx.compose.foundation.lazy.LazyListScope.pastRideTripsSection(
+    trips: List<RideTripDto>,
+    title: String,
+    hasMore: Boolean,
+    loadingMore: Boolean,
+    onLoadMore: () -> Unit,
+    itemAction: (@Composable (RideTripDto) -> Unit)? = null,
+) {
+    if (trips.isEmpty()) return
+    item { Text(title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+    items(trips, key = { it.id }) { trip ->
+        RideTripCard(trip, action = itemAction?.let { action -> @Composable { action(trip) } })
+    }
+    if (hasMore) {
+        item {
+            rw.itunda.core.designsystem.components.IdsButton(
+                text = if (loadingMore) "Loading…" else "Load more",
+                onClick = onLoadMore,
+                enabled = !loadingMore,
+                variant = rw.itunda.core.designsystem.components.IdsButtonVariant.Tinted,
+                size = rw.itunda.core.designsystem.components.IdsButtonSize.Medium,
+            )
+        }
+    }
+}
+
+// Extracted from RideDriverScreen (2026-09-11, same file-size-lint pass as
+// pastRideTripsSection above -- crossed 500 lines a second time even after
+// that first extraction) -- the "This week" earnings summary row, a
+// genuinely self-contained block needing only the earnings list itself, no
+// other screen state.
+internal fun androidx.compose.foundation.lazy.LazyListScope.weeklyEarningsSection(weekEarnings: List<RideDailyEarnings>?) {
+    if (weekEarnings == null || weekEarnings.isEmpty()) return
+    item {
+        // Real fix (flat-design sweep): dropped the Card wrapper -- a section on
+        // an otherwise-flat driver screen.
+        Column {
+            Text("This week", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Column {
+                    Text("Trips", color = Ids.colors.textSecondary, fontSize = 11.sp)
+                    Text("${weekEarnings.sumOf { it.tripCount }}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                }
+                Column {
+                    Text("Gross fare", color = Ids.colors.textSecondary, fontSize = 11.sp)
+                    // Real fix (2026-08-26, same comma-formatting sweep as formatMoney's own
+                    // doc comment) -- was raw BigDecimal interpolation with no formatting at all.
+                    Text("${formatMoney(weekEarnings.sumOf { it.grossFare })} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                }
+                Column {
+                    Text("Net earnings", color = Ids.colors.textSecondary, fontSize = 11.sp)
+                    Text("${formatMoney(weekEarnings.sumOf { it.netEarnings })} RWF", color = Ids.colors.success, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                }
+            }
+        }
+    }
+}
+
 // Real "meet your driver" rating + reviews during an active trip (item 233) -- found
 // via the uncalled-endpoint sweep, see ApiService.getRideDriverReviews's own doc
 // comment. bank-mfe shipped this first (2026-08-05); this is the Android port. Honest

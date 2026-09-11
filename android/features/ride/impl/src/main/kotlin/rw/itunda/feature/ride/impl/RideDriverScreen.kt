@@ -73,6 +73,13 @@ internal fun RideDriverContent() {
     var licenseNumberInput by remember { mutableStateOf("") }
     var availableTrips by remember { mutableStateOf<List<RideTripDto>>(emptyList()) }
     var myDriverTrips by remember { mutableStateOf<List<RideTripDto>>(emptyList()) }
+    // Real pagination fix (2026-09-11, ported from bank-mfe's own fix -- see
+    // project_itunda_pagination_discard_sweep memory): same page-0-stays-live
+    // + separately-accumulated-older-pages design as RidePassengerScreen's own.
+    var olderPastDriverTrips by remember { mutableStateOf<List<RideTripDto>>(emptyList()) }
+    var pastDriverTripsPage by remember { mutableStateOf(0) }
+    var pastDriverTripsHasMore by remember { mutableStateOf(false) }
+    var loadingMorePastDriverTrips by remember { mutableStateOf(false) }
     var activeTripStops by remember { mutableStateOf<Map<String, List<RideTripStopDto>>>(emptyMap()) }
     var busyTripId by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -131,12 +138,32 @@ internal fun RideDriverContent() {
         coroutineScope.launch {
             try {
                 availableTrips = NetworkClient.apiService.getAvailableRideTrips().trips
-                myDriverTrips = NetworkClient.apiService.getMyRideDriverTrips().trips
+                val r = NetworkClient.apiService.getMyRideDriverTrips(page = 0)
+                myDriverTrips = r.trips
+                pastDriverTripsHasMore = r.page + 1 < r.totalPages
             } catch (_: Exception) {
                 // Non-critical -- a poll failure just skips this refresh.
             }
         }
     }
+
+    fun loadMorePastDriverTrips() {
+        val nextPage = pastDriverTripsPage + 1
+        loadingMorePastDriverTrips = true
+        coroutineScope.launch {
+            try {
+                val r = NetworkClient.apiService.getMyRideDriverTrips(page = nextPage)
+                olderPastDriverTrips = olderPastDriverTrips + r.trips.filter { it.status == "COMPLETED" || it.status == "CANCELLED" }
+                pastDriverTripsPage = nextPage
+                pastDriverTripsHasMore = r.page + 1 < r.totalPages
+            } catch (_: Exception) {
+                // Non-critical -- leave state as-is, the button just stays visible to retry.
+            } finally {
+                loadingMorePastDriverTrips = false
+            }
+        }
+    }
+
     LaunchedEffect(driver?.id) {
         if (driver == null) return@LaunchedEffect
         while (true) {
@@ -275,7 +302,7 @@ internal fun RideDriverContent() {
         }
     }
 
-    val pastDriverTrips = myDriverTrips.filter { it.status == "COMPLETED" || it.status == "CANCELLED" }
+    val pastDriverTrips = myDriverTrips.filter { it.status == "COMPLETED" || it.status == "CANCELLED" } + olderPastDriverTrips
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -378,33 +405,7 @@ internal fun RideDriverContent() {
                 // Real Uber Driver-style earnings report -- see ApiService's own
                 // getMyRideEarnings doc comment. Hidden entirely for a fresh driver with
                 // zero completed trips rather than showing an empty/zero state.
-                val weekEarnings = earnings
-                if (weekEarnings != null && weekEarnings.isNotEmpty()) {
-                    item {
-                        // Real fix (flat-design sweep): dropped the Card wrapper -- a
-                        // section on an otherwise-flat driver screen.
-                        Column {
-                                Text("This week", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Spacer(modifier = Modifier.height(10.dp))
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Column {
-                                        Text("Trips", color = Ids.colors.textSecondary, fontSize = 11.sp)
-                                        Text("${weekEarnings.sumOf { it.tripCount }}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                                    }
-                                    Column {
-                                        Text("Gross fare", color = Ids.colors.textSecondary, fontSize = 11.sp)
-                                        // Real fix (2026-08-26, same comma-formatting sweep as formatMoney's own
-                                        // doc comment) -- was raw BigDecimal interpolation with no formatting at all.
-                                        Text("${formatMoney(weekEarnings.sumOf { it.grossFare })} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                                    }
-                                    Column {
-                                        Text("Net earnings", color = Ids.colors.textSecondary, fontSize = 11.sp)
-                                        Text("${formatMoney(weekEarnings.sumOf { it.netEarnings })} RWF", color = Ids.colors.success, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                                    }
-                                }
-                        }
-                    }
-                }
+                weeklyEarningsSection(earnings)
                 if (activeDriverTrips.isNotEmpty()) {
                     item { Text("Active trips", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                     items(activeDriverTrips, key = { it.id }) { trip ->
@@ -478,10 +479,13 @@ internal fun RideDriverContent() {
                         }
                     }
                 }
-                if (pastDriverTrips.isNotEmpty()) {
-                    item { Text("Past trips", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
-                    items(pastDriverTrips, key = { it.id }) { trip -> RideTripCard(trip) }
-                }
+                pastRideTripsSection(
+                    trips = pastDriverTrips,
+                    title = "Past trips",
+                    hasMore = pastDriverTripsHasMore,
+                    loadingMore = loadingMorePastDriverTrips,
+                    onLoadMore = { loadMorePastDriverTrips() },
+                )
             }
         }
     }
