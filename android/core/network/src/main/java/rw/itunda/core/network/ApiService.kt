@@ -2022,7 +2022,14 @@ data class DineInOrderItemDto(
     val selectedOptionsJson: String? = null,
 )
 data class DineInOrderDetailResponse(val success: Boolean, val order: DineInOrderDto, val items: List<DineInOrderItemDto>)
-data class DineInOrdersResponse(val success: Boolean, val orders: List<DineInOrderDto>)
+// Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix,
+// 081d22a5, and iOS's port, 5b1612da -- see
+// project_itunda_pagination_discard_sweep memory) -- getMyDineInOrders is
+// real Pageable-backed on the backend (already bumped to size=50 at some
+// point, but page was never sent). Safe to extend this struct directly:
+// used only by this one endpoint on Android (no restaurant-side dine-in
+// queue exists here at all, a real pre-existing feature gap).
+data class DineInOrdersResponse(val success: Boolean, val orders: List<DineInOrderDto>, val page: Int, val totalPages: Int)
 
 data class RiderDto(val id: String, val userId: String, val accountId: String, val status: String, val available: Boolean, val createdAt: String)
 data class RiderResponse(val success: Boolean, val rider: RiderDto)
@@ -4312,7 +4319,7 @@ interface ApiService {
     suspend fun placeDineInOrder(@Header("Idempotency-Key") idempotencyKey: String, @Body request: PlaceDineInOrderRequest): DineInOrderDetailResponse
 
     @GET("api/v1/eats/dine-in/orders/my-orders")
-    suspend fun getMyDineInOrders(): DineInOrdersResponse
+    suspend fun getMyDineInOrders(@Query("page") page: Int = 0, @Query("size") size: Int = 50): DineInOrdersResponse
 
     @GET("api/v1/eats/dine-in/orders/{id}")
     suspend fun getDineInOrder(@Path("id") orderId: String): DineInOrderDetailResponse

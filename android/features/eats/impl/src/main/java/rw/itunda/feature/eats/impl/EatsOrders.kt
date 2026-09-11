@@ -283,13 +283,25 @@ internal fun MyDineInOrdersView() {
     var orders by remember { mutableStateOf<List<DineInOrderDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var cancellingId by remember { mutableStateOf<String?>(null) }
+    // Real pagination fix (2026-09-11, ported from bank-mfe's own fix -- see
+    // project_itunda_pagination_discard_sweep memory): page 0 is polled
+    // every 4s for real-time order-status accuracy, so it must always stay
+    // a live, page-0-only fetch. olderOrders is a separate accumulator
+    // populated only by loadMoreOrders, never touched by the poll.
+    var olderOrders by remember { mutableStateOf<List<DineInOrderDto>>(emptyList()) }
+    var ordersPage by remember { mutableStateOf(0) }
+    var ordersHasMore by remember { mutableStateOf(false) }
+    var loadingMoreOrders by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
         coroutineScope.launch {
             try {
-                val res = NetworkClient.apiService.getMyDineInOrders()
-                if (res.success) orders = res.orders
+                val res = NetworkClient.apiService.getMyDineInOrders(page = 0)
+                if (res.success) {
+                    orders = res.orders
+                    ordersHasMore = res.page + 1 < res.totalPages
+                }
                 error = null
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
@@ -298,6 +310,26 @@ internal fun MyDineInOrdersView() {
             }
         }
     }
+
+    fun loadMoreOrders() {
+        val nextPage = ordersPage + 1
+        loadingMoreOrders = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyDineInOrders(page = nextPage)
+                if (res.success) {
+                    olderOrders = olderOrders + res.orders
+                    ordersPage = nextPage
+                    ordersHasMore = res.page + 1 < res.totalPages
+                }
+            } catch (_: Exception) {
+                // Non-critical -- leave state as-is, the button just stays visible to retry.
+            } finally {
+                loadingMoreOrders = false
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         while (true) {
             load()
@@ -322,8 +354,8 @@ internal fun MyDineInOrdersView() {
         }
     }
 
-    val list = orders
-    if (list.isNullOrEmpty() && error == null) return
+    val list = (orders ?: emptyList()) + olderOrders
+    if (list.isEmpty() && error == null) return
     Column(modifier = Modifier.padding(top = 16.dp)) {
         Text("Table orders", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.padding(bottom = 10.dp))
         if (error != null) {
@@ -333,7 +365,7 @@ internal fun MyDineInOrdersView() {
                 // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card
                 // -- a history log of table orders, kept the per-row Divider
                 // convention (docs/DESIGN_REFERENCES.md §274).
-                list!!.forEach { o ->
+                list.forEach { o ->
                     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Table ${o.tableNumber}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
@@ -359,6 +391,21 @@ internal fun MyDineInOrdersView() {
                         }
                     }
                     Divider(color = Ids.colors.divider, thickness = 0.5.dp)
+                }
+                if (ordersHasMore) {
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 10.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Ids.colors.surfaceSoft)
+                            .pressScaleClickable(enabled = !loadingMoreOrders) { loadMoreOrders() }
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                    ) {
+                        Text(
+                            if (loadingMoreOrders) "Loading…" else "Load more",
+                            color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                        )
+                    }
                 }
             }
         }
