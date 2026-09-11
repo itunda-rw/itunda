@@ -5941,6 +5941,23 @@ behavior rather than just trusting the code read.
   header-tab structure, and a "Recommendations" carousel leading the product catalog. Named
   explicitly, not silently folded into "done."
 - iOS/Web untouched this pass -- all 4 fixes are Android-only.
+- **Icons/rates shipped Section 193 (Android only, 2026-08-2x); header tabs shipped Section 195
+  (Android only, Accounts/Borrow split). The Recommendations carousel shipped 2026-09-11**, on a
+  real trigger: the user sent 7 real Toss Bank account-detail/전체 screenshots and asked directly
+  for this comparison to resume. Reused `DiscoverService`'s already-live, real, per-user
+  priority-ranked items -- filtered to the 4 Bank-relevant ones (`p_first_goal`/`p_try_sacco`/
+  `p_try_ikimina`/`p_try_loan`; the rest, plus the identity nudge `p_kyc`, stay Home-only), leading
+  the catalog on all 3 platforms: web (`BankHub.tsx`, `5ff9e468`), Android (`BankHubScreen.kt`,
+  reusing its own `ShellSection`/`ShellRow`, `546f2a9c`), iOS (`BankView.swift`, `8c9c02e2`).
+  **iOS turned out to need a real bug fix, not new construction, and a worse bug than assumed
+  going in**: `BankView`'s own `discoverRows` was the literal same unfiltered array object as
+  `HomeTabContent`'s Discover feed (`bankViewModel.discoverRows`), not just unfiltered display --
+  every row was also a dead tap (no `onTap` wired at all, unlike the sibling `coopRows`/
+  `savingsRows` mappings on the same screen). Fixing this required keeping Home's feed completely
+  untouched (a naive in-place filter would have silently regressed it) and adding a separate
+  `BankViewModel.discoverItems` raw array + a new `ContentView.bankRecommendationRows` computed
+  property with real `onTap` closures reusing the same `@State` (`showCreateSavingsGoal`/
+  `showSacco`/`showIkimina`/`showLoans`) `coopRows`/`savingsRows` already use.
 
 ## 59. Uber (ride-hailing/delivery) -- first real research pass, plus a fresh Rwanda-market localization gap
 
