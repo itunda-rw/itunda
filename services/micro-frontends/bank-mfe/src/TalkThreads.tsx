@@ -110,10 +110,32 @@ export function TalkAiChatThread({ onBack }: { onBack: () => void }) {
   // Real single-flight AI model (see AiChatService's own doc comment) -- a genuine,
   // always-visible "busy" state, never a toast that disappears silently.
   const [busy, setBusy] = useState(false);
+  // Real pagination fix (2026-09-11): backend returns newest-first (page 0 =
+  // most recent), reversed here for oldest-at-top display. Older pages get
+  // reversed the same way and PREPENDED once loaded, so scrollback grows
+  // upward -- the standard "load older messages" chat pattern.
+  const [historyPage, setHistoryPage] = useState(0);
+  const [olderMessagesHasMore, setOlderMessagesHasMore] = useState(false);
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
 
   useEffect(() => {
-    fetchAiChatHistory().then((history) => setMessages(history.reverse())).catch(() => setMessages([]));
+    fetchAiChatHistory(0)
+      .then((r) => { setMessages(r.messages.reverse()); setOlderMessagesHasMore(r.page + 1 < r.totalPages); })
+      .catch(() => setMessages([]));
   }, []);
+
+  const loadOlderMessages = () => {
+    const nextPage = historyPage + 1;
+    setLoadingOlderMessages(true);
+    fetchAiChatHistory(nextPage)
+      .then((r) => {
+        setMessages((prev) => [...r.messages.reverse(), ...(prev ?? [])]);
+        setHistoryPage(nextPage);
+        setOlderMessagesHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingOlderMessages(false));
+  };
 
   const send = () => {
     const text = draft.trim();
@@ -138,6 +160,11 @@ export function TalkAiChatThread({ onBack }: { onBack: () => void }) {
         {messages === null && showSkeleton && <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />}
         {messages?.length === 0 && (
           <EmptyState message="Ask itunda AI anything about the app. Replies are short and come from a small self-hosted model." />
+        )}
+        {olderMessagesHasMore && (
+          <button className="itunda-btn itunda-btn-secondary" disabled={loadingOlderMessages} onClick={loadOlderMessages}>
+            {loadingOlderMessages ? 'Loading…' : 'Load older messages'}
+          </button>
         )}
         {messages?.map((m) => <AiChatBubble key={m.id} message={m} />)}
         {busy && (

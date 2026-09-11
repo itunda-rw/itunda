@@ -41,8 +41,15 @@ export interface AiChatMessage {
   createdAt: string;
 }
 
-export const fetchAiChatHistory = () =>
-  apiFetch<{ success: boolean; messages: AiChatMessage[] }>('/api/v1/talk/ai-chat/messages').then((r) => r.messages);
+// Real pagination-discard fix (2026-09-11, same systemic gap fixed
+// throughout the sweep -- see project_itunda_pagination_discard_sweep
+// memory) -- this real Pageable endpoint's page just wasn't ever sent,
+// silently capping the AI chat thread's scrollback at the most recent 30
+// messages with no way to load anything older.
+export const fetchAiChatHistory = (page = 0) =>
+  apiFetch<{ success: boolean; messages: AiChatMessage[]; page: number; totalPages: number }>(
+    `/api/v1/talk/ai-chat/messages?page=${page}&size=30`,
+  );
 
 // Real single-flight, honestly-busy AI chatbot (see backend AiChatService's own doc
 // comment) -- a 429 here means the shared self-hosted model is busy with someone
