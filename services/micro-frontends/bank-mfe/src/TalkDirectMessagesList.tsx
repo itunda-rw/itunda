@@ -49,7 +49,9 @@ function emptyConversationsMessage(showArchived: boolean, filterTab: 'all' | 'un
 // filter tab's content. Read-only: shows real call history from CallService's own
 // persisted CallSession rows. No "place a call" affordance yet -- that's a separate,
 // later piece once the calling UI itself (WebRTC/dial screen) is built.
-function TalkCallLog({ calls, currentUserId }: { calls: CallSession[] | null; currentUserId: string | null }) {
+function TalkCallLog({
+  calls, currentUserId, hasMore, loadingMore, onLoadMore,
+}: { calls: CallSession[] | null; currentUserId: string | null; hasMore: boolean; loadingMore: boolean; onLoadMore: () => void }) {
   const showSkeleton = useDeferredLoading(calls === null);
   if (calls === null) {
     return showSkeleton ? <div className="skeleton" style={{ height: '120px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
@@ -81,6 +83,11 @@ function TalkCallLog({ calls, currentUserId }: { calls: CallSession[] | null; cu
           </div>
         );
       })}
+      {hasMore && (
+        <button className="itunda-btn itunda-btn-secondary" disabled={loadingMore} onClick={onLoadMore}>
+          {loadingMore ? 'Loading…' : 'Load more'}
+        </button>
+      )}
     </div>
   );
 }
@@ -118,6 +125,9 @@ export function DirectMessagesList({ initialConversationId, onConsumedInitial }:
   // conversation list, fetched only when that tab is actually selected.
   const [filterTab, setFilterTab] = useState<'all' | 'unread' | 'calls'>('all');
   const [callHistory, setCallHistory] = useState<CallSession[] | null>(null);
+  const [callHistoryPage, setCallHistoryPage] = useState(0);
+  const [callHistoryHasMore, setCallHistoryHasMore] = useState(false);
+  const [loadingMoreCallHistory, setLoadingMoreCallHistory] = useState(false);
   // Real room-lock gate (itunda Talk redesign, 2026-08-28) -- see
   // TalkRoomSettings.tsx's own doc comment. Session-local: unlocking a room once
   // keeps it open for the rest of this tab session, matching real KakaoTalk's own
@@ -178,9 +188,24 @@ export function DirectMessagesList({ initialConversationId, onConsumedInitial }:
 
   useEffect(() => {
     if (filterTab === 'calls' && callHistory === null) {
-      fetchCallHistory().then(setCallHistory).catch(() => setCallHistory([]));
+      fetchCallHistory(0)
+        .then((r) => { setCallHistory(r.calls); setCallHistoryHasMore(r.page + 1 < r.totalPages); })
+        .catch(() => setCallHistory([]));
     }
   }, [filterTab, callHistory]);
+
+  const loadMoreCallHistory = () => {
+    const nextPage = callHistoryPage + 1;
+    setLoadingMoreCallHistory(true);
+    fetchCallHistory(nextPage)
+      .then((r) => {
+        setCallHistory((prev) => [...(prev ?? []), ...r.calls]);
+        setCallHistoryPage(nextPage);
+        setCallHistoryHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreCallHistory(false));
+  };
 
   // Real online/offline presence for the list view (2026-07-19) -- a bulk on-demand
   // check for every listed contact, refreshed on a 10s cadence (a real, coarser-grained
@@ -283,7 +308,13 @@ export function DirectMessagesList({ initialConversationId, onConsumedInitial }:
         ))}
       </div>
       {filterTab === 'calls' ? (
-        <TalkCallLog calls={callHistory} currentUserId={getStoredUser()?.id ?? null} />
+        <TalkCallLog
+          calls={callHistory}
+          currentUserId={getStoredUser()?.id ?? null}
+          hasMore={callHistoryHasMore}
+          loadingMore={loadingMoreCallHistory}
+          onLoadMore={loadMoreCallHistory}
+        />
       ) : (
         <>
       {filterTab === 'all' && !showArchived && (

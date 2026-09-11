@@ -100,8 +100,15 @@ export interface CallSession {
   endReason: CallEndReason | null;
 }
 
-export const fetchCallHistory = () =>
-  apiFetch<{ success: boolean; calls: CallSession[] }>('/api/v1/calls/history').then((r) => r.calls);
+// Real pagination-discard fix (2026-09-11, same systemic gap fixed
+// throughout the sweep -- see project_itunda_pagination_discard_sweep
+// memory) -- CallController's /calls/history was always real
+// Pageable/pageMeta-backed; page just wasn't ever sent, silently capping
+// the call-log tab at the most recent 30 calls.
+export const fetchCallHistory = (page = 0) =>
+  apiFetch<{ success: boolean; calls: CallSession[]; page: number; totalPages: number }>(
+    `/api/v1/calls/history?page=${page}&size=30`,
+  );
 
 // Real Links tab (see TalkLinksTab.tsx's own doc comment) -- pure client-side
 // extraction over already-fetched message bodies, no new backend endpoint.
