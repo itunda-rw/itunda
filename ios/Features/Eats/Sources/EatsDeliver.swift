@@ -11,6 +11,20 @@ struct DeliverContent: View {
     @State private var available: [EatsOrderDto]?
     @State private var mine: [EatsOrderDto]?
     @State private var busyOrderId: String?
+    // Real pagination fix (2026-09-11, ported from bank-mfe's own fix and
+    // Android's port -- see project_itunda_pagination_discard_sweep memory):
+    // both lists are polled every 4s, so page 0 must always stay a live,
+    // page-0-only fetch. olderAvailable/olderMine are separate accumulators
+    // populated only by their own "Load more" action, never touched by the
+    // poll.
+    @State private var olderAvailable: [EatsOrderDto] = []
+    @State private var availablePage = 0
+    @State private var availableHasMore = false
+    @State private var loadingMoreAvailable = false
+    @State private var olderMine: [EatsOrderDto] = []
+    @State private var minePage = 0
+    @State private var mineHasMore = false
+    @State private var loadingMoreMine = false
 
     var body: some View {
         ScrollView {
@@ -62,8 +76,10 @@ struct DeliverContent: View {
 
     private var riderDashboard: some View {
         let rider = rider!
-        let active = (mine ?? []).filter { $0.status != "DELIVERED" }
-        let past = (mine ?? []).filter { $0.status == "DELIVERED" }
+        let allAvailable = (available ?? []) + olderAvailable
+        let allMine = (mine ?? []) + olderMine
+        let active = allMine.filter { $0.status != "DELIVERED" }
+        let past = allMine.filter { $0.status == "DELIVERED" }
 
         return VStack(spacing: IDS.Layout.cardGap) {
             HStack {
@@ -112,10 +128,10 @@ struct DeliverContent: View {
                     Text("Available deliveries").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                     if available == nil {
                         SkeletonBlock(height: 80)
-                    } else if available!.isEmpty {
+                    } else if allAvailable.isEmpty {
                         EmptyStateView("No deliveries waiting right now — stay online and you'll be notified.")
                     } else {
-                        ForEach(available!) { order in
+                        ForEach(allAvailable) { order in
                             EatsOrderRow(order: order) {
                                 Button(action: { Task { await claim(order) } }) {
                                     Text(busyOrderId == order.id ? "Claiming…" : "Claim delivery")
@@ -126,6 +142,12 @@ struct DeliverContent: View {
                                 .disabled(busyOrderId == order.id)
                             }
                         }
+                        if availableHasMore {
+                            Button(loadingMoreAvailable ? "Loading…" : "Load more") {
+                                Task { await loadMoreAvailable() }
+                            }
+                            .disabled(loadingMoreAvailable)
+                        }
                     }
                 }
             }
@@ -134,6 +156,12 @@ struct DeliverContent: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Completed").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                     ForEach(past) { EatsOrderRow(order: $0) }
+                    if mineHasMore {
+                        Button(loadingMoreMine ? "Loading…" : "Load more") {
+                            Task { await loadMoreMine() }
+                        }
+                        .disabled(loadingMoreMine)
+                    }
                 }
             }
         }
@@ -154,14 +182,36 @@ struct DeliverContent: View {
 
     private func loadDeliveries() async {
         do {
-            async let availableRes = NetworkClient.shared.getAvailableDeliveries()
-            async let mineRes = NetworkClient.shared.getRiderDeliveries()
+            async let availableRes = NetworkClient.shared.getAvailableDeliveries(page: 0)
+            async let mineRes = NetworkClient.shared.getRiderDeliveries(page: 0)
             let (a, m) = try await (availableRes, mineRes)
             available = a.orders
+            availableHasMore = a.page + 1 < a.totalPages
             mine = m.orders
+            mineHasMore = m.page + 1 < m.totalPages
         } catch {
             // Keep showing the last-known lists on a transient poll failure.
         }
+    }
+
+    private func loadMoreAvailable() async {
+        let nextPage = availablePage + 1
+        loadingMoreAvailable = true
+        defer { loadingMoreAvailable = false }
+        guard let res = try? await NetworkClient.shared.getAvailableDeliveries(page: nextPage) else { return }
+        olderAvailable += res.orders
+        availablePage = nextPage
+        availableHasMore = res.page + 1 < res.totalPages
+    }
+
+    private func loadMoreMine() async {
+        let nextPage = minePage + 1
+        loadingMoreMine = true
+        defer { loadingMoreMine = false }
+        guard let res = try? await NetworkClient.shared.getRiderDeliveries(page: nextPage) else { return }
+        olderMine += res.orders
+        minePage = nextPage
+        mineHasMore = res.page + 1 < res.totalPages
     }
 
     private func register() async {

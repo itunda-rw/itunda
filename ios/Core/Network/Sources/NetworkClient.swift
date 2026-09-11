@@ -6921,8 +6921,22 @@ extension NetworkClient {
     public func cancelEatsOrder(_ orderId: String) async throws -> EatsOrderDetailResponse {
         try await authenticatedPostWithMessage("api/v1/eats/orders/\(orderId)/cancel", body: EmptyBody())
     }
-    public func getRiderDeliveries() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/rider-deliveries") }
-    public func getAvailableDeliveries() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/available") }
+    // Real pagination-discard fix (2026-09-11, ported from bank-mfe's own
+    // fix, a553b127, and Android's port, 33456d33 -- see
+    // project_itunda_pagination_discard_sweep memory) -- both real Pageable
+    // endpoints' page was never sent, silently capping each list at 20 rows.
+    public func getRiderDeliveries(page: Int = 0, size: Int = 20) async throws -> EatsOrdersResponse {
+        try await get("api/v1/eats/orders/rider-deliveries", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
+    public func getAvailableDeliveries(page: Int = 0, size: Int = 20) async throws -> EatsOrdersResponse {
+        try await get("api/v1/eats/orders/available", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     /// Real live rider-location tracking (2026-07-19 backend, first mobile client
     /// 2026-07-29, item 183) -- "the defining 'watch your order arrive' moment," see
