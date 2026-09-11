@@ -143,13 +143,25 @@ internal fun MyEatsOrdersView(
     // tippedOrderIds establishes, since a fresh getMyEatsOrders() poll would otherwise
     // briefly still show the prompt until this order's own tipAmount round-trips back.
     var tippedOrderIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    // Real pagination fix (2026-09-11, ported from bank-mfe's own fix -- see
+    // project_itunda_pagination_discard_sweep memory): page 0 is polled every
+    // 4s for real-time order-status accuracy, so it must always stay a live,
+    // page-0-only fetch. olderOrders is a separate accumulator populated only
+    // by loadMoreOrders, never touched by the poll.
+    var olderOrders by remember { mutableStateOf<List<EatsOrderDto>>(emptyList()) }
+    var ordersPage by remember { mutableStateOf(0) }
+    var ordersHasMore by remember { mutableStateOf(false) }
+    var loadingMoreOrders by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
         coroutineScope.launch {
             try {
-                val res = NetworkClient.apiService.getMyEatsOrders()
-                if (res.success) orders = res.orders
+                val res = NetworkClient.apiService.getMyEatsOrders(page = 0)
+                if (res.success) {
+                    orders = res.orders
+                    ordersHasMore = res.page + 1 < res.totalPages
+                }
                 error = null
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
@@ -158,6 +170,26 @@ internal fun MyEatsOrdersView(
             }
         }
     }
+
+    fun loadMoreOrders() {
+        val nextPage = ordersPage + 1
+        loadingMoreOrders = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyEatsOrders(page = nextPage)
+                if (res.success) {
+                    olderOrders = olderOrders + res.orders
+                    ordersPage = nextPage
+                    ordersHasMore = res.page + 1 < res.totalPages
+                }
+            } catch (_: Exception) {
+                // Non-critical -- leave state as-is, the button just stays visible to retry.
+            } finally {
+                loadingMoreOrders = false
+            }
+        }
+    }
+
     // Real poll for order-tracking status, same 4s cadence as Talk's own poll.
     LaunchedEffect(Unit) {
         while (true) {
@@ -183,16 +215,17 @@ internal fun MyEatsOrdersView(
         }
     }
 
+    val allOrders = (orders ?: emptyList()) + olderOrders
     Column {
         if (error != null) {
             ErrorCard(error!!, onRetry = ::load)
         } else if (orders == null) {
             SkeletonBlock()
-        } else if (orders!!.isEmpty()) {
+        } else if (allOrders.isEmpty()) {
             EmptyState("No orders yet — order from a nearby restaurant and it'll show up here.", icon = Icons.AutoMirrored.Outlined.ReceiptLong)
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                orders!!.forEach { o ->
+                allOrders.forEach { o ->
                     EatsOrderRow(o, restaurant = restaurants?.find { it.merchantId == o.restaurantId }) {
                         if (o.status == "PLACED") {
                             Box(
@@ -220,6 +253,20 @@ internal fun MyEatsOrdersView(
                         } else if (o.status == "CANCELLED") {
                             ReorderButton(reordering = reorderingId == o.id, onClick = { onReorder(o) })
                         }
+                    }
+                }
+                if (ordersHasMore) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Ids.colors.surfaceSoft)
+                            .pressScaleClickable(enabled = !loadingMoreOrders) { loadMoreOrders() }
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                    ) {
+                        Text(
+                            if (loadingMoreOrders) "Loading…" else "Load more",
+                            color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                        )
                     }
                 }
             }

@@ -1957,7 +1957,15 @@ data class EatsOrderItemDto(
     val selectedOptionsJson: String? = null,
 )
 data class EatsOrderDetailResponse(val success: Boolean, val order: EatsOrderDto, val items: List<EatsOrderItemDto>)
-data class EatsOrdersResponse(val success: Boolean, val orders: List<EatsOrderDto>)
+// Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix,
+// 918529e4 -- see project_itunda_pagination_discard_sweep memory) -- all 3
+// real consumers of this response (getMyEatsOrders, getRiderDeliveries,
+// getAvailableDeliveries) are Pageable-backed on the backend, so page/
+// totalPages are always present in the real JSON regardless of which
+// endpoint is called. Only getMyEatsOrders's own client is wired to send
+// page this pass -- getRiderDeliveries/getAvailableDeliveries (riderapp
+// module) are a real, disclosed follow-up, not touched here.
+data class EatsOrdersResponse(val success: Boolean, val orders: List<EatsOrderDto>, val page: Int, val totalPages: Int)
 
 // Real 배달의민족 함께주문 (Baemin "Together Order") -- ported from bank-mfe
 // (2026-09-03), see lib/eatsGroupOrders.ts's own doc comment. A join-code-shared cart
@@ -4165,7 +4173,7 @@ interface ApiService {
     suspend fun placeEatsOrder(@Header("Idempotency-Key") idempotencyKey: String, @Body request: PlaceEatsOrderRequest): EatsOrderDetailResponse
 
     @GET("api/v1/eats/orders/my-orders")
-    suspend fun getMyEatsOrders(): EatsOrdersResponse
+    suspend fun getMyEatsOrders(@Query("page") page: Int = 0, @Query("size") size: Int = 20): EatsOrdersResponse
 
     // Real 배달의민족 함께주문 (Baemin "Together Order") -- see GroupEatsOrderDto's own
     // doc comment.
