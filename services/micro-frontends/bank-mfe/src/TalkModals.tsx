@@ -55,11 +55,47 @@ export function ForwardPickerModal({ onForward, onClose }: { onForward: (destina
   const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
   const [groups, setGroups] = useState<GroupSummary[] | null>(null);
   const showSkeleton = useDeferredLoading(conversations === null || groups === null);
+  // Real pagination-discard fix (2026-09-09, same systemic gap fixed for
+  // this tab's own DirectMessagesList/GroupsList) -- this picker used to
+  // silently cap both lists at their first 20 rows, with no way to forward
+  // to an older conversation or group not on the initial page.
+  const [conversationsPage, setConversationsPage] = useState(0);
+  const [conversationsHasMore, setConversationsHasMore] = useState(false);
+  const [groupsPage, setGroupsPage] = useState(0);
+  const [groupsHasMore, setGroupsHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
-    fetchConversations().then((r) => setConversations(r.conversations)).catch(() => setConversations([]));
-    fetchGroups().then((r) => setGroups(r.groups)).catch(() => setGroups([]));
+    fetchConversations(false, 0)
+      .then((r) => { setConversations(r.conversations); setConversationsHasMore(r.page + 1 < r.totalPages); })
+      .catch(() => setConversations([]));
+    fetchGroups(0)
+      .then((r) => { setGroups(r.groups); setGroupsHasMore(r.page + 1 < r.totalPages); })
+      .catch(() => setGroups([]));
   }, []);
+
+  const loadMore = () => {
+    setLoadingMore(true);
+    Promise.all([
+      conversationsHasMore ? fetchConversations(false, conversationsPage + 1) : null,
+      groupsHasMore ? fetchGroups(groupsPage + 1) : null,
+    ])
+      .then(([conversationsRes, groupsRes]) => {
+        if (conversationsRes) {
+          setConversations((prev) => [...(prev ?? []), ...conversationsRes.conversations]);
+          setConversationsPage((p) => p + 1);
+          setConversationsHasMore(conversationsRes.page + 1 < conversationsRes.totalPages);
+        }
+        if (groupsRes) {
+          setGroups((prev) => [...(prev ?? []), ...groupsRes.groups]);
+          setGroupsPage((p) => p + 1);
+          setGroupsHasMore(groupsRes.page + 1 < groupsRes.totalPages);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  };
+  const hasMore = conversationsHasMore || groupsHasMore;
 
   // Real fix (full-app audit, docs/UI_UX_GUIDELINES.md rule 1) -- same dark-overlay-
   // card pattern EmoticonStoreModal above had, now FullScreenFlow like the rest of
@@ -91,6 +127,11 @@ export function ForwardPickerModal({ onForward, onClose }: { onForward: (destina
               {g.name} (group)
             </button>
           ))}
+          {hasMore && (
+            <button className="itunda-btn itunda-btn-secondary" disabled={loadingMore} onClick={loadMore}>
+              {loadingMore ? 'Loading…' : 'Load more'}
+            </button>
+          )}
         </div>
       )}
     </FullScreenFlow>
