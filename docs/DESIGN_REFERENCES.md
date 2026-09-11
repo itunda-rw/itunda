@@ -17467,3 +17467,84 @@ write+completion-percent roundtrip, the new "Vehicles" Marketplace category,
 and end-to-end vehicle-listing creation with real lease fields -- all against
 the live deployed backend, not mocked. bank-mfe and merchant-mfe both
 confirmed serving 200 OK from their real NodePorts post-rollout.
+
+## 278. Real Kakao 미니앱 (mini-app store) reference -- dedicated hub screen, real categories, all 3 platforms + backend
+
+**2026-09-11.** User sent 7 real screenshots of KakaoTalk's 미니앱 store home
+screen: 추천/게임/포인트/카테고리 tabs, a ranked games platform, ~11 repeatable
+daily point-earning mini-games (당근 농장/동전 뽑기/걷기 등), a 17-category
+list, search, and a mini-app-specific profile screen.
+
+**Honest, upfront diagnosis given first, not a silent rebuild**: itunda's real
+mini-app system (`rw.itunda.partners` -- a genuinely functional third-party
+developer registry + human review workflow + published catalog, see
+`PartnerService.kt`'s own doc comment) is dramatically thinner than this
+reference. Direct code research (not the screenshots alone) confirmed: no
+category field on `PartnerMiniApp` at all, no games, no repeatable
+point-earning mechanics, and no search, on any of the 3 clients. Most of the
+reference (게임 tab, 포인트 tab's mini-games, 추천 tab's local-deals feed) has
+zero backing data in itunda and would mean inventing new products, not
+aligning a screen to real data -- the opposite problem from Section 65's Bank
+pass, where everything was already real and just unsurfaced.
+
+Asked the user directly (AskUserQuestion, given the scope gap) how far to
+take this. **They chose: a dedicated hub screen + real search, plus a real
+category field** on `PartnerMiniApp` (partner-selected at submission) so the
+catalog can filter by category -- the only part of the 카테고리 tab honestly
+buildable without fabricating data. Games/point-earning mini-games stayed
+explicitly out of scope (named, not built).
+
+**Real, disclosed findings from research, not fixed this pass (scope
+discipline)**: Android's mini-app widget lives in the Explore tab's
+`MenuScreen`; iOS/web have it in the My tab -- a real cross-platform placement
+inconsistency, left as-is (moving tabs is a separate IA decision). iOS/web
+mini-app rows stay deliberately browse-only (no tap-to-launch) -- only
+Android has a real bundle runtime (`PartnerMiniAppLoader.kt`).
+
+**What shipped:**
+1. **Backend** (`fce843a8b`) -- a new, deliberately small, generic
+   `PartnerMiniAppCategory` enum (`FINANCE`/`SHOPPING`/`PRODUCTIVITY`/
+   `LIFESTYLE`/`OTHER`), not Kakao's ~17-category taxonomy verbatim -- zero
+   real submitted partner apps exist yet to justify more granularity. V326
+   migration, `submitMiniApp(...)` accepts an optional category (blank
+   defaults to `OTHER`, garbage throws `InvalidMiniAppCategoryException`
+   rather than silently guessing), `MiniAppCatalogController`'s
+   `/api/v1/mini-apps/catalog` gets an optional `?category=` filter. Full
+   Kotest coverage, including a real deliberately-broken-then-restored
+   discrimination check on the new validation branch.
+2. **Web** (`313b1c668`) -- the catalog was a buried "Load more" list inside
+   `MyView.tsx`'s My tab; now a 3-item capped teaser + "See all" opening a new
+   `MiniAppsHubScreen.tsx` (category chips via the already-shared
+   `SearchAndCategoryChips` component + client-side search over a single
+   `size=100` fetch -- the real catalog is genuinely tiny today, so real
+   backend pagination/full-text search would be building ahead of real need).
+3. **Android** (`3c5f5a94c`) -- same capped-teaser-plus-hub-screen split inside
+   `MenuScreen`'s Explore tab. Found and fixed a real bug along the way:
+   `iconUrl` was never rendered at all (`FlatRow.icon` is a Material
+   `ImageVector`, not a remote-image slot) -- new shared `PartnerMiniAppGlyph`
+   (Coil `AsyncImage`) fixes both the teaser and the new hub screen. Rows stay
+   real tap targets (Android's own bundle-runtime scope).
+4. **iOS** (`b26687898`) -- same split; extracted the shared row markup into
+   `PartnerMiniAppRow` so the teaser and the new `MiniAppsHubScreenView` don't
+   duplicate it. Category chips reuse the existing `EatsSortChip`-style
+   capsule visual language.
+
+**Reusable lesson**: when a real reference is a mature ecosystem screen (years
+of accumulated features on the source platform), the right first move is
+comparing it against actual current code -- not the screenshots alone -- to
+find the honest buildable subset, then asking the user to pick a scope rather
+than unilaterally deciding how much of the gap to fabricate. This is the
+mirror image of Section 65's lesson (verify real data exists before assuming
+a UI gap): here the risk was inventing new products to match a reference,
+not fabricating display data for an already-real feature.
+
+**Verification**: backend `:partners:test` (Kotest, new + extended suites);
+web `tsc -b` + `oxlint` + `accessibility-lint.py` + `vite build` +
+`file-size-lint.py`; Android `:features:menu:impl:compileDebugKotlin` +
+`:app:compileDebugKotlin` + `:architecture-test:test` (Konsist) +
+`file-size-lint.py`; iOS full `xcodebuild -scheme ItundaApp` (`BUILD
+SUCCEEDED`, no new warnings) after `tuist generate && pod install`. Not
+verified: no real seeded partner mini-app exists in this environment to
+click through end-to-end (the catalog is legitimately empty by default) --
+each screen's own "renders nothing when empty" path was the actual verified
+state.
