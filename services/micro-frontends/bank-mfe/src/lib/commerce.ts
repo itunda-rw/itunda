@@ -170,11 +170,19 @@ export const requestOrderReturn = (orderId: string, type: OrderReturnType, reaso
     body: JSON.stringify({ type, reasonCode, reasonNote }),
   }).then((r) => r.returnRequest);
 
-export const fetchMyReturnRequests = () =>
-  apiFetch<{ success: boolean; returnRequests: OrderReturnRequestDto[] }>('/api/v1/orders/returns/my-requests?size=50').then((r) => r.returnRequests);
+// Real pagination-discard fix (2026-09-11, same systemic gap fixed
+// throughout the sweep -- see project_itunda_pagination_discard_sweep
+// memory) -- these real Pageable endpoints had already been bumped to
+// size=50 at some point but page was still never sent, still a hard cap.
+export const fetchMyReturnRequests = (page = 0) =>
+  apiFetch<{ success: boolean; returnRequests: OrderReturnRequestDto[]; page: number; totalPages: number }>(
+    `/api/v1/orders/returns/my-requests?page=${page}&size=50`,
+  );
 
-export const fetchMerchantReturnQueue = () =>
-  apiFetch<{ success: boolean; returnRequests: OrderReturnRequestDto[] }>('/api/v1/orders/returns/merchant-queue?size=50').then((r) => r.returnRequests);
+export const fetchMerchantReturnQueue = (page = 0) =>
+  apiFetch<{ success: boolean; returnRequests: OrderReturnRequestDto[]; page: number; totalPages: number }>(
+    `/api/v1/orders/returns/merchant-queue?page=${page}&size=50`,
+  );
 
 export const decideOrderReturn = (returnRequestId: string, approve: boolean) =>
   apiFetch<{ success: boolean; returnRequest: OrderReturnRequestDto }>(`/api/v1/orders/returns/${returnRequestId}/decide`, {

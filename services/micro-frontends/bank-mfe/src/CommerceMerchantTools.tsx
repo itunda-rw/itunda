@@ -14,10 +14,19 @@ export function MerchantReturnQueueView() {
   const showSkeleton = useDeferredLoading(requests === null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Real pagination fix (2026-09-11): page 0 is polled every 8s for
+  // real-time queue-status accuracy, so it must always stay a live,
+  // page-0-only fetch. olderRequests is a separate accumulator populated
+  // only by loadMore, never touched by the poll -- same design as the
+  // Ride/Commerce/Eats order-history fixes.
+  const [olderRequests, setOlderRequests] = useState<OrderReturnRequestDto[]>([]);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const load = () => {
-    fetchMerchantReturnQueue()
-      .then(setRequests)
+    fetchMerchantReturnQueue(0)
+      .then((r) => { setRequests(r.returnRequests); setHasMore(r.page + 1 < r.totalPages); })
       .catch((err) => {
         if (err instanceof ApiError && err.code === 'MERCHANT_NOT_FOUND') {
           setRequests([]);
@@ -25,6 +34,19 @@ export function MerchantReturnQueueView() {
           setError(err instanceof ApiError ? err.message : t('common.loadError'));
         }
       });
+  };
+
+  const loadMore = () => {
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    fetchMerchantReturnQueue(nextPage)
+      .then((r) => {
+        setOlderRequests((prev) => [...prev, ...r.returnRequests]);
+        setPage(nextPage);
+        setHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
   };
 
   useEffect(() => {
@@ -54,7 +76,7 @@ export function MerchantReturnQueueView() {
     );
   }
   if (requests === null) return showSkeleton ? <div className="skeleton" style={{ height: '80px', marginBottom: '16px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
-  const open = requests.filter((r) => r.status === 'REQUESTED');
+  const open = [...requests, ...olderRequests].filter((r) => r.status === 'REQUESTED');
   if (open.length === 0) return null;
 
   return (
@@ -78,6 +100,11 @@ export function MerchantReturnQueueView() {
             </div>
           </div>
         ))}
+        {hasMore && (
+          <button className="itunda-btn itunda-btn-secondary" disabled={loadingMore} onClick={loadMore}>
+            {loadingMore ? 'Loading…' : 'Load more'}
+          </button>
+        )}
       </div>
     </div>
   );

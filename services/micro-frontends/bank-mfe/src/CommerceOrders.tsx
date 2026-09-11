@@ -315,10 +315,28 @@ export function ReturnExchangeAction({ orderId }: { orderId: string }) {
 
 export function MyReturnRequestsView() {
   const [requests, setRequests] = useState<OrderReturnRequestDto[] | null>(null);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
-    fetchMyReturnRequests().then(setRequests).catch(() => setRequests([]));
+    fetchMyReturnRequests(0)
+      .then((r) => { setRequests(r.returnRequests); setHasMore(r.page + 1 < r.totalPages); })
+      .catch(() => setRequests([]));
   }, []);
+
+  const loadMore = () => {
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    fetchMyReturnRequests(nextPage)
+      .then((r) => {
+        setRequests((prev) => [...(prev ?? []), ...r.returnRequests]);
+        setPage(nextPage);
+        setHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  };
 
   if (!requests || requests.length === 0) return null;
 
@@ -340,6 +358,11 @@ export function MyReturnRequestsView() {
             </span>
           </div>
         ))}
+        {hasMore && (
+          <button className="itunda-btn itunda-btn-secondary" disabled={loadingMore} onClick={loadMore}>
+            {loadingMore ? 'Loading…' : 'Load more'}
+          </button>
+        )}
       </div>
     </div>
   );
