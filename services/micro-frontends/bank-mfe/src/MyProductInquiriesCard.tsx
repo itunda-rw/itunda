@@ -11,10 +11,28 @@ import { fetchMyProductInquiries, type ProductInquiry } from './lib/commerce';
 
 export function MyProductInquiriesCard() {
   const [inquiries, setInquiries] = useState<ProductInquiry[] | null>(null);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
-    fetchMyProductInquiries().then(setInquiries).catch(() => setInquiries([]));
+    fetchMyProductInquiries(0)
+      .then((r) => { setInquiries(r.inquiries); setHasMore(r.page + 1 < r.totalPages); })
+      .catch(() => setInquiries([]));
   }, []);
+
+  const loadMore = () => {
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    fetchMyProductInquiries(nextPage)
+      .then((r) => {
+        setInquiries((prev) => [...(prev ?? []), ...r.inquiries]);
+        setPage(nextPage);
+        setHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  };
 
   if (!inquiries || inquiries.length === 0) return null;
 
@@ -34,6 +52,11 @@ export function MyProductInquiriesCard() {
           )}
         </div>
       ))}
+      {hasMore && (
+        <button className="itunda-btn itunda-btn-secondary" disabled={loadingMore} onClick={loadMore}>
+          {loadingMore ? 'Loading…' : 'Load more'}
+        </button>
+      )}
     </div>
   );
 }

@@ -258,9 +258,13 @@ export const fetchProductInquiries = (productId: string) =>
 // app's job. Real gap found live (uncalled-endpoint sweep, 2026-09-03): the backend
 // endpoint existed with zero caller on bank-mfe or iOS -- only Android had this
 // wired, since 2026-08-04.
-export const fetchMyProductInquiries = () =>
-  apiFetch<{ success: boolean; inquiries: ProductInquiry[] }>('/api/v1/orders/inquiries/my-questions').then(
-    (r) => r.inquiries,
+// Real pagination-discard fix (2026-09-11, same systemic gap fixed
+// throughout the sweep -- see project_itunda_pagination_discard_sweep
+// memory) -- this real Pageable endpoint's page just wasn't ever sent,
+// silently capping "My questions" at the first 20 asked.
+export const fetchMyProductInquiries = (page = 0) =>
+  apiFetch<{ success: boolean; inquiries: ProductInquiry[]; page: number; totalPages: number }>(
+    `/api/v1/orders/inquiries/my-questions?page=${page}&size=20`,
   );
 
 export const fetchProductRating = (productId: string) =>
