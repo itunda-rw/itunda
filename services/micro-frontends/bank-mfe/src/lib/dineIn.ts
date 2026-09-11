@@ -50,11 +50,20 @@ export const placeDineInOrder = (restaurantId: string, tableNumber: string, item
     body: JSON.stringify({ restaurantId, tableNumber, items, notes }),
   });
 
-export const fetchMyDineInOrders = () =>
-  apiFetch<{ success: boolean; orders: DineInOrder[] }>('/api/v1/eats/dine-in/orders/my-orders?size=50').then((r) => r.orders);
+// Real pagination-discard fix (2026-09-11, same systemic gap fixed for
+// Commerce/Eats own order-history endpoints -- see
+// project_itunda_pagination_discard_sweep memory) -- these real Pageable
+// endpoints were bumped to size=50 at some point but page was still never
+// sent, silently capping table-order history at the 50 most recent rows.
+export const fetchMyDineInOrders = (page = 0) =>
+  apiFetch<{ success: boolean; orders: DineInOrder[]; page: number; totalPages: number }>(
+    `/api/v1/eats/dine-in/orders/my-orders?page=${page}&size=50`,
+  );
 
-export const fetchRestaurantDineInOrders = () =>
-  apiFetch<{ success: boolean; orders: DineInOrder[] }>('/api/v1/eats/dine-in/orders/restaurant-orders?size=50').then((r) => r.orders);
+export const fetchRestaurantDineInOrders = (page = 0) =>
+  apiFetch<{ success: boolean; orders: DineInOrder[]; page: number; totalPages: number }>(
+    `/api/v1/eats/dine-in/orders/restaurant-orders?page=${page}&size=50`,
+  );
 
 export const advanceDineInOrderStatus = (orderId: string, status: DineInOrderStatus) =>
   apiFetch<{ success: boolean; order: DineInOrder }>(`/api/v1/eats/dine-in/orders/${orderId}/status`, {

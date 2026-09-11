@@ -48,10 +48,19 @@ export function DineInRestaurantOrdersView() {
   const showOrdersSkeleton = useDeferredLoading(orders === null);
   const [error, setError] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
+  // Real pagination fix (2026-09-11): page 0 is polled every 4s for real-time
+  // order-status accuracy, so it must always stay a live, page-0-only fetch.
+  // olderOrders is a separate accumulator populated only by loadMoreOrders,
+  // never touched by the poll -- same design as the Commerce/Eats order-
+  // history fixes.
+  const [olderOrders, setOlderOrders] = useState<DineInOrder[]>([]);
+  const [ordersPage, setOrdersPage] = useState(0);
+  const [ordersHasMore, setOrdersHasMore] = useState(false);
+  const [loadingMoreOrders, setLoadingMoreOrders] = useState(false);
 
   const load = () => {
-    fetchRestaurantDineInOrders()
-      .then(setOrders)
+    fetchRestaurantDineInOrders(0)
+      .then((r) => { setOrders(r.orders); setOrdersHasMore(r.page + 1 < r.totalPages); })
       .catch((err) => {
         if (err instanceof ApiError && err.code === 'RESTAURANT_NOT_FOUND') {
           setOrders([]);
@@ -59,6 +68,19 @@ export function DineInRestaurantOrdersView() {
           setError(err instanceof ApiError ? err.message : t('common.loadError'));
         }
       });
+  };
+
+  const loadMoreOrders = () => {
+    const nextPage = ordersPage + 1;
+    setLoadingMoreOrders(true);
+    fetchRestaurantDineInOrders(nextPage)
+      .then((r) => {
+        setOlderOrders((prev) => [...prev, ...r.orders]);
+        setOrdersPage(nextPage);
+        setOrdersHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreOrders(false));
   };
 
   useEffect(() => {
@@ -101,13 +123,14 @@ export function DineInRestaurantOrdersView() {
     );
   }
   if (orders === null) return showOrdersSkeleton ? <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
-  if (orders.length === 0) return null;
+  const allOrders = [...orders, ...olderOrders];
+  if (allOrders.length === 0) return null;
 
   return (
     <div style={{ marginBottom: '20px' }}>
       <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Table orders for your restaurant</h4>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {orders.map((o) => {
+        {allOrders.map((o) => {
           const next = nextInChain(DINE_IN_STATUS_CHAIN, o.status);
           return (
             <DineInOrderCard
@@ -132,6 +155,11 @@ export function DineInRestaurantOrdersView() {
             />
           );
         })}
+        {ordersHasMore && (
+          <button className="itunda-btn itunda-btn-secondary" disabled={loadingMoreOrders} onClick={loadMoreOrders}>
+            {loadingMoreOrders ? 'Loading…' : 'Load more'}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -365,6 +393,9 @@ export function DineInCustomerView() {
   const [selected, setSelected] = useState<ShoppingMerchant | null>(null);
   const [confirmed, setConfirmed] = useState<DineInOrder | null>(null);
   const [orders, setOrders] = useState<DineInOrder[] | null>(null);
+  const [ordersPage, setOrdersPage] = useState(0);
+  const [ordersHasMore, setOrdersHasMore] = useState(false);
+  const [loadingMoreOrders, setLoadingMoreOrders] = useState(false);
 
   useEffect(() => {
     fetchRestaurants().then(setRestaurants).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
@@ -372,9 +403,24 @@ export function DineInCustomerView() {
 
   useEffect(() => {
     if (view === 'ORDERS') {
-      fetchMyDineInOrders().then(setOrders).catch(() => setOrders([]));
+      fetchMyDineInOrders(0)
+        .then((r) => { setOrders(r.orders); setOrdersPage(0); setOrdersHasMore(r.page + 1 < r.totalPages); })
+        .catch(() => setOrders([]));
     }
   }, [view]);
+
+  const loadMoreOrders = () => {
+    const nextPage = ordersPage + 1;
+    setLoadingMoreOrders(true);
+    fetchMyDineInOrders(nextPage)
+      .then((r) => {
+        setOrders((prev) => [...(prev ?? []), ...r.orders]);
+        setOrdersPage(nextPage);
+        setOrdersHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreOrders(false));
+  };
 
   if (confirmed) {
     // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- this IS the
@@ -436,6 +482,11 @@ export function DineInCustomerView() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {orders.map((o) => <DineInOrderCard key={o.id} order={o} />)}
+          {ordersHasMore && (
+            <button className="itunda-btn itunda-btn-secondary" disabled={loadingMoreOrders} onClick={loadMoreOrders}>
+              {loadingMoreOrders ? 'Loading…' : 'Load more'}
+            </button>
+          )}
         </div>
       )}
     </div>
