@@ -118,6 +118,13 @@ class PartnerService(
         category: String? = null,
     ): PartnerMiniApp {
         val partner = resolvePartner(apiKey)
+        // Real gap found live (2026-09-11, Mini-Apps hub pass) -- register() above has
+        // always been rate-limited; this real, authenticated, DB-writing, review-queue-
+        // generating endpoint never was. A valid (non-suspended) partner could spam
+        // unlimited submissions with no bound at all. Matches this codebase's own
+        // per-actor rate-limit convention (keyed by the real acting partner, not a
+        // shared bucket).
+        rateLimiter.checkLimit("partner:submit_mini_app:${partner.id}", limit = 10, window = Duration.ofHours(1))
         val invalidScopes = permissions.filterNot { PartnerMiniAppPermissions.ALLOWED.contains(it) }
         if (invalidScopes.isNotEmpty()) {
             throw InvalidPermissionScopeException("Unknown permission scope(s): ${invalidScopes.joinToString(", ")}")

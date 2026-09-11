@@ -10,6 +10,7 @@ import io.mockk.slot
 import io.mockk.verify
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Partner
 import rw.itunda.core.domain.PartnerMiniApp
@@ -100,6 +101,22 @@ class PartnerServiceTest : BehaviorSpec({
                 miniApp.status shouldBe PartnerMiniAppStatus.PENDING
                 miniApp.partnerId shouldBe "partner_1"
                 miniApp.permissions shouldBe "account:read,profile:read"
+            }
+        }
+
+        When("the partner has hit their real submission rate limit") {
+            every { rateLimiter.checkLimit("partner:submit_mini_app:partner_1", any(), any()) } throws RateLimitExceededException("Too many mini-app submissions")
+
+            Then("it real-429s rather than silently accepting unlimited submissions") {
+                try {
+                    service.submitMiniApp(
+                        "sk_test_real_key", "Acme Delivery", "desc", null, "https://acme.rw/bundle.js",
+                        listOf("account:read"),
+                    )
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { partnerMiniAppRepository.save(any()) }
+                }
             }
         }
 
