@@ -60,8 +60,7 @@ import type { SupportTicketCategory } from './lib/support';
 import { SpendingInsightView } from './SpendingInsightView';
 import { SubscriptionsView } from './SubscriptionsView';
 import { StocksView } from './StocksView';
-import { fetchConversations, type ConversationSummary } from './lib/messaging';
-import { fetchGroups } from './lib/groupMessaging';
+import { fetchConversations, fetchUnreadCount, type ConversationSummary } from './lib/messaging';
 import {
   type HoodReview,
 } from './lib/marketplace';
@@ -2760,20 +2759,16 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   useEffect(() => {
     let cancelled = false;
     const poll = () => {
-      // Real, pre-existing accuracy gap (not introduced by the 2026-09-09
-      // pagination fix, just now more visible since fetchConversations's
-      // return shape changed): this only sums unreadCount across each list's
-      // own first page (20 rows), so a user with more than 20 real
-      // conversations or groups gets an undercounted badge. Fixing this
-      // properly needs a real dedicated total-unread-count backend endpoint
-      // (summing across ALL of a user's conversations/groups, not a page),
-      // which doesn't exist yet -- named here rather than silently
-      // papered over, not attempted this pass.
-      Promise.all([fetchConversations(false), fetchGroups()])
-        .then(([conversationsRes, groupsRes]) => {
+      // Real accuracy fix (2026-09-11): this used to sum unreadCount across
+      // only each list's own first page (20 rows), undercounting for any
+      // real user with more than 20 conversations or groups -- see
+      // project_itunda_pagination_discard_sweep memory's own "Messaging"
+      // section. fetchUnreadCount is a real, unbounded backend aggregate
+      // covering ALL of a user's conversations/groups, not a page.
+      fetchUnreadCount()
+        .then((r) => {
           if (cancelled) return;
-          const total = conversationsRes.conversations.reduce((sum, c) => sum + c.unreadCount, 0) + groupsRes.groups.reduce((sum, g) => sum + g.unreadCount, 0);
-          setMessagesUnreadCount(total);
+          setMessagesUnreadCount(r.total);
         })
         .catch(() => {
           // Non-critical -- a poll failure just leaves the last-known badge count.

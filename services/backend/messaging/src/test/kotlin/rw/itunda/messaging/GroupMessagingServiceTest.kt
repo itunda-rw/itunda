@@ -855,6 +855,7 @@ class GroupMessagingServiceTest : BehaviorSpec({
             }
         }
     }
+
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

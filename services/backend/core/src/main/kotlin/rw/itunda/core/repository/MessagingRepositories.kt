@@ -133,6 +133,24 @@ interface MessageRepository : JpaRepository<Message, String> {
 
     fun findByReplyToMessageIdAndDeletedAtIsNullOrderBySentAtAsc(replyToMessageId: String): List<Message>
 
+    // Real total-unread-count fix (2026-09-11) -- see
+    // project_itunda_pagination_discard_sweep memory's own "Messaging"
+    // section: the web tab badge previously summed unreadCount across only
+    // the FIRST PAGE (20 rows) of listConversations, undercounting for any
+    // user with more than 20 real conversations. This is a genuine
+    // unbounded aggregate across ALL of a user's non-archived conversations
+    // -- same "senderId <> userId AND readAt IS NULL" semantics
+    // countUnreadByConversationIds already uses, same archived-exclusion
+    // subquery findByParticipantNotArchived already uses, just summed
+    // instead of grouped.
+    @Query(
+        "SELECT COUNT(m) FROM Message m WHERE m.senderId <> :userId AND m.readAt IS NULL " +
+            "AND m.conversationId IN (" +
+            "SELECT c.id FROM Conversation c WHERE (c.participantAId = :userId OR c.participantBId = :userId) " +
+            "AND c.id NOT IN (SELECT p.conversationId FROM ConversationPreference p WHERE p.userId = :userId AND p.archived = true))",
+    )
+    fun countTotalUnreadForUser(@Param("userId") userId: String): Long
+
     @Query(
         "SELECT m.replyToMessageId AS rootMessageId, COUNT(m) AS replyCount FROM Message m " +
             "WHERE m.replyToMessageId IN :messageIds AND m.deletedAt IS NULL GROUP BY m.replyToMessageId",

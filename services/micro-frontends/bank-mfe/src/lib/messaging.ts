@@ -79,6 +79,18 @@ export const fetchConversations = (archived = false, page = 0, size = 20) =>
     `/api/v1/messages/conversations?archived=${archived}&page=${page}&size=${size}`,
   );
 
+// Real total-unread-count fix (2026-09-11, backend commit adding
+// MessagingController.getUnreadCount) -- closes the accuracy gap named in
+// project_itunda_pagination_discard_sweep's own "Messaging" section: the
+// top-level tab badge used to sum unreadCount across only each list's own
+// first page (conversations AND groups), undercounting for any real user
+// with more than 20 of either. This is a real, unbounded backend aggregate
+// covering ALL of a user's conversations/groups, not a page.
+export const fetchUnreadCount = () =>
+  apiFetch<{ success: boolean; conversationsUnread: number; groupsUnread: number; total: number }>(
+    '/api/v1/messages/unread-count',
+  );
+
 export const fetchTalkContacts = () =>
   apiFetch<{ success: boolean; contacts: TalkContact[] }>('/api/v1/messages/contacts').then((r) => r.contacts);
 

@@ -491,6 +491,15 @@ class MessagingService(
         return PageImpl(summaries, pageable, page.totalElements)
     }
 
+    // Real total-unread-count fix (2026-09-11) -- see
+    // project_itunda_pagination_discard_sweep memory's own "Messaging"
+    // section: the web tab badge used to sum unreadCount across only
+    // listConversations' own first page (20 rows), undercounting for any
+    // real user with more than 20 conversations. This is a genuine
+    // unbounded aggregate, not a page -- see MessageRepository
+    // .countTotalUnreadForUser's own doc comment for the exact query.
+    fun getTotalUnreadCount(userId: String): Long = messageRepository.countTotalUnreadForUser(userId)
+
     // Same private-to-one-participant model as setConversationQuiet above -- see
     // ConversationPreference.archived's own doc comment for the full reasoning.
     @Transactional

@@ -542,6 +542,13 @@ class GroupMessagingService(
         return PageImpl(summaries, pageable, page.totalElements)
     }
 
+    // Real total-unread-count fix (2026-09-11) -- see MessagingService
+    // .getTotalUnreadCount's own doc comment for the full account (same
+    // gap, group-chat side) and GroupMessageRepository
+    // .countTotalUnreadForUser's own doc comment for the exact correlated-
+    // subquery this uses.
+    fun getTotalUnreadCount(userId: String): Long = groupMessageRepository.countTotalUnreadForUser(userId, Instant.EPOCH)
+
     /**
      * Real member list with real resolved display names (2026-07-18) -- closes the
      * honest, repeatedly-named limitation every group chat UI (bank-mfe, Android, iOS)

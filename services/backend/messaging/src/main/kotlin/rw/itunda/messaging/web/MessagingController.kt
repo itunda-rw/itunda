@@ -23,6 +23,7 @@ import rw.itunda.messaging.EmptyGroupMessageException
 import rw.itunda.messaging.EmptyMessageException
 import rw.itunda.messaging.GroupMessageNotFoundException
 import rw.itunda.messaging.GroupMessageTooLongException
+import rw.itunda.messaging.GroupMessagingService
 import rw.itunda.messaging.GroupNotFoundException
 import rw.itunda.messaging.InvalidForwardDestinationException
 import rw.itunda.messaging.InvalidReactionException
@@ -62,7 +63,29 @@ data class ForwardMessageRequest(val destinationType: String, val destinationId:
 class MessagingController(
     private val messagingService: MessagingService,
     private val messageForwardService: MessageForwardService,
+    private val groupMessagingService: GroupMessagingService,
 ) {
+
+    // Real total-unread-count fix (2026-09-11) -- see MessagingService
+    // .getTotalUnreadCount's own doc comment for the full account: the web
+    // tab badge previously summed unreadCount across only each list's own
+    // first page, undercounting for any user with more than 20 real
+    // conversations or groups. This is the real, unbounded aggregate both
+    // sides needed -- one endpoint since the web badge always wants both
+    // totals together, not two separate round trips.
+    @GetMapping("/unread-count")
+    fun getUnreadCount(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> {
+        val conversationsUnread = messagingService.getTotalUnreadCount(currentUser.userId)
+        val groupsUnread = groupMessagingService.getTotalUnreadCount(currentUser.userId)
+        return ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "conversationsUnread" to conversationsUnread,
+                "groupsUnread" to groupsUnread,
+                "total" to (conversationsUnread + groupsUnread),
+            ),
+        )
+    }
 
     @PostMapping("/conversations")
     fun startConversation(

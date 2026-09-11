@@ -114,6 +114,29 @@ interface GroupMessageRepository : JpaRepository<GroupMessage, String> {
     // doc comment for the full account; identical shape here for group chat.
     fun findByReplyToMessageIdAndDeletedAtIsNullOrderBySentAtAsc(replyToMessageId: String): List<GroupMessage>
 
+    // Real total-unread-count fix (2026-09-11) -- see
+    // project_itunda_pagination_discard_sweep memory's own "Messaging"
+    // section: countUnread's own doc comment above named a per-group cutoff
+    // as the reason a single cross-group aggregate query wasn't attempted,
+    // reasoning that expressing "each group's own lastReadAt cutoff" needs
+    // "either a correlated subquery or raw SQL this codebase doesn't use
+    // elsewhere." A CORRELATED SUBQUERY is real, standard JPQL though (not
+    // raw SQL) -- this is exactly that: for every unread candidate message,
+    // look up that SPECIFIC group's own membership row for this user via a
+    // subquery correlated on gm.groupConversationId, falling back to
+    // :epoch (Instant.EPOCH, passed from the service layer) when the user
+    // has never opened that group at all -- COALESCE(..., epoch) mirrors
+    // countUnread's own "lastReadAt IS NULL means everything is unread"
+    // semantics (any real sentAt is always after 1970).
+    @Query(
+        "SELECT COUNT(gm) FROM GroupMessage gm WHERE gm.senderId <> :userId " +
+            "AND gm.groupConversationId IN (SELECT gcm.groupConversationId FROM GroupConversationMember gcm WHERE gcm.userId = :userId) " +
+            "AND gm.sentAt > COALESCE(" +
+            "(SELECT gcm2.lastReadAt FROM GroupConversationMember gcm2 WHERE gcm2.groupConversationId = gm.groupConversationId AND gcm2.userId = :userId), " +
+            ":epoch)",
+    )
+    fun countTotalUnreadForUser(@Param("userId") userId: String, @Param("epoch") epoch: java.time.Instant): Long
+
     @Query(
         "SELECT m.replyToMessageId AS rootMessageId, COUNT(m) AS replyCount FROM GroupMessage m " +
             "WHERE m.replyToMessageId IN :messageIds AND m.deletedAt IS NULL GROUP BY m.replyToMessageId",
