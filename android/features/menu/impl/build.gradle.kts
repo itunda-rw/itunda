@@ -31,4 +31,10 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
+    // Real Mini-Apps hub pass (2026-09-11) -- renders a partner mini-app's real
+    // remote iconUrl, same version :features:home:impl already uses.
+    implementation("io.coil-kt:coil-compose:2.6.0")
+    // Real Mini-Apps hub pass (2026-09-11) -- MiniAppsHubScreen's real back-gesture
+    // handling, same version :features:banking:impl already uses.
+    implementation("androidx.activity:activity-compose:1.8.2")
 }

@@ -735,14 +735,18 @@ data class PartnerMiniAppDto(
     val bundleUrl: String,
     val permissions: String,
     val status: String,
+    // Real Toss/Kakao mini-app-store reference (2026-09-11, Mini-Apps hub pass) --
+    // matches the backend's own PartnerMiniAppCategory enum names exactly.
+    val category: String,
     val createdAt: String,
 )
 
-// Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix,
-// dc23b11f -- see project_itunda_pagination_discard_sweep memory) --
-// getMiniAppCatalog is real Pageable-backed on the backend, but page was
-// never sent, silently capping the mini-app catalog at the first 20
-// approved apps.
+// Real Mini-Apps hub pass (2026-09-11) -- was page-based (see this class's own
+// prior doc comment on the 2026-09-11 pagination-discard fix); replaced with a
+// single size=100 "browse all (optionally category-filtered)" fetch, matching
+// bank-mfe's identical fetchMiniAppCatalog change: the real catalog is
+// genuinely tiny today (no seed data, no onboarded partners), so real
+// pagination is building ahead of real need.
 data class MiniAppCatalogResponse(val success: Boolean, val miniApps: List<PartnerMiniAppDto>, val page: Int, val totalPages: Int)
 
 // Mirrors services/backend/messaging's real DTOs exactly (2026-07-18) -- backs the new
@@ -2955,7 +2959,7 @@ interface ApiService {
     // surface a logged-in itunda user's own client fetches). See
     // miniapps/PartnerMiniAppLoader.kt for what actually happens when one of these is tapped.
     @GET("api/v1/mini-apps/catalog")
-    suspend fun getMiniAppCatalog(@Query("page") page: Int = 0, @Query("size") size: Int = 20): MiniAppCatalogResponse
+    suspend fun getMiniAppCatalog(@Query("category") category: String? = null, @Query("size") size: Int = 100): MiniAppCatalogResponse
 
     // Real 1:1 messaging (2026-07-18) -- see rw.itunda.messaging.web.MessagingController.
     @POST("api/v1/messages/conversations")

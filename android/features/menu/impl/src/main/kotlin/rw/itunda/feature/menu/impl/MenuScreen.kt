@@ -1,10 +1,14 @@
 package rw.itunda.feature.menu.impl
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AddCircleOutline
@@ -22,9 +26,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import rw.itunda.core.designsystem.components.FlatRow
 import rw.itunda.core.designsystem.components.FlatSection
@@ -97,11 +104,6 @@ fun MenuScreen(
     onSwitchToTalk: () -> Unit = {},
     onOpenProperty: () -> Unit = {},
     partnerMiniApps: List<rw.itunda.core.network.PartnerMiniAppDto>,
-    // Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix
-    // -- see project_itunda_pagination_discard_sweep memory).
-    partnerMiniAppsHasMore: Boolean = false,
-    loadingMorePartnerMiniApps: Boolean = false,
-    onLoadMorePartnerMiniApps: () -> Unit = {},
     // Real injected callbacks (2026-09-02) -- see this file's own header comment.
     onOpenRewardTasksMiniApp: () -> Unit = {},
     onOpenPayBillsMiniApp: () -> Unit = {},
@@ -113,6 +115,15 @@ fun MenuScreen(
     val coroutineScope = rememberCoroutineScope()
     var partnerLoadError by remember { mutableStateOf<String?>(null) }
     var loadingPartnerAppId by remember { mutableStateOf<String?>(null) }
+    var showMiniAppsHub by remember { mutableStateOf(false) }
+    // Real Toss/Kakao mini-app-store reference (2026-09-11) -- promoted from an
+    // inline "Load more" list into its own dedicated hub screen (real category
+    // filter + search), matching CouponBoxScreen/MembershipScreen's own
+    // `if (showX) { Screen(...); return }` pattern in PayTab.kt.
+    if (showMiniAppsHub) {
+        MiniAppsHubScreen(onBack = { showMiniAppsHub = false }, onLaunchPartnerMiniApp = onLaunchPartnerMiniApp)
+        return
+    }
     var menuSearchQuery by remember { mutableStateOf("") }
     var availableTaskCount by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(Unit) {
@@ -229,12 +240,19 @@ fun MenuScreen(
             }
             if (partnerMiniApps.isNotEmpty()) {
                 item {
+                    // Real Toss/Kakao mini-app-store reference (2026-09-11) -- capped
+                    // teaser (first 3) + "See all" opening MiniAppsHubScreen, matching
+                    // bank-mfe's identical MyView.tsx/MiniAppsHubScreen.tsx split.
+                    // Also fixes a real bug found during that pass: iconUrl was never
+                    // rendered here at all (FlatRow.icon is a Material ImageVector, not
+                    // a remote-image slot) -- glyph below renders the real icon now.
                     FlatSection(
                         title = "Partner mini-apps",
-                        rows = partnerMiniApps.map { app ->
+                        rows = partnerMiniApps.take(3).map { app ->
                             FlatRow(
                                 title = app.name,
                                 subtitle = if (loadingPartnerAppId == app.id) "Loading..." else app.description,
+                                glyph = { PartnerMiniAppGlyph(app.iconUrl) },
                                 onClick = {
                                     if (loadingPartnerAppId == null) {
                                         loadingPartnerAppId = app.id
@@ -245,20 +263,9 @@ fun MenuScreen(
                                     }
                                 }
                             )
-                        } + if (partnerMiniAppsHasMore) {
-                            // Real pagination-discard fix (2026-09-11, ported from
-                            // bank-mfe's own fix -- see
-                            // project_itunda_pagination_discard_sweep memory).
-                            listOf(
-                                FlatRow(
-                                    title = if (loadingMorePartnerMiniApps) "Loading…" else "Load more",
-                                    subtitle = null,
-                                    onClick = { if (!loadingMorePartnerMiniApps) onLoadMorePartnerMiniApps() },
-                                )
-                            )
-                        } else {
-                            emptyList()
-                        }
+                        } + listOf(
+                            FlatRow(title = "See all", subtitle = null, showChevron = true, onClick = { showMiniAppsHub = true }),
+                        )
                     )
                 }
             }
@@ -294,5 +301,23 @@ fun MenuScreen(
                 androidx.compose.material3.TextButton(onClick = { partnerLoadError = null }) { Text("OK") }
             }
         )
+    }
+}
+
+// Real icon-render fix (2026-09-11, Mini-Apps hub pass) -- FlatRow.icon is a Material
+// ImageVector, not a remote-image slot, so a partner mini-app's own real iconUrl was
+// never rendered anywhere on Android (bank-mfe/iOS already show it). Shared between
+// this screen's own capped teaser and MiniAppsHubScreen.kt's full list.
+@Composable
+internal fun PartnerMiniAppGlyph(iconUrl: String?) {
+    if (iconUrl != null) {
+        AsyncImage(
+            model = iconUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(Ids.colors.chip),
+        )
+    } else {
+        Box(modifier = Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(Ids.colors.chip))
     }
 }

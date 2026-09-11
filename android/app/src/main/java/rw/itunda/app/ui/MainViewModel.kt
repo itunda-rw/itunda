@@ -79,34 +79,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Real Partner SDK catalog (2026-07-17) -- approved third-party mini-apps a user can
     // actually tap into, closing the mobile half of docs/TOSS_PARITY_MATRIX.md's Partner
     // SDK row. See miniapps/PartnerMiniAppLoader.kt for the download/render mechanism.
+    // Real Mini-Apps hub pass (2026-09-11) -- this StateFlow now backs only MenuScreen's
+    // small capped teaser (first 3, no filters); the dedicated MiniAppsHubScreen ("See
+    // all") owns its own category-filtered fetch, matching bank-mfe's identical
+    // MiniAppsHubScreen.tsx split. Pagination state removed accordingly.
     private val _partnerMiniApps = MutableStateFlow<List<rw.itunda.core.network.PartnerMiniAppDto>>(emptyList())
     val partnerMiniApps: StateFlow<List<rw.itunda.core.network.PartnerMiniAppDto>> = _partnerMiniApps
-    // Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix
-    // -- see project_itunda_pagination_discard_sweep memory).
-    private var partnerMiniAppsPage = 0
-    private val _partnerMiniAppsHasMore = MutableStateFlow(false)
-    val partnerMiniAppsHasMore: StateFlow<Boolean> = _partnerMiniAppsHasMore
-    private val _loadingMorePartnerMiniApps = MutableStateFlow(false)
-    val loadingMorePartnerMiniApps: StateFlow<Boolean> = _loadingMorePartnerMiniApps
-
-    fun loadMorePartnerMiniApps() {
-        val nextPage = partnerMiniAppsPage + 1
-        _loadingMorePartnerMiniApps.value = true
-        viewModelScope.launch {
-            try {
-                val res = NetworkClient.apiService.getMiniAppCatalog(page = nextPage)
-                if (res.success) {
-                    _partnerMiniApps.value = _partnerMiniApps.value + res.miniApps
-                    partnerMiniAppsPage = nextPage
-                    _partnerMiniAppsHasMore.value = res.page + 1 < res.totalPages
-                }
-            } catch (_: Exception) {
-                // Non-critical -- leave state as-is, the button just stays visible to retry.
-            } finally {
-                _loadingMorePartnerMiniApps.value = false
-            }
-        }
-    }
 
     // Distinguishes "showing real data" from "backend unreachable, showing offline
     // placeholder" -- the UI should be honest about which one it's rendering rather
@@ -215,11 +193,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 // hiccup (e.g. this environment's partners module not deployed) must never
                 // block the rest of Home from loading real data.
                 try {
-                    val catalogRes = NetworkClient.apiService.getMiniAppCatalog(page = 0)
+                    val catalogRes = NetworkClient.apiService.getMiniAppCatalog()
                     if (catalogRes.success) {
                         _partnerMiniApps.value = catalogRes.miniApps
-                        partnerMiniAppsPage = 0
-                        _partnerMiniAppsHasMore.value = catalogRes.page + 1 < catalogRes.totalPages
                     }
                 } catch (e: retrofit2.HttpException) {
                     _partnerMiniApps.value = emptyList()
