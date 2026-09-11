@@ -213,6 +213,12 @@
     <string name="account_manage_section_security">Security</string>
     <string name="account_manage_devices">Manage devices</string>
     <string name="account_manage_interest_earned">View interest earned</string>
+    <string name="account_manage_nickname">Account nickname</string>
+    <string name="account_nickname_placeholder">e.g. My savings</string>
+    <string name="account_nickname_save">Save</string>
+    <string name="account_nickname_saving">Saving…</string>
+    <string name="account_nickname_footnote">Leave this blank to remove your nickname — your account will show as \"itunda Bank\" again.</string>
+    <string name="account_nickname_error">Could not update your account nickname.</string>
     <string name="account_manage_verification_method">Verification method</string>
     <string name="verification_method_phone">Phone number</string>
     <string name="verification_method_device">This device</string>
@@ -220,6 +226,15 @@
     <string name="verification_method_not_verified">Not verified</string>
     <string name="verification_method_loading">…</string>
     <string name="verification_method_footnote">"This device" reflects real biometric/passwordless verification for the device you\'re using right now — set it up from Manage devices.</string>
+    <string name="account_manage_change_password">Change password</string>
+    <string name="change_password_current_placeholder">Your current password</string>
+    <string name="change_password_continue">Continue</string>
+    <string name="change_password_new_label">Create a new 6-digit password</string>
+    <string name="change_password_confirm_label">Confirm your new password</string>
+    <string name="change_password_mismatch">That didn\'t match. Try again.</string>
+    <string name="change_password_error">Could not update your password.</string>
+    <string name="change_password_success">Your password has been updated.</string>
+    <string name="change_password_done">Done</string>
     <string name="account_manage_section_transfer">Transfer</string>
     <string name="account_manage_auto_transfer">Auto transfer</string>
     <string name="account_manage_scheduled_transfers">Scheduled transfers</string>
@@ -236,7 +251,7 @@
     <string name="account_manage_pay_taxes_bills">Pay taxes &amp; bills</string>
     <string name="account_manage_section_support">Support</string>
     <string name="account_manage_get_help">Get help</string>
-    <string name="account_manage_disclosure">Some Toss Bank account-management features (Open Banking, tax-free limits, ATM networks, changing your account password) don\'t have a real itunda equivalent yet, and aren\'t shown here rather than being faked.</string>
+    <string name="account_manage_disclosure">Some Toss Bank account-management features (Open Banking, tax-free limits, ATM networks, telecom-fraud history sharing) don\'t have a real itunda equivalent yet, and aren\'t shown here rather than being faked.</string>
     <string name="account_detail_top_up">Top up</string>
     <string name="account_detail_get_interest">Get interest</string>
     <string name="account_detail_interest_prefix">Interest</string>

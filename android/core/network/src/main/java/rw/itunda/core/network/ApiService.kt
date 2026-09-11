@@ -333,6 +333,10 @@ data class Account(
     val userId: String,
     val accountNumber: String,
     val accountName: String,
+    // Real Toss Bank reference (2026-09-12, "계좌 별명" -- account nickname) -- a
+    // real, user-editable personal label, distinct from accountName above (a
+    // fixed, system-assigned label set once at creation).
+    val nickname: String? = null,
     val type: String,
     val balance: Double,
     val availableBalance: Double,
@@ -344,6 +348,9 @@ data class AccountResponse(
     val success: Boolean,
     val accounts: List<Account>
 )
+
+data class SetAccountNicknameRequest(val nickname: String?)
+data class SetAccountNicknameResponse(val success: Boolean, val account: Account)
 
 // Real 토스뱅크 외화통장 (foreign-currency account) equivalent (2026-07-25) -- see
 // rw.itunda.account.ForeignCurrencyAccountService on the backend for the full account,
@@ -2942,6 +2949,11 @@ interface ApiService {
     // every account. See AccountService.getAccountTransactionHistory on the backend.
     @GET("api/v1/account/{id}/transactions")
     suspend fun getAccountTransactionHistory(@retrofit2.http.Path("id") id: String): TransactionHistoryResponse
+
+    // Real Toss Bank reference (2026-09-12, "계좌 별명" -- account nickname) -- see
+    // AccountService.setNickname's own doc comment on the backend.
+    @PATCH("api/v1/account/{id}/nickname")
+    suspend fun setAccountNickname(@retrofit2.http.Path("id") id: String, @Body request: SetAccountNicknameRequest): SetAccountNicknameResponse
 
     @GET("api/v1/notifications")
     suspend fun getNotifications(): NotificationsResponse

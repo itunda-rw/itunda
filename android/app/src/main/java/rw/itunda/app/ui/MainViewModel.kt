@@ -285,6 +285,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun retry() = fetchData()
 
+    // Real Toss Bank reference (2026-09-12, "계좌 별명" -- account nickname) -- the
+    // Manage screen's own PATCH call already updated the backend; this just reflects
+    // that same real value into the already-loaded primaryAccount so the account
+    // header can show it without a full re-fetch.
+    fun updatePrimaryAccountNickname(nickname: String?) {
+        _primaryAccount.value = _primaryAccount.value?.copy(nickname = nickname)
+    }
+
     /** Real account settings screen data (2026-07-12) -- fetched on demand when the
      * Settings screen actually opens, not on every Home tab load. */
     fun loadSettingsData() {

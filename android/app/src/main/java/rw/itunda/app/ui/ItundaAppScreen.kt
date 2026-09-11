@@ -1606,7 +1606,10 @@ fun ItundaAppScreen(
             BackHandler { showAccountManage = false }
             val manageContext = androidx.compose.ui.platform.LocalContext.current
             AccountManageScreen(
+                accountId = viewModel.primaryAccount.value?.id ?: "",
                 accountNumber = viewModel.primaryAccount.value?.accountNumber ?: "",
+                nickname = viewModel.primaryAccount.value?.nickname,
+                onNicknameChanged = viewModel::updatePrimaryAccountNickname,
                 onBack = { showAccountManage = false },
                 onOpenCard = { showAccountManage = false; showCard = true },
                 onOpenDevices = { showAccountManage = false; showDeviceList = true },
@@ -2137,10 +2140,18 @@ private fun AccountDetailScreen(
                         // Real gap found live (2026-08-31, direct user correction: "it's
                         // not itunda account number it's itunda bank account number") --
                         // matches real Toss's own "토스뱅크 1000-XXXX-XXXX" pattern.
-                        Text(
-                            "itunda Bank ${primaryAccount!!.accountNumber.chunked(4).joinToString("-")}",
-                            fontSize = 13.sp, color = Ids.colors.textSecondary,
-                        )
+                        val caption = "itunda Bank ${primaryAccount!!.accountNumber.chunked(4).joinToString("-")}"
+                        val nickname = primaryAccount!!.nickname
+                        // Real Toss Bank reference (2026-09-12, "계좌 별명" -- account
+                        // nickname): a real, user-set nickname takes the bold leading
+                        // line Toss's own header gives it, with the plain "itunda Bank
+                        // {number}" caption demoted below it -- matching web's own
+                        // AccountDetailScreen fix. Falls back to the caption alone when
+                        // no nickname is set, exactly as before this feature existed.
+                        if (nickname != null) {
+                            Text(nickname, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+                        }
+                        Text(caption, fontSize = 13.sp, color = Ids.colors.textSecondary)
                     }
                     val animatedBalance = rememberCountUp(balance)
                     Text(String.format(java.util.Locale.US, "%,.0f $currency", animatedBalance), style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)

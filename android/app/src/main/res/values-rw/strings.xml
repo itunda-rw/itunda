@@ -169,6 +169,12 @@
     <string name="account_manage_section_security">Umutekano</string>
     <string name="account_manage_devices">Gucunga ibikoresho</string>
     <string name="account_manage_interest_earned">Reba inyungu wabonye</string>
+    <string name="account_manage_nickname">Izina ryihariye rya konti</string>
+    <string name="account_nickname_placeholder">urugero: Izigama ryanjye</string>
+    <string name="account_nickname_save">Bika</string>
+    <string name="account_nickname_saving">Birabikwa…</string>
+    <string name="account_nickname_footnote">Reka ubusa kugira ngo ukureho izina ryihariye — konti yawe izongera kwerekana "itunda Bank".</string>
+    <string name="account_nickname_error">Ntibyakunze kuvugurura izina ryihariye rya konti yawe.</string>
     <string name="account_manage_verification_method">Uburyo bwo kwemeza</string>
     <string name="verification_method_phone">Nimero ya telefoni</string>
     <string name="verification_method_device">Iki gikoresho</string>
@@ -176,6 +182,15 @@
     <string name="verification_method_not_verified">Ntibyemejwe</string>
     <string name="verification_method_loading">…</string>
     <string name="verification_method_footnote">"Iki gikoresho" bigaragaza kwemeza nyakuri (biometric/passwordless) ku gikoresho ukoreramo ubu — bishyireho uhereye kuri Gucunga ibikoresho.</string>
+    <string name="account_manage_change_password">Guhindura ijambobanga</string>
+    <string name="change_password_current_placeholder">Ijambobanga ukoresha ubu</string>
+    <string name="change_password_continue">Komeza</string>
+    <string name="change_password_new_label">Shyiraho ijambobanga rishya ry\'imibare 6</string>
+    <string name="change_password_confirm_label">Emeza ijambobanga ryawe rishya</string>
+    <string name="change_password_mismatch">Ntibihuye. Ongera ugerageze.</string>
+    <string name="change_password_error">Ntibyakunze kuvugurura ijambobanga ryawe.</string>
+    <string name="change_password_success">Ijambobanga ryawe ryavuguruwe.</string>
+    <string name="change_password_done">Byarangiye</string>
     <string name="account_manage_section_transfer">Kohereza amafaranga</string>
     <string name="account_manage_auto_transfer">Kohereza mu buryo bwikora</string>
     <string name="account_manage_scheduled_transfers">Kohereza biteganyijwe</string>
@@ -192,7 +207,7 @@
     <string name="account_manage_pay_taxes_bills">Kwishyura imisoro n\'amafatura</string>
     <string name="account_manage_section_support">Ubufasha</string>
     <string name="account_manage_get_help">Saba ubufasha</string>
-    <string name="account_manage_disclosure">Bimwe mu bikorwa byo gucunga konti bya Toss Bank (Open Banking, imbibi z\'umusoro, uturere twa ATM, guhindura ijambobanga rya konti) ntabwo bifite ikigereranyo nyakuri kuri itunda kugeza ubu, kandi ntibigaragara hano aho kubeshywa.</string>
+    <string name="account_manage_disclosure">Bimwe mu bikorwa byo gucunga konti bya Toss Bank (Open Banking, imbibi z\'umusoro, uturere twa ATM, gusangira amateka y\'uburiganya bwa telecom) ntabwo bifite ikigereranyo nyakuri kuri itunda kugeza ubu, kandi ntibigaragara hano aho kubeshywa.</string>
     <string name="back">Subira inyuma</string>
     <string name="bank_hub_tab_accounts">Konti</string>
     <string name="bank_hub_tab_borrow">Kuguza</string>

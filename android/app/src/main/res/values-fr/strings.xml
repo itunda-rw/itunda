@@ -161,6 +161,12 @@
     <string name="account_manage_section_security">Sécurité</string>
     <string name="account_manage_devices">Gérer les appareils</string>
     <string name="account_manage_interest_earned">Voir les intérêts gagnés</string>
+    <string name="account_manage_nickname">Surnom du compte</string>
+    <string name="account_nickname_placeholder">ex. Mon épargne</string>
+    <string name="account_nickname_save">Enregistrer</string>
+    <string name="account_nickname_saving">Enregistrement…</string>
+    <string name="account_nickname_footnote">Laissez ce champ vide pour supprimer votre surnom — votre compte s\'affichera de nouveau comme « itunda Bank ».</string>
+    <string name="account_nickname_error">Impossible de mettre à jour le surnom de votre compte.</string>
     <string name="account_manage_verification_method">Méthode de vérification</string>
     <string name="verification_method_phone">Numéro de téléphone</string>
     <string name="verification_method_device">Cet appareil</string>
@@ -168,6 +174,15 @@
     <string name="verification_method_not_verified">Non vérifié</string>
     <string name="verification_method_loading">…</string>
     <string name="verification_method_footnote">« Cet appareil » reflète la vérification biométrique/sans mot de passe réelle pour l\'appareil que vous utilisez actuellement — configurez-la depuis Gérer les appareils.</string>
+    <string name="account_manage_change_password">Changer le mot de passe</string>
+    <string name="change_password_current_placeholder">Votre mot de passe actuel</string>
+    <string name="change_password_continue">Continuer</string>
+    <string name="change_password_new_label">Créez un nouveau mot de passe à 6 chiffres</string>
+    <string name="change_password_confirm_label">Confirmez votre nouveau mot de passe</string>
+    <string name="change_password_mismatch">Cela ne correspond pas. Réessayez.</string>
+    <string name="change_password_error">Impossible de mettre à jour votre mot de passe.</string>
+    <string name="change_password_success">Votre mot de passe a été mis à jour.</string>
+    <string name="change_password_done">Terminé</string>
     <string name="account_manage_section_transfer">Virement</string>
     <string name="account_manage_auto_transfer">Virement automatique</string>
     <string name="account_manage_scheduled_transfers">Virements programmés</string>
@@ -184,7 +199,7 @@
     <string name="account_manage_pay_taxes_bills">Payer impôts et factures</string>
     <string name="account_manage_section_support">Assistance</string>
     <string name="account_manage_get_help">Obtenir de l\'aide</string>
-    <string name="account_manage_disclosure">Certaines fonctionnalités de gestion de compte Toss Bank (Open Banking, plafonds défiscalisés, réseaux de guichets automatiques, changement de mot de passe du compte) n\'ont pas encore d\'équivalent réel chez itunda et ne sont pas affichées ici plutôt que d\'être simulées.</string>
+    <string name="account_manage_disclosure">Certaines fonctionnalités de gestion de compte Toss Bank (Open Banking, plafonds défiscalisés, réseaux de guichets automatiques, partage de l\'historique de fraude télécom) n\'ont pas encore d\'équivalent réel chez itunda et ne sont pas affichées ici plutôt que d\'être simulées.</string>
     <string name="account_detail_top_up">Recharger</string>
     <string name="account_detail_get_interest">Obtenir des intérêts</string>
     <string name="account_detail_interest_prefix">Intérêts</string>

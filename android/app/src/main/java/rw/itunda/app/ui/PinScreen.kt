@@ -173,8 +173,10 @@ fun PinSetupScreen(onBack: () -> Unit, onPinSet: (String) -> Unit) {
     }
 }
 
+// internal, not private -- reused by AccountManageScreen.kt's own "Change password"
+// flow, which needs the exact same new-PIN-entry dots/keypad shape as first-time setup.
 @Composable
-private fun PinDots(filledCount: Int, offsetX: Float) {
+internal fun PinDots(filledCount: Int, offsetX: Float) {
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.offset(x = offsetX.dp)) {
         repeat(PIN_LENGTH) { index ->
             Box(
@@ -193,7 +195,7 @@ private fun PinDots(filledCount: Int, offsetX: Float) {
  * time, it never benefits from a double-zero shortcut the way a money amount does.
  */
 @Composable
-private fun PinKeypad(onDigit: (String) -> Unit, onBackspace: () -> Unit) {
+internal fun PinKeypad(onDigit: (String) -> Unit, onBackspace: () -> Unit) {
     val rows = listOf(
         listOf("1", "2", "3"),
         listOf("4", "5", "6"),

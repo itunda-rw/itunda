@@ -1,6 +1,7 @@
 package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
+import kotlinx.coroutines.launch
 import rw.itunda.app.R
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.components.FlatRow
@@ -58,15 +61,26 @@ import rw.itunda.core.network.NetworkClient
 // now present -- they're genuinely distinct real itunda features, not a
 // rename.
 //
+// Real new features added in the same re-audit (2026-09-12): "Account nickname"
+// (a real, user-editable label, see AccountService.setNickname's own doc comment
+// on the backend -- distinct from the fixed, system-assigned accountName) and
+// "Change password" (PUT /api/v1/auth/pin already existed and already covered
+// exactly this case -- see AuthService.setPin's own doc comment -- but had no
+// Manage-screen entry point on any platform until now). Mirrors web's
+// AccountManageScreen.tsx AccountNicknameScreen/ChangePasswordScreen exactly.
+//
 // Real, named, deliberately NOT built here (matching AccountManageScreen.tsx's own
 // disclosure) -- these are genuinely Korea-specific banking infrastructure/
 // regulation (Open Banking/firm banking, tax-free limits, telecom fraud-sharing,
-// ATM limits, Credit Information Usage Policy) or a real itunda gap not rushed
-// into a UI pass (changing your account password, an account nickname, closing
-// your account) -- not silently dropped, see the disclosure text at the bottom.
+// ATM limits, Credit Information Usage Policy) or a real itunda gap sized like its
+// own feature (primary-account designation, self-service account closing) -- not
+// silently dropped, see the disclosure text at the bottom.
 @Composable
 fun AccountManageScreen(
+    accountId: String,
     accountNumber: String,
+    nickname: String?,
+    onNicknameChanged: (String?) -> Unit,
     onBack: () -> Unit,
     onOpenCard: () -> Unit,
     onOpenDevices: () -> Unit,
@@ -87,6 +101,8 @@ fun AccountManageScreen(
     // navigation state, since neither one deep-links anywhere further.
     var showVerification by remember { mutableStateOf(false) }
     var showTransferLimit by remember { mutableStateOf(false) }
+    var showNickname by remember { mutableStateOf(false) }
+    var showChangePassword by remember { mutableStateOf(false) }
 
     if (showVerification) {
         VerificationMethodScreen(onBack = { showVerification = false })
@@ -94,6 +110,19 @@ fun AccountManageScreen(
     }
     if (showTransferLimit) {
         TransferLimitScreen(onBack = { showTransferLimit = false })
+        return
+    }
+    if (showNickname) {
+        AccountNicknameScreen(
+            accountId = accountId,
+            currentNickname = nickname,
+            onBack = { showNickname = false },
+            onSaved = { updated -> onNicknameChanged(updated); showNickname = false },
+        )
+        return
+    }
+    if (showChangePassword) {
+        ChangePasswordScreen(onBack = { showChangePassword = false })
         return
     }
 
@@ -115,11 +144,13 @@ fun AccountManageScreen(
             FlatSection(title = stringResource(R.string.account_manage_section_account), rows = listOf(
                 FlatRow(title = stringResource(R.string.account_manage_debit_card), showChevron = true, onClick = onOpenCard),
                 FlatRow(title = stringResource(R.string.account_manage_interest_earned), showChevron = true, onClick = onOpenInterestJar),
+                FlatRow(title = stringResource(R.string.account_manage_nickname), showChevron = true, onClick = { showNickname = true }),
             ))
             SectionSpacer()
             FlatSection(title = stringResource(R.string.account_manage_section_security), rows = listOf(
                 FlatRow(title = stringResource(R.string.account_manage_devices), showChevron = true, onClick = onOpenDevices),
                 FlatRow(title = stringResource(R.string.account_manage_verification_method), showChevron = true, onClick = { showVerification = true }),
+                FlatRow(title = stringResource(R.string.account_manage_change_password), showChevron = true, onClick = { showChangePassword = true }),
             ))
             SectionSpacer()
             FlatSection(title = stringResource(R.string.account_manage_section_transfer), rows = listOf(
@@ -245,6 +276,180 @@ private fun TransferLimitScreen(onBack: () -> Unit) {
                 ManageDetailRow(stringResource(R.string.transfer_limit_per_transfer), String.format(Locale.US, "%,.0f RWF", current.perTransferLimit))
                 ManageDetailRow(stringResource(R.string.transfer_limit_daily), String.format(Locale.US, "%,.0f RWF", current.dailyLimit))
                 ManageDetailRow(stringResource(R.string.transfer_limit_remaining_today), String.format(Locale.US, "%,.0f RWF", current.remainingToday), Ids.colors.textBrand)
+            }
+        }
+    }
+}
+
+// Real "Account nickname" screen (2026-09-12, "계좌 별명" -- direct user-supplied
+// Toss Bank Manage-screen screenshots) -- see AccountService.setNickname's own
+// doc comment on the backend. A blank submission clears it back to unset,
+// matching the backend's own convention. Mirrors web's AccountNicknameScreen.
+@Composable
+private fun AccountNicknameScreen(accountId: String, currentNickname: String?, onBack: () -> Unit, onSaved: (String?) -> Unit) {
+    var input by remember { mutableStateOf(currentNickname ?: "") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val genericError = stringResource(R.string.account_nickname_error)
+
+    ManageSubScreen(title = stringResource(R.string.account_manage_nickname), onBack = onBack) {
+        rw.itunda.core.designsystem.components.IdsTextField(
+            value = input,
+            onValueChange = { if (it.length <= 50) input = it },
+            label = stringResource(R.string.account_manage_nickname),
+            placeholder = stringResource(R.string.account_nickname_placeholder),
+            isError = error != null,
+            errorText = error,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Box(modifier = Modifier.padding(top = 12.dp)) {
+            rw.itunda.core.designsystem.components.IdsButton(
+                text = stringResource(if (busy) R.string.account_nickname_saving else R.string.account_nickname_save),
+                enabled = !busy,
+                onClick = {
+                    busy = true
+                    error = null
+                    scope.launch {
+                        try {
+                            val response = NetworkClient.apiService.setAccountNickname(
+                                accountId,
+                                rw.itunda.core.network.SetAccountNicknameRequest(nickname = input.trim()),
+                            )
+                            onSaved(response.account.nickname)
+                        } catch (e: Exception) {
+                            error = e.message ?: genericError
+                        } finally {
+                            busy = false
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        Text(
+            stringResource(R.string.account_nickname_footnote),
+            color = Ids.colors.textTertiary, fontSize = 11.sp,
+            modifier = Modifier.padding(top = 16.dp, bottom = 24.dp),
+        )
+    }
+}
+
+private enum class ChangePasswordStep { CREDENTIAL, PIN, CONFIRM, SUCCESS }
+
+// Real "Change password" screen (2026-09-12, direct user-supplied Toss Bank
+// Manage-screen screenshots) -- PUT /api/v1/auth/pin (ApiService.setAccountPin)
+// already exists and already covers exactly this case (re-proving the current
+// credential to set a new one); reuses PinScreen.kt's exact PinDots/PinKeypad
+// components, the same shape as first-time PIN setup, minus its one-time-only
+// upgrade gate -- this is a general "change it again" flow reachable any time
+// from here. Mirrors web's ChangePasswordScreen exactly.
+@Composable
+private fun ChangePasswordScreen(onBack: () -> Unit) {
+    var step by remember { mutableStateOf(ChangePasswordStep.CREDENTIAL) }
+    var currentCredential by remember { mutableStateOf("") }
+    var newPin by remember { mutableStateOf("") }
+    var pinInput by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val shakeOffset = remember { Animatable(0f) }
+    val mismatchError = stringResource(R.string.change_password_mismatch)
+    val genericError = stringResource(R.string.change_password_error)
+
+    fun onDigit(digit: String) {
+        if (pinInput.length >= 6) return
+        error = null
+        pinInput += digit
+        if (pinInput.length == 6) {
+            when (step) {
+                ChangePasswordStep.PIN -> {
+                    newPin = pinInput
+                    pinInput = ""
+                    step = ChangePasswordStep.CONFIRM
+                }
+                ChangePasswordStep.CONFIRM -> {
+                    if (pinInput != newPin) {
+                        error = mismatchError
+                        scope.launch {
+                            shakeOffset.animateTo(16f, animationSpec = androidx.compose.animation.core.tween(60))
+                            shakeOffset.animateTo(-16f, animationSpec = androidx.compose.animation.core.tween(60))
+                            shakeOffset.animateTo(0f, animationSpec = androidx.compose.animation.core.tween(60))
+                        }
+                        pinInput = ""
+                        step = ChangePasswordStep.PIN
+                    } else {
+                        val confirmed = pinInput
+                        pinInput = ""
+                        busy = true
+                        scope.launch {
+                            try {
+                                NetworkClient.authApi.setAccountPin(
+                                    rw.itunda.core.network.SetAccountPinRequest(currentCredential = currentCredential, newPin = confirmed),
+                                )
+                                step = ChangePasswordStep.SUCCESS
+                            } catch (e: Exception) {
+                                error = e.message ?: genericError
+                                step = ChangePasswordStep.CREDENTIAL
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    }
+                }
+                else -> Unit
+            }
+        }
+    }
+
+    ManageSubScreen(title = stringResource(R.string.account_manage_change_password), onBack = onBack) {
+        when (step) {
+            ChangePasswordStep.SUCCESS -> {
+                Text(stringResource(R.string.change_password_success), color = Ids.colors.textBrand, fontSize = 13.sp, modifier = Modifier.padding(top = 12.dp))
+                Box(modifier = Modifier.padding(top = 12.dp)) {
+                    rw.itunda.core.designsystem.components.IdsButton(
+                        text = stringResource(R.string.change_password_done),
+                        variant = rw.itunda.core.designsystem.components.IdsButtonVariant.Tinted,
+                        onClick = onBack,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+            ChangePasswordStep.CREDENTIAL -> {
+                rw.itunda.core.designsystem.components.IdsTextField(
+                    value = currentCredential,
+                    onValueChange = { currentCredential = it; error = null },
+                    label = stringResource(R.string.change_password_current_placeholder),
+                    isPassword = true,
+                    isError = error != null,
+                    errorText = error,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Box(modifier = Modifier.padding(top = 12.dp)) {
+                    rw.itunda.core.designsystem.components.IdsButton(
+                        text = stringResource(R.string.change_password_continue),
+                        enabled = currentCredential.isNotBlank(),
+                        onClick = { step = ChangePasswordStep.PIN },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+            ChangePasswordStep.PIN, ChangePasswordStep.CONFIRM -> {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp)) {
+                    Text(
+                        stringResource(if (step == ChangePasswordStep.PIN) R.string.change_password_new_label else R.string.change_password_confirm_label),
+                        color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                    )
+                    if (error != null) {
+                        Text(error!!, color = Ids.colors.danger, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                    }
+                    Box(modifier = Modifier.padding(top = 20.dp)) {
+                        PinDots(filledCount = pinInput.length, offsetX = shakeOffset.value)
+                    }
+                }
+                if (!busy) {
+                    PinKeypad(onDigit = ::onDigit, onBackspace = { if (pinInput.isNotEmpty()) { pinInput = pinInput.dropLast(1); error = null } })
+                }
             }
         }
     }
