@@ -28,6 +28,15 @@ export function RideDriverView() {
   const [availableTrips, setAvailableTrips] = useState<RideTrip[] | null>(null);
   const showTripsSkeleton = useDeferredLoading(availableTrips === null);
   const [myDriverTrips, setMyDriverTrips] = useState<RideTrip[] | null>(null);
+  // Real pagination-discard fix (2026-09-11, same systemic gap fixed for
+  // RidePassengerView's own myTrips above) -- myDriverTrips itself stays a
+  // page-0-only poll (drives real-time active-trip status); older history
+  // is appended here separately via a real "Load more", never touched by
+  // the 4s poll.
+  const [olderPastDriverTrips, setOlderPastDriverTrips] = useState<RideTrip[]>([]);
+  const [pastDriverTripsPage, setPastDriverTripsPage] = useState(0);
+  const [pastDriverTripsHasMore, setPastDriverTripsHasMore] = useState(false);
+  const [loadingMorePastDriverTrips, setLoadingMorePastDriverTrips] = useState(false);
   const [driverError, setDriverError] = useState<string | null>(null);
   const [busyDriverTripId, setBusyDriverTripId] = useState<string | null>(null);
   // Real Uber "Verify Your Ride" PIN -- what the driver has typed in for each real
@@ -64,9 +73,26 @@ export function RideDriverView() {
   }, []);
 
   const loadDriverTrips = () => {
-    Promise.all([fetchAvailableTrips(), fetchMyDriverTrips()])
-      .then(([a, m]) => { setAvailableTrips(a); setMyDriverTrips(m); })
+    Promise.all([fetchAvailableTrips(), fetchMyDriverTrips(0)])
+      .then(([a, m]) => {
+        setAvailableTrips(a);
+        setMyDriverTrips(m.trips);
+        setPastDriverTripsHasMore(m.page + 1 < m.totalPages);
+      })
       .catch((err) => setDriverError(err instanceof ApiError ? err.message : t('common.loadError')));
+  };
+
+  const loadMorePastDriverTrips = () => {
+    const nextPage = pastDriverTripsPage + 1;
+    setLoadingMorePastDriverTrips(true);
+    fetchMyDriverTrips(nextPage)
+      .then((r) => {
+        setOlderPastDriverTrips((prev) => [...prev, ...r.trips.filter((t) => t.status === 'COMPLETED' || t.status === 'CANCELLED')]);
+        setPastDriverTripsPage(nextPage);
+        setPastDriverTripsHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMorePastDriverTrips(false));
   };
 
   useEffect(() => {
@@ -178,7 +204,10 @@ export function RideDriverView() {
   };
 
   const activeDriverTrips = (myDriverTrips ?? []).filter((t) => t.status === 'DRIVER_ASSIGNED' || t.status === 'IN_PROGRESS');
-  const pastDriverTrips = (myDriverTrips ?? []).filter((t) => t.status === 'COMPLETED' || t.status === 'CANCELLED');
+  // Real pagination-discard fix (2026-09-11) -- the polled first page's own
+  // past trips, plus any older pages explicitly loaded via "Load more".
+  // Page 0 and page 1+ never overlap (both ordered by createdAt DESC).
+  const pastDriverTrips = [...(myDriverTrips ?? []).filter((t) => t.status === 'COMPLETED' || t.status === 'CANCELLED'), ...olderPastDriverTrips];
 
   useEffect(() => {
     activeDriverTrips.forEach((t) => {
@@ -397,6 +426,11 @@ export function RideDriverView() {
           <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Completed</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {pastDriverTrips.map((t) => <RideTripCard key={t.id} trip={t} />)}
+            {pastDriverTripsHasMore && (
+              <button className="itunda-btn itunda-btn-secondary" disabled={loadingMorePastDriverTrips} onClick={loadMorePastDriverTrips}>
+                {loadingMorePastDriverTrips ? 'Loading…' : 'Load more'}
+              </button>
+            )}
           </div>
         </div>
       )}

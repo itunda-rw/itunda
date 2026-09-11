@@ -25,6 +25,15 @@ export function RidePassengerView({ onReportIssue }: { onReportIssue: (transacti
   const [stops, setStops] = useState<(PlaceSearchResult | null)[]>([]);
   const [activeTripStops, setActiveTripStops] = useState<RideTripStop[] | null>(null);
   const [myTrips, setMyTrips] = useState<RideTrip[] | null>(null);
+  // Real pagination-discard fix (2026-09-11) -- myTrips itself stays a
+  // page-0-only poll (it drives the real-time active-trip status, so it
+  // must always reflect the newest rows); older history beyond that first
+  // page is appended here separately via a real "Load more", never
+  // touched by the 4s poll.
+  const [olderPastTrips, setOlderPastTrips] = useState<RideTrip[]>([]);
+  const [pastTripsPage, setPastTripsPage] = useState(0);
+  const [pastTripsHasMore, setPastTripsHasMore] = useState(false);
+  const [loadingMorePastTrips, setLoadingMorePastTrips] = useState(false);
   const [requesting, setRequesting] = useState(false);
   const [rideError, setRideError] = useState<string | null>(null);
   const [busyTripId, setBusyTripId] = useState<string | null>(null);
@@ -65,7 +74,22 @@ export function RidePassengerView({ onReportIssue }: { onReportIssue: (transacti
   }, [pickup, dropoff]);
 
   const loadMyTrips = () => {
-    fetchMyTrips().then(setMyTrips).catch((err) => setRideError(err instanceof ApiError ? err.message : t('common.loadError')));
+    fetchMyTrips(0)
+      .then((r) => { setMyTrips(r.trips); setPastTripsHasMore(r.page + 1 < r.totalPages); })
+      .catch((err) => setRideError(err instanceof ApiError ? err.message : t('common.loadError')));
+  };
+
+  const loadMorePastTrips = () => {
+    const nextPage = pastTripsPage + 1;
+    setLoadingMorePastTrips(true);
+    fetchMyTrips(nextPage)
+      .then((r) => {
+        setOlderPastTrips((prev) => [...prev, ...r.trips.filter((t) => t.status === 'COMPLETED' || t.status === 'CANCELLED')]);
+        setPastTripsPage(nextPage);
+        setPastTripsHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMorePastTrips(false));
   };
 
   useEffect(() => {
@@ -76,7 +100,11 @@ export function RidePassengerView({ onReportIssue }: { onReportIssue: (transacti
   }, []);
 
   const activeTrip = (myTrips ?? []).find((t) => t.status === 'REQUESTED' || t.status === 'DRIVER_ASSIGNED' || t.status === 'IN_PROGRESS');
-  const pastTrips = (myTrips ?? []).filter((t) => t.status === 'COMPLETED' || t.status === 'CANCELLED');
+  // Real pagination-discard fix (2026-09-11) -- the polled first page's own
+  // past trips, plus any older pages the user has explicitly loaded more
+  // of. Page 0 and page 1+ never overlap (both ordered by createdAt DESC),
+  // so concatenation is safe.
+  const pastTrips = [...(myTrips ?? []).filter((t) => t.status === 'COMPLETED' || t.status === 'CANCELLED'), ...olderPastTrips];
 
   useEffect(() => {
     if (!activeTrip) { setActiveTripStops(null); return; }
@@ -299,6 +327,11 @@ export function RidePassengerView({ onReportIssue }: { onReportIssue: (transacti
                 )}
               />
             ))}
+            {pastTripsHasMore && (
+              <button className="itunda-btn itunda-btn-secondary" disabled={loadingMorePastTrips} onClick={loadMorePastTrips}>
+                {loadingMorePastTrips ? 'Loading…' : 'Load more'}
+              </button>
+            )}
           </div>
         </div>
       )}

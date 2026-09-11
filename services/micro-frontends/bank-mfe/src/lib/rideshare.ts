@@ -169,11 +169,22 @@ export const arriveAtRideStop = (tripId: string) =>
 export const fetchAvailableTrips = () =>
   apiFetch<{ success: boolean; trips: RideTrip[] }>('/api/v1/rides/trips/available').then((r) => r.trips);
 
-export const fetchMyTrips = () =>
-  apiFetch<{ success: boolean; trips: RideTrip[] }>('/api/v1/rides/trips/my-trips?size=20').then((r) => r.trips);
+// Real pagination-discard fix (2026-09-11, same systemic gap fixed for
+// Knowledge/Community/Marketplace/Jobs/RealEstate/Talk -- see
+// project_itunda_pagination_discard_sweep memory) -- RideController's real
+// Pageable/pageMeta endpoints were always there; page just wasn't ever
+// sent, silently capping real ride history at its most recent 20 trips
+// (the active trip, always the newest row, was never affected -- only
+// past-trip history older than 20 rides back was unreachable).
+export const fetchMyTrips = (page = 0) =>
+  apiFetch<{ success: boolean; trips: RideTrip[]; page: number; totalPages: number }>(
+    `/api/v1/rides/trips/my-trips?page=${page}&size=20`,
+  );
 
-export const fetchMyDriverTrips = () =>
-  apiFetch<{ success: boolean; trips: RideTrip[] }>('/api/v1/rides/trips/my-driver-trips?size=20').then((r) => r.trips);
+export const fetchMyDriverTrips = (page = 0) =>
+  apiFetch<{ success: boolean; trips: RideTrip[]; page: number; totalPages: number }>(
+    `/api/v1/rides/trips/my-driver-trips?page=${page}&size=20`,
+  );
 
 export const acceptRideTrip = (tripId: string) =>
   apiFetch<{ success: boolean; trip: RideTrip }>(`/api/v1/rides/trips/${tripId}/accept`, {
