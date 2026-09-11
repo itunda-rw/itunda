@@ -61,6 +61,9 @@ export function MyView() {
   const [myJobPostsCount, setMyJobPostsCount] = useState(0);
   const [myPropertyListingsCount, setMyPropertyListingsCount] = useState(0);
   const [miniApps, setMiniApps] = useState<PartnerMiniApp[]>([]);
+  const [miniAppsPage, setMiniAppsPage] = useState(0);
+  const [miniAppsHasMore, setMiniAppsHasMore] = useState(false);
+  const [loadingMoreMiniApps, setLoadingMoreMiniApps] = useState(false);
   const [myScamReports, setMyScamReports] = useState<ScamReport[]>([]);
 
   useEffect(() => {
@@ -85,9 +88,24 @@ export function MyView() {
     // (capped at 20), not the real total, for any user with more than 20
     // real property listings.
     fetchMyPropertyListings().then((r) => setMyPropertyListingsCount(r.totalElements)).catch(() => {});
-    fetchMiniAppCatalog().then(setMiniApps).catch(() => {});
+    fetchMiniAppCatalog(0)
+      .then((r) => { setMiniApps(r.miniApps); setMiniAppsHasMore(r.page + 1 < r.totalPages); })
+      .catch(() => {});
     fetchMyScamReports().then(setMyScamReports).catch(() => {});
   }, []);
+
+  const loadMoreMiniApps = () => {
+    const nextPage = miniAppsPage + 1;
+    setLoadingMoreMiniApps(true);
+    fetchMiniAppCatalog(nextPage)
+      .then((r) => {
+        setMiniApps((prev) => [...prev, ...r.miniApps]);
+        setMiniAppsPage(nextPage);
+        setMiniAppsHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreMiniApps(false));
+  };
 
   const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 'var(--itunda-type-scale-13-size)' };
 
@@ -172,6 +190,11 @@ export function MyView() {
               </div>
             ))}
           </div>
+          {miniAppsHasMore && (
+            <button className="itunda-btn itunda-btn-secondary" style={{ marginTop: '10px' }} disabled={loadingMoreMiniApps} onClick={loadMoreMiniApps}>
+              {loadingMoreMiniApps ? 'Loading…' : 'Load more'}
+            </button>
+          )}
         </div>
       )}
     </div>

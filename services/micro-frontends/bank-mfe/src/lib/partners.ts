@@ -19,8 +19,14 @@ export interface PartnerMiniApp {
   createdAt: string;
 }
 
-export const fetchMiniAppCatalog = () =>
-  apiFetch<{ success: boolean; miniApps: PartnerMiniApp[] }>('/api/v1/mini-apps/catalog?size=20').then((r) => r.miniApps);
+// Real pagination-discard fix (2026-09-11, same systemic gap fixed
+// throughout the sweep -- see project_itunda_pagination_discard_sweep
+// memory) -- this real Pageable endpoint's page just wasn't ever sent,
+// silently capping the mini-app catalog at the first 20 approved apps.
+export const fetchMiniAppCatalog = (page = 0) =>
+  apiFetch<{ success: boolean; miniApps: PartnerMiniApp[]; page: number; totalPages: number }>(
+    `/api/v1/mini-apps/catalog?page=${page}&size=20`,
+  );
 
 // Real "verify with itunda" identity-verification-for-partners consent flow
 // (Partners product-completeness pass, 2026-09-07) -- ported from Android's own
