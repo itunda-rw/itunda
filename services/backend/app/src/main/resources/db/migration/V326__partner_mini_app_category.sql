@@ -1,0 +1,1 @@
+ALTER TABLE partner_mini_apps ADD COLUMN category VARCHAR(20) NOT NULL DEFAULT 'OTHER';

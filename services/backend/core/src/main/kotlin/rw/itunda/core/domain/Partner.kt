@@ -61,6 +61,15 @@ class Partner(
 
 enum class PartnerMiniAppStatus { PENDING, APPROVED, REJECTED, SUSPENDED }
 
+// Real Toss/Kakao mini-app-store reference (2026-09-11, 7 real screenshots of Kakao's
+// 미니앱 store, which categorizes its catalog) -- deliberately a small, generic set
+// rather than copying Kakao's full ~17-category taxonomy verbatim: itunda has zero
+// real submitted partner apps yet to justify more granularity, and this registry's own
+// scope is a conservative, read-only third-party developer platform (see
+// PartnerMiniAppPermissions.ALLOWED), not a general app store. OTHER is the real
+// default for a submission that doesn't specify one, never a fabricated guess.
+enum class PartnerMiniAppCategory { FINANCE, SHOPPING, PRODUCTIVITY, LIFESTYLE, OTHER }
+
 /**
  * A real mini-app manifest a partner has submitted for human review -- the same
  * submission/review shape `KycSubmission` already established for identity, applied
@@ -102,6 +111,10 @@ class PartnerMiniApp(
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     var status: PartnerMiniAppStatus = PartnerMiniAppStatus.PENDING,
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    var category: PartnerMiniAppCategory = PartnerMiniAppCategory.OTHER,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),

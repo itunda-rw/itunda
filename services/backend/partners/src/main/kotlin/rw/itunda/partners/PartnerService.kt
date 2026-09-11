@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Partner
 import rw.itunda.core.domain.PartnerMiniApp
+import rw.itunda.core.domain.PartnerMiniAppCategory
 import rw.itunda.core.domain.PartnerMiniAppStatus
 import rw.itunda.core.domain.PartnerStatus
 import rw.itunda.core.repository.PartnerMiniAppRepository
@@ -26,6 +27,7 @@ class PartnerMiniAppNotFoundException(message: String) : RuntimeException(messag
 class PartnerMiniAppNotPendingException(message: String) : RuntimeException(message)
 class InvalidMiniAppSubmissionException(message: String) : RuntimeException(message)
 class InvalidMiniAppDecisionReasonException(message: String) : RuntimeException(message)
+class InvalidMiniAppCategoryException(message: String) : RuntimeException(message)
 class PartnerNotFoundException(message: String) : RuntimeException(message)
 
 /**
@@ -39,6 +41,20 @@ class PartnerNotFoundException(message: String) : RuntimeException(message)
  */
 object PartnerMiniAppPermissions {
     val ALLOWED = setOf("account:read", "transactions:read", "profile:read")
+}
+
+// Shared parse helper (2026-09-11, Mini-Apps hub pass) -- both submitMiniApp's own
+// default-to-OTHER handling and MiniAppCatalogController's optional ?category= filter
+// need identical "blank/null means no explicit value, anything else must be a real
+// enum name" parsing; a null return means "no value given" (caller decides the
+// default), never a value itself.
+fun parsePartnerMiniAppCategory(raw: String?): PartnerMiniAppCategory? {
+    if (raw.isNullOrBlank()) return null
+    return try {
+        PartnerMiniAppCategory.valueOf(raw.trim().uppercase())
+    } catch (e: IllegalArgumentException) {
+        throw InvalidMiniAppCategoryException("Unknown category '$raw' -- must be one of ${PartnerMiniAppCategory.entries.joinToString(", ")}")
+    }
 }
 
 /**
@@ -99,6 +115,7 @@ class PartnerService(
     @Transactional
     fun submitMiniApp(
         apiKey: String, name: String, description: String, iconUrl: String?, bundleUrl: String, permissions: List<String>,
+        category: String? = null,
     ): PartnerMiniApp {
         val partner = resolvePartner(apiKey)
         val invalidScopes = permissions.filterNot { PartnerMiniAppPermissions.ALLOWED.contains(it) }
@@ -119,6 +136,11 @@ class PartnerService(
         if (trimmedName.length > 255 || trimmedDescription.length > 500 || (trimmedIconUrl?.length ?: 0) > 500 || trimmedBundleUrl.length > 500) {
             throw InvalidMiniAppSubmissionException("Name must be 255 characters or fewer; description, iconUrl, and bundleUrl 500 or fewer")
         }
+        // Real Mini-Apps hub pass (2026-09-11) -- a blank/omitted category is a real,
+        // honest default (OTHER), same fail-closed-on-garbage-input convention as the
+        // permission-scope check above: an unrecognized name is rejected outright, never
+        // silently coerced to a guess.
+        val resolvedCategory = parsePartnerMiniAppCategory(category) ?: PartnerMiniAppCategory.OTHER
         val miniApp = PartnerMiniApp(
             id = "partner_app_${UUID.randomUUID()}",
             partnerId = partner.id,
@@ -128,6 +150,7 @@ class PartnerService(
             bundleUrl = trimmedBundleUrl,
             permissions = permissions.joinToString(","),
             status = PartnerMiniAppStatus.PENDING,
+            category = resolvedCategory,
         )
         return partnerMiniAppRepository.save(miniApp)
     }
@@ -144,8 +167,14 @@ class PartnerService(
     // which third-party mini-apps are approved and available, the same real "app store"
     // surface Toss's own mini-app platform exposes. See this class's own doc comment for
     // why the mobile side doesn't actually consume/render this yet.
-    fun getCatalog(pageable: Pageable): Page<PartnerMiniApp> =
-        partnerMiniAppRepository.findByStatus(PartnerMiniAppStatus.APPROVED, pageable)
+    // Real category filter (2026-09-11, Mini-Apps hub pass) -- backs each client's new
+    // dedicated hub screen's category chips.
+    fun getCatalog(pageable: Pageable, category: PartnerMiniAppCategory? = null): Page<PartnerMiniApp> =
+        if (category != null) {
+            partnerMiniAppRepository.findByStatusAndCategory(PartnerMiniAppStatus.APPROVED, category, pageable)
+        } else {
+            partnerMiniAppRepository.findByStatus(PartnerMiniAppStatus.APPROVED, pageable)
+        }
 
     @Transactional
     fun decide(miniAppId: String, reviewerId: String, approve: Boolean, reason: String?): PartnerMiniApp {

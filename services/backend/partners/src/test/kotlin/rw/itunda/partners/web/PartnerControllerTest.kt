@@ -11,6 +11,7 @@ import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.domain.Partner
 import rw.itunda.core.domain.PartnerMiniApp
 import rw.itunda.partners.InvalidApiKeyException
+import rw.itunda.partners.InvalidMiniAppCategoryException
 import rw.itunda.partners.InvalidMiniAppDecisionReasonException
 import rw.itunda.partners.InvalidMiniAppSubmissionException
 import rw.itunda.partners.InvalidPartnerEmailException
@@ -48,7 +49,7 @@ class PartnerControllerTest : BehaviorSpec({
         val controller = PartnerController(service)
         val miniApp = mockk<PartnerMiniApp>(relaxed = true)
         every {
-            service.submitMiniApp("sk_test_key", "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"))
+            service.submitMiniApp("sk_test_key", "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), null)
         } returns miniApp
 
         When("submitting") {
@@ -59,10 +60,33 @@ class PartnerControllerTest : BehaviorSpec({
 
             Then("it real-delegates with the caller's own API key") {
                 verify(exactly = 1) {
-                    service.submitMiniApp("sk_test_key", "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"))
+                    service.submitMiniApp("sk_test_key", "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), null)
                 }
                 response.statusCode shouldBe HttpStatus.CREATED
                 response.body?.get("miniApp") shouldBe miniApp
+            }
+        }
+    }
+
+    Given("a real mini-app submission request with a real category") {
+        val service = mockk<PartnerService>()
+        val controller = PartnerController(service)
+        val miniApp = mockk<PartnerMiniApp>(relaxed = true)
+        every {
+            service.submitMiniApp("sk_test_key", "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "finance")
+        } returns miniApp
+
+        When("submitting") {
+            val response = controller.submitMiniApp(
+                SubmitMiniAppRequest("My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "finance"),
+                "sk_test_key",
+            )
+
+            Then("the category is real-passed through to the service") {
+                verify(exactly = 1) {
+                    service.submitMiniApp("sk_test_key", "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "finance")
+                }
+                response.statusCode shouldBe HttpStatus.CREATED
             }
         }
     }
@@ -105,6 +129,7 @@ class PartnerControllerTest : BehaviorSpec({
         Triple(InvalidMiniAppSubmissionException("Bad request"), HttpStatus.BAD_REQUEST, "INVALID_MINI_APP_SUBMISSION"),
         Triple(RateLimitExceededException("Too many requests"), HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMITED"),
         Triple(InvalidMiniAppDecisionReasonException("Invalid decision reason"), HttpStatus.BAD_REQUEST, "INVALID_DECISION_REASON"),
+        Triple(InvalidMiniAppCategoryException("Invalid category"), HttpStatus.BAD_REQUEST, "INVALID_MINI_APP_CATEGORY"),
     ).forEach { (exception, expectedStatus, expectedCode) ->
         Given("a real ${exception::class.simpleName}") {
             val service = mockk<PartnerService>()
@@ -120,6 +145,7 @@ class PartnerControllerTest : BehaviorSpec({
                     is InvalidMiniAppSubmissionException -> controller.handleInvalidSubmission(exception)
                     is RateLimitExceededException -> controller.handleRateLimit(exception)
                     is InvalidMiniAppDecisionReasonException -> controller.handleInvalidDecisionReason(exception)
+                    is InvalidMiniAppCategoryException -> controller.handleInvalidCategory(exception)
                     else -> error("unexpected exception type")
                 }
 

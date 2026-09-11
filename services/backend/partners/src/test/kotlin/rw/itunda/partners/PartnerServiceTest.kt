@@ -13,6 +13,7 @@ import org.springframework.data.domain.PageRequest
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Partner
 import rw.itunda.core.domain.PartnerMiniApp
+import rw.itunda.core.domain.PartnerMiniAppCategory
 import rw.itunda.core.domain.PartnerMiniAppStatus
 import rw.itunda.core.domain.PartnerStatus
 import rw.itunda.core.repository.PartnerMiniAppRepository
@@ -124,6 +125,40 @@ class PartnerServiceTest : BehaviorSpec({
                     )
                     error("expected InvalidMiniAppSubmissionException")
                 } catch (e: InvalidMiniAppSubmissionException) {
+                    verify(exactly = 0) { partnerMiniAppRepository.save(any()) }
+                }
+            }
+        }
+
+        When("submitting with a real, valid category") {
+            val miniApp = service.submitMiniApp(
+                "sk_test_real_key", "Acme Wallet", "Track your spending", null, "https://acme.rw/wallet.js",
+                emptyList(), "finance",
+            )
+
+            Then("the category is parsed case-insensitively and persisted") {
+                miniApp.category shouldBe PartnerMiniAppCategory.FINANCE
+            }
+        }
+
+        When("submitting with no category at all") {
+            val miniApp = service.submitMiniApp(
+                "sk_test_real_key", "Acme Misc", "desc", null, "https://acme.rw/misc.js", emptyList(),
+            )
+
+            Then("it defaults to OTHER rather than leaving it unset") {
+                miniApp.category shouldBe PartnerMiniAppCategory.OTHER
+            }
+        }
+
+        When("submitting with a category that isn't a real one") {
+            Then("it real-fails before ever creating a submission, rather than silently defaulting") {
+                try {
+                    service.submitMiniApp(
+                        "sk_test_real_key", "Acme Delivery", "desc", null, "https://acme.rw/bundle.js", emptyList(), "GAMES",
+                    )
+                    error("expected InvalidMiniAppCategoryException")
+                } catch (e: InvalidMiniAppCategoryException) {
                     verify(exactly = 0) { partnerMiniAppRepository.save(any()) }
                 }
             }
@@ -334,6 +369,18 @@ class PartnerServiceTest : BehaviorSpec({
 
             Then("it only ever contains real APPROVED entries -- never PENDING/REJECTED ones") {
                 catalog.content shouldBe listOf(approved)
+            }
+        }
+
+        When("fetched filtered to a real category") {
+            val financeApp = PartnerMiniApp(id = "partner_app_2", partnerId = "partner_1", name = "Acme Wallet", description = "desc", bundleUrl = "z", permissions = "", status = PartnerMiniAppStatus.APPROVED, category = PartnerMiniAppCategory.FINANCE)
+            every { partnerMiniAppRepository.findByStatusAndCategory(PartnerMiniAppStatus.APPROVED, PartnerMiniAppCategory.FINANCE, pageable) } returns PageImpl(listOf(financeApp))
+
+            val catalog = service.getCatalog(pageable, PartnerMiniAppCategory.FINANCE)
+
+            Then("only that category's real approved entries come back") {
+                catalog.content shouldBe listOf(financeApp)
+                verify(exactly = 0) { partnerMiniAppRepository.findByStatus(any(), any()) }
             }
         }
     }
