@@ -25,6 +25,16 @@ export function MyEatsOrdersView({ onReorder, reorderingId, restaurants, onMessa
   // Real optimistic-hide for TipRiderPrompt -- same pattern reviewedTripIds/
   // tippedTripIds already established for the ride equivalent this session.
   const [tippedOrderIds, setTippedOrderIds] = useState<Set<string>>(new Set());
+  // Real pagination fix (2026-09-11): page 0 is polled every 4s for real-time
+  // order-status accuracy, so it must always stay a live, page-0-only fetch.
+  // olderOrders is a separate accumulator populated only by loadMoreOrders,
+  // never touched by the poll -- safe to concatenate since both are ordered
+  // by createdAt DESC and never overlap. Same design as the Ride trip-history
+  // and Commerce order-history fixes.
+  const [olderOrders, setOlderOrders] = useState<EatsOrder[]>([]);
+  const [ordersPage, setOrdersPage] = useState(0);
+  const [ordersHasMore, setOrdersHasMore] = useState(false);
+  const [loadingMoreOrders, setLoadingMoreOrders] = useState(false);
 
   const handleMessageRestaurant = async (orderId: string) => {
     setMessagingOrderId(orderId);
@@ -41,7 +51,22 @@ export function MyEatsOrdersView({ onReorder, reorderingId, restaurants, onMessa
 
   const load = () => {
     setError(null);
-    fetchMyEatsOrders().then(setOrders).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+    fetchMyEatsOrders(0)
+      .then((r) => { setOrders(r.orders); setOrdersHasMore(r.page + 1 < r.totalPages); })
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+  };
+
+  const loadMoreOrders = () => {
+    const nextPage = ordersPage + 1;
+    setLoadingMoreOrders(true);
+    fetchMyEatsOrders(nextPage)
+      .then((r) => {
+        setOlderOrders((prev) => [...prev, ...r.orders]);
+        setOrdersPage(nextPage);
+        setOrdersHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreOrders(false));
   };
 
   useEffect(() => {
@@ -71,11 +96,12 @@ export function MyEatsOrdersView({ onReorder, reorderingId, restaurants, onMessa
     );
   }
   if (orders === null) return showSkeleton ? <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
-  if (orders.length === 0) return <EmptyState message="No orders yet — order from a nearby restaurant and it'll show up here." />;
+  const allOrders = [...orders, ...olderOrders];
+  if (allOrders.length === 0) return <EmptyState message="No orders yet — order from a nearby restaurant and it'll show up here." />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      {orders.map((o) => (
+      {allOrders.map((o) => (
         <EatsOrderCard
           key={o.id}
           order={o}
@@ -107,6 +133,11 @@ export function MyEatsOrdersView({ onReorder, reorderingId, restaurants, onMessa
           }
         />
       ))}
+      {ordersHasMore && (
+        <button className="itunda-btn itunda-btn-secondary" disabled={loadingMoreOrders} onClick={loadMoreOrders}>
+          {loadingMoreOrders ? 'Loading…' : 'Load more'}
+        </button>
+      )}
     </div>
   );
 }
@@ -209,10 +240,16 @@ export function RestaurantOrdersView() {
   const showSkeleton = useDeferredLoading(orders === null);
   const [error, setError] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
+  // Same page-0-stays-live + separately-accumulated-older-pages design as
+  // MyEatsOrdersView above (see its own comment).
+  const [olderRestaurantOrders, setOlderRestaurantOrders] = useState<EatsOrder[]>([]);
+  const [restaurantOrdersPage, setRestaurantOrdersPage] = useState(0);
+  const [restaurantOrdersHasMore, setRestaurantOrdersHasMore] = useState(false);
+  const [loadingMoreRestaurantOrders, setLoadingMoreRestaurantOrders] = useState(false);
 
   const load = () => {
-    fetchRestaurantOrders()
-      .then(setOrders)
+    fetchRestaurantOrders(0)
+      .then((r) => { setOrders(r.orders); setRestaurantOrdersHasMore(r.page + 1 < r.totalPages); })
       .catch((err) => {
         // A real, expected 404 for any account that hasn't registered as a merchant --
         // this view stays silent rather than showing an alarming error for the common
@@ -223,6 +260,19 @@ export function RestaurantOrdersView() {
           setError(err instanceof ApiError ? err.message : t('common.loadError'));
         }
       });
+  };
+
+  const loadMoreRestaurantOrders = () => {
+    const nextPage = restaurantOrdersPage + 1;
+    setLoadingMoreRestaurantOrders(true);
+    fetchRestaurantOrders(nextPage)
+      .then((r) => {
+        setOlderRestaurantOrders((prev) => [...prev, ...r.orders]);
+        setRestaurantOrdersPage(nextPage);
+        setRestaurantOrdersHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreRestaurantOrders(false));
   };
 
   useEffect(() => {
@@ -269,13 +319,14 @@ export function RestaurantOrdersView() {
     );
   }
   if (orders === null) return showSkeleton ? <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
-  if (orders.length === 0) return null;
+  const allRestaurantOrders = [...orders, ...olderRestaurantOrders];
+  if (allRestaurantOrders.length === 0) return null;
 
   return (
     <div style={{ marginBottom: '20px' }}>
       <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Orders for your restaurant</h4>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {orders.map((o) => {
+        {allRestaurantOrders.map((o) => {
           const next = nextInChain(RESTAURANT_STATUS_CHAIN, o.status);
           const readyForPickupHandoff = o.fulfillmentType === 'PICKUP' && o.status === 'READY_FOR_PICKUP';
           return (
@@ -296,8 +347,13 @@ export function RestaurantOrdersView() {
             />
           );
         })}
+        {restaurantOrdersHasMore && (
+          <button className="itunda-btn itunda-btn-secondary" disabled={loadingMoreRestaurantOrders} onClick={loadMoreRestaurantOrders}>
+            {loadingMoreRestaurantOrders ? 'Loading…' : 'Load more'}
+          </button>
+        )}
       </div>
-      <RestaurantReviewsManageView restaurantId={orders[0].restaurantId} />
+      <RestaurantReviewsManageView restaurantId={allRestaurantOrders[0].restaurantId} />
     </div>
   );
 }

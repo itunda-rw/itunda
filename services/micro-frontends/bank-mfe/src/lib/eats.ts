@@ -226,8 +226,15 @@ export const placeEatsOrder = (
     body: JSON.stringify({ restaurantId, items, deliveryAddress, deliveryLatitude, deliveryLongitude, deliveryNotes, fulfillmentType }),
   });
 
-export const fetchMyEatsOrders = () =>
-  apiFetch<{ success: boolean; orders: EatsOrder[] }>('/api/v1/eats/orders/my-orders').then((r) => r.orders);
+// Real pagination-discard fix (2026-09-11, same systemic gap fixed for
+// Commerce's own my-orders/merchant-orders and Ride's trip history -- see
+// project_itunda_pagination_discard_sweep memory) -- EatsController's real
+// Pageable/pageMeta endpoints were always there; page just wasn't ever
+// sent, silently capping order history at the most recent 20 orders.
+export const fetchMyEatsOrders = (page = 0) =>
+  apiFetch<{ success: boolean; orders: EatsOrder[]; page: number; totalPages: number }>(
+    `/api/v1/eats/orders/my-orders?page=${page}&size=20`,
+  );
 
 // Real order detail, including items -- backs the real "Reorder" button (2026-07-19):
 // a buyer can re-populate a cart from a past order's real items rather than retyping
@@ -235,8 +242,10 @@ export const fetchMyEatsOrders = () =>
 export const fetchEatsOrder = (orderId: string) =>
   apiFetch<{ success: boolean; order: EatsOrder; items: EatsOrderItem[] }>(`/api/v1/eats/orders/${orderId}`);
 
-export const fetchRestaurantOrders = () =>
-  apiFetch<{ success: boolean; orders: EatsOrder[] }>('/api/v1/eats/orders/restaurant-orders').then((r) => r.orders);
+export const fetchRestaurantOrders = (page = 0) =>
+  apiFetch<{ success: boolean; orders: EatsOrder[]; page: number; totalPages: number }>(
+    `/api/v1/eats/orders/restaurant-orders?page=${page}&size=20`,
+  );
 
 export const advanceRestaurantOrder = (orderId: string, status: EatsOrderStatus) =>
   apiFetch<{ success: boolean; order: EatsOrder }>(`/api/v1/eats/orders/${orderId}/status`, {

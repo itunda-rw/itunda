@@ -67,7 +67,7 @@ export function MyView() {
     // Each fetch independent and best-effort -- one product's API hiccup must never
     // blank the rest of this real personal-activity summary.
     fetchMyOrders(0).then((r) => setShopOrders(r.orders)).catch(() => {});
-    fetchMyEatsOrders().then(setEatsOrders).catch(() => {});
+    fetchMyEatsOrders(0).then((r) => setEatsOrders(r.orders)).catch(() => {});
     fetchMyFavoriteListings().then((r) => setFavoriteListingsCount(r.length)).catch(() => {});
     fetchMyFavoriteJobPosts().then((r) => setFavoriteJobPostsCount(r.length)).catch(() => {});
     fetchMyFavoritePropertyListings().then((r) => setFavoritePropertyListingsCount(r.length)).catch(() => {});
