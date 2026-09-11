@@ -3524,7 +3524,12 @@ public struct ToggleReactionRequest: Encodable { public let emoji: String }
 public struct ReactionsResponse: Decodable { public let success: Bool; public let reactions: [ReactionGroupDto] }
 
 public struct ConversationResponse: Decodable { public let success: Bool; public let conversation: ConversationDto }
-public struct ConversationsResponse: Decodable { public let success: Bool; public let conversations: [ConversationSummaryDto] }
+public struct ConversationsResponse: Decodable {
+    public let success: Bool
+    public let conversations: [ConversationSummaryDto]
+    public let page: Int
+    public let totalPages: Int
+}
 public struct MessagesResponse: Decodable { public let success: Bool; public let messages: [MessageDto] }
 public struct MessageResponse: Decodable { public let success: Bool; public let message: MessageDto }
 public struct PinnedMessageResponse: Decodable { public let success: Bool; public let message: MessageDto? }
@@ -3664,7 +3669,12 @@ public struct GroupMessageDto: Decodable, Identifiable {
     private enum CodingKeys: String, CodingKey { case id, groupConversationId, senderId, body, sentAt, deletedAt, replyToMessageId, reactions, emoticonId, imageUrl, forwardedFromMessageId, forwardedFromType, unreadCount, replyCount }
 }
 public struct GroupResponse: Decodable { public let success: Bool; public let group: GroupSummaryDto }
-public struct GroupsResponse: Decodable { public let success: Bool; public let groups: [GroupSummaryDto] }
+public struct GroupsResponse: Decodable {
+    public let success: Bool
+    public let groups: [GroupSummaryDto]
+    public let page: Int
+    public let totalPages: Int
+}
 public struct GroupMessagesResponse: Decodable { public let success: Bool; public let messages: [GroupMessageDto] }
 public struct GroupMessageResponse: Decodable { public let success: Bool; public let message: GroupMessageDto }
 public struct PinnedGroupMessageResponse: Decodable { public let success: Bool; public let message: GroupMessageDto? }
@@ -5238,8 +5248,16 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/messages/conversations", body: StartConversationRequest(phoneNumber: nil, otherUserId: otherUserId))
     }
 
-    public func getConversations(archived: Bool = false) async throws -> ConversationsResponse {
-        try await get("api/v1/messages/conversations", query: [URLQueryItem(name: "archived", value: archived ? "true" : "false")])
+    // Real pagination-discard fix (same systemic gap fixed on web/Android,
+    // 2026-09-11 -- see project_itunda_pagination_discard_sweep memory) --
+    // page/size just weren't ever sent, silently capping the Talk
+    // conversation list at its first 20 rows.
+    public func getConversations(archived: Bool = false, page: Int = 0, size: Int = 20) async throws -> ConversationsResponse {
+        try await get("api/v1/messages/conversations", query: [
+            URLQueryItem(name: "archived", value: archived ? "true" : "false"),
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
     }
 
     public func getTalkContacts() async throws -> TalkContactsResponse { try await get("api/v1/messages/contacts") }
@@ -5356,7 +5374,15 @@ extension NetworkClient {
         try await authenticatedPostWithMessage("api/v1/messages/groups", body: CreateGroupRequest(name: name, memberPhoneNumbers: memberPhoneNumbers))
     }
 
-    public func getMyGroups() async throws -> GroupsResponse { try await get("api/v1/messages/groups") }
+    // Real pagination-discard fix (same systemic gap fixed on web/Android,
+    // 2026-09-11) -- page/size just weren't ever sent, silently capping the
+    // Talk group-chat list at its first 20 rows.
+    public func getMyGroups(page: Int = 0, size: Int = 20) async throws -> GroupsResponse {
+        try await get("api/v1/messages/groups", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     // Real KakaoTalk 오픈채팅-style open group (Talk-parity port, §243) -- see
     // GroupMessagingService.createOpenGroup's own doc comment. bank-mfe already

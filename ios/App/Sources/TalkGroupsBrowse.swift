@@ -165,6 +165,12 @@ struct GroupsList: View {
     let onRetry: () -> Void
     let onCreated: (String) -> Void
     let onOpen: (GroupSummaryDto) -> Void
+    // Real pagination-discard fix (same systemic gap fixed on web/Android,
+    // 2026-09-11) -- a request never asked past page 0, so a user with more
+    // than 20 real group chats couldn't reach anything past the first page.
+    var hasMore = false
+    var loadingMore = false
+    var onLoadMore: () -> Void = {}
 
     @State private var name = ""
     @State private var phoneNumbers = ""
@@ -223,6 +229,11 @@ struct GroupsList: View {
                             GroupRow(group: group)
                         }
                         .buttonStyle(.plain)
+                    }
+                    if hasMore {
+                        Button(loadingMore ? "Loading…" : "Load more", action: onLoadMore)
+                            .disabled(loadingMore)
+                            .frame(maxWidth: .infinity)
                     }
                 }
             }

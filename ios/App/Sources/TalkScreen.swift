@@ -50,6 +50,18 @@ struct TalkScreen: View {
     @State private var groups: [GroupSummaryDto]?
     @State private var groupsError: String?
     @State private var openGroup: GroupSummaryDto?
+    // Real pagination-discard fix (same systemic gap fixed on web/Android,
+    // 2026-09-11) -- independent page/hasMore/loadingMore per list, since a
+    // request never asked past page 0 for any of the 3 real lists here.
+    @State private var conversationsPage = 0
+    @State private var conversationsHasMore = false
+    @State private var conversationsLoadingMore = false
+    @State private var archivedPage = 0
+    @State private var archivedHasMore = false
+    @State private var archivedLoadingMore = false
+    @State private var groupsPage = 0
+    @State private var groupsHasMore = false
+    @State private var groupsLoadingMore = false
     // Real online/offline presence for the list view (2026-07-19) -- a bulk on-demand
     // check for every listed contact, refreshed on a 10s cadence, a real coarser signal
     // than the 4s message poll. Per-thread real-time push happens in ChatThreadScreen.
@@ -162,7 +174,13 @@ struct TalkScreen: View {
                                 await loadConversations()
                                 await loadArchivedConversations()
                             }
-                        }
+                        },
+                        hasMore: conversationsHasMore,
+                        archivedHasMore: archivedHasMore,
+                        loadingMore: conversationsLoadingMore,
+                        archivedLoadingMore: archivedLoadingMore,
+                        onLoadMore: { Task { await loadMoreConversations() } },
+                        onLoadMoreArchived: { Task { await loadMoreArchivedConversations() } }
                     )
                 }
             } else {
@@ -178,7 +196,10 @@ struct TalkScreen: View {
                             }
                         }
                     },
-                    onOpen: { openGroup = $0 }
+                    onOpen: { openGroup = $0 },
+                    hasMore: groupsHasMore,
+                    loadingMore: groupsLoadingMore,
+                    onLoadMore: { Task { await loadMoreGroups() } }
                 )
             }
         }
@@ -204,7 +225,7 @@ struct TalkScreen: View {
 
     private func loadConversations() async {
         do {
-            let res = try await NetworkClient.shared.getConversations()
+            let res = try await NetworkClient.shared.getConversations(page: 0)
             // Real Toss-sourced "layering illusion" reorder animation (2026-08-29,
             // toss.tech/article/interaction's own real "Account Organization
             // Animation" example -- reordering a list should animate the move, not
@@ -214,16 +235,48 @@ struct TalkScreen: View {
             // animates row moves automatically once the state change itself is
             // wrapped in withAnimation.
             withAnimation(.easeInOut(duration: 0.25)) { conversations = res.conversations }
+            conversationsPage = 0
+            conversationsHasMore = res.page + 1 < res.totalPages
             conversationsError = nil
         } catch {
             conversationsError = "Couldn't reach itunda. Check your connection and try again."
         }
     }
 
+    private func loadMoreConversations() async {
+        let nextPage = conversationsPage + 1
+        conversationsLoadingMore = true
+        defer { conversationsLoadingMore = false }
+        do {
+            let res = try await NetworkClient.shared.getConversations(page: nextPage)
+            conversations = (conversations ?? []) + res.conversations
+            conversationsPage = nextPage
+            conversationsHasMore = res.page + 1 < res.totalPages
+        } catch {
+            // Non-critical -- the already-loaded page stays visible; the user
+            // can retry by tapping "Load more" again.
+        }
+    }
+
     private func loadArchivedConversations() async {
         // Real, non-critical -- the active list and "Archived (N)" count still work
         // even if this background fetch fails; retried on next load.
-        archivedConversations = try? await NetworkClient.shared.getConversations(archived: true).conversations
+        if let res = try? await NetworkClient.shared.getConversations(archived: true, page: 0) {
+            archivedConversations = res.conversations
+            archivedPage = 0
+            archivedHasMore = res.page + 1 < res.totalPages
+        }
+    }
+
+    private func loadMoreArchivedConversations() async {
+        let nextPage = archivedPage + 1
+        archivedLoadingMore = true
+        defer { archivedLoadingMore = false }
+        if let res = try? await NetworkClient.shared.getConversations(archived: true, page: nextPage) {
+            archivedConversations = (archivedConversations ?? []) + res.conversations
+            archivedPage = nextPage
+            archivedHasMore = res.page + 1 < res.totalPages
+        }
     }
 
     private func loadCalls() async {
@@ -238,11 +291,27 @@ struct TalkScreen: View {
 
     private func loadGroups() async {
         do {
-            let res = try await NetworkClient.shared.getMyGroups()
+            let res = try await NetworkClient.shared.getMyGroups(page: 0)
             groups = res.groups
+            groupsPage = 0
+            groupsHasMore = res.page + 1 < res.totalPages
             groupsError = nil
         } catch {
             groupsError = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func loadMoreGroups() async {
+        let nextPage = groupsPage + 1
+        groupsLoadingMore = true
+        defer { groupsLoadingMore = false }
+        do {
+            let res = try await NetworkClient.shared.getMyGroups(page: nextPage)
+            groups = (groups ?? []) + res.groups
+            groupsPage = nextPage
+            groupsHasMore = res.page + 1 < res.totalPages
+        } catch {
+            // Non-critical, same reasoning as loadMoreConversations above.
         }
     }
 

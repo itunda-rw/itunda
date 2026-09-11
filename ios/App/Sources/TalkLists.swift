@@ -13,6 +13,16 @@ struct DirectMessagesList: View {
     let onStarted: (String) -> Void
     let onOpen: (ConversationSummaryDto) -> Void
     let onArchiveChanged: () -> Void
+    // Real pagination-discard fix (same systemic gap fixed on web/Android,
+    // 2026-09-11) -- independent hasMore/loadingMore per list (active vs
+    // archived), since a user can exhaust one while the other still has
+    // more pages.
+    var hasMore = false
+    var archivedHasMore = false
+    var loadingMore = false
+    var archivedLoadingMore = false
+    var onLoadMore: () -> Void = {}
+    var onLoadMoreArchived: () -> Void = {}
 
     @State private var newChatPhone = ""
     @State private var startError: String?
@@ -191,6 +201,16 @@ struct DirectMessagesList: View {
                             .tint(Color(red: 0.96, green: 0.65, blue: 0.14))
                         }
                     }
+                }
+                if showArchived ? archivedHasMore : hasMore {
+                    Button(showArchived ? (archivedLoadingMore ? "Loading…" : "Load more") : (loadingMore ? "Loading…" : "Load more")) {
+                        showArchived ? onLoadMoreArchived() : onLoadMore()
+                    }
+                    .disabled(showArchived ? archivedLoadingMore : loadingMore)
+                    .frame(maxWidth: .infinity)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                 }
             }
         }
