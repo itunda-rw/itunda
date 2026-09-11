@@ -485,4 +485,5 @@ export const rw: Record<TranslationKey, string> = {
     'splitbill.payShare': 'Ishyura umugabane wawe ({{amount}} RWF)',
     'splitbill.emptyGroup': 'Nta masaranganywa ari muri iki kigo ubu -- saranganya kimwe kugira ngo mugabane amafaranga mwasangiye.',
     'splitbill.emptyDirect': 'Nta masaranganywa hagati yawe na {{name}} ubu -- saranganya kimwe kugira ngo mugabane amafaranga mwasangiye.',
+    'bank.recommendations.title': 'Ibyagusabwa',
 };

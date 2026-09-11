@@ -491,4 +491,5 @@ export const en: Record<TranslationKey, string> = {
     'splitbill.payShare': 'Pay my share ({{amount}} RWF)',
     'splitbill.emptyGroup': 'No split bills in this group yet — split one to divide a shared expense evenly.',
     'splitbill.emptyDirect': 'No split bills with {{name}} yet — split one to divide a shared expense evenly.',
+    'bank.recommendations.title': 'Recommended for you',
 };

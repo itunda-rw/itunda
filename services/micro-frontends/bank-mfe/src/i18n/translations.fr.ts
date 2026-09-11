@@ -477,4 +477,5 @@ export const fr: Record<TranslationKey, string> = {
     'splitbill.payShare': 'Payer ma part ({{amount}} RWF)',
     'splitbill.emptyGroup': 'Aucun partage de facture dans ce groupe pour le moment — partagez-en une pour diviser une dépense commune équitablement.',
     'splitbill.emptyDirect': 'Aucun partage de facture avec {{name}} pour le moment — partagez-en une pour diviser une dépense commune équitablement.',
+    'bank.recommendations.title': 'Recommandé pour vous',
 };

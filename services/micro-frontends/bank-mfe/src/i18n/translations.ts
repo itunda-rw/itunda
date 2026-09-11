@@ -587,6 +587,10 @@ export type TranslationKey =
   | 'splitbill.paying'
   | 'splitbill.payShare'
   | 'splitbill.emptyGroup'
-  | 'splitbill.emptyDirect';
+  | 'splitbill.emptyDirect'
+  // Real Toss Bank reference (2026-09-11) -- account-detail/전체 screenshots showed a
+  // "추천" (Recommended) rail leading the product catalog, matching Section 65's own
+  // named-but-never-built gap.
+  | 'bank.recommendations.title';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = { en, rw, fr };

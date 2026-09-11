@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { CooperativeSavingsRail, YouthAccountCard, AutoTransfersCard, ProductPageHeader, TransferFlow, type Tab } from './BankDashboard';
 import { IconChevronRight } from './icons/ItundaIcons';
 import { type LoansMode } from './LoansView';
@@ -8,6 +9,7 @@ import { EmptyState } from './EmptyState';
 import { useI18n } from './i18n/I18nContext';
 import { type Account } from './lib/account';
 import { ApiError } from './lib/api';
+import { fetchDiscoverItems, type DiscoverItem } from './lib/discover';
 import { fetchGoals, type SavingsGoal } from './lib/savings';
 import { RoundUpCard, InterestJarCard, DepositProtectionCard } from './BankSavingsCards';
 import { GoalCard, CreateGoalForm } from './BankSavingsGoals';
@@ -16,6 +18,73 @@ import { IkiminaSection } from './BankIkimina';
 import { SaccoSection, UpfrontDepositSection, CatalogSectionHeader } from './BankSaccoAndUpfrontDeposit';
 import { WeeklySavingsSection } from './BankWeeklySavings';
 import { Grow31SavingsSection } from './BankGrow31Savings';
+
+// Real Toss Bank reference (2026-09-11, 7 real account-detail/전체 screenshots) --
+// Section 65 (docs/DESIGN_REFERENCES.md) named a "추천" (Recommended) rail leading
+// the product catalog as a gap in 2026-08-13 and it was never built on any platform.
+// DiscoverService already emits real, per-user, priority-ranked items -- only these
+// 4 are Bank-catalog-relevant (the rest -- government/rewards/lifestyle/social,
+// plus the account-identity nudge p_kyc -- belong on Home, where they already
+// render). Reuses BankDashboard's own DiscoverSection row markup, made tappable
+// (unlike Home's purely-informational rail) since each of these already has a real
+// destination on this same screen -- no invented navigation.
+const RECOMMENDATION_IDS = new Set(['p_first_goal', 'p_try_sacco', 'p_try_ikimina', 'p_try_loan']);
+const RECOMMENDATION_ANCHORS: Record<string, string> = {
+  p_first_goal: 'savings-goals-section',
+  p_try_sacco: 'savings-sacco-section',
+  p_try_ikimina: 'savings-ikimina-section',
+};
+
+function RecommendationsSection({ onNavigateToLoansMode }: { onNavigateToLoansMode?: (mode: LoansMode) => void }) {
+  const { t } = useI18n();
+  const [items, setItems] = useState<DiscoverItem[]>([]);
+
+  useEffect(() => {
+    fetchDiscoverItems()
+      .then((fetched) => setItems(fetched.filter((item) => RECOMMENDATION_IDS.has(item.id)).sort((a, b) => b.priority - a.priority)))
+      .catch(() => {});
+  }, []);
+
+  if (items.length === 0) return null;
+
+  const handleTap = (id: string) => {
+    if (id === 'p_try_loan') { onNavigateToLoansMode?.('OFFERS'); return; }
+    const anchorId = RECOMMENDATION_ANCHORS[id];
+    if (anchorId) document.getElementById(anchorId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  return (
+    <div style={{ marginBottom: '16px' }}>
+      <h3 style={{ fontSize: 'var(--itunda-type-scale-19-size)', fontWeight: 700, marginBottom: '10px' }}>{t('bank.recommendations.title')}</h3>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {items.map((item, i) => (
+          <motion.div
+            key={item.id}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => handleTap(item.id)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(item.id); } }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0', cursor: 'pointer',
+              borderBottom: i < items.length - 1 ? '1px solid var(--itunda-grey-200)' : 'none',
+            }}
+          >
+            <div style={{ width: '8px', height: '8px', borderRadius: '4px', backgroundColor: item.color, flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 600 }}>{item.title}</span>
+                {item.isNew && <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: item.color }}>{t('discover.new')}</span>}
+              </div>
+              <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-500)' }}>{item.subtitle}</p>
+            </div>
+            <IconChevronRight size={16} color="var(--itunda-grey-400)" />
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNavigateToTab, onNavigateToLoansMode, onNavigateToSavingsTarget }: { initialScrollTarget?: 'sacco' | 'ikimina' | null; onConsumedInitialScrollTarget?: () => void; onNavigateToTab?: (tab: Tab) => void; onNavigateToLoansMode?: (mode: LoansMode) => void; onNavigateToSavingsTarget?: (target: 'sacco' | 'ikimina') => void } = {}) {
   const { t } = useI18n();
@@ -100,17 +169,21 @@ export function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget
       )}
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '16px' }} role="alert">{error}</p>}
 
+      <RecommendationsSection onNavigateToLoansMode={onNavigateToLoansMode} />
+
       <CatalogSectionHeader title="Savings" />
       <InterestJarCard />
       <RoundUpCard goals={goals ?? []} />
-      <CreateGoalForm onCreated={load} />
-      {goals === null ? (
-        <div className="itunda-flat-section skeleton" style={{ height: '100px' }} />
-      ) : goals.length === 0 ? (
-        <EmptyState message="No savings goals yet — set one to start putting money aside for something specific." />
-      ) : (
-        goals.map((g) => <GoalCard key={g.id} goal={g} onChanged={load} />)
-      )}
+      <div id="savings-goals-section">
+        <CreateGoalForm onCreated={load} />
+        {goals === null ? (
+          <div className="itunda-flat-section skeleton" style={{ height: '100px' }} />
+        ) : goals.length === 0 ? (
+          <EmptyState message="No savings goals yet — set one to start putting money aside for something specific." />
+        ) : (
+          goals.map((g) => <GoalCard key={g.id} goal={g} onChanged={load} />)
+        )}
+      </div>
       <div style={{ marginTop: '24px' }}>
         <WeeklySavingsSection />
       </div>
