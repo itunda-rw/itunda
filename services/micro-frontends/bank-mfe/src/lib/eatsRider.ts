@@ -30,11 +30,19 @@ export const setRiderAvailability = (available: boolean) =>
     body: JSON.stringify({ available }),
   }).then((r) => r.rider);
 
-export const fetchAvailableDeliveries = () =>
-  apiFetch<{ success: boolean; orders: EatsOrder[] }>('/api/v1/eats/orders/available').then((r) => r.orders);
+// Real pagination-discard fix (2026-09-11, same systemic gap fixed
+// throughout the sweep -- see project_itunda_pagination_discard_sweep
+// memory) -- these real Pageable endpoints' page just wasn't ever sent,
+// silently capping both lists at their first 20 rows.
+export const fetchAvailableDeliveries = (page = 0) =>
+  apiFetch<{ success: boolean; orders: EatsOrder[]; page: number; totalPages: number }>(
+    `/api/v1/eats/orders/available?page=${page}&size=20`,
+  );
 
-export const fetchRiderDeliveries = () =>
-  apiFetch<{ success: boolean; orders: EatsOrder[] }>('/api/v1/eats/orders/rider-deliveries').then((r) => r.orders);
+export const fetchRiderDeliveries = (page = 0) =>
+  apiFetch<{ success: boolean; orders: EatsOrder[]; page: number; totalPages: number }>(
+    `/api/v1/eats/orders/rider-deliveries?page=${page}&size=20`,
+  );
 
 export const claimDelivery = (orderId: string) =>
   apiFetch<{ success: boolean; order: EatsOrder }>(`/api/v1/eats/orders/${orderId}/claim`, {

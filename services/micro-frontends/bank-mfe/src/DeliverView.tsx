@@ -22,6 +22,19 @@ export function DeliverView() {
   const showAvailableSkeleton = useDeferredLoading(available === null);
   const [mine, setMine] = useState<EatsOrder[] | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
+  // Real pagination fix (2026-09-11): both lists are polled every 4s, so page
+  // 0 must always stay a live, page-0-only fetch. olderAvailable/olderMine
+  // are separate accumulators populated only by their own "Load more"
+  // action, never touched by the poll -- same design as the Ride/Commerce/
+  // Eats order-history fixes.
+  const [olderAvailable, setOlderAvailable] = useState<EatsOrder[]>([]);
+  const [availablePage, setAvailablePage] = useState(0);
+  const [availableHasMore, setAvailableHasMore] = useState(false);
+  const [loadingMoreAvailable, setLoadingMoreAvailable] = useState(false);
+  const [olderMine, setOlderMine] = useState<EatsOrder[]>([]);
+  const [minePage, setMinePage] = useState(0);
+  const [mineHasMore, setMineHasMore] = useState(false);
+  const [loadingMoreMine, setLoadingMoreMine] = useState(false);
 
   const loadRider = () => {
     setError(null);
@@ -39,9 +52,40 @@ export function DeliverView() {
   useEffect(loadRider, []);
 
   const loadDeliveries = () => {
-    Promise.all([fetchAvailableDeliveries(), fetchRiderDeliveries()])
-      .then(([a, m]) => { setAvailable(a); setMine(m); })
+    Promise.all([fetchAvailableDeliveries(0), fetchRiderDeliveries(0)])
+      .then(([a, m]) => {
+        setAvailable(a.orders);
+        setAvailableHasMore(a.page + 1 < a.totalPages);
+        setMine(m.orders);
+        setMineHasMore(m.page + 1 < m.totalPages);
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+  };
+
+  const loadMoreAvailable = () => {
+    const nextPage = availablePage + 1;
+    setLoadingMoreAvailable(true);
+    fetchAvailableDeliveries(nextPage)
+      .then((r) => {
+        setOlderAvailable((prev) => [...prev, ...r.orders]);
+        setAvailablePage(nextPage);
+        setAvailableHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreAvailable(false));
+  };
+
+  const loadMoreMine = () => {
+    const nextPage = minePage + 1;
+    setLoadingMoreMine(true);
+    fetchRiderDeliveries(nextPage)
+      .then((r) => {
+        setOlderMine((prev) => [...prev, ...r.orders]);
+        setMinePage(nextPage);
+        setMineHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreMine(false));
   };
 
   useEffect(() => {
@@ -119,8 +163,10 @@ export function DeliverView() {
     );
   }
 
-  const activeDeliveries = (mine ?? []).filter((o) => o.status !== 'DELIVERED');
-  const pastDeliveries = (mine ?? []).filter((o) => o.status === 'DELIVERED');
+  const allAvailable = [...(available ?? []), ...olderAvailable];
+  const allMine = [...(mine ?? []), ...olderMine];
+  const activeDeliveries = allMine.filter((o) => o.status !== 'DELIVERED');
+  const pastDeliveries = allMine.filter((o) => o.status === 'DELIVERED');
 
   return (
     <div>
@@ -163,11 +209,11 @@ export function DeliverView() {
           <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Available deliveries</h4>
           {available === null ? (
             showAvailableSkeleton ? <div className="skeleton" style={{ height: '100px', borderRadius: 'var(--itunda-radius-md)' }} /> : null
-          ) : available.length === 0 ? (
+          ) : allAvailable.length === 0 ? (
             <EmptyState message="No deliveries waiting right now — stay online and you'll be notified." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {available.map((o) => (
+              {allAvailable.map((o) => (
                 <EatsOrderCard
                   key={o.id}
                   order={o}
@@ -178,6 +224,11 @@ export function DeliverView() {
                   }
                 />
               ))}
+              {availableHasMore && (
+                <button className="itunda-btn itunda-btn-secondary" disabled={loadingMoreAvailable} onClick={loadMoreAvailable}>
+                  {loadingMoreAvailable ? 'Loading…' : 'Load more'}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -188,6 +239,11 @@ export function DeliverView() {
           <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Completed</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {pastDeliveries.map((o) => <EatsOrderCard key={o.id} order={o} />)}
+            {mineHasMore && (
+              <button className="itunda-btn itunda-btn-secondary" disabled={loadingMoreMine} onClick={loadMoreMine}>
+                {loadingMoreMine ? 'Loading…' : 'Load more'}
+              </button>
+            )}
           </div>
         </div>
       )}
