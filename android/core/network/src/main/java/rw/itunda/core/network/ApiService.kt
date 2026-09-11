@@ -4259,11 +4259,15 @@ interface ApiService {
     @POST("api/v1/eats/orders/{id}/cancel")
     suspend fun cancelEatsOrder(@Path("id") orderId: String): EatsOrderDetailResponse
 
+    // Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix,
+    // a553b127 -- see project_itunda_pagination_discard_sweep memory) -- both
+    // real Pageable endpoints' page was never sent, silently capping each
+    // list at 20 rows.
     @GET("api/v1/eats/orders/rider-deliveries")
-    suspend fun getRiderDeliveries(): EatsOrdersResponse
+    suspend fun getRiderDeliveries(@Query("page") page: Int = 0, @Query("size") size: Int = 20): EatsOrdersResponse
 
     @GET("api/v1/eats/orders/available")
-    suspend fun getAvailableDeliveries(): EatsOrdersResponse
+    suspend fun getAvailableDeliveries(@Query("page") page: Int = 0, @Query("size") size: Int = 20): EatsOrdersResponse
 
     @POST("api/v1/eats/orders/{id}/claim")
     suspend fun claimDelivery(@Path("id") orderId: String, @Header("Idempotency-Key") idempotencyKey: String): EatsOrderDetailResponse

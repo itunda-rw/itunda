@@ -77,6 +77,9 @@ import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.StatusBadge
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.ListingActionButton
@@ -136,6 +139,19 @@ internal fun DeliverContent() {
     var available by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
     var mine by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
     var busyOrderId by remember { mutableStateOf<String?>(null) }
+    // Real pagination fix (2026-09-11, ported from bank-mfe's own fix -- see
+    // project_itunda_pagination_discard_sweep memory): both lists are polled
+    // every 4s, so page 0 must always stay a live, page-0-only fetch.
+    // olderAvailable/olderMine are separate accumulators populated only by
+    // their own "Load more" action, never touched by the poll.
+    var olderAvailable by remember { mutableStateOf<List<EatsOrderDto>>(emptyList()) }
+    var availablePage by remember { mutableStateOf(0) }
+    var availableHasMore by remember { mutableStateOf(false) }
+    var loadingMoreAvailable by remember { mutableStateOf(false) }
+    var olderMine by remember { mutableStateOf<List<EatsOrderDto>>(emptyList()) }
+    var minePage by remember { mutableStateOf(0) }
+    var mineHasMore by remember { mutableStateOf(false) }
+    var loadingMoreMine by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     fun loadRider() {
@@ -161,10 +177,16 @@ internal fun DeliverContent() {
 
     suspend fun loadDeliveries() {
         try {
-            val a = NetworkClient.apiService.getAvailableDeliveries()
-            val m = NetworkClient.apiService.getRiderDeliveries()
-            if (a.success) available = a.orders
-            if (m.success) mine = m.orders
+            val a = NetworkClient.apiService.getAvailableDeliveries(page = 0)
+            val m = NetworkClient.apiService.getRiderDeliveries(page = 0)
+            if (a.success) {
+                available = a.orders
+                availableHasMore = a.page + 1 < a.totalPages
+            }
+            if (m.success) {
+                mine = m.orders
+                mineHasMore = m.page + 1 < m.totalPages
+            }
         } catch (_: Exception) {
             // Keep showing the last-known lists on a transient poll failure.
         }
@@ -174,6 +196,44 @@ internal fun DeliverContent() {
         while (true) {
             loadDeliveries()
             delay(4000)
+        }
+    }
+
+    fun loadMoreAvailable() {
+        val nextPage = availablePage + 1
+        loadingMoreAvailable = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getAvailableDeliveries(page = nextPage)
+                if (res.success) {
+                    olderAvailable = olderAvailable + res.orders
+                    availablePage = nextPage
+                    availableHasMore = res.page + 1 < res.totalPages
+                }
+            } catch (_: Exception) {
+                // Non-critical -- leave state as-is, the button just stays visible to retry.
+            } finally {
+                loadingMoreAvailable = false
+            }
+        }
+    }
+
+    fun loadMoreMine() {
+        val nextPage = minePage + 1
+        loadingMoreMine = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getRiderDeliveries(page = nextPage)
+                if (res.success) {
+                    olderMine = olderMine + res.orders
+                    minePage = nextPage
+                    mineHasMore = res.page + 1 < res.totalPages
+                }
+            } catch (_: Exception) {
+                // Non-critical -- leave state as-is, the button just stays visible to retry.
+            } finally {
+                loadingMoreMine = false
+            }
         }
     }
 
@@ -232,8 +292,10 @@ internal fun DeliverContent() {
         return
     }
 
-    val activeDeliveries = mine.orEmpty().filter { it.status != "DELIVERED" }
-    val pastDeliveries = mine.orEmpty().filter { it.status == "DELIVERED" }
+    val allAvailable = available.orEmpty() + olderAvailable
+    val allMine = mine.orEmpty() + olderMine
+    val activeDeliveries = allMine.filter { it.status != "DELIVERED" }
+    val pastDeliveries = allMine.filter { it.status == "DELIVERED" }
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap), contentPadding = PaddingValues(bottom = 20.dp)) {
         // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- a
@@ -304,10 +366,10 @@ internal fun DeliverContent() {
             item { Text("Available deliveries", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             if (available == null) {
                 item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(100.dp)) {} }
-            } else if (available!!.isEmpty()) {
+            } else if (allAvailable.isEmpty()) {
                 item { EmptyState("No deliveries waiting right now.", icon = Icons.AutoMirrored.Outlined.ReceiptLong) }
             } else {
-                items(available!!, key = { it.id }) { o ->
+                items(allAvailable, key = { it.id }) { o ->
                     EatsOrderRow(o) {
                         Box(
                             modifier = Modifier
@@ -331,11 +393,33 @@ internal fun DeliverContent() {
                         ) { Text(if (busyOrderId == o.id) "Claiming…" else "Claim delivery", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                     }
                 }
+                if (availableHasMore) {
+                    item {
+                        IdsButton(
+                            text = if (loadingMoreAvailable) "Loading…" else "Load more",
+                            onClick = { loadMoreAvailable() },
+                            enabled = !loadingMoreAvailable,
+                            variant = IdsButtonVariant.Tinted,
+                            size = IdsButtonSize.Medium,
+                        )
+                    }
+                }
             }
         }
         if (pastDeliveries.isNotEmpty()) {
             item { Text("Completed", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             items(pastDeliveries, key = { it.id }) { o -> EatsOrderRow(o) }
+            if (mineHasMore) {
+                item {
+                    IdsButton(
+                        text = if (loadingMoreMine) "Loading…" else "Load more",
+                        onClick = { loadMoreMine() },
+                        enabled = !loadingMoreMine,
+                        variant = IdsButtonVariant.Tinted,
+                        size = IdsButtonSize.Medium,
+                    )
+                }
+            }
         }
     }
 }
