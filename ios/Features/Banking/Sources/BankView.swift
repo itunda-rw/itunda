@@ -68,6 +68,9 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "more": "More",
         "discoverTitle": "Discover",
         "discoverNew": "NEW",
+        // Real Toss Bank reference (2026-09-11, 7 real account-detail/전체
+        // screenshots) -- see BankView's own recommendationRows doc comment.
+        "recommendationsTitle": "Recommended for you",
         "cashPowerTitle": "Pay CashPower",
         "cashPowerSubtitle": "Top up electricity instantly",
         "open": "Open",
@@ -109,6 +112,7 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "more": "Ibindi",
         "discoverTitle": "Menya",
         "discoverNew": "GISHYA",
+        "recommendationsTitle": "Ibyagusabwa",
         "cashPowerTitle": "Kwishyura CashPower",
         "cashPowerSubtitle": "Ongera amashanyarazi ako kanya",
         "open": "Fungura",
@@ -144,6 +148,7 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "more": "Plus",
         "discoverTitle": "Découvrir",
         "discoverNew": "NOUVEAU",
+        "recommendationsTitle": "Recommandé pour vous",
         "cashPowerTitle": "Payer CashPower",
         "cashPowerSubtitle": "Rechargez l'électricité instantanément",
         "open": "Ouvrir",
@@ -304,7 +309,12 @@ public struct BankView: View {
     private let balanceText: String
     private let accountNumber: String?
     private let savingsRows: [SavingsRowData]
-    private let discoverRows: [DiscoverRowData]
+    // Real bug fix (2026-09-11, Toss Bank reference pass): was `discoverRows`, fed
+    // the exact same unfiltered, all-category feed as Home's own Discover section
+    // (see ContentView's own bankRecommendationRows doc comment for the full
+    // account) -- renamed since this is now a real, Bank-specific, tappable subset,
+    // not a duplicate of Home's feed.
+    private let recommendationRows: [DiscoverRowData]
     private let coopRows: [CooperativeRowData]
     private let recentTransactions: [RecentTransactionRowData]
     private let onSend: () -> Void
@@ -335,7 +345,7 @@ public struct BankView: View {
         balanceText: String = "RWF 0",
         accountNumber: String? = nil,
         savingsRows: [SavingsRowData] = [],
-        discoverRows: [DiscoverRowData] = [],
+        recommendationRows: [DiscoverRowData] = [],
         coopRows: [CooperativeRowData] = [],
         recentTransactions: [RecentTransactionRowData] = [],
         onSend: @escaping () -> Void = {},
@@ -353,7 +363,7 @@ public struct BankView: View {
         self.balanceText = balanceText
         self.accountNumber = accountNumber
         self.savingsRows = savingsRows
-        self.discoverRows = discoverRows
+        self.recommendationRows = recommendationRows
         self.coopRows = coopRows
         self.recentTransactions = recentTransactions
         self.onSend = onSend
@@ -391,6 +401,31 @@ public struct BankView: View {
                         }
                     )
                 }
+                // Real Toss Bank reference (2026-09-11, 7 real account-detail/전체
+                // screenshots) -- Section 65 (docs/DESIGN_REFERENCES.md) named a "추천"
+                // (Recommended) rail leading the product catalog as a gap in
+                // 2026-08-13 and it was never built on any platform. Leads the
+                // catalog (right after coopRows, before Savings), matching web/
+                // Android's identical placement, and every row is tappable via a
+                // real onTap ContentView built (see its bankRecommendationRows doc
+                // comment) -- unlike the old discoverRows section this replaced,
+                // which was a dead-tap duplicate of Home's own generic feed.
+                if !recommendationRows.isEmpty {
+                    HomeSectionCard(
+                        title: bt("recommendationsTitle", locale: locale),
+                        actionLabel: "",
+                        rows: recommendationRows.map { row in
+                            HomeRowData(
+                                title: row.isNew ? "\(row.title) · \(bt("discoverNew", locale: locale))" : row.title,
+                                subtitle: row.subtitle,
+                                trailing: row.badge ?? "",
+                                symbol: "sparkles",
+                                iconBackground: IDS.Colors.successTint,
+                                onTap: row.onTap
+                            )
+                        }
+                    )
+                }
                 if !savingsRows.isEmpty {
                     HomeSectionCard(
                         title: bt("savingsTitle", locale: locale),
@@ -419,21 +454,6 @@ public struct BankView: View {
                         }
                 )
                 HomeSectionCard(title: bt("rwandaServicesTitle", locale: locale), actionLabel: bt("more", locale: locale), rows: BankViewData.rwandaServices(locale: locale))
-                if !discoverRows.isEmpty {
-                    HomeSectionCard(
-                        title: bt("discoverTitle", locale: locale),
-                        actionLabel: "",
-                        rows: discoverRows.enumerated().map { index, row in
-                            HomeRowData(
-                                title: row.isNew ? "\(row.title) · \(bt("discoverNew", locale: locale))" : row.title,
-                                subtitle: row.subtitle,
-                                trailing: row.badge ?? "",
-                                symbol: "sparkles",
-                                iconBackground: [IDS.Colors.successTint, IDS.Colors.pressed, IDS.Colors.warningTint, IDS.Colors.backgroundTertiary][index % 4]
-                            )
-                        }
-                    )
-                }
                 // Real Deposit Protection Fund card (2026-08-11) -- see
                 // DepositProtectionFund.kt's own doc comment: rather than just
                 // disclosing an absence of real banking protections, this shows the

@@ -298,6 +298,36 @@ struct ContentView: View {
         ]
     }
 
+    // Real Toss Bank reference (2026-09-11, 7 real account-detail/전체 screenshots)
+    // -- Section 65 (docs/DESIGN_REFERENCES.md) named a "추천" (Recommended) rail
+    // leading the product catalog as a gap in 2026-08-13 and it was never built on
+    // any platform. Real bug found live during this pass: BankView's own
+    // `discoverRows` param used to be fed bankViewModel.discoverRows directly --
+    // the EXACT SAME unfiltered, all-category array passed into HomeTabContent
+    // (see this file's own HomeTabContent call site above), with no onTap at all.
+    // Filtered here (not in BankViewModel, which HomeTabContent's feed must stay
+    // untouched) to the same 4 ids web/Android use, built here rather than in
+    // BankViewModel because the real tap targets need ContentView's own @State
+    // (showSacco/showIkimina/showLoans/showCreateSavingsGoal), same reasoning as
+    // coopRows/savingsRows above. p_first_goal reuses showCreateSavingsGoal --
+    // already real (savingsRows' own "New savings goal" row sets it from this same
+    // Bank tab, confirming its .sheet works regardless of which row triggers it).
+    private var bankRecommendationRows: [DiscoverRowData] {
+        let anchors: [String: () -> Void] = [
+            "p_first_goal": { showCreateSavingsGoal = true },
+            "p_try_sacco": { showSacco = true },
+            "p_try_ikimina": { showIkimina = true },
+            "p_try_loan": { showLoans = true },
+        ]
+        return bankViewModel.discoverItems.compactMap { item in
+            guard let onTap = anchors[item.id] else { return nil }
+            return DiscoverRowData(title: item.title, subtitle: item.subtitle, badge: item.badge, isNew: item.isNew, onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("bank_recommendation_tap", metadata: item.id)
+                onTap()
+            })
+        }
+    }
+
     // Real Savings section rows with real tap targets (2026-07-12) -- built here,
     // not inside BankViewModel, because triggering savingsFlowStep needs
     // ContentView's own @State (see BankView.swift's note on why Feature-module
@@ -540,7 +570,7 @@ struct ContentView: View {
                             balanceText: bankViewModel.balanceText,
                             accountNumber: bankViewModel.accountNumber,
                             savingsRows: savingsRows,
-                            discoverRows: bankViewModel.discoverRows,
+                            recommendationRows: bankRecommendationRows,
                             coopRows: coopRows,
                             recentTransactions: recentTransactionRows,
                             onSend: { showTransferFlow = true },

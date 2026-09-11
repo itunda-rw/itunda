@@ -17,6 +17,12 @@ final class BankViewModel: ObservableObject {
     @Published private(set) var accountNumber: String?
     @Published private(set) var savingsRows: [SavingsRowData] = []
     @Published private(set) var discoverRows: [DiscoverRowData] = []
+    // Real bug found live (2026-09-11, Toss Bank reference pass): discoverRows above
+    // is shared verbatim between HomeTabContent (all categories) and BankView (used
+    // to be the exact same unfiltered feed, a real bug -- see ContentView's own
+    // bankRecommendationRows doc comment). Keeping the raw items separately lets
+    // ContentView filter to the 4 Bank-relevant ids without touching Home's feed.
+    @Published private(set) var discoverItems: [DiscoverItem] = []
     @Published private(set) var isOffline = false
     // Raw values for screens that need to compute with them (send-money/deposit
     // flows), not just display them -- balanceText/savingsRows are formatted display
@@ -199,7 +205,9 @@ final class BankViewModel: ObservableObject {
                 // comment (Toss Intelligence-banner research). Backend already returns
                 // items sorted by priority; sorting here too makes that explicit,
                 // matching Android's/web's identical defensive re-sort.
-                discoverRows = discoverRes.items.sorted { $0.priority > $1.priority }.map {
+                let sortedItems = discoverRes.items.sorted { $0.priority > $1.priority }
+                discoverItems = sortedItems
+                discoverRows = sortedItems.map {
                     DiscoverRowData(title: $0.title, subtitle: $0.subtitle, badge: $0.badge, isNew: $0.isNew)
                 }
             }

@@ -16,11 +16,17 @@ public struct DiscoverRowData: Identifiable {
     public let subtitle: String
     public let badge: String?
     public let isNew: Bool
+    // Real Toss Bank reference (2026-09-11) -- BankView's own Recommendations
+    // section (a filtered, Bank-relevant subset of this same row shape) needs real
+    // tap targets, unlike Home's purely-informational Discover feed. Defaults to
+    // nil so Home's existing construction (no onTap passed) is unaffected.
+    public let onTap: (() -> Void)?
 
-    public init(title: String, subtitle: String, badge: String?, isNew: Bool) {
+    public init(title: String, subtitle: String, badge: String?, isNew: Bool, onTap: (() -> Void)? = nil) {
         self.title = title
         self.subtitle = subtitle
         self.badge = badge
         self.isNew = isNew
+        self.onTap = onTap
     }
 }
