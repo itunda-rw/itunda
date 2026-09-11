@@ -5,6 +5,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.EatsFulfillmentType
 import rw.itunda.core.domain.EatsOrder
@@ -130,6 +131,37 @@ class GroupEatsOrderServiceTest : BehaviorSpec({
             }
             Then("the group order is still marked FINALIZED despite the one split-bill failure") {
                 order.status shouldBe GroupEatsOrderStatus.FINALIZED
+            }
+        }
+    }
+
+    // Real gap found via a repo-wide "rateLimiter mock exists but is never
+    // verified" sweep (2026-09-11), the same latent-regression class already
+    // fixed in Family/Gift/Splitbill/P2P: create() has a real
+    // rateLimiter.checkLimit call (line 92) but this file had zero coverage
+    // for create() at all -- the mock's default relaxed=true stub let any
+    // test silently pass even if the real call were deleted.
+    Given("a host who has already created 10 group orders in the last hour") {
+        val groupEatsOrderRepository = mockk<GroupEatsOrderRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = buildService(
+            groupEatsOrderRepository = groupEatsOrderRepository,
+            merchantRepository = merchantRepository,
+            rateLimiter = rateLimiter,
+        )
+        every { rateLimiter.checkLimit("group-eats-order:create:host_1", limit = 10, window = java.time.Duration.ofHours(1)) } throws
+            RateLimitExceededException("Too many group orders")
+
+        When("they try to create another one") {
+            Then("it real-propagates RateLimitExceededException instead of silently proceeding") {
+                try {
+                    service.create("host_1", "restaurant_1", "123 Main St")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { merchantRepository.findById(any()) }
+                    verify(exactly = 0) { groupEatsOrderRepository.save(any()) }
+                }
             }
         }
     }
