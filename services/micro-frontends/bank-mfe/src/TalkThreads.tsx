@@ -35,12 +35,30 @@ export function TalkServiceChannelThread({ onBack }: { onBack: () => void }) {
   const [bubbles, setBubbles] = useState<ServiceChannelBubble[] | null>(null);
   const showSkeleton = useDeferredLoading(bubbles === null);
   const [error, setError] = useState<string | null>(null);
+  const [bubblesPage, setBubblesPage] = useState(0);
+  const [bubblesHasMore, setBubblesHasMore] = useState(false);
+  const [loadingMoreBubbles, setLoadingMoreBubbles] = useState(false);
 
   const load = () => {
     setError(null);
-    fetchServiceChannel().then(setBubbles).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load notifications.'));
+    fetchServiceChannel(0)
+      .then((r) => { setBubbles(r.bubbles); setBubblesPage(0); setBubblesHasMore(r.page + 1 < r.totalPages); })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load notifications.'));
   };
   useEffect(load, []);
+
+  const loadMoreBubbles = () => {
+    const nextPage = bubblesPage + 1;
+    setLoadingMoreBubbles(true);
+    fetchServiceChannel(nextPage)
+      .then((r) => {
+        setBubbles((prev) => [...(prev ?? []), ...r.bubbles]);
+        setBubblesPage(nextPage);
+        setBubblesHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreBubbles(false));
+  };
 
   // Real mark-as-read on tap -- reuses the existing NotificationsCard's own
   // markNotificationRead call (a ServiceChannelBubble.id is a real Notification.id,
@@ -77,6 +95,11 @@ export function TalkServiceChannelThread({ onBack }: { onBack: () => void }) {
             </p>
           </button>
         ))}
+        {bubblesHasMore && (
+          <button className="itunda-btn itunda-btn-secondary" disabled={loadingMoreBubbles} onClick={loadMoreBubbles}>
+            {loadingMoreBubbles ? 'Loading…' : 'Load more'}
+          </button>
+        )}
       </div>
     </div>
   );

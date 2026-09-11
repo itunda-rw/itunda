@@ -30,8 +30,15 @@ export interface ServiceChannelBubble {
   ctaRoute: string | null;
 }
 
-export const fetchServiceChannel = () =>
-  apiFetch<{ success: boolean; bubbles: ServiceChannelBubble[] }>('/api/v1/talk/service-channel').then((r) => r.bubbles);
+// Real pagination-discard fix (2026-09-11, same systemic gap fixed
+// throughout the sweep -- see project_itunda_pagination_discard_sweep
+// memory) -- this real Pageable endpoint's page just wasn't ever sent,
+// silently capping the itunda service-channel thread at the most recent
+// 20 updates.
+export const fetchServiceChannel = (page = 0) =>
+  apiFetch<{ success: boolean; bubbles: ServiceChannelBubble[]; page: number; totalPages: number }>(
+    `/api/v1/talk/service-channel?page=${page}&size=20`,
+  );
 
 export interface AiChatMessage {
   id: string;
