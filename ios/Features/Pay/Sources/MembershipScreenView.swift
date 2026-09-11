@@ -90,6 +90,9 @@ struct MembershipScreenView: View {
                             }
                         }
 
+                        if let error {
+                            Text(error).font(.caption).foregroundColor(.red).padding(.top, 8)
+                        }
                         RewardsPreviewSection(tasks: rewardTasks, claimingId: claimingRewardId, onClaim: claimReward)
                             .padding(.top, 16)
                     }
@@ -113,14 +116,23 @@ struct MembershipScreenView: View {
         }
     }
 
+    // Real "silence, not vagueness" bug found live (2026-09-11, same class this
+    // codebase already fixed for résumé-remove/device-revoke) -- a failed claim
+    // used to leave the row silently re-claimable with zero feedback. Matches
+    // web's RewardsView.tsx's own real setError(...) handling.
     private func claimReward(_ taskId: String) {
         Task {
             claimingRewardId = taskId
+            error = nil
             defer { claimingRewardId = nil }
-            _ = try? await NetworkClient.shared.claimRewardTask(taskId: taskId)
-            let result = try? await NetworkClient.shared.getRewardTasks()
-            rewardTasks = result?.tasks ?? []
-            rewardsTotal = result?.rewardsTotal ?? 0
+            do {
+                _ = try await NetworkClient.shared.claimRewardTask(taskId: taskId)
+                let result = try await NetworkClient.shared.getRewardTasks()
+                rewardTasks = result.tasks
+                rewardsTotal = result.rewardsTotal
+            } catch {
+                self.error = "Couldn't claim this reward. Try again."
+            }
         }
     }
 }

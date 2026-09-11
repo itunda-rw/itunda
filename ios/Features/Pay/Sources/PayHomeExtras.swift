@@ -192,6 +192,11 @@ public struct PayScreen<CardDestination: View, SupportDestination: View, Request
     @State private var rewardsTotal: Double = 0
     @State private var rewardTasks: [RewardTaskDto] = []
     @State private var claimingRewardId: String?
+    // Real "silence, not vagueness" bug found live (2026-09-11, same class this
+    // codebase already fixed for résumé-remove/device-revoke) -- claimReward
+    // below used to leave the row silently re-claimable on failure with zero
+    // feedback. Matches web's RewardsView.tsx's own real setError(...) handling.
+    @State private var actionError: String?
     @State private var showSupport = false
     @State private var showNearbyMerchants = false
     @StateObject private var nearbyMerchantsLoader = NearbyMerchantsLoader()
@@ -338,6 +343,9 @@ public struct PayScreen<CardDestination: View, SupportDestination: View, Request
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 20)
+                if let actionError {
+                    Text(actionError).font(.caption).foregroundColor(.red).padding(.horizontal, 20)
+                }
                 RewardsPreviewSection(tasks: rewardTasks, claimingId: claimingRewardId, onClaim: claimReward)
                     .padding(.horizontal, 20)
                 GetHelpLinks(onOpenSupport: { showSupport = true })
@@ -393,11 +401,16 @@ public struct PayScreen<CardDestination: View, SupportDestination: View, Request
     private func claimReward(_ taskId: String) {
         Task {
             claimingRewardId = taskId
+            actionError = nil
             defer { claimingRewardId = nil }
-            _ = try? await NetworkClient.shared.claimRewardTask(taskId: taskId)
-            let result = try? await NetworkClient.shared.getRewardTasks()
-            rewardTasks = result?.tasks ?? []
-            rewardsTotal = result?.rewardsTotal ?? 0
+            do {
+                _ = try await NetworkClient.shared.claimRewardTask(taskId: taskId)
+                let result = try await NetworkClient.shared.getRewardTasks()
+                rewardTasks = result.tasks
+                rewardsTotal = result.rewardsTotal
+            } catch {
+                actionError = "Couldn't claim this reward. Try again."
+            }
         }
     }
 }

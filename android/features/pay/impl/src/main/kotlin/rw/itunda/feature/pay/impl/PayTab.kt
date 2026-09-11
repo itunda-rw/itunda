@@ -93,6 +93,11 @@ fun PayTab(
     var cardFrozen by remember { mutableStateOf(false) }
     var showCouponBox by remember { mutableStateOf(false) }
     var showMembership by remember { mutableStateOf(false) }
+    // Real "silence, not vagueness" bug found live (2026-09-11, same class this
+    // codebase already fixed for résumé-remove/device-revoke) -- FacePay toggle
+    // and reward claim below both used to fail with zero user-facing feedback at
+    // all, matching web's RewardsView.tsx's own real setError(...) handling.
+    var actionError by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         try {
             facePayEnrolled = rw.itunda.core.network.NetworkClient.apiService.getFacePayStatus().enrolled
@@ -159,11 +164,12 @@ fun PayTab(
     val handleFacePayToggle: () -> Unit = {
         coroutineScope.launch {
             facePayBusy = true
+            actionError = null
             try {
                 if (facePayEnrolled) rw.itunda.core.network.NetworkClient.apiService.revokeFacePay() else rw.itunda.core.network.NetworkClient.apiService.enrollFacePay()
                 facePayEnrolled = !facePayEnrolled
             } catch (e: Exception) {
-                // Non-critical -- the row just keeps showing the last-known state.
+                actionError = "Couldn't update Face Pay. Try again."
             } finally {
                 facePayBusy = false
             }
@@ -172,6 +178,7 @@ fun PayTab(
     val handleClaimReward: (String) -> Unit = { taskId ->
         coroutineScope.launch {
             claimingRewardId = taskId
+            actionError = null
             try {
                 rw.itunda.core.network.NetworkClient.apiService.claimRewardTask(
                     java.util.UUID.randomUUID().toString(),
@@ -185,9 +192,11 @@ fun PayTab(
                     val result = rw.itunda.core.network.NetworkClient.apiService.getRewardTasks()
                     rewardTasks = result.tasks
                     rewardsTotal = result.rewardsTotal
+                } else {
+                    actionError = "Couldn't claim this reward. Try again."
                 }
             } catch (e: Exception) {
-                // Non-critical -- the row just stays claimable, retryable on next tap.
+                actionError = "Couldn't claim this reward. Try again."
             } finally {
                 claimingRewardId = null
             }
@@ -202,6 +211,9 @@ fun PayTab(
                 Text("Pay", color = Ids.colors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 IdsIconButton(icon = Icons.Outlined.Settings, contentDescription = "Pay settings", onClick = onOpenSettings)
             }
+        }
+        actionError?.let { message ->
+            item { Text(message, color = Ids.colors.danger, fontSize = 13.sp) }
         }
         item { NearbyMerchantsBanner(merchants = nearbyMerchants) }
         item {
