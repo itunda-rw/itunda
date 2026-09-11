@@ -211,6 +211,13 @@ struct MyDineInOrdersView: View {
     @State private var orders: [DineInOrderDto]?
     @State private var error: String?
     @State private var cancellingId: String?
+    // Real pagination fix (2026-09-11, ported from bank-mfe's own fix -- see
+    // project_itunda_pagination_discard_sweep memory): no poll here (a
+    // one-shot fetch on appear), so a plain page/hasMore "Load more" is
+    // enough, no live/older split needed.
+    @State private var ordersPage = 0
+    @State private var ordersHasMore = false
+    @State private var loadingMoreOrders = false
 
     var body: some View {
         Group {
@@ -254,6 +261,12 @@ struct MyDineInOrdersView: View {
                             Divider().overlay(IDS.Colors.divider)
                         }
                     }
+                    if ordersHasMore {
+                        Button(loadingMoreOrders ? "Loading…" : "Load more") {
+                            Task { await loadMoreOrders() }
+                        }
+                        .disabled(loadingMoreOrders)
+                    }
                 }
             }
         }
@@ -262,11 +275,23 @@ struct MyDineInOrdersView: View {
 
     private func load() async {
         do {
-            orders = try await NetworkClient.shared.getMyDineInOrders().orders
+            let res = try await NetworkClient.shared.getMyDineInOrders(page: 0)
+            orders = res.orders
+            ordersHasMore = res.page + 1 < res.totalPages
             error = nil
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
+    }
+
+    private func loadMoreOrders() async {
+        let nextPage = ordersPage + 1
+        loadingMoreOrders = true
+        defer { loadingMoreOrders = false }
+        guard let res = try? await NetworkClient.shared.getMyDineInOrders(page: nextPage) else { return }
+        orders = (orders ?? []) + res.orders
+        ordersPage = nextPage
+        ordersHasMore = res.page + 1 < res.totalPages
     }
 
     private func cancel(_ orderId: String) async {

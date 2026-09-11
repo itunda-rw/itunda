@@ -834,7 +834,12 @@ public struct DineInOrderItemDto: Decodable, Identifiable {
     public let unitPrice: Double; public let quantity: Int; public let selectedOptionsJson: String?
 }
 public struct DineInOrderDetailResponse: Decodable { public let success: Bool; public let order: DineInOrderDto; public let items: [DineInOrderItemDto] }
-public struct DineInOrdersResponse: Decodable { public let success: Bool; public let orders: [DineInOrderDto] }
+// Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix,
+// 081d22a5 -- see project_itunda_pagination_discard_sweep memory) --
+// getMyDineInOrders/getRestaurantDineInOrders are real Pageable-backed on
+// the backend (already bumped to size=50 at some point, but page was never
+// sent). Safe to extend this struct directly: used only by these two.
+public struct DineInOrdersResponse: Decodable { public let success: Bool; public let orders: [DineInOrderDto]; public let page: Int; public let totalPages: Int }
 
 public struct SpendingCategoryDto: Decodable { public let name: String; public let amount: Double }
 public struct SpendingInsightResponse: Decodable { public let success: Bool; public let categories: [SpendingCategoryDto]; public let totalSpent: Double }
@@ -6815,9 +6820,19 @@ extension NetworkClient {
         try await postEatsOrder("api/v1/eats/dine-in/orders", body: request, idempotencyKey: UUID().uuidString)
     }
 
-    public func getMyDineInOrders() async throws -> DineInOrdersResponse { try await get("api/v1/eats/dine-in/orders/my-orders") }
+    public func getMyDineInOrders(page: Int = 0, size: Int = 50) async throws -> DineInOrdersResponse {
+        try await get("api/v1/eats/dine-in/orders/my-orders", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
-    public func getRestaurantDineInOrders() async throws -> DineInOrdersResponse { try await get("api/v1/eats/dine-in/orders/restaurant-orders") }
+    public func getRestaurantDineInOrders(page: Int = 0, size: Int = 50) async throws -> DineInOrdersResponse {
+        try await get("api/v1/eats/dine-in/orders/restaurant-orders", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     public func updateDineInOrderStatus(id: String, status: String) async throws -> DineInOrderDetailResponse {
         try await authenticatedPost("api/v1/eats/dine-in/orders/\(id)/status", body: UpdateDineInOrderStatusRequest(status: status))
