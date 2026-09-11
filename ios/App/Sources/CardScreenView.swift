@@ -24,6 +24,13 @@ struct CardScreenView: View {
     @State private var busy = false
     @State private var error: String?
     @State private var chargeMessage: String?
+    // Real cross-platform drift found live (2026-09-12, re-audit against a fuller
+    // Toss Card-screen screenshot batch): this used to color chargeMessage by
+    // sniffing chargeMessage.hasPrefix("Paid") -- breaks under rw/fr localization
+    // exactly like the bug Android already found and fixed in CardScreen.kt (its
+    // own chargeSucceeded doc comment). A real boolean set directly from the
+    // charge call's own outcome, not the message text.
+    @State private var chargeSucceeded = false
     // Real "카드 비밀번호 변경" (change card PIN) inline form (2026-09-01, direct
     // user-supplied Toss Bank card-management screenshots) -- matches web/Android's
     // identical setCardPin flow.
@@ -177,7 +184,7 @@ struct CardScreenView: View {
                                 Text("itunda has no real card-network partnership yet, so this simulates a real card-present purchase -- real money moves, real limits apply.")
                                     .font(.caption2).foregroundColor(IDS.Colors.textTertiary)
                                 if let chargeMessage {
-                                    Text(chargeMessage).font(.caption).foregroundColor(chargeMessage.hasPrefix("Paid") ? .green : .red)
+                                    Text(chargeMessage).font(.caption).foregroundColor(chargeSucceeded ? .green : .red)
                                 }
                                 IdsTextField("Merchant name", text: $merchantName)
                                 IdsTextField("Amount (RWF)", text: $chargeAmount, keyboardType: .numberPad)
@@ -405,6 +412,7 @@ struct CardScreenView: View {
     private func charge() {
         guard let parsedAmount = Double(chargeAmount), parsedAmount > 0, !merchantName.isEmpty else {
             chargeMessage = "Enter a real merchant name and amount."
+            chargeSucceeded = false
             return
         }
         busy = true
@@ -414,13 +422,16 @@ struct CardScreenView: View {
                 let res = try await NetworkClient.shared.chargeCard(amount: parsedAmount, merchantName: merchantName)
                 card = res.card
                 chargeMessage = "Paid \(formatMoney(res.transaction.amount)) RWF at \(res.transaction.merchantName)"
+                chargeSucceeded = true
                 merchantName = ""
                 chargeAmount = ""
                 load()
             } catch let NetworkError.httpErrorWithMessage(_, message) {
                 chargeMessage = message ?? "Could not complete this purchase."
+                chargeSucceeded = false
             } catch {
                 chargeMessage = "Could not complete this purchase."
+                chargeSucceeded = false
             }
             busy = false
         }

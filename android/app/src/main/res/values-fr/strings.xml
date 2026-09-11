@@ -171,6 +171,7 @@
     <string name="account_manage_section_transfer">Virement</string>
     <string name="account_manage_auto_transfer">Virement automatique</string>
     <string name="account_manage_scheduled_transfers">Virements programmés</string>
+    <string name="account_manage_delayed_transfers">Virements différés</string>
     <string name="account_manage_transfer_limit">Plafond de virement</string>
     <string name="transfer_limit_per_transfer">Par virement</string>
     <string name="transfer_limit_daily">Quotidien</string>

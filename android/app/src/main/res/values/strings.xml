@@ -223,6 +223,7 @@
     <string name="account_manage_section_transfer">Transfer</string>
     <string name="account_manage_auto_transfer">Auto transfer</string>
     <string name="account_manage_scheduled_transfers">Scheduled transfers</string>
+    <string name="account_manage_delayed_transfers">Delayed transfers</string>
     <string name="account_manage_transfer_limit">Transfer limit</string>
     <string name="transfer_limit_per_transfer">Per transfer</string>
     <string name="transfer_limit_daily">Daily</string>

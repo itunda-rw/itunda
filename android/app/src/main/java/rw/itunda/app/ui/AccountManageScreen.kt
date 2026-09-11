@@ -50,6 +50,14 @@ import rw.itunda.core.network.NetworkClient
 // its own top-level screen already (ScheduledTransferListScreen) that this can
 // jump straight to.
 //
+// Real cross-platform drift found and fixed live (2026-09-12, re-audit against
+// a fuller Toss Manage-screen screenshot batch): this file had "Scheduled
+// transfers" but was missing "Delayed transfers" (Toss's real 지연이체
+// anti-phishing hold) entirely, even though DelayedTransferListScreen already
+// existed and was already wired elsewhere (TransferHubScreen). Both rows are
+// now present -- they're genuinely distinct real itunda features, not a
+// rename.
+//
 // Real, named, deliberately NOT built here (matching AccountManageScreen.tsx's own
 // disclosure) -- these are genuinely Korea-specific banking infrastructure/
 // regulation (Open Banking/firm banking, tax-free limits, telecom fraud-sharing,
@@ -65,6 +73,7 @@ fun AccountManageScreen(
     onOpenInterestJar: () -> Unit,
     onOpenAutoTransfer: () -> Unit,
     onOpenScheduledTransfers: () -> Unit,
+    onOpenDelayedTransfers: () -> Unit,
     onOpenForeignCurrency: () -> Unit,
     onOpenBills: () -> Unit,
     onOpenSupport: () -> Unit,
@@ -116,6 +125,7 @@ fun AccountManageScreen(
             FlatSection(title = stringResource(R.string.account_manage_section_transfer), rows = listOf(
                 FlatRow(title = stringResource(R.string.account_manage_auto_transfer), showChevron = true, onClick = onOpenAutoTransfer),
                 FlatRow(title = stringResource(R.string.account_manage_scheduled_transfers), showChevron = true, onClick = onOpenScheduledTransfers),
+                FlatRow(title = stringResource(R.string.account_manage_delayed_transfers), showChevron = true, onClick = onOpenDelayedTransfers),
                 FlatRow(title = stringResource(R.string.account_manage_transfer_limit), showChevron = true, onClick = { showTransferLimit = true }),
             ))
             SectionSpacer()

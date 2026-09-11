@@ -1613,6 +1613,7 @@ fun ItundaAppScreen(
                 onOpenInterestJar = { showAccountManage = false; bucketDetailTarget = BucketDetailTarget.InterestJar },
                 onOpenAutoTransfer = { showAccountManage = false; showTransferHub = true; showAutoTransfers = true },
                 onOpenScheduledTransfers = { showAccountManage = false; showTransferHub = true; showScheduledTransfers = true },
+                onOpenDelayedTransfers = { showAccountManage = false; showTransferHub = true; showDelayedTransfers = true },
                 onOpenForeignCurrency = { showAccountManage = false; showForeignCurrency = true },
                 onOpenBills = { manageContext.startActivity(android.content.Intent(manageContext, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java)) },
                 onOpenSupport = { showAccountManage = false; showSupport = true },

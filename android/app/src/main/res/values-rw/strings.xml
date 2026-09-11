@@ -179,6 +179,7 @@
     <string name="account_manage_section_transfer">Kohereza amafaranga</string>
     <string name="account_manage_auto_transfer">Kohereza mu buryo bwikora</string>
     <string name="account_manage_scheduled_transfers">Kohereza biteganyijwe</string>
+    <string name="account_manage_delayed_transfers">Kohereza bigumanywe</string>
     <string name="account_manage_transfer_limit">Urugero rwo kohereza</string>
     <string name="transfer_limit_per_transfer">Kuri buri koherezwa</string>
     <string name="transfer_limit_daily">Ku munsi</string>
