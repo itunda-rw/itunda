@@ -57,13 +57,25 @@ internal fun MerchantOrdersView() {
     var orders by remember { mutableStateOf<List<OrderDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var busyOrderId by remember { mutableStateOf<String?>(null) }
+    // Real pagination fix (2026-09-11, ported from bank-mfe's own fix -- see
+    // project_itunda_pagination_discard_sweep memory): page 0 is polled every
+    // 4s for real-time order-status accuracy, so it must always stay a live,
+    // page-0-only fetch. olderOrders is a separate accumulator populated only
+    // by loadMore, never touched by the poll.
+    var olderOrders by remember { mutableStateOf<List<OrderDto>>(emptyList()) }
+    var ordersPage by remember { mutableStateOf(0) }
+    var ordersHasMore by remember { mutableStateOf(false) }
+    var loadingMoreOrders by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
         coroutineScope.launch {
             try {
-                val res = NetworkClient.apiService.getMerchantOrders()
-                if (res.success) orders = res.orders
+                val res = NetworkClient.apiService.getMerchantOrders(page = 0)
+                if (res.success) {
+                    orders = res.orders
+                    ordersHasMore = res.page + 1 < res.totalPages
+                }
                 error = null
             } catch (e: HttpException) {
                 // A real, expected error for any account that hasn't registered as a
@@ -79,6 +91,26 @@ internal fun MerchantOrdersView() {
             }
         }
     }
+
+    fun loadMoreOrders() {
+        val nextPage = ordersPage + 1
+        loadingMoreOrders = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMerchantOrders(page = nextPage)
+                if (res.success) {
+                    olderOrders = olderOrders + res.orders
+                    ordersPage = nextPage
+                    ordersHasMore = res.page + 1 < res.totalPages
+                }
+            } catch (_: Exception) {
+                // Non-critical -- leave state as-is, the button just stays visible to retry.
+            } finally {
+                loadingMoreOrders = false
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         while (true) {
             load()
@@ -105,12 +137,12 @@ internal fun MerchantOrdersView() {
         }
     }
 
-    val list = orders
+    val list = (orders ?: emptyList()) + olderOrders
     if (error != null) {
         ErrorCard(error!!, onRetry = ::load)
         return
     }
-    if (list == null) {
+    if (orders == null) {
         SkeletonBlock()
         return
     }
@@ -136,6 +168,20 @@ internal fun MerchantOrdersView() {
                         )
                     }
                 }
+            }
+        }
+        if (ordersHasMore) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Ids.colors.surfaceSoft)
+                    .pressScaleClickable(enabled = !loadingMoreOrders) { loadMoreOrders() }
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+            ) {
+                Text(
+                    if (loadingMoreOrders) "Loading…" else "Load more",
+                    color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                )
             }
         }
     }
@@ -247,13 +293,22 @@ internal fun MyCommerceOrdersView(
     var orders by remember { mutableStateOf<List<OrderDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var cancellingId by remember { mutableStateOf<String?>(null) }
+    // Same page-0-stays-live + separately-accumulated-older-pages design as
+    // MerchantOrdersView above.
+    var olderMyOrders by remember { mutableStateOf<List<OrderDto>>(emptyList()) }
+    var myOrdersPage by remember { mutableStateOf(0) }
+    var myOrdersHasMore by remember { mutableStateOf(false) }
+    var loadingMoreMyOrders by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
         coroutineScope.launch {
             try {
-                val res = NetworkClient.apiService.getMyOrders()
-                if (res.success) orders = res.orders
+                val res = NetworkClient.apiService.getMyOrders(page = 0)
+                if (res.success) {
+                    orders = res.orders
+                    myOrdersHasMore = res.page + 1 < res.totalPages
+                }
                 error = null
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
@@ -262,6 +317,26 @@ internal fun MyCommerceOrdersView(
             }
         }
     }
+
+    fun loadMoreMyOrders() {
+        val nextPage = myOrdersPage + 1
+        loadingMoreMyOrders = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyOrders(page = nextPage)
+                if (res.success) {
+                    olderMyOrders = olderMyOrders + res.orders
+                    myOrdersPage = nextPage
+                    myOrdersHasMore = res.page + 1 < res.totalPages
+                }
+            } catch (_: Exception) {
+                // Non-critical -- leave state as-is, the button just stays visible to retry.
+            } finally {
+                loadingMoreMyOrders = false
+            }
+        }
+    }
+
     // Real poll for order-tracking status, same 4s cadence as Eats' own poll.
     LaunchedEffect(Unit) {
         while (true) {
@@ -297,7 +372,7 @@ internal fun MyCommerceOrdersView(
             EmptyState("No orders yet — browse a merchant's shop and your first order will show up here.", icon = Icons.AutoMirrored.Outlined.ReceiptLong)
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                orders!!.forEach { o ->
+                (orders!! + olderMyOrders).forEach { o ->
                     CommerceOrderRow(o) {
                         if (o.status == "PLACED") {
                             Box(
@@ -325,6 +400,20 @@ internal fun MyCommerceOrdersView(
                         } else if (o.status == "CANCELLED") {
                             CommerceReorderButton(reordering = reorderingId == o.id, onClick = { onReorder(o) })
                         }
+                    }
+                }
+                if (myOrdersHasMore) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Ids.colors.surfaceSoft)
+                            .pressScaleClickable(enabled = !loadingMoreMyOrders) { loadMoreMyOrders() }
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                    ) {
+                        Text(
+                            if (loadingMoreMyOrders) "Loading…" else "Load more",
+                            color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                        )
                     }
                 }
             }

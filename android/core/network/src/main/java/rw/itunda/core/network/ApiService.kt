@@ -1738,7 +1738,7 @@ data class OrderDto(
 
 data class OrderItemDto(val id: String, val orderId: String, val productId: String, val productName: String, val unitPrice: Double, val quantity: Int)
 data class OrderDetailResponse(val success: Boolean, val order: OrderDto, val items: List<OrderItemDto>)
-data class OrdersResponse(val success: Boolean, val orders: List<OrderDto>)
+data class OrdersResponse(val success: Boolean, val orders: List<OrderDto>, val page: Int, val totalPages: Int)
 
 // Real Coupang-style post-delivery Return & Exchange requests (item 166/174) -- see
 // OrderReturnService's own doc comment.
@@ -4007,8 +4007,12 @@ interface ApiService {
     @POST("api/v1/orders")
     suspend fun placeOrder(@Header("Idempotency-Key") idempotencyKey: String, @Body request: PlaceOrderRequest): OrderDetailResponse
 
+    // Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix,
+    // c6e470fb -- see project_itunda_pagination_discard_sweep memory) --
+    // getMyOrders/getMerchantOrders are real Pageable-backed on the backend,
+    // but page was never sent, silently capping order history at 20 rows.
     @GET("api/v1/orders/my-orders")
-    suspend fun getMyOrders(): OrdersResponse
+    suspend fun getMyOrders(@Query("page") page: Int = 0, @Query("size") size: Int = 20): OrdersResponse
 
     @GET("api/v1/orders/{id}")
     suspend fun getOrder(@Path("id") orderId: String): OrderDetailResponse
@@ -4021,7 +4025,7 @@ interface ApiService {
     // bank-mfe's own COMMERCE_STATUS_CHAIN (PLACED -> PACKED -> SHIPPED -> DELIVERED)
     // exactly.
     @GET("api/v1/orders/merchant-orders")
-    suspend fun getMerchantOrders(): OrdersResponse
+    suspend fun getMerchantOrders(@Query("page") page: Int = 0, @Query("size") size: Int = 20): OrdersResponse
 
     @POST("api/v1/orders/{orderId}/status")
     suspend fun updateOrderStatus(@Path("orderId") orderId: String, @Body request: UpdateOrderStatusRequest): OrderDetailResponse
