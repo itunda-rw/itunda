@@ -299,6 +299,7 @@ export interface PartnerMiniAppSubmission {
   bundleUrl: string;
   permissions: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
+  category: string;
   createdAt: string;
   reviewedBy: string | null;
   reviewedAt: string | null;

@@ -8,6 +8,14 @@ import { apiFetch } from './api';
 // this is a browsable catalog only, first bank-mfe client for a backend that previously
 // had zero UI anywhere.
 
+// Real Toss/Kakao mini-app-store reference (2026-09-11, 7 real Kakao 미니앱
+// screenshots) -- a small, deliberately generic taxonomy (no real submitted
+// partner apps yet to justify more granularity), matching the backend's own
+// PartnerMiniAppCategory enum exactly (each label upper-cases to its real
+// enum name, so SearchAndCategoryChips -- which uses the same string as both
+// the displayed label and the selected value -- can be reused as-is).
+export const MINI_APP_CATEGORIES = ['Finance', 'Shopping', 'Productivity', 'Lifestyle', 'Other'];
+
 export interface PartnerMiniApp {
   id: string;
   partnerId: string;
@@ -16,17 +24,23 @@ export interface PartnerMiniApp {
   iconUrl: string | null;
   permissions: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
+  category: string;
   createdAt: string;
 }
 
-// Real pagination-discard fix (2026-09-11, same systemic gap fixed
-// throughout the sweep -- see project_itunda_pagination_discard_sweep
-// memory) -- this real Pageable endpoint's page just wasn't ever sent,
-// silently capping the mini-app catalog at the first 20 approved apps.
-export const fetchMiniAppCatalog = (page = 0) =>
-  apiFetch<{ success: boolean; miniApps: PartnerMiniApp[]; page: number; totalPages: number }>(
-    `/api/v1/mini-apps/catalog?page=${page}&size=20`,
-  );
+// Real Mini-Apps hub pass (2026-09-11) -- was page-based (`?page=`), replaced
+// with a single size=100 "browse all (optionally filtered)" fetch, matching
+// fetchShoppingCatalog's own precedent: the catalog is genuinely tiny today
+// (no seed data, no real onboarded partners), so real pagination is building
+// ahead of real need. Search over the result is client-side (MiniAppsHubScreen).
+export const fetchMiniAppCatalog = (category?: string | null) => {
+  const params = new URLSearchParams();
+  if (category) params.set('category', category.toUpperCase());
+  params.set('size', '100');
+  return apiFetch<{ success: boolean; miniApps: PartnerMiniApp[]; page: number; totalPages: number }>(
+    `/api/v1/mini-apps/catalog?${params.toString()}`,
+  ).then((r) => r.miniApps);
+};
 
 // Real "verify with itunda" identity-verification-for-partners consent flow
 // (Partners product-completeness pass, 2026-09-07) -- ported from Android's own

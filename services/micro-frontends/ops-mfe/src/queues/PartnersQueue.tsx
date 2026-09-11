@@ -45,7 +45,7 @@ function PartnerMiniAppCard({ submission, onDecided }: { submission: PartnerMini
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <div>
         <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{submission.name}</p>
-        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Partner {submission.partnerId}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Partner {submission.partnerId} · {submission.category}</p>
         <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)', marginTop: '4px' }}>{submission.description}</p>
         <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
           Bundle: <span style={{ fontFamily: 'monospace' }}>{submission.bundleUrl}</span>

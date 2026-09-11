@@ -18,6 +18,8 @@ import { MyProductSubscriptionsCard } from './MyProductSubscriptionsCard';
 import { MyProductInquiriesCard } from './MyProductInquiriesCard';
 import { AffiliateEarningsCard } from './AffiliateEarningsCard';
 import { LegalDocumentsCard } from './LegalDocumentsCard';
+import { IconChevronRight } from './icons/ItundaIcons';
+import { MiniAppsHubScreen } from './MiniAppsHubScreen';
 import { fetchMyOrders, type CommerceOrder } from './lib/commerce';
 import { fetchMyEatsOrders, fetchMyFavoriteRestaurants, type EatsOrder } from './lib/eats';
 import { fetchMyFavoriteListings, fetchMyListings } from './lib/marketplace';
@@ -61,9 +63,7 @@ export function MyView() {
   const [myJobPostsCount, setMyJobPostsCount] = useState(0);
   const [myPropertyListingsCount, setMyPropertyListingsCount] = useState(0);
   const [miniApps, setMiniApps] = useState<PartnerMiniApp[]>([]);
-  const [miniAppsPage, setMiniAppsPage] = useState(0);
-  const [miniAppsHasMore, setMiniAppsHasMore] = useState(false);
-  const [loadingMoreMiniApps, setLoadingMoreMiniApps] = useState(false);
+  const [showMiniAppsHub, setShowMiniAppsHub] = useState(false);
   const [myScamReports, setMyScamReports] = useState<ScamReport[]>([]);
 
   useEffect(() => {
@@ -88,24 +88,9 @@ export function MyView() {
     // (capped at 20), not the real total, for any user with more than 20
     // real property listings.
     fetchMyPropertyListings().then((r) => setMyPropertyListingsCount(r.totalElements)).catch(() => {});
-    fetchMiniAppCatalog(0)
-      .then((r) => { setMiniApps(r.miniApps); setMiniAppsHasMore(r.page + 1 < r.totalPages); })
-      .catch(() => {});
+    fetchMiniAppCatalog().then(setMiniApps).catch(() => {});
     fetchMyScamReports().then(setMyScamReports).catch(() => {});
   }, []);
-
-  const loadMoreMiniApps = () => {
-    const nextPage = miniAppsPage + 1;
-    setLoadingMoreMiniApps(true);
-    fetchMiniAppCatalog(nextPage)
-      .then((r) => {
-        setMiniApps((prev) => [...prev, ...r.miniApps]);
-        setMiniAppsPage(nextPage);
-        setMiniAppsHasMore(r.page + 1 < r.totalPages);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingMoreMiniApps(false));
-  };
 
   const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 'var(--itunda-type-scale-13-size)' };
 
@@ -176,7 +161,7 @@ export function MyView() {
             Third-party apps reviewed and approved to run inside itunda.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {miniApps.map((app) => (
+            {miniApps.slice(0, 3).map((app) => (
               <div key={app.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                 {app.iconUrl ? (
                   <img src={app.iconUrl} alt="" style={{ width: '36px', height: '36px', borderRadius: '8px', flexShrink: 0 }} />
@@ -190,13 +175,20 @@ export function MyView() {
               </div>
             ))}
           </div>
-          {miniAppsHasMore && (
-            <button className="itunda-btn itunda-btn-secondary" style={{ marginTop: '10px' }} disabled={loadingMoreMiniApps} onClick={loadMoreMiniApps}>
-              {loadingMoreMiniApps ? 'Loading…' : 'Load more'}
-            </button>
-          )}
+          {/* Real Toss/Kakao mini-app-store reference (2026-09-11) -- promoted this
+              from an inline "Load more" list into its own dedicated hub screen
+              (search + real categories) -- see MiniAppsHubScreen.tsx's own doc
+              comment. */}
+          <button
+            onClick={() => setShowMiniAppsHub(true)}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '12px 0', borderTop: '1px solid var(--itunda-grey-100)', marginTop: '10px' }}
+          >
+            <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-900)' }}>See all</span>
+            <IconChevronRight size={16} color="var(--itunda-grey-400)" />
+          </button>
         </div>
       )}
+      {showMiniAppsHub && <MiniAppsHubScreen onBack={() => setShowMiniAppsHub(false)} />}
     </div>
   );
 }
