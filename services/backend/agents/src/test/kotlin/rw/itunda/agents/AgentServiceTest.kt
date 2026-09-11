@@ -106,6 +106,72 @@ class AgentServiceTest : BehaviorSpec({
         }
     }
 
+    // Real gap found live (2026-09-11, sibling-asymmetry check against cashIn's own
+    // already-verified fraudRuleEngine.evaluate call above): cashOut had ZERO test
+    // coverage at all, not just a missing verify -- the whole function was untested,
+    // matching the "file-level coverage check hides a per-function gap" lesson
+    // project_itunda_fraudruleengine_verify_sweep already recorded for P2pService. A
+    // fresh, fully isolated set of mocks, same reasoning as the commission/rate-limit
+    // Given blocks below -- this file's own shared outer mocks accumulate call counts
+    // across every prior Given block in declaration order.
+    Given("an active agent and an Itunda main account, cashing out") {
+        val agentRepository5 = mockk<AgentRepository>()
+        val cashInRepository5 = mockk<AgentCashInRepository>()
+        val cashOutRepository5 = mockk<AgentCashOutRepository>()
+        val operatorRepository5 = mockk<AgentOperatorRepository>()
+        val tillReconciliationRepository5 = mockk<AgentTillReconciliationRepository>()
+        val accountRepository5 = mockk<AccountRepository>()
+        val ledgerAccountRepository5 = mockk<LedgerAccountRepository>()
+        val ledgerService5 = mockk<LedgerService>()
+        val transactionRepository5 = mockk<TransactionRepository>()
+        val userRepository5 = mockk<UserRepository>()
+        val withdrawalAuthorizationService5 = mockk<AgentWithdrawalAuthorizationService>()
+        val notificationRepository5 = mockk<NotificationRepository>()
+        val pushNotificationService5 = mockk<PushNotificationService>(relaxed = true)
+        val fraudRuleEngine5 = mockk<FraudRuleEngine>(relaxed = true)
+        val rateLimiter5 = mockk<RateLimiter>(relaxed = true)
+        val service5 = AgentService(agentRepository5, operatorRepository5, tillReconciliationRepository5, cashInRepository5, cashOutRepository5, accountRepository5, ledgerAccountRepository5, ledgerService5, transactionRepository5, userRepository5, withdrawalAuthorizationService5, notificationRepository5, pushNotificationService5, fraudRuleEngine5, rateLimiter5)
+
+        val cashAccount = rw.itunda.core.domain.LedgerAccount(agent.cashAccountId, "Agent Cash", BigDecimal("-100000"))
+        every { agentRepository5.findByIdForUpdate(agent.id) } returns Optional.of(agent)
+        every { cashInRepository5.existsByReceiptNumber(any()) } returns false
+        every { cashOutRepository5.existsByReceiptNumber(any()) } returns false
+        every { cashOutRepository5.sumAmountByAgentIdBetween(any(), any(), any()) } returns BigDecimal.ZERO
+        every { accountRepository5.findByAccountNumber(account.accountNumber) } returns account
+        every { withdrawalAuthorizationService5.consume(any(), any(), any()) } returns mockk(relaxed = true)
+        every { ledgerAccountRepository5.findByIdForUpdate(agent.cashAccountId) } returns Optional.of(cashAccount)
+        // Same real "commission honestly skipped, no operator account stubbed" choice
+        // as the cashIn Given block above -- see its own comment.
+        every { accountRepository5.findByUserIdAndType("admin_1", AccountType.MAIN) } returns null
+        every { ledgerService5.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
+        every { cashOutRepository5.save(any()) } answers { firstArg() }
+        every { transactionRepository5.save(any()) } answers { firstArg() }
+        every { notificationRepository5.save(any()) } answers { firstArg() }
+
+        When("an operator pays out cash") {
+            val result = service5.cashOut(agent.id, account.accountNumber, BigDecimal("10000"), "KGL-002", "AUTH-1", "admin_1")
+
+            Then("the customer account is debited and the agent's cash-on-hand is credited back") {
+                result["newBalance"] shouldBe account.balance
+                val legs = slot<List<rw.itunda.core.ledger.LedgerLeg>>()
+                verify(exactly = 1) { ledgerService5.postLedgerTransaction("RWF", capture(legs)) }
+                legs.captured.size shouldBe 2
+                legs.captured[0].accountId shouldBe account.id
+                legs.captured[0].accountType shouldBe LedgerAccountType.WALLET
+                legs.captured[0].direction shouldBe LedgerDirection.DEBIT
+                legs.captured[1].accountId shouldBe agent.cashAccountId
+                legs.captured[1].accountType shouldBe LedgerAccountType.AGENT_CASH
+                legs.captured[1].direction shouldBe LedgerDirection.CREDIT
+                verify(exactly = 1) { cashOutRepository5.save(any()) }
+                verify(exactly = 1) { transactionRepository5.save(any()) }
+            }
+
+            Then("the real fraud engine is actually consulted, not just mocked away") {
+                verify(exactly = 1) { fraudRuleEngine5.evaluate("user_1", null, BigDecimal("10000"), "ledgertxn_2") }
+            }
+        }
+    }
+
     Given("a receipt that has already been accepted") {
         every { cashInRepository.existsByReceiptNumber("KGL-DUPLICATE") } returns true
 
