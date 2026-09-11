@@ -134,6 +134,24 @@ class AccountService(
         return account
     }
 
+    // Real Toss Bank reference (2026-09-12, 12 real "관리"/Manage-screen
+    // screenshots showing "계좌 별명" -- account nickname) -- a real, user-editable
+    // personal label. Blank clears it back to unset (falls back to the account's
+    // own real accountName display elsewhere), matching this codebase's own
+    // "blank means no value" convention (see PartnerService.parsePartnerMiniAppCategory
+    // for the identical shape). Same 404-not-403 ownership check as getAccountById
+    // above, and the same VARCHAR-length-bound convention the 2026-09-05 sweep
+    // applied everywhere else (nickname is VARCHAR(50)).
+    fun setNickname(userId: String, accountId: String, nickname: String?): Account {
+        val account = getAccountById(accountId, userId)
+        val trimmed = nickname?.trim()?.ifBlank { null }
+        if (trimmed != null && trimmed.length > 50) {
+            throw IllegalArgumentException("Account nickname must be 50 characters or fewer")
+        }
+        account.nickname = trimmed
+        return accountRepository.save(account)
+    }
+
     fun quoteTransfer(userId: String, fromAccountId: String?, recipient: String, amount: BigDecimal): TransferQuote {
         require(amount > BigDecimal.ZERO) { "Amount must be greater than zero" }
         require(recipient.isNotBlank()) { "Recipient is required" }

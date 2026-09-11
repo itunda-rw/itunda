@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -25,6 +26,7 @@ import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
 
+data class SetAccountNicknameRequest(val nickname: String?)
 data class QuoteTransferRequest(val amount: BigDecimal, val recipient: String, val fromAccountId: String? = null, val description: String? = null)
 data class ConfirmTransferRequest(val quoteId: String)
 data class SetBudgetRequest(val category: String? = null, val monthlyLimit: BigDecimal)
@@ -48,6 +50,15 @@ class AccountController(
     @GetMapping("/{id}")
     fun getAccountById(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true, "account" to accountService.getAccountById(id, currentUser.userId)))
+
+    // Real Toss Bank reference (2026-09-12, "계좌 별명" -- account nickname) -- see
+    // AccountService.setNickname's own doc comment.
+    @PatchMapping("/{id}/nickname")
+    fun setNickname(
+        @PathVariable id: String,
+        @RequestBody request: SetAccountNicknameRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ) = ResponseEntity.ok(mapOf("success" to true, "account" to accountService.setNickname(currentUser.userId, id, request.nickname)))
 
     // Real transaction history (2026-07-12) -- backs the new card/transaction-
     // history screen on both platforms; see AccountService.getTransactionHistory.

@@ -102,6 +102,57 @@ class AccountServiceTest : BehaviorSpec({
             }
         }
 
+        When("setting a real account nickname") {
+            every { accountRepository.findById("account_1") } returns Optional.of(senderAccount)
+            every { accountRepository.save(any()) } answers { firstArg() }
+
+            val updated = service.setNickname("user_1", "account_1", "  My savings  ")
+
+            Then("it trims and persists the real nickname") {
+                updated.nickname shouldBe "My savings"
+                verify(exactly = 1) { accountRepository.save(senderAccount) }
+            }
+        }
+
+        When("clearing an account nickname with a blank value") {
+            senderAccount.nickname = "Old nickname"
+            every { accountRepository.findById("account_1") } returns Optional.of(senderAccount)
+            every { accountRepository.save(any()) } answers { firstArg() }
+
+            val updated = service.setNickname("user_1", "account_1", "   ")
+
+            Then("it clears back to unset rather than storing whitespace") {
+                updated.nickname shouldBe null
+            }
+        }
+
+        When("setting a nickname longer than the real 50-char bound") {
+            every { accountRepository.findById("account_1") } returns Optional.of(senderAccount)
+
+            Then("it throws IllegalArgumentException before ever saving") {
+                try {
+                    service.setNickname("user_1", "account_1", "x".repeat(51))
+                    error("expected IllegalArgumentException")
+                } catch (e: IllegalArgumentException) {
+                    verify(exactly = 0) { accountRepository.save(any()) }
+                }
+            }
+        }
+
+        When("setting a nickname on a account that belongs to someone else") {
+            val otherAccount = account("account_2", "user_2", "10000")
+            every { accountRepository.findById("account_2") } returns Optional.of(otherAccount)
+
+            Then("it throws AccountNotFoundException, never revealing the account exists") {
+                try {
+                    service.setNickname("user_1", "account_2", "Nickname")
+                    error("expected AccountNotFoundException")
+                } catch (e: AccountNotFoundException) {
+                    verify(exactly = 0) { accountRepository.save(any()) }
+                }
+            }
+        }
+
         When("confirming a valid quote") {
             every { accountRepository.findById("account_1") } returns Optional.of(senderAccount)
             val quote = service.quoteTransfer("user_1", "account_1", "+250788111111", BigDecimal("1000"))

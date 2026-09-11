@@ -78,6 +78,21 @@ class AccountControllerTest : BehaviorSpec({
         }
     }
 
+    Given("a real request to set the caller's own account nickname") {
+        val accountService = mockk<AccountService>()
+        val ctl = controller(accountService = accountService)
+        val updated = account("account_1", "user_1").also { it.nickname = "My savings" }
+        every { accountService.setNickname("user_1", "account_1", "My savings") } returns updated
+
+        When("setting it") {
+            val response = ctl.setNickname("account_1", SetAccountNicknameRequest("My savings"), currentUser)
+            Then("it delegates scoped to the caller's own userId, never a client-supplied one") {
+                verify(exactly = 1) { accountService.setNickname("user_1", "account_1", "My savings") }
+                response.body?.get("account") shouldBe updated
+            }
+        }
+    }
+
     Given("real transaction-history requests") {
         val accountService = mockk<AccountService>()
         val ctl = controller(accountService = accountService)

@@ -63,6 +63,14 @@ class Account(
     @Column(name = "account_name", nullable = false)
     var accountName: String,
 
+    // Real Toss Bank reference (2026-09-12, 12 real "관리"/Manage-screen
+    // screenshots showing "계좌 별명" -- account nickname): a real, user-editable
+    // personal label, distinct from accountName above (a fixed, system-assigned
+    // label set once at creation, e.g. "Youth Account") -- a user can rename this
+    // to whatever they like, accountName never changes.
+    @Column(length = 50)
+    var nickname: String? = null,
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     var type: AccountType,
