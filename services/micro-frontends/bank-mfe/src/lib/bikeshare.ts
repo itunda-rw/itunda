@@ -78,5 +78,11 @@ export const endBikeAssetRental = (sessionId: string, endLatitude: number, endLo
     body: JSON.stringify({ endLatitude, endLongitude }),
   }).then((r) => r.rental);
 
-export const fetchMyBikeAssetRentalHistory = () =>
-  apiFetch<{ success: boolean; rentals: BikeAssetRentalSession[] }>('/api/v1/bikeshare/rentals/my-history?size=20').then((r) => r.rentals);
+// Real pagination-discard fix (2026-09-11, same systemic gap fixed
+// throughout the sweep -- see project_itunda_pagination_discard_sweep
+// memory) -- this real Pageable endpoint's page just wasn't ever sent,
+// silently capping rental history at the most recent 20 rentals.
+export const fetchMyBikeAssetRentalHistory = (page = 0) =>
+  apiFetch<{ success: boolean; rentals: BikeAssetRentalSession[]; page: number; totalPages: number }>(
+    `/api/v1/bikeshare/rentals/my-history?page=${page}&size=20`,
+  );

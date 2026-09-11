@@ -21,6 +21,9 @@ export default function BusView() {
   const [riderError, setRiderError] = useState<string | null>(null);
   const [busyTripId, setBusyTripId] = useState<string | null>(null);
   const [busyBookingId, setBusyBookingId] = useState<string | null>(null);
+  const [myBookingsPage, setMyBookingsPage] = useState(0);
+  const [myBookingsHasMore, setMyBookingsHasMore] = useState(false);
+  const [loadingMoreMyBookings, setLoadingMoreMyBookings] = useState(false);
 
   const loadTrips = () => {
     searchBusTrips(searchOrigin.trim() || undefined, searchDestination.trim() || undefined)
@@ -29,7 +32,22 @@ export default function BusView() {
   };
 
   const loadMyBookings = () => {
-    fetchMyBusBookings().then(setMyBookings).catch(() => {});
+    fetchMyBusBookings(0)
+      .then((r) => { setMyBookings(r.bookings); setMyBookingsHasMore(r.page + 1 < r.totalPages); })
+      .catch(() => {});
+  };
+
+  const loadMoreMyBookings = () => {
+    const nextPage = myBookingsPage + 1;
+    setLoadingMoreMyBookings(true);
+    fetchMyBusBookings(nextPage)
+      .then((r) => {
+        setMyBookings((prev) => [...(prev ?? []), ...r.bookings]);
+        setMyBookingsPage(nextPage);
+        setMyBookingsHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreMyBookings(false));
   };
 
   useEffect(() => {
@@ -199,6 +217,11 @@ export default function BusView() {
                     </button>
                   </div>
                 ))}
+                {myBookingsHasMore && (
+                  <button className="itunda-btn itunda-btn-secondary" disabled={loadingMoreMyBookings} onClick={loadMoreMyBookings}>
+                    {loadingMoreMyBookings ? 'Loading…' : 'Load more'}
+                  </button>
+                )}
               </div>
             </div>
           )}

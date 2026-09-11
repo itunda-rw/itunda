@@ -20,6 +20,9 @@ export default function ParkingView() {
   const [busySpotId, setBusySpotId] = useState<string | null>(null);
   const [endingSession, setEndingSession] = useState(false);
   const [justCompletedSession, setJustCompletedSession] = useState<ParkingSession | null>(null);
+  const [rentalHistoryPage, setRentalHistoryPage] = useState(0);
+  const [rentalHistoryHasMore, setRentalHistoryHasMore] = useState(false);
+  const [loadingMoreRentalHistory, setLoadingMoreRentalHistory] = useState(false);
 
   const loadRenterData = () => {
     if (!navigator.geolocation) {
@@ -34,7 +37,22 @@ export default function ParkingView() {
       },
       () => setRenterError('Could not access your location.'),
     );
-    fetchMyParkingHistory().then(setRentalHistory).catch(() => {});
+    fetchMyParkingHistory(0)
+      .then((r) => { setRentalHistory(r.sessions); setRentalHistoryHasMore(r.page + 1 < r.totalPages); })
+      .catch(() => {});
+  };
+
+  const loadMoreRentalHistory = () => {
+    const nextPage = rentalHistoryPage + 1;
+    setLoadingMoreRentalHistory(true);
+    fetchMyParkingHistory(nextPage)
+      .then((r) => {
+        setRentalHistory((prev) => [...(prev ?? []), ...r.sessions]);
+        setRentalHistoryPage(nextPage);
+        setRentalHistoryHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreRentalHistory(false));
   };
 
   useEffect(() => {
@@ -197,6 +215,11 @@ export default function ParkingView() {
                     <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{(r.totalFare ?? 0).toLocaleString('en-US')} RWF</p>
                   </div>
                 ))}
+                {rentalHistoryHasMore && (
+                  <button className="itunda-btn itunda-btn-secondary" disabled={loadingMoreRentalHistory} onClick={loadMoreRentalHistory}>
+                    {loadingMoreRentalHistory ? 'Loading…' : 'Load more'}
+                  </button>
+                )}
               </div>
             </div>
           )}

@@ -69,5 +69,11 @@ export const cancelBusBooking = (bookingId: string) =>
     headers: { 'Idempotency-Key': randomUUID() },
   }).then((r) => r.booking);
 
-export const fetchMyBusBookings = () =>
-  apiFetch<{ success: boolean; bookings: BusBooking[] }>('/api/v1/bus/bookings/my-history?size=20').then((r) => r.bookings);
+// Real pagination-discard fix (2026-09-11, same systemic gap fixed
+// throughout the sweep -- see project_itunda_pagination_discard_sweep
+// memory) -- this real Pageable endpoint's page just wasn't ever sent,
+// silently capping booking history at the most recent 20 bookings.
+export const fetchMyBusBookings = (page = 0) =>
+  apiFetch<{ success: boolean; bookings: BusBooking[]; page: number; totalPages: number }>(
+    `/api/v1/bus/bookings/my-history?page=${page}&size=20`,
+  );

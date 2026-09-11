@@ -83,11 +83,19 @@ export const requestDesignatedDriverTrip = (
 export const fetchAvailableDesignatedDriverTrips = () =>
   apiFetch<{ success: boolean; trips: DesignatedDriverTrip[] }>('/api/v1/designated-driver/trips/available').then((r) => r.trips);
 
-export const fetchMyDesignatedDriverTrips = () =>
-  apiFetch<{ success: boolean; trips: DesignatedDriverTrip[] }>('/api/v1/designated-driver/trips/my-trips?size=20').then((r) => r.trips);
+// Real pagination-discard fix (2026-09-11, same systemic gap fixed for
+// Ride's own trip history -- see project_itunda_pagination_discard_sweep
+// memory) -- these real Pageable endpoints' page just wasn't ever sent,
+// silently capping trip history at the most recent 20 trips.
+export const fetchMyDesignatedDriverTrips = (page = 0) =>
+  apiFetch<{ success: boolean; trips: DesignatedDriverTrip[]; page: number; totalPages: number }>(
+    `/api/v1/designated-driver/trips/my-trips?page=${page}&size=20`,
+  );
 
-export const fetchMyDesignatedDriverDriverTrips = () =>
-  apiFetch<{ success: boolean; trips: DesignatedDriverTrip[] }>('/api/v1/designated-driver/trips/my-driver-trips?size=20').then((r) => r.trips);
+export const fetchMyDesignatedDriverDriverTrips = (page = 0) =>
+  apiFetch<{ success: boolean; trips: DesignatedDriverTrip[]; page: number; totalPages: number }>(
+    `/api/v1/designated-driver/trips/my-driver-trips?page=${page}&size=20`,
+  );
 
 export const acceptDesignatedDriverTrip = (tripId: string) =>
   apiFetch<{ success: boolean; trip: DesignatedDriverTrip }>(`/api/v1/designated-driver/trips/${tripId}/accept`, {

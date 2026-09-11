@@ -62,9 +62,33 @@ export function DesignatedDriverView() {
   const [requesting, setRequesting] = useState(false);
   const [tripError, setTripError] = useState<string | null>(null);
   const [busyTripId, setBusyTripId] = useState<string | null>(null);
+  // Real pagination fix (2026-09-11): page 0 is polled every 4s for real-time
+  // active-trip tracking, so it must always stay a live, page-0-only fetch.
+  // olderPastTrips is a separate accumulator populated only by
+  // loadMorePastTrips, never touched by the poll -- same design as the Ride
+  // trip-history fix.
+  const [olderPastTrips, setOlderPastTrips] = useState<DesignatedDriverTrip[]>([]);
+  const [pastTripsPage, setPastTripsPage] = useState(0);
+  const [pastTripsHasMore, setPastTripsHasMore] = useState(false);
+  const [loadingMorePastTrips, setLoadingMorePastTrips] = useState(false);
 
   const loadMyTrips = () => {
-    fetchMyDesignatedDriverTrips().then(setMyTrips).catch((err) => setTripError(err instanceof ApiError ? err.message : t('common.loadError')));
+    fetchMyDesignatedDriverTrips(0)
+      .then((r) => { setMyTrips(r.trips); setPastTripsHasMore(r.page + 1 < r.totalPages); })
+      .catch((err) => setTripError(err instanceof ApiError ? err.message : t('common.loadError')));
+  };
+
+  const loadMorePastTrips = () => {
+    const nextPage = pastTripsPage + 1;
+    setLoadingMorePastTrips(true);
+    fetchMyDesignatedDriverTrips(nextPage)
+      .then((r) => {
+        setOlderPastTrips((prev) => [...prev, ...r.trips.filter((t) => t.status === 'COMPLETED' || t.status === 'CANCELLED')]);
+        setPastTripsPage(nextPage);
+        setPastTripsHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMorePastTrips(false));
   };
 
   useEffect(() => {
@@ -75,7 +99,7 @@ export function DesignatedDriverView() {
   }, [subTab]);
 
   const activeTrip = (myTrips ?? []).find((t) => t.status === 'REQUESTED' || t.status === 'ACCEPTED' || t.status === 'DRIVING');
-  const pastTrips = (myTrips ?? []).filter((t) => t.status === 'COMPLETED' || t.status === 'CANCELLED');
+  const pastTrips = [...(myTrips ?? []).filter((t) => t.status === 'COMPLETED' || t.status === 'CANCELLED'), ...olderPastTrips];
 
   const handleRequestTrip = async () => {
     if (!pickup || !dropoff || !vehicleMake.trim() || !vehicleModel.trim() || !vehiclePlate.trim()) return;
@@ -119,6 +143,12 @@ export function DesignatedDriverView() {
   const [myDriverTrips, setMyDriverTrips] = useState<DesignatedDriverTrip[] | null>(null);
   const [driverError, setDriverError] = useState<string | null>(null);
   const [busyDriverTripId, setBusyDriverTripId] = useState<string | null>(null);
+  // Same page-0-stays-live + separately-accumulated-older-pages design as
+  // the customer side above.
+  const [olderPastDriverTrips, setOlderPastDriverTrips] = useState<DesignatedDriverTrip[]>([]);
+  const [pastDriverTripsPage, setPastDriverTripsPage] = useState(0);
+  const [pastDriverTripsHasMore, setPastDriverTripsHasMore] = useState(false);
+  const [loadingMorePastDriverTrips, setLoadingMorePastDriverTrips] = useState(false);
 
   const loadDriver = () => {
     fetchMyDesignatedDriverProfile()
@@ -134,9 +164,22 @@ export function DesignatedDriverView() {
   }, [subTab]);
 
   const loadDriverTrips = () => {
-    Promise.all([fetchAvailableDesignatedDriverTrips(), fetchMyDesignatedDriverDriverTrips()])
-      .then(([a, m]) => { setAvailableTrips(a); setMyDriverTrips(m); })
+    Promise.all([fetchAvailableDesignatedDriverTrips(), fetchMyDesignatedDriverDriverTrips(0)])
+      .then(([a, m]) => { setAvailableTrips(a); setMyDriverTrips(m.trips); setPastDriverTripsHasMore(m.page + 1 < m.totalPages); })
       .catch((err) => setDriverError(err instanceof ApiError ? err.message : t('common.loadError')));
+  };
+
+  const loadMorePastDriverTrips = () => {
+    const nextPage = pastDriverTripsPage + 1;
+    setLoadingMorePastDriverTrips(true);
+    fetchMyDesignatedDriverDriverTrips(nextPage)
+      .then((r) => {
+        setOlderPastDriverTrips((prev) => [...prev, ...r.trips.filter((t) => t.status === 'COMPLETED' || t.status === 'CANCELLED')]);
+        setPastDriverTripsPage(nextPage);
+        setPastDriverTripsHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMorePastDriverTrips(false));
   };
 
   useEffect(() => {
@@ -197,7 +240,7 @@ export function DesignatedDriverView() {
   };
 
   const activeDriverTrips = (myDriverTrips ?? []).filter((t) => t.status === 'ACCEPTED' || t.status === 'DRIVING');
-  const pastDriverTrips = (myDriverTrips ?? []).filter((t) => t.status === 'COMPLETED' || t.status === 'CANCELLED');
+  const pastDriverTrips = [...(myDriverTrips ?? []).filter((t) => t.status === 'COMPLETED' || t.status === 'CANCELLED'), ...olderPastDriverTrips];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -267,6 +310,11 @@ export function DesignatedDriverView() {
               <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Past trips</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {pastTrips.map((t) => <DesignatedDriverTripCard key={t.id} trip={t} />)}
+                {pastTripsHasMore && (
+                  <button className="itunda-btn itunda-btn-secondary" disabled={loadingMorePastTrips} onClick={loadMorePastTrips}>
+                    {loadingMorePastTrips ? 'Loading…' : 'Load more'}
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -361,6 +409,11 @@ export function DesignatedDriverView() {
                   <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Completed</h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {pastDriverTrips.map((t) => <DesignatedDriverTripCard key={t.id} trip={t} />)}
+                    {pastDriverTripsHasMore && (
+                      <button className="itunda-btn itunda-btn-secondary" disabled={loadingMorePastDriverTrips} onClick={loadMorePastDriverTrips}>
+                        {loadingMorePastDriverTrips ? 'Loading…' : 'Load more'}
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

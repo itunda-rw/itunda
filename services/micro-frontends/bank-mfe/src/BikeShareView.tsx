@@ -21,6 +21,9 @@ export default function BikeShareView() {
   const [busyBikeId, setBusyBikeId] = useState<string | null>(null);
   const [endingRental, setEndingRental] = useState(false);
   const [justCompletedRental, setJustCompletedRental] = useState<BikeAssetRentalSession | null>(null);
+  const [rentalHistoryPage, setRentalHistoryPage] = useState(0);
+  const [rentalHistoryHasMore, setRentalHistoryHasMore] = useState(false);
+  const [loadingMoreRentalHistory, setLoadingMoreRentalHistory] = useState(false);
 
   const loadRiderData = () => {
     if (!navigator.geolocation) {
@@ -35,7 +38,22 @@ export default function BikeShareView() {
       },
       () => setRiderError('Could not access your location.'),
     );
-    fetchMyBikeAssetRentalHistory().then(setRentalHistory).catch(() => {});
+    fetchMyBikeAssetRentalHistory(0)
+      .then((r) => { setRentalHistory(r.rentals); setRentalHistoryHasMore(r.page + 1 < r.totalPages); })
+      .catch(() => {});
+  };
+
+  const loadMoreRentalHistory = () => {
+    const nextPage = rentalHistoryPage + 1;
+    setLoadingMoreRentalHistory(true);
+    fetchMyBikeAssetRentalHistory(nextPage)
+      .then((r) => {
+        setRentalHistory((prev) => [...(prev ?? []), ...r.rentals]);
+        setRentalHistoryPage(nextPage);
+        setRentalHistoryHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreRentalHistory(false));
   };
 
   useEffect(() => {
@@ -230,6 +248,11 @@ export default function BikeShareView() {
                     <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{(r.totalFare ?? 0).toLocaleString('en-US')} RWF</p>
                   </div>
                 ))}
+                {rentalHistoryHasMore && (
+                  <button className="itunda-btn itunda-btn-secondary" disabled={loadingMoreRentalHistory} onClick={loadMoreRentalHistory}>
+                    {loadingMoreRentalHistory ? 'Loading…' : 'Load more'}
+                  </button>
+                )}
               </div>
             </div>
           )}

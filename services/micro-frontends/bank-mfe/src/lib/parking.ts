@@ -68,5 +68,11 @@ export const endParkingSession = (sessionId: string) =>
     headers: { 'Idempotency-Key': randomUUID() },
   }).then((r) => r.session);
 
-export const fetchMyParkingHistory = () =>
-  apiFetch<{ success: boolean; sessions: ParkingSession[] }>('/api/v1/parking/sessions/my-history?size=20').then((r) => r.sessions);
+// Real pagination-discard fix (2026-09-11, same systemic gap fixed
+// throughout the sweep -- see project_itunda_pagination_discard_sweep
+// memory) -- this real Pageable endpoint's page just wasn't ever sent,
+// silently capping parking history at the most recent 20 sessions.
+export const fetchMyParkingHistory = (page = 0) =>
+  apiFetch<{ success: boolean; sessions: ParkingSession[]; page: number; totalPages: number }>(
+    `/api/v1/parking/sessions/my-history?page=${page}&size=20`,
+  );
