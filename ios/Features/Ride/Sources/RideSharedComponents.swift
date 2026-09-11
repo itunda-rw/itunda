@@ -196,6 +196,72 @@ struct RideTripCard<Action: View>: View {
     }
 }
 
+// Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix and
+// Android's port -- see project_itunda_pagination_discard_sweep memory),
+// extracted from RideScreenView/RideDriverContent (RideScreenView crossed 500
+// lines for the first time adding pagination state) into a shared section:
+// the "past trips" list + "Load more" button, identical for both passenger
+// and driver except for the per-trip extra content (review/tip/report vs
+// none).
+struct PastRideTripsSection: View {
+    let trips: [RideTripDto]
+    let title: String
+    let hasMore: Bool
+    let loadingMore: Bool
+    let onLoadMore: () -> Void
+    var itemContent: ((RideTripDto) -> AnyView)? = nil
+
+    var body: some View {
+        if !trips.isEmpty {
+            Group {
+                Text(title).bold().foregroundColor(IDS.Colors.textPrimary)
+                ForEach(trips, id: \.id) { trip in
+                    if let itemContent {
+                        RideTripCard(trip: trip) { itemContent(trip) }
+                    } else {
+                        RideTripCard(trip: trip)
+                    }
+                }
+                if hasMore {
+                    Button(loadingMore ? "Loading…" : "Load more") { onLoadMore() }
+                        .disabled(loadingMore)
+                }
+            }
+        }
+    }
+}
+
+// Extracted from RideScreenView (2026-09-11, same file-size-lint pass as
+// PastRideTripsSection above -- still over 500 lines after that first
+// extraction) -- the "Saved places" map-bookmark quick-select row, a
+// genuinely self-contained block needing only the bookmark list and a
+// selection callback.
+struct SavedPlacesQuickSelect: View {
+    let bookmarks: [MapBookmarkDto]
+    let onSelect: (MapBookmarkDto) -> Void
+
+    var body: some View {
+        if !bookmarks.isEmpty {
+            Text("Saved places").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(bookmarks) { bookmark in
+                        Button(action: { onSelect(bookmark) }) {
+                            HStack(spacing: 6) {
+                                Circle().fill(colorFromHex(bookmark.color)).frame(width: 8, height: 8)
+                                Text(bookmark.displayName).font(.caption).bold().lineLimit(1)
+                            }
+                            .foregroundColor(IDS.Colors.textPrimary)
+                            .padding(.horizontal, 12).padding(.vertical, 10)
+                            .background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 private func rideTripStatusLabel(_ trip: RideTripDto) -> String {
     if trip.status == "REQUESTED", trip.scheduledFor != nil { return "Scheduled" }
     switch trip.status {

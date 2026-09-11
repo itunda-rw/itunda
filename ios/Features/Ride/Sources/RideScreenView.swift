@@ -139,6 +139,16 @@ private struct RidePassengerContent: View {
     @State private var scheduleHours = ""
     @State private var stops: [RideStopInput] = []
     @State private var myTrips: [RideTripDto] = []
+    // Real pagination fix (2026-09-11, ported from bank-mfe's own fix and
+    // Android's port -- see project_itunda_pagination_discard_sweep memory):
+    // page 0 is polled every 4s for real-time active-trip tracking, so it
+    // must always stay a live, page-0-only fetch. olderPastTrips is a
+    // separate accumulator populated only by loadMorePastTrips, never
+    // touched by the poll.
+    @State private var olderPastTrips: [RideTripDto] = []
+    @State private var pastTripsPage = 0
+    @State private var pastTripsHasMore = false
+    @State private var loadingMorePastTrips = false
     @State private var activeTripStops: [RideTripStopDto] = []
     @State private var requesting = false
     @State private var busyTripId: String?
@@ -175,7 +185,9 @@ private struct RidePassengerContent: View {
     private var activeTrip: RideTripDto? {
         myTrips.first { $0.status == "REQUESTED" || $0.status == "DRIVER_ASSIGNED" || $0.status == "IN_PROGRESS" }
     }
-    private var pastTrips: [RideTripDto] { myTrips.filter { $0.status == "COMPLETED" || $0.status == "CANCELLED" } }
+    private var pastTrips: [RideTripDto] {
+        myTrips.filter { $0.status == "COMPLETED" || $0.status == "CANCELLED" } + olderPastTrips
+    }
 
     var body: some View {
         ScrollView {
@@ -242,27 +254,10 @@ private struct RidePassengerContent: View {
                             IdsTextField("Dropoff latitude", text: $dropoffLat, keyboardType: .decimalPad)
                             IdsTextField("Dropoff longitude", text: $dropoffLng, keyboardType: .decimalPad)
                         }
-                        if !bookmarks.isEmpty {
-                            Text("Saved places").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    ForEach(bookmarks) { bookmark in
-                                        Button(action: {
-                                            dropoffAddress = bookmark.displayName
-                                            dropoffLat = String(bookmark.latitude)
-                                            dropoffLng = String(bookmark.longitude)
-                                        }) {
-                                            HStack(spacing: 6) {
-                                                Circle().fill(colorFromHex(bookmark.color)).frame(width: 8, height: 8)
-                                                Text(bookmark.displayName).font(.caption).bold().lineLimit(1)
-                                            }
-                                            .foregroundColor(IDS.Colors.textPrimary)
-                                            .padding(.horizontal, 12).padding(.vertical, 10)
-                                            .background(Color(.tertiarySystemBackground)).cornerRadius(10)
-                                        }
-                                    }
-                                }
-                            }
+                        SavedPlacesQuickSelect(bookmarks: bookmarks) { bookmark in
+                            dropoffAddress = bookmark.displayName
+                            dropoffLat = String(bookmark.latitude)
+                            dropoffLng = String(bookmark.longitude)
                         }
                         ForEach($stops) { $stop in
                             VStack(alignment: .leading, spacing: 6) {
@@ -310,33 +305,39 @@ private struct RidePassengerContent: View {
                     error: contactError
                 )
 
-                if !pastTrips.isEmpty {
-                    Text("Past rides").bold().foregroundColor(IDS.Colors.textPrimary)
-                    ForEach(pastTrips, id: \.id) { trip in
-                        RideTripCard(trip: trip) {
-                            if trip.status == "COMPLETED", trip.driverId != nil, !reviewedTripIds.contains(trip.id) {
-                                RideReviewRow(busy: busyTripId == trip.id) { rating, comment in
-                                    await submitReview(trip.id, rating, comment)
+                PastRideTripsSection(
+                    trips: pastTrips,
+                    title: "Past rides",
+                    hasMore: pastTripsHasMore,
+                    loadingMore: loadingMorePastTrips,
+                    onLoadMore: { Task { await loadMorePastTrips() } },
+                    itemContent: { trip in
+                        AnyView(
+                            Group {
+                                if trip.status == "COMPLETED", trip.driverId != nil, !reviewedTripIds.contains(trip.id) {
+                                    RideReviewRow(busy: busyTripId == trip.id) { rating, comment in
+                                        await submitReview(trip.id, rating, comment)
+                                    }
+                                }
+                                if trip.status == "COMPLETED", trip.driverId != nil, trip.tipAmount == nil, !tippedTripIds.contains(trip.id) {
+                                    TipDriverPrompt(tripId: trip.id, onTipped: { tippedTripIds.insert(trip.id) })
+                                }
+                                // Real "report an issue" hand-off (Support product-
+                                // completeness pass, 2026-09-08) -- mirrors bank-mfe's
+                                // RidePassengerView's own identical button, see
+                                // SupportScreenView.swift's own doc comment.
+                                if trip.status == "COMPLETED" {
+                                    Button(action: { onReportIssue(trip.transactionId) }) {
+                                        Text("Report an issue")
+                                            .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                            .padding(.horizontal, 12).padding(.vertical, 8)
+                                            .background(IDS.Colors.chipBackground).cornerRadius(8)
+                                    }
                                 }
                             }
-                            if trip.status == "COMPLETED", trip.driverId != nil, trip.tipAmount == nil, !tippedTripIds.contains(trip.id) {
-                                TipDriverPrompt(tripId: trip.id, onTipped: { tippedTripIds.insert(trip.id) })
-                            }
-                            // Real "report an issue" hand-off (Support product-
-                            // completeness pass, 2026-09-08) -- mirrors bank-mfe's
-                            // RidePassengerView's own identical button, see
-                            // SupportScreenView.swift's own doc comment.
-                            if trip.status == "COMPLETED" {
-                                Button(action: { onReportIssue(trip.transactionId) }) {
-                                    Text("Report an issue")
-                                        .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
-                                        .padding(.horizontal, 12).padding(.vertical, 8)
-                                        .background(IDS.Colors.chipBackground).cornerRadius(8)
-                                }
-                            }
-                        }
+                        )
                     }
-                }
+                )
             }
             .padding(.horizontal)
         }
@@ -360,7 +361,19 @@ private struct RidePassengerContent: View {
     }
 
     private func loadTrips() async {
-        myTrips = (try? await NetworkClient.shared.getMyRideTrips().trips) ?? myTrips
+        guard let r = try? await NetworkClient.shared.getMyRideTrips(page: 0) else { return }
+        myTrips = r.trips
+        pastTripsHasMore = r.page + 1 < r.totalPages
+    }
+
+    private func loadMorePastTrips() async {
+        let nextPage = pastTripsPage + 1
+        loadingMorePastTrips = true
+        defer { loadingMorePastTrips = false }
+        guard let r = try? await NetworkClient.shared.getMyRideTrips(page: nextPage) else { return }
+        olderPastTrips += r.trips.filter { $0.status == "COMPLETED" || $0.status == "CANCELLED" }
+        pastTripsPage = nextPage
+        pastTripsHasMore = r.page + 1 < r.totalPages
     }
 
     private func loadActiveTripStops() async {

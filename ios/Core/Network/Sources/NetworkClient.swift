@@ -948,6 +948,12 @@ public struct TipRideTripRequest: Encodable { public let amount: Double; public 
 public struct RideDriverLocationDto: Decodable { public let latitude: Double; public let longitude: Double; public let updatedAt: String }
 public struct RideDriverLocationResponse: Decodable { public let success: Bool; public let location: RideDriverLocationDto? }
 public struct RideTripsResponse: Decodable { public let success: Bool; public let trips: [RideTripDto] }
+// Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix,
+// fb8f2e3c, and Android's port, 43b90515 -- see
+// project_itunda_pagination_discard_sweep memory) -- getMyTrips/
+// getMyDriverTrips are real Pageable-backed on the backend, but page was
+// never sent, silently capping trip history at 20 rows.
+public struct RideTripsPageResponse: Decodable { public let success: Bool; public let trips: [RideTripDto]; public let page: Int; public let totalPages: Int }
 public struct StartRideTripRequest: Encodable { public let pin: String }
 public struct RideTripPinResponse: Decodable { public let success: Bool; public let pin: String }
 // Real Kakao T-style multi-stop rides (item 214) -- see the backend's RideTripStop.kt
@@ -1628,8 +1634,18 @@ extension NetworkClient {
     }
 
     public func getAvailableRideTrips() async throws -> RideTripsResponse { try await get("api/v1/rides/trips/available") }
-    public func getMyRideTrips() async throws -> RideTripsResponse { try await get("api/v1/rides/trips/my-trips") }
-    public func getMyRideDriverTrips() async throws -> RideTripsResponse { try await get("api/v1/rides/trips/my-driver-trips") }
+    public func getMyRideTrips(page: Int = 0, size: Int = 20) async throws -> RideTripsPageResponse {
+        try await get("api/v1/rides/trips/my-trips", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
+    public func getMyRideDriverTrips(page: Int = 0, size: Int = 20) async throws -> RideTripsPageResponse {
+        try await get("api/v1/rides/trips/my-driver-trips", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     public func acceptRideTrip(id: String) async throws -> RideTripResponse {
         try await authenticatedPost("api/v1/rides/trips/\(id)/accept", body: EmptyBody(), idempotencyKey: UUID().uuidString)

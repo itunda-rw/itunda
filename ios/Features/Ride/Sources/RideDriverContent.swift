@@ -15,6 +15,14 @@ struct RideDriverContent: View {
     @State private var registering = false
     @State private var availableTrips: [RideTripDto] = []
     @State private var myDriverTrips: [RideTripDto] = []
+    // Real pagination fix (2026-09-11, ported from bank-mfe's own fix and
+    // Android's port -- see project_itunda_pagination_discard_sweep memory):
+    // same page-0-stays-live + separately-accumulated-older-pages design as
+    // RideScreenView's own.
+    @State private var olderPastDriverTrips: [RideTripDto] = []
+    @State private var pastDriverTripsPage = 0
+    @State private var pastDriverTripsHasMore = false
+    @State private var loadingMorePastDriverTrips = false
     @State private var activeTripStops: [String: [RideTripStopDto]] = [:]
     @State private var busyTripId: String?
     @State private var error: String?
@@ -39,7 +47,9 @@ struct RideDriverContent: View {
     @State private var licenseNumberInput = ""
 
     private var activeDriverTrips: [RideTripDto] { myDriverTrips.filter { $0.status == "DRIVER_ASSIGNED" || $0.status == "IN_PROGRESS" } }
-    private var pastDriverTrips: [RideTripDto] { myDriverTrips.filter { $0.status == "COMPLETED" || $0.status == "CANCELLED" } }
+    private var pastDriverTrips: [RideTripDto] {
+        myDriverTrips.filter { $0.status == "COMPLETED" || $0.status == "CANCELLED" } + olderPastDriverTrips
+    }
 
     var body: some View {
         ScrollView {
@@ -216,10 +226,13 @@ struct RideDriverContent: View {
                         }
                     }
 
-                    if !pastDriverTrips.isEmpty {
-                        Text("Past trips").bold().foregroundColor(IDS.Colors.textPrimary)
-                        ForEach(pastDriverTrips, id: \.id) { trip in RideTripCard(trip: trip) }
-                    }
+                    PastRideTripsSection(
+                        trips: pastDriverTrips,
+                        title: "Past trips",
+                        hasMore: pastDriverTripsHasMore,
+                        loadingMore: loadingMorePastDriverTrips,
+                        onLoadMore: { Task { await loadMorePastDriverTrips() } }
+                    )
                 }
             }
             .padding(.horizontal)
@@ -257,9 +270,22 @@ struct RideDriverContent: View {
         loaded = true
     }
 
+    private func loadMorePastDriverTrips() async {
+        let nextPage = pastDriverTripsPage + 1
+        loadingMorePastDriverTrips = true
+        defer { loadingMorePastDriverTrips = false }
+        guard let r = try? await NetworkClient.shared.getMyRideDriverTrips(page: nextPage) else { return }
+        olderPastDriverTrips += r.trips.filter { $0.status == "COMPLETED" || $0.status == "CANCELLED" }
+        pastDriverTripsPage = nextPage
+        pastDriverTripsHasMore = r.page + 1 < r.totalPages
+    }
+
     private func loadTrips() async {
         availableTrips = (try? await NetworkClient.shared.getAvailableRideTrips().trips) ?? availableTrips
-        myDriverTrips = (try? await NetworkClient.shared.getMyRideDriverTrips().trips) ?? myDriverTrips
+        if let r = try? await NetworkClient.shared.getMyRideDriverTrips(page: 0) {
+            myDriverTrips = r.trips
+            pastDriverTripsHasMore = r.page + 1 < r.totalPages
+        }
         for trip in activeDriverTrips {
             if let stops = try? await NetworkClient.shared.getRideTripStops(tripId: trip.id).stops, !stops.isEmpty {
                 activeTripStops[trip.id] = stops
