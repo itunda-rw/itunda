@@ -3,19 +3,26 @@ package rw.itunda.calling
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Lazy
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.CallEndReason
 import rw.itunda.core.domain.CallSession
 import rw.itunda.core.domain.CallType
+import rw.itunda.core.domain.Notification
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.CallSessionRepository
 import rw.itunda.core.repository.ConversationRepository
+import rw.itunda.core.repository.NotificationRepository
+import rw.itunda.core.repository.UserRepository
 
 class CallNotFoundException(message: String) : RuntimeException(message)
 class CallNotParticipantException(message: String) : RuntimeException(message)
@@ -55,10 +62,47 @@ class CallService(
     // Kotlin compiler, since the module graph itself has no compile-time cycle.
     @Lazy private val realtimeMessagePublisher: RealtimeMessagePublisher,
     private val rateLimiter: RateLimiter,
+    private val userRepository: UserRepository,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
     @Value("\${itunda.turn.secret:}") private val turnSecret: String,
 ) {
+    private val log = LoggerFactory.getLogger(CallService::class.java)
+
     companion object {
         private val TURN_CREDENTIAL_TTL = Duration.ofHours(6)
+    }
+
+    /** Real durable-notification fallback for a callee with no live WebSocket session --
+     * `realtimeMessagePublisher.publishCallRing` is a silent no-op when nobody's
+     * connected (`MessagingWebSocketHandler.sendToUser`'s own doc comment). Matches
+     * `MessagingService.sendMessage`'s own established "save a Notification row, push
+     * after commit" convention for exactly this offline-recipient case -- a missed call
+     * is the single most important case for that fallback to exist at all. */
+    private fun notifyIncomingCall(calleeId: String, callerId: String, callId: String, callType: CallType) {
+        val callerName = userRepository.findById(callerId).map { "${it.firstName} ${it.lastName}" }.orElse("Someone")
+        val body = "Incoming ${callType.name.lowercase()} call"
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = calleeId, type = "INCOMING_CALL",
+                title = callerName, body = body,
+                isRead = false, createdAt = Instant.now(), dataJson = "{\"callId\":\"$callId\"}",
+            ),
+        )
+        val send = {
+            try {
+                pushNotificationService.sendToUser(calleeId, callerName, body, mapOf("callId" to callId))
+            } catch (e: Exception) {
+                log.warn("Could not send incoming-call push for call {}", callId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     @Transactional
@@ -76,6 +120,7 @@ class CallService(
             CallSession(id = "call_session_${UUID.randomUUID()}", conversationId = conversationId, callerId = callerId, calleeId = calleeId, callType = callType),
         )
         realtimeMessagePublisher.publishCallRing(calleeId, call.id, callerId, callType)
+        notifyIncomingCall(calleeId, callerId, call.id, callType)
         return call
     }
 

@@ -13,9 +13,12 @@ import rw.itunda.core.domain.CallEndReason
 import rw.itunda.core.domain.CallSession
 import rw.itunda.core.domain.CallType
 import rw.itunda.core.domain.Conversation
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.CallSessionRepository
 import rw.itunda.core.repository.ConversationRepository
+import rw.itunda.core.repository.NotificationRepository
+import rw.itunda.core.repository.UserRepository
 import java.util.Optional
 
 class CallServiceTest : BehaviorSpec({
@@ -25,8 +28,13 @@ class CallServiceTest : BehaviorSpec({
         val conversationRepository = mockk<ConversationRepository>()
         val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val userRepository = mockk<UserRepository>(relaxed = true)
+        every { userRepository.findById(any()) } returns Optional.empty()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         every { callSessionRepository.save(any()) } answers { firstArg() }
-        val service = CallService(callSessionRepository, conversationRepository, realtimeMessagePublisher, rateLimiter, "test-turn-secret")
+        val service = CallService(callSessionRepository, conversationRepository, realtimeMessagePublisher, rateLimiter, userRepository, notificationRepository, pushNotificationService, "test-turn-secret")
         return service to callSessionRepository
     }
 
@@ -35,8 +43,13 @@ class CallServiceTest : BehaviorSpec({
         val conversationRepository = mockk<ConversationRepository>()
         val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val userRepository = mockk<UserRepository>(relaxed = true)
+        every { userRepository.findById(any()) } returns Optional.empty()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         every { callSessionRepository.save(any()) } answers { firstArg() }
-        val service = CallService(callSessionRepository, conversationRepository, realtimeMessagePublisher, rateLimiter, "test-turn-secret")
+        val service = CallService(callSessionRepository, conversationRepository, realtimeMessagePublisher, rateLimiter, userRepository, notificationRepository, pushNotificationService, "test-turn-secret")
 
         val conversation = Conversation(id = "conversation_1", participantAId = "user_a", participantBId = "user_b")
         every { conversationRepository.findById("conversation_1") } returns Optional.of(conversation)
@@ -52,6 +65,15 @@ class CallServiceTest : BehaviorSpec({
             }
             Then("it real-pushes a ring event to the real callee, not the caller") {
                 verify(exactly = 1) { realtimeMessagePublisher.publishCallRing("user_b", any(), "user_a", CallType.VOICE) }
+            }
+
+            // Real gap found live (sibling comparison against MessagingService.sendMessage's
+            // own "save a Notification row, push after commit" convention for an offline
+            // recipient, 2026-09-13): initiateCall never durably notified the callee at all --
+            // publishCallRing is a silent no-op when the callee has no live WebSocket session.
+            Then("it real-persists and pushes a durable incoming-call notification, not just the live WS frame") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_b" && it.type == "INCOMING_CALL" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_b", any(), any(), any()) }
             }
         }
     }
@@ -122,7 +144,10 @@ class CallServiceTest : BehaviorSpec({
         val conversationRepository = mockk<ConversationRepository>()
         val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>()
-        val service = CallService(callSessionRepository, conversationRepository, realtimeMessagePublisher, rateLimiter, "test-turn-secret")
+        val userRepository = mockk<UserRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = CallService(callSessionRepository, conversationRepository, realtimeMessagePublisher, rateLimiter, userRepository, notificationRepository, pushNotificationService, "test-turn-secret")
         every { rateLimiter.checkLimit("call:initiate:user_a", limit = 10, window = any()) } throws RateLimitExceededException("Too many requests")
 
         When("initiating a real call") {
