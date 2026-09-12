@@ -71,10 +71,13 @@ export function MyView() {
     // blank the rest of this real personal-activity summary.
     fetchMyOrders(0).then((r) => setShopOrders(r.orders)).catch(() => {});
     fetchMyEatsOrders(0).then((r) => setEatsOrders(r.orders)).catch(() => {});
-    fetchMyFavoriteListings().then((r) => setFavoriteListingsCount(r.length)).catch(() => {});
-    fetchMyFavoriteJobPosts().then((r) => setFavoriteJobPostsCount(r.length)).catch(() => {});
-    fetchMyFavoritePropertyListings().then((r) => setFavoritePropertyListingsCount(r.length)).catch(() => {});
-    fetchMyFavoriteRestaurants().then((r) => setFavoriteRestaurantsCount(r.length)).catch(() => {});
+    // Real accuracy fix (2026-09-12, same pass as the posted-item count fixes
+    // below): these 4 badges previously showed page 1's item count (capped at
+    // 20), not the real total, for any user with more than 20 real favorites.
+    fetchMyFavoriteListings().then((r) => setFavoriteListingsCount(r.totalElements)).catch(() => {});
+    fetchMyFavoriteJobPosts().then((r) => setFavoriteJobPostsCount(r.totalElements)).catch(() => {});
+    fetchMyFavoritePropertyListings().then((r) => setFavoritePropertyListingsCount(r.totalElements)).catch(() => {});
+    fetchMyFavoriteRestaurants().then((r) => setFavoriteRestaurantsCount(r.totalElements)).catch(() => {});
     // Real accuracy fix (2026-09-09, same pass as the fetchMyListings pagination
     // fix): this badge previously showed page 1's item count (capped at 20),
     // not the real total, for any user with more than 20 real listings.

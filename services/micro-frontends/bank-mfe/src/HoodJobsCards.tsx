@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { EmptyState, ErrorCard } from './EmptyState';
+import { EmptyState } from './EmptyState';
 import { showToast } from './Toast';
 import { useI18n } from './i18n/I18nContext';
 import { ApiError, getStoredUser } from './lib/api';
-import { applyToJob, createJobPost, fetchApplicationsForJobPost, fetchJobPost, fetchJobPostReviews, fetchMyFavoriteJobPosts, fetchMyJobApplications, markJobPostFilled, removeJobPost, removeJobPostFavorite, respondToJobApplication, submitJobPostReview, type FavoriteJobPost, type JobApplication, type JobCategory, type JobPayType, type JobPost } from './lib/jobs';
+import { applyToJob, createJobPost, fetchApplicationsForJobPost, fetchJobPost, fetchJobPostReviews, fetchMyJobApplications, markJobPostFilled, removeJobPost, respondToJobApplication, submitJobPostReview, type JobApplication, type JobCategory, type JobPayType, type JobPost } from './lib/jobs';
 import { type HoodReview } from './lib/marketplace';
 import { HoodReportButton, HoodReviewForm, HoodReviewResultView, TrustBadge, WishlistButton } from './BankDashboard';
 import { useDeferredLoading } from './useDeferredLoading';
@@ -421,60 +421,6 @@ export function MyJobApplicationsView() {
   );
 }
 
-// Real 당근알바 job-post wishlist view (2026-07-22) -- mirrors ListingWishlistView
-// exactly, closing a docs/DESIGN_REFERENCES.md-named gap.
-export function JobPostWishlistView() {
-  const { t } = useI18n();
-  const [favorites, setFavorites] = useState<FavoriteJobPost[] | null>(null);
-  const showFavoritesSkeleton = useDeferredLoading(favorites === null);
-  const [error, setError] = useState<string | null>(null);
-  const [removingId, setRemovingId] = useState<string | null>(null);
-
-  const load = () => {
-    setError(null);
-    fetchMyFavoriteJobPosts().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
-  };
-  useEffect(load, []);
-
-  const handleRemove = async (jobPostId: string) => {
-    setRemovingId(jobPostId);
-    try {
-      await removeJobPostFavorite(jobPostId);
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('common.actionError'));
-    } finally {
-      setRemovingId(null);
-    }
-  };
-
-  if (error) {
-    return (
-      <ErrorCard message={error} onRetry={load} />
-    );
-  }
-  if (favorites === null) return showFavoritesSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
-  if (favorites.length === 0) return <EmptyState message="No saved jobs yet -- tap ♡ on any job post to save it here." />;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
-      {favorites.map((f) => (
-        <div key={f.jobPostId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
-          <div>
-            <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{f.title}</p>
-            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{f.category} · {f.payAmount.toLocaleString('en-US')} RWF</p>
-          </div>
-          <button
-            className="itunda-btn itunda-btn-secondary"
-            disabled={removingId === f.jobPostId}
-            onClick={() => handleRemove(f.jobPostId)}
-            style={{ padding: '8px 12px', fontSize: 'var(--itunda-type-scale-12-size)' }}
-          >
-            {removingId === f.jobPostId ? 'Removing…' : 'Remove'}
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
+// Real 당근알바 job-post wishlist view -- extracted to HoodJobsWishlist.tsx
+// (2026-09-12, file-size-lint -- see that file's own doc comment).
 

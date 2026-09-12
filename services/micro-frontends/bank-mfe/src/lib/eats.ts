@@ -464,8 +464,15 @@ export const addFavoriteRestaurant = (restaurantId: string) =>
 export const removeFavoriteRestaurant = (restaurantId: string) =>
   apiFetch<{ success: boolean }>(`/api/v1/eats/restaurants/${restaurantId}/favorite`, { method: 'DELETE' });
 
-export const fetchMyFavoriteRestaurants = () =>
-  apiFetch<{ success: boolean; favorites: FavoriteRestaurant[] }>('/api/v1/eats/favorites').then((r) => r.favorites);
+// Real pagination-discard fix (2026-09-12, same systemic gap fixed
+// throughout the sweep -- see project_itunda_pagination_discard_sweep
+// memory) -- the real Pageable/pageMeta endpoint was always there; page
+// just wasn't ever sent, silently capping this list (and any count badge
+// reading it) at the most recent 20 favorited restaurants.
+export const fetchMyFavoriteRestaurants = (page = 0) =>
+  apiFetch<{ success: boolean; favorites: FavoriteRestaurant[]; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/eats/favorites?page=${page}&size=20`,
+  );
 
 // Real Baemin-style 찜 리스트 공유하기 (share your favorites list, 2026-08-16) -- see
 // backend EatsFavoriteService.shareFavoritesToConversation's own doc comment.

@@ -154,13 +154,33 @@ export function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favori
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
   const [shared, setShared] = useState(false);
+  // Real pagination-discard fix (2026-09-12) -- see lib/eats.ts's own doc
+  // comment on fetchMyFavoriteRestaurants.
+  const [favoritesPage, setFavoritesPage] = useState(0);
+  const [favoritesHasMore, setFavoritesHasMore] = useState(false);
+  const [loadingMoreFavorites, setLoadingMoreFavorites] = useState(false);
 
   const load = () => {
     setError(null);
-    fetchMyFavoriteRestaurants().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+    fetchMyFavoriteRestaurants(0)
+      .then((r) => { setFavorites(r.favorites); setFavoritesPage(0); setFavoritesHasMore(r.page + 1 < r.totalPages); })
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(load, []);
+
+  const loadMoreFavorites = () => {
+    const nextPage = favoritesPage + 1;
+    setLoadingMoreFavorites(true);
+    fetchMyFavoriteRestaurants(nextPage)
+      .then((r) => {
+        setFavorites((prev) => [...(prev ?? []), ...r.favorites]);
+        setFavoritesPage(nextPage);
+        setFavoritesHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreFavorites(false));
+  };
 
   const handleShare = async (conversationId: string) => {
     setShowShareModal(false);
@@ -230,6 +250,11 @@ export function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favori
           </div>
         </div>
       ))}
+      {favoritesHasMore && (
+        <button className="itunda-btn itunda-btn-secondary" disabled={loadingMoreFavorites} onClick={loadMoreFavorites}>
+          {loadingMoreFavorites ? 'Loading…' : 'Load more'}
+        </button>
+      )}
     </div>
   );
 }

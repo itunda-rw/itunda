@@ -43,7 +43,7 @@ export function PropertyView({ onMessageLister }: { onMessageLister: (conversati
   }, []);
 
   const loadFavoriteIds = () => {
-    fetchMyFavoritePropertyListings().then((favs) => setFavoriteIds(new Set(favs.map((f) => f.propertyListingId)))).catch(() => {
+    fetchMyFavoritePropertyListings().then((r) => setFavoriteIds(new Set(r.favorites.map((f) => f.propertyListingId)))).catch(() => {
       // Real, non-critical -- a wishlist-status fetch failure shouldn't block browsing.
     });
   };

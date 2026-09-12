@@ -95,7 +95,7 @@ export function OrderFoodView({ onMessageSeller, onReportIssue }: { onMessageSel
   const [favoritingId, setFavoritingId] = useState<string | null>(null);
 
   const loadFavorites = () => {
-    fetchMyFavoriteRestaurants().then((favs) => setFavoriteIds(new Set(favs.map((f) => f.restaurantId)))).catch(() => {});
+    fetchMyFavoriteRestaurants().then((r) => setFavoriteIds(new Set(r.favorites.map((f) => f.restaurantId)))).catch(() => {});
   };
 
   useEffect(() => {

@@ -170,12 +170,32 @@ export function ListingWishlistView() {
   const showSkeleton = useDeferredLoading(favorites === null);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  // Real pagination-discard fix (2026-09-12) -- see lib/marketplace.ts's own
+  // doc comment on fetchMyFavoriteListings.
+  const [favoritesPage, setFavoritesPage] = useState(0);
+  const [favoritesHasMore, setFavoritesHasMore] = useState(false);
+  const [loadingMoreFavorites, setLoadingMoreFavorites] = useState(false);
 
   const load = () => {
     setError(null);
-    fetchMyFavoriteListings().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+    fetchMyFavoriteListings(0)
+      .then((r) => { setFavorites(r.favorites); setFavoritesPage(0); setFavoritesHasMore(r.page + 1 < r.totalPages); })
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
+
+  const loadMoreFavorites = () => {
+    const nextPage = favoritesPage + 1;
+    setLoadingMoreFavorites(true);
+    fetchMyFavoriteListings(nextPage)
+      .then((r) => {
+        setFavorites((prev) => [...(prev ?? []), ...r.favorites]);
+        setFavoritesPage(nextPage);
+        setFavoritesHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreFavorites(false));
+  };
 
   const handleRemove = async (listingId: string) => {
     setRemovingId(listingId);
@@ -215,6 +235,11 @@ export function ListingWishlistView() {
           </button>
         </div>
       ))}
+      {favoritesHasMore && (
+        <button className="itunda-btn itunda-btn-secondary" disabled={loadingMoreFavorites} onClick={loadMoreFavorites} style={{ marginTop: '8px' }}>
+          {loadingMoreFavorites ? 'Loading…' : 'Load more'}
+        </button>
+      )}
     </div>
   );
 }

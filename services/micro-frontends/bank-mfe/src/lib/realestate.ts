@@ -205,9 +205,14 @@ export const addPropertyListingFavorite = (propertyListingId: string) =>
 export const removePropertyListingFavorite = (propertyListingId: string) =>
   apiFetch<{ success: boolean }>(`/api/v1/realestate/listings/${propertyListingId}/favorite`, { method: 'DELETE' });
 
-export const fetchMyFavoritePropertyListings = () =>
-  apiFetch<{ success: boolean; favorites: FavoritePropertyListing[] }>('/api/v1/realestate/listings/favorites').then(
-    (r) => r.favorites,
+// Real pagination-discard fix (2026-09-12, same systemic gap fixed
+// throughout the sweep -- see project_itunda_pagination_discard_sweep
+// memory) -- the real Pageable/pageMeta endpoint was always there; page
+// just wasn't ever sent, silently capping this list (and any count badge
+// reading it) at the most recent 20 favorited property listings.
+export const fetchMyFavoritePropertyListings = (page = 0) =>
+  apiFetch<{ success: boolean; favorites: FavoritePropertyListing[]; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/realestate/listings/favorites?page=${page}&size=20`,
   );
 
 export const submitPropertyOwnershipVerification = (propertyListingId: string, documentUrl: string) =>

@@ -6,7 +6,8 @@ import { ApiError, getStoredUser } from './lib/api';
 import { addJobPostFavorite, contactPoster, fetchJobCategories, fetchJobPosts, fetchJobPostsMyNeighborhood, fetchMyFavoriteJobPosts, fetchMyJobPosts, fetchMyWorkedJobPosts, removeJobPostFavorite, searchJobPosts, type JobCategory, type JobPost } from './lib/jobs';
 import { type TrustScores } from './lib/marketplace';
 import { fetchProfile } from './lib/neighborhood';
-import { NewJobPostCard, JobPostCard, MyJobApplicationsView, JobPostWishlistView } from './HoodJobsCards';
+import { NewJobPostCard, JobPostCard, MyJobApplicationsView } from './HoodJobsCards';
+import { JobPostWishlistView } from './HoodJobsWishlist';
 import { NeighborhoodSetupPrompt, NeighborhoodSwitcherRow } from './BankDashboard';
 import { ResumeBuilderView } from './HoodResumeBuilder';
 import { useDeferredLoading } from './useDeferredLoading';
@@ -86,7 +87,7 @@ export function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId
   }, []);
 
   const loadFavoriteIds = () => {
-    fetchMyFavoriteJobPosts().then((favs) => setFavoriteIds(new Set(favs.map((f) => f.jobPostId)))).catch(() => {
+    fetchMyFavoriteJobPosts().then((r) => setFavoriteIds(new Set(r.favorites.map((f) => f.jobPostId)))).catch(() => {
       // Real, non-critical -- a wishlist-status fetch failure shouldn't block browsing.
     });
   };

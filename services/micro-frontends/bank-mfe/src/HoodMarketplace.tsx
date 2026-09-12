@@ -50,7 +50,7 @@ export function MarketplaceView({ onMessageSeller }: { onMessageSeller: (convers
   }, []);
 
   const loadFavoriteIds = () => {
-    fetchMyFavoriteListings().then((favs) => setFavoriteIds(new Set(favs.map((f) => f.listingId)))).catch(() => {
+    fetchMyFavoriteListings().then((r) => setFavoriteIds(new Set(r.favorites.map((f) => f.listingId)))).catch(() => {
       // Real, non-critical -- a wishlist-status fetch failure shouldn't block browsing.
     });
   };

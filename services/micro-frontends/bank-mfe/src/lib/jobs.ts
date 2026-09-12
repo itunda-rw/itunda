@@ -166,8 +166,15 @@ export const addJobPostFavorite = (jobPostId: string) =>
 export const removeJobPostFavorite = (jobPostId: string) =>
   apiFetch<{ success: boolean }>(`/api/v1/jobs/posts/${jobPostId}/favorite`, { method: 'DELETE' });
 
-export const fetchMyFavoriteJobPosts = () =>
-  apiFetch<{ success: boolean; favorites: FavoriteJobPost[] }>('/api/v1/jobs/posts/favorites').then((r) => r.favorites);
+// Real pagination-discard fix (2026-09-12, same systemic gap fixed
+// throughout the sweep -- see project_itunda_pagination_discard_sweep
+// memory) -- the real Pageable/pageMeta endpoint was always there; page
+// just wasn't ever sent, silently capping this list (and any count badge
+// reading it) at the most recent 20 favorited job posts.
+export const fetchMyFavoriteJobPosts = (page = 0) =>
+  apiFetch<{ success: boolean; favorites: FavoriteJobPost[]; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/jobs/posts/favorites?page=${page}&size=20`,
+  );
 
 // Real 당근알바-style structured application (2026-07-25) -- see backend
 // JobApplicationService's own doc comment. A real self-introduction the poster reviews

@@ -383,8 +383,15 @@ export const addListingFavorite = (listingId: string) =>
 export const removeListingFavorite = (listingId: string) =>
   apiFetch<{ success: boolean }>(`/api/v1/marketplace/listings/${listingId}/favorite`, { method: 'DELETE' });
 
-export const fetchMyFavoriteListings = () =>
-  apiFetch<{ success: boolean; favorites: FavoriteListing[] }>('/api/v1/marketplace/listings/favorites').then((r) => r.favorites);
+// Real pagination-discard fix (2026-09-12, same systemic gap fixed
+// throughout the sweep -- see project_itunda_pagination_discard_sweep
+// memory) -- the real Pageable/pageMeta endpoint was always there; page
+// just wasn't ever sent, silently capping this list (and any count badge
+// reading it) at the most recent 20 favorited listings.
+export const fetchMyFavoriteListings = (page = 0) =>
+  apiFetch<{ success: boolean; favorites: FavoriteListing[]; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/marketplace/listings/favorites?page=${page}&size=20`,
+  );
 
 // Real Karrot "이 글 숨기기" (hide this post) -- see backend ListingHideService's own
 // doc comment for the full sourced account.
