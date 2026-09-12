@@ -17729,3 +17729,84 @@ target (`RNScreens`), disk pressure unrelated to this change (this
 session's own disk-pressure-kills-builds gotcha class, previously only
 documented for Docker, now confirmed to hit Xcode/libtool linking too); a
 clean retry succeeded, zero errors, zero new warnings.
+
+## 281. Total-assets "자산 변화" (asset change over time) detail screen + net worth history tracking, all 3 platforms + backend
+
+**2026-09-12, same session.** User sent 7 real Toss "전체 자산" (total assets)
+screenshots: the tabbed overview screen itunda already had (Section-65-era
+work, `OverviewAssetsView.tsx`/`OverviewScreen.kt`/`OverviewScreenView.swift`)
+plus a screen itunda didn't -- tapping the net worth header opens a detail
+view with a proportional breakdown bar (계좌/포인트 percentages), and a real
+6-month "자산 변화" (asset change) bar chart.
+
+**Real gap confirmed before building anything**: `OverviewService.getOverview`
+computed net worth live, point-in-time only -- zero historical persistence
+existed anywhere to chart a trend from. Not a missing-client gap (the uncalled-
+endpoint-sweep technique doesn't apply here), a missing-backend-capability one.
+
+**Real scope decision, sourced from Toss's own on-screen disclosure**: the
+reference screen's own caption ("대출·투자·현금은 포함되지 않아요" -- loans,
+investments, and cash aren't included) says Toss deliberately tracks a
+NARROWER figure for the trend than its own full net-worth number, excluding
+anything whose value swings for reasons unrelated to genuine saving/spending
+behavior. itunda's equivalent: a new `liquidTotal` = real account balances
+("입출금") + real reward points ("포인트") only -- explicitly narrower than
+`OverviewResult.netWorth` (which also folds in savings/investments/loans).
+
+**Backend**: new `NetWorthSnapshot` entity (one row per user per day, V329
+migration) + `NetWorthSnapshotScheduler` (daily cron, 03:30 Africa/Kigali,
+per-user try/catch, skips a user who already has today's snapshot) +
+`OverviewService.getNetWorthHistory` (buckets by calendar month, keeps only
+the LAST snapshot per month -- never averages or interpolates a missing day,
+since that would fabricate a number a user's real history never had) + new
+`GET /api/v1/overview/net-worth-history`. `:overview` gained its first real
+`@Scheduled` bean -- `overview-service`'s own Application class updated to
+exclude it from its own component scan, matching every other extracted
+service's "every `@Scheduled` bean still only runs inside `:app`, the sole
+`@EnableScheduling` class" convention (same shape `notifications-service`'s
+own exclusion of `NotificationCleanupScheduler` already established).
+Discrimination-tested (month-bucketing "keep last" logic: broke it to "keep
+first", confirmed exactly 1 new test failure, restored).
+
+**Honest sparse-data handling, consistent with this codebase's own standing
+discipline**: a brand-new snapshot table means every real user's chart starts
+with as few as one bar. No backfill/reconstruction of pre-2026-09-12 history
+was attempted -- an honestly sparse trend is the real state of a brand-new
+metric, the same "nothing to compare against yet" pattern
+`SubscriptionDetectionService`'s price-change tracking and the AI monthly
+spending report both already established, not a gap to fake data over.
+
+**Clients**: all 3 gained a new "total assets detail" screen (own file on
+each platform -- `TotalAssetsDetailScreen.tsx`, `NetWorthDetailScreen.kt`,
+`NetWorthDetailScreenView.swift` -- to avoid pushing the existing overview
+screen past the file-size-lint 500-line guideline), reachable by tapping the
+net worth header (now a real tap target with a chevron, previously inert
+text on all 3 platforms). Each shows the proportional breakdown bar +
+percentage list using data already in hand (no new fetch needed for that
+half) and the trend chart backed by the new history endpoint. Deliberately
+does NOT reproduce Toss's own "만원 단위" (10,000-KRW-unit) chart-axis scaling
+-- itunda has no equivalent denomination convention, so each platform's
+already-established raw-RWF money format is used instead of inventing one.
+
+**Also baselined 2 web i18n locale files** (`translations.en.ts`/
+`translations.rw.ts`) in file-size-lint after they crossed 500 lines for the
+first time adding the new `totalAssets.*` keys -- matches this codebase's own
+established convention for i18n dictionaries (the type-union `translations.ts`
+itself is already baselined on both bank-mfe and merchant-mfe) rather than
+fragmenting a flat key-value map, which wouldn't reduce real cognitive
+complexity the way splitting a JSX/Composable/SwiftUI component does.
+
+**What shipped**: `e3ee95843` (backend), `01ea758e0` (web), `0fabe65ef`
+(Android), `38c2d5932` (iOS).
+
+**Verification**: backend `:overview:test` (Kotest, discrimination-tested,
+new `NetWorthSnapshotTest.kt`); web `tsc -b` + `oxlint` +
+`accessibility-lint.py` + `vite build` + `file-size-lint.py`; Android
+`:core:network:compileDebugKotlin` + `:app:compileDebugKotlin` (clean, zero
+new warnings) + `:architecture-test:test` (Konsist) + `file-size-lint.py`;
+iOS full `xcodebuild -scheme ItundaApp` after `tuist generate && pod install`
+(`BUILD SUCCEEDED`, zero errors, zero new warnings). Not verified: the real
+daily scheduler firing in a live deployed environment and a multi-day-old
+snapshot history actually rendering a multi-bar chart -- both need real wall-
+clock time to pass, a disclosed follow-up rather than something fakeable in
+this pass.
