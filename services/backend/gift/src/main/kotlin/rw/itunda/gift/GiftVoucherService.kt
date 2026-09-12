@@ -225,6 +225,10 @@ class GiftVoucherService(
         if (voucher.status != GiftVoucherStatus.ACTIVE) throw GiftVoucherNotActiveException("This voucher is already ${voucher.status}")
         if (voucher.expiresAt.isBefore(Instant.now())) throw GiftVoucherExpiredException("This voucher has expired")
 
+        // Real anti-spam limit, same convention as GiftService.claimGift's own
+        // identical "release escrowed value to the receiving party" shape.
+        rateLimiter.checkLimit("giftvoucher:redeem:$merchantOwnerUserId", limit = 30, window = Duration.ofHours(1))
+
         val merchantAccount = accountRepository.findById(merchant.accountId)
             .orElseThrow { GiftVoucherNoAccountException("Merchant settlement account not found") }
         val fee = voucher.amount.multiply(feeRate).setScale(2, RoundingMode.HALF_UP)

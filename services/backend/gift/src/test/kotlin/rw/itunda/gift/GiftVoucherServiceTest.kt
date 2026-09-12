@@ -234,7 +234,8 @@ class GiftVoucherServiceTest : BehaviorSpec({
         every { transactionRepository.save(any()) } answers { firstArg() }
         val ledgerService = mockk<LedgerService>()
         val messagingService = mockk<MessagingService>(relaxed = true)
-        val svc = service(giftVoucherRepository = giftVoucherRepository, merchantRepository = merchantRepository, accountRepository = accountRepository, transactionRepository = transactionRepository, ledgerService = ledgerService, messagingService = messagingService)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val svc = service(giftVoucherRepository = giftVoucherRepository, merchantRepository = merchantRepository, accountRepository = accountRepository, transactionRepository = transactionRepository, ledgerService = ledgerService, messagingService = messagingService, rateLimiter = rateLimiter)
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
         val voucher = GiftVoucher(
@@ -263,6 +264,13 @@ class GiftVoucherServiceTest : BehaviorSpec({
 
             Then("it real-posts the confirmation as the RECIPIENT's own message, not the merchant's -- the merchant is never a participant in that 1:1 conversation") {
                 verify(exactly = 1) { messagingService.sendMessage("user_recipient", "conversation_1", any()) }
+            }
+
+            // Real gap found live (sibling-asymmetry check against GiftService.claimGift's
+            // identical "release escrowed value" shape, 2026-09-13): redeemVoucher had no
+            // rate limit at all despite the RateLimiter bean already being injected.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("giftvoucher:redeem:seller_1", limit = 30, window = java.time.Duration.ofHours(1)) }
             }
         }
 
