@@ -93,12 +93,32 @@ export function ProductInquirySection({ productId }: { productId: string }) {
   const [question, setQuestion] = useState('');
   const [asking, setAsking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Real pagination-discard fix (2026-09-12) -- see lib/commerce.ts's own doc
+  // comment on fetchProductInquiries.
+  const [inquiriesPage, setInquiriesPage] = useState(0);
+  const [inquiriesHasMore, setInquiriesHasMore] = useState(false);
+  const [loadingMoreInquiries, setLoadingMoreInquiries] = useState(false);
 
   const load = () => {
-    fetchProductInquiries(productId).then(setInquiries).catch(() => setInquiries([]));
+    fetchProductInquiries(productId, 0)
+      .then((r) => { setInquiries(r.inquiries); setInquiriesPage(0); setInquiriesHasMore(r.page + 1 < r.totalPages); })
+      .catch(() => setInquiries([]));
   };
 
   useEffect(load, [productId]);
+
+  const loadMoreInquiries = () => {
+    const nextPage = inquiriesPage + 1;
+    setLoadingMoreInquiries(true);
+    fetchProductInquiries(productId, nextPage)
+      .then((r) => {
+        setInquiries((prev) => [...(prev ?? []), ...r.inquiries]);
+        setInquiriesPage(nextPage);
+        setInquiriesHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreInquiries(false));
+  };
 
   const handleAsk = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,6 +172,14 @@ export function ProductInquirySection({ productId }: { productId: string }) {
               )}
             </div>
           ))}
+          {inquiriesHasMore && (
+            <button
+              type="button" onClick={loadMoreInquiries} disabled={loadingMoreInquiries}
+              style={{ alignSelf: 'flex-start', fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', padding: 0 }}
+            >
+              {loadingMoreInquiries ? 'Loading…' : 'Load more questions'}
+            </button>
+          )}
         </div>
       )}
     </div>

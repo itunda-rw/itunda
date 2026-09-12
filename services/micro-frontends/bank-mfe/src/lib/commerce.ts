@@ -250,9 +250,15 @@ export const askProductInquiry = (productId: string, question: string) =>
     body: JSON.stringify({ question }),
   }).then((r) => r.inquiry);
 
-export const fetchProductInquiries = (productId: string) =>
-  apiFetch<{ success: boolean; inquiries: ProductInquiry[] }>(`/api/v1/orders/products/${productId}/inquiries`).then(
-    (r) => r.inquiries,
+// Real pagination-discard fix (2026-09-12, same systemic gap fixed for
+// my-orders/merchant-orders/return-requests/my-inquiries/product-reviews/
+// favorites above -- see project_itunda_pagination_discard_sweep memory) --
+// OrderController's real Pageable/pageMeta endpoint was always there; page
+// just wasn't ever sent, silently capping a popular product's Q&A at the
+// most recent 20 questions.
+export const fetchProductInquiries = (productId: string, page = 0) =>
+  apiFetch<{ success: boolean; inquiries: ProductInquiry[]; page: number; totalPages: number }>(
+    `/api/v1/orders/products/${productId}/inquiries?page=${page}&size=20`,
   );
 
 // Real "my questions across every product I've ever asked about" -- see
