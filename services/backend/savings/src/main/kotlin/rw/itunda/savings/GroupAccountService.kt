@@ -360,14 +360,19 @@ class GroupAccountService(
     // in this codebase (Eats/Commerce buyer notifications).
     private fun notifyOtherMembers(account: GroupAccount, actorId: String, title: String, body: String) {
         val otherMemberIds = groupAccountMemberRepository.findByGroupAccountId(account.id).map { it.userId }.filter { it != actorId }
-        for (memberId in otherMemberIds) {
-            notificationRepository.save(
+        // Real N+1 fix (2026-09-12) -- a per-member save() inside this loop meant up to
+        // MAX_MEMBERS-1 individual INSERTs on every real deposit/withdrawal. No external
+        // side effect happens per-iteration here (unlike remindUnpaidMembers's own real
+        // transaction-poisoning fix above), so this is the plain N+1 angle only -- one
+        // batched saveAll() instead.
+        notificationRepository.saveAll(
+            otherMemberIds.map { memberId ->
                 Notification(
                     id = "notif_${UUID.randomUUID()}", userId = memberId, type = "GROUP_ACCOUNT_ACTIVITY",
                     title = title, body = body, isRead = false, createdAt = Instant.now(),
                     dataJson = "{\"groupAccountId\":\"${account.id}\"}",
-                ),
-            )
-        }
+                )
+            },
+        )
     }
 }

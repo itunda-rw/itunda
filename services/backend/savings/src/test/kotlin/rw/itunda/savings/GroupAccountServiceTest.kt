@@ -218,15 +218,18 @@ class GroupAccountServiceTest : BehaviorSpec({
                 GroupAccountMember(id = "m2", groupAccountId = "grp_1", userId = "member_2"),
             )
             every { userRepository.findAllById(any<List<String>>()) } returns listOf(user("owner_1"), user("member_2"))
-            every { notificationRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.saveAll<Notification>(any()) } answers { firstArg() }
             every { groupAccountContributionRepository.save(any()) } answers { firstArg() }
 
             val result = service.deposit("member_2", "grp_1", BigDecimal("3000"))
 
-            Then("it posts a real ledger transfer from the member's own MAIN account and notifies the other real members, not the depositor") {
+            Then("it posts a real ledger transfer from the member's own MAIN account and notifies, in one batched saveAll, the other real members, not the depositor") {
                 verify(exactly = 1) { ledgerService.postLedgerTransaction(any(), any()) }
-                verify(exactly = 1) { notificationRepository.save(match { it.userId == "owner_1" && it.type == "GROUP_ACCOUNT_ACTIVITY" }) }
-                verify(exactly = 0) { notificationRepository.save(match { it.userId == "member_2" && it.type == "GROUP_ACCOUNT_ACTIVITY" }) }
+                verify(exactly = 1) {
+                    notificationRepository.saveAll<Notification>(match { batch ->
+                        batch.count() == 1 && batch.any { it.userId == "owner_1" && it.type == "GROUP_ACCOUNT_ACTIVITY" }
+                    })
+                }
                 result.members.size shouldBe 2
             }
             Then("it records a real per-cycle dues contribution for the depositing member") {
@@ -260,13 +263,17 @@ class GroupAccountServiceTest : BehaviorSpec({
             every { groupAccountMemberRepository.findByGroupAccountIdAndUserId("grp_1", "owner_1") } returns
                 GroupAccountMember(id = "m1", groupAccountId = "grp_1", userId = "owner_1")
             every { userRepository.findAllById(any<List<String>>()) } returns listOf(user("owner_1"), user("member_2"))
-            every { notificationRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.saveAll<Notification>(any()) } answers { firstArg() }
 
             service.withdraw("owner_1", "grp_1", BigDecimal("2000"))
 
-            Then("it posts a real ledger transfer to the owner's own MAIN account and notifies other members transparently") {
+            Then("it posts a real ledger transfer to the owner's own MAIN account and notifies, in one batched saveAll, other members transparently") {
                 verify(exactly = 1) { ledgerService.postLedgerTransaction(any(), any()) }
-                verify(exactly = 1) { notificationRepository.save(match { it.userId == "member_2" && it.type == "GROUP_ACCOUNT_ACTIVITY" }) }
+                verify(exactly = 1) {
+                    notificationRepository.saveAll<Notification>(match { batch ->
+                        batch.count() == 1 && batch.any { it.userId == "member_2" && it.type == "GROUP_ACCOUNT_ACTIVITY" }
+                    })
+                }
             }
         }
 
