@@ -2881,6 +2881,14 @@ public struct ConfirmTransferResponse: Decodable {
     public let newBalance: Double
 }
 
+// Real Toss "충전하기"/"옮기기" reference (2026-09-12) -- see the backend's
+// AccountService.transferBetweenOwnAccounts doc comment. A purely internal,
+// zero-fee move between two of the caller's own real accounts -- deliberately
+// NOT QuoteTransferRequest/ConfirmTransferRequest above (those route through an
+// external provider rail and charge a real 1% fee).
+public struct InternalTransferRequest: Encodable { public let fromAccountId: String; public let toAccountId: String; public let amount: Double }
+public struct InternalTransferResponse: Decodable { public let success: Bool; public let transaction: TransactionDto }
+
 // Real direct itunda-to-itunda push-transfer (rw.itunda.p2p, 2026-07-20) -- mirrors
 // P2pController's real SendDirectP2pRequest exactly, same as Android's ApiService.kt.
 // Deliberately distinct from QuoteTransferRequest/ConfirmTransferRequest above: those
@@ -3190,6 +3198,16 @@ extension NetworkClient {
         try await authenticatedPost(
             "api/v1/account/transfer/confirm",
             body: ConfirmTransferRequest(quoteId: quoteId),
+            idempotencyKey: UUID().uuidString
+        )
+    }
+
+    // Real Toss "충전하기"/"옮기기" reference -- see InternalTransferRequest's own
+    // doc comment.
+    public func internalTransfer(fromAccountId: String, toAccountId: String, amount: Double) async throws -> InternalTransferResponse {
+        try await authenticatedPost(
+            "api/v1/account/internal-transfer",
+            body: InternalTransferRequest(fromAccountId: fromAccountId, toAccountId: toAccountId, amount: amount),
             idempotencyKey: UUID().uuidString
         )
     }

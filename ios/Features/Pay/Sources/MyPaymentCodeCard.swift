@@ -154,6 +154,9 @@ struct MyPaymentCodeCard: View {
     // "Facepay · QR Payment" Recent/Account/Card picker sheet) -- additive to the
     // existing AccountCardCarousel swipe below, not a replacement.
     @State private var showFundingPicker = false
+    // Real Toss "충전하기" (top up) reference (2026-09-12) -- see
+    // AddMoneyScreen.swift's own doc comment.
+    @State private var showAddMoney = false
 
     // Real Toss Bank/Toss Pay separation (2026-08-21) -- this code always pays out
     // of itunda Pay money, not Bank (MerchantService.chargeByCustomerCode's own real
@@ -311,7 +314,26 @@ struct MyPaymentCodeCard: View {
                     // the Bank tab's own top-level state, not reachable from this view).
                     // Closing back to Pay rather than routing somewhere unrelated.
                     onSend: { showAccountDetail = false },
-                    onAddMoney: { showAccountDetail = false }
+                    // Real Toss "충전하기" reference (2026-09-12) -- closes the gap this
+                    // call site previously left dead. See AddMoneyScreen.swift.
+                    onAddMoney: { showAddMoney = true }
+                )
+            }
+        }
+        .fullScreenCover(isPresented: $showAddMoney) {
+            if let account {
+                AddMoneyScreen(
+                    destinationAccountId: account.id,
+                    sourceOptions: accounts.filter { $0.id != account.id },
+                    onBack: { showAddMoney = false },
+                    onDone: {
+                        showAddMoney = false
+                        Task {
+                            if let fetched = try? await NetworkClient.shared.getAccounts().accounts {
+                                accounts = fetched.filter { $0.type == "PAY" || $0.type == "MAIN" || $0.type == "FOREIGN_CURRENCY" }
+                            }
+                        }
+                    }
                 )
             }
         }
