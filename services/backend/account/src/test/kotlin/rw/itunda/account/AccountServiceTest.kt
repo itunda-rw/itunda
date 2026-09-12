@@ -153,6 +153,67 @@ class AccountServiceTest : BehaviorSpec({
             }
         }
 
+        // Real Toss "충전하기"/"옮기기" reference (2026-09-12) -- see
+        // AccountService.transferBetweenOwnAccounts's own doc comment for why this is
+        // a separate, zero-fee, purely-internal move rather than quoteTransfer/
+        // confirmTransfer above (which route through an external provider rail).
+        When("transferring between two of the caller's own real accounts") {
+            val payAccount = account("account_3", "user_1", "500")
+            every { accountRepository.findById("account_1") } returns Optional.of(senderAccount)
+            every { accountRepository.findById("account_3") } returns Optional.of(payAccount)
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
+            every { transactionRepository.save(any()) } answers { firstArg() }
+
+            val transaction = service.transferBetweenOwnAccounts("user_1", "account_1", "account_3", BigDecimal("1000"))
+
+            Then("it posts a real zero-fee WALLET/WALLET ledger move, same sender and recipient") {
+                transaction.senderId shouldBe "user_1"
+                transaction.recipientId shouldBe "user_1"
+                transaction.fromAccountId shouldBe "account_1"
+                transaction.toAccountId shouldBe "account_3"
+                transaction.fee shouldBe BigDecimal.ZERO
+                transaction.type shouldBe TransactionType.TRANSFER
+                transaction.status shouldBe TransactionStatus.COMPLETED
+            }
+        }
+
+        When("transferring to the same account as the source") {
+            Then("it throws IllegalArgumentException before ever touching the ledger") {
+                try {
+                    service.transferBetweenOwnAccounts("user_1", "account_1", "account_1", BigDecimal("1000"))
+                    error("expected IllegalArgumentException")
+                } catch (e: IllegalArgumentException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("transferring a zero or negative amount between own accounts") {
+            Then("it throws IllegalArgumentException before ever touching the ledger") {
+                try {
+                    service.transferBetweenOwnAccounts("user_1", "account_1", "account_3", BigDecimal.ZERO)
+                    error("expected IllegalArgumentException")
+                } catch (e: IllegalArgumentException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("transferring using an account id that belongs to someone else") {
+            val otherAccount = account("account_2", "user_2", "10000")
+            every { accountRepository.findById("account_1") } returns Optional.of(senderAccount)
+            every { accountRepository.findById("account_2") } returns Optional.of(otherAccount)
+
+            Then("it throws AccountNotFoundException, never revealing the account exists") {
+                try {
+                    service.transferBetweenOwnAccounts("user_1", "account_1", "account_2", BigDecimal("1000"))
+                    error("expected AccountNotFoundException")
+                } catch (e: AccountNotFoundException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
         When("confirming a valid quote") {
             every { accountRepository.findById("account_1") } returns Optional.of(senderAccount)
             val quote = service.quoteTransfer("user_1", "account_1", "+250788111111", BigDecimal("1000"))

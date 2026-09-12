@@ -29,6 +29,7 @@ import java.math.BigDecimal
 data class SetAccountNicknameRequest(val nickname: String?)
 data class QuoteTransferRequest(val amount: BigDecimal, val recipient: String, val fromAccountId: String? = null, val description: String? = null)
 data class ConfirmTransferRequest(val quoteId: String)
+data class InternalTransferRequest(val fromAccountId: String, val toAccountId: String, val amount: BigDecimal)
 data class SetBudgetRequest(val category: String? = null, val monthlyLimit: BigDecimal)
 data class CreateAgentWithdrawalAuthorizationRequest(val amount: BigDecimal)
 data class CancelAgentWithdrawalAuthorizationRequest(val code: String)
@@ -181,6 +182,22 @@ class AccountController(
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/account/transfer/confirm", idempotencyKey, request) {
             val (transaction, newBalance) = accountService.confirmTransfer(request.quoteId, currentUser.userId)
             200 to mapOf("success" to true, "message" to "Transfer successful", "transaction" to transaction, "newBalance" to newBalance)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    // Real Toss "충전하기"/"옮기기" reference -- see AccountService.transferBetweenOwnAccounts's
+    // own doc comment. Idempotency-Key required, same real-money-movement convention
+    // every other POST here already follows.
+    @PostMapping("/internal-transfer")
+    fun internalTransfer(
+        @RequestBody request: InternalTransferRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/account/internal-transfer", idempotencyKey, request) {
+            val transaction = accountService.transferBetweenOwnAccounts(currentUser.userId, request.fromAccountId, request.toAccountId, request.amount)
+            201 to mapOf("success" to true, "transaction" to transaction)
         }
         return ResponseEntity.status(status).body(body)
     }

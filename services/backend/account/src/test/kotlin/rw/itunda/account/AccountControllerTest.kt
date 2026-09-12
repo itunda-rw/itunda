@@ -235,6 +235,37 @@ class AccountControllerTest : BehaviorSpec({
         }
     }
 
+    // Real Toss "충전하기"/"옮기기" reference (2026-09-12) -- see
+    // AccountService.transferBetweenOwnAccounts's own doc comment.
+    Given("a real internal transfer between the caller's own accounts") {
+        val accountService = mockk<AccountService>()
+        val idempotencyService = mockk<IdempotencyService>()
+        val ctl = controller(accountService = accountService, idempotencyService = idempotencyService)
+        val transaction = Transaction(
+            id = "txn_2", referenceNumber = "SELFXFER1", senderId = "user_1", recipientId = "user_1",
+            fromAccountId = "account_1", toAccountId = "account_3", amount = BigDecimal("5000"), fee = BigDecimal.ZERO,
+            currency = "RWF", type = TransactionType.TRANSFER, status = TransactionStatus.COMPLETED,
+            description = "Transfer between your own accounts", channel = "INTERNAL_TRANSFER", completedAt = Instant.now(),
+        )
+        val request = InternalTransferRequest("account_1", "account_3", BigDecimal("5000"))
+        val actionSlot = slot<() -> Pair<Int, Map<String, Any?>>>()
+        every { accountService.transferBetweenOwnAccounts("user_1", "account_1", "account_3", BigDecimal("5000")) } returns transaction
+        every {
+            idempotencyService.replayOrExecute("POST /api/v1/account/internal-transfer", "key-2", request, capture(actionSlot))
+        } answers { actionSlot.captured.invoke() }
+
+        When("moving money between two of the caller's own accounts") {
+            val response = ctl.internalTransfer(request, "key-2", currentUser)
+
+            Then("it routes through the real idempotency service scoped to the caller's own userId") {
+                verify(exactly = 1) { idempotencyService.replayOrExecute("POST /api/v1/account/internal-transfer", "key-2", request, any()) }
+                verify(exactly = 1) { accountService.transferBetweenOwnAccounts("user_1", "account_1", "account_3", BigDecimal("5000")) }
+                response.statusCode shouldBe HttpStatus.CREATED
+                response.body?.get("transaction") shouldBe transaction
+            }
+        }
+    }
+
     listOf(
         Triple(IdempotencyConflictException("Conflict") as RuntimeException, HttpStatus.CONFLICT, "IDEMPOTENCY_KEY_CONFLICT"),
         Triple(IdempotencyInProgressException("Conflict"), HttpStatus.CONFLICT, "IDEMPOTENT_REQUEST_PROCESSING"),

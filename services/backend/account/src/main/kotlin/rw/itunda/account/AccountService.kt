@@ -152,6 +152,46 @@ class AccountService(
         return accountRepository.save(account)
     }
 
+    // Real Toss "충전하기"/"옮기기" reference (2026-09-12, direct user-supplied Toss
+    // Pay screenshots) -- a real, honest gap the earlier Pay Money detail screen
+    // itself disclosed: "itunda has no self-service 'pull an amount from my linked
+    // account right now' flow." Generalizes AutoTopUpService.topUpPayFromMain's own
+    // real shape (senderId == recipientId == userId, both legs WALLET, zero fee,
+    // TransactionType.TRANSFER) rather than reusing quoteTransfer/confirmTransfer
+    // above -- those route through an EXTERNAL provider rail and charge a real 1%
+    // fee, wrong for a purely internal move between two of the SAME user's own real
+    // accounts. No fraud-rule evaluation, matching YouthAccountService.deposit's own
+    // established precedent for MAIN -> Mini funding: fraud rules exist to catch
+    // suspicious transfers TO OTHER PEOPLE, not moving your own money between your
+    // own pockets.
+    @Transactional
+    fun transferBetweenOwnAccounts(userId: String, fromAccountId: String, toAccountId: String, amount: BigDecimal): Transaction {
+        if (amount <= BigDecimal.ZERO) throw IllegalArgumentException("Amount must be greater than zero")
+        if (fromAccountId == toAccountId) throw IllegalArgumentException("Choose two different accounts")
+        rateLimiter.checkLimit("account:internal-transfer:$userId", limit = 30, window = Duration.ofHours(1))
+
+        val fromAccount = getAccountById(fromAccountId, userId)
+        val toAccount = getAccountById(toAccountId, userId)
+
+        val result = ledgerService.postLedgerTransaction(
+            fromAccount.currency,
+            listOf(
+                LedgerLeg(fromAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Transfer between your own accounts"),
+                LedgerLeg(toAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Transfer between your own accounts"),
+            ),
+        )
+        return transactionRepository.save(
+            Transaction(
+                id = result.transactionId,
+                referenceNumber = "SELFXFER${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
+                senderId = userId, recipientId = userId, fromAccountId = fromAccount.id, toAccountId = toAccount.id,
+                amount = amount, fee = BigDecimal.ZERO, currency = fromAccount.currency, type = TransactionType.TRANSFER,
+                status = TransactionStatus.COMPLETED, description = "Transfer between your own accounts", channel = "INTERNAL_TRANSFER",
+                completedAt = Instant.now(),
+            ),
+        )
+    }
+
     fun quoteTransfer(userId: String, fromAccountId: String?, recipient: String, amount: BigDecimal): TransferQuote {
         require(amount > BigDecimal.ZERO) { "Amount must be greater than zero" }
         require(recipient.isNotBlank()) { "Recipient is required" }
