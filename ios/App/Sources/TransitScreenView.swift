@@ -24,6 +24,13 @@ struct TransitScreenView: View {
     @State private var mode: TransitMode = .loading
     @State private var balance: TransitBalanceDto?
     @State private var trips: [TransitTripDto] = []
+    // Real pagination-discard fix (2026-09-13, porting web/Android's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getTransitTrips already
+    // supported page/size and totalPages, but this screen only ever fetched page 0,
+    // permanently capping ride history at the most recent 20 taps.
+    @State private var tripsPage = 0
+    @State private var tripsHasMore = false
+    @State private var loadingMoreTrips = false
     @State private var topUpAmount = "1000"
     @State private var operatorName = transitOperators[0]
     @State private var fare: Double = minFare
@@ -117,6 +124,12 @@ struct TransitScreenView: View {
                                             Text("\(formatMoney(trip.fare)) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                                         }
                                     }
+                                    if tripsHasMore {
+                                        Button(loadingMoreTrips ? "Loading…" : "Load more") {
+                                            Task { await loadMoreTrips() }
+                                        }
+                                        .disabled(loadingMoreTrips)
+                                    }
                                 }
                             }
                             .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(16)
@@ -141,10 +154,22 @@ struct TransitScreenView: View {
             } catch {
                 self.error = "Could not load your transit balance."
             }
-            if let tripsRes = try? await NetworkClient.shared.getTransitTrips() {
+            if let tripsRes = try? await NetworkClient.shared.getTransitTrips(page: 0) {
                 trips = tripsRes.trips
+                tripsPage = 0
+                tripsHasMore = tripsRes.totalPages > 1
             }
         }
+    }
+
+    private func loadMoreTrips() async {
+        let nextPage = tripsPage + 1
+        loadingMoreTrips = true
+        defer { loadingMoreTrips = false }
+        guard let res = try? await NetworkClient.shared.getTransitTrips(page: nextPage) else { return }
+        trips += res.trips
+        tripsPage = nextPage
+        tripsHasMore = nextPage + 1 < res.totalPages
     }
 
     private func topUp() {

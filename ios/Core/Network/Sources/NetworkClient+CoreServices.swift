@@ -124,7 +124,9 @@ extension NetworkClient {
 
     public func getMyTransitBalance() async throws -> TransitBalanceResponse { try await get("api/v1/transit/balance") }
 
-    public func getTransitTrips() async throws -> TransitTripsResponse { try await get("api/v1/transit/trips") }
+    public func getTransitTrips(page: Int = 0, size: Int = 20) async throws -> TransitTripsResponse {
+        try await get("api/v1/transit/trips", query: [URLQueryItem(name: "page", value: String(page)), URLQueryItem(name: "size", value: String(size))])
+    }
 
     public func topUpTransit(amount: Double) async throws -> TransitBalanceResponse {
         try await authenticatedPost("api/v1/transit/topup", body: TopUpTransitRequest(amount: amount), idempotencyKey: UUID().uuidString)
