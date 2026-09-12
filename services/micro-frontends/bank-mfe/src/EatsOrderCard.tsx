@@ -7,10 +7,13 @@ import RouteMiniMap from './RouteMiniMap';
 import LiveRiderMap from './LiveRiderMap';
 import type { ShoppingMerchant } from './lib/shopping';
 import {
+  type EatsOrder, type EatsOrderStatus,
+} from './lib/eats';
+import {
   toggleReviewHelpful, fetchRestaurantRating, fetchRestaurantGoodPoints, fetchRestaurantReviews, reportEatsReview,
   EATS_GOOD_POINT_LABELS,
-  type EatsOrder, type EatsOrderStatus, type EatsReview, type EatsReviewReportReason, type RatingSummary,
-} from './lib/eats';
+  type EatsReview, type EatsReviewReportReason, type RatingSummary,
+} from './lib/eatsReviews';
 
 export const EATS_STATUS_LABEL: Record<EatsOrderStatus, string> = {
   PLACED: 'Placed',
@@ -105,6 +108,11 @@ export function RestaurantRatingBadge({ restaurantId }: { restaurantId: string }
   const [rating, setRating] = useState<RatingSummary | null>(null);
   const [open, setOpen] = useState(false);
   const [reviews, setReviews] = useState<EatsReview[] | null>(null);
+  // Real pagination-discard fix (2026-09-12) -- see lib/eats.ts's own doc
+  // comment on fetchRestaurantReviews.
+  const [reviewsPage, setReviewsPage] = useState(0);
+  const [reviewsHasMore, setReviewsHasMore] = useState(false);
+  const [loadingMoreReviews, setLoadingMoreReviews] = useState(false);
   // Real "도움돼요" (helpful) toggle -- see lib/eats.ts's own doc comment.
   const [helpfulVoted, setHelpfulVoted] = useState<Set<string>>(new Set());
   // Real preset-tag aggregate (itunda Maps redesign, 2026-08-28) -- see
@@ -138,8 +146,23 @@ export function RestaurantRatingBadge({ restaurantId }: { restaurantId: string }
     const next = !open;
     setOpen(next);
     if (next && reviews === null) {
-      fetchRestaurantReviews(restaurantId).then(setReviews).catch(() => setReviews([]));
+      fetchRestaurantReviews(restaurantId, 0)
+        .then((r) => { setReviews(r.reviews); setReviewsHasMore(r.page + 1 < r.totalPages); })
+        .catch(() => setReviews([]));
     }
+  };
+
+  const loadMoreReviews = () => {
+    const nextPage = reviewsPage + 1;
+    setLoadingMoreReviews(true);
+    fetchRestaurantReviews(restaurantId, nextPage)
+      .then((r) => {
+        setReviews((prev) => [...(prev ?? []), ...r.reviews]);
+        setReviewsPage(nextPage);
+        setReviewsHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreReviews(false));
   };
 
   if (!rating || rating.count === 0) return null;
@@ -209,6 +232,14 @@ export function RestaurantRatingBadge({ restaurantId }: { restaurantId: string }
                 </div>
               </div>
             ))
+          )}
+          {reviewsHasMore && (
+            <button
+              type="button" onClick={loadMoreReviews} disabled={loadingMoreReviews}
+              style={{ alignSelf: 'flex-start', fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', padding: 0 }}
+            >
+              {loadingMoreReviews ? 'Loading…' : 'Load more reviews'}
+            </button>
           )}
         </div>
       )}

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useI18n } from './i18n/I18nContext';
 import { ApiError } from './lib/api';
+import { tipEatsOrderRider, type EatsOrder } from './lib/eats';
 import {
-  fetchRestaurantReviews, replyToRestaurantReview, submitEatsReview, tipEatsOrderRider, EATS_GOOD_POINT_LABELS,
-  type EatsOrder, type EatsReview,
-} from './lib/eats';
+  fetchRestaurantReviews, replyToRestaurantReview, submitEatsReview, EATS_GOOD_POINT_LABELS,
+  type EatsReview,
+} from './lib/eatsReviews';
 import { StarRatingInput } from './BankDashboard';
 import { useDeferredLoading } from './useDeferredLoading';
 
@@ -17,13 +18,33 @@ export function RestaurantReviewsManageView({ restaurantId }: { restaurantId: st
   const [reviews, setReviews] = useState<EatsReview[] | null>(null);
   const showSkeleton = useDeferredLoading(reviews === null);
   const [error, setError] = useState<string | null>(null);
+  // Real pagination-discard fix (2026-09-12) -- see lib/eats.ts's own doc
+  // comment on fetchRestaurantReviews.
+  const [reviewsPage, setReviewsPage] = useState(0);
+  const [reviewsHasMore, setReviewsHasMore] = useState(false);
+  const [loadingMoreReviews, setLoadingMoreReviews] = useState(false);
 
   const load = () => {
-    fetchRestaurantReviews(restaurantId).then(setReviews).catch((err) => {
-      setError(err instanceof ApiError ? err.message : t('common.loadError'));
-    });
+    fetchRestaurantReviews(restaurantId, 0)
+      .then((r) => { setReviews(r.reviews); setReviewsPage(0); setReviewsHasMore(r.page + 1 < r.totalPages); })
+      .catch((err) => {
+        setError(err instanceof ApiError ? err.message : t('common.loadError'));
+      });
   };
   useEffect(load, [restaurantId]);
+
+  const loadMoreReviews = () => {
+    const nextPage = reviewsPage + 1;
+    setLoadingMoreReviews(true);
+    fetchRestaurantReviews(restaurantId, nextPage)
+      .then((r) => {
+        setReviews((prev) => [...(prev ?? []), ...r.reviews]);
+        setReviewsPage(nextPage);
+        setReviewsHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreReviews(false));
+  };
 
   if (error) return <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>;
   if (reviews === null) return showSkeleton ? <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
@@ -35,6 +56,11 @@ export function RestaurantReviewsManageView({ restaurantId }: { restaurantId: st
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {reviews.map((r) => <RestaurantReviewReplyCard key={r.id} review={r} onReplied={load} />)}
       </div>
+      {reviewsHasMore && (
+        <button className="itunda-btn itunda-btn-secondary" disabled={loadingMoreReviews} onClick={loadMoreReviews} style={{ marginTop: '10px' }}>
+          {loadingMoreReviews ? 'Loading…' : 'Load more'}
+        </button>
+      )}
     </div>
   );
 }
