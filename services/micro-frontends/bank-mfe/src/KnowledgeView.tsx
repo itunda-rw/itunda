@@ -34,6 +34,13 @@ export function KnowledgeView() {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  // Real pagination-discard fix (2026-09-13, see project_itunda_pagination_discard_sweep
+  // memory) -- "My answers" had the SAME bug this file's own header comment already
+  // named systemic, just never actually fixed for this specific sub-list (only
+  // "My questions" above got fixed at the time).
+  const [answersPage, setAnswersPage] = useState(0);
+  const [answersHasMore, setAnswersHasMore] = useState(false);
+  const [loadingMoreAnswers, setLoadingMoreAnswers] = useState(false);
 
   useEffect(() => {
     fetchKnowledgeCategories().then(setCategories).catch(() => {});
@@ -52,7 +59,11 @@ export function KnowledgeView() {
           setHasMore(r.page + 1 < r.totalPages);
         })
         .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
-      fetchMyKnowledgeAnswers().then(setMyAnswers).catch(() => {});
+      setAnswersPage(0);
+      setAnswersHasMore(false);
+      fetchMyKnowledgeAnswers(0)
+        .then((r) => { setMyAnswers(r.answers); setAnswersHasMore(r.page + 1 < r.totalPages); })
+        .catch(() => {});
       return;
     }
     fetchKnowledgeQuestions(activeCategory ?? undefined, 0)
@@ -75,6 +86,19 @@ export function KnowledgeView() {
       })
       .catch(() => {})
       .finally(() => setLoadingMore(false));
+  };
+
+  const loadMoreAnswers = () => {
+    const nextPage = answersPage + 1;
+    setLoadingMoreAnswers(true);
+    fetchMyKnowledgeAnswers(nextPage)
+      .then((r) => {
+        setMyAnswers((prev) => [...(prev ?? []), ...r.answers]);
+        setAnswersPage(nextPage);
+        setAnswersHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreAnswers(false));
   };
 
   useEffect(load, [subTab, activeCategory]);
@@ -168,6 +192,16 @@ export function KnowledgeView() {
                 <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-700)' }}>{a.body}</p>
               </div>
             ))}
+            {answersHasMore && (
+              <button
+                className="itunda-btn itunda-btn-secondary"
+                style={{ marginTop: '8px' }}
+                disabled={loadingMoreAnswers}
+                onClick={loadMoreAnswers}
+              >
+                {loadingMoreAnswers ? 'Loading…' : 'Load more'}
+              </button>
+            )}
           </div>
         </div>
       )}

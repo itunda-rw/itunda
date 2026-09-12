@@ -55,8 +55,10 @@ export const fetchMyKnowledgeQuestions = (page = 0, size = 20) =>
     `/api/v1/knowledge/questions/my-questions?page=${page}&size=${size}`,
   );
 
-export const fetchMyKnowledgeAnswers = () =>
-  apiFetch<{ success: boolean; answers: KnowledgeAnswer[] }>('/api/v1/knowledge/answers/my-answers').then((r) => r.answers);
+export const fetchMyKnowledgeAnswers = (page = 0, size = 20) =>
+  apiFetch<{ success: boolean; answers: KnowledgeAnswer[]; page: number; totalPages: number }>(
+    `/api/v1/knowledge/answers/my-answers?page=${page}&size=${size}`,
+  );
 
 export const fetchMyKnowledgeReputation = () =>
   apiFetch<{ success: boolean; adoptedAnswerCount: number }>('/api/v1/knowledge/reputation/me').then((r) => r.adoptedAnswerCount);
