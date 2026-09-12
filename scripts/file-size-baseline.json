@@ -70,6 +70,8 @@
   "services/micro-frontends/bank-mfe/src/BankDashboard.tsx": 24708,
   "services/micro-frontends/bank-mfe/src/ConversationThread.tsx": 814,
   "services/micro-frontends/bank-mfe/src/GroupThread.tsx": 516,
+  "services/micro-frontends/bank-mfe/src/i18n/translations.en.ts": 507,
+  "services/micro-frontends/bank-mfe/src/i18n/translations.rw.ts": 501,
   "services/micro-frontends/bank-mfe/src/i18n/translations.ts": 899,
   "services/micro-frontends/maps-mfe/src/MapView.tsx": 2111,
   "services/micro-frontends/merchant-mfe/src/i18n/translations.ts": 2391,

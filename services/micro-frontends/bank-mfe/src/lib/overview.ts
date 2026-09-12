@@ -88,6 +88,20 @@ export interface Overview {
 
 export const fetchOverview = () => apiFetch<{ success: boolean } & Overview>('/api/v1/overview').then((r) => r);
 
+// Real Toss "자산 변화" (asset change over time) reference (2026-09-12, direct
+// user-supplied total-assets screenshots) -- see the backend's NetWorthSnapshot doc
+// comment for why `liquidTotal` is deliberately narrower than `Overview.netWorth`
+// (account balances + reward points only, matching Toss's own real disclosure of
+// excluding anything that swings for reasons unrelated to genuine saving/spending).
+// `month` is a raw "yyyy-MM" string -- format it for display, don't assume English.
+export interface NetWorthHistoryPoint {
+  month: string;
+  liquidTotal: number;
+}
+
+export const fetchNetWorthHistory = () =>
+  apiFetch<{ success: boolean; history: NetWorthHistoryPoint[] }>('/api/v1/overview/net-worth-history').then((r) => r.history);
+
 // Real external bank/MoMo account linking (rw.itunda.overview.LinkedAccountService) --
 // a real simulated per-rail verification (same ProviderConnector/RailCatalog
 // mechanism transfers/bills/airtime use), demo balance only generated when linking

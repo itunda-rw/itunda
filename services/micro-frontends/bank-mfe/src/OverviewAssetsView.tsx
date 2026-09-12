@@ -18,6 +18,8 @@ import { ApiError, getStoredUser } from './lib/api';
 import { fetchLinkedAccounts, fetchOverview, unlinkAccount, type AccountSummary, type LinkedAccount, type Overview } from './lib/overview';
 import { AccountLinkForm } from './AccountLinkForm';
 import { TransferFlow } from './BankDashboard';
+import { TotalAssetsDetailScreen } from './TotalAssetsDetailScreen';
+import { IconChevronRight } from './icons/ItundaIcons';
 import { useI18n } from './i18n/I18nContext';
 import { useCountUp } from './hooks/useCountUp';
 
@@ -76,6 +78,9 @@ export function OverviewAssetsView({ onNavigateToTab }: { onNavigateToTab: (tab:
   // account it doesn't control -- a fake "Send" there would be exactly the kind of
   // dishonest UX this codebase's own AI_AGENT_SELF_CHECK.md warns against.
   const [transferAccount, setTransferAccount] = useState<AccountSummary | null>(null);
+  // Real Toss "총자산" detail screen (2026-09-12) -- tapping the net worth header
+  // opens it. See TotalAssetsDetailScreen.tsx's own doc comment.
+  const [showTotalAssetsDetail, setShowTotalAssetsDetail] = useState(false);
 
   const refresh = () => {
     setError(null);
@@ -122,12 +127,23 @@ export function OverviewAssetsView({ onNavigateToTab }: { onNavigateToTab: (tab:
 
   const visibleAccounts = showAllAccounts ? overview.accounts : overview.accounts.slice(0, 3);
 
+  if (showTotalAssetsDetail) {
+    return <TotalAssetsDetailScreen overview={overview} onBack={() => setShowTotalAssetsDetail(false)} />;
+  }
+
   return (
     <div>
-      <div className="itunda-flat-section">
+      <button
+        onClick={() => setShowTotalAssetsDetail(true)}
+        className="itunda-flat-section"
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%', textAlign: 'left' }}
+      >
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{t('overview.netWorth')}</p>
-        <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{animatedNetWorth.toLocaleString('en-US')} RWF</h2>
-      </div>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <h2 style={{ margin: 0, fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{animatedNetWorth.toLocaleString('en-US')} RWF</h2>
+          <IconChevronRight size={18} color="var(--itunda-grey-400)" />
+        </span>
+      </button>
 
       <div
         role="tablist"

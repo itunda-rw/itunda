@@ -127,6 +127,17 @@ export type TranslationKey =
   | 'overview.teaserCar'
   | 'overview.teaserCarCta'
   | 'overview.send'
+  // Real Toss "총자산" detail screen (2026-09-12, direct user-supplied total-assets
+  // screenshots) -- see TotalAssetsDetailScreen.tsx's own doc comment.
+  | 'totalAssets.currentTotal'
+  | 'totalAssets.accounts'
+  | 'totalAssets.points'
+  | 'totalAssets.empty'
+  | 'totalAssets.trendTitle'
+  | 'totalAssets.trendEmpty'
+  | 'totalAssets.trendDisclosureA'
+  | 'totalAssets.trendDisclosureB'
+  | 'totalAssets.historyError'
   // Real itunda Pay redesign (2026-08-28, direct user reference: real Toss Pay
   // screenshots) -- funding-source picker sheet, Coupon Box, and the adapted
   // Membership screen (real itunda points only, never a fabricated third-party
