@@ -43,7 +43,7 @@ class AgentWithdrawalAuthorizationServiceTest : BehaviorSpec({
         val repository = mockk<AgentWithdrawalAuthorizationRepository>()
         val accountRepository = mockk<AccountRepository>()
         val service = AgentWithdrawalAuthorizationService(repository, accountRepository)
-        val account = Account("account_1", "user_1", "2024100001", "Main", AccountType.MAIN, BigDecimal("10000"), BigDecimal("10000"))
+        val account = Account(id = "account_1", userId = "user_1", accountNumber = "2024100001", accountName = "Main", type = AccountType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"))
         every { repository.findByUserIdOrderByCreatedAtDesc("user_1") } returns emptyList()
         every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account
         every { repository.existsByCode(any()) } returns false
