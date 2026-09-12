@@ -113,7 +113,13 @@ class IkiminaServiceTest : BehaviorSpec({
         val ikiminaRepository = mockk<IkiminaRepository>()
         val ikiminaMemberRepository = mockk<IkiminaMemberRepository>()
         val userRepository = mockk<UserRepository>()
-        val service = newService(ikiminaRepository = ikiminaRepository, ikiminaMemberRepository = ikiminaMemberRepository, userRepository = userRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(
+            ikiminaRepository = ikiminaRepository, ikiminaMemberRepository = ikiminaMemberRepository, userRepository = userRepository,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
+        )
 
         val ikimina = Ikimina(id = "ikimina_1", name = "Test", organizerId = "org_1", accountId = "account_grp", contributionAmount = BigDecimal("5000"), cycleFrequencyDays = 7, memberCap = 10)
         every { ikiminaRepository.findById("ikimina_1") } returns Optional.of(ikimina)
@@ -128,6 +134,14 @@ class IkiminaServiceTest : BehaviorSpec({
             Then("a real member is added at the next real payout order") {
                 result.userId shouldBe "mem_1"
                 result.payoutOrder shouldBe 2
+            }
+
+            // Real gap found live (sibling comparison against GroupAccountService
+            // .inviteMember's own "notify the invitee" convention, 2026-09-13):
+            // inviteMember never notified the invited member at all.
+            Then("the real invitee is actually notified, not just silently added") {
+                verify(exactly = 1) { notificationRepository.save(match { it.type == "IKIMINA_INVITE" && it.userId == "mem_1" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("mem_1", any(), any(), any(), "IKIMINA_INVITE") }
             }
         }
     }

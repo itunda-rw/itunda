@@ -163,10 +163,34 @@ class IkiminaService(
                 payoutOrder = (currentCount + 1).toInt(),
             ),
         )
+        notifyInvited(invitee.id, ikimina.name)
         return IkiminaMemberView(
             userId = invitee.id, firstName = invitee.firstName, lastName = invitee.lastName,
             payoutOrder = member.payoutOrder, hasReceivedPayout = false, isOrganizer = false,
         )
+    }
+
+    // Real gap found live (sibling comparison against GroupAccountService
+    // .inviteMember's identical "invite a member to a group money-pool" shape,
+    // 2026-09-13): this class already had NotificationRepository/PushNotificationService
+    // wired for payout/cycle-completion events but never notified an invited member at
+    // all -- they'd only find out by opening the app and happening to check their
+    // Ikimina list.
+    private fun notifyInvited(inviteeUserId: String, ikiminaName: String) {
+        try {
+            val title = "Added to \"$ikiminaName\""
+            val body = "You've joined this Ikimina. Contributions start once the organizer starts the cycle."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = inviteeUserId, type = "IKIMINA_INVITE",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{}",
+                ),
+            )
+            sendAfterCommit { pushNotificationService.sendToUser(inviteeUserId, title, body, type = "IKIMINA_INVITE") }
+        } catch (e: Exception) {
+            // Non-critical -- the real invite already succeeded.
+            log.warn("Failed to notify user {} of Ikimina invite", inviteeUserId, e)
+        }
     }
 
     @Transactional
