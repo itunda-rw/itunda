@@ -21,6 +21,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.compose.material3.Text
@@ -71,6 +74,15 @@ internal fun DesignatedDriverDriveContent() {
     var registering by remember { mutableStateOf(false) }
     var availableTrips by remember { mutableStateOf<List<DesignatedDriverTripDto>>(emptyList()) }
     var myDriverTrips by remember { mutableStateOf<List<DesignatedDriverTripDto>>(emptyList()) }
+    // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getMyDesignatedDriverDriverTrips
+    // silently capped this list at the first 20 trips. Page 0 is polled every 4s
+    // for real-time active-trip accuracy, so it must stay a live, page-0-only
+    // fetch; olderDriverTrips is a separate accumulator populated only by loadMore.
+    var olderDriverTrips by remember { mutableStateOf<List<DesignatedDriverTripDto>>(emptyList()) }
+    var driverTripsPage by remember { mutableStateOf(0) }
+    var driverTripsHasMore by remember { mutableStateOf(false) }
+    var loadingMoreDriverTrips by remember { mutableStateOf(false) }
     var busyTripId by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
@@ -107,9 +119,29 @@ internal fun DesignatedDriverDriveContent() {
         coroutineScope.launch {
             try {
                 availableTrips = NetworkClient.apiService.getAvailableDesignatedDriverTrips().trips
-                myDriverTrips = NetworkClient.apiService.getMyDesignatedDriverDriverTrips().trips
+                val res = NetworkClient.apiService.getMyDesignatedDriverDriverTrips(page = 0)
+                myDriverTrips = res.trips
+                driverTripsHasMore = res.page + 1 < res.totalPages
             } catch (_: Exception) {
                 // Non-critical -- a poll failure just skips this refresh.
+            }
+        }
+    }
+
+    fun loadMoreDriverTrips() {
+        val nextPage = driverTripsPage + 1
+        loadingMoreDriverTrips = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyDesignatedDriverDriverTrips(page = nextPage)
+                olderDriverTrips = olderDriverTrips + res.trips.filter { it.status == "COMPLETED" || it.status == "CANCELLED" }
+                driverTripsPage = nextPage
+                driverTripsHasMore = res.page + 1 < res.totalPages
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded page stays visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMoreDriverTrips = false
             }
         }
     }
@@ -183,7 +215,7 @@ internal fun DesignatedDriverDriveContent() {
     }
 
     val activeDriverTrips = myDriverTrips.filter { it.status == "ACCEPTED" || it.status == "DRIVING" }
-    val pastDriverTrips = myDriverTrips.filter { it.status == "COMPLETED" || it.status == "CANCELLED" }
+    val pastDriverTrips = myDriverTrips.filter { it.status == "COMPLETED" || it.status == "CANCELLED" } + olderDriverTrips
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -264,6 +296,17 @@ internal fun DesignatedDriverDriveContent() {
                 if (pastDriverTrips.isNotEmpty()) {
                     item { Text("Completed", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                     items(pastDriverTrips, key = { it.id }) { trip -> DesignatedDriverTripCard(trip) }
+                    if (driverTripsHasMore) {
+                        item {
+                            IdsButton(
+                                text = if (loadingMoreDriverTrips) "Loading…" else "Load more",
+                                onClick = ::loadMoreDriverTrips,
+                                enabled = !loadingMoreDriverTrips,
+                                variant = IdsButtonVariant.Tinted,
+                                size = IdsButtonSize.Medium,
+                            )
+                        }
+                    }
                 }
             }
         }

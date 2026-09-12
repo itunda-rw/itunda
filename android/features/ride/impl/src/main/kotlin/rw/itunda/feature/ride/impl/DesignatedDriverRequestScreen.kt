@@ -13,6 +13,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,6 +59,15 @@ internal fun DesignatedDriverRequestContent() {
     var vehicleModel by remember { mutableStateOf("") }
     var vehiclePlate by remember { mutableStateOf("") }
     var myTrips by remember { mutableStateOf<List<DesignatedDriverTripDto>?>(null) }
+    // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getMyDesignatedDriverTrips
+    // silently capped this list at the first 20 trips. Page 0 is polled every 4s
+    // for real-time active-trip accuracy, so it must stay a live, page-0-only
+    // fetch; olderTrips is a separate accumulator populated only by loadMore.
+    var olderTrips by remember { mutableStateOf<List<DesignatedDriverTripDto>>(emptyList()) }
+    var tripsPage by remember { mutableStateOf(0) }
+    var tripsHasMore by remember { mutableStateOf(false) }
+    var loadingMoreTrips by remember { mutableStateOf(false) }
     var requesting by remember { mutableStateOf(false) }
     var busyTripId by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -70,9 +82,29 @@ internal fun DesignatedDriverRequestContent() {
     fun loadTrips() {
         coroutineScope.launch {
             try {
-                myTrips = NetworkClient.apiService.getMyDesignatedDriverTrips().trips
+                val res = NetworkClient.apiService.getMyDesignatedDriverTrips(page = 0)
+                myTrips = res.trips
+                tripsHasMore = res.page + 1 < res.totalPages
             } catch (_: Exception) {
                 // Non-critical -- a poll failure just skips this refresh.
+            }
+        }
+    }
+
+    fun loadMoreTrips() {
+        val nextPage = tripsPage + 1
+        loadingMoreTrips = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyDesignatedDriverTrips(page = nextPage)
+                olderTrips = olderTrips + res.trips.filter { it.status == "COMPLETED" || it.status == "CANCELLED" }
+                tripsPage = nextPage
+                tripsHasMore = res.page + 1 < res.totalPages
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded page stays visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMoreTrips = false
             }
         }
     }
@@ -85,7 +117,7 @@ internal fun DesignatedDriverRequestContent() {
     }
 
     val activeTrip = myTrips?.firstOrNull { it.status == "REQUESTED" || it.status == "ACCEPTED" || it.status == "DRIVING" }
-    val pastTrips = myTrips?.filter { it.status == "COMPLETED" || it.status == "CANCELLED" } ?: emptyList()
+    val pastTrips = (myTrips?.filter { it.status == "COMPLETED" || it.status == "CANCELLED" } ?: emptyList()) + olderTrips
 
     fun requestTrip() {
         val lat = pickupLat
@@ -199,6 +231,17 @@ internal fun DesignatedDriverRequestContent() {
         if (pastTrips.isNotEmpty()) {
             item { Text("Past trips", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             items(pastTrips, key = { it.id }) { trip -> DesignatedDriverTripCard(trip) }
+            if (tripsHasMore) {
+                item {
+                    IdsButton(
+                        text = if (loadingMoreTrips) "Loading…" else "Load more",
+                        onClick = ::loadMoreTrips,
+                        enabled = !loadingMoreTrips,
+                        variant = IdsButtonVariant.Tinted,
+                        size = IdsButtonSize.Medium,
+                    )
+                }
+            }
         }
     }
 }

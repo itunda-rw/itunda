@@ -17,6 +17,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.compose.material3.Text
@@ -93,6 +96,12 @@ private fun BusRideContent() {
     var destination by remember { mutableStateOf("") }
     var trips by remember { mutableStateOf<List<BusTripDto>?>(null) }
     var myBookings by remember { mutableStateOf<List<BusBookingDto>>(emptyList()) }
+    // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getMyBusBookings
+    // silently capped this list at the first 20 bookings.
+    var bookingsPage by remember { mutableStateOf(0) }
+    var bookingsHasMore by remember { mutableStateOf(false) }
+    var loadingMoreBookings by remember { mutableStateOf(false) }
     var seatCounts by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var busyTripId by remember { mutableStateOf<String?>(null) }
     var busyBookingId by remember { mutableStateOf<String?>(null) }
@@ -114,9 +123,30 @@ private fun BusRideContent() {
     fun loadBookings() {
         coroutineScope.launch {
             try {
-                myBookings = NetworkClient.apiService.getMyBusBookings().bookings
+                val res = NetworkClient.apiService.getMyBusBookings(page = 0)
+                myBookings = res.bookings
+                bookingsPage = 0
+                bookingsHasMore = res.page + 1 < res.totalPages
             } catch (_: Exception) {
                 // Non-critical -- a refresh failure just skips this poll.
+            }
+        }
+    }
+
+    fun loadMoreBookings() {
+        val nextPage = bookingsPage + 1
+        loadingMoreBookings = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyBusBookings(page = nextPage)
+                myBookings = myBookings + res.bookings
+                bookingsPage = nextPage
+                bookingsHasMore = res.page + 1 < res.totalPages
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded page stays visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMoreBookings = false
             }
         }
     }
@@ -223,6 +253,17 @@ private fun BusRideContent() {
                             modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                 .pressScaleClickable(enabled = busyBookingId != booking.id) { cancelBooking(booking.id) }.padding(horizontal = 14.dp, vertical = 10.dp),
                         ) { Text(if (busyBookingId == booking.id) "…" else "Cancel", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                }
+            }
+            if (bookingsHasMore) {
+                item {
+                    IdsButton(
+                        text = if (loadingMoreBookings) "Loading…" else "Load more",
+                        onClick = ::loadMoreBookings,
+                        enabled = !loadingMoreBookings,
+                        variant = IdsButtonVariant.Tinted,
+                        size = IdsButtonSize.Medium,
+                    )
                 }
             }
         }

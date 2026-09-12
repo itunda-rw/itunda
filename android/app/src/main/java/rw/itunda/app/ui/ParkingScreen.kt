@@ -17,6 +17,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.compose.material3.Text
@@ -96,6 +99,16 @@ private fun ParkingFindContent() {
     var nearbySpots by remember { mutableStateOf<List<ParkingSpotDto>>(emptyList()) }
     var activeSession by remember { mutableStateOf<ParkingSessionDto?>(null) }
     var pastSessions by remember { mutableStateOf<List<ParkingSessionDto>>(emptyList()) }
+    // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getMyParkingHistory
+    // silently capped this list at the first 20 sessions. Page 0 is polled
+    // every 4s for real-time active-session accuracy, so it must stay a live,
+    // page-0-only fetch; olderSessions is a separate accumulator populated
+    // only by loadMore.
+    var olderSessions by remember { mutableStateOf<List<ParkingSessionDto>>(emptyList()) }
+    var sessionsPage by remember { mutableStateOf(0) }
+    var sessionsHasMore by remember { mutableStateOf(false) }
+    var loadingMoreSessions by remember { mutableStateOf(false) }
     var busySpotId by remember { mutableStateOf<String?>(null) }
     var ending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -110,11 +123,30 @@ private fun ParkingFindContent() {
     fun loadHistory() {
         coroutineScope.launch {
             try {
-                val all = NetworkClient.apiService.getMyParkingHistory().sessions
-                activeSession = all.firstOrNull { it.status == "ACTIVE" }
-                pastSessions = all.filter { it.status == "COMPLETED" }
+                val res = NetworkClient.apiService.getMyParkingHistory(page = 0)
+                activeSession = res.sessions.firstOrNull { it.status == "ACTIVE" }
+                pastSessions = res.sessions.filter { it.status == "COMPLETED" }
+                sessionsHasMore = res.page + 1 < res.totalPages
             } catch (_: Exception) {
                 // Non-critical -- a poll failure just skips this refresh.
+            }
+        }
+    }
+
+    fun loadMoreSessions() {
+        val nextPage = sessionsPage + 1
+        loadingMoreSessions = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyParkingHistory(page = nextPage)
+                olderSessions = olderSessions + res.sessions.filter { it.status == "COMPLETED" }
+                sessionsPage = nextPage
+                sessionsHasMore = res.page + 1 < res.totalPages
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded page stays visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMoreSessions = false
             }
         }
     }
@@ -220,9 +252,21 @@ private fun ParkingFindContent() {
                 }
             }
         }
-        if (pastSessions.isNotEmpty()) {
+        val allPastSessions = pastSessions + olderSessions
+        if (allPastSessions.isNotEmpty()) {
             item { Text("Past sessions", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
-            items(pastSessions, key = { it.id }) { session -> ParkingSessionCard(session) }
+            items(allPastSessions, key = { it.id }) { session -> ParkingSessionCard(session) }
+            if (sessionsHasMore) {
+                item {
+                    IdsButton(
+                        text = if (loadingMoreSessions) "Loading…" else "Load more",
+                        onClick = ::loadMoreSessions,
+                        enabled = !loadingMoreSessions,
+                        variant = IdsButtonVariant.Tinted,
+                        size = IdsButtonSize.Medium,
+                    )
+                }
+            }
         }
     }
 }

@@ -1925,7 +1925,7 @@ data class EatsReviewDto(
     val helpfulCount: Long = 0,
 )
 data class EatsReviewResponse(val success: Boolean, val review: EatsReviewDto)
-data class EatsReviewsResponse(val success: Boolean, val reviews: List<EatsReviewDto>)
+data class EatsReviewsResponse(val success: Boolean, val reviews: List<EatsReviewDto>, val page: Int = 0, val totalPages: Int = 1)
 data class ReplyToEatsReviewRequest(val reply: String)
 data class EatsRatingResponse(val success: Boolean, val average: Double?, val count: Long)
 data class ToggleEatsReviewHelpfulResponse(val success: Boolean, val helpful: Boolean)
@@ -4271,7 +4271,7 @@ interface ApiService {
     // EatsReviewService.replyToRestaurantReview's own doc comment. bank-mfe already has
     // this (item 184); this is the first Android client.
     @GET("api/v1/eats/restaurants/{id}/reviews")
-    suspend fun getRestaurantReviews(@Path("id") restaurantId: String): EatsReviewsResponse
+    suspend fun getRestaurantReviews(@Path("id") restaurantId: String, @Query("page") page: Int = 0, @Query("size") size: Int = 20): EatsReviewsResponse
 
     @POST("api/v1/eats/reviews/{reviewId}/reply")
     suspend fun replyToRestaurantReview(@Path("reviewId") reviewId: String, @Body request: ReplyToEatsReviewRequest): EatsReviewResponse
@@ -4942,10 +4942,10 @@ interface ApiService {
     suspend fun getAvailableDesignatedDriverTrips(): DesignatedDriverTripsResponse
 
     @GET("api/v1/designated-driver/trips/my-trips")
-    suspend fun getMyDesignatedDriverTrips(): DesignatedDriverTripsResponse
+    suspend fun getMyDesignatedDriverTrips(@Query("page") page: Int = 0, @Query("size") size: Int = 20): DesignatedDriverTripsResponse
 
     @GET("api/v1/designated-driver/trips/my-driver-trips")
-    suspend fun getMyDesignatedDriverDriverTrips(): DesignatedDriverTripsResponse
+    suspend fun getMyDesignatedDriverDriverTrips(@Query("page") page: Int = 0, @Query("size") size: Int = 20): DesignatedDriverTripsResponse
 
     @POST("api/v1/designated-driver/trips/{tripId}/accept")
     suspend fun acceptDesignatedDriverTrip(
@@ -4992,7 +4992,7 @@ interface ApiService {
     suspend fun endBikeRental(@Path("sessionId") sessionId: String, @Body request: EndBikeRentalRequest, @Header("Idempotency-Key") idempotencyKey: String): BikeRentalResponse
 
     @GET("api/v1/bikeshare/rentals/my-history")
-    suspend fun getMyBikeRentalHistory(): BikeRentalsResponse
+    suspend fun getMyBikeRentalHistory(@Query("page") page: Int = 0, @Query("size") size: Int = 20): BikeRentalsResponse
 
     // Real Kakao T 주차 (Kakao T Parking, item 223) -- real peer-to-peer parking-spot
     // rental, billed by elapsed hours (not a pre-known fare, same "settle at checkout"
@@ -5021,7 +5021,7 @@ interface ApiService {
     suspend fun endParkingSession(@Path("sessionId") sessionId: String, @Header("Idempotency-Key") idempotencyKey: String): ParkingSessionResponse
 
     @GET("api/v1/parking/sessions/my-history")
-    suspend fun getMyParkingHistory(): ParkingSessionsResponse
+    suspend fun getMyParkingHistory(@Query("page") page: Int = 0, @Query("size") size: Int = 20): ParkingSessionsResponse
 
     // Real Kakao T 시외버스 (intercity bus booking, item 224) -- real peer-to-peer
     // coach-operator trip pool, fare known and charged in full at booking time (unlike
@@ -5051,7 +5051,7 @@ interface ApiService {
     suspend fun cancelBusBooking(@Path("bookingId") bookingId: String, @Header("Idempotency-Key") idempotencyKey: String): BusBookingResponse
 
     @GET("api/v1/bus/bookings/my-history")
-    suspend fun getMyBusBookings(): BusBookingsResponse
+    suspend fun getMyBusBookings(@Query("page") page: Int = 0, @Query("size") size: Int = 20): BusBookingsResponse
 
     // Real Naver 지식iN (Knowledge iN) open-topic community Q&A (item 225) -- a
     // genuinely different shape from the trip/rental features above: no account
@@ -5509,7 +5509,7 @@ data class DesignatedDriverTripDto(
     val platformFee: java.math.BigDecimal, val status: String, val createdAt: String,
 )
 data class DesignatedDriverTripResponse(val success: Boolean, val trip: DesignatedDriverTripDto)
-data class DesignatedDriverTripsResponse(val success: Boolean, val trips: List<DesignatedDriverTripDto>)
+data class DesignatedDriverTripsResponse(val success: Boolean, val trips: List<DesignatedDriverTripDto>, val page: Int = 0, val totalPages: Int = 1)
 data class RequestDesignatedDriverTripRequest(
     val pickupAddress: String, val pickupLatitude: Double, val pickupLongitude: Double,
     val dropoffAddress: String, val dropoffLatitude: Double, val dropoffLongitude: Double,
@@ -5538,7 +5538,7 @@ data class BikeRentalSessionDto(
     val status: String,
 )
 data class BikeRentalResponse(val success: Boolean, val rental: BikeRentalSessionDto)
-data class BikeRentalsResponse(val success: Boolean, val rentals: List<BikeRentalSessionDto>)
+data class BikeRentalsResponse(val success: Boolean, val rentals: List<BikeRentalSessionDto>, val page: Int = 0, val totalPages: Int = 1)
 
 // Real Kakao T 주차 (Kakao T Parking, item 223) -- real PEER-TO-PEER parking-spot
 // rental pool (any user self-lists a spot they own/control), billed by elapsed HOURS
@@ -5561,7 +5561,7 @@ data class ParkingSessionDto(
     val status: String,
 )
 data class ParkingSessionResponse(val success: Boolean, val session: ParkingSessionDto)
-data class ParkingSessionsResponse(val success: Boolean, val sessions: List<ParkingSessionDto>)
+data class ParkingSessionsResponse(val success: Boolean, val sessions: List<ParkingSessionDto>, val page: Int = 0, val totalPages: Int = 1)
 
 // Real Kakao T 시외버스 (intercity bus booking, item 224) -- real peer-to-peer
 // coach-operator trip pool, fare charged in FULL at booking time (not settled at end
@@ -5585,7 +5585,7 @@ data class BusBookingDto(
     val status: String, val refundTransactionId: String?, val createdAt: String,
 )
 data class BusBookingResponse(val success: Boolean, val booking: BusBookingDto)
-data class BusBookingsResponse(val success: Boolean, val bookings: List<BusBookingDto>)
+data class BusBookingsResponse(val success: Boolean, val bookings: List<BusBookingDto>, val page: Int = 0, val totalPages: Int = 1)
 
 // Real Naver 지식iN (Knowledge iN) open-topic community Q&A (item 225) -- see the
 // backend's KnowledgeQuestion.kt/KnowledgeAnswer.kt doc comments for the full sourced

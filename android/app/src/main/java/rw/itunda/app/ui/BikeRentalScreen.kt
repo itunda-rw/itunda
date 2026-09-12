@@ -36,6 +36,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
 import rw.itunda.core.designsystem.itundaface.BikeTypeGlyph
@@ -95,6 +98,15 @@ private fun BikeRentContent() {
     var nearbyBikes by remember { mutableStateOf<List<BikeDto>>(emptyList()) }
     var activeRental by remember { mutableStateOf<BikeRentalSessionDto?>(null) }
     var pastRentals by remember { mutableStateOf<List<BikeRentalSessionDto>>(emptyList()) }
+    // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getMyBikeRentalHistory
+    // silently capped this list at the first 20 rentals. Page 0 is polled every
+    // 4s for real-time active-rental accuracy, so it must stay a live, page-0-only
+    // fetch; olderRentals is a separate accumulator populated only by loadMore.
+    var olderRentals by remember { mutableStateOf<List<BikeRentalSessionDto>>(emptyList()) }
+    var rentalsPage by remember { mutableStateOf(0) }
+    var rentalsHasMore by remember { mutableStateOf(false) }
+    var loadingMoreRentals by remember { mutableStateOf(false) }
     var busyBikeId by remember { mutableStateOf<String?>(null) }
     var ending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -109,11 +121,30 @@ private fun BikeRentContent() {
     fun loadHistory() {
         coroutineScope.launch {
             try {
-                val all = NetworkClient.apiService.getMyBikeRentalHistory().rentals
-                activeRental = all.firstOrNull { it.status == "ACTIVE" }
-                pastRentals = all.filter { it.status == "COMPLETED" }
+                val res = NetworkClient.apiService.getMyBikeRentalHistory(page = 0)
+                activeRental = res.rentals.firstOrNull { it.status == "ACTIVE" }
+                pastRentals = res.rentals.filter { it.status == "COMPLETED" }
+                rentalsHasMore = res.page + 1 < res.totalPages
             } catch (_: Exception) {
                 // Non-critical -- a poll failure just skips this refresh.
+            }
+        }
+    }
+
+    fun loadMoreRentals() {
+        val nextPage = rentalsPage + 1
+        loadingMoreRentals = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyBikeRentalHistory(page = nextPage)
+                olderRentals = olderRentals + res.rentals.filter { it.status == "COMPLETED" }
+                rentalsPage = nextPage
+                rentalsHasMore = res.page + 1 < res.totalPages
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded page stays visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMoreRentals = false
             }
         }
     }
@@ -231,9 +262,21 @@ private fun BikeRentContent() {
                 }
             }
         }
-        if (pastRentals.isNotEmpty()) {
+        val allPastRentals = pastRentals + olderRentals
+        if (allPastRentals.isNotEmpty()) {
             item { Text("Past rides", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
-            items(pastRentals, key = { it.id }) { session -> BikeRentalSessionCard(session) }
+            items(allPastRentals, key = { it.id }) { session -> BikeRentalSessionCard(session) }
+            if (rentalsHasMore) {
+                item {
+                    IdsButton(
+                        text = if (loadingMoreRentals) "Loading…" else "Load more",
+                        onClick = ::loadMoreRentals,
+                        enabled = !loadingMoreRentals,
+                        variant = IdsButtonVariant.Tinted,
+                        size = IdsButtonSize.Medium,
+                    )
+                }
+            }
         }
     }
 }
