@@ -2,6 +2,8 @@ package rw.itunda.core.domain
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import jakarta.persistence.Version
@@ -163,6 +165,19 @@ class DebitCardTransaction(
 
     @Column(name = "ledger_transaction_id", nullable = false, length = 64)
     val ledgerTransactionId: String,
+
+    // Real Toss "결제 계좌" (payment account) reference (2026-09-12) -- which of the
+    // user's own accounts actually funded this charge. See CardService.chargeWithCard's
+    // own doc comment: scoped to MAIN/PAY only (both always RWF), never
+    // FOREIGN_CURRENCY -- a foreign-currency-funded charge would need its own
+    // per-currency card_spend_expense clearing account (same pattern
+    // ForeignCurrencyAccountService's fx_clearing_${currency} already establishes),
+    // which this pass deliberately doesn't build. Defaults to MAIN so every
+    // pre-existing row (and any client that hasn't been updated yet) keeps its real,
+    // unchanged meaning.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "funding_account_type", nullable = false, length = 32)
+    val fundingAccountType: AccountType = AccountType.MAIN,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),

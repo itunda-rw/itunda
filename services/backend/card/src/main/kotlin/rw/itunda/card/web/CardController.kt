@@ -22,6 +22,7 @@ import rw.itunda.card.CardDailyLimitExceededException
 import rw.itunda.card.CardFrozenException
 import rw.itunda.card.CardIncorrectCredentialException
 import rw.itunda.card.CardInvalidAmountException
+import rw.itunda.card.CardInvalidFundingAccountException
 import rw.itunda.card.CardInvalidDesignException
 import rw.itunda.card.CardInvalidLimitException
 import rw.itunda.card.CardInvalidPinException
@@ -36,13 +37,18 @@ import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.AccountFrozenException
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.domain.DebitCardDesign
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
 
 data class SetCardLimitsRequest(val dailyLimit: BigDecimal, val monthlyLimit: BigDecimal)
-data class ChargeCardRequest(val amount: BigDecimal, val merchantName: String)
+// fundingAccountType is nullable/optional (2026-09-12), defaulting to MAIN inside
+// CardService.chargeWithCard -- so an old, not-yet-updated client that still sends
+// no such field keeps working exactly as before. See CardService's own doc comment
+// for why only MAIN/PAY are accepted.
+data class ChargeCardRequest(val amount: BigDecimal, val merchantName: String, val fundingAccountType: AccountType? = null)
 data class SetCardPinRequest(val newPin: String, val currentCredential: String)
 
 // `design` is nullable/optional (2026-08-27) so an old, not-yet-updated client that
@@ -138,7 +144,9 @@ class CardController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/card/charge", idempotencyKey, request) {
-            val result = cardService.chargeWithCard(currentUser.userId, request.amount, request.merchantName)
+            val result = cardService.chargeWithCard(
+                currentUser.userId, request.amount, request.merchantName, request.fundingAccountType ?: AccountType.MAIN,
+            )
             201 to mapOf("success" to true, "transaction" to result.transaction, "card" to result.card)
         }
         return ResponseEntity.status(status).body(body)
@@ -179,6 +187,10 @@ class CardController(
 
     @ExceptionHandler(CardInvalidAmountException::class)
     fun handleInvalidAmount(ex: CardInvalidAmountException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AMOUNT", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(CardInvalidFundingAccountException::class)
+    fun handleInvalidFundingAccount(ex: CardInvalidFundingAccountException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_FUNDING_ACCOUNT", ex.message ?: "Bad request"))
 
     @ExceptionHandler(CardDailyLimitExceededException::class)
     fun handleDailyLimit(ex: CardDailyLimitExceededException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("CARD_DAILY_LIMIT_EXCEEDED", ex.message ?: "Conflict"))

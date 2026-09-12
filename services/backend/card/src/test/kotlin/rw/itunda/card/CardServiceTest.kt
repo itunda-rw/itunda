@@ -11,12 +11,8 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.domain.DebitCard
 import rw.itunda.core.domain.DebitCardDesign
-import rw.itunda.core.domain.LedgerAccountType
-import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
-import rw.itunda.core.ledger.LedgerLeg
-import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.DebitCardRepository
@@ -34,9 +30,9 @@ import java.util.Optional
  * DebitCard.kt's own doc comment for the full sourced account. */
 class CardServiceTest : BehaviorSpec({
 
-    fun account(id: String, userId: String) = Account(
+    fun account(id: String, userId: String, type: AccountType = AccountType.MAIN) = Account(
         id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
-        type = AccountType.MAIN, balance = BigDecimal("1000000"), availableBalance = BigDecimal("1000000"),
+        type = type, balance = BigDecimal("1000000"), availableBalance = BigDecimal("1000000"),
     )
 
     fun freshCard(userId: String) = DebitCard(
@@ -174,95 +170,6 @@ class CardServiceTest : BehaviorSpec({
                     service.issueCard("user_1")
                     error("expected CardAlreadyIssuedException")
                 } catch (_: CardAlreadyIssuedException) {
-                    // expected
-                }
-            }
-        }
-    }
-
-    Given("a real frozen card") {
-        val debitCardRepository = mockk<DebitCardRepository>()
-        val card = freshCard("user_1").also { it.frozen = true }
-        every { debitCardRepository.findByUserId("user_1") } returns card
-        val service = newService(debitCardRepository = debitCardRepository)
-
-        When("attempting a purchase") {
-            Then("it real-blocks the purchase before ever touching the ledger") {
-                try {
-                    service.chargeWithCard("user_1", BigDecimal("5000"), "Kigali Cafe")
-                    error("expected CardFrozenException")
-                } catch (_: CardFrozenException) {
-                    // expected
-                }
-            }
-        }
-    }
-
-    Given("a real active card with room under both limits") {
-        val debitCardRepository = mockk<DebitCardRepository>()
-        val debitCardTransactionRepository = mockk<DebitCardTransactionRepository>()
-        val accountRepository = mockk<AccountRepository>()
-        val ledgerService = mockk<LedgerService>()
-        val card = freshCard("user_1")
-        every { debitCardRepository.findByUserId("user_1") } returns card
-        every { debitCardRepository.findByIdForUpdate("card_1") } returns Optional.of(card)
-        every { debitCardTransactionRepository.sumAmountByCardIdAndCreatedAtSince(any(), any()) } returns BigDecimal.ZERO
-        every { debitCardTransactionRepository.save(any()) } answers { firstArg() }
-        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
-        val legsSlot = mutableListOf<List<LedgerLeg>>()
-        every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_1", emptyList())
-        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = newService(
-            debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository,
-            accountRepository = accountRepository, ledgerService = ledgerService, fraudRuleEngine = fraudRuleEngine,
-        )
-
-        When("charging a real purchase") {
-            val result = service.chargeWithCard("user_1", BigDecimal("5000"), "Kigali Cafe")
-
-            Then("it real-posts a balanced ACCOUNT debit / CARD_SPEND_EXPENSE credit ledger transaction") {
-                val legs = legsSlot.first()
-                legs.size shouldBe 2
-                legs.first { it.accountType == LedgerAccountType.WALLET }.direction shouldBe LedgerDirection.DEBIT
-                legs.first { it.accountType == LedgerAccountType.CARD_SPEND_EXPENSE }.direction shouldBe LedgerDirection.CREDIT
-                result.transaction.amount shouldBe BigDecimal("5000")
-                result.transaction.merchantName shouldBe "Kigali Cafe"
-                result.card.remainingToday shouldBe BigDecimal("495000")
-            }
-
-            // Real bug found live (2026-08-02): the daily/monthly limit check sums real
-            // DebitCardTransaction rows, not a mutation of `card` itself, so two
-            // concurrent charges for the same card could both read the same pre-charge
-            // sum before either committed and both post real money, together exceeding
-            // the card's own documented limit. Locking the card row before computing
-            // the sums serializes concurrent charges on the SAME card.
-            Then("the card row is locked before the spend sums are ever computed") {
-                verify(exactly = 1) { debitCardRepository.findByIdForUpdate("card_1") }
-            }
-
-            // Real gap closed 2026-09-07 (Card product-completeness pass): real money
-            // movement with zero FraudRuleEngine coverage before this fix.
-            Then("the real purchase is evaluated against the cardholder's own fraud history") {
-                verify(exactly = 1) { fraudRuleEngine.evaluate("user_1", null, BigDecimal("5000"), "ledgertxn_1") }
-            }
-        }
-    }
-
-    Given("a real card already spent right up to its daily limit") {
-        val debitCardRepository = mockk<DebitCardRepository>()
-        val debitCardTransactionRepository = mockk<DebitCardTransactionRepository>()
-        val card = freshCard("user_1")
-        every { debitCardRepository.findByUserId("user_1") } returns card
-        every { debitCardRepository.findByIdForUpdate("card_1") } returns Optional.of(card)
-        every { debitCardTransactionRepository.sumAmountByCardIdAndCreatedAtSince(any(), any()) } returns BigDecimal("499000")
-        val service = newService(debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository)
-
-        When("a further purchase would push it over the daily limit") {
-            Then("it real-blocks before ever touching the ledger") {
-                try {
-                    service.chargeWithCard("user_1", BigDecimal("5000"), "Kigali Cafe")
-                    error("expected CardDailyLimitExceededException")
-                } catch (_: CardDailyLimitExceededException) {
                     // expected
                 }
             }

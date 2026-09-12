@@ -39,6 +39,7 @@ class CardNoAccountException(message: String) : RuntimeException(message)
 class CardFrozenException(message: String) : RuntimeException(message)
 class CardInvalidLimitException(message: String) : RuntimeException(message)
 class CardInvalidAmountException(message: String) : RuntimeException(message)
+class CardInvalidFundingAccountException(message: String) : RuntimeException(message)
 class CardDailyLimitExceededException(message: String) : RuntimeException(message)
 class CardMonthlyLimitExceededException(message: String) : RuntimeException(message)
 class CardInvalidDesignException(message: String) : RuntimeException(message)
@@ -95,6 +96,18 @@ class CardService(
         // country (no DST), so a fixed zone is the correct real choice, same reasoning
         // YouthAccountService's own age-eligibility fix just established.
         private val RWANDA_ZONE: ZoneId = ZoneId.of("Africa/Kigali")
+
+        // Real Toss "결제 계좌" (payment account) reference (2026-09-12) -- deliberately
+        // MAIN/PAY only, both always RWF (Account.currency's own real default,
+        // confirmed via AccountRepository.findByUserIdAndType never varying it for
+        // these two types). FOREIGN_CURRENCY is excluded on purpose: crediting the
+        // single global `card_spend_expense` clearing account (implicitly RWF) from a
+        // foreign-currency debit would silently misstate itunda's own real expense
+        // books by the raw foreign-currency number instead of its RWF value -- the
+        // same cross-currency-clearing problem ForeignCurrencyAccountService.convert's
+        // own doc comment already solves with a real per-currency `fx_clearing_*`
+        // account, which this pass deliberately doesn't build for card spend too.
+        val CARD_FUNDING_ACCOUNT_TYPES = setOf(AccountType.MAIN, AccountType.PAY)
     }
 
     private val secureRandom = SecureRandom()
@@ -291,18 +304,22 @@ class CardService(
     /**
      * Real, ledger-backed "pay with your itunda card" -- the honest simulation of a
      * card-present purchase this entity's own doc comment describes. Debits the
-     * caller's real MAIN account the same way every other product in this codebase
-     * moves money (LedgerService.postLedgerTransaction), so LedgerService's own
+     * caller's own chosen account (MAIN by default, matching every pre-existing
+     * caller's real behavior) the same way every other product in this codebase moves
+     * money (LedgerService.postLedgerTransaction), so LedgerService's own
      * frozen-account/insufficient-funds checks apply here too, on top of this card's
      * own frozen/limit checks.
      */
     @Transactional
-    fun chargeWithCard(userId: String, amount: BigDecimal, merchantName: String): CardChargeResult {
+    fun chargeWithCard(userId: String, amount: BigDecimal, merchantName: String, fundingAccountType: AccountType = AccountType.MAIN): CardChargeResult {
         rateLimiter.checkLimit("card:charge:$userId", limit = 30, window = Duration.ofMinutes(1))
         if (amount <= BigDecimal.ZERO) throw CardInvalidAmountException("Amount must be greater than zero")
         val trimmedMerchant = merchantName.trim()
         if (trimmedMerchant.isEmpty() || trimmedMerchant.length > 200) {
             throw CardInvalidAmountException("Merchant name is required and must be 200 characters or fewer")
+        }
+        if (fundingAccountType !in CARD_FUNDING_ACCOUNT_TYPES) {
+            throw CardInvalidFundingAccountException("Card purchases can only be funded from your Main or Pay account")
         }
 
         val card = getCardOrThrow(userId)
@@ -333,8 +350,8 @@ class CardService(
             throw CardMonthlyLimitExceededException("This purchase would exceed your monthly card limit. $remaining RWF remaining this month.")
         }
 
-        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
-            ?: throw CardNoAccountException("No main account found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, fundingAccountType)
+            ?: throw CardNoAccountException("No ${fundingAccountType.name.lowercase()} account found for this account")
         val result = ledgerService.postLedgerTransaction(
             account.currency,
             listOf(
@@ -360,6 +377,7 @@ class CardService(
                 amount = amount,
                 merchantName = trimmedMerchant,
                 ledgerTransactionId = result.transactionId,
+                fundingAccountType = fundingAccountType,
                 createdAt = now,
             ),
         )
