@@ -208,12 +208,23 @@ public struct OverviewScreenView: View {
     @State private var accountNumber = ""
     @State private var myPhoneNumber = ""
     @State private var activeTab: AssetTab = .accounts
+    // Real Toss "총자산" detail screen (2026-09-12) -- tapping the net worth header
+    // opens it. See NetWorthDetailScreenView.swift's own doc comment.
+    @State private var showNetWorthDetail = false
 
     private func t(_ key: String) -> String {
         overviewStrings[locale]?[key] ?? overviewStrings[.en]?[key] ?? key
     }
 
     public var body: some View {
+        if showNetWorthDetail, let overview {
+            NetWorthDetailScreenView(overview: overview, onBack: { showNetWorthDetail = false })
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
         VStack(spacing: 0) {
             HStack {
                 Button(action: onBack) { IDS.Icons.back(size: 17, color: IDS.Colors.textPrimary, relativeTo: .body) }.accessibilityLabel("Back")
@@ -233,10 +244,16 @@ public struct OverviewScreenView: View {
                         // reverses the 2026-08-24 flat-design sweep's Card removal for
                         // THIS screen only, since the user's own literal pixel reference
                         // is card-based (confirmed with them before starting).
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(t("netWorth")).font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                            Text("\(formatAmount(Int(overview.netWorth))) RWF").font(.title).bold()
+                        Button(action: { showNetWorthDetail = true }) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(t("netWorth")).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                HStack(spacing: 4) {
+                                    Text("\(formatAmount(Int(overview.netWorth))) RWF").font(.title).bold()
+                                    Image(systemName: "chevron.right").font(.caption).foregroundColor(IDS.Colors.textTertiary)
+                                }
+                            }
                         }
+                        .buttonStyle(.plain)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                         ScrollView(.horizontal, showsIndicators: false) {

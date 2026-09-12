@@ -7139,6 +7139,13 @@ public struct OverviewResponse: Decodable {
     public let points: OverviewPointsSummaryDto
 }
 
+// Real Toss "자산 변화" (asset change over time) reference (2026-09-12, direct
+// user-supplied total-assets screenshots) -- see the backend's NetWorthSnapshot
+// doc comment for why liquidTotal is deliberately narrower than
+// OverviewResponse.netWorth (account balances + reward points only).
+public struct NetWorthHistoryPointDto: Decodable { public let month: String; public let liquidTotal: Double }
+public struct NetWorthHistoryResponse: Decodable { public let success: Bool; public let history: [NetWorthHistoryPointDto] }
+
 public struct LinkAccountRequest: Encodable { public let provider: String; public let externalAccountNumber: String }
 public struct LinkedAccountDto: Decodable, Identifiable {
     public let id: String; public let userId: String; public let provider: String; public let externalAccountNumberMasked: String

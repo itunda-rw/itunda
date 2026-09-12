@@ -12,6 +12,10 @@ import Foundation
 extension NetworkClient {
     public func getOverview() async throws -> OverviewResponse { try await get("api/v1/overview") }
 
+    // Real Toss "자산 변화" (asset change over time) reference -- see
+    // NetworkClient.swift's own NetWorthHistoryPointDto doc comment.
+    public func getNetWorthHistory() async throws -> NetWorthHistoryResponse { try await get("api/v1/overview/net-worth-history") }
+
     public func getLinkedAccounts() async throws -> LinkedAccountsResponse { try await get("api/v1/accounts/linked") }
 
     // Idempotency-Key added 2026-09-07 (Overview product-completeness pass) -- a lost
