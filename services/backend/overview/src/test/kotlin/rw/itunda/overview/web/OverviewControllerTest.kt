@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import rw.itunda.core.security.CurrentUser
+import rw.itunda.overview.NetWorthHistoryPoint
 import rw.itunda.overview.OverviewResult
 import rw.itunda.overview.OverviewService
 import java.math.BigDecimal
@@ -34,6 +35,22 @@ class OverviewControllerTest : BehaviorSpec({
             Then("it real-delegates and queries only by the caller's own userId, never a client-supplied one") {
                 verify(exactly = 1) { service.getOverview("user_1") }
                 response.body?.get("netWorth") shouldBe BigDecimal("1000000")
+                response.body?.get("success") shouldBe true
+            }
+        }
+    }
+
+    Given("a real request for the caller's own net worth history") {
+        val service = mockk<OverviewService>()
+        val controller = OverviewController(service)
+        every { service.getNetWorthHistory("user_1") } returns listOf(NetWorthHistoryPoint("2026-08", BigDecimal("174153")))
+
+        When("fetching it") {
+            val response = controller.getNetWorthHistory(currentUser)
+
+            Then("it real-delegates and queries only by the caller's own userId, never a client-supplied one") {
+                verify(exactly = 1) { service.getNetWorthHistory("user_1") }
+                response.body?.get("history") shouldBe listOf(NetWorthHistoryPoint("2026-08", BigDecimal("174153")))
                 response.body?.get("success") shouldBe true
             }
         }

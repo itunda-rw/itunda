@@ -26,6 +26,7 @@ import rw.itunda.core.repository.HoldingRepository
 import rw.itunda.core.repository.InsurancePolicyRepository
 import rw.itunda.core.repository.LinkedAccountRepository
 import rw.itunda.core.repository.LoanAccountRepository
+import rw.itunda.core.repository.NetWorthSnapshotRepository
 import rw.itunda.core.repository.RewardClaimRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.AccountRepository
@@ -48,9 +49,10 @@ class OverviewServiceTest : BehaviorSpec({
         val vehicleRepository = mockk<VehicleRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val rewardClaimRepository = mockk<RewardClaimRepository>()
+        val netWorthSnapshotRepository = mockk<NetWorthSnapshotRepository>()
         val service = OverviewService(
             accountRepository, savingsGoalRepository, loanAccountRepository, holdingRepository, insurancePolicyRepository, linkedAccountRepository,
-            debitCardRepository, vehicleRepository, transactionRepository, rewardClaimRepository,
+            debitCardRepository, vehicleRepository, transactionRepository, rewardClaimRepository, netWorthSnapshotRepository,
         )
 
         every { accountRepository.findByUserId("user_1") } returns listOf(
@@ -163,9 +165,10 @@ class OverviewServiceTest : BehaviorSpec({
         val vehicleRepository = mockk<VehicleRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val rewardClaimRepository = mockk<RewardClaimRepository>()
+        val netWorthSnapshotRepository = mockk<NetWorthSnapshotRepository>()
         val service = OverviewService(
             accountRepository, savingsGoalRepository, loanAccountRepository, holdingRepository, insurancePolicyRepository, linkedAccountRepository,
-            debitCardRepository, vehicleRepository, transactionRepository, rewardClaimRepository,
+            debitCardRepository, vehicleRepository, transactionRepository, rewardClaimRepository, netWorthSnapshotRepository,
         )
 
         every { accountRepository.findByUserId("user_2") } returns emptyList()

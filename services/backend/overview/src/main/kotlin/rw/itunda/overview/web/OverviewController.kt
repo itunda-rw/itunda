@@ -32,4 +32,10 @@ class OverviewController(private val overviewService: OverviewService) {
             ),
         )
     }
+
+    // Real Toss "자산 변화" (asset change over time) reference -- see
+    // NetWorthSnapshot's own doc comment for the full scope rationale.
+    @GetMapping("/net-worth-history")
+    fun getNetWorthHistory(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "history" to overviewService.getNetWorthHistory(currentUser.userId)))
 }

@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service
 import rw.itunda.core.domain.AccountType
 import rw.itunda.core.domain.LinkedAccountStatus
 import rw.itunda.core.domain.LoanStatus
+import rw.itunda.core.domain.NetWorthSnapshot
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.repository.DebitCardRepository
@@ -11,6 +12,7 @@ import rw.itunda.core.repository.HoldingRepository
 import rw.itunda.core.repository.InsurancePolicyRepository
 import rw.itunda.core.repository.LinkedAccountRepository
 import rw.itunda.core.repository.LoanAccountRepository
+import rw.itunda.core.repository.NetWorthSnapshotRepository
 import rw.itunda.core.repository.RewardClaimRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.AccountRepository
@@ -18,6 +20,11 @@ import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.VehicleRepository
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
+import java.util.UUID
 
 data class AccountSummary(val id: String, val type: String, val name: String, val balance: BigDecimal, val currency: String)
 data class SavingsSummary(val totalSaved: BigDecimal, val goalCount: Int)
@@ -56,6 +63,13 @@ data class TaxSummary(val totalPaid: BigDecimal, val paymentCount: Int)
 // "itunda Pay money" analog to Toss Pay Money, already present in `accounts` above,
 // just also broken out here since Toss's own Points tab shows it alongside Points.
 data class PointsSummary(val rewardsTotal: BigDecimal, val payMoneyBalance: BigDecimal)
+
+// Real Toss "자산 변화" (asset change over time) reference -- see NetWorthSnapshot's
+// own doc comment for why `liquidTotal` deliberately excludes savings/investments/
+// loans. `month` is an ISO "yyyy-MM" label the client formats for display, matching
+// this codebase's own convention of sending a raw, unambiguous value rather than a
+// pre-localized string (see e.g. SubscriptionDetectionService's `nextExpectedAt`).
+data class NetWorthHistoryPoint(val month: String, val liquidTotal: BigDecimal)
 
 data class OverviewResult(
     val netWorth: BigDecimal,
@@ -104,8 +118,11 @@ class OverviewService(
     private val vehicleRepository: VehicleRepository,
     private val transactionRepository: TransactionRepository,
     private val rewardClaimRepository: RewardClaimRepository,
+    private val netWorthSnapshotRepository: NetWorthSnapshotRepository,
 ) {
     companion object {
+        // Matches the reference screenshot's own 6-month window (3월 through 8월).
+        private const val NET_WORTH_HISTORY_MONTHS = 6L
         // Real RRA tax billers (BillsCatalog.providers, b8/b9/b10) -- a bill payment's
         // real description is always "Bill payment - <billId>(...)" (BillsService.payBill),
         // so an exact prefix match on "Bill payment - b8" etc. is required, NOT a bare
@@ -175,5 +192,43 @@ class OverviewService(
         val points = PointsSummary(rewardsTotal = rewardsTotal, payMoneyBalance = payMoneyBalance)
 
         return OverviewResult(netWorth, accounts, savings, loans, investments, insurance, linkedAccounts, cards, vehicleSummary, tax, points)
+    }
+
+    // Real Toss "자산 변화" (asset change over time) reference -- see
+    // NetWorthSnapshot's own doc comment for the full scope rationale.
+    // Deliberately independent of getOverview's own accountTotal/rewardsTotal
+    // (which are shaped for the wider OverviewResult, savings/investments/loans
+    // included) -- this is the narrower, trend-tracked figure alone.
+    private fun computeLiquidTotal(userId: String): BigDecimal {
+        val accountTotal = accountRepository.findByUserId(userId).fold(BigDecimal.ZERO) { acc, w -> acc + w.balance }
+        val rewardsTotal = rewardClaimRepository.findByUserId(userId).fold(BigDecimal.ZERO) { acc, c -> acc + c.amount }
+        return accountTotal + rewardsTotal
+    }
+
+    // Called once daily per real user by NetWorthSnapshotScheduler -- also directly
+    // callable so a manual trigger (or a test) doesn't need to wait a real day for a
+    // fresh snapshot, same "processDue is also a real business action, not scheduler-
+    // only" convention SavingsMaturityReminderScheduler's own doc comment establishes.
+    fun captureSnapshot(userId: String): NetWorthSnapshot {
+        val snapshot = NetWorthSnapshot(id = "networthsnap_${UUID.randomUUID()}", userId = userId, liquidTotal = computeLiquidTotal(userId))
+        return netWorthSnapshotRepository.save(snapshot)
+    }
+
+    fun hasSnapshotToday(userId: String): Boolean {
+        val startOfToday = LocalDate.now(ZoneOffset.UTC).atStartOfDay().toInstant(ZoneOffset.UTC)
+        return netWorthSnapshotRepository.existsByUserIdAndCapturedAtGreaterThanEqual(userId, startOfToday)
+    }
+
+    // Buckets by calendar month and keeps the LAST snapshot in each bucket (the
+    // month-end value, matching a real personal-finance product's own convention) --
+    // never averages or interpolates, since interpolating a missing day would be
+    // fabricating a number this user's real account history never actually had.
+    fun getNetWorthHistory(userId: String): List<NetWorthHistoryPoint> {
+        val since = Instant.now().minus(NET_WORTH_HISTORY_MONTHS * 31, ChronoUnit.DAYS)
+        val snapshots = netWorthSnapshotRepository.findByUserIdAndCapturedAtGreaterThanEqualOrderByCapturedAtAsc(userId, since)
+        return snapshots
+            .groupBy { YearMonth.from(it.capturedAt.atZone(ZoneOffset.UTC)) }
+            .toSortedMap()
+            .map { (month, monthSnapshots) -> NetWorthHistoryPoint(month.toString(), monthSnapshots.last().liquidTotal) }
     }
 }
