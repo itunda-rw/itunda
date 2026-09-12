@@ -17654,3 +17654,78 @@ backend), `a18f69e34` (nickname + change-password, web),
 `:core:network:compileDebugKotlin` + `:app:compileDebugKotlin` +
 `:architecture-test:test` (Konsist) + `file-size-lint.py`; iOS full
 `xcodebuild -scheme ItundaApp` after `tuist generate && pod install`.
+
+## 280. Card funding-account choice (결제 계좌) -- Main/Pay, all 3 platforms + backend
+
+**2026-09-12, same session as Section 279.** One of that pass's own
+"named, disclosed, deliberately not built" items -- `CardService
+.chargeWithCard` hardcoded to `AccountType.MAIN` with no way to fund a card
+purchase from any other real itunda account, matching real Toss's own
+"결제 계좌" (payment account) setting. Picked up as the next real,
+scoped improvement once the Manage/Card thread closed.
+
+**Real cross-currency-correctness risk found during scoping, not assumed**:
+the original disclosure guessed this was "a non-trivial UX + backend
+change" without saying why. Direct research into `LedgerService
+.postLedgerTransaction` and `ForeignCurrencyAccountService.convert`
+found the real reason -- `chargeWithCard` credits a single global
+`card_spend_expense` clearing account (implicitly RWF), and
+`ForeignCurrencyAccountService`'s own established pattern for a
+foreign-currency-involving posting is a real PER-CURRENCY clearing account
+(`fx_clearing_${currency}`), never one shared account credited with a raw
+foreign-currency number. Debiting a FOREIGN_CURRENCY account into the
+existing RWF-only `card_spend_expense` would silently misstate itunda's own
+expense books by the raw foreign number instead of its RWF value -- a real
+correctness bug, not just missing UI. Confirmed MAIN/PAY are both always
+RWF (`Account.currency`'s own real default; only `FOREIGN_CURRENCY`
+accounts ever deviate, resolved via a separate
+`findByUserIdAndTypeAndCurrency` repository method) via
+`PayAccountBackfillRunner`'s own doc comment, and confirmed every real
+user has a PAY account (backfilled for pre-2026-08-21 users, provisioned
+inline at registration since). Scoped the feature to MAIN/PAY only on this
+basis -- FOREIGN_CURRENCY named as a real future candidate that needs its
+own per-currency clearing-account infrastructure first, not silently
+dropped.
+
+**Backend**: `chargeWithCard` gained a `fundingAccountType` parameter
+(default `MAIN`, preserving every existing caller's behavior unchanged),
+validated against a new `CARD_FUNDING_ACCOUNT_TYPES = {MAIN, PAY}` set
+(`CardInvalidFundingAccountException`, 400, on anything else). New
+`funding_account_type` column on `DebitCardTransaction` (V328 migration,
+`NOT NULL DEFAULT 'MAIN'`, matching this codebase's own established
+existing-table-NOT-NULL-column convention) records which account actually
+funded each charge, so a purchase's funding source lives on its own
+transaction row rather than only being inferable from whichever account
+happened to be debited in the ledger. New Kotest coverage (funding from
+Pay, rejecting FOREIGN_CURRENCY) discrimination-tested: disabled the guard,
+confirmed exactly 1 new failure, restored. Extracted the charge-related
+`Given` blocks into a new `CardChargeServiceTest.kt` once the additions
+pushed `CardServiceTest.kt` past the file-size-lint 500-line guideline for
+the first time -- charging is a genuinely distinct concern from
+issuance/freeze/PIN-management, the same rationale this session's other
+extractions already establish.
+
+**Clients**: all 3 gained a "Pay from" Main/Pay selector next to the
+existing merchant-name/amount fields on the card-charge form -- a plain
+`<select>` on web, a two-chip toggle on Android (`FundingAccountChip`, new
+in `CardActivitySection.kt`), a segmented `Picker` on iOS. Android's
+`CardScreen.kt` crossed the file-size-lint 500-line guideline adding the
+selector; extracted `CardActionButton` into `CardActivitySection.kt`
+(same package, zero behavior change, all 4 real call sites confirmed
+unaffected) to make room rather than baselining. Full en/fr/rw i18n on
+web and Android.
+
+**What shipped**: `f8f1eafd3` (backend), `0965af275` (web), `7ea65c0b6`
+(Android), `<iOS commit>` (iOS).
+
+**Verification**: backend `:card:test` (Kotest, discrimination-tested);
+web `tsc -b` + `oxlint` + `accessibility-lint.py` + `vite build` +
+`file-size-lint.py`; Android `:core:network:compileDebugKotlin` +
+`:app:compileDebugKotlin` (clean, zero new warnings) +
+`:architecture-test:test` (Konsist) + `file-size-lint.py`; iOS full
+`xcodebuild -scheme ItundaApp` after `tuist generate && pod install` --
+first attempt hit a real `errno=28` (ENOSPC) mid-link on an unrelated Pods
+target (`RNScreens`), disk pressure unrelated to this change (this
+session's own disk-pressure-kills-builds gotcha class, previously only
+documented for Docker, now confirmed to hit Xcode/libtool linking too); a
+clean retry succeeded, zero errors, zero new warnings.

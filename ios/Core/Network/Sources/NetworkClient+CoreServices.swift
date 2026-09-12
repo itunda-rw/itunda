@@ -209,8 +209,8 @@ extension NetworkClient {
         try await authenticatedPutWithMessage("api/v1/card/pin", body: SetCardPinRequest(newPin: newPin, currentCredential: currentCredential))
     }
 
-    public func chargeCard(amount: Double, merchantName: String) async throws -> ChargeCardResponse {
-        try await postSavingsGoal("api/v1/card/charge", body: ChargeCardRequest(amount: amount, merchantName: merchantName), idempotencyKey: UUID().uuidString)
+    public func chargeCard(amount: Double, merchantName: String, fundingAccountType: String = "MAIN") async throws -> ChargeCardResponse {
+        try await postSavingsGoal("api/v1/card/charge", body: ChargeCardRequest(amount: amount, merchantName: merchantName, fundingAccountType: fundingAccountType), idempotencyKey: UUID().uuidString)
     }
 
     public func getCreditScore() async throws -> CreditScoreResponse { try await get("api/v1/credit-score") }

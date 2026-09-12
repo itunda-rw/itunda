@@ -7343,11 +7343,15 @@ public struct CardTransactionDto: Decodable, Identifiable {
     public let cardId: String
     public let amount: Double
     public let merchantName: String
+    // Real Toss "결제 계좌" (payment account) reference (2026-09-12) -- which of the
+    // user's own accounts funded this charge. See the backend's
+    // CardService.chargeWithCard doc comment for why only MAIN/PAY are ever real here.
+    public let fundingAccountType: String
     public let createdAt: String
 }
 public struct CardTransactionsResponse: Decodable { public let success: Bool; public let transactions: [CardTransactionDto]; public let totalElements: Int; public let totalPages: Int }
 public struct SetCardLimitsRequest: Encodable { public let dailyLimit: Double; public let monthlyLimit: Double }
-public struct ChargeCardRequest: Encodable { public let amount: Double; public let merchantName: String }
+public struct ChargeCardRequest: Encodable { public let amount: Double; public let merchantName: String; public let fundingAccountType: String }
 public struct ChargeCardResponse: Decodable { public let success: Bool; public let transaction: CardTransactionDto; public let card: CardDto }
 
 // Real card-design picker (2026-08-27, direct user instruction: "update itunda bank

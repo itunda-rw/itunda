@@ -21,6 +21,10 @@ struct CardScreenView: View {
     @State private var monthlyLimitInput = ""
     @State private var merchantName = ""
     @State private var chargeAmount = ""
+    // Real Toss "결제 계좌" (payment account) reference (2026-09-12) -- see the
+    // backend's CardService.chargeWithCard doc comment for why only MAIN/PAY are
+    // ever real choices here.
+    @State private var fundingAccountType = "MAIN"
     @State private var busy = false
     @State private var error: String?
     @State private var chargeMessage: String?
@@ -188,6 +192,14 @@ struct CardScreenView: View {
                                 }
                                 IdsTextField("Merchant name", text: $merchantName)
                                 IdsTextField("Amount (RWF)", text: $chargeAmount, keyboardType: .numberPad)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Pay from").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                    Picker("Pay from", selection: $fundingAccountType) {
+                                        Text("Main account").tag("MAIN")
+                                        Text("itunda Pay Money").tag("PAY")
+                                    }
+                                    .pickerStyle(.segmented)
+                                }
                                 CardActionButton(title: payButtonLabel(card, busy: busy), disabled: busy || card.frozen, action: charge)
                             }
                             .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(16)
@@ -419,7 +431,7 @@ struct CardScreenView: View {
         chargeMessage = nil
         Task {
             do {
-                let res = try await NetworkClient.shared.chargeCard(amount: parsedAmount, merchantName: merchantName)
+                let res = try await NetworkClient.shared.chargeCard(amount: parsedAmount, merchantName: merchantName, fundingAccountType: fundingAccountType)
                 card = res.card
                 chargeMessage = "Paid \(formatMoney(res.transaction.amount)) RWF at \(res.transaction.merchantName)"
                 chargeSucceeded = true
