@@ -37,7 +37,7 @@ import { fetchAccountTransactions, fetchAccounts, type Account } from './lib/acc
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, type TrustedDevice } from './lib/device';
 import { fetchNotifications } from './lib/notifications';
 import { fetchDiscoverItems, type DiscoverItem } from './lib/discover';
-import { cardDesign, chargeCard, closeMyCard, fetchCardTransactions, fetchMyCard, freezeCard, issueCard, reissueCard, reportLostCard, setCardLimits, setCardPin, unfreezeCard, type Card, type CardTransaction } from './lib/card';
+import { cardDesign, chargeCard, closeMyCard, fetchCardTransactions, fetchMyCard, freezeCard, issueCard, reissueCard, reportLostCard, setCardLimits, setCardPin, unfreezeCard, type Card, type CardFundingAccountType, type CardTransaction } from './lib/card';
 import { BucketDetailScreen } from './BucketDetailScreen';
 import { transactionsToBucketTransactions } from './lib/bucketTransaction';
 import { resolveRecipient, sendDirect, type P2pRecipientPreview } from './lib/p2p';
@@ -2270,6 +2270,9 @@ function CardView() {
   const [monthlyLimitInput, setMonthlyLimitInput] = useState('');
   const [merchantName, setMerchantName] = useState('');
   const [chargeAmount, setChargeAmount] = useState('');
+  // Real Toss "결제 계좌" (payment account) reference (2026-09-12) -- see
+  // lib/card.ts's chargeCard doc comment for why only MAIN/PAY are ever real here.
+  const [fundingAccountType, setFundingAccountType] = useState<CardFundingAccountType>('MAIN');
   const [chargeError, setChargeError] = useState<string | null>(null);
   const [chargeSuccess, setChargeSuccess] = useState<string | null>(null);
   // Real KakaoBank 결제홈 (Payment Home)-style unified spend+benefits view (2026-08-16,
@@ -2428,7 +2431,7 @@ function CardView() {
     setChargeSuccess(null);
     setBusy(true);
     try {
-      const result = await chargeCard(Number(chargeAmount), merchantName);
+      const result = await chargeCard(Number(chargeAmount), merchantName, fundingAccountType);
       setCard(result.card);
       setChargeSuccess(`Paid ${result.transaction.amount.toLocaleString('en-US')} RWF at ${result.transaction.merchantName}`);
       setMerchantName('');
@@ -2653,6 +2656,17 @@ function CardView() {
             type="number" placeholder={t('card.amountPlaceholder')} value={chargeAmount} onChange={(e) => setChargeAmount(e.target.value)} required min="1"
             style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
           />
+          <label style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
+            {t('card.fundingAccountLabel')}
+            <select
+              value={fundingAccountType}
+              onChange={(e) => setFundingAccountType(e.target.value as CardFundingAccountType)}
+              style={{ display: 'block', width: '100%', marginTop: '4px', padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
+            >
+              <option value="MAIN">{t('card.fundingAccountMain')}</option>
+              <option value="PAY">{t('card.fundingAccountPay')}</option>
+            </select>
+          </label>
           <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy || card.frozen}>
             {card.closedAt ? t('card.payStateClosed') : card.lost ? t('card.payStateLost') : card.frozen ? t('card.payStateFrozen') : busy ? t('card.paying') : t('card.pay')}
           </button>

@@ -30,11 +30,17 @@ export interface Card {
   remainingThisMonth: number;
 }
 
+export type CardFundingAccountType = 'MAIN' | 'PAY';
+
 export interface CardTransaction {
   id: string;
   cardId: string;
   amount: number;
   merchantName: string;
+  // Real Toss "결제 계좌" (payment account) reference (2026-09-12) -- which of the
+  // user's own accounts funded this charge. See the backend's
+  // CardService.chargeWithCard doc comment for why only MAIN/PAY are ever real here.
+  fundingAccountType: CardFundingAccountType;
   createdAt: string;
 }
 
@@ -129,9 +135,9 @@ export const setCardPin = (newPin: string, currentCredential: string) =>
     body: JSON.stringify({ newPin, currentCredential }),
   }).then((r) => r.card);
 
-export const chargeCard = (amount: number, merchantName: string) =>
+export const chargeCard = (amount: number, merchantName: string, fundingAccountType: CardFundingAccountType = 'MAIN') =>
   apiFetch<{ success: boolean; transaction: CardTransaction; card: Card }>('/api/v1/card/charge', {
     method: 'POST',
     headers: { 'Idempotency-Key': randomUUID() },
-    body: JSON.stringify({ amount, merchantName }),
+    body: JSON.stringify({ amount, merchantName, fundingAccountType }),
   });
