@@ -32,6 +32,11 @@ export function TransitScreen({ onOpenCollect }: { onOpenCollect: () => void }) 
   const [balance, setBalance] = useState<TransitBalance | null | undefined>(undefined);
   const showSkeleton = useDeferredLoading(balance === undefined);
   const [trips, setTrips] = useState<TransitTrip[]>([]);
+  // Real pagination-discard fix (2026-09-13, see project_itunda_pagination_discard_sweep
+  // memory) -- fetchTransitTrips silently capped ride history at the most recent 20 trips.
+  const [tripsPage, setTripsPage] = useState(0);
+  const [tripsHasMore, setTripsHasMore] = useState(false);
+  const [loadingMoreTrips, setLoadingMoreTrips] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('1000');
@@ -50,9 +55,24 @@ export function TransitScreen({ onOpenCollect }: { onOpenCollect: () => void }) 
         }
         setError(err instanceof ApiError ? err.message : t('common.loadError'));
       });
-    fetchTransitTrips().then((r) => setTrips(r.trips)).catch(() => {});
+    fetchTransitTrips(0)
+      .then((r) => { setTrips(r.trips); setTripsPage(0); setTripsHasMore(r.totalPages > 1); })
+      .catch(() => {});
   };
   useEffect(load, []);
+
+  const loadMoreTrips = () => {
+    const nextPage = tripsPage + 1;
+    setLoadingMoreTrips(true);
+    fetchTransitTrips(nextPage)
+      .then((r) => {
+        setTrips((prev) => [...prev, ...r.trips]);
+        setTripsPage(nextPage);
+        setTripsHasMore(nextPage + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreTrips(false));
+  };
 
   const handleTopUp = async () => {
     setBusy(true);
@@ -179,6 +199,16 @@ export function TransitScreen({ onOpenCollect }: { onOpenCollect: () => void }) 
               <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{trip.fare.toLocaleString('en-US')} RWF</span>
             </div>
           ))
+        )}
+        {tripsHasMore && (
+          <button
+            className="itunda-btn itunda-btn-secondary"
+            onClick={loadMoreTrips}
+            disabled={loadingMoreTrips}
+            style={{ marginTop: '8px', fontSize: 'var(--itunda-type-scale-13-size)' }}
+          >
+            {loadingMoreTrips ? 'Loading…' : 'Load more'}
+          </button>
         )}
       </div>
     </div>
