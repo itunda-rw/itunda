@@ -304,6 +304,10 @@ class InsuranceService(
         if (amount <= BigDecimal.ZERO) {
             throw InvalidPremiumFundAmountException("Contribution amount must be greater than zero")
         }
+        // Real anti-spam/cost limit -- same "frequent, repeatable money-movement action"
+        // convention SavingsService.depositToGoal already establishes with its own
+        // separate deposit-bucket limit, never wired in here until now.
+        rateLimiter.checkLimit("insurance:premium-fund:contribute:$userId", limit = 30, window = Duration.ofHours(1))
         val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
         // Real bug caught in this feature's own build-time review: SavingsGoal's
         // depositToGoal/autoContribute post the FULL requested amount to the ledger and
@@ -334,6 +338,10 @@ class InsuranceService(
         if (fund.status != InsurancePremiumFundStatus.active) {
             throw PremiumFundNotActiveException("Cannot cancel a ${fund.status} premium fund")
         }
+        // Real anti-spam/cost limit -- same "frequent, repeatable money-movement action"
+        // convention SavingsService.withdrawFromGoal already establishes with its own
+        // separate withdraw-bucket limit, never wired in here until now.
+        rateLimiter.checkLimit("insurance:premium-fund:cancel:$userId", limit = 30, window = Duration.ofHours(1))
         if (fund.currentAmount > BigDecimal.ZERO) {
             val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
             ledgerService.postLedgerTransaction(

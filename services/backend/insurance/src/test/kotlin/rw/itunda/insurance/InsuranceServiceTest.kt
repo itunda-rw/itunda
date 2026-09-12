@@ -516,6 +516,13 @@ class InsuranceServiceTest : BehaviorSpec({
                     )
                 }
             }
+
+            // Real gap found live (sibling comparison against SavingsService.depositToGoal's
+            // own separate deposit-bucket limit, 2026-09-13): contributeToFund had no rate
+            // limit at all.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("insurance:premium-fund:contribute:user_1", limit = 30, window = Duration.ofHours(1)) }
+            }
         }
     }
 
@@ -550,6 +557,13 @@ class InsuranceServiceTest : BehaviorSpec({
                 accountLeg.accountId shouldBe "account_main"
                 accountLeg.direction shouldBe LedgerDirection.CREDIT
                 accountLeg.amount shouldBe BigDecimal("10000")
+            }
+
+            // Real gap found live (sibling comparison against SavingsService.withdrawFromGoal's
+            // own separate withdraw-bucket limit, 2026-09-13): cancelFund had no rate limit
+            // at all.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("insurance:premium-fund:cancel:user_1", limit = 30, window = Duration.ofHours(1)) }
             }
         }
     }
