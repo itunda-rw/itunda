@@ -1256,7 +1256,7 @@ data class CreatePropertyListingRequest(
 data class PropertyListingResponse(val success: Boolean, val listing: PropertyListingDto)
 data class PropertyListingsResponse(val success: Boolean, val listings: List<PropertyListingDto>, val trustScores: Map<String, Int> = emptyMap(), val page: Int = 0, val totalPages: Int = 1, val totalElements: Int = 0)
 data class FavoritePropertyListingDto(val propertyListingId: String, val title: String, val price: Double, val listingType: String, val favoritedAt: String)
-data class FavoritePropertyListingsResponse(val success: Boolean, val favorites: List<FavoritePropertyListingDto>)
+data class FavoritePropertyListingsResponse(val success: Boolean, val favorites: List<FavoritePropertyListingDto>, val page: Int = 0, val totalPages: Int = 1, val totalElements: Int = 0)
 data class PropertyTypesResponse(val success: Boolean, val propertyTypes: List<PropertyTypeDto>)
 data class ContactListerResponse(val success: Boolean, val conversation: ConversationDto)
 
@@ -3617,7 +3617,7 @@ interface ApiService {
     suspend fun getMyAcquiredPropertyListings(@Query("page") page: Int = 0, @Query("size") size: Int = 20): PropertyListingsResponse
     @POST("api/v1/realestate/listings/{id}/favorite") suspend fun addPropertyListingFavorite(@Path("id") id: String): SuccessResponse
     @DELETE("api/v1/realestate/listings/{id}/favorite") suspend fun removePropertyListingFavorite(@Path("id") id: String): SuccessResponse
-    @GET("api/v1/realestate/listings/favorites") suspend fun getMyFavoritePropertyListings(): FavoritePropertyListingsResponse
+    @GET("api/v1/realestate/listings/favorites") suspend fun getMyFavoritePropertyListings(@Query("page") page: Int = 0, @Query("size") size: Int = 20): FavoritePropertyListingsResponse
 
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see AuthApi.setNeighborhood.
     // Deliberately not combined with listingType/propertyType filters -- an honest v1

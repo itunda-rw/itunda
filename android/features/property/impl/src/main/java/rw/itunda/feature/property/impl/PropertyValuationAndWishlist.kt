@@ -58,6 +58,9 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.HoodReviewForm
@@ -180,11 +183,76 @@ internal fun PropertyValuationCard(propertyTypes: List<PropertyTypeDto>) {
 
 @Composable
 internal fun PropertyWishlistView(onRemoved: () -> Unit) {
-    var favorites by remember { mutableStateOf<List<FavoritePropertyListingDto>?>(null) }; var error by remember { mutableStateOf<String?>(null) }; val scope = rememberCoroutineScope()
-    fun load() = scope.launch { try { favorites = NetworkClient.apiService.getMyFavoritePropertyListings().favorites; error = null } catch (e: Exception) { error = "Couldn't load your saved properties. Check your connection and try again." } }
+    var favorites by remember { mutableStateOf<List<FavoritePropertyListingDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getMyFavoritePropertyListings
+    // silently capped this list at the first 20 favorited properties.
+    var page by remember { mutableStateOf(0) }
+    var hasMore by remember { mutableStateOf(false) }
+    var loadingMore by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    fun load() = scope.launch {
+        try {
+            val res = NetworkClient.apiService.getMyFavoritePropertyListings(page = 0)
+            favorites = res.favorites; page = 0; hasMore = res.page + 1 < res.totalPages
+            error = null
+        } catch (e: Exception) { error = "Couldn't load your saved properties. Check your connection and try again." }
+    }
     LaunchedEffect(Unit) { load() }
+
+    fun loadMore() {
+        val nextPage = page + 1
+        loadingMore = true
+        scope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyFavoritePropertyListings(page = nextPage)
+                favorites = (favorites ?: emptyList()) + res.favorites
+                page = nextPage
+                hasMore = res.page + 1 < res.totalPages
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded page stays visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMore = false
+            }
+        }
+    }
+
     // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card -- an
     // entity list a user manages (saved properties), no divider, matching
     // GroupAccountScreen's precedent (docs/UI_UX_GUIDELINES.md §10).
-    when { error != null -> ErrorCard(error!!, onRetry = ::load); favorites == null -> SkeletonBlock(); favorites!!.isEmpty() -> EmptyState("No saved properties yet — tap ♡ on a property to keep it here.", icon = Icons.Outlined.FavoriteBorder); else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { favorites!!.forEach { f -> Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(f.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold); Text(String.format(Locale.US, "${f.listingType} · %,.0f RWF", f.price), color = Ids.colors.textSecondary, fontSize = 12.sp) }; Text("Remove", color = Ids.colors.textPrimary, modifier = Modifier.pressScaleClickable { scope.launch { try { NetworkClient.apiService.removePropertyListingFavorite(f.propertyListingId); favorites = favorites!!.filterNot { it.propertyListingId == f.propertyListingId }; onRemoved() } catch (e: Exception) { error = "Couldn't remove this saved property. Check your connection and try again." } } }) } } } }
+    when {
+        error != null -> ErrorCard(error!!, onRetry = ::load)
+        favorites == null -> SkeletonBlock()
+        favorites!!.isEmpty() -> EmptyState("No saved properties yet — tap ♡ on a property to keep it here.", icon = Icons.Outlined.FavoriteBorder)
+        else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            favorites!!.forEach { f ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(f.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
+                        Text(String.format(Locale.US, "${f.listingType} · %,.0f RWF", f.price), color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    }
+                    Text("Remove", color = Ids.colors.textPrimary, modifier = Modifier.pressScaleClickable {
+                        scope.launch {
+                            try {
+                                NetworkClient.apiService.removePropertyListingFavorite(f.propertyListingId)
+                                favorites = favorites!!.filterNot { it.propertyListingId == f.propertyListingId }
+                                onRemoved()
+                            } catch (e: Exception) { error = "Couldn't remove this saved property. Check your connection and try again." }
+                        }
+                    })
+                }
+            }
+            if (hasMore) {
+                IdsButton(
+                    text = if (loadingMore) "Loading…" else "Load more",
+                    onClick = ::loadMore,
+                    enabled = !loadingMore,
+                    variant = IdsButtonVariant.Tinted,
+                    size = IdsButtonSize.Medium,
+                )
+            }
+        }
+    }
 }

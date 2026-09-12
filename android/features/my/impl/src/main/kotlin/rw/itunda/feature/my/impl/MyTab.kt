@@ -77,7 +77,7 @@ fun MyTab(
         // total, for any user with more than 20 real favorited listings.
         try { favoriteListingsCount = rw.itunda.core.network.NetworkClient.apiService.getMyFavoriteListings().totalElements } catch (_: Exception) { }
         try { favoriteJobPostsCount = rw.itunda.core.network.NetworkClient.apiService.getMyFavoriteJobPosts().totalElements } catch (_: Exception) { }
-        try { favoritePropertyListingsCount = rw.itunda.core.network.NetworkClient.apiService.getMyFavoritePropertyListings().favorites.size } catch (_: Exception) { }
+        try { favoritePropertyListingsCount = rw.itunda.core.network.NetworkClient.apiService.getMyFavoritePropertyListings().totalElements } catch (_: Exception) { }
         try { favoriteRestaurantsCount = rw.itunda.core.network.NetworkClient.apiService.getMyFavoriteRestaurants().favorites.size } catch (_: Exception) { }
         // Real accuracy fix (2026-09-09, same pass as getMyListings's pagination
         // fix): this badge previously showed page 1's item count (capped at 20),
