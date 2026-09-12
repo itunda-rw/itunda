@@ -39,6 +39,9 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.EmptyState
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.StarGold
 import rw.itunda.core.designsystem.components.StarRatingRow
@@ -60,7 +63,31 @@ internal fun RestaurantRatingBadge(restaurantId: String) {
     var rating by remember { mutableStateOf<EatsRatingResponse?>(null) }
     var open by remember { mutableStateOf(false) }
     var reviews by remember { mutableStateOf<List<EatsReviewDto>?>(null) }
+    // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getRestaurantReviews
+    // silently capped this list at the first 20 written reviews.
+    var reviewsPage by remember { mutableStateOf(0) }
+    var reviewsHasMore by remember { mutableStateOf(false) }
+    var loadingMoreReviews by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+
+    fun loadMoreReviews() {
+        val nextPage = reviewsPage + 1
+        loadingMoreReviews = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getRestaurantReviews(restaurantId, page = nextPage)
+                reviews = (reviews ?: emptyList()) + res.reviews
+                reviewsPage = nextPage
+                reviewsHasMore = res.page + 1 < res.totalPages
+            } catch (e: Exception) {
+                // Non-critical -- the already-loaded page stays visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMoreReviews = false
+            }
+        }
+    }
     // Real Coupang/Naver-style "도움돼요" (helpful) toggle -- see backend
     // EatsReviewService.toggleHelpful's own doc comment. Real, shipped on the backend +
     // bank-mfe with zero Android client until now -- found via a cross-platform-parity
@@ -96,7 +123,10 @@ internal fun RestaurantRatingBadge(restaurantId: String) {
                     if (next && reviews == null) {
                         coroutineScope.launch {
                             try {
-                                reviews = NetworkClient.apiService.getRestaurantReviews(restaurantId).reviews
+                                val res = NetworkClient.apiService.getRestaurantReviews(restaurantId)
+                                reviews = res.reviews
+                                reviewsPage = res.page
+                                reviewsHasMore = res.page + 1 < res.totalPages
                             } catch (e: Exception) {
                                 reviews = emptyList()
                             }
@@ -155,6 +185,15 @@ internal fun RestaurantRatingBadge(restaurantId: String) {
                                 )
                                 ReportEatsReviewButton(rv.id)
                             }
+                        }
+                        if (reviewsHasMore) {
+                            IdsButton(
+                                text = if (loadingMoreReviews) "Loading…" else "Load more",
+                                onClick = ::loadMoreReviews,
+                                enabled = !loadingMoreReviews,
+                                variant = IdsButtonVariant.Tinted,
+                                size = IdsButtonSize.Medium,
+                            )
                         }
                     }
                 }
