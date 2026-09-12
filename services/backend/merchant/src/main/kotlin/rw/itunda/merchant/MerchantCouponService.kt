@@ -124,13 +124,25 @@ class MerchantCouponService(
     fun getCouponsForCustomer(merchantId: String, customerId: String): List<CouponView> {
         val merchant = merchantRepository.findById(merchantId).orElseThrow { MerchantNotFoundException("Merchant not found") }
         val now = Instant.now()
-        return merchantCouponRepository.findByMerchantIdAndActiveTrueOrderByCreatedAtDesc(merchantId)
+        val coupons = merchantCouponRepository.findByMerchantIdAndActiveTrueOrderByCreatedAtDesc(merchantId)
             .filter { coupon -> coupon.expiresAt.let { it == null || it.isAfter(now) } }
-            .map { coupon ->
-                val alreadyRedeemed = merchantCouponRedemptionRepository.existsByCouponIdAndCustomerId(coupon.id, customerId)
-                val eligible = !coupon.regularsOnly || isRegularCustomer(merchant.ownerUserId, customerId)
-                CouponView(coupon, eligible, alreadyRedeemed)
-            }
+        // Real N+1 fix (2026-09-12) -- see MerchantCouponRedemptionRepository's own doc
+        // comment on findByCouponIdInAndCustomerId. Also hoisted isRegularCustomer out of
+        // the loop below: its arguments (merchant.ownerUserId, customerId) never vary
+        // across a single merchant's coupon list, so the old per-coupon call was running
+        // the exact same query over and over, not just an N+1 in the classic sense.
+        val redeemedCouponIds = if (coupons.isEmpty()) {
+            emptySet()
+        } else {
+            merchantCouponRedemptionRepository.findByCouponIdInAndCustomerId(coupons.map { it.id }, customerId)
+                .map { it.couponId }.toSet()
+        }
+        val isRegular = isRegularCustomer(merchant.ownerUserId, customerId)
+        return coupons.map { coupon ->
+            val alreadyRedeemed = coupon.id in redeemedCouponIds
+            val eligible = !coupon.regularsOnly || isRegular
+            CouponView(coupon, eligible, alreadyRedeemed)
+        }
     }
 
     // Real "Coupon box" cross-merchant browse (itunda Pay redesign, 2026-08-28,
@@ -148,10 +160,34 @@ class MerchantCouponService(
         val coupons = merchantCouponRepository.findByActiveTrueOrderByCreatedAtDesc()
             .filter { coupon -> coupon.expiresAt.let { it == null || it.isAfter(now) } }
         val merchants = merchantRepository.findAllById(coupons.map { it.merchantId }.distinct()).associateBy { it.id }
+        // Real N+1 fix (2026-09-12) -- this method's own doc comment already brags about
+        // batch-fetching `merchants` above to avoid an N+1 there, but left the identical
+        // shape unbatched for both the redemption check (once per coupon) and
+        // isRegularCustomer (once per coupon, keyed by merchant owner) right below --
+        // both real, on a real, frequently-hit cross-merchant browse per that same doc
+        // comment. Same batch-then-filter shape, using MerchantCouponRedemptionRepository
+        // .findByCouponIdInAndCustomerId and TransactionRepository
+        // .countBySenderIdAndRecipientIdInAndTypeAndStatus (a GROUP BY, matching
+        // EatsFavoriteRepository.getFavoriteCounts's own real precedent for this exact
+        // "per-owner count on a browse page" shape).
+        val redeemedCouponIds = if (coupons.isEmpty()) {
+            emptySet()
+        } else {
+            merchantCouponRedemptionRepository.findByCouponIdInAndCustomerId(coupons.map { it.id }, customerId)
+                .map { it.couponId }.toSet()
+        }
+        val ownerUserIds = merchants.values.map { it.ownerUserId }.distinct()
+        val regularCustomerOwnerIds = if (ownerUserIds.isEmpty()) {
+            emptySet()
+        } else {
+            transactionRepository.countBySenderIdAndRecipientIdInAndTypeAndStatus(
+                customerId, ownerUserIds, TransactionType.PAYMENT, TransactionStatus.COMPLETED,
+            ).filter { it.count >= REGULAR_CUSTOMER_THRESHOLD }.map { it.recipientId }.toSet()
+        }
         return coupons.mapNotNull { coupon ->
             val merchant = merchants[coupon.merchantId] ?: return@mapNotNull null
-            val alreadyRedeemed = merchantCouponRedemptionRepository.existsByCouponIdAndCustomerId(coupon.id, customerId)
-            val eligible = !coupon.regularsOnly || isRegularCustomer(merchant.ownerUserId, customerId)
+            val alreadyRedeemed = coupon.id in redeemedCouponIds
+            val eligible = !coupon.regularsOnly || merchant.ownerUserId in regularCustomerOwnerIds
             CouponBrowseView(coupon, merchant.businessName, eligible, alreadyRedeemed)
         }
     }

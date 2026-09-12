@@ -135,8 +135,12 @@ class MerchantCouponServiceTest : BehaviorSpec({
 
         every { merchantCouponRepository.findByActiveTrueOrderByCreatedAtDesc() } returns listOf(openCoupon, expiredCoupon, regularsOnlyCoupon)
         every { merchantRepository.findAllById(listOf("merchant_1", "merchant_2")) } returns listOf(merchant1, merchant2)
-        every { merchantCouponRedemptionRepository.existsByCouponIdAndCustomerId(any(), "customer_1") } returns false
-        every { transactionRepository.countBySenderIdAndRecipientIdAndTypeAndStatus("customer_1", "seller_2", any(), any()) } returns 0L
+        every { merchantCouponRedemptionRepository.findByCouponIdInAndCustomerId(any(), "customer_1") } returns emptyList()
+        // Real GROUP BY semantics (2026-09-12 N+1 fix): an owner with zero qualifying
+        // payments is simply absent from the batched result, same real convention
+        // EatsFavoriteRepository.getFavoriteCounts already documents -- never a
+        // fabricated zero-count row.
+        every { transactionRepository.countBySenderIdAndRecipientIdInAndTypeAndStatus("customer_1", any(), any(), any()) } returns emptyList()
 
         When("a customer who is not a regular anywhere browses real coupons across every merchant") {
             val results = service.browseCoupons("customer_1")
@@ -149,6 +153,46 @@ class MerchantCouponServiceTest : BehaviorSpec({
             Then("the real regulars-only coupon is marked ineligible for this non-regular customer") {
                 results.find { it.coupon.id == "coupon_regulars" }?.eligible shouldBe false
                 results.find { it.coupon.id == "coupon_open" }?.eligible shouldBe true
+            }
+        }
+    }
+
+    // Real N+1 fix (2026-09-12) -- getCouponsForCustomer had ZERO direct test coverage
+    // before this pass (confirmed by grep; only exercised indirectly via a mocked
+    // MerchantCouponService in MerchantServiceTest). First real coverage now, doubling
+    // as the fix's own discrimination test.
+    Given("a real merchant's coupon list, one already redeemed by this customer, one not") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val merchantCouponRepository = mockk<MerchantCouponRepository>()
+        val merchantCouponRedemptionRepository = mockk<MerchantCouponRedemptionRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = MerchantCouponService(
+            merchantRepository, merchantCouponRepository, merchantCouponRedemptionRepository,
+            transactionRepository, notificationRepository, pushNotificationService,
+        )
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
+        val couponA = couponWithExpiry("coupon_a", "merchant_1", Instant.now().plus(10, ChronoUnit.DAYS))
+        val couponB = couponWithExpiry("coupon_b", "merchant_1", Instant.now().plus(10, ChronoUnit.DAYS))
+        every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+        every { merchantCouponRepository.findByMerchantIdAndActiveTrueOrderByCreatedAtDesc("merchant_1") } returns listOf(couponA, couponB)
+        every { merchantCouponRedemptionRepository.findByCouponIdInAndCustomerId(listOf("coupon_a", "coupon_b"), "customer_1") } returns listOf(
+            rw.itunda.core.domain.MerchantCouponRedemption(id = "r1", couponId = "coupon_a", merchantId = "merchant_1", customerId = "customer_1", transactionId = "txn_1", discountAmount = BigDecimal("500")),
+        )
+        every { transactionRepository.countBySenderIdAndRecipientIdAndTypeAndStatus("customer_1", "seller_1", any(), any()) } returns 5L
+
+        When("fetching this customer's coupon list for the merchant") {
+            val results = service.getCouponsForCustomer("merchant_1", "customer_1")
+
+            Then("only the real redeemed coupon is marked alreadyRedeemed, via one batched query, not one per coupon") {
+                results.find { it.coupon.id == "coupon_a" }?.alreadyRedeemed shouldBe true
+                results.find { it.coupon.id == "coupon_b" }?.alreadyRedeemed shouldBe false
+                verify(exactly = 1) { merchantCouponRedemptionRepository.findByCouponIdInAndCustomerId(any(), "customer_1") }
+            }
+
+            Then("isRegularCustomer is checked exactly once for this merchant, not once per coupon in the list") {
+                verify(exactly = 1) { transactionRepository.countBySenderIdAndRecipientIdAndTypeAndStatus("customer_1", "seller_1", any(), any()) }
             }
         }
     }

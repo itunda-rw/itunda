@@ -18,4 +18,11 @@ interface MerchantCouponRepository : JpaRepository<MerchantCoupon, String> {
 interface MerchantCouponRedemptionRepository : JpaRepository<MerchantCouponRedemption, String> {
     fun existsByCouponIdAndCustomerId(couponId: String, customerId: String): Boolean
     fun findByCustomerIdOrderByRedeemedAtDesc(customerId: String): List<MerchantCouponRedemption>
+
+    // Real N+1 fix (2026-09-12) -- MerchantCouponService.getCouponsForCustomer and
+    // browseCoupons both used to call existsByCouponIdAndCustomerId once per coupon in
+    // the real list being rendered -- one batched IN-query per customer instead, same
+    // real "batch, don't N+1" discipline DiscoverService's own impression-recording fix
+    // already established.
+    fun findByCouponIdInAndCustomerId(couponIds: List<String>, customerId: String): List<MerchantCouponRedemption>
 }
