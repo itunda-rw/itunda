@@ -10,6 +10,7 @@ import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.GroupAccount
 import rw.itunda.core.domain.GroupAccountContribution
+import rw.itunda.core.domain.GroupAccountDuesReminder
 import rw.itunda.core.domain.GroupAccountMember
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Account
@@ -360,8 +361,9 @@ class GroupAccountServiceTest : BehaviorSpec({
                 GroupAccountContribution(id = "c1", groupAccountId = "grp_1", userId = "owner_1", cycleMonth = cycleMonth, amount = BigDecimal("2000")),
             )
             // member_2 hasn't paid and hasn't been reminded yet -- member_3 hasn't paid but was already reminded this cycle.
-            every { groupAccountDuesReminderRepository.existsByGroupAccountIdAndUserIdAndCycleMonth("grp_1", "member_2", cycleMonth) } returns false
-            every { groupAccountDuesReminderRepository.existsByGroupAccountIdAndUserIdAndCycleMonth("grp_1", "member_3", cycleMonth) } returns true
+            every { groupAccountDuesReminderRepository.findByGroupAccountIdAndCycleMonth("grp_1", cycleMonth) } returns listOf(
+                GroupAccountDuesReminder(id = "grpdue_1", groupAccountId = "grp_1", userId = "member_3", cycleMonth = cycleMonth),
+            )
             every { notificationRepository.save(any()) } answers { firstArg() }
             every { groupAccountDuesReminderRepository.save(any()) } answers { firstArg() }
 

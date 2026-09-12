@@ -316,12 +316,17 @@ class GroupAccountService(
         val members = groupAccountMemberRepository.findByGroupAccountId(account.id)
         val contributedByUser = groupAccountContributionRepository.findByGroupAccountIdAndCycleMonth(account.id, cycleMonth)
             .groupBy { it.userId }.mapValues { (_, rows) -> rows.sumOf { it.amount } }
+        // Real N+1 fix (2026-09-12) -- see GroupAccountDuesReminderRepository's own
+        // doc comment on the new findByGroupAccountIdAndCycleMonth method this replaces
+        // a per-member existsBy(...) call with.
+        val alreadyRemindedUserIds = groupAccountDuesReminderRepository.findByGroupAccountIdAndCycleMonth(account.id, cycleMonth)
+            .map { it.userId }.toSet()
 
         var remindedCount = 0
         for (m in members) {
             val contributed = contributedByUser[m.userId] ?: BigDecimal.ZERO
             if (contributed >= duesAmount) continue
-            if (groupAccountDuesReminderRepository.existsByGroupAccountIdAndUserIdAndCycleMonth(account.id, m.userId, cycleMonth)) continue
+            if (m.userId in alreadyRemindedUserIds) continue
 
             val reminderTitle = "Dues reminder for \"${account.name}\""
             val reminderBody = "You haven't paid this month's ${duesAmount.toPlainString()} RWF dues yet."

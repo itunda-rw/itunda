@@ -127,6 +127,15 @@ interface GroupAccountContributionRepository : JpaRepository<GroupAccountContrib
 
 interface GroupAccountDuesReminderRepository : JpaRepository<GroupAccountDuesReminder, String> {
     fun existsByGroupAccountIdAndUserIdAndCycleMonth(groupAccountId: String, userId: String, cycleMonth: String): Boolean
+
+    // Real N+1 fix (2026-09-12) -- GroupAccountService.remindUnpaidMembers used to call
+    // existsByGroupAccountIdAndUserIdAndCycleMonth once per unpaid member (up to
+    // MAX_MEMBERS=100), itself inside GroupAccountDuesReminderScheduler's own
+    // fixedDelay=60000 poll across every real group account with dues configured --
+    // an N-query cost, scaling with member count, repeated every minute for every such
+    // account. Same real "call frequency, not table size" signal
+    // feedback_n_plus_1_query_sweep.md already established, one batched fetch instead.
+    fun findByGroupAccountIdAndCycleMonth(groupAccountId: String, cycleMonth: String): List<GroupAccountDuesReminder>
 }
 
 interface TermsAcceptanceRepository : JpaRepository<TermsAcceptance, String> {
