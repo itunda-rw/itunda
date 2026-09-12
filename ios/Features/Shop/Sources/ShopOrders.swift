@@ -253,6 +253,12 @@ struct MyProductSubscriptionsView: View {
 struct MyProductInquiriesView: View {
     @State private var inquiries: [ProductInquiryDto]?
     @State private var error: String?
+    // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getMyProductInquiries
+    // silently capped this list at the first 20 questions.
+    @State private var inquiriesPage = 0
+    @State private var inquiriesHasMore = false
+    @State private var loadingMoreInquiries = false
 
     var body: some View {
         Group {
@@ -282,6 +288,12 @@ struct MyProductInquiriesView: View {
                     .padding(.vertical, 10)
                     Divider().overlay(IDS.Colors.divider)
                 }
+                if inquiriesHasMore {
+                    Button(loadingMoreInquiries ? "Loading…" : "Load more") {
+                        Task { await loadMoreInquiries() }
+                    }
+                    .disabled(loadingMoreInquiries)
+                }
             }
         }
         .task { await load() }
@@ -291,10 +303,22 @@ struct MyProductInquiriesView: View {
         do {
             let res = try await NetworkClient.shared.getMyProductInquiries()
             inquiries = res.inquiries
+            inquiriesPage = res.page
+            inquiriesHasMore = res.page + 1 < res.totalPages
             error = nil
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
+    }
+
+    private func loadMoreInquiries() async {
+        let nextPage = inquiriesPage + 1
+        loadingMoreInquiries = true
+        defer { loadingMoreInquiries = false }
+        guard let res = try? await NetworkClient.shared.getMyProductInquiries(page: nextPage) else { return }
+        inquiries = (inquiries ?? []) + res.inquiries
+        inquiriesPage = nextPage
+        inquiriesHasMore = res.page + 1 < res.totalPages
     }
 }
 

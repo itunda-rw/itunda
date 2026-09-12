@@ -16,6 +16,12 @@ struct ProductInquirySection: View {
     @State private var question = ""
     @State private var asking = false
     @State private var error: String?
+    // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getProductInquiries
+    // silently capped this list at the first 20 questions.
+    @State private var inquiriesPage = 0
+    @State private var inquiriesHasMore = false
+    @State private var loadingMoreInquiries = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -56,6 +62,13 @@ struct ProductInquirySection: View {
                                 }
                             }
                         }
+                        if inquiriesHasMore {
+                            Button(loadingMoreInquiries ? "Loading…" : "Load more") {
+                                Task { await loadMoreInquiries() }
+                            }
+                            .font(.caption)
+                            .disabled(loadingMoreInquiries)
+                        }
                     }
                 }
             } else {
@@ -66,7 +79,23 @@ struct ProductInquirySection: View {
     }
 
     private func load() async {
-        inquiries = (try? await NetworkClient.shared.getProductInquiries(productId))?.inquiries ?? []
+        guard let res = try? await NetworkClient.shared.getProductInquiries(productId) else {
+            inquiries = []
+            return
+        }
+        inquiries = res.inquiries
+        inquiriesPage = res.page
+        inquiriesHasMore = res.page + 1 < res.totalPages
+    }
+
+    private func loadMoreInquiries() async {
+        let nextPage = inquiriesPage + 1
+        loadingMoreInquiries = true
+        defer { loadingMoreInquiries = false }
+        guard let res = try? await NetworkClient.shared.getProductInquiries(productId, page: nextPage) else { return }
+        inquiries = (inquiries ?? []) + res.inquiries
+        inquiriesPage = nextPage
+        inquiriesHasMore = res.page + 1 < res.totalPages
     }
 
     private func ask() async {
@@ -96,6 +125,12 @@ struct ProductRatingBadge: View {
     // with no public memberwise init across the Core/Network <-> App module boundary).
     @State private var helpfulVoted: Set<String> = []
     @State private var helpfulCountDeltas: [String: Int] = [:]
+    // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getProductReviews
+    // silently capped this list at the first 20 written reviews.
+    @State private var reviewsPage = 0
+    @State private var reviewsHasMore = false
+    @State private var loadingMoreReviews = false
 
     private func displayedHelpfulCount(_ r: ProductReviewDto) -> Int {
         max(0, (r.helpfulCount ?? 0) + (helpfulCountDeltas[r.id] ?? 0))
@@ -143,6 +178,13 @@ struct ProductRatingBadge: View {
                                             .foregroundColor(helpfulVoted.contains(r.id) ? IDS.Colors.brand : IDS.Colors.textTertiary)
                                     }
                                 }
+                                if reviewsHasMore {
+                                    Button(loadingMoreReviews ? "Loading…" : "Load more") {
+                                        Task { await loadMoreReviews() }
+                                    }
+                                    .font(.caption2)
+                                    .disabled(loadingMoreReviews)
+                                }
                             }
                         } else {
                             Text("Loading reviews…").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
@@ -165,11 +207,24 @@ struct ProductRatingBadge: View {
         guard open, reviews == nil else { return }
         Task {
             do {
-                reviews = try await NetworkClient.shared.getProductReviews(productId).reviews
+                let res = try await NetworkClient.shared.getProductReviews(productId)
+                reviews = res.reviews
+                reviewsPage = res.page
+                reviewsHasMore = res.page + 1 < res.totalPages
             } catch {
                 reviews = []
             }
         }
+    }
+
+    private func loadMoreReviews() async {
+        let nextPage = reviewsPage + 1
+        loadingMoreReviews = true
+        defer { loadingMoreReviews = false }
+        guard let res = try? await NetworkClient.shared.getProductReviews(productId, page: nextPage) else { return }
+        reviews = (reviews ?? []) + res.reviews
+        reviewsPage = nextPage
+        reviewsHasMore = res.page + 1 < res.totalPages
     }
 }
 

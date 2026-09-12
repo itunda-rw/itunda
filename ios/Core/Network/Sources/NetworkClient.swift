@@ -4919,7 +4919,7 @@ public struct ProductReviewDto: Decodable {
 }
 public struct ToggleHelpfulReviewResponse: Decodable { public let success: Bool; public let helpful: Bool }
 public struct ProductReviewResponse: Decodable { public let success: Bool; public let review: ProductReviewDto }
-public struct ProductReviewsResponse: Decodable { public let success: Bool; public let reviews: [ProductReviewDto] }
+public struct ProductReviewsResponse: Decodable { public let success: Bool; public let reviews: [ProductReviewDto]; public let page: Int; public let totalPages: Int }
 public struct ProductRatingResponse: Decodable { public let success: Bool; public let average: Double?; public let count: Int }
 
 // Real Coupang-style pre-purchase product Q&A -- mirrors bank-mfe's lib/commerce.ts
@@ -4936,7 +4936,7 @@ public struct ProductInquiryDto: Decodable, Identifiable {
     public let createdAt: String
 }
 public struct ProductInquiryResponse: Decodable { public let success: Bool; public let inquiry: ProductInquiryDto }
-public struct ProductInquiriesResponse: Decodable { public let success: Bool; public let inquiries: [ProductInquiryDto] }
+public struct ProductInquiriesResponse: Decodable { public let success: Bool; public let inquiries: [ProductInquiryDto]; public let page: Int; public let totalPages: Int }
 
 // Real Kakao Pay 정기결제/Toss 빌링키-style recurring merchant billing -- mirrors
 // bank-mfe's lib/shopping.ts exactly.
@@ -5102,7 +5102,7 @@ public struct EatsReviewDto: Decodable {
     public let helpfulCount: Int
 }
 public struct EatsReviewResponse: Decodable { public let success: Bool; public let review: EatsReviewDto }
-public struct EatsReviewsResponse: Decodable { public let success: Bool; public let reviews: [EatsReviewDto] }
+public struct EatsReviewsResponse: Decodable { public let success: Bool; public let reviews: [EatsReviewDto]; public let page: Int; public let totalPages: Int }
 public struct EatsRatingResponse: Decodable { public let success: Bool; public let average: Double?; public let count: Int }
 public struct ReplyToEatsReviewRequest: Encodable { public let reply: String }
 public struct ToggleEatsReviewHelpfulResponse: Decodable { public let success: Bool; public let helpful: Bool }
@@ -6746,8 +6746,11 @@ extension NetworkClient {
         try await get("api/v1/orders/products/\(productId)/rating")
     }
 
-    public func getProductReviews(_ productId: String) async throws -> ProductReviewsResponse {
-        try await get("api/v1/orders/products/\(productId)/reviews")
+    public func getProductReviews(_ productId: String, page: Int = 0, size: Int = 20) async throws -> ProductReviewsResponse {
+        try await get("api/v1/orders/products/\(productId)/reviews", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
     }
 
     // Real Coupang/Naver-style "helpful" idempotent toggle (2026-08-25) -- see
@@ -6764,8 +6767,11 @@ extension NetworkClient {
     public func askProductInquiry(_ productId: String, question: String) async throws -> ProductInquiryResponse {
         try await authenticatedPost("api/v1/orders/products/\(productId)/inquiries", body: AskProductInquiryRequest(question: question))
     }
-    public func getProductInquiries(_ productId: String) async throws -> ProductInquiriesResponse {
-        try await get("api/v1/orders/products/\(productId)/inquiries")
+    public func getProductInquiries(_ productId: String, page: Int = 0, size: Int = 20) async throws -> ProductInquiriesResponse {
+        try await get("api/v1/orders/products/\(productId)/inquiries", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
     }
 
     // Real "my questions across every product I've ever asked about" -- see
@@ -6775,8 +6781,11 @@ extension NetworkClient {
     // across every product, in one list. Real gap found live (uncalled-endpoint
     // sweep, 2026-09-03): this endpoint existed with zero caller on iOS or bank-mfe
     // -- only Android had this wired, since 2026-08-04.
-    public func getMyProductInquiries() async throws -> ProductInquiriesResponse {
-        try await get("api/v1/orders/inquiries/my-questions")
+    public func getMyProductInquiries(page: Int = 0, size: Int = 20) async throws -> ProductInquiriesResponse {
+        try await get("api/v1/orders/inquiries/my-questions", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
     }
 
     // Real Kakao Pay 정기결제/Toss Payments 빌링키-style recurring merchant billing --
@@ -6919,8 +6928,11 @@ extension NetworkClient {
     }
 
     // Real written-review list + owner-reply (item 184/185/186).
-    public func getRestaurantReviews(_ restaurantId: String) async throws -> EatsReviewsResponse {
-        try await get("api/v1/eats/restaurants/\(restaurantId)/reviews")
+    public func getRestaurantReviews(_ restaurantId: String, page: Int = 0, size: Int = 20) async throws -> EatsReviewsResponse {
+        try await get("api/v1/eats/restaurants/\(restaurantId)/reviews", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
     }
 
     public func replyToRestaurantReview(_ reviewId: String, reply: String) async throws -> EatsReviewResponse {

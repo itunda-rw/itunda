@@ -46,6 +46,12 @@ struct RestaurantRatingBadge: View {
     // mirroring ShopReviews.swift's own established pattern exactly.
     @State private var helpfulVoted: Set<String> = []
     @State private var helpfulCountDeltas: [String: Int] = [:]
+    // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getRestaurantReviews
+    // silently capped this list at the first 20 written reviews.
+    @State private var reviewsPage = 0
+    @State private var reviewsHasMore = false
+    @State private var loadingMoreReviews = false
 
     private func toggleHelpful(_ reviewId: String) {
         Task {
@@ -103,6 +109,13 @@ struct RestaurantRatingBadge: View {
                                         ReportEatsReviewButton(reviewId: r.id)
                                     }
                                 }
+                                if reviewsHasMore {
+                                    Button(loadingMoreReviews ? "Loading…" : "Load more") {
+                                        Task { await loadMoreReviews() }
+                                    }
+                                    .font(.caption2)
+                                    .disabled(loadingMoreReviews)
+                                }
                             }
                         } else {
                             Text("Loading reviews…").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
@@ -129,11 +142,24 @@ struct RestaurantRatingBadge: View {
         guard open, reviews == nil else { return }
         Task {
             do {
-                reviews = try await NetworkClient.shared.getRestaurantReviews(restaurantId).reviews
+                let res = try await NetworkClient.shared.getRestaurantReviews(restaurantId)
+                reviews = res.reviews
+                reviewsPage = res.page
+                reviewsHasMore = res.page + 1 < res.totalPages
             } catch {
                 reviews = []
             }
         }
+    }
+
+    private func loadMoreReviews() async {
+        let nextPage = reviewsPage + 1
+        loadingMoreReviews = true
+        defer { loadingMoreReviews = false }
+        guard let res = try? await NetworkClient.shared.getRestaurantReviews(restaurantId, page: nextPage) else { return }
+        reviews = (reviews ?? []) + res.reviews
+        reviewsPage = nextPage
+        reviewsHasMore = res.page + 1 < res.totalPages
     }
 }
 
