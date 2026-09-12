@@ -33,6 +33,13 @@
     <string name="pay_money_add">Add money</string>
     <string name="pay_money_history_only">See payment history only</string>
     <string name="pay_money_empty">No details found</string>
+    <string name="add_money_title">Add money</string>
+    <string name="add_money_from">From</string>
+    <string name="add_money_amount">Amount (RWF)</string>
+    <string name="add_money_no_source">You don\'t have another itunda account to top up from yet.</string>
+    <string name="add_money_submit">Add money</string>
+    <string name="add_money_submitting">Adding money…</string>
+    <string name="add_money_error">Could not complete this top-up.</string>
     <string name="pay_picker_title">Choose how to pay</string>
     <string name="pay_picker_recent">Recent</string>
     <string name="pay_picker_account">Account</string>

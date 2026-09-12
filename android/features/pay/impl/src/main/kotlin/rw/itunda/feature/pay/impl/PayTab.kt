@@ -139,12 +139,47 @@ fun PayTab(
         if (selectedAccountId == null) selectedAccountId = accounts.firstOrNull { it.type == "PAY" }?.id
     }
     var openAccountDetail by remember { mutableStateOf<rw.itunda.core.network.Account?>(null) }
+    // Real Toss "충전하기" (top up) reference (2026-09-12) -- see AddMoneyScreen.kt's
+    // own doc comment. allAccounts is the FULL unfiltered list (unlike `accounts`
+    // above, which is PAY+foreign only for MyPaymentCodeCard's funding-source
+    // picker) since a top-up source can be MAIN too.
+    var showAddMoney by remember { mutableStateOf(false) }
+    var allAccounts by remember { mutableStateOf<List<rw.itunda.core.network.Account>>(emptyList()) }
+    if (openAccountDetail != null && showAddMoney) {
+        LaunchedEffect(Unit) {
+            try {
+                allAccounts = rw.itunda.core.network.NetworkClient.apiService.getAccounts().accounts
+            } catch (e: Exception) {
+                // Non-critical -- the screen's own empty state handles a genuinely empty list.
+            }
+        }
+        val destination = openAccountDetail!!
+        val addMoneyScope = rememberCoroutineScope()
+        AddMoneyScreen(
+            destination = destination,
+            sourceOptions = allAccounts.filter { it.id != destination.id },
+            onBack = { showAddMoney = false },
+            onDone = {
+                showAddMoney = false
+                addMoneyScope.launch {
+                    try {
+                        openAccountDetail = rw.itunda.core.network.NetworkClient.apiService.getAccounts().accounts.find { it.id == destination.id }
+                    } catch (e: Exception) {
+                        // Non-critical -- PayMoneyDetailScreen just keeps showing the pre-top-up balance.
+                    }
+                }
+            },
+        )
+        return
+    }
     if (openAccountDetail != null) {
         PayMoneyDetailScreen(
             account = openAccountDetail!!,
             onBack = { openAccountDetail = null },
             onSend = { openAccountDetail = null; onSend() },
-            onAddMoney = { openAccountDetail = null },
+            // Real Toss "충전하기" reference (2026-09-12) -- closes the gap this call
+            // site previously left dead. See AddMoneyScreen.kt.
+            onAddMoney = { showAddMoney = true },
         )
         return
     }

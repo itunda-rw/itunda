@@ -26,6 +26,13 @@
     <string name="pay_money_add">Ongeramo amafaranga</string>
     <string name="pay_money_history_only">Reba amakuru y\'ubwishyu gusa</string>
     <string name="pay_money_empty">Nta makuru abonetse</string>
+    <string name="add_money_title">Ongeramo amafaranga</string>
+    <string name="add_money_from">Uhereye kuri</string>
+    <string name="add_money_amount">Umubare (RWF)</string>
+    <string name="add_money_no_source">Nta yindi konti ya itunda ufite yo kongeramo amafaranga kugeza ubu.</string>
+    <string name="add_money_submit">Ongeramo amafaranga</string>
+    <string name="add_money_submitting">Birimo kongerwamo…</string>
+    <string name="add_money_error">Ntibyakunze kurangiza iyi nyongera.</string>
     <string name="back">Subira inyuma</string>
     <string name="pay_picker_title">Hitamo uko wishyura</string>
     <string name="pay_picker_recent">Vuba aha</string>

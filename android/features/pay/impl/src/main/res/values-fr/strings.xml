@@ -27,6 +27,13 @@
     <string name="pay_money_add">Ajouter de l\'argent</string>
     <string name="pay_money_history_only">Voir uniquement l\'historique des paiements</string>
     <string name="pay_money_empty">Aucun détail trouvé</string>
+    <string name="add_money_title">Ajouter de l\'argent</string>
+    <string name="add_money_from">Depuis</string>
+    <string name="add_money_amount">Montant (RWF)</string>
+    <string name="add_money_no_source">Vous n\'avez pas encore d\'autre compte itunda pour recharger.</string>
+    <string name="add_money_submit">Ajouter de l\'argent</string>
+    <string name="add_money_submitting">Ajout en cours…</string>
+    <string name="add_money_error">Impossible de terminer cette recharge.</string>
     <string name="pay_picker_title">Choisissez comment payer</string>
     <string name="pay_picker_recent">Récent</string>
     <string name="pay_picker_account">Compte</string>

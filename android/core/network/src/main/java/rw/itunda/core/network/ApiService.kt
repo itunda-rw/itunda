@@ -515,6 +515,8 @@ data class TransactionDto(
 )
 
 data class ConfirmTransferResponse(val success: Boolean, val message: String, val transaction: TransactionDto, val newBalance: Double)
+data class InternalTransferRequest(val fromAccountId: String, val toAccountId: String, val amount: java.math.BigDecimal)
+data class InternalTransferResponse(val success: Boolean, val transaction: TransactionDto)
 
 // Real direct itunda-to-itunda push-transfer (rw.itunda.p2p, 2026-07-20) -- mirrors
 // P2pController's real SendDirectP2pRequest exactly. Deliberately distinct from
@@ -2837,6 +2839,14 @@ interface ApiService {
 
     @POST("api/v1/account/transfer/confirm")
     suspend fun confirmTransfer(@Header("Idempotency-Key") idempotencyKey: String, @Body request: ConfirmTransferRequest): ConfirmTransferResponse
+
+    // Real Toss "충전하기"/"옮기기" reference (2026-09-12) -- see the backend's
+    // AccountService.transferBetweenOwnAccounts doc comment. A purely internal,
+    // zero-fee move between two of the caller's own real accounts -- deliberately
+    // NOT quoteTransfer/confirmTransfer above (those route through an external
+    // provider rail and charge a real 1% fee).
+    @POST("api/v1/account/internal-transfer")
+    suspend fun internalTransfer(@Header("Idempotency-Key") idempotencyKey: String, @Body request: InternalTransferRequest): InternalTransferResponse
 
     // Real direct P2P push-transfer (2026-07-20) -- see SendDirectP2pRequest's own doc
     // comment for why this replaces quoteTransfer/confirmTransfer above in
