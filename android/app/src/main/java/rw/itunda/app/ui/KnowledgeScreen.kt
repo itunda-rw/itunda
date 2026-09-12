@@ -74,6 +74,13 @@ fun KnowledgeScreen(onBack: () -> Unit) {
     var page by remember { mutableStateOf(0) }
     var hasMore by remember { mutableStateOf(false) }
     var loadingMore by remember { mutableStateOf(false) }
+    // Real pagination-discard fix (2026-09-13, see project_itunda_pagination_discard_sweep
+    // memory) -- "My answers" had the SAME bug this screen's own header comment
+    // already named systemic, just never actually fixed for this specific sub-list
+    // (only "My questions" above got fixed at the time).
+    var answersPage by remember { mutableStateOf(0) }
+    var answersHasMore by remember { mutableStateOf(false) }
+    var loadingMoreAnswers by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
@@ -84,7 +91,11 @@ fun KnowledgeScreen(onBack: () -> Unit) {
         coroutineScope.launch {
             try {
                 questions = if (tab == KnowledgeTab.MINE) {
-                    myAnswers = NetworkClient.apiService.getMyKnowledgeAnswers().answers
+                    answersPage = 0
+                    answersHasMore = false
+                    val answersResponse = NetworkClient.apiService.getMyKnowledgeAnswers(page = 0)
+                    myAnswers = answersResponse.answers
+                    answersHasMore = answersResponse.page + 1 < answersResponse.totalPages
                     val response = NetworkClient.apiService.getMyKnowledgeQuestions(page = 0)
                     hasMore = response.page + 1 < response.totalPages
                     response.questions
@@ -119,6 +130,24 @@ fun KnowledgeScreen(onBack: () -> Unit) {
                 // user can retry by tapping "Load more" again.
             } finally {
                 loadingMore = false
+            }
+        }
+    }
+
+    fun loadMoreAnswers() {
+        val nextPage = answersPage + 1
+        loadingMoreAnswers = true
+        coroutineScope.launch {
+            try {
+                val response = NetworkClient.apiService.getMyKnowledgeAnswers(page = nextPage)
+                myAnswers = (myAnswers ?: emptyList()) + response.answers
+                answersPage = nextPage
+                answersHasMore = response.page + 1 < response.totalPages
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded answers stay visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMoreAnswers = false
             }
         }
     }
@@ -243,6 +272,17 @@ fun KnowledgeScreen(onBack: () -> Unit) {
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(if (a.isAdopted) "✅ Adopted" else "Pending", color = Ids.colors.textSecondary, fontSize = 12.sp)
                                 Text(a.body, color = Ids.colors.textPrimary, fontSize = 13.sp)
+                        }
+                    }
+                    if (answersHasMore) {
+                        item {
+                            IdsButton(
+                                text = if (loadingMoreAnswers) "Loading…" else "Load more",
+                                onClick = ::loadMoreAnswers,
+                                enabled = !loadingMoreAnswers,
+                                variant = IdsButtonVariant.Tinted,
+                                size = IdsButtonSize.Medium,
+                            )
                         }
                     }
                 }

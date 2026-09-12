@@ -5075,7 +5075,7 @@ interface ApiService {
     suspend fun getMyKnowledgeQuestions(@Query("page") page: Int = 0, @Query("size") size: Int = 20): KnowledgeQuestionsResponse
 
     @GET("api/v1/knowledge/answers/my-answers")
-    suspend fun getMyKnowledgeAnswers(): KnowledgeAnswersResponse
+    suspend fun getMyKnowledgeAnswers(@Query("page") page: Int = 0, @Query("size") size: Int = 20): KnowledgeAnswersResponse
 
     @GET("api/v1/knowledge/reputation/me")
     suspend fun getMyKnowledgeReputation(): KnowledgeReputationResponse
@@ -5606,7 +5606,7 @@ data class KnowledgeAnswerDto(
     val isAdopted: Boolean, val createdAt: String,
 )
 data class KnowledgeAnswerResponse(val success: Boolean, val answer: KnowledgeAnswerDto)
-data class KnowledgeAnswersResponse(val success: Boolean, val answers: List<KnowledgeAnswerDto>)
+data class KnowledgeAnswersResponse(val success: Boolean, val answers: List<KnowledgeAnswerDto>, val page: Int = 0, val totalPages: Int = 1)
 data class KnowledgeReputationResponse(val success: Boolean, val adoptedAnswerCount: Int)
 
 // Real Kakao T-style post-trip driver rating (item 213) -- see the backend's
