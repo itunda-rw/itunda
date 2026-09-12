@@ -50,6 +50,7 @@ class GroupMessagingServiceTest : BehaviorSpec({
 
         When("creating a group with two real other members") {
             every { userRepository.findAllById(listOf("user_b", "user_c")) } returns listOf(user("user_b", "Beata"), user("user_c", "Claude"))
+            every { userRepository.findById("user_a") } returns Optional.of(user("user_a", "Alice"))
             val savedSlot = slot<GroupConversation>()
             every { groupConversationRepository.save(capture(savedSlot)) } answers { firstArg() }
 
@@ -59,6 +60,16 @@ class GroupMessagingServiceTest : BehaviorSpec({
                 group.name shouldBe "Kigali Friends"
                 group.createdBy shouldBe "user_a"
                 verify { groupConversationMemberRepository.saveAll(match<List<GroupConversationMember>> { it.size == 3 }) }
+            }
+
+            // Real gap found live (sibling comparison against this class's own
+            // sendMessage notification convention, 2026-09-13): every invited member
+            // used to get zero notification of being added to a brand-new group.
+            Then("every real invited member is notified, but never the creator themselves") {
+                verify(exactly = 1) { notificationRepository.saveAll(match<List<rw.itunda.core.domain.Notification>> { it.map { n -> n.userId }.toSet() == setOf("user_b", "user_c") }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_b", any(), any(), any()) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_c", any(), any(), any()) }
+                verify(exactly = 0) { pushNotificationService.sendToUser("user_a", any(), any(), any()) }
             }
         }
 
@@ -110,6 +121,7 @@ class GroupMessagingServiceTest : BehaviorSpec({
 
         When("creating a group by real phone numbers") {
             every { userRepository.findAllByPhoneNumberIn(listOf("+250780000002")) } returns listOf(user("user_b", "Beata", "+250780000002"))
+            every { userRepository.findById("user_a") } returns Optional.of(user("user_a", "Alice"))
             val savedSlot = slot<GroupConversation>()
             every { groupConversationRepository.save(capture(savedSlot)) } answers { firstArg() }
 
@@ -140,6 +152,7 @@ class GroupMessagingServiceTest : BehaviorSpec({
         // GroupConversation + member rows.
         When("creating a group by member id, checking the real per-user rate limit") {
             every { userRepository.findAllById(listOf("user_b")) } returns listOf(user("user_b", "Beata"))
+            every { userRepository.findById("user_a") } returns Optional.of(user("user_a", "Alice"))
             every { groupConversationRepository.save(any()) } answers { firstArg() }
 
             service.createGroup("user_a", "Rate Limit Check", listOf("user_b"))
@@ -361,6 +374,7 @@ class GroupMessagingServiceTest : BehaviorSpec({
             every { groupConversationRepository.findById("group_1") } returns Optional.of(group)
             every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "user_a") } returns members[0]
             every { userRepository.findById("user_d") } returns Optional.of(user("user_d", "Dan"))
+            every { userRepository.findById("user_a") } returns Optional.of(user("user_a", "Alice"))
             every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "user_d") } returns null
             every { groupConversationMemberRepository.save(any()) } answers { firstArg() }
 
@@ -368,6 +382,14 @@ class GroupMessagingServiceTest : BehaviorSpec({
 
             Then("it real-adds them") {
                 verify { groupConversationMemberRepository.save(match<GroupConversationMember> { it.userId == "user_d" }) }
+            }
+
+            // Real gap found live (sibling comparison against this class's own
+            // sendMessage notification convention, 2026-09-13): addMember used to
+            // notify nobody at all.
+            Then("the real newly-added member is notified, not left to discover it themselves") {
+                verify(exactly = 1) { notificationRepository.saveAll(match<List<rw.itunda.core.domain.Notification>> { it.size == 1 && it[0].userId == "user_d" && it[0].type == "ADDED_TO_GROUP" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_d", any(), any(), any()) }
             }
         }
 
@@ -720,6 +742,12 @@ class GroupMessagingServiceTest : BehaviorSpec({
                 group.name shouldBe "Split with Beata"
                 savedSlot.captured.isDirect shouldBe true
                 verify { groupConversationMemberRepository.saveAll(match<List<GroupConversationMember>> { it.size == 2 && it.map { m -> m.userId }.toSet() == setOf("user_a", "user_b") }) }
+            }
+
+            // A hidden direct-split group is internal bookkeeping, not a real
+            // user-facing "you were added to a group" moment -- never notify for it.
+            Then("no 'added to group' notification is ever sent for this hidden bookkeeping group") {
+                verify(exactly = 0) { pushNotificationService.sendToUser("user_b", any(), any(), any()) }
             }
 
             Then("it rate-limits the creation the same way createGroup/createGroupByPhoneNumbers do") {

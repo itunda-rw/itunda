@@ -172,7 +172,42 @@ class GroupMessagingService(
             GroupConversationMember(id = "group_member_${UUID.randomUUID()}", groupConversationId = group.id, userId = userId, joinedAt = now)
         }
         groupConversationMemberRepository.saveAll(members)
+        // A hidden direct-split group (isDirect) is an internal bookkeeping construct
+        // created silently the moment either participant opens their 1:1 split-bill
+        // tab -- see getOrCreateDirectSplitGroup's own doc comment. Notifying "added
+        // you to a group" for that would be a premature, confusing push before any
+        // real bill/split action has happened; only a genuinely user-facing group
+        // (createGroup/createGroupByPhoneNumbers) gets this treatment.
+        if (!isDirect) notifyAddedToGroup(distinctOtherMembers, creatorUserId, group)
         return group
+    }
+
+    // Real gap found live (sibling comparison against this same class's own
+    // sendMessage/toggleReaction notification convention, 2026-09-13): a brand-new
+    // group's invited members and an existing group's newly added member both got zero
+    // notification of any kind -- no in-app Notification row, no push -- despite an
+    // ordinary group message or reaction already getting full treatment. Being invited
+    // into a conversation is objectively higher-signal than either of those.
+    private fun notifyAddedToGroup(recipientIds: List<String>, addedByUserId: String, group: GroupConversation) {
+        if (recipientIds.isEmpty()) return
+        val addedByName = userRepository.findById(addedByUserId).map { "${it.firstName} ${it.lastName}" }.orElse("Someone")
+        val title = "$addedByName added you to ${group.name}"
+        // Real N+1 fix, same batch-saveAll convention sendMessage's own identical
+        // per-recipient notification fan-out already establishes just above.
+        notificationRepository.saveAll(
+            recipientIds.map { recipientId ->
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = recipientId, type = "ADDED_TO_GROUP",
+                    title = title, body = "Tap to open the group.",
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"groupConversationId\":\"${group.id}\"}",
+                )
+            },
+        )
+        recipientIds.forEach { recipientId ->
+            runAfterCommit {
+                pushNotificationService.sendToUser(recipientId, title, "Tap to open the group.", mapOf("groupConversationId" to group.id))
+            }
+        }
     }
 
     // Real, unpredictable, human-shareable 6-character code -- retried on the rare
@@ -633,6 +668,7 @@ class GroupMessagingService(
         groupConversationMemberRepository.save(
             GroupConversationMember(id = "group_member_${UUID.randomUUID()}", groupConversationId = groupId, userId = newUserId),
         )
+        notifyAddedToGroup(listOf(newUserId), requesterId, group)
         return group
     }
 
