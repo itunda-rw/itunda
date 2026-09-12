@@ -132,6 +132,12 @@ struct ListingWishlistView: View {
     @State private var favorites: [FavoriteListingDto]?
     @State private var error: String?
     @State private var removingId: String?
+    // Real pagination-discard fix (2026-09-13, porting web's/Android's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getMyFavoriteListings
+    // silently capped this list at the first 20 favorited listings.
+    @State private var page = 0
+    @State private var hasMore = false
+    @State private var loadingMore = false
 
     var body: some View {
         Group {
@@ -170,6 +176,14 @@ struct ListingWishlistView: View {
                     }
                     .padding(.vertical, 10)
                 }
+                if hasMore {
+                    Button(action: { Task { await loadMore() } }) {
+                        Text(loadingMore ? "Loading…" : "Load more").bold().font(.caption)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(Color(.secondarySystemBackground)).cornerRadius(10)
+                    }
+                    .disabled(loadingMore)
+                }
             }
         }
         .task { await load() }
@@ -177,11 +191,28 @@ struct ListingWishlistView: View {
 
     private func load() async {
         do {
-            let res = try await NetworkClient.shared.getMyFavoriteListings()
+            let res = try await NetworkClient.shared.getMyFavoriteListings(page: 0)
             favorites = res.favorites
+            page = 0
+            hasMore = res.page + 1 < res.totalPages
             error = nil
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func loadMore() async {
+        let nextPage = page + 1
+        loadingMore = true
+        defer { loadingMore = false }
+        do {
+            let res = try await NetworkClient.shared.getMyFavoriteListings(page: nextPage)
+            favorites = (favorites ?? []) + res.favorites
+            page = nextPage
+            hasMore = res.page + 1 < res.totalPages
+        } catch {
+            // Non-critical -- the already-loaded page stays visible; the user
+            // can retry by tapping "Load more" again.
         }
     }
 

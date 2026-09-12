@@ -176,10 +176,14 @@ public struct MyTabView: View {
             // never blank the rest of this real personal-activity summary.
             if let res = try? await NetworkClient.shared.getMyOrders() { shopOrders = res.orders }
             if let res = try? await NetworkClient.shared.getMyEatsOrders() { eatsOrders = res.orders }
-            if let res = try? await NetworkClient.shared.getMyFavoriteListings() { favoriteListingsCount = res.favorites.count }
-            if let res = try? await NetworkClient.shared.getMyFavoriteJobPosts() { favoriteJobPostsCount = res.favorites.count }
-            if let res = try? await NetworkClient.shared.getMyFavoritePropertyListings() { favoritePropertyListingsCount = res.favorites.count }
-            if let res = try? await NetworkClient.shared.getMyFavoriteRestaurants() { favoriteRestaurantsCount = res.favorites.count }
+            // Real accuracy fix (2026-09-13, same pagination-discard sweep as
+            // getMyListings/getMyJobPosts's own fix above): these 4 badges
+            // previously showed page 1's item count (capped at 20), not the
+            // real total, for any user with more than 20 real favorites.
+            if let res = try? await NetworkClient.shared.getMyFavoriteListings() { favoriteListingsCount = res.totalElements }
+            if let res = try? await NetworkClient.shared.getMyFavoriteJobPosts() { favoriteJobPostsCount = res.totalElements }
+            if let res = try? await NetworkClient.shared.getMyFavoritePropertyListings() { favoritePropertyListingsCount = res.totalElements }
+            if let res = try? await NetworkClient.shared.getMyFavoriteRestaurants() { favoriteRestaurantsCount = res.totalElements }
             // Real accuracy fix (2026-09-09, same pass as getMyListings's
             // pagination fix): this badge previously showed page 1's item
             // count (capped at 20), not the real total, for any user with

@@ -340,6 +340,12 @@ struct FavoriteRestaurantsView: View {
     @State private var favorites: [FavoriteRestaurantDto]?
     @State private var error: String?
     @State private var removingId: String?
+    // Real pagination-discard fix (2026-09-13, porting web's/Android's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getMyFavoriteRestaurants
+    // silently capped this list at the first 20 favorited restaurants.
+    @State private var page = 0
+    @State private var hasMore = false
+    @State private var loadingMore = false
 
     var body: some View {
         Group {
@@ -381,6 +387,12 @@ struct FavoriteRestaurantsView: View {
                     .contentShape(Rectangle())
                     .onTapGesture { onOpen(favorite) }
                 }
+                if hasMore {
+                    Button(loadingMore ? "Loading…" : "Load more") {
+                        Task { await loadMore() }
+                    }
+                    .disabled(loadingMore)
+                }
             }
         }
         .task { if favorites == nil { await load() } }
@@ -388,10 +400,28 @@ struct FavoriteRestaurantsView: View {
 
     private func load() async {
         do {
-            favorites = try await NetworkClient.shared.getMyFavoriteRestaurants().favorites
+            let res = try await NetworkClient.shared.getMyFavoriteRestaurants(page: 0)
+            favorites = res.favorites
+            page = 0
+            hasMore = res.page + 1 < res.totalPages
             error = nil
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func loadMore() async {
+        let nextPage = page + 1
+        loadingMore = true
+        defer { loadingMore = false }
+        do {
+            let res = try await NetworkClient.shared.getMyFavoriteRestaurants(page: nextPage)
+            favorites = (favorites ?? []) + res.favorites
+            page = nextPage
+            hasMore = res.page + 1 < res.totalPages
+        } catch {
+            // Non-critical -- the already-loaded page stays visible; the user
+            // can retry by tapping "Load more" again.
         }
     }
 

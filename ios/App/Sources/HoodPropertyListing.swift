@@ -8,6 +8,13 @@ struct PropertyWishlistView: View {
     let onRemoved: () -> Void
     @State private var favorites: [FavoritePropertyListingDto]?
     @State private var error: String?
+    // Real pagination-discard fix (2026-09-13, porting web's/Android's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getMyFavoritePropertyListings
+    // silently capped this list at the first 20 favorited properties.
+    @State private var page = 0
+    @State private var hasMore = false
+    @State private var loadingMore = false
+
     var body: some View {
         Group {
             if let error { ErrorCardView(error) { Task { await load() } } }
@@ -15,10 +22,56 @@ struct PropertyWishlistView: View {
             else if favorites!.isEmpty { Text("No saved properties yet — tap ♡ on a property to keep it here.").foregroundColor(IDS.Colors.textSecondary) }
             // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card --
             // matches ListingWishlistView's identical entity-list conversion, no divider.
-            else { ForEach(favorites!) { favorite in HStack { VStack(alignment: .leading) { Text(favorite.title).font(IDS.Typography.bodyBold); Text("\(favorite.listingType == "RENT" ? "For rent" : "For sale") · \(formatAmount(Int(favorite.price))) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary) }; Spacer(); Button("Remove") { Task { await remove(favorite.propertyListingId) } }.font(.caption).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8) }.padding(.vertical, 10) } }
+            else {
+                ForEach(favorites!) { favorite in
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text(favorite.title).font(IDS.Typography.bodyBold)
+                            Text("\(favorite.listingType == "RENT" ? "For rent" : "For sale") · \(formatAmount(Int(favorite.price))) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                        Spacer()
+                        Button("Remove") { Task { await remove(favorite.propertyListingId) } }.font(.caption).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8)
+                    }.padding(.vertical, 10)
+                }
+                if hasMore {
+                    Button(action: { Task { await loadMore() } }) {
+                        Text(loadingMore ? "Loading…" : "Load more").bold().font(.caption)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(Color(.secondarySystemBackground)).cornerRadius(10)
+                    }
+                    .disabled(loadingMore)
+                }
+            }
         }.task { await load() }
     }
-    private func load() async { do { favorites = try await NetworkClient.shared.getMyFavoritePropertyListings().favorites; error = nil } catch { self.error = "Couldn't load your saved properties. Check your connection and try again." } }
+
+    private func load() async {
+        do {
+            let res = try await NetworkClient.shared.getMyFavoritePropertyListings(page: 0)
+            favorites = res.favorites
+            page = 0
+            hasMore = res.page + 1 < res.totalPages
+            error = nil
+        } catch {
+            self.error = "Couldn't load your saved properties. Check your connection and try again."
+        }
+    }
+
+    private func loadMore() async {
+        let nextPage = page + 1
+        loadingMore = true
+        defer { loadingMore = false }
+        do {
+            let res = try await NetworkClient.shared.getMyFavoritePropertyListings(page: nextPage)
+            favorites = (favorites ?? []) + res.favorites
+            page = nextPage
+            hasMore = res.page + 1 < res.totalPages
+        } catch {
+            // Non-critical -- the already-loaded page stays visible; the user
+            // can retry by tapping "Load more" again.
+        }
+    }
+
     private func remove(_ id: String) async { do { _ = try await NetworkClient.shared.removePropertyListingFavorite(id); favorites?.removeAll { $0.propertyListingId == id }; onRemoved() } catch { self.error = "Couldn't remove this saved property. Check your connection and try again." } }
 }
 

@@ -3852,7 +3852,7 @@ public struct FavoriteListingDto: Decodable, Identifiable {
     public let favoritedAt: String
     public var id: String { listingId }
 }
-public struct FavoriteListingsResponse: Decodable { public let success: Bool; public let favorites: [FavoriteListingDto] }
+public struct FavoriteListingsResponse: Decodable { public let success: Bool; public let favorites: [FavoriteListingDto]; public let page: Int; public let totalPages: Int; public let totalElements: Int }
 
 // Real "Hidden listings" list (2026-09-08 Hood product-completeness pass) -- mirrors
 // FavoriteListingDto exactly; see backend ListingHideService.getMyHiddenListings's own
@@ -3875,7 +3875,7 @@ public struct FavoriteJobPostDto: Decodable, Identifiable {
     public let favoritedAt: String
     public var id: String { jobPostId }
 }
-public struct FavoriteJobPostsResponse: Decodable { public let success: Bool; public let favorites: [FavoriteJobPostDto] }
+public struct FavoriteJobPostsResponse: Decodable { public let success: Bool; public let favorites: [FavoriteJobPostDto]; public let page: Int; public let totalPages: Int; public let totalElements: Int }
 
 // Real KakaoTalk-style "선물하기" money gift (2026-07-20) -- see GiftService's own doc
 // comment. Money leaves the sender's account into a real escrow account the moment a
@@ -4144,7 +4144,7 @@ public struct PropertyListingsResponse: Decodable {
     public let totalElements: Int
 }
 public struct FavoritePropertyListingDto: Decodable, Identifiable { public let propertyListingId: String; public let title: String; public let price: Double; public let listingType: String; public let favoritedAt: String; public var id: String { propertyListingId } }
-public struct FavoritePropertyListingsResponse: Decodable { public let success: Bool; public let favorites: [FavoritePropertyListingDto] }
+public struct FavoritePropertyListingsResponse: Decodable { public let success: Bool; public let favorites: [FavoritePropertyListingDto]; public let page: Int; public let totalPages: Int; public let totalElements: Int }
 public struct PropertyTypesResponse: Decodable { public let success: Bool; public let propertyTypes: [PropertyTypeDto] }
 public struct ContactListerResponse: Decodable { public let success: Bool; public let conversation: ConversationDto }
 
@@ -5195,7 +5195,7 @@ public struct FavoriteRestaurantDto: Decodable, Identifiable {
     public let favoritedAt: String
     public var id: String { restaurantId }
 }
-public struct FavoriteRestaurantsResponse: Decodable { public let success: Bool; public let favorites: [FavoriteRestaurantDto] }
+public struct FavoriteRestaurantsResponse: Decodable { public let success: Bool; public let favorites: [FavoriteRestaurantDto]; public let page: Int; public let totalPages: Int; public let totalElements: Int }
 public struct SuccessResponse: Decodable { public let success: Bool }
 
 // Real, minimal product-analytics event (2026-08-10) -- see the backend's own
@@ -5748,7 +5748,12 @@ extension NetworkClient {
         try await authenticatedDelete("api/v1/marketplace/listings/\(listingId)/favorite")
     }
 
-    public func getMyFavoriteListings() async throws -> FavoriteListingsResponse { try await get("api/v1/marketplace/listings/favorites") }
+    public func getMyFavoriteListings(page: Int = 0, size: Int = 20) async throws -> FavoriteListingsResponse {
+        try await get("api/v1/marketplace/listings/favorites", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     // Real Karrot "이 글 숨기기" (hide this post) -- see backend ListingHideService's own
     // doc comment. Real, shipped on the backend + bank-mfe (2026-08-24) with zero iOS
@@ -5995,7 +6000,12 @@ extension NetworkClient {
         try await authenticatedDelete("api/v1/jobs/posts/\(jobPostId)/favorite")
     }
 
-    public func getMyFavoriteJobPosts() async throws -> FavoriteJobPostsResponse { try await get("api/v1/jobs/posts/favorites") }
+    public func getMyFavoriteJobPosts(page: Int = 0, size: Int = 20) async throws -> FavoriteJobPostsResponse {
+        try await get("api/v1/jobs/posts/favorites", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see setNeighborhood.
     public func getJobPostsMyNeighborhood(category: String? = nil, page: Int = 0, size: Int = 20) async throws -> JobPostsResponse {
@@ -6130,7 +6140,12 @@ extension NetworkClient {
     }
     public func addPropertyListingFavorite(_ id: String) async throws -> SuccessResponse { try await authenticatedPost("api/v1/realestate/listings/\(id)/favorite", body: EmptyBody()) }
     public func removePropertyListingFavorite(_ id: String) async throws -> SuccessResponse { try await authenticatedDelete("api/v1/realestate/listings/\(id)/favorite") }
-    public func getMyFavoritePropertyListings() async throws -> FavoritePropertyListingsResponse { try await get("api/v1/realestate/listings/favorites") }
+    public func getMyFavoritePropertyListings(page: Int = 0, size: Int = 20) async throws -> FavoritePropertyListingsResponse {
+        try await get("api/v1/realestate/listings/favorites", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see setNeighborhood.
     // Deliberately not combined with listingType/propertyType filters -- an honest v1
@@ -7009,7 +7024,12 @@ extension NetworkClient {
         try await authenticatedDelete("api/v1/eats/restaurants/\(restaurantId)/favorite")
     }
 
-    public func getMyFavoriteRestaurants() async throws -> FavoriteRestaurantsResponse { try await get("api/v1/eats/favorites") }
+    public func getMyFavoriteRestaurants(page: Int = 0, size: Int = 20) async throws -> FavoriteRestaurantsResponse {
+        try await get("api/v1/eats/favorites", query: [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "size", value: String(size)),
+        ])
+    }
 
     public func getMyEatsMembership() async throws -> EatsMembershipResponse { try await get("api/v1/eats/membership/me") }
 
