@@ -88,6 +88,15 @@ private struct ParkingFindContent: View {
     @State private var nearbySpots: [ParkingSpotDto] = []
     @State private var activeSession: ParkingSessionDto?
     @State private var pastSessions: [ParkingSessionDto] = []
+    // Real pagination-discard fix (2026-09-13, porting web/Android's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getMyParkingHistory
+    // silently capped this list at the first 20 sessions. Page 0 is polled every
+    // 4s for real-time active-session accuracy, so it must stay a live, page-0-only
+    // fetch; olderSessions is a separate accumulator populated only by loadMore.
+    @State private var olderSessions: [ParkingSessionDto] = []
+    @State private var sessionsPage = 0
+    @State private var sessionsHasMore = false
+    @State private var loadingMoreSessions = false
     @State private var busySpotId: String?
     @State private var ending = false
     @State private var error: String?
@@ -138,9 +147,16 @@ private struct ParkingFindContent: View {
                     }
                 }
 
-                if !pastSessions.isEmpty {
+                let allPastSessions = pastSessions + olderSessions
+                if !allPastSessions.isEmpty {
                     Text("Past sessions").bold().foregroundColor(IDS.Colors.textPrimary)
-                    ForEach(pastSessions) { session in ParkingSessionCard(session: session) }
+                    ForEach(allPastSessions) { session in ParkingSessionCard(session: session) }
+                    if sessionsHasMore {
+                        Button(loadingMoreSessions ? "Loading…" : "Load more") {
+                            Task { await loadMoreSessions() }
+                        }
+                        .disabled(loadingMoreSessions)
+                    }
                 }
             }
             .padding(.horizontal)
@@ -160,9 +176,20 @@ private struct ParkingFindContent: View {
     }
 
     private func loadHistory() async {
-        guard let all = try? await NetworkClient.shared.getMyParkingHistory().sessions else { return }
-        activeSession = all.first { $0.status == "ACTIVE" }
-        pastSessions = all.filter { $0.status == "COMPLETED" }
+        guard let res = try? await NetworkClient.shared.getMyParkingHistory(page: 0) else { return }
+        activeSession = res.sessions.first { $0.status == "ACTIVE" }
+        pastSessions = res.sessions.filter { $0.status == "COMPLETED" }
+        sessionsHasMore = res.page + 1 < res.totalPages
+    }
+
+    private func loadMoreSessions() async {
+        let nextPage = sessionsPage + 1
+        loadingMoreSessions = true
+        defer { loadingMoreSessions = false }
+        guard let res = try? await NetworkClient.shared.getMyParkingHistory(page: nextPage) else { return }
+        olderSessions += res.sessions.filter { $0.status == "COMPLETED" }
+        sessionsPage = nextPage
+        sessionsHasMore = res.page + 1 < res.totalPages
     }
 
     private func loadNearby() async {

@@ -86,6 +86,15 @@ private struct BikeRentContent: View {
     @State private var nearbyBikes: [BikeDto] = []
     @State private var activeRental: BikeRentalSessionDto?
     @State private var pastRentals: [BikeRentalSessionDto] = []
+    // Real pagination-discard fix (2026-09-13, porting web/Android's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getMyBikeRentalHistory
+    // silently capped this list at the first 20 rentals. Page 0 is polled every
+    // 4s for real-time active-rental accuracy, so it must stay a live, page-0-only
+    // fetch; olderRentals is a separate accumulator populated only by loadMore.
+    @State private var olderRentals: [BikeRentalSessionDto] = []
+    @State private var rentalsPage = 0
+    @State private var rentalsHasMore = false
+    @State private var loadingMoreRentals = false
     @State private var busyBikeId: String?
     @State private var ending = false
     @State private var error: String?
@@ -140,9 +149,16 @@ private struct BikeRentContent: View {
                     }
                 }
 
-                if !pastRentals.isEmpty {
+                let allPastRentals = pastRentals + olderRentals
+                if !allPastRentals.isEmpty {
                     Text("Past rides").bold().foregroundColor(IDS.Colors.textPrimary)
-                    ForEach(pastRentals) { session in BikeRentalSessionCard(session: session) }
+                    ForEach(allPastRentals) { session in BikeRentalSessionCard(session: session) }
+                    if rentalsHasMore {
+                        Button(loadingMoreRentals ? "Loading…" : "Load more") {
+                            Task { await loadMoreRentals() }
+                        }
+                        .disabled(loadingMoreRentals)
+                    }
                 }
             }
             .padding(.horizontal)
@@ -162,9 +178,20 @@ private struct BikeRentContent: View {
     }
 
     private func loadHistory() async {
-        guard let all = try? await NetworkClient.shared.getMyBikeRentalHistory().rentals else { return }
-        activeRental = all.first { $0.status == "ACTIVE" }
-        pastRentals = all.filter { $0.status == "COMPLETED" }
+        guard let res = try? await NetworkClient.shared.getMyBikeRentalHistory(page: 0) else { return }
+        activeRental = res.rentals.first { $0.status == "ACTIVE" }
+        pastRentals = res.rentals.filter { $0.status == "COMPLETED" }
+        rentalsHasMore = res.page + 1 < res.totalPages
+    }
+
+    private func loadMoreRentals() async {
+        let nextPage = rentalsPage + 1
+        loadingMoreRentals = true
+        defer { loadingMoreRentals = false }
+        guard let res = try? await NetworkClient.shared.getMyBikeRentalHistory(page: nextPage) else { return }
+        olderRentals += res.rentals.filter { $0.status == "COMPLETED" }
+        rentalsPage = nextPage
+        rentalsHasMore = res.page + 1 < res.totalPages
     }
 
     private func loadNearby() async {

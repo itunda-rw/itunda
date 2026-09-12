@@ -49,6 +49,12 @@ private struct BusRideContent: View {
     @State private var destination = ""
     @State private var trips: [BusTripDto]?
     @State private var myBookings: [BusBookingDto] = []
+    // Real pagination-discard fix (2026-09-13, porting web/Android's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getMyBusBookings silently
+    // capped this list at the first 20 bookings.
+    @State private var bookingsPage = 0
+    @State private var bookingsHasMore = false
+    @State private var loadingMoreBookings = false
     @State private var seatCounts: [String: String] = [:]
     @State private var busyTripId: String?
     @State private var busyBookingId: String?
@@ -125,6 +131,12 @@ private struct BusRideContent: View {
                         }
                         .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
                     }
+                    if bookingsHasMore {
+                        Button(loadingMoreBookings ? "Loading…" : "Load more") {
+                            Task { await loadMoreBookings() }
+                        }
+                        .disabled(loadingMoreBookings)
+                    }
                 }
             }
             .padding(.horizontal)
@@ -137,7 +149,20 @@ private struct BusRideContent: View {
     }
 
     private func loadBookings() async {
-        myBookings = (try? await NetworkClient.shared.getMyBusBookings().bookings) ?? myBookings
+        guard let res = try? await NetworkClient.shared.getMyBusBookings(page: 0) else { return }
+        myBookings = res.bookings
+        bookingsPage = 0
+        bookingsHasMore = res.page + 1 < res.totalPages
+    }
+
+    private func loadMoreBookings() async {
+        let nextPage = bookingsPage + 1
+        loadingMoreBookings = true
+        defer { loadingMoreBookings = false }
+        guard let res = try? await NetworkClient.shared.getMyBusBookings(page: nextPage) else { return }
+        myBookings += res.bookings
+        bookingsPage = nextPage
+        bookingsHasMore = res.page + 1 < res.totalPages
     }
 
     private func bookSeats(_ tripId: String) async {

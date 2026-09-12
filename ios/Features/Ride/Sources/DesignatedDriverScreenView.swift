@@ -95,6 +95,15 @@ private struct DesignatedDriverRequestContent: View {
     @State private var vehicleModel = ""
     @State private var vehiclePlate = ""
     @State private var myTrips: [DesignatedDriverTripDto] = []
+    // Real pagination-discard fix (2026-09-13, porting web/Android's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getMyDesignatedDriverTrips
+    // silently capped this list at the first 20 trips. Page 0 is polled every 4s
+    // for real-time active-trip accuracy, so it must stay a live, page-0-only
+    // fetch; olderTrips is a separate accumulator populated only by loadMore.
+    @State private var olderTrips: [DesignatedDriverTripDto] = []
+    @State private var tripsPage = 0
+    @State private var tripsHasMore = false
+    @State private var loadingMoreTrips = false
     @State private var requesting = false
     @State private var busyTripId: String?
     @State private var error: String?
@@ -103,7 +112,7 @@ private struct DesignatedDriverRequestContent: View {
     private var activeTrip: DesignatedDriverTripDto? {
         myTrips.first { $0.status == "REQUESTED" || $0.status == "ACCEPTED" || $0.status == "DRIVING" }
     }
-    private var pastTrips: [DesignatedDriverTripDto] { myTrips.filter { $0.status == "COMPLETED" || $0.status == "CANCELLED" } }
+    private var pastTrips: [DesignatedDriverTripDto] { myTrips.filter { $0.status == "COMPLETED" || $0.status == "CANCELLED" } + olderTrips }
 
     var body: some View {
         ScrollView {
@@ -164,6 +173,12 @@ private struct DesignatedDriverRequestContent: View {
                 if !pastTrips.isEmpty {
                     Text("Past trips").bold().foregroundColor(IDS.Colors.textPrimary)
                     ForEach(pastTrips, id: \.id) { trip in DesignatedDriverTripCard(trip: trip) }
+                    if tripsHasMore {
+                        Button(loadingMoreTrips ? "Loading…" : "Load more") {
+                            Task { await loadMoreTrips() }
+                        }
+                        .disabled(loadingMoreTrips)
+                    }
                 }
             }
             .padding(.horizontal)
@@ -180,7 +195,19 @@ private struct DesignatedDriverRequestContent: View {
     }
 
     private func loadTrips() async {
-        myTrips = (try? await NetworkClient.shared.getMyDesignatedDriverTrips().trips) ?? myTrips
+        guard let res = try? await NetworkClient.shared.getMyDesignatedDriverTrips(page: 0) else { return }
+        myTrips = res.trips
+        tripsHasMore = res.page + 1 < res.totalPages
+    }
+
+    private func loadMoreTrips() async {
+        let nextPage = tripsPage + 1
+        loadingMoreTrips = true
+        defer { loadingMoreTrips = false }
+        guard let res = try? await NetworkClient.shared.getMyDesignatedDriverTrips(page: nextPage) else { return }
+        olderTrips += res.trips.filter { $0.status == "COMPLETED" || $0.status == "CANCELLED" }
+        tripsPage = nextPage
+        tripsHasMore = res.page + 1 < res.totalPages
     }
 
     private func requestTrip() async {
@@ -228,12 +255,21 @@ private struct DesignatedDriverDriveContent: View {
     @State private var registering = false
     @State private var availableTrips: [DesignatedDriverTripDto] = []
     @State private var myDriverTrips: [DesignatedDriverTripDto] = []
+    // Real pagination-discard fix (2026-09-13, porting web/Android's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getMyDesignatedDriverDriverTrips
+    // silently capped this list at the first 20 trips. Page 0 is polled every 4s
+    // for real-time active-trip accuracy, so it must stay a live, page-0-only fetch;
+    // olderDriverTrips is a separate accumulator populated only by loadMore.
+    @State private var olderDriverTrips: [DesignatedDriverTripDto] = []
+    @State private var driverTripsPage = 0
+    @State private var driverTripsHasMore = false
+    @State private var loadingMoreDriverTrips = false
     @State private var busyTripId: String?
     @State private var error: String?
     @State private var pollTask: Task<Void, Never>?
 
     private var activeDriverTrips: [DesignatedDriverTripDto] { myDriverTrips.filter { $0.status == "ACCEPTED" || $0.status == "DRIVING" } }
-    private var pastDriverTrips: [DesignatedDriverTripDto] { myDriverTrips.filter { $0.status == "COMPLETED" || $0.status == "CANCELLED" } }
+    private var pastDriverTrips: [DesignatedDriverTripDto] { myDriverTrips.filter { $0.status == "COMPLETED" || $0.status == "CANCELLED" } + olderDriverTrips }
 
     var body: some View {
         ScrollView {
@@ -307,6 +343,12 @@ private struct DesignatedDriverDriveContent: View {
                     if !pastDriverTrips.isEmpty {
                         Text("Completed").bold().foregroundColor(IDS.Colors.textPrimary)
                         ForEach(pastDriverTrips, id: \.id) { trip in DesignatedDriverTripCard(trip: trip) }
+                        if driverTripsHasMore {
+                            Button(loadingMoreDriverTrips ? "Loading…" : "Load more") {
+                                Task { await loadMoreDriverTrips() }
+                            }
+                            .disabled(loadingMoreDriverTrips)
+                        }
                     }
                 }
             }
@@ -344,7 +386,19 @@ private struct DesignatedDriverDriveContent: View {
 
     private func loadTrips() async {
         availableTrips = (try? await NetworkClient.shared.getAvailableDesignatedDriverTrips().trips) ?? availableTrips
-        myDriverTrips = (try? await NetworkClient.shared.getMyDesignatedDriverDriverTrips().trips) ?? myDriverTrips
+        guard let res = try? await NetworkClient.shared.getMyDesignatedDriverDriverTrips(page: 0) else { return }
+        myDriverTrips = res.trips
+        driverTripsHasMore = res.page + 1 < res.totalPages
+    }
+
+    private func loadMoreDriverTrips() async {
+        let nextPage = driverTripsPage + 1
+        loadingMoreDriverTrips = true
+        defer { loadingMoreDriverTrips = false }
+        guard let res = try? await NetworkClient.shared.getMyDesignatedDriverDriverTrips(page: nextPage) else { return }
+        olderDriverTrips += res.trips.filter { $0.status == "COMPLETED" || $0.status == "CANCELLED" }
+        driverTripsPage = nextPage
+        driverTripsHasMore = res.page + 1 < res.totalPages
     }
 
     private func register() async {

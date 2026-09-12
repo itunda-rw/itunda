@@ -26,7 +26,7 @@
   "ios/App/Sources/Saronite/SaroniteBrownfieldModule.swift": 673,
   "ios/App/Sources/TalkChatThread.swift": 681,
   "ios/App/Sources/WeeklySavingsScreenView.swift": 538,
-  "ios/Core/Network/Sources/NetworkClient.swift": 7724,
+  "ios/Core/Network/Sources/NetworkClient.swift": 7766,
   "ios/Features/Banking/Sources/BankView.swift": 572,
   "ios/Features/Maps/Sources/MapScreenView.swift": 1631,
   "ios/Features/Payments/Sources/TransferFlowScreens.swift": 702,

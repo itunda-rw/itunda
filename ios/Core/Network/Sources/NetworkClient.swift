@@ -1075,7 +1075,23 @@ public struct DesignatedDriverTripDto: Decodable, Identifiable {
     public let createdAt: String
 }
 public struct DesignatedDriverTripResponse: Decodable { public let success: Bool; public let trip: DesignatedDriverTripDto }
-public struct DesignatedDriverTripsResponse: Decodable { public let success: Bool; public let trips: [DesignatedDriverTripDto] }
+// page/totalPages are optional-decoded with a default: this struct is also used by
+// getAvailableDesignatedDriverTrips, which is NOT Pageable-backed on the backend and
+// carries no pageMeta at all.
+public struct DesignatedDriverTripsResponse: Decodable {
+    public let success: Bool
+    public let trips: [DesignatedDriverTripDto]
+    public let page: Int
+    public let totalPages: Int
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        success = try c.decode(Bool.self, forKey: .success)
+        trips = try c.decode([DesignatedDriverTripDto].self, forKey: .trips)
+        page = try c.decodeIfPresent(Int.self, forKey: .page) ?? 0
+        totalPages = try c.decodeIfPresent(Int.self, forKey: .totalPages) ?? 1
+    }
+    private enum CodingKeys: String, CodingKey { case success, trips, page, totalPages }
+}
 public struct RequestDesignatedDriverTripRequest: Encodable {
     public let pickupAddress: String
     public let pickupLatitude: Double
@@ -1126,7 +1142,7 @@ public struct BikeRentalSessionDto: Decodable, Identifiable {
     public let status: String
 }
 public struct BikeRentalResponse: Decodable { public let success: Bool; public let rental: BikeRentalSessionDto }
-public struct BikeRentalsResponse: Decodable { public let success: Bool; public let rentals: [BikeRentalSessionDto] }
+public struct BikeRentalsResponse: Decodable { public let success: Bool; public let rentals: [BikeRentalSessionDto]; public let page: Int; public let totalPages: Int }
 
 // Real Kakao T 주차 (Kakao T Parking, item 223) -- real PEER-TO-PEER parking-spot
 // rental pool (any user self-lists a spot they own/control), billed by elapsed HOURS
@@ -1162,7 +1178,7 @@ public struct ParkingSessionDto: Decodable, Identifiable {
     public let status: String
 }
 public struct ParkingSessionResponse: Decodable { public let success: Bool; public let session: ParkingSessionDto }
-public struct ParkingSessionsResponse: Decodable { public let success: Bool; public let sessions: [ParkingSessionDto] }
+public struct ParkingSessionsResponse: Decodable { public let success: Bool; public let sessions: [ParkingSessionDto]; public let page: Int; public let totalPages: Int }
 
 // Real Kakao T 시외버스 (intercity bus booking, item 224) -- real PEER-TO-PEER
 // coach-operator trip pool, fare charged in FULL at booking time (not settled at end
@@ -1200,7 +1216,23 @@ public struct BusBookingDto: Decodable, Identifiable {
     public let createdAt: String
 }
 public struct BusBookingResponse: Decodable { public let success: Bool; public let booking: BusBookingDto }
-public struct BusBookingsResponse: Decodable { public let success: Bool; public let bookings: [BusBookingDto] }
+// page/totalPages are optional-decoded with a default: this struct is also used by
+// getBusTripBookings (a trip's own bookings), which is NOT Pageable-backed on the
+// backend and carries no pageMeta at all.
+public struct BusBookingsResponse: Decodable {
+    public let success: Bool
+    public let bookings: [BusBookingDto]
+    public let page: Int
+    public let totalPages: Int
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        success = try c.decode(Bool.self, forKey: .success)
+        bookings = try c.decode([BusBookingDto].self, forKey: .bookings)
+        page = try c.decodeIfPresent(Int.self, forKey: .page) ?? 0
+        totalPages = try c.decodeIfPresent(Int.self, forKey: .totalPages) ?? 1
+    }
+    private enum CodingKeys: String, CodingKey { case success, bookings, page, totalPages }
+}
 
 // Real Naver 지식iN (Knowledge iN) open-topic community Q&A (item 225) -- a genuinely
 // different shape from the trip/rental structs above: no account movement, no location,
@@ -1795,8 +1827,12 @@ extension NetworkClient {
     }
 
     public func getAvailableDesignatedDriverTrips() async throws -> DesignatedDriverTripsResponse { try await get("api/v1/designated-driver/trips/available") }
-    public func getMyDesignatedDriverTrips() async throws -> DesignatedDriverTripsResponse { try await get("api/v1/designated-driver/trips/my-trips") }
-    public func getMyDesignatedDriverDriverTrips() async throws -> DesignatedDriverTripsResponse { try await get("api/v1/designated-driver/trips/my-driver-trips") }
+    public func getMyDesignatedDriverTrips(page: Int = 0, size: Int = 20) async throws -> DesignatedDriverTripsResponse {
+        try await get("api/v1/designated-driver/trips/my-trips", query: [URLQueryItem(name: "page", value: String(page)), URLQueryItem(name: "size", value: String(size))])
+    }
+    public func getMyDesignatedDriverDriverTrips(page: Int = 0, size: Int = 20) async throws -> DesignatedDriverTripsResponse {
+        try await get("api/v1/designated-driver/trips/my-driver-trips", query: [URLQueryItem(name: "page", value: String(page)), URLQueryItem(name: "size", value: String(size))])
+    }
 
     public func acceptDesignatedDriverTrip(id: String) async throws -> DesignatedDriverTripResponse {
         try await authenticatedPost("api/v1/designated-driver/trips/\(id)/accept", body: EmptyBody(), idempotencyKey: UUID().uuidString)
@@ -1843,7 +1879,9 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/bikeshare/rentals/\(sessionId)/end", body: EndBikeRentalRequest(endLatitude: endLatitude, endLongitude: endLongitude), idempotencyKey: UUID().uuidString)
     }
 
-    public func getMyBikeRentalHistory() async throws -> BikeRentalsResponse { try await get("api/v1/bikeshare/rentals/my-history") }
+    public func getMyBikeRentalHistory(page: Int = 0, size: Int = 20) async throws -> BikeRentalsResponse {
+        try await get("api/v1/bikeshare/rentals/my-history", query: [URLQueryItem(name: "page", value: String(page)), URLQueryItem(name: "size", value: String(size))])
+    }
 
     // Real Kakao T 주차 (Kakao T Parking, item 223) -- first iOS client for this
     // feature. bank-mfe/Android already have this; mirrors ApiService.kt exactly.
@@ -1873,7 +1911,9 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/parking/sessions/\(sessionId)/end", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
-    public func getMyParkingHistory() async throws -> ParkingSessionsResponse { try await get("api/v1/parking/sessions/my-history") }
+    public func getMyParkingHistory(page: Int = 0, size: Int = 20) async throws -> ParkingSessionsResponse {
+        try await get("api/v1/parking/sessions/my-history", query: [URLQueryItem(name: "page", value: String(page)), URLQueryItem(name: "size", value: String(size))])
+    }
 
     // Real Kakao T 시외버스 (intercity bus booking, item 224) -- first iOS client for
     // this feature. bank-mfe/Android already have this; mirrors ApiService.kt exactly.
@@ -1902,7 +1942,9 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/bus/bookings/\(bookingId)/cancel", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
-    public func getMyBusBookings() async throws -> BusBookingsResponse { try await get("api/v1/bus/bookings/my-history") }
+    public func getMyBusBookings(page: Int = 0, size: Int = 20) async throws -> BusBookingsResponse {
+        try await get("api/v1/bus/bookings/my-history", query: [URLQueryItem(name: "page", value: String(page)), URLQueryItem(name: "size", value: String(size))])
+    }
 
     // Real Naver 지식iN (Knowledge iN) open-topic community Q&A (item 225) -- first
     // iOS client for this feature. bank-mfe/Android already have this; mirrors
