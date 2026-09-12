@@ -200,7 +200,8 @@ class CardServiceTest : BehaviorSpec({
     }
 
     Given("a real user setting invalid card limits") {
-        val service = newService()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = newService(rateLimiter = rateLimiter)
 
         When("a zero or negative limit is requested") {
             Then("it real-400s") {
@@ -210,6 +211,11 @@ class CardServiceTest : BehaviorSpec({
                 } catch (_: CardInvalidLimitException) {
                     // expected
                 }
+                // Real regression test (2026-09-12, repo-wide RateLimiter mock-never-
+                // verified sweep re-run): setLimits checks the rate limit before
+                // validating the requested amounts, so this real-400 path still
+                // exercises it -- nothing previously proved this call was live code.
+                verify(exactly = 1) { rateLimiter.checkLimit("card:set-limits:user_1", limit = any(), window = any()) }
             }
         }
     }
@@ -226,7 +232,8 @@ class CardServiceTest : BehaviorSpec({
         every { debitCardRepository.findByUserId("user_1") } returns card
         every { debitCardRepository.save(any()) } answers { firstArg() }
         every { debitCardTransactionRepository.sumAmountByCardIdAndCreatedAtSince(any(), any()) } returns BigDecimal.ZERO
-        val service = newService(debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = newService(debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository, rateLimiter = rateLimiter)
 
         When("reporting it lost") {
             val view = service.reportLost("user_1")
@@ -234,6 +241,8 @@ class CardServiceTest : BehaviorSpec({
             Then("it real-freezes AND real-marks it lost, distinct from an ordinary freeze") {
                 view.frozen shouldBe true
                 view.lost shouldBe true
+                // Real regression test (2026-09-12, repo-wide RateLimiter sweep re-run).
+                verify(exactly = 1) { rateLimiter.checkLimit("card:report-lost:user_1", limit = any(), window = any()) }
             }
         }
 
@@ -257,7 +266,8 @@ class CardServiceTest : BehaviorSpec({
         every { debitCardRepository.findByUserId("user_1") } returns card
         every { debitCardRepository.save(any()) } answers { firstArg() }
         every { debitCardTransactionRepository.sumAmountByCardIdAndCreatedAtSince(any(), any()) } returns BigDecimal.ZERO
-        val service = newService(debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = newService(debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository, rateLimiter = rateLimiter)
 
         When("closing it") {
             val view = service.closeCard("user_1")
@@ -269,6 +279,8 @@ class CardServiceTest : BehaviorSpec({
                 } catch (_: CardClosedException) {
                     // expected
                 }
+                // Real regression test (2026-09-12, repo-wide RateLimiter sweep re-run).
+                verify(exactly = 1) { rateLimiter.checkLimit("card:close:user_1", limit = any(), window = any()) }
             }
         }
 
@@ -314,7 +326,8 @@ class CardServiceTest : BehaviorSpec({
         every { debitCardRepository.findByUserId("user_1") } returns card
         every { debitCardRepository.save(any()) } answers { firstArg() }
         every { debitCardTransactionRepository.sumAmountByCardIdAndCreatedAtSince(any(), any()) } returns BigDecimal.ZERO
-        val service = newService(debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = newService(debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository, rateLimiter = rateLimiter)
 
         When("reissuing") {
             val view = service.reissue("user_1")
@@ -325,6 +338,8 @@ class CardServiceTest : BehaviorSpec({
                 view.pinSet shouldBe false
                 view.last4 shouldBe card.last4
                 card.pinHash shouldBe null
+                // Real regression test (2026-09-12, repo-wide RateLimiter sweep re-run).
+                verify(exactly = 1) { rateLimiter.checkLimit("card:reissue:user_1", limit = any(), window = any()) }
             }
         }
     }
@@ -340,7 +355,8 @@ class CardServiceTest : BehaviorSpec({
         every { debitCardRepository.save(any()) } answers { firstArg() }
         every { debitCardTransactionRepository.sumAmountByCardIdAndCreatedAtSince(any(), any()) } returns BigDecimal.ZERO
         every { userRepository.findById("user_1") } returns Optional.of(user)
-        val service = newService(debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository, userRepository = userRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = newService(debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository, userRepository = userRepository, rateLimiter = rateLimiter)
 
         When("setting a real 4-digit PIN") {
             val view = service.setPin("user_1", "4821", "123456")
@@ -348,6 +364,8 @@ class CardServiceTest : BehaviorSpec({
                 view.pinSet shouldBe true
                 card.pinHash shouldNotBe null
                 card.pinHash shouldNotBe "4821"
+                // Real regression test (2026-09-12, repo-wide RateLimiter sweep re-run).
+                verify(exactly = 1) { rateLimiter.checkLimit("card:set-pin:user_1", limit = any(), window = any()) }
             }
         }
 

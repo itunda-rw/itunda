@@ -95,9 +95,11 @@ class CardChargeServiceTest : BehaviorSpec({
         val legsSlot = mutableListOf<List<LedgerLeg>>()
         every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_1", emptyList())
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = newService(
             debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository,
             accountRepository = accountRepository, ledgerService = ledgerService, fraudRuleEngine = fraudRuleEngine,
+            rateLimiter = rateLimiter,
         )
 
         When("charging a real purchase") {
@@ -111,6 +113,13 @@ class CardChargeServiceTest : BehaviorSpec({
                 result.transaction.amount shouldBe BigDecimal("5000")
                 result.transaction.merchantName shouldBe "Kigali Cafe"
                 result.card.remainingToday shouldBe BigDecimal("495000")
+            }
+
+            // Real regression test (2026-09-12, repo-wide RateLimiter mock-never-
+            // verified sweep re-run): rateLimiter was relaxed = true with zero verify{}
+            // anywhere in this extracted file, same gap class as this sweep's other hits.
+            Then("it checks the real 30/minute card-charge rate limit for this user") {
+                verify(exactly = 1) { rateLimiter.checkLimit("card:charge:user_1", limit = any(), window = any()) }
             }
 
             // Real bug found live (2026-08-02): the daily/monthly limit check sums real
