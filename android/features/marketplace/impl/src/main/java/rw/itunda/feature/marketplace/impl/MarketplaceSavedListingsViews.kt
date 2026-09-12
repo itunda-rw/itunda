@@ -27,6 +27,9 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.theme.Ids
@@ -51,13 +54,19 @@ internal fun ListingWishlistView(onRemoved: () -> Unit) {
     var favorites by remember { mutableStateOf<List<FavoriteListingDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var removingId by remember { mutableStateOf<String?>(null) }
+    // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getMyFavoriteListings
+    // silently capped this list at the first 20 favorited listings.
+    var page by remember { mutableStateOf(0) }
+    var hasMore by remember { mutableStateOf(false) }
+    var loadingMore by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
         coroutineScope.launch {
             try {
-                val res = NetworkClient.apiService.getMyFavoriteListings()
-                if (res.success) favorites = res.favorites
+                val res = NetworkClient.apiService.getMyFavoriteListings(page = 0)
+                if (res.success) { favorites = res.favorites; page = 0; hasMore = res.page + 1 < res.totalPages }
                 error = null
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
@@ -67,6 +76,26 @@ internal fun ListingWishlistView(onRemoved: () -> Unit) {
         }
     }
     LaunchedEffect(Unit) { load() }
+
+    fun loadMore() {
+        val nextPage = page + 1
+        loadingMore = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyFavoriteListings(page = nextPage)
+                if (res.success) {
+                    favorites = (favorites ?: emptyList()) + res.favorites
+                    page = nextPage
+                    hasMore = res.page + 1 < res.totalPages
+                }
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded page stays visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMore = false
+            }
+        }
+    }
 
     when {
         error != null -> ErrorCard(error!!, onRetry = ::load)
@@ -104,6 +133,15 @@ internal fun ListingWishlistView(onRemoved: () -> Unit) {
                         }
                     }
                 }
+            }
+            if (hasMore) {
+                IdsButton(
+                    text = if (loadingMore) "Loading…" else "Load more",
+                    onClick = ::loadMore,
+                    enabled = !loadingMore,
+                    variant = IdsButtonVariant.Tinted,
+                    size = IdsButtonSize.Medium,
+                )
             }
         }
     }

@@ -1010,7 +1010,12 @@ data class ToggleLikeResponse(val success: Boolean, val liked: Boolean)
 // mirrors FavoriteRestaurantDto's exact shape; see ListingFavoriteService.kt's own doc
 // comment on the backend for why add/remove are both idempotent.
 data class FavoriteListingDto(val listingId: String, val title: String, val price: Double, val category: String, val favoritedAt: String)
-data class FavoriteListingsResponse(val success: Boolean, val favorites: List<FavoriteListingDto>)
+// Real pagination-discard fix (2026-09-13, same systemic gap fixed on web -- see
+// project_itunda_pagination_discard_sweep memory) -- the real backend
+// Pageable/pageMeta endpoint was always there; page just wasn't ever sent,
+// silently capping this list (and any count badge reading it) at the most
+// recent 20 favorited listings.
+data class FavoriteListingsResponse(val success: Boolean, val favorites: List<FavoriteListingDto>, val page: Int = 0, val totalPages: Int = 1, val totalElements: Int = 0)
 
 // Real "Hidden listings" list (Hood product-completeness pass, 2026-09-07) --
 // hideListing/unhideListing below existed with no way to ever see or undo what was
@@ -3293,7 +3298,7 @@ interface ApiService {
     suspend fun removeListingFavorite(@Path("id") listingId: String): RemoveFavoriteResponse
 
     @GET("api/v1/marketplace/listings/favorites")
-    suspend fun getMyFavoriteListings(): FavoriteListingsResponse
+    suspend fun getMyFavoriteListings(@Query("page") page: Int = 0, @Query("size") size: Int = 20): FavoriteListingsResponse
 
     // Real like/unlike toggle (2026-08-03) -- see backend MarketplaceController.kt's
     // own doc comment. Idempotent, matching addListingFavorite/removeListingFavorite's
