@@ -17716,7 +17716,7 @@ unaffected) to make room rather than baselining. Full en/fr/rw i18n on
 web and Android.
 
 **What shipped**: `f8f1eafd3` (backend), `0965af275` (web), `7ea65c0b6`
-(Android), `<iOS commit>` (iOS).
+(Android), `754f886fd` (iOS).
 
 **Verification**: backend `:card:test` (Kotest, discrimination-tested);
 web `tsc -b` + `oxlint` + `accessibility-lint.py` + `vite build` +
