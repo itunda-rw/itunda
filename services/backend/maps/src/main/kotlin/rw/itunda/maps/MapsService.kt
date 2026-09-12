@@ -399,12 +399,17 @@ class MapsService(
         rateLimiter.checkLimit("maps:bookmark:$subscriberUserId", limit = 60, window = Duration.ofMinutes(1))
         val trimmedFolder = folderName.trim().ifEmpty { DEFAULT_BOOKMARK_FOLDER }
         val publicBookmarks = mapBookmarkRepository.findByUserIdAndFolderNameAndIsPublicTrueOrderByCreatedAtDesc(ownerUserId, trimmedFolder)
-        var copied = 0
-        for (place in publicBookmarks) {
-            if (mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude(subscriberUserId, place.latitude, place.longitude) != null) {
-                continue
-            }
-            mapBookmarkRepository.save(
+        // Real N+1 fix (2026-09-12) -- this used to call
+        // findByUserIdAndLatitudeAndLongitude once per public bookmark being imported,
+        // plus a separate save() per new one, both real per-item repository round trips
+        // scaling with the owner's own real folder size. One batched fetch of the
+        // subscriber's own existing coordinates, then one saveAll() for the real new
+        // ones, matching this codebase's own "batch, don't N+1" discipline.
+        val subscriberExistingCoords = mapBookmarkRepository.findByUserIdOrderByCreatedAtDesc(subscriberUserId)
+            .map { it.latitude to it.longitude }.toSet()
+        val toCopy = publicBookmarks.filter { (it.latitude to it.longitude) !in subscriberExistingCoords }
+        mapBookmarkRepository.saveAll(
+            toCopy.map { place ->
                 MapBookmark(
                     id = "map_bookmark_${UUID.randomUUID()}",
                     userId = subscriberUserId,
@@ -413,11 +418,10 @@ class MapsService(
                     longitude = place.longitude,
                     folderName = trimmedFolder,
                     color = place.color,
-                ),
-            )
-            copied++
-        }
-        return copied
+                )
+            },
+        )
+        return toCopy.size
     }
 
     fun getMyBookmarks(userId: String): List<MapBookmark> = mapBookmarkRepository.findByUserIdOrderByCreatedAtDesc(userId)

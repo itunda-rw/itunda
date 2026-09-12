@@ -603,18 +603,17 @@ class MapsServiceTest : BehaviorSpec({
                 MapBookmark(id = "map_bookmark_2", userId = "user_1", displayName = "Cafe B", latitude = -1.91, longitude = 30.01, folderName = "Cafes to try", color = "#F5A623", isPublic = true),
             )
             every { mapBookmarkRepository.findByUserIdAndFolderNameAndIsPublicTrueOrderByCreatedAtDesc("user_1", "Cafes to try") } returns publicBookmarks
-            every { mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude("user_2", -1.9, 30.0) } returns null
-            every { mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude("user_2", -1.91, 30.01) } returns null
-            val savedSlot = mutableListOf<MapBookmark>()
-            every { mapBookmarkRepository.save(capture(savedSlot)) } answers { firstArg() }
+            every { mapBookmarkRepository.findByUserIdOrderByCreatedAtDesc("user_2") } returns emptyList()
+            val savedSlot = slot<List<MapBookmark>>()
+            every { mapBookmarkRepository.saveAll(capture(savedSlot)) } answers { firstArg() }
 
             val copiedCount = service.subscribeToSharedFolder("user_2", "user_1", "Cafes to try")
 
-            Then("it real-copies every public place into the subscriber's own bookmarks, same folder name") {
+            Then("it real-copies every public place into the subscriber's own bookmarks in one batched saveAll, same folder name") {
                 copiedCount shouldBe 2
-                savedSlot.map { it.userId }.toSet() shouldBe setOf("user_2")
-                savedSlot.map { it.displayName } shouldBe listOf("Cafe A", "Cafe B")
-                savedSlot.all { it.folderName == "Cafes to try" } shouldBe true
+                savedSlot.captured.map { it.userId }.toSet() shouldBe setOf("user_2")
+                savedSlot.captured.map { it.displayName } shouldBe listOf("Cafe A", "Cafe B")
+                savedSlot.captured.all { it.folderName == "Cafes to try" } shouldBe true
             }
         }
 
@@ -624,17 +623,17 @@ class MapsServiceTest : BehaviorSpec({
                 MapBookmark(id = "map_bookmark_2", userId = "user_1", displayName = "Cafe B", latitude = -1.91, longitude = 30.01, folderName = "Cafes to try", isPublic = true),
             )
             every { mapBookmarkRepository.findByUserIdAndFolderNameAndIsPublicTrueOrderByCreatedAtDesc("user_1", "Cafes to try") } returns publicBookmarks
-            every { mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude("user_2", -1.9, 30.0) } returns
-                MapBookmark(id = "existing", userId = "user_2", displayName = "Cafe A", latitude = -1.9, longitude = 30.0, folderName = "Cafes to try")
-            every { mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude("user_2", -1.91, 30.01) } returns null
-            val savedSlot = mutableListOf<MapBookmark>()
-            every { mapBookmarkRepository.save(capture(savedSlot)) } answers { firstArg() }
+            every { mapBookmarkRepository.findByUserIdOrderByCreatedAtDesc("user_2") } returns listOf(
+                MapBookmark(id = "existing", userId = "user_2", displayName = "Cafe A", latitude = -1.9, longitude = 30.0, folderName = "Cafes to try"),
+            )
+            val savedSlot = slot<List<MapBookmark>>()
+            every { mapBookmarkRepository.saveAll(capture(savedSlot)) } answers { firstArg() }
 
             val copiedCount = service.subscribeToSharedFolder("user_2", "user_1", "Cafes to try")
 
             Then("it only real-copies the one genuinely new place, skipping the one already saved") {
                 copiedCount shouldBe 1
-                savedSlot.map { it.displayName } shouldBe listOf("Cafe B")
+                savedSlot.captured.map { it.displayName } shouldBe listOf("Cafe B")
             }
         }
 
