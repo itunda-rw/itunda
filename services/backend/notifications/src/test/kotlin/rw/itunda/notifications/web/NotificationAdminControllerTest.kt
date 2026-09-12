@@ -10,6 +10,7 @@ import io.mockk.verify
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.security.CurrentUser
 
 /**
  * First test coverage for NotificationAdminController -- a real, previously
@@ -27,7 +28,10 @@ class NotificationAdminControllerTest : BehaviorSpec({
         every { notificationRepository.saveAll(capture(savedSlot)) } answers { firstArg() }
 
         When("broadcasting") {
-            val response = controller.broadcast(BroadcastNotificationRequest("Scheduled maintenance", "itunda will be briefly unavailable tonight."))
+            val response = controller.broadcast(
+                BroadcastNotificationRequest("Scheduled maintenance", "itunda will be briefly unavailable tonight."),
+                CurrentUser(userId = "admin_1", role = "ADMIN"),
+            )
 
             Then("a real notification row is created for every real user, and the count is reported back") {
                 verify(exactly = 1) { notificationRepository.saveAll(any<List<Notification>>()) }
@@ -37,6 +41,15 @@ class NotificationAdminControllerTest : BehaviorSpec({
                 savedSlot.captured.all { !it.isRead } shouldBe true
                 response.body?.get("success") shouldBe true
                 response.body?.get("sentCount") shouldBe 3
+            }
+
+            // Real admin-accountability gap found live (2026-09-13, same pattern
+            // already closed for Partner/Merchant/Vehicle Inspection): the single
+            // highest-blast-radius admin action in this codebase had zero record of
+            // which admin sent it.
+            Then("every real broadcast notification records which real admin sent it") {
+                savedSlot.captured.all { it.sentByUserId == "admin_1" } shouldBe true
+                response.body?.get("sentByUserId") shouldBe "admin_1"
             }
         }
     }
@@ -49,7 +62,7 @@ class NotificationAdminControllerTest : BehaviorSpec({
         every { notificationRepository.saveAll(emptyList<Notification>()) } returns emptyList()
 
         When("broadcasting") {
-            val response = controller.broadcast(BroadcastNotificationRequest("Title", "Body"))
+            val response = controller.broadcast(BroadcastNotificationRequest("Title", "Body"), CurrentUser(userId = "admin_1", role = "ADMIN"))
 
             Then("it real-completes with a zero sent count rather than failing") {
                 response.body?.get("sentCount") shouldBe 0
