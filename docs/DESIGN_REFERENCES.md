@@ -17810,3 +17810,68 @@ daily scheduler firing in a live deployed environment and a multi-day-old
 snapshot history actually rendering a multi-bar chart -- both need real wall-
 clock time to pass, a disclosed follow-up rather than something fakeable in
 this pass.
+
+## 282. Pay Money "Add money" (충전하기) -- internal transfer between own accounts, all 3 platforms + backend
+
+**2026-09-12, same session.** User sent 16 real Toss Pay screenshots covering
+several distinct features. Forked a research pass (not code) to check each
+against current itunda code before building anything, per the standing
+"verify, don't fabricate" discipline -- itunda has zero partnership with the
+real external Korean loyalty brands shown (CU/GS ALL/네이버/카카오/쿠팡/
+H.Point/L.POINT/etc.), no 토스프라임-style paid membership tier, no 현금영수증
+(Korean tax-receipt) integration, and no ad-network for "watch this for 1
+point" -- all correctly named as not-buildable rather than faked.
+
+**A real research finding turned out WRONG, caught before acting on it**: the
+research pass reported "Android has no FacePay UI at all, only a
+network-layer DTO reference." Direct verification found this false --
+`PayTab.kt`/`PayHomeExtras.kt` already have a complete, working
+`FacePayStatusRow` (enroll/revoke toggle, real cashback-rate display) and
+`ShopPay.kt`'s `PayAMerchantSection`/`PayByCodeCard`/`PayByScanCard` already
+pass a real `facePayEnrolled` flag through the whole collect flow -- the
+research fork's grep simply didn't search `features/pay/impl`/
+`features/shop/impl` thoroughly enough. **Reusable lesson**: a subagent's
+research report is exactly as fallible as a stale memory file -- verify a
+specific, actionable claim against the real current code before spending
+effort acting on it, the same "don't trust a snapshot" discipline this
+session's memory system already enforces for its own recall.
+
+**The other flagged gap held up under verification**: web's own
+`PayHub.tsx` had already honestly disclosed, in its own code comment, that
+`onAddMoney` did nothing -- "itunda has no self-service 'pull an amount from
+my linked account right now' flow." Confirmed identically dead on Android
+(`onAddMoney = { openAccountDetail = null }`) and iOS
+(`onAddMoney: { showAccountDetail = false }`).
+
+**Backend**: new `AccountService.transferBetweenOwnAccounts` +
+`POST /api/v1/account/internal-transfer`. Deliberately generalizes
+`AutoTopUpService.topUpPayFromMain`'s own real shape (senderId ==
+recipientId == userId, zero-fee WALLET/WALLET ledger legs,
+`TransactionType.TRANSFER`) rather than reusing `quoteTransfer`/
+`confirmTransfer` (those route through an external provider rail and charge
+a real 1% fee -- wrong for a purely internal move between two of the SAME
+user's own accounts). No fraud-rule evaluation, matching
+`YouthAccountService.deposit`'s own precedent for MAIN -> Mini funding: fraud
+rules exist to catch transfers to OTHER people, not moving your own money
+between your own pockets. Same 404-not-403 IDOR-safe ownership check as
+`getAccountById`/`setNickname`, real rate limit, Idempotency-Key required.
+Discrimination-tested (disabled the same-account guard, confirmed exactly 1
+new test failure, restored).
+
+**Clients**: all 3 gained a new "Add money" screen (own file each) reachable
+from the existing Pay Money detail screen's "Add money" button, letting the
+user pick a source from their OTHER real accounts + an amount (quick
++1,000/+5,000/+10,000 RWF chips, plain RWF amounts rather than reproducing
+Toss's own "만원" KRW-denomination convention itunda has no equivalent for).
+
+**What shipped**: `1c97a2b76` (backend), `02c7a959b` (web), `e025510b9`
+(Android), `a8fbb8039` (iOS).
+
+**Verification**: backend `:account:test` (Kotest, discrimination-tested);
+web `tsc -b` + `oxlint` + `accessibility-lint.py` + `vite build` +
+`file-size-lint.py`; Android `:core:network:compileDebugKotlin` +
+`:features:pay:impl:compileDebugKotlin` + `:app:compileDebugKotlin` (clean,
+zero new warnings) + `:architecture-test:test` (Konsist, force re-run) +
+`file-size-lint.py`; iOS full `xcodebuild -scheme ItundaApp` after
+`tuist generate && pod install` (`BUILD SUCCEEDED`, zero errors, zero new
+warnings).
