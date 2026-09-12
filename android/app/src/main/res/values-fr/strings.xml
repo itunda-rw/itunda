@@ -242,6 +242,9 @@
     <string name="card_pay_disclaimer">itunda n\'a pas encore de partenariat avec un réseau de cartes réel, donc ceci simule un véritable achat par carte -- de l\'argent réel est transféré, les vraies limites s\'appliquent.</string>
     <string name="card_merchant_label">Nom du commerçant</string>
     <string name="card_amount_label">Montant (RWF)</string>
+    <string name="card_funding_account_label">Payer depuis</string>
+    <string name="card_funding_account_main">Compte principal</string>
+    <string name="card_funding_account_pay">itunda Pay Money</string>
     <string name="card_pay_state_closed">La carte est fermée</string>
     <string name="card_pay_state_lost">Carte signalée perdue</string>
     <string name="card_pay_state_frozen">La carte est bloquée</string>

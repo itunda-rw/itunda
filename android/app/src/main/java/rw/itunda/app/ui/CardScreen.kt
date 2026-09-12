@@ -31,9 +31,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -78,6 +76,10 @@ fun CardScreen(onBack: () -> Unit) {
     var monthlyLimitInput by remember { mutableStateOf("") }
     var merchantName by remember { mutableStateOf("") }
     var chargeAmount by remember { mutableStateOf("") }
+    // Real Toss "결제 계좌" (payment account) reference (2026-09-12) -- see
+    // CardActivitySection.kt's CardPaySection doc comment for why only MAIN/PAY are
+    // ever real choices here.
+    var fundingAccountType by remember { mutableStateOf("MAIN") }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var chargeMessage by remember { mutableStateOf<String?>(null) }
@@ -302,7 +304,7 @@ fun CardScreen(onBack: () -> Unit) {
             try {
                 val result = NetworkClient.apiService.chargeCard(
                     UUID.randomUUID().toString(),
-                    ChargeCardRequest(parsedAmount, merchantName.trim()),
+                    ChargeCardRequest(parsedAmount, merchantName.trim(), fundingAccountType),
                 )
                 card = result.card
                 chargeMessage = String.format(cardPaidMessageTemplate, formatMoney(result.transaction.amount), result.transaction.merchantName)
@@ -472,6 +474,7 @@ fun CardScreen(onBack: () -> Unit) {
                             CardPaySection(
                                 card = c, merchantName = merchantName, onMerchantNameChange = { merchantName = it },
                                 chargeAmount = chargeAmount, onChargeAmountChange = { chargeAmount = it },
+                                fundingAccountType = fundingAccountType, onFundingAccountTypeChange = { fundingAccountType = it },
                                 chargeMessage = chargeMessage, chargeSucceeded = chargeSucceeded, busy = busy,
                                 onCharge = { charge() },
                             )
@@ -482,17 +485,5 @@ fun CardScreen(onBack: () -> Unit) {
                 }
             }
         }
-    }
-}
-
-@Composable
-fun CardActionButton(label: String, enabled: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-            .background(if (enabled) Ids.colors.brand else Ids.colors.textTertiary).pressScaleClickable(enabled = enabled, onClick = onClick)
-            .padding(vertical = 14.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(label, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
     }
 }

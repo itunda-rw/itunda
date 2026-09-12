@@ -2303,11 +2303,15 @@ data class CardTransactionDto(
     val cardId: String,
     val amount: java.math.BigDecimal,
     val merchantName: String,
+    // Real Toss "결제 계좌" (payment account) reference (2026-09-12) -- which of the
+    // user's own accounts funded this charge. See the backend's
+    // CardService.chargeWithCard doc comment for why only MAIN/PAY are ever real here.
+    val fundingAccountType: String = "MAIN",
     val createdAt: String,
 )
 data class CardTransactionsResponse(val success: Boolean, val transactions: List<CardTransactionDto>, val totalElements: Long, val totalPages: Int)
 data class SetCardLimitsRequest(val dailyLimit: java.math.BigDecimal, val monthlyLimit: java.math.BigDecimal)
-data class ChargeCardRequest(val amount: java.math.BigDecimal, val merchantName: String)
+data class ChargeCardRequest(val amount: java.math.BigDecimal, val merchantName: String, val fundingAccountType: String = "MAIN")
 data class ChargeCardResponse(val success: Boolean, val transaction: CardTransactionDto, val card: CardDto)
 data class SetCardPinRequest(val newPin: String, val currentCredential: String)
 

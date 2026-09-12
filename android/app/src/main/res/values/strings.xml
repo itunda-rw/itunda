@@ -322,6 +322,9 @@
     <string name="card_pay_disclaimer">itunda has no real card-network partnership yet, so this simulates a real card-present purchase -- real money moves, real limits apply.</string>
     <string name="card_merchant_label">Merchant name</string>
     <string name="card_amount_label">Amount (RWF)</string>
+    <string name="card_funding_account_label">Pay from</string>
+    <string name="card_funding_account_main">Main account</string>
+    <string name="card_funding_account_pay">itunda Pay Money</string>
     <string name="card_pay_state_closed">Card is closed</string>
     <string name="card_pay_state_lost">Card reported lost</string>
     <string name="card_pay_state_frozen">Card is frozen</string>

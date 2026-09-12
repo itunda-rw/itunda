@@ -243,6 +243,9 @@
     <string name="card_pay_disclaimer">Itunda ntabwo ifite amasezerano n\'urusobe rw\'ikarita nyayo, bityo iki ni ikigereranyo cy\'ikiguzi nyacyo gikoresheje ikarita -- amafaranga nyayo agenda, imbibi nyazo zirakurikizwa.</string>
     <string name="card_merchant_label">Izina ry\'ucuruza</string>
     <string name="card_amount_label">Umubare (RWF)</string>
+    <string name="card_funding_account_label">Ishyura uhereye kuri</string>
+    <string name="card_funding_account_main">Konti nyamukuru</string>
+    <string name="card_funding_account_pay">itunda Pay Money</string>
     <string name="card_pay_state_closed">Ikarita yafunzwe</string>
     <string name="card_pay_state_lost">Ikarita yatangajwe ko yatakaye</string>
     <string name="card_pay_state_frozen">Ikarita yahagaritswe</string>
