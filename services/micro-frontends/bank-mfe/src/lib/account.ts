@@ -186,3 +186,16 @@ export const triggerAutoTopUp = (accountId: string) =>
     method: 'POST',
     headers: { 'Idempotency-Key': randomUUID() },
   });
+
+// Real Toss "충전하기"/"옮기기" reference (2026-09-12, direct user-supplied Toss Pay
+// screenshots) -- a purely internal, zero-fee move between two of the caller's own
+// real accounts (e.g. topping up itunda Pay Money from itunda Bank, or moving it
+// back out). See the backend's AccountService.transferBetweenOwnAccounts doc
+// comment for why this is a separate endpoint from quoteTransfer/confirmTransfer
+// (those charge a real 1% external-rail fee, wrong for a same-user internal move).
+export const transferBetweenOwnAccounts = (fromAccountId: string, toAccountId: string, amount: number) =>
+  apiFetch<{ success: boolean; transaction: Transaction }>('/api/v1/account/internal-transfer', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ fromAccountId, toAccountId, amount }),
+  }).then((r) => r.transaction);

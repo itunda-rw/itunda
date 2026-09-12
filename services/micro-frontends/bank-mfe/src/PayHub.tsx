@@ -4,6 +4,7 @@ import { QrCode, Receipt, Settings, Store, Wallet as AccountIcon } from 'lucide-
 import { IconChevronRight, IconSend } from './icons/ItundaIcons';
 import { TransferFlow, type Tab } from './BankDashboard';
 import { PayMoneyDetail } from './PayMoneyDetail';
+import { AddMoneyScreen } from './AddMoneyScreen';
 import { CouponBoxView } from './CouponBoxView';
 import { MembershipView } from './MembershipView';
 import { AgentCashOutView } from './AgentCashOutView';
@@ -164,6 +165,8 @@ export function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab:
   // comment. Holds the specific account drilled into, not just a boolean, since
   // MyPaymentCodeCard's own real funding-source picker can select MAIN too.
   const [openAccountDetail, setOpenAccountDetail] = useState<Account | null>(null);
+  // Real Toss "충전하기" (top up) reference -- see AddMoneyScreen.tsx's own doc comment.
+  const [showAddMoney, setShowAddMoney] = useState(false);
   // Real itunda Pay redesign (2026-08-28, direct user reference: real Toss Pay
   // screenshots) -- new Coupon Box / Membership screens, both presented the same
   // full-screen-overlay way PayMoneyDetail already is above.
@@ -249,20 +252,27 @@ export function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab:
 
   if (paymentResult) return <PaymentConfirmation result={paymentResult} onDone={() => { setPaymentResult(null); loadAccount(); }} />;
 
+  if (openAccountDetail && showAddMoney) {
+    return (
+      <AddMoneyScreen
+        destination={openAccountDetail}
+        sourceOptions={accounts.filter((a) => a.id !== openAccountDetail.id)}
+        onBack={() => setShowAddMoney(false)}
+        onDone={() => { setShowAddMoney(false); setOpenAccountDetail(null); loadAccount(); showToast('Money added'); }}
+      />
+    );
+  }
+
   if (openAccountDetail) {
     return (
       <PayMoneyDetail
         account={openAccountDetail}
         onBack={() => setOpenAccountDetail(null)}
         onSend={() => { setOpenAccountDetail(null); setShowTransfer(true); }}
-        // Real gap, honestly scoped out for now: itunda has no self-service
-        // "pull an amount from my linked account right now" flow -- only
-        // AutoTopUpCard's threshold-based auto top-up exists (configureAutoTopUp/
-        // triggerAutoTopUp below), which isn't the same real capability the
-        // reference's "Add money" button performs. Closing back to PayHub, where
-        // AutoTopUpCard is already visible, rather than routing this button
-        // somewhere unrelated (e.g. Bills) that would silently do the wrong thing.
-        onAddMoney={() => setOpenAccountDetail(null)}
+        // Real Toss "충전하기" reference (2026-09-12) -- closes the gap this
+        // comment used to disclose ("itunda has no self-service 'pull an amount
+        // from my linked account right now' flow"). See AddMoneyScreen.tsx.
+        onAddMoney={() => setShowAddMoney(true)}
       />
     );
   }
