@@ -28,6 +28,13 @@ struct KnowledgeScreenView: View {
     @State private var page = 0
     @State private var hasMore = false
     @State private var loadingMore = false
+    // Real pagination-discard fix (2026-09-13, see project_itunda_pagination_discard_sweep
+    // memory) -- "My answers" had the SAME bug this screen's own header comment
+    // already named systemic, just never actually fixed for this specific sub-list
+    // (only "My questions" above got fixed at the time).
+    @State private var answersPage = 0
+    @State private var answersHasMore = false
+    @State private var loadingMoreAnswers = false
 
     var body: some View {
         if let openId = openQuestionId {
@@ -120,6 +127,14 @@ struct KnowledgeScreenView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.vertical, 10)
                             }
+                            if answersHasMore {
+                                Button(action: loadMoreAnswers) {
+                                    Text(loadingMoreAnswers ? "Loading…" : "Load more").bold().font(.caption)
+                                        .frame(maxWidth: .infinity).padding(.vertical, 12)
+                                        .background(Color(.secondarySystemBackground)).cornerRadius(10)
+                                }
+                                .disabled(loadingMoreAnswers)
+                            }
                         }
                     }
                     .padding(IDS.Layout.screenHorizontal)
@@ -144,7 +159,11 @@ struct KnowledgeScreenView: View {
         Task {
             do {
                 if tab == .mine {
-                    myAnswers = try await NetworkClient.shared.getMyKnowledgeAnswers().answers
+                    answersPage = 0
+                    answersHasMore = false
+                    let answersResponse = try await NetworkClient.shared.getMyKnowledgeAnswers(page: 0)
+                    myAnswers = answersResponse.answers
+                    answersHasMore = answersResponse.page + 1 < answersResponse.totalPages
                     let response = try await NetworkClient.shared.getMyKnowledgeQuestions(page: 0)
                     questions = response.questions
                     hasMore = response.page + 1 < response.totalPages
@@ -175,6 +194,18 @@ struct KnowledgeScreenView: View {
                 // Non-critical -- the already-loaded page stays visible; the
                 // user can retry by tapping "Load more" again.
             }
+        }
+    }
+
+    private func loadMoreAnswers() {
+        let nextPage = answersPage + 1
+        loadingMoreAnswers = true
+        Task {
+            defer { loadingMoreAnswers = false }
+            guard let response = try? await NetworkClient.shared.getMyKnowledgeAnswers(page: nextPage) else { return }
+            myAnswers = (myAnswers ?? []) + response.answers
+            answersPage = nextPage
+            answersHasMore = response.page + 1 < response.totalPages
         }
     }
 }

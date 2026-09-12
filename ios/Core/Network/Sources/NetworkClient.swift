@@ -1268,7 +1268,23 @@ public struct KnowledgeAnswerDto: Decodable, Identifiable {
     public let createdAt: String
 }
 public struct KnowledgeAnswerResponse: Decodable { public let success: Bool; public let answer: KnowledgeAnswerDto }
-public struct KnowledgeAnswersResponse: Decodable { public let success: Bool; public let answers: [KnowledgeAnswerDto] }
+// page/totalPages are optional-decoded with a default: this struct is also used by
+// getKnowledgeAnswers (a single question's own answers), which is NOT Pageable-backed
+// on the backend and carries no pageMeta at all.
+public struct KnowledgeAnswersResponse: Decodable {
+    public let success: Bool
+    public let answers: [KnowledgeAnswerDto]
+    public let page: Int
+    public let totalPages: Int
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        success = try c.decode(Bool.self, forKey: .success)
+        answers = try c.decode([KnowledgeAnswerDto].self, forKey: .answers)
+        page = try c.decodeIfPresent(Int.self, forKey: .page) ?? 0
+        totalPages = try c.decodeIfPresent(Int.self, forKey: .totalPages) ?? 1
+    }
+    private enum CodingKeys: String, CodingKey { case success, answers, page, totalPages }
+}
 public struct KnowledgeReputationResponse: Decodable { public let success: Bool; public let adoptedAnswerCount: Int }
 
 // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- mirrors
@@ -1976,7 +1992,9 @@ extension NetworkClient {
         ])
     }
 
-    public func getMyKnowledgeAnswers() async throws -> KnowledgeAnswersResponse { try await get("api/v1/knowledge/answers/my-answers") }
+    public func getMyKnowledgeAnswers(page: Int = 0, size: Int = 20) async throws -> KnowledgeAnswersResponse {
+        try await get("api/v1/knowledge/answers/my-answers", query: [URLQueryItem(name: "page", value: String(page)), URLQueryItem(name: "size", value: String(size))])
+    }
 
     public func getMyKnowledgeReputation() async throws -> KnowledgeReputationResponse { try await get("api/v1/knowledge/reputation/me") }
 
