@@ -5,11 +5,15 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.KnowledgeAnswer
 import rw.itunda.core.domain.KnowledgeQuestion
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.KnowledgeAnswerRepository
 import rw.itunda.core.repository.KnowledgeQuestionRepository
+import rw.itunda.core.repository.NotificationRepository
+import rw.itunda.core.repository.UserRepository
 import java.util.Optional
 
 /**
@@ -23,7 +27,14 @@ class KnowledgeServiceTest : BehaviorSpec({
         questionRepository: KnowledgeQuestionRepository = mockk(),
         answerRepository: KnowledgeAnswerRepository = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = KnowledgeService(questionRepository, answerRepository, rateLimiter)
+        userRepository: UserRepository = mockk<UserRepository>(relaxed = true).also {
+            every { it.findById(any()) } returns Optional.empty()
+        },
+        notificationRepository: NotificationRepository = mockk<NotificationRepository>(relaxed = true).also {
+            every { it.save(any()) } answers { firstArg() }
+        },
+        pushNotificationService: PushNotificationService = mockk(relaxed = true),
+    ) = KnowledgeService(questionRepository, answerRepository, rateLimiter, userRepository, notificationRepository, pushNotificationService)
 
     Given("a real user posting a real question") {
         val questionRepository = mockk<KnowledgeQuestionRepository>()
@@ -46,7 +57,8 @@ class KnowledgeServiceTest : BehaviorSpec({
     Given("a real question with no adopted answer yet") {
         val questionRepository = mockk<KnowledgeQuestionRepository>()
         val answerRepository = mockk<KnowledgeAnswerRepository>()
-        val service = newService(questionRepository = questionRepository, answerRepository = answerRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(questionRepository = questionRepository, answerRepository = answerRepository, pushNotificationService = pushNotificationService)
 
         val question = KnowledgeQuestion(id = "knowledge_question_1", askerId = "asker_1", category = "money", title = "Q", body = "B")
         val answer1 = KnowledgeAnswer(id = "knowledge_answer_1", questionId = "knowledge_question_1", answererId = "answerer_1", body = "A1")
@@ -73,6 +85,55 @@ class KnowledgeServiceTest : BehaviorSpec({
             Then("the answer is marked adopted and the question records it") {
                 result.isAdopted shouldBe true
                 question.adoptedAnswerId shouldBe "knowledge_answer_1"
+            }
+
+            // Real gap found live (sibling comparison against CommunityService.addComment's
+            // own "notify the content owner" convention, 2026-09-13): adoptAnswer never
+            // told the answerer their answer was adopted -- the real reputation-count-
+            // moving event this module's own doc comment treats as the core mechanic.
+            Then("the real answerer is actually notified, not just silently updated") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("answerer_1", any(), any(), any()) }
+            }
+        }
+    }
+
+    Given("a real question being answered by someone other than its asker") {
+        val questionRepository = mockk<KnowledgeQuestionRepository>()
+        val answerRepository = mockk<KnowledgeAnswerRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(questionRepository = questionRepository, answerRepository = answerRepository, pushNotificationService = pushNotificationService)
+
+        val question = KnowledgeQuestion(id = "knowledge_question_2", askerId = "asker_1", category = "money", title = "Q2", body = "B2")
+        every { questionRepository.findById("knowledge_question_2") } returns Optional.of(question)
+        every { answerRepository.save(any()) } answers { firstArg() }
+
+        When("a different user posts a real answer") {
+            service.postAnswer("answerer_1", "knowledge_question_2", "Here's how.")
+
+            // Real gap found live (sibling comparison against CommunityService.addComment's
+            // own "notify the content owner" convention, 2026-09-13): postAnswer never
+            // told the question's asker someone answered it.
+            Then("the real asker is actually notified, not left to find out on their own") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("asker_1", any(), any(), any()) }
+            }
+        }
+    }
+
+    Given("a real question being answered by its own asker") {
+        val questionRepository = mockk<KnowledgeQuestionRepository>()
+        val answerRepository = mockk<KnowledgeAnswerRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(questionRepository = questionRepository, answerRepository = answerRepository, pushNotificationService = pushNotificationService)
+
+        val question = KnowledgeQuestion(id = "knowledge_question_3", askerId = "asker_1", category = "money", title = "Q3", body = "B3")
+        every { questionRepository.findById("knowledge_question_3") } returns Optional.of(question)
+        every { answerRepository.save(any()) } answers { firstArg() }
+
+        When("the asker answers their own question") {
+            service.postAnswer("asker_1", "knowledge_question_3", "Answering my own question.")
+
+            Then("no self-notification is ever sent") {
+                verify(exactly = 0) { pushNotificationService.sendToUser("asker_1", any(), any(), any()) }
             }
         }
     }

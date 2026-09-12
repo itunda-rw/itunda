@@ -7,9 +7,14 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.KnowledgeAnswer
 import rw.itunda.core.domain.KnowledgeQuestion
+import rw.itunda.core.domain.Notification
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.KnowledgeAnswerRepository
 import rw.itunda.core.repository.KnowledgeQuestionRepository
+import rw.itunda.core.repository.NotificationRepository
+import rw.itunda.core.repository.UserRepository
 import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 
 class InvalidKnowledgeQuestionException(message: String) : RuntimeException(message)
@@ -43,7 +48,14 @@ class KnowledgeService(
     private val questionRepository: KnowledgeQuestionRepository,
     private val answerRepository: KnowledgeAnswerRepository,
     private val rateLimiter: RateLimiter,
+    private val userRepository: UserRepository,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
+    // Single-user name lookup -- unlike CommunityService's own resolveNames, this
+    // module never needs to resolve more than one actor's name per call.
+    private fun resolveName(userId: String): String =
+        userRepository.findById(userId).map { "${it.firstName} ${it.lastName}" }.orElse("Someone")
     companion object {
         val CATEGORIES = listOf(
             KnowledgeCategory("general", "General"),
@@ -118,9 +130,26 @@ class KnowledgeService(
         // convention for reply-shaped content creation.
         rateLimiter.checkLimit("knowledge:answer:$answererId", limit = 30, window = Duration.ofHours(1))
 
-        return answerRepository.save(
+        val answer = answerRepository.save(
             KnowledgeAnswer(id = "knowledge_answer_${UUID.randomUUID()}", questionId = question.id, answererId = answererId, body = trimmed),
         )
+
+        // Real notification via the existing in-app Notification system, matching
+        // CommunityService.addComment's own "notify the content owner" convention --
+        // never sent to yourself answering your own question.
+        if (question.askerId != answererId) {
+            val answererName = resolveName(answererId)
+            val notifBody = trimmed.take(120)
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = question.askerId, type = "KNOWLEDGE_ANSWER_POSTED",
+                    title = answererName, body = notifBody,
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"questionId\":\"${question.id}\"}",
+                ),
+            )
+            pushNotificationService.sendToUser(question.askerId, answererName, notifBody, mapOf("questionId" to question.id))
+        }
+        return answer
     }
 
     /**
@@ -149,6 +178,25 @@ class KnowledgeService(
         answerRepository.save(answer)
         question.adoptedAnswerId = answer.id
         questionRepository.save(question)
+
+        // Real notification for the real reputation-count-moving event this module's
+        // own doc comment treats as the core mechanic -- an answerer otherwise has no
+        // way to know their answer was adopted except manually reopening the question.
+        // Never sent to yourself (self-adoption can't happen here since only the
+        // asker can adopt, and postAnswer already skips self-answer notifications,
+        // but this guard matches CommunityService.addComment's own defensive shape).
+        if (answer.answererId != askerId) {
+            val askerName = resolveName(askerId)
+            val notifBody = "Your answer to \"${question.title}\" was adopted"
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = answer.answererId, type = "KNOWLEDGE_ANSWER_ADOPTED",
+                    title = askerName, body = notifBody,
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"questionId\":\"${question.id}\"}",
+                ),
+            )
+            pushNotificationService.sendToUser(answer.answererId, askerName, notifBody, mapOf("questionId" to question.id))
+        }
         return answer
     }
 
