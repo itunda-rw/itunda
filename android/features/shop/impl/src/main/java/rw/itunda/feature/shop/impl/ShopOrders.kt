@@ -33,6 +33,9 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.itundaface.PriceDropGlyph
 import rw.itunda.core.designsystem.theme.Ids
@@ -161,12 +164,19 @@ internal fun ProductWishlistView(onRemoved: () -> Unit) {
 internal fun MyProductInquiriesView() {
     var inquiries by remember { mutableStateOf<List<ProductInquiryDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getMyProductInquiries
+    // silently capped this list at the first 20 questions.
+    var page by remember { mutableStateOf(0) }
+    var hasMore by remember { mutableStateOf(false) }
+    var loadingMore by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
         coroutineScope.launch {
             try {
-                inquiries = NetworkClient.apiService.getMyProductInquiries().inquiries
+                val res = NetworkClient.apiService.getMyProductInquiries(page = 0)
+                inquiries = res.inquiries; page = 0; hasMore = res.page + 1 < res.totalPages
                 error = null
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
@@ -176,6 +186,24 @@ internal fun MyProductInquiriesView() {
         }
     }
     LaunchedEffect(Unit) { load() }
+
+    fun loadMore() {
+        val nextPage = page + 1
+        loadingMore = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyProductInquiries(page = nextPage)
+                inquiries = (inquiries ?: emptyList()) + res.inquiries
+                page = nextPage
+                hasMore = res.page + 1 < res.totalPages
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded page stays visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMore = false
+            }
+        }
+    }
 
     when {
         error != null -> ErrorCard(error!!, onRetry = ::load)
@@ -194,6 +222,15 @@ internal fun MyProductInquiriesView() {
                     }
                 }
                 Divider(color = Ids.colors.divider, thickness = 0.5.dp)
+            }
+            if (hasMore) {
+                IdsButton(
+                    text = if (loadingMore) "Loading…" else "Load more",
+                    onClick = ::loadMore,
+                    enabled = !loadingMore,
+                    variant = IdsButtonVariant.Tinted,
+                    size = IdsButtonSize.Medium,
+                )
             }
         }
     }

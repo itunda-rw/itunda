@@ -37,6 +37,9 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.EmptyState
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.StarGold
 import rw.itunda.core.designsystem.components.StarRatingRow
@@ -68,18 +71,43 @@ internal fun ProductInquirySection(productId: String) {
     var question by remember { mutableStateOf("") }
     var asking by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getProductInquiries
+    // silently capped this list at the first 20 questions.
+    var page by remember { mutableStateOf(0) }
+    var hasMore by remember { mutableStateOf(false) }
+    var loadingMore by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
         coroutineScope.launch {
             try {
-                inquiries = NetworkClient.apiService.getProductInquiries(productId).inquiries
+                val res = NetworkClient.apiService.getProductInquiries(productId, page = 0)
+                inquiries = res.inquiries; page = 0; hasMore = res.page + 1 < res.totalPages
             } catch (e: Exception) {
                 inquiries = emptyList()
             }
         }
     }
     LaunchedEffect(productId) { load() }
+
+    fun loadMore() {
+        val nextPage = page + 1
+        loadingMore = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getProductInquiries(productId, page = nextPage)
+                inquiries = (inquiries ?: emptyList()) + res.inquiries
+                page = nextPage
+                hasMore = res.page + 1 < res.totalPages
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded page stays visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMore = false
+            }
+        }
+    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text("Questions & answers", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
@@ -130,6 +158,15 @@ internal fun ProductInquirySection(productId: String) {
                         }
                     }
                 }
+                if (hasMore) {
+                    IdsButton(
+                        text = if (loadingMore) "Loading…" else "Load more",
+                        onClick = ::loadMore,
+                        enabled = !loadingMore,
+                        variant = IdsButtonVariant.Tinted,
+                        size = IdsButtonSize.Medium,
+                    )
+                }
             }
         }
     }
@@ -146,6 +183,12 @@ internal fun ProductRatingBadge(productId: String) {
     // Real "도움돼요" (helpful) toggle (2026-08-25) -- see
     // ProductReviewService.toggleHelpful's own doc comment on the backend.
     var helpfulVoted by remember { mutableStateOf<Set<String>>(emptySet()) }
+    // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getProductReviews
+    // silently capped this list at the first 20 reviews.
+    var page by remember { mutableStateOf(0) }
+    var hasMore by remember { mutableStateOf(false) }
+    var loadingMore by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     fun toggleHelpful(reviewId: String) {
@@ -158,6 +201,24 @@ internal fun ProductRatingBadge(productId: String) {
                 }
             } catch (e: Exception) {
                 // Real, non-critical -- a failed helpful-vote shouldn't block reading reviews.
+            }
+        }
+    }
+
+    fun loadMoreReviews() {
+        val nextPage = page + 1
+        loadingMore = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getProductReviews(productId, page = nextPage)
+                reviews = (reviews ?: emptyList()) + res.reviews
+                page = nextPage
+                hasMore = res.page + 1 < res.totalPages
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded page stays visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMore = false
             }
         }
     }
@@ -180,7 +241,8 @@ internal fun ProductRatingBadge(productId: String) {
                     if (next && reviews == null) {
                         coroutineScope.launch {
                             try {
-                                reviews = NetworkClient.apiService.getProductReviews(productId).reviews
+                                val res = NetworkClient.apiService.getProductReviews(productId, page = 0)
+                                reviews = res.reviews; page = 0; hasMore = res.page + 1 < res.totalPages
                             } catch (e: Exception) {
                                 reviews = emptyList()
                             }
@@ -220,6 +282,15 @@ internal fun ProductRatingBadge(productId: String) {
                                 color = if (rv.id in helpfulVoted) Ids.colors.brand else Ids.colors.textTertiary,
                                 fontSize = 11.sp,
                                 modifier = Modifier.pressScaleClickable { toggleHelpful(rv.id) },
+                            )
+                        }
+                        if (hasMore) {
+                            IdsButton(
+                                text = if (loadingMore) "Loading…" else "Load more",
+                                onClick = ::loadMoreReviews,
+                                enabled = !loadingMore,
+                                variant = IdsButtonVariant.Tinted,
+                                size = IdsButtonSize.Medium,
                             )
                         }
                     }

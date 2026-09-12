@@ -1810,7 +1810,7 @@ data class ProductReviewDto(
 )
 data class ToggleHelpfulReviewResponse(val success: Boolean, val helpful: Boolean)
 data class ProductReviewResponse(val success: Boolean, val review: ProductReviewDto)
-data class ProductReviewsResponse(val success: Boolean, val reviews: List<ProductReviewDto>)
+data class ProductReviewsResponse(val success: Boolean, val reviews: List<ProductReviewDto>, val page: Int = 0, val totalPages: Int = 1)
 data class ProductRatingResponse(val success: Boolean, val average: Double?, val count: Long)
 
 // Real Coupang-style pre-purchase product Q&A -- mirrors bank-mfe's lib/commerce.ts
@@ -1821,7 +1821,7 @@ data class ProductInquiryDto(
     val question: String, val answer: String?, val answeredAt: String?, val createdAt: String,
 )
 data class ProductInquiryResponse(val success: Boolean, val inquiry: ProductInquiryDto)
-data class ProductInquiriesResponse(val success: Boolean, val inquiries: List<ProductInquiryDto>)
+data class ProductInquiriesResponse(val success: Boolean, val inquiries: List<ProductInquiryDto>, val page: Int = 0, val totalPages: Int = 1)
 
 // Real Kakao Pay 정기결제/Toss 빌링키-style recurring merchant billing -- mirrors
 // bank-mfe's lib/shopping.ts exactly.
@@ -4138,7 +4138,7 @@ interface ApiService {
     suspend fun getProductRating(@Path("id") productId: String): ProductRatingResponse
 
     @GET("api/v1/orders/products/{id}/reviews")
-    suspend fun getProductReviews(@Path("id") productId: String): ProductReviewsResponse
+    suspend fun getProductReviews(@Path("id") productId: String, @Query("page") page: Int = 0, @Query("size") size: Int = 20): ProductReviewsResponse
 
     // Real Coupang/Naver-style "helpful" idempotent toggle (2026-08-25) -- see
     // ProductReviewService.toggleHelpful's own doc comment on the backend.
@@ -4155,13 +4155,13 @@ interface ApiService {
     suspend fun askProductInquiry(@Path("id") productId: String, @Body request: AskProductInquiryRequest): ProductInquiryResponse
 
     @GET("api/v1/orders/products/{id}/inquiries")
-    suspend fun getProductInquiries(@Path("id") productId: String): ProductInquiriesResponse
+    suspend fun getProductInquiries(@Path("id") productId: String, @Query("page") page: Int = 0, @Query("size") size: Int = 20): ProductInquiriesResponse
 
     // Real "my questions across every product I've ever asked about" (2026-08-04) --
     // OrderController.getMyInquiries existed on the backend with zero client anywhere;
     // ShopScreen's ProductInquirySection only ever showed one product's Q&A at a time.
     @GET("api/v1/orders/inquiries/my-questions")
-    suspend fun getMyProductInquiries(): ProductInquiriesResponse
+    suspend fun getMyProductInquiries(@Query("page") page: Int = 0, @Query("size") size: Int = 20): ProductInquiriesResponse
 
     // Real Kakao Pay 정기결제/Toss Payments 빌링키-style recurring merchant billing --
     // see rw.itunda.merchant.MerchantBillingService's own doc comment. Customer-facing
