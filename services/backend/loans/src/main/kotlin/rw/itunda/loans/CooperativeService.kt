@@ -132,6 +132,9 @@ class CooperativeService(
     // own doc comment: this check-then-act-then-disburse had no row lock.
     @Transactional
     fun disburseAdvance(userId: String, advanceId: String): HarvestAdvance {
+        // Real anti-spam limit -- same "frequent, repeatable money-movement action"
+        // convention this class's own requestAdvance sibling already establishes.
+        rateLimiter.checkLimit("harvest-advance:disburse:$userId", limit = 10, window = Duration.ofHours(1))
         val advance = advanceRepository.findByIdForUpdate(advanceId).orElseThrow { HarvestAdvanceNotFoundException("Advance not found") }
         val membership = membershipRepository.findById(advance.membershipId).orElseThrow { HarvestAdvanceNotFoundException("Advance not found") }
         if (membership.userId != userId) throw HarvestAdvanceNotFoundException("Advance not found")
@@ -171,6 +174,10 @@ class CooperativeService(
     @Transactional
     fun repayAdvance(userId: String, advanceId: String, amount: BigDecimal): HarvestAdvance {
         if (amount <= BigDecimal.ZERO) throw HarvestAdvanceInvalidAmountException("Repayment amount must be greater than zero")
+        // Real anti-spam limit -- same "frequent, repeatable money-movement action"
+        // convention LoansService.repayLoan/OverdraftService.repay/VupLoanService.repay
+        // already establish, never wired in here until now.
+        rateLimiter.checkLimit("harvest-advance:repay:$userId", limit = 30, window = Duration.ofHours(1))
         val advance = advanceRepository.findByIdForUpdate(advanceId).orElseThrow { HarvestAdvanceNotFoundException("Advance not found") }
         val membership = membershipRepository.findById(advance.membershipId).orElseThrow { HarvestAdvanceNotFoundException("Advance not found") }
         if (membership.userId != userId) throw HarvestAdvanceNotFoundException("Advance not found")

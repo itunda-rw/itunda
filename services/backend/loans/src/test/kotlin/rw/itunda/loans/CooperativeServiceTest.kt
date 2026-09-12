@@ -25,6 +25,7 @@ import rw.itunda.core.repository.HarvestAdvanceRepository
 import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.repository.NotificationRepository
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.Instant
 import java.util.Optional
 
@@ -144,9 +145,10 @@ class CooperativeServiceTest : BehaviorSpec({
         val advanceRepository = mockk<HarvestAdvanceRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = newService(
             membershipRepository = membershipRepository, advanceRepository = advanceRepository,
-            accountRepository = accountRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService, rateLimiter = rateLimiter,
         )
 
         val membership = CooperativeMembership(id = "coopmem_1", cooperativeId = "coop_1", userId = "user_1", accountId = "account_1")
@@ -173,6 +175,13 @@ class CooperativeServiceTest : BehaviorSpec({
                     })
                 }
             }
+
+            // Real gap found live (sibling comparison against this class's own
+            // requestAdvance/LoansService.repayLoan convention, 2026-09-13):
+            // disburseAdvance had no rate limit at all.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("harvest-advance:disburse:user_1", limit = 10, window = Duration.ofHours(1)) }
+            }
         }
 
         When("attempting to disburse it a second time") {
@@ -194,9 +203,10 @@ class CooperativeServiceTest : BehaviorSpec({
         val advanceRepository = mockk<HarvestAdvanceRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = newService(
             membershipRepository = membershipRepository, advanceRepository = advanceRepository,
-            accountRepository = accountRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService, rateLimiter = rateLimiter,
         )
 
         val membership = CooperativeMembership(id = "coopmem_1", cooperativeId = "coop_1", userId = "user_1", accountId = "account_1")
@@ -222,6 +232,13 @@ class CooperativeServiceTest : BehaviorSpec({
                             legs.any { it.accountId == "loan_payable" && it.accountType == LedgerAccountType.LOAN_PAYABLE && it.direction == LedgerDirection.CREDIT }
                     })
                 }
+            }
+
+            // Real gap found live (sibling comparison against LoansService.repayLoan/
+            // VupLoanService.repay/StudentLoanService.repay/VendorCashAdvanceService
+            // .repayEarly, 2026-09-13): repayAdvance had no rate limit at all.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("harvest-advance:repay:user_1", limit = 30, window = Duration.ofHours(1)) }
             }
         }
 
