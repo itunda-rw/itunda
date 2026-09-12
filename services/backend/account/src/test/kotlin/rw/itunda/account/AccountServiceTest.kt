@@ -175,6 +175,13 @@ class AccountServiceTest : BehaviorSpec({
                 transaction.type shouldBe TransactionType.TRANSFER
                 transaction.status shouldBe TransactionStatus.COMPLETED
             }
+            // Real regression test (2026-09-12, same rationale as confirmTransfer's own
+            // check below): rateLimiter is relaxed = true, so nothing else in this file
+            // proves the real checkLimit call in transferBetweenOwnAccounts is live code
+            // rather than dead code a future edit could delete silently.
+            Then("it checks the real 30/hour rate limit for this user's internal transfers") {
+                verify { rateLimiter.checkLimit("account:internal-transfer:user_1", limit = 30, window = Duration.ofHours(1)) }
+            }
         }
 
         When("transferring to the same account as the source") {
