@@ -356,7 +356,12 @@ class CardServiceTest : BehaviorSpec({
         every { debitCardTransactionRepository.sumAmountByCardIdAndCreatedAtSince(any(), any()) } returns BigDecimal.ZERO
         every { userRepository.findById("user_1") } returns Optional.of(user)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = newService(debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository, userRepository = userRepository, rateLimiter = rateLimiter)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val notificationRepository = notificationRepositoryMock()
+        val service = newService(
+            debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository, userRepository = userRepository,
+            rateLimiter = rateLimiter, pushNotificationService = pushNotificationService, notificationRepository = notificationRepository,
+        )
 
         When("setting a real 4-digit PIN") {
             val view = service.setPin("user_1", "4821", "123456")
@@ -366,6 +371,12 @@ class CardServiceTest : BehaviorSpec({
                 card.pinHash shouldNotBe "4821"
                 // Real regression test (2026-09-12, repo-wide RateLimiter sweep re-run).
                 verify(exactly = 1) { rateLimiter.checkLimit("card:set-pin:user_1", limit = any(), window = any()) }
+            }
+            // Real sibling-asymmetry fix (2026-09-12): every other real card-state
+            // change in this class alerts the cardholder -- setPin previously didn't.
+            Then("it real-alerts the cardholder that their card PIN was changed") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_1" && it.type == "CARD_PIN_CHANGED" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any()) }
             }
         }
 

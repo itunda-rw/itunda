@@ -298,6 +298,23 @@ class CardService(
         }
         card.pinHash = passwordEncoder.encode(newPin)
         val saved = debitCardRepository.save(card)
+        // Real sibling-asymmetry fix (2026-09-12) -- every other real card-state change
+        // in this class (freeze/unfreeze via notifyCardStateChanged, reportLost/
+        // closeCard via notifyCardLostOrClosed, reissue with its own notification)
+        // sends a real security alert. Changing the card PIN is at least as security-
+        // sensitive as any of those, but sent none -- if someone with temporary
+        // device+password access changed the cardholder's card PIN, the real
+        // cardholder previously had no way to find out.
+        val pinChangedTitle = "Card PIN changed"
+        val pinChangedBody = "The PIN for your itunda card ending in ${saved.last4} was just changed."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = userId, type = "CARD_PIN_CHANGED",
+                title = pinChangedTitle, body = pinChangedBody,
+                isRead = false, createdAt = Instant.now(), dataJson = "{\"cardId\":\"${saved.id}\"}",
+            ),
+        )
+        sendCardPushAfterCommit(userId, pinChangedTitle, pinChangedBody, saved.id)
         return toView(saved)
     }
 
