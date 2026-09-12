@@ -1034,6 +1034,31 @@ class MerchantService(
         fraudRuleEngine.evaluate(merchant.ownerUserId, null, amount, transaction.id)
         transactionRepository.save(transaction)
 
+        // Real sibling-asymmetry fix (2026-09-12) -- collect()/chargeByCustomerCode()
+        // above both alert the merchant owner the moment they get paid; this real
+        // card-payment flow, which credits real ledger balance the exact same way,
+        // never did. Same best-effort discipline as its siblings -- a notification
+        // failure must never affect a payment that already succeeded.
+        try {
+            val title = "Payment received"
+            val body = "You received $amount RWF via card payment."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}",
+                    userId = merchant.ownerUserId,
+                    type = "MONEY_RECEIVED",
+                    title = title,
+                    body = body,
+                    isRead = false,
+                    createdAt = Instant.now(),
+                    dataJson = "{\"amount\":\"$amount\",\"payerId\":\"external_card_${authResult.last4}\"}",
+                ),
+            )
+            sendPaymentReceivedPushAfterCommit(merchant.ownerUserId, title, body, amount, "external_card_${authResult.last4}")
+        } catch (e: Exception) {
+            log.warn("Failed to notify merchant {} of card payment received", merchant.id, e)
+        }
+
         val resultMap = mapOf(
             "transactionId" to result.transactionId,
             "merchantName" to merchant.businessName,

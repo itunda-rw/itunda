@@ -532,6 +532,11 @@ class MerchantServiceTest : BehaviorSpec({
             every { accountRepository.findById("account_merchant") } returns Optional.of(ownerAccount)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_card_1", emptyList())
+            // Same real ClassCastException pitfall this file's own comments already
+            // document for transactionRepository/customerPaymentCodeRepository above --
+            // relaxed mockk's save() can't correctly infer JpaRepository's generic
+            // <S extends T> S save(S) signature for chargeCard's own new notification save.
+            every { notificationRepository.save(any()) } answers { firstArg() }
 
             val result = service.chargeCard(
                 "owner_1", BigDecimal("8000"), "2x Coffee",
@@ -571,6 +576,21 @@ class MerchantServiceTest : BehaviorSpec({
             // instead -- same real precedent AgentService.cashIn already established.
             Then("the real fraud engine is actually consulted, not just mocked away") {
                 verify(exactly = 1) { fraudRuleEngine.evaluate("owner_1", null, BigDecimal("8000"), "ledgertxn_card_1") }
+            }
+
+            // Real sibling-asymmetry fix (2026-09-12, against collect()'s own
+            // already-verified "Payment received" notification above) -- chargeCard
+            // credits real ledger balance the exact same way collect()/
+            // chargeByCustomerCode() do, but never alerted the merchant owner.
+            Then("the merchant owner gets a real, immediate notification that a card payment arrived") {
+                verify(exactly = 1) {
+                    notificationRepository.save(
+                        match { it.userId == "owner_1" && it.type == "MONEY_RECEIVED" && it.body.contains("8000") },
+                    )
+                }
+            }
+            Then("the merchant owner also gets a real push notification for the card payment") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("owner_1", "Payment received", match { it.contains("8000") }, any()) }
             }
         }
 
