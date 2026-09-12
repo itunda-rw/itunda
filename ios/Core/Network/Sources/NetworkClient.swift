@@ -4028,13 +4028,25 @@ public struct CommunityCategoriesResponse: Decodable { public let success: Bool;
 public struct CommentNotificationsEnabledResponse: Decodable { public let success: Bool; public let commentNotificationsEnabled: Bool }
 public struct SetCommentNotificationsEnabledRequest: Encodable { public let enabled: Bool }
 public struct CommunityPostDetailResponse: Decodable { public let success: Bool; public let post: CommunityPostDto; public let authorName: String; public let likedByMe: Bool }
-public struct CommunityCommentDto: Decodable, Identifiable { public let id: String; public let postId: String; public let authorId: String; public let body: String; public let createdAt: String }
+public struct CommunityCommentDto: Decodable, Identifiable {
+    public let id: String
+    public let postId: String
+    public let authorId: String
+    public let body: String
+    public let createdAt: String
+    public init(id: String, postId: String, authorId: String, body: String, createdAt: String) {
+        self.id = id; self.postId = postId; self.authorId = authorId; self.body = body; self.createdAt = createdAt
+    }
+}
 public struct CommunityCommentWithAuthorDto: Decodable, Identifiable {
     public let comment: CommunityCommentDto
     public let authorName: String
     public var id: String { comment.id }
+    public init(comment: CommunityCommentDto, authorName: String) {
+        self.comment = comment; self.authorName = authorName
+    }
 }
-public struct CommunityCommentsResponse: Decodable { public let success: Bool; public let comments: [CommunityCommentWithAuthorDto] }
+public struct CommunityCommentsResponse: Decodable { public let success: Bool; public let comments: [CommunityCommentWithAuthorDto]; public let page: Int; public let totalPages: Int }
 public struct AddCommunityCommentRequest: Encodable { public let body: String }
 public struct CommunityCommentResponse: Decodable { public let success: Bool; public let comment: CommunityCommentDto }
 public struct ToggleCommunityLikeResponse: Decodable { public let success: Bool; public let liked: Bool }
@@ -5939,8 +5951,8 @@ extension NetworkClient {
         try await authenticatedDelete("api/v1/community/posts/\(postId)")
     }
 
-    public func getCommunityComments(_ postId: String) async throws -> CommunityCommentsResponse {
-        try await get("api/v1/community/posts/\(postId)/comments")
+    public func getCommunityComments(_ postId: String, page: Int = 0, size: Int = 20) async throws -> CommunityCommentsResponse {
+        try await get("api/v1/community/posts/\(postId)/comments", query: [URLQueryItem(name: "page", value: String(page)), URLQueryItem(name: "size", value: String(size))])
     }
 
     public func addCommunityComment(_ postId: String, body: String) async throws -> CommunityCommentResponse {

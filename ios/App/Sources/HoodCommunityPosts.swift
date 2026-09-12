@@ -142,6 +142,15 @@ struct CommunityPostDetailView: View {
     @State private var authorName = ""
     @State private var likedByMe = false
     @State private var comments: [CommunityCommentWithAuthorDto]?
+    // Real pagination-discard fix (2026-09-13, porting web/Android's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getCommunityComments silently
+    // capped this thread at its oldest 20 comments (backend sorts ascending by
+    // createdAt), so a post with 20+ comments never showed any newer ones at all --
+    // including a user's own comment right after posting it.
+    @State private var commentsPage = 0
+    @State private var commentsHasMore = false
+    @State private var loadingMoreComments = false
+    @State private var myName: String?
     @State private var commentBody = ""
     @State private var error: String?
     @State private var liking = false
@@ -205,6 +214,12 @@ struct CommunityPostDetailView: View {
                             .background(IDS.Colors.chipBackground)
                             .cornerRadius(12)
                         }
+                        if commentsHasMore {
+                            Button(loadingMoreComments ? "Loading…" : "Load more comments") {
+                                Task { await loadMoreComments() }
+                            }
+                            .disabled(loadingMoreComments)
+                        }
                     }
                 }
                 .padding(.horizontal, IDS.Layout.screenHorizontal)
@@ -235,7 +250,25 @@ struct CommunityPostDetailView: View {
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
-        comments = (try? await NetworkClient.shared.getCommunityComments(postId).comments) ?? comments
+        if let res = try? await NetworkClient.shared.getCommunityComments(postId, page: 0) {
+            comments = res.comments
+            commentsPage = 0
+            commentsHasMore = res.page + 1 < res.totalPages
+        }
+        if let profile = try? await NetworkClient.shared.getProfile().user {
+            myName = "\(profile.firstName) \(profile.lastName)"
+        }
+    }
+
+    private func loadMoreComments() async {
+        let nextPage = commentsPage + 1
+        loadingMoreComments = true
+        defer { loadingMoreComments = false }
+        guard let res = try? await NetworkClient.shared.getCommunityComments(postId, page: nextPage) else { return }
+        let existingIds = Set((comments ?? []).map { $0.comment.id })
+        comments = (comments ?? []) + res.comments.filter { !existingIds.contains($0.comment.id) }
+        commentsPage = nextPage
+        commentsHasMore = res.page + 1 < res.totalPages
     }
 
     private func toggleLike() async {
@@ -254,9 +287,13 @@ struct CommunityPostDetailView: View {
         commenting = true
         defer { commenting = false }
         do {
-            _ = try await NetworkClient.shared.addCommunityComment(postId, body: commentBody)
+            let comment = try await NetworkClient.shared.addCommunityComment(postId, body: commentBody).comment
             commentBody = ""
-            await load()
+            // Real fix: append directly rather than reloading page 0 -- page 0 only
+            // ever holds the OLDEST comments (ascending sort), so once a post has
+            // 20+ comments, reloading page 0 would make the user's own just-posted
+            // comment disappear entirely.
+            comments = (comments ?? []) + [CommunityCommentWithAuthorDto(comment: comment, authorName: myName ?? "You")]
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
