@@ -98,6 +98,10 @@ class StocksService(
     @Transactional
     fun fundInvestmentAccount(userId: String, amount: BigDecimal): Map<String, Any?> {
         if (amount <= BigDecimal.ZERO) throw InvalidFundingAmountException("Amount must be greater than zero")
+        // Real anti-spam limit, matching this class's own buyStock/sellStock convention
+        // and AccountService.transferBetweenOwnAccounts's identical "own-account
+        // transfer skips the fraud check but still gets rate-limited" precedent.
+        rateLimiter.checkLimit("stocks:fund:$userId", limit = 30, window = Duration.ofHours(1))
         val mainAccount = accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
         val investmentAccount = accountRepository.findByUserIdAndType(userId, AccountType.INVESTMENT) ?: throw NoAccountException("No investment account found for this account")
 

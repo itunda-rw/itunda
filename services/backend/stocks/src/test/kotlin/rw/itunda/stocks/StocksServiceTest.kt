@@ -428,6 +428,15 @@ class StocksServiceTest : BehaviorSpec({
                 }
                 result["id"] shouldBe "ledgertxn_fund_1"
             }
+
+            // Real gap found live (sibling comparison against this class's own
+            // buyStock/sellStock convention and AccountService
+            // .transferBetweenOwnAccounts's identical own-account-transfer
+            // rate-limit precedent, 2026-09-13): fundInvestmentAccount had no
+            // rate limit at all.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("stocks:fund:user_1", limit = 30, window = Duration.ofHours(1)) }
+            }
         }
 
         When("funding with a zero amount") {
