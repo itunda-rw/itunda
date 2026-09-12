@@ -17,6 +17,13 @@ export function CommunityPostDetailView({ postId, onBack }: { postId: string; on
   const [likedByMe, setLikedByMe] = useState(false);
   const [comments, setComments] = useState<{ comment: CommunityComment; authorName: string }[] | null>(null);
   const showCommentsSkeleton = useDeferredLoading(comments === null);
+  // Real pagination-discard fix (2026-09-13, see project_itunda_pagination_discard_sweep
+  // memory) -- fetchCommunityComments silently capped this thread at its oldest 20
+  // comments (backend sorts ascending by createdAt), so a post with 20+ comments never
+  // showed any newer ones at all -- including a user's own comment right after posting it.
+  const [commentsPage, setCommentsPage] = useState(0);
+  const [commentsHasMore, setCommentsHasMore] = useState(false);
+  const [loadingMoreComments, setLoadingMoreComments] = useState(false);
   const [commentBody, setCommentBody] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [liking, setLiking] = useState(false);
@@ -28,12 +35,31 @@ export function CommunityPostDetailView({ postId, onBack }: { postId: string; on
     fetchCommunityPost(postId)
       .then((r) => { setPost(r.post); setAuthorName(r.authorName); setLikedByMe(r.likedByMe); })
       .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
-    fetchCommunityComments(postId)
-      .then(setComments)
+    fetchCommunityComments(postId, 0)
+      .then((r) => { setComments(r.comments); setCommentsPage(0); setCommentsHasMore(r.page + 1 < r.totalPages); })
       .catch(() => { /* non-critical -- the post itself still renders */ });
   };
 
   useEffect(load, [postId]);
+
+  const loadMoreComments = async () => {
+    const nextPage = commentsPage + 1;
+    setLoadingMoreComments(true);
+    try {
+      const r = await fetchCommunityComments(postId, nextPage);
+      setComments((prev) => {
+        const existingIds = new Set((prev ?? []).map((c) => c.comment.id));
+        return [...(prev ?? []), ...r.comments.filter((c) => !existingIds.has(c.comment.id))];
+      });
+      setCommentsPage(nextPage);
+      setCommentsHasMore(r.page + 1 < r.totalPages);
+    } catch {
+      // Non-critical -- the already-loaded comments stay visible; the user can
+      // retry by tapping "Load more" again.
+    } finally {
+      setLoadingMoreComments(false);
+    }
+  };
 
   const handleLike = async () => {
     setLiking(true);
@@ -54,9 +80,14 @@ export function CommunityPostDetailView({ postId, onBack }: { postId: string; on
     setCommenting(true);
     setError(null);
     try {
-      await addCommunityComment(postId, commentBody);
+      const comment = await addCommunityComment(postId, commentBody);
       setCommentBody('');
-      load();
+      // Real fix: append the new comment directly rather than reloading page 0 --
+      // page 0 only ever holds the OLDEST comments (ascending sort), so once a post
+      // has 20+ comments, reloading page 0 would make the user's own just-posted
+      // comment disappear entirely.
+      const authorName = currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'You';
+      setComments((prev) => [...(prev ?? []), { comment, authorName }]);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
@@ -99,6 +130,16 @@ export function CommunityPostDetailView({ postId, onBack }: { postId: string; on
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-900)' }}>{comment.body}</p>
             </div>
           ))}
+          {commentsHasMore && (
+            <button
+              className="itunda-btn itunda-btn-secondary"
+              onClick={loadMoreComments}
+              disabled={loadingMoreComments}
+              style={{ alignSelf: 'flex-start', marginTop: '8px', fontSize: 'var(--itunda-type-scale-13-size)' }}
+            >
+              {loadingMoreComments ? 'Loading…' : 'Load more comments'}
+            </button>
+          )}
         </div>
       )}
       <form onSubmit={handleComment} style={{ display: 'flex', gap: '8px' }}>

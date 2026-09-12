@@ -136,10 +136,10 @@ export const removeCommunityPost = (postId: string) =>
     method: 'DELETE',
   }).then((r) => r.post);
 
-export const fetchCommunityComments = (postId: string) =>
-  apiFetch<{ success: boolean; comments: { comment: CommunityComment; authorName: string }[] }>(
-    `/api/v1/community/posts/${postId}/comments`,
-  ).then((r) => r.comments);
+export const fetchCommunityComments = (postId: string, page = 0, size = 20) =>
+  apiFetch<{ success: boolean; comments: { comment: CommunityComment; authorName: string }[]; page: number; totalPages: number }>(
+    `/api/v1/community/posts/${postId}/comments?page=${page}&size=${size}`,
+  );
 
 export const addCommunityComment = (postId: string, body: string) =>
   apiFetch<{ success: boolean; comment: CommunityComment }>(`/api/v1/community/posts/${postId}/comments`, {
