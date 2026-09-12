@@ -308,10 +308,12 @@ class PartnerServiceTest : BehaviorSpec({
         every { partnerRepository.save(any()) } answers { firstArg() }
 
         When("suspending") {
-            val suspended = service.suspendPartner("partner_1")
+            val suspended = service.suspendPartner("partner_1", "admin_1")
 
-            Then("it real-flips the partner's own status field") {
+            Then("it real-flips the partner's own status field and records which admin acted") {
                 suspended.status shouldBe PartnerStatus.SUSPENDED
+                suspended.statusChangedBy shouldBe "admin_1"
+                suspended.statusChangedAt shouldNotBe null
             }
         }
     }
@@ -326,10 +328,12 @@ class PartnerServiceTest : BehaviorSpec({
         every { partnerRepository.save(any()) } answers { firstArg() }
 
         When("reactivating") {
-            val reactivated = service.reactivatePartner("partner_1")
+            val reactivated = service.reactivatePartner("partner_1", "admin_2")
 
-            Then("it real-clears the suspension") {
+            Then("it real-clears the suspension and records which admin acted") {
                 reactivated.status shouldBe PartnerStatus.ACTIVE
+                reactivated.statusChangedBy shouldBe "admin_2"
+                reactivated.statusChangedAt shouldNotBe null
             }
         }
     }
@@ -344,7 +348,7 @@ class PartnerServiceTest : BehaviorSpec({
         When("suspending") {
             Then("it real-404s") {
                 try {
-                    service.suspendPartner("unknown")
+                    service.suspendPartner("unknown", "admin_1")
                     error("expected PartnerNotFoundException")
                 } catch (e: PartnerNotFoundException) {
                     // expected

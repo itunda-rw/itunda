@@ -55,6 +55,18 @@ class Partner(
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
+
+    // Real admin-accountability gap closed (2026-09-12): PartnerAdminController's
+    // suspend/reactivate had zero record of which admin acted, the exact same gap
+    // this codebase already closed for Merchant (MerchantService.suspendMerchant,
+    // statusChangedBy/statusChangedAt) and Vehicle Inspection's mechanics, but missed
+    // here. Nullable: legacy status changes made before this field existed have no
+    // historical value to backfill, same convention as Merchant's own fields.
+    @Column(name = "status_changed_by", length = 64)
+    var statusChangedBy: String? = null,
+
+    @Column(name = "status_changed_at")
+    var statusChangedAt: Instant? = null,
 ) {
     protected constructor() : this(id = "", companyName = "", contactEmail = "", apiKeyHash = "")
 }

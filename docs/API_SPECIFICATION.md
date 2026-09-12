@@ -2751,19 +2751,24 @@ Errors (all 5 real `@ExceptionHandler`s): `404 VERIFICATION_REQUEST_NOT_FOUND`,
 
 ## Partner Review — `/api/v1/system/partners` (ADMIN role only)
 
-**Added 2026-09-05, same slice.** The ADMIN-only review queue for partner mini-app
-submissions — mapped under `/api/v1/system/partners` specifically so it inherits
-`SecurityConfig`'s existing `hasRole("ADMIN")` rule on the system path prefix, same
-convention `ComplianceController`'s own KYC/KYB queue already establishes. Confirmed
-by direct read of `PartnerAdminController.kt` (2 endpoints, 2 error codes, all
-unique).
+**Added 2026-09-05, same slice; 3 more endpoints added 2026-09-07 (partner
+moderation), doc updated 2026-09-12 to catch up.** The ADMIN-only review queue for
+partner mini-app submissions plus partner-account moderation — mapped under
+`/api/v1/system/partners` specifically so it inherits `SecurityConfig`'s existing
+`hasRole("ADMIN")` rule on the system path prefix, same convention
+`ComplianceController`'s own KYC/KYB queue already establishes. Confirmed by direct
+read of `PartnerAdminController.kt` (5 endpoints, 3 error codes, all unique).
 
 | Method | Path | Body | Success | Notes |
 |---|---|---|---|---|
 | GET | `/queue` | — | `{success, queue: [...], ...pageMeta}` | Pending mini-app submissions |
 | POST | `/{miniAppId}/decide` | `{approve, reason?}` | `{success, miniApp: {...}}` | |
+| GET | `/` | — | `{success, partners: [...]}` | Every registered partner (id/companyName/contactEmail/status/createdAt) |
+| POST | `/{partnerId}/suspend` | — | `{success, partner: {...}}` | Records the acting admin's userId (`statusChangedBy`/`statusChangedAt`) |
+| POST | `/{partnerId}/reactivate` | — | `{success, partner: {...}}` | Same admin-accountability fields as suspend |
 
-Errors: `404 PARTNER_MINI_APP_NOT_FOUND`, `409 PARTNER_MINI_APP_NOT_PENDING`.
+Errors: `404 PARTNER_MINI_APP_NOT_FOUND`, `409 PARTNER_MINI_APP_NOT_PENDING`,
+`404 PARTNER_NOT_FOUND`.
 
 ## Mini-App Catalog — `/api/v1/mini-apps`
 

@@ -82,17 +82,20 @@ class PartnerAdminControllerTest : BehaviorSpec({
         }
     }
 
+    // Real admin-accountability gap closed (2026-09-12): suspend/reactivate previously
+    // took no admin identity at all, unlike the identical-shape decide() test above
+    // that already asserts the real reviewer's own userId is threaded through.
     Given("an admin suspending a real partner") {
         val service = mockk<PartnerService>()
         val controller = PartnerAdminController(service)
         val suspended = mockk<Partner>(relaxed = true)
-        every { service.suspendPartner("partner_1") } returns suspended
+        every { service.suspendPartner("partner_1", "admin_1") } returns suspended
 
         When("suspending") {
-            val response = controller.suspend("partner_1")
+            val response = controller.suspend("partner_1", currentUser)
 
-            Then("it real-delegates to the service") {
-                verify(exactly = 1) { service.suspendPartner("partner_1") }
+            Then("it real-delegates with the real admin's own userId, never a client-supplied one") {
+                verify(exactly = 1) { service.suspendPartner("partner_1", "admin_1") }
                 response.body?.get("partner") shouldBe suspended
             }
         }
@@ -102,13 +105,13 @@ class PartnerAdminControllerTest : BehaviorSpec({
         val service = mockk<PartnerService>()
         val controller = PartnerAdminController(service)
         val reactivated = mockk<Partner>(relaxed = true)
-        every { service.reactivatePartner("partner_1") } returns reactivated
+        every { service.reactivatePartner("partner_1", "admin_1") } returns reactivated
 
         When("reactivating") {
-            val response = controller.reactivate("partner_1")
+            val response = controller.reactivate("partner_1", currentUser)
 
-            Then("it real-delegates to the service") {
-                verify(exactly = 1) { service.reactivatePartner("partner_1") }
+            Then("it real-delegates with the real admin's own userId, never a client-supplied one") {
+                verify(exactly = 1) { service.reactivatePartner("partner_1", "admin_1") }
                 response.body?.get("partner") shouldBe reactivated
             }
         }

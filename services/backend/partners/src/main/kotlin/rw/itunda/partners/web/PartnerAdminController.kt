@@ -58,13 +58,18 @@ class PartnerAdminController(private val partnerService: PartnerService) {
         return ResponseEntity.ok(mapOf("success" to true, "partners" to partners))
     }
 
+    // Real admin-accountability gap closed (2026-09-12): these 2 endpoints previously
+    // had zero record of which admin acted, unlike the identical-shape decide() above
+    // that already captures currentUser.userId -- same real gap class this codebase
+    // already closed for Merchant (MerchantModerationAdminController) and Vehicle
+    // Inspection's mechanics.
     @PostMapping("/{partnerId}/suspend")
-    fun suspend(@PathVariable partnerId: String): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "partner" to partnerService.suspendPartner(partnerId)))
+    fun suspend(@PathVariable partnerId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "partner" to partnerService.suspendPartner(partnerId, currentUser.userId)))
 
     @PostMapping("/{partnerId}/reactivate")
-    fun reactivate(@PathVariable partnerId: String): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "partner" to partnerService.reactivatePartner(partnerId)))
+    fun reactivate(@PathVariable partnerId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "partner" to partnerService.reactivatePartner(partnerId, currentUser.userId)))
 
     @ExceptionHandler(PartnerMiniAppNotFoundException::class)
     fun handleNotFound(ex: PartnerMiniAppNotFoundException) =

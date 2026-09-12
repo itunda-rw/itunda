@@ -16,6 +16,7 @@ import rw.itunda.core.validation.isValidEmail
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 
 class PartnerEmailAlreadyRegisteredException(message: String) : RuntimeException(message)
@@ -212,16 +213,20 @@ class PartnerService(
     fun getAllPartners(): List<Partner> = partnerRepository.findAll()
 
     @Transactional
-    fun suspendPartner(partnerId: String): Partner {
+    fun suspendPartner(partnerId: String, adminUserId: String): Partner {
         val partner = partnerRepository.findById(partnerId).orElseThrow { PartnerNotFoundException("Partner not found") }
         partner.status = PartnerStatus.SUSPENDED
+        partner.statusChangedBy = adminUserId
+        partner.statusChangedAt = Instant.now()
         return partnerRepository.save(partner)
     }
 
     @Transactional
-    fun reactivatePartner(partnerId: String): Partner {
+    fun reactivatePartner(partnerId: String, adminUserId: String): Partner {
         val partner = partnerRepository.findById(partnerId).orElseThrow { PartnerNotFoundException("Partner not found") }
         partner.status = PartnerStatus.ACTIVE
+        partner.statusChangedBy = adminUserId
+        partner.statusChangedAt = Instant.now()
         return partnerRepository.save(partner)
     }
 
