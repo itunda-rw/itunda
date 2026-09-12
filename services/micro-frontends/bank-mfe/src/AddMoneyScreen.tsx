@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { IconBack } from './icons/ItundaIcons';
 import { ApiError } from './lib/api';
 import { transferBetweenOwnAccounts, type Account } from './lib/account';
+import { useI18n } from './i18n/I18nContext';
 
 // Real Toss "충전하기" (top up) reference (2026-09-12, direct user-supplied Toss Pay
 // screenshots) -- closes the exact gap PayHub.tsx's own onAddMoney comment already
@@ -14,6 +15,7 @@ import { transferBetweenOwnAccounts, type Account } from './lib/account';
 const QUICK_AMOUNTS = [1000, 5000, 10000];
 
 export function AddMoneyScreen({ destination, sourceOptions, onBack, onDone }: { destination: Account; sourceOptions: Account[]; onBack: () => void; onDone: () => void }) {
+  const { t } = useI18n();
   const [sourceId, setSourceId] = useState(sourceOptions[0]?.id ?? '');
   const [amount, setAmount] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +33,7 @@ export function AddMoneyScreen({ destination, sourceOptions, onBack, onDone }: {
       await transferBetweenOwnAccounts(source.id, destination.id, numericAmount);
       onDone();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not complete this top-up.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }

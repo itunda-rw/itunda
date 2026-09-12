@@ -6,6 +6,7 @@ import { fetchProfile } from './lib/neighborhood';
 import { fetchMyDevices, getOrCreateDeviceId } from './lib/device';
 import { fetchTransferLimit, type TransferLimit } from './lib/p2p';
 import { PinPad } from './PinPad';
+import { useI18n } from './i18n/I18nContext';
 
 // Real Toss Bank reference (5 more screenshots, 2026-08-23, direct user instruction:
 // "this is what users should [see] when they click on manage in itunda bank"): the
@@ -247,6 +248,7 @@ function TransferLimitScreen({ onBack }: { onBack: () => void }) {
 // doc comment. A blank submission clears it back to unset, matching the backend's
 // own convention.
 function AccountNicknameScreen({ account, onBack, onSaved }: { account: Account; onBack: () => void; onSaved: (nickname: string | null) => void }) {
+  const { t } = useI18n();
   const [input, setInput] = useState(account.nickname ?? '');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -259,7 +261,7 @@ function AccountNicknameScreen({ account, onBack, onSaved }: { account: Account;
       const updated = await setAccountNickname(account.id, input.trim());
       onSaved(updated.nickname);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update your account nickname.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -293,6 +295,7 @@ function AccountNicknameScreen({ account, onBack, onSaved }: { account: Account;
 // same real PinPad component, minus its one-time-only "pinSet !== false" upgrade
 // gate -- this is a general "change it again" flow reachable any time from here.
 function ChangePasswordScreen({ onBack }: { onBack: () => void }) {
+  const { t } = useI18n();
   const [step, setStep] = useState<'credential' | 'pin' | 'confirm' | 'success'>('credential');
   const [currentCredential, setCurrentCredential] = useState('');
   const [newPin, setNewPin] = useState('');
@@ -323,7 +326,7 @@ function ChangePasswordScreen({ onBack }: { onBack: () => void }) {
       await setPin(currentCredential, pin);
       setStep('success');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update your password.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
       setStep('credential');
     } finally {
       setBusy(false);

@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { Image as ImageIcon, Link as LinkIcon, Megaphone, Receipt, Search, Users } from 'lucide-react';
 import { ApiError } from './lib/api';
 import { searchGroupMessages, type GroupMessage } from './lib/groupMessaging';
+import { useI18n } from './i18n/I18nContext';
 
 export function TalkGroupToolbar({
   groupId,
@@ -25,6 +26,7 @@ export function TalkGroupToolbar({
   onShowSplitBills: () => void;
   onSearchResultsChange: (results: GroupMessage[] | null) => void;
 }) {
+  const { t } = useI18n();
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
@@ -41,7 +43,7 @@ export function TalkGroupToolbar({
       setSearchCount(results.length);
       onSearchResultsChange(results);
     } catch (err) {
-      setSearchError(err instanceof ApiError ? err.message : 'Could not search this group.');
+      setSearchError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSearching(false);
     }

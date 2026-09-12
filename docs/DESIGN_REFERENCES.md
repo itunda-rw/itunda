@@ -17875,3 +17875,95 @@ zero new warnings) + `:architecture-test:test` (Konsist, force re-run) +
 `file-size-lint.py`; iOS full `xcodebuild -scheme ItundaApp` after
 `tuist generate && pod install` (`BUILD SUCCEEDED`, zero errors, zero new
 warnings).
+
+## 283. Closing Section 250's own named follow-up -- the shared error-copy system, swept across the rest of bank-mfe (26 files beyond `BankDashboard.tsx`)
+
+A direct user instruction ("toss and kakao uses graphics and interaction to
+make their products easy to uses and feel alive") got a brief, non-
+implementing reply per this project's own "exploratory question" convention,
+offering two concrete options grounded in real Toss practice. The user's
+follow-up -- "let's do it like they did" -- picked the error-message-system
+option and explicitly asked for Toss's real documented PROCESS, not just the
+end state: toss.tech's own account of building
+가이드라인을 시스템으로 만드는 법 describes writers washing (auditing) every
+real existing error message screen-by-screen first, then building a small
+set of shared rules from the real disagreements that surfaced -- bottom-up,
+not an invented taxonomy handed down top-down.
+
+Section 250 built exactly this system (`common.loadError`/
+`common.actionError`, two canonical keys covering the generic "backend gave
+nothing parseable" fallback case) but explicitly scoped itself to
+`BankDashboard.tsx` alone, naming "sweep every other hardcoded string [across
+other files]" as its own real, separately-scoped follow-up. This section
+closes that follow-up.
+
+**The wash**: grepped every remaining `setError(...)`/error-fallback call
+site across bank-mfe outside `BankDashboard.tsx`, then read each message's
+actual text and call shape rather than pattern-matching blindly (Section
+250's own lesson about a scripted brace-counter silently breaking on
+non-dominant code shapes made a script unsafe here too -- this pass was 26
+files of explicit per-site `Edit` calls, not a regex sweep). Classification
+rule, cross-checked against `BankDashboard.tsx`'s own established precedent
+(`fetchMyDevices().catch(...) -> common.loadError`,
+mutation `.catch(...) -> common.actionError`): a `.catch()` chained directly
+off a `fetch*`/`search*`-read call is a load error; a `.catch()` on a create/
+update/cancel/register/save/remove/enroll/submit/book/collect mutation is an
+action error. User-initiated search submissions were classified as action
+errors for consistency with this same rule (a search is a triggered request,
+not a passive background load).
+
+**What the wash found, self-inflicted**: two of this session's OWN new files
+from earlier the same day (`AddMoneyScreen.tsx`, `TotalAssetsDetailScreen.tsx`)
+already violated the very convention being enforced here -- fixed both. A
+third pre-existing dedicated key, `totalAssets.historyError`, turned out to
+be a plain duplicate of `common.loadError` with no distinct meaning --
+consolidated and the dead key removed from all 4 translation files
+(`translations.ts`/`.en.ts`/`.fr.ts`/`.rw.ts`). Same for `login.connectionError`
+on `LoginPage.tsx`.
+
+**What the wash correctly left alone**: three dedicated keys that looked
+similar on the surface but carry real, distinct domain meaning, not a
+generic "something broke" fallback -- `youthAccount.ageIneligible`
+(`BankDashboard.tsx`, a real business-rule rejection, not a network failure)
+and `ussd.pinLengthError`/`ussd.pinMismatchError` (`UssdSettingsView.tsx`,
+real client-side validation feedback). Toss's own rule is "SIMILAR errors get
+identical phrasing," not "ALL errors" -- collapsing these into the generic
+keys would have discarded real information the user needs to fix their own
+input, exactly the anti-pattern the rule exists to prevent.
+
+**What shipped**: 26 files fixed (`PayMoneyDetail.tsx`,
+`AccountDetailScreen.tsx`, `HoodResumeBuilder.tsx` (8 sites),
+`LiveRiderMap.tsx`, `SimpleLiveRiderMap.tsx`, `PinSetupCard.tsx`,
+`AccountManageScreen.tsx` (2 sites), `HoodPropertyListingCard.tsx`,
+`AgentCashOutView.tsx` (2 sites), `TalkThreads.tsx`, `BikeShareView.tsx` (7
+sites), `InsuranceView.tsx` (5 sites), `ParkingView.tsx` (6 sites),
+`MiniAppsHubScreen.tsx`, `CropWeatherIndexSection.tsx` (2 sites),
+`BusView.tsx` (6 sites), `MotoFareCollectScreen.tsx`,
+`TalkGroupAnnouncementPoll.tsx`, `RideLiveDriverMap.tsx`,
+`IdentityVerificationConsentView.tsx` (3 sites), `RouteMiniMap.tsx`,
+`TalkGroupToolbar.tsx`, plus the 2 self-inflicted fixes and
+`TalkEmoticonStore.tsx`'s one plain-catch upgrade). Every fixed component
+that lacked `useI18n()` gained it; components that already had `t` in scope
+(e.g. `HoodResumeBuilder.tsx`'s sub-sections, `HoodPropertyListingCard.tsx`)
+only needed the literal-string swap.
+
+**Named, not built this pass**: a wider set of already-`t()`-wired but
+still-dedicated per-screen fallback keys exists across the app --
+`transfer.sendError`, `pay.couponsLoadError`, `autoTransfers.createError`,
+`scheduledTransfers.cancelError`, `overview.loadError`, and roughly a dozen
+more of this shape. These already went through `useI18n()`, so they're not
+"hardcoded strings" the way this pass's targets were -- but several read as
+plain generic-fallback duplicates of `common.loadError`/`common.actionError`
+by their key names alone. Confirming which ones genuinely duplicate the
+canonical meaning (vs. carry real distinct copy, like the youth/USSD keys
+above) requires reading each one's actual translated text before touching
+it, exactly the "wash before standardizing" discipline this whole exercise
+is built on -- named honestly as the next real candidate rather than
+mechanically collapsed without that check.
+
+**Verification**: `tsc -b` clean, `oxlint` clean (0 new warnings; existing
+`no-nested-ternary`/`exhaustive-deps` warnings elsewhere in the codebase
+untouched by this pass), `accessibility-lint.py` clean on all 30 touched
+files, `vite build` clean, `file-size-lint.py` clean (no file crossed its
+baseline -- this pass was import/hook additions plus literal-string swaps,
+not structural growth).

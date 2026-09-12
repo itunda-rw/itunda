@@ -3,6 +3,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { TILES_SOURCE_URL } from './lib/maps';
 import { ApiError } from './lib/api';
+import { useI18n } from './i18n/I18nContext';
 
 // Real live rider-location tracking for Commerce orders (2026-08-05) -- see
 // lib/commerce.ts's own fetchOrderRiderLocation doc comment for the full sourced
@@ -46,6 +47,7 @@ export default function SimpleLiveRiderMap({
   orderId: string;
   fetchLocation: (orderId: string) => Promise<{ success: boolean; available: boolean; location: { latitude: number; longitude: number; updatedAt: string } | null }>;
 }) {
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const riderMarkerRef = useRef<maplibregl.Marker | null>(null);
@@ -95,7 +97,7 @@ export default function SimpleLiveRiderMap({
           }
         })
         .catch((err) => {
-          if (!cancelled) setError(err instanceof ApiError ? err.message : 'Could not load your rider\'s location.');
+          if (!cancelled) setError(err instanceof ApiError ? err.message : t('common.loadError'));
         });
     };
     poll();

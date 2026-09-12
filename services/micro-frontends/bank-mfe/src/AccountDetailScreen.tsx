@@ -10,6 +10,8 @@ import { ItundaBankAssetsScreen } from './ItundaBankAssetsScreen';
 import { fetchAccountTransactions, type Account, type Transaction } from './lib/account';
 import { claimInterest, fetchInterestJar, type InterestJar } from './lib/savings';
 import { fetchMyAutoTransfers, type AutoTransfer } from './lib/autoTransfers';
+import { ApiError } from './lib/api';
+import { useI18n } from './i18n/I18nContext';
 
 // Real Toss Bank reference (20 screenshots, 2026-08-21, direct user instruction:
 // "should look 100% like in this images pixels by pixels"): a full-screen drill-in
@@ -32,6 +34,7 @@ import { fetchMyAutoTransfers, type AutoTransfer } from './lib/autoTransfers';
 // real reference's own layout exactly -- Toss's real account-detail screen has no
 // bottom-pinned CTA at all here. Also added the real Card/Manage top-bar pair.
 export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }: { account: Account; onBack: () => void; onSend: (account: Account) => void; onNavigateToTab?: (tab: 'CARD' | 'SAVINGS' | 'PAY' | 'BILLS' | 'FOREIGN_CURRENCY' | 'DEVICES' | 'SUPPORT') => void }) {
+  const { t } = useI18n();
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showManage, setShowManage] = useState(false);
@@ -56,7 +59,7 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
   const [showSearch, setShowSearch] = useState(false);
 
   useEffect(() => {
-    fetchAccountTransactions(account.id).then(setTransactions).catch(() => setError('Could not load your transaction history.'));
+    fetchAccountTransactions(account.id).then(setTransactions).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
     fetchInterestJar().then(setJar).catch(() => setJar(null));
     fetchMyAutoTransfers().then(setAutoTransfers).catch(() => setAutoTransfers([]));
   }, [account.id]);

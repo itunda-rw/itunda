@@ -6,11 +6,13 @@ import {
   startBikeAssetRental, updateBikeAssetLocation, type BikeAsset, type BikeAssetRentalSession, type BikeAssetType,
 } from './lib/bikeshare';
 import { BikeGlyph, BikeTypeGlyph } from './icons/ItundaFaceMisc';
+import { useI18n } from './i18n/I18nContext';
 
 // Extracted from BankDashboard.tsx (2026-08-10) into its own lazy-loaded chunk --
 // see InsuranceView.tsx's own doc comment for the full account of why. Self-contained:
 // no shared state or helper components with any other screen.
 export default function BikeShareView() {
+  const { t } = useI18n();
   const [subTab, setSubTab] = useState<'RENT' | 'OWN'>('RENT');
 
   // Rider side
@@ -34,7 +36,7 @@ export default function BikeShareView() {
       (pos) => {
         fetchNearbyBikeAssets(pos.coords.latitude, pos.coords.longitude)
           .then(setNearbyBikes)
-          .catch((err) => setRiderError(err instanceof ApiError ? err.message : 'Could not load nearby bikes.'));
+          .catch((err) => setRiderError(err instanceof ApiError ? err.message : t('common.loadError')));
       },
       () => setRiderError('Could not access your location.'),
     );
@@ -75,7 +77,7 @@ export default function BikeShareView() {
       (pos) => {
         startBikeAssetRental(bikeId, pos.coords.latitude, pos.coords.longitude)
           .then((rental) => { setActiveRental(rental); setBusyBikeId(null); })
-          .catch((err) => { setRiderError(err instanceof ApiError ? err.message : 'Could not start this rental.'); setBusyBikeId(null); });
+          .catch((err) => { setRiderError(err instanceof ApiError ? err.message : t('common.actionError')); setBusyBikeId(null); });
       },
       () => { setRiderError('Could not access your location.'); setBusyBikeId(null); },
     );
@@ -94,7 +96,7 @@ export default function BikeShareView() {
             setEndingRental(false);
             loadRiderData();
           })
-          .catch((err) => { setRiderError(err instanceof ApiError ? err.message : 'Could not end this rental.'); setEndingRental(false); });
+          .catch((err) => { setRiderError(err instanceof ApiError ? err.message : t('common.actionError')); setEndingRental(false); });
       },
       () => { setRiderError('Could not access your location.'); setEndingRental(false); },
     );
@@ -114,7 +116,7 @@ export default function BikeShareView() {
   const [updatingLocationId, setUpdatingLocationId] = useState<string | null>(null);
 
   const loadMyBikes = () => {
-    fetchMyBikeAssets().then(setMyBikes).catch((err) => setOwnerError(err instanceof ApiError ? err.message : 'Could not load your bikes.'));
+    fetchMyBikeAssets().then(setMyBikes).catch((err) => setOwnerError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(() => {
@@ -129,7 +131,7 @@ export default function BikeShareView() {
       (pos) => {
         registerBikeAsset(bikeType, pos.coords.latitude, pos.coords.longitude)
           .then(() => { loadMyBikes(); setRegistering(false); })
-          .catch((err) => { setOwnerError(err instanceof ApiError ? err.message : 'Could not register this bike.'); setRegistering(false); });
+          .catch((err) => { setOwnerError(err instanceof ApiError ? err.message : t('common.actionError')); setRegistering(false); });
       },
       () => { setOwnerError('Could not access your location.'); setRegistering(false); },
     );
@@ -140,7 +142,7 @@ export default function BikeShareView() {
     setOwnerError(null);
     setBikeAssetAvailability(bike.id, !bike.available)
       .then(() => { loadMyBikes(); setBusyBikeId(null); })
-      .catch((err) => { setOwnerError(err instanceof ApiError ? err.message : 'Could not update this bike.'); setBusyBikeId(null); });
+      .catch((err) => { setOwnerError(err instanceof ApiError ? err.message : t('common.actionError')); setBusyBikeId(null); });
   };
 
   const handleUpdateBikeLocation = (bikeId: string) => {
@@ -154,7 +156,7 @@ export default function BikeShareView() {
       (pos) => {
         updateBikeAssetLocation(bikeId, pos.coords.latitude, pos.coords.longitude)
           .then(() => { loadMyBikes(); setUpdatingLocationId(null); })
-          .catch((err) => { setOwnerError(err instanceof ApiError ? err.message : "Could not update this bike's location."); setUpdatingLocationId(null); });
+          .catch((err) => { setOwnerError(err instanceof ApiError ? err.message : t('common.actionError')); setUpdatingLocationId(null); });
       },
       () => { setOwnerError('Could not access your location.'); setUpdatingLocationId(null); },
     );

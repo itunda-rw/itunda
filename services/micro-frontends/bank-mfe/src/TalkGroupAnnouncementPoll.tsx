@@ -8,6 +8,7 @@ import {
   type GroupAnnouncement, type GroupPollWithVotes,
 } from './lib/talk';
 import { useDeferredLoading } from './useDeferredLoading';
+import { useI18n } from './i18n/I18nContext';
 
 // Real group 공지/투표 (announcement/poll) (itunda Talk redesign, 2026-08-28) -- see
 // backend GroupPollAnnouncementService's own doc comment. Split into its own file,
@@ -74,6 +75,7 @@ function PollsList({ polls, onVote }: { polls: GroupPollWithVotes[] | null; onVo
 }
 
 export function TalkGroupAnnouncementPoll({ groupId, onBack }: { groupId: string; onBack: () => void }) {
+  const { t } = useI18n();
   const [announcement, setAnnouncement] = useState<GroupAnnouncement | null | undefined>(undefined);
   const [polls, setPolls] = useState<GroupPollWithVotes[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +90,7 @@ export function TalkGroupAnnouncementPoll({ groupId, onBack }: { groupId: string
     setError(null);
     Promise.all([fetchGroupAnnouncement(groupId), fetchGroupPolls(groupId)])
       .then(([a, p]) => { setAnnouncement(a); setPolls(p); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, [groupId]);
 

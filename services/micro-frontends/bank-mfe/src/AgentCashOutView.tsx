@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { ApiError } from './lib/api';
 import { IconBack } from './icons/ItundaIcons';
+import { useI18n } from './i18n/I18nContext';
 import {
   fetchAgentWithdrawalAuthorizations, createAgentWithdrawalAuthorization, cancelAgentWithdrawalAuthorization,
   type AgentWithdrawalAuthorization,
@@ -15,6 +16,7 @@ import {
 import { randomUUID } from './lib/uuid';
 
 function AuthorizationCard({ authorization, onCancelled }: { authorization: AgentWithdrawalAuthorization; onCancelled: () => void }) {
+  const { t } = useI18n();
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +34,7 @@ function AuthorizationCard({ authorization, onCancelled }: { authorization: Agen
       await cancelAgentWithdrawalAuthorization(authorization.code);
       onCancelled();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not cancel this code.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setCancelling(false);
     }
@@ -75,6 +77,7 @@ function AuthorizationCard({ authorization, onCancelled }: { authorization: Agen
 }
 
 export function AgentCashOutView({ onBack, onFindNearbyAgent }: { onBack: () => void; onFindNearbyAgent: () => void }) {
+  const { t } = useI18n();
   const [authorizations, setAuthorizations] = useState<AgentWithdrawalAuthorization[] | null>(null);
   const [amount, setAmount] = useState('');
   const [idempotencyKey, setIdempotencyKey] = useState(randomUUID());
@@ -106,7 +109,7 @@ export function AgentCashOutView({ onBack, onFindNearbyAgent }: { onBack: () => 
       setIdempotencyKey(randomUUID());
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create a withdrawal code.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setCreating(false);
     }

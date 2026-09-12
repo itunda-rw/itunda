@@ -52,7 +52,7 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError(t('login.connectionError'));
+        setError(t('common.actionError'));
       }
     } finally {
       setSubmitting(false);

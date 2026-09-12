@@ -88,7 +88,7 @@ export function TotalAssetsDetailScreen({ overview, onBack }: { overview: Overvi
   useEffect(() => {
     fetchNetWorthHistory()
       .then(setHistory)
-      .catch(() => setError(t('totalAssets.historyError')));
+      .catch(() => setError(t('common.loadError')));
   }, [t]);
 
   const accountsTotal = overview.accounts.reduce((sum, a) => sum + a.balance, 0);

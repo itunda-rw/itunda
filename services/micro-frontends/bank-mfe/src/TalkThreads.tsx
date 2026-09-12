@@ -5,6 +5,7 @@ import { EmptyState, ErrorCard } from './EmptyState';
 import { ApiError } from './lib/api';
 import { markNotificationRead } from './lib/notifications';
 import { useDeferredLoading } from './useDeferredLoading';
+import { useI18n } from './i18n/I18nContext';
 import {
   AiChatBusyError, fetchAiChatHistory, fetchServiceChannel, sendAiChatMessage,
   type AiChatMessage, type ServiceChannelBubble,
@@ -32,6 +33,7 @@ function ThreadHeader({ title, subtitle, onBack }: { title: string; subtitle?: s
 }
 
 export function TalkServiceChannelThread({ onBack }: { onBack: () => void }) {
+  const { t } = useI18n();
   const [bubbles, setBubbles] = useState<ServiceChannelBubble[] | null>(null);
   const showSkeleton = useDeferredLoading(bubbles === null);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +45,7 @@ export function TalkServiceChannelThread({ onBack }: { onBack: () => void }) {
     setError(null);
     fetchServiceChannel(0)
       .then((r) => { setBubbles(r.bubbles); setBubblesPage(0); setBubblesHasMore(r.page + 1 < r.totalPages); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load notifications.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
 

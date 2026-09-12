@@ -7,12 +7,14 @@
 import { useEffect, useState } from 'react';
 import { ApiError } from './lib/api';
 import { useDeferredLoading } from './useDeferredLoading';
+import { useI18n } from './i18n/I18nContext';
 import {
   fetchCropIndexCatalog, enrollInCropIndexPolicy, fetchMyCropIndexPolicies, cancelCropIndexPolicy,
   type CropIndexCatalogEntry, type CropIndexPolicy, type WeatherIndexCropType,
 } from './lib/weatherIndexInsurance';
 
 export function CropWeatherIndexSection() {
+  const { t } = useI18n();
   const [catalog, setCatalog] = useState<CropIndexCatalogEntry[] | null>(null);
   const showCatalogSkeleton = useDeferredLoading(!catalog);
   const [policies, setPolicies] = useState<CropIndexPolicy[]>([]);
@@ -49,7 +51,7 @@ export function CropWeatherIndexSection() {
       setDistrict('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not enroll in crop weather-index cover.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setEnrolling(false);
     }
@@ -64,7 +66,7 @@ export function CropWeatherIndexSection() {
       setMessage('Policy cancelled and premium refunded to your account.');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not cancel this policy.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }

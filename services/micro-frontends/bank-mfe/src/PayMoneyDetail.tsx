@@ -3,6 +3,8 @@ import {  } from 'lucide-react';
 import { IconBack } from './icons/ItundaIcons';
 import { EmptyState } from './EmptyState';
 import { fetchAccountTransactions, type Account, type Transaction } from './lib/account';
+import { ApiError } from './lib/api';
+import { useI18n } from './i18n/I18nContext';
 
 // Real "Toss Pay Money" detail/statement screen (user screenshots, 2026-08-21):
 // reached by drilling into the balance row on the Pay tab's payment-code card,
@@ -17,6 +19,7 @@ import { fetchAccountTransactions, type Account, type Transaction } from './lib/
 // (rather than inline in BankDashboard.tsx) per docs/ARCHITECTURE_GUIDELINES.md §2 --
 // BankDashboard.tsx is already the tracked file-size-lint backlog's largest offender.
 export function PayMoneyDetail({ account, onBack, onSend, onAddMoney }: { account: Account; onBack: () => void; onSend: () => void; onAddMoney: () => void }) {
+  const { t } = useI18n();
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [paymentsOnly, setPaymentsOnly] = useState(false);
@@ -24,7 +27,7 @@ export function PayMoneyDetail({ account, onBack, onSend, onAddMoney }: { accoun
   useEffect(() => {
     fetchAccountTransactions(account.id)
       .then(setTransactions)
-      .catch(() => setError('Could not load your transaction history.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   }, [account.id]);
 
   const visible = (transactions ?? []).filter((tx) => !paymentsOnly || tx.type === 'PAYMENT');

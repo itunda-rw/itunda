@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ApiError } from './lib/api';
 import { EmptyState } from './EmptyState';
+import { useI18n } from './i18n/I18nContext';
 import {
   bookBusSeats, cancelBusBooking, fetchBusTripBookings, fetchMyBusBookings, fetchMyBusTrips, postBusTrip, searchBusTrips,
   type BusBooking, type BusTrip,
@@ -10,6 +11,7 @@ import {
 // see InsuranceView.tsx's own doc comment for the full account of why. Self-contained:
 // no shared state or helper components with any other screen.
 export default function BusView() {
+  const { t } = useI18n();
   const [subTab, setSubTab] = useState<'RIDE' | 'OPERATE'>('RIDE');
 
   // Rider side
@@ -28,7 +30,7 @@ export default function BusView() {
   const loadTrips = () => {
     searchBusTrips(searchOrigin.trim() || undefined, searchDestination.trim() || undefined)
       .then(setTrips)
-      .catch((err) => setRiderError(err instanceof ApiError ? err.message : 'Could not search trips.'));
+      .catch((err) => setRiderError(err instanceof ApiError ? err.message : t('common.actionError')));
   };
 
   const loadMyBookings = () => {
@@ -64,7 +66,7 @@ export default function BusView() {
     setRiderError(null);
     bookBusSeats(tripId, seatCount)
       .then(() => { loadTrips(); loadMyBookings(); setBusyTripId(null); })
-      .catch((err) => { setRiderError(err instanceof ApiError ? err.message : 'Could not book these seats.'); setBusyTripId(null); });
+      .catch((err) => { setRiderError(err instanceof ApiError ? err.message : t('common.actionError')); setBusyTripId(null); });
   };
 
   const handleCancelBooking = (bookingId: string) => {
@@ -72,7 +74,7 @@ export default function BusView() {
     setRiderError(null);
     cancelBusBooking(bookingId)
       .then(() => { loadMyBookings(); setBusyBookingId(null); })
-      .catch((err) => { setRiderError(err instanceof ApiError ? err.message : 'Could not cancel this booking.'); setBusyBookingId(null); });
+      .catch((err) => { setRiderError(err instanceof ApiError ? err.message : t('common.actionError')); setBusyBookingId(null); });
   };
 
   // Operator side
@@ -86,7 +88,7 @@ export default function BusView() {
   const [operatorError, setOperatorError] = useState<string | null>(null);
 
   const loadMyTrips = () => {
-    fetchMyBusTrips().then(setMyTrips).catch((err) => setOperatorError(err instanceof ApiError ? err.message : 'Could not load your trips.'));
+    fetchMyBusTrips().then(setMyTrips).catch((err) => setOperatorError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   // Real trip manifest -- see fetchBusTripBookings's own doc comment. Previously a
@@ -108,7 +110,7 @@ export default function BusView() {
     setManifestError(null);
     fetchBusTripBookings(tripId)
       .then(setTripBookings)
-      .catch((err) => setManifestError(err instanceof ApiError ? err.message : 'Could not load bookings for this route.'));
+      .catch((err) => setManifestError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(() => {
@@ -129,7 +131,7 @@ export default function BusView() {
         loadMyTrips();
         setPosting(false);
       })
-      .catch((err) => { setOperatorError(err instanceof ApiError ? err.message : 'Could not post this trip.'); setPosting(false); });
+      .catch((err) => { setOperatorError(err instanceof ApiError ? err.message : t('common.actionError')); setPosting(false); });
   };
 
   return (

@@ -4,6 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { TILES_SOURCE_URL, getDirections } from './lib/maps';
 import { fetchRiderLocation } from './lib/eats';
 import { ApiError } from './lib/api';
+import { useI18n } from './i18n/I18nContext';
 
 // Real live delivery tracking (2026-07-20) -- "the defining 'watch your order arrive'
 // moment every real Coupang Eats/Uber Eats-style app has," per
@@ -55,6 +56,7 @@ export default function LiveRiderMap({
 }: {
   orderId: string; fromLat: number; fromLng: number; toLat: number; toLng: number; fromLabel: string; toLabel: string;
 }) {
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const riderMarkerRef = useRef<maplibregl.Marker | null>(null);
@@ -133,7 +135,7 @@ export default function LiveRiderMap({
           }
         })
         .catch((err) => {
-          if (!cancelled) setError(err instanceof ApiError ? err.message : 'Could not load your rider\'s location.');
+          if (!cancelled) setError(err instanceof ApiError ? err.message : t('common.loadError'));
         });
     };
     poll();

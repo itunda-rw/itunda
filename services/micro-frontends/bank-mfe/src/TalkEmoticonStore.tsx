@@ -121,7 +121,7 @@ export function EmoticonStoreModal({ onClose }: { onClose: () => void }) {
         setPacks(allPacks);
         setOwnedPackIds(new Set(owned.map((o) => o.packId)));
       })
-      .catch(() => setError('Could not load the Emoticon Store.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(load, []);

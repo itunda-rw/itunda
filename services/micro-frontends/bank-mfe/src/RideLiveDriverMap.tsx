@@ -4,6 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { TILES_SOURCE_URL, getDirections } from './lib/maps';
 import { fetchRideDriverLocation } from './lib/rideshare';
 import { ApiError } from './lib/api';
+import { useI18n } from './i18n/I18nContext';
 
 // Real live driver-location tracking during an active ride trip -- "the defining
 // 'watch your ride approach' moment every real Uber/Kakao T-style app has," found
@@ -53,6 +54,7 @@ export default function RideLiveDriverMap({
 }: {
   tripId: string; fromLat: number; fromLng: number; toLat: number; toLng: number;
 }) {
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const driverMarkerRef = useRef<maplibregl.Marker | null>(null);
@@ -129,7 +131,7 @@ export default function RideLiveDriverMap({
           }
         })
         .catch((err) => {
-          if (!cancelled) setError(err instanceof ApiError ? err.message : 'Could not load your driver\'s location.');
+          if (!cancelled) setError(err instanceof ApiError ? err.message : t('common.loadError'));
         });
     };
     poll();

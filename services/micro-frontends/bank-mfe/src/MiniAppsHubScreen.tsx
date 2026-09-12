@@ -4,6 +4,7 @@ import { EmptyState } from './EmptyState';
 import { SearchAndCategoryChips } from './BankDashboard';
 import { fetchMiniAppCatalog, MINI_APP_CATEGORIES, type PartnerMiniApp } from './lib/partners';
 import { ApiError } from './lib/api';
+import { useI18n } from './i18n/I18nContext';
 
 // Real Toss/Kakao mini-app-store reference (2026-09-11, 7 real Kakao 미니앱
 // screenshots) -- the real partner mini-app catalog (rw.itunda.partners) used
@@ -22,6 +23,7 @@ import { ApiError } from './lib/api';
 // docs/DESIGN_REFERENCES.md for the full account of what was and wasn't built
 // this pass.
 export function MiniAppsHubScreen({ onBack }: { onBack: () => void }) {
+  const { t } = useI18n();
   const [miniApps, setMiniApps] = useState<PartnerMiniApp[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -31,7 +33,7 @@ export function MiniAppsHubScreen({ onBack }: { onBack: () => void }) {
     setError(null);
     fetchMiniAppCatalog(selectedCategory)
       .then(setMiniApps)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load mini apps.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   }, [selectedCategory]);
 
   const query = searchInput.trim().toLowerCase();

@@ -370,6 +370,7 @@ export function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChan
 // HoodReview (a buyer/seller transaction review) -- this is a public review of an
 // area, shown on every property listing in that neighborhood.
 function NeighborhoodReviewsSection({ neighborhood }: { neighborhood: string }) {
+  const { t } = useI18n();
   const [reviews, setReviews] = useState<NeighborhoodReview[] | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [body, setBody] = useState('');
@@ -387,7 +388,7 @@ function NeighborhoodReviewsSection({ neighborhood }: { neighborhood: string }) 
       setBody(''); setYears(''); setShowForm(false); setError(null);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save your review.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }

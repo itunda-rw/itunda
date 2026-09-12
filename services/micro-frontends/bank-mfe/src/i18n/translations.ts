@@ -53,7 +53,6 @@ export type TranslationKey =
   | 'login.signingIn'
   | 'login.signIn'
   | 'login.createAccount'
-  | 'login.connectionError'
   // Real Toss-sourced passwordless-login rollout (2026-08-24) -- see LoginPage.tsx's
   // own doc comment. 'login.password'/'login.showPassword'/'login.hidePassword' above
   // are no longer used by this screen (superseded by the real 6-digit PIN pad) --
@@ -137,7 +136,6 @@ export type TranslationKey =
   | 'totalAssets.trendEmpty'
   | 'totalAssets.trendDisclosureA'
   | 'totalAssets.trendDisclosureB'
-  | 'totalAssets.historyError'
   // Real itunda Pay redesign (2026-08-28, direct user reference: real Toss Pay
   // screenshots) -- funding-source picker sheet, Coupon Box, and the adapted
   // Membership screen (real itunda points only, never a fabricated third-party

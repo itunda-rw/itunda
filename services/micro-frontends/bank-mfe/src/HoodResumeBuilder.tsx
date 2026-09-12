@@ -15,12 +15,13 @@ import {
 const inputStyle: React.CSSProperties = { padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' };
 
 export function ResumeBuilderView() {
+  const { t } = useI18n();
   const [detail, setDetail] = useState<ResumeDetail | null>(null);
   const [strengthsCatalog, setStrengthsCatalog] = useState<ResumeStrength[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const reload = () => {
-    fetchMyResume().then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your résumé.'));
+    fetchMyResume().then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(() => {
     fetchResumeStrengths().then(setStrengthsCatalog).catch(() => {});
@@ -74,7 +75,7 @@ function ResumeProfileSection({ detail, strengthsCatalog, onSaved }: { detail: R
       await updateResumeProfile(selfIntro.trim() || undefined, Array.from(selectedStrengths), additionalInfo.trim() || undefined);
       onSaved();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save your résumé.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSaving(false);
     }
@@ -125,7 +126,7 @@ function ResumeExperienceSection({ experiences, onChanged }: { experiences: Resu
       setCompany(''); setRole(''); setPeriod(''); setAdding(false); setError(null);
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     }
   };
 
@@ -147,7 +148,7 @@ function ResumeExperienceSection({ experiences, onChanged }: { experiences: Resu
               session. Routes through the section's own error state (moved below,
               outside the add-form's own conditional, so it's visible regardless of
               whether that form is open). */}
-          <button className="itunda-btn itunda-btn-secondary" style={{ padding: '4px 10px' }} onClick={() => removeResumeExperience(exp.id).then(() => { setError(null); onChanged(); }).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not remove this.'))}>Remove</button>
+          <button className="itunda-btn itunda-btn-secondary" style={{ padding: '4px 10px' }} onClick={() => removeResumeExperience(exp.id).then(() => { setError(null); onChanged(); }).catch((err) => setError(err instanceof ApiError ? err.message : t('common.actionError')))}>Remove</button>
         </div>
       ))}
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
@@ -176,7 +177,7 @@ function ResumeEducationSection({ educations, onChanged }: { educations: ResumeE
       setSchool(''); setDegree(''); setAdding(false); setError(null);
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     }
   };
 
@@ -189,7 +190,7 @@ function ResumeEducationSection({ educations, onChanged }: { educations: ResumeE
       {educations.map((edu) => (
         <div key={edu.id} style={{ display: 'flex', justifyContent: 'space-between' }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{[edu.school, edu.degree].filter(Boolean).join(' · ')}</p>
-          <button className="itunda-btn itunda-btn-secondary" style={{ padding: '4px 10px' }} onClick={() => removeResumeEducation(edu.id).then(() => { setError(null); onChanged(); }).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not remove this.'))}>Remove</button>
+          <button className="itunda-btn itunda-btn-secondary" style={{ padding: '4px 10px' }} onClick={() => removeResumeEducation(edu.id).then(() => { setError(null); onChanged(); }).catch((err) => setError(err instanceof ApiError ? err.message : t('common.actionError')))}>Remove</button>
         </div>
       ))}
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
@@ -216,7 +217,7 @@ function ResumeCertificationSection({ certifications, onChanged }: { certificati
       setName(''); setAdding(false); setError(null);
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     }
   };
 
@@ -229,7 +230,7 @@ function ResumeCertificationSection({ certifications, onChanged }: { certificati
       {certifications.map((cert) => (
         <div key={cert.id} style={{ display: 'flex', justifyContent: 'space-between' }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{cert.name}</p>
-          <button className="itunda-btn itunda-btn-secondary" style={{ padding: '4px 10px' }} onClick={() => removeResumeCertification(cert.id).then(() => { setError(null); onChanged(); }).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not remove this.'))}>Remove</button>
+          <button className="itunda-btn itunda-btn-secondary" style={{ padding: '4px 10px' }} onClick={() => removeResumeCertification(cert.id).then(() => { setError(null); onChanged(); }).catch((err) => setError(err instanceof ApiError ? err.message : t('common.actionError')))}>Remove</button>
         </div>
       ))}
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}

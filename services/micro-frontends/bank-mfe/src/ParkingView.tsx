@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ApiError } from './lib/api';
 import { EmptyState } from './EmptyState';
+import { useI18n } from './i18n/I18nContext';
 import {
   endParkingSession, fetchMyParkingHistory, fetchMyParkingSpots, fetchNearbyParkingSpots, registerParkingSpot, setParkingSpotAvailability,
   startParkingSession, type ParkingSession, type ParkingSpot,
@@ -10,6 +11,7 @@ import {
 // see InsuranceView.tsx's own doc comment for the full account of why. Self-contained:
 // no shared state or helper components with any other screen.
 export default function ParkingView() {
+  const { t } = useI18n();
   const [subTab, setSubTab] = useState<'RENT' | 'OWN'>('RENT');
 
   // Renter side
@@ -33,7 +35,7 @@ export default function ParkingView() {
       (pos) => {
         fetchNearbyParkingSpots(pos.coords.latitude, pos.coords.longitude)
           .then(setNearbySpots)
-          .catch((err) => setRenterError(err instanceof ApiError ? err.message : 'Could not load nearby parking.'));
+          .catch((err) => setRenterError(err instanceof ApiError ? err.message : t('common.loadError')));
       },
       () => setRenterError('Could not access your location.'),
     );
@@ -71,7 +73,7 @@ export default function ParkingView() {
     setRenterError(null);
     startParkingSession(spotId)
       .then((session) => { setActiveSession(session); setBusySpotId(null); })
-      .catch((err) => { setRenterError(err instanceof ApiError ? err.message : 'Could not check in to this spot.'); setBusySpotId(null); });
+      .catch((err) => { setRenterError(err instanceof ApiError ? err.message : t('common.actionError')); setBusySpotId(null); });
   };
 
   const handleEndSession = () => {
@@ -85,7 +87,7 @@ export default function ParkingView() {
         setEndingSession(false);
         loadRenterData();
       })
-      .catch((err) => { setRenterError(err instanceof ApiError ? err.message : 'Could not check out of this spot.'); setEndingSession(false); });
+      .catch((err) => { setRenterError(err instanceof ApiError ? err.message : t('common.actionError')); setEndingSession(false); });
   };
 
   // Owner side
@@ -96,7 +98,7 @@ export default function ParkingView() {
   const [ownerError, setOwnerError] = useState<string | null>(null);
 
   const loadMySpots = () => {
-    fetchMyParkingSpots().then(setMySpots).catch((err) => setOwnerError(err instanceof ApiError ? err.message : 'Could not load your parking spots.'));
+    fetchMyParkingSpots().then(setMySpots).catch((err) => setOwnerError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(() => {
@@ -113,7 +115,7 @@ export default function ParkingView() {
       (pos) => {
         registerParkingSpot(spotAddress.trim(), pos.coords.latitude, pos.coords.longitude, rate)
           .then(() => { setSpotAddress(''); setSpotHourlyRate(''); loadMySpots(); setRegistering(false); })
-          .catch((err) => { setOwnerError(err instanceof ApiError ? err.message : 'Could not register this spot.'); setRegistering(false); });
+          .catch((err) => { setOwnerError(err instanceof ApiError ? err.message : t('common.actionError')); setRegistering(false); });
       },
       () => { setOwnerError('Could not access your location.'); setRegistering(false); },
     );
@@ -124,7 +126,7 @@ export default function ParkingView() {
     setOwnerError(null);
     setParkingSpotAvailability(spot.id, !spot.available)
       .then(() => { loadMySpots(); setBusySpotId(null); })
-      .catch((err) => { setOwnerError(err instanceof ApiError ? err.message : 'Could not update this spot.'); setBusySpotId(null); });
+      .catch((err) => { setOwnerError(err instanceof ApiError ? err.message : t('common.actionError')); setBusySpotId(null); });
   };
 
   return (

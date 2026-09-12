@@ -7,6 +7,8 @@ import { fetchGoals, fetchGoalTransactions, fetchInterestJar, fetchInterestJarTr
 import { fetchWeeklySavingsPlans, fetchWeeklySavingsPlanTransactions, type WeeklySavingsPlan } from './lib/weeklySavings';
 import { fetchGrow31SavingsPlans, fetchGrow31SavingsPlanTransactions, type Grow31SavingsPlan } from './lib/grow31Savings';
 import { fetchMyUpfrontDeposits, fetchUpfrontDepositTransactions, type UpfrontInterestDeposit } from './lib/upfrontDeposit';
+import { ApiError } from './lib/api';
+import { useI18n } from './i18n/I18nContext';
 
 // Real "itunda Bank assets" hub (2026-08-31, direct user-supplied Toss Bank
 // screenshots + explicit correction: "my asset screen is hub of all assets, itunda
@@ -46,6 +48,7 @@ function rowBalance(row: Row): number {
 }
 
 export function ItundaBankAssetsScreen({ onBack }: { onBack: () => void }) {
+  const { t } = useI18n();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openRow, setOpenRow] = useState<Row | null>(null);
@@ -71,7 +74,7 @@ export function ItundaBankAssetsScreen({ onBack }: { onBack: () => void }) {
         ];
         setRows(all);
       })
-      .catch(() => setError('Could not load your itunda Bank assets.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   }, []);
 
   if (openRow) {

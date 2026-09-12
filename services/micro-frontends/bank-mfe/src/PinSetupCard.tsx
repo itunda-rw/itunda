@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ApiError, setPin } from './lib/api';
 import { fetchProfile } from './lib/neighborhood';
 import { PinPad } from './PinPad';
+import { useI18n } from './i18n/I18nContext';
 
 // Real Toss-sourced passwordless-login rollout (2026-08-24) -- see backend
 // User.pinSet's own doc comment. A real, non-blocking upgrade prompt for a
@@ -14,6 +15,7 @@ import { PinPad } from './PinPad';
 // this session's own established file-size-lint discipline for new, self-contained
 // pieces (PayHomeExtras.tsx, AccountManageScreen.tsx).
 export function PinSetupCard() {
+  const { t } = useI18n();
   const [pinSet, setPinSetState] = useState<boolean | null>(null);
   // Explicit step state (not inferred from field values) -- keeps this a flat
   // if/else-if chain below rather than a nested ternary, matching this codebase's
@@ -54,7 +56,7 @@ export function PinSetupCard() {
       await setPin(currentCredential, pin);
       setStep('success');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not set your PIN.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
       setStep('pin');
     } finally {
       setBusy(false);

@@ -14,6 +14,7 @@ import {
 } from './lib/motoFare';
 import { EmptyState } from './EmptyState';
 import { useDeferredLoading } from './useDeferredLoading';
+import { useI18n } from './i18n/I18nContext';
 
 // Real driver earnings / rider trip-history summary -- mirrors ride-hailing's own
 // "This week" card (BankDashboard.tsx's DRIVE sub-tab) in shape, but moto-fare's
@@ -74,6 +75,7 @@ function MotoFareRiderTripsView() {
 }
 
 function MotoFareDriverCollectView() {
+  const { t } = useI18n();
   const [code, setCode] = useState<string | null>(null);
   const [scanUnavailable, setScanUnavailable] = useState(false);
   const [manualCode, setManualCode] = useState('');
@@ -104,7 +106,7 @@ function MotoFareDriverCollectView() {
       setCollected(result);
       loadEarnings();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not collect this fare.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }

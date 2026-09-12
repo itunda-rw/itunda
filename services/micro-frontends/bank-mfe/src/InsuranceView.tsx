@@ -7,6 +7,7 @@ import {
 } from './lib/insurance';
 import { useDeferredLoading } from './useDeferredLoading';
 import { CropWeatherIndexSection } from './CropWeatherIndexSection';
+import { useI18n } from './i18n/I18nContext';
 
 // Real insurance browse/enroll/my-policies/claims client -- see lib/insurance.ts's
 // own doc comment. Previously bank-mfe only rendered a read-only "Insurance: N active
@@ -47,6 +48,7 @@ const CLAIM_REASON_CHIPS: Record<string, string[]> = {
 // exception to the inline-everything pattern. No behavior change -- same component,
 // same props (none), same render output.
 export default function InsuranceView() {
+  const { t } = useI18n();
   const [plans, setPlans] = useState<InsurancePlan[] | null>(null);
   const showPlansSkeleton = useDeferredLoading(!plans);
   const [policies, setPolicies] = useState<InsurancePolicy[]>([]);
@@ -90,7 +92,7 @@ export default function InsuranceView() {
       setNewFundDaily('0');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not start a premium fund.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setFundBusyId(null);
     }
@@ -111,7 +113,7 @@ export default function InsuranceView() {
       setContributeAmount((prev) => ({ ...prev, [fundId]: '' }));
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not add this contribution.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setFundBusyId(null);
     }
@@ -126,7 +128,7 @@ export default function InsuranceView() {
       setMessage('Premium fund cancelled and refunded to your account.');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not cancel this premium fund.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setFundBusyId(null);
     }
@@ -141,7 +143,7 @@ export default function InsuranceView() {
       setMessage(`Enrolled in ${policy.planName}`);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not enroll in this plan.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setEnrollingId(null);
     }
@@ -164,7 +166,7 @@ export default function InsuranceView() {
       setClaimAmount('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not submit this claim.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmittingClaim(false);
     }

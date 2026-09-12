@@ -11,8 +11,10 @@ import {
   approveIdentityVerification, declineIdentityVerification, getIdentityVerificationRequest,
   type IdentityVerificationRequest,
 } from './lib/partners';
+import { useI18n } from './i18n/I18nContext';
 
 export function IdentityVerificationConsentView({ requestId, onDone }: { requestId: string; onDone: () => void }) {
+  const { t } = useI18n();
   const [request, setRequest] = useState<IdentityVerificationRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +27,7 @@ export function IdentityVerificationConsentView({ requestId, onDone }: { request
     getIdentityVerificationRequest(requestId)
       .then(setRequest)
       .catch((err) => {
-        setError(err instanceof ApiError ? err.message : 'Could not load this request.');
+        setError(err instanceof ApiError ? err.message : t('common.loadError'));
       })
       .finally(() => setLoading(false));
   }, [requestId]);
@@ -37,7 +39,7 @@ export function IdentityVerificationConsentView({ requestId, onDone }: { request
       await approveIdentityVerification(requestId);
       setOutcome(`Shared with ${request?.partnerName ?? 'the partner'}.`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not reach itunda. Check your connection and try again.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -50,7 +52,7 @@ export function IdentityVerificationConsentView({ requestId, onDone }: { request
       await declineIdentityVerification(requestId);
       setOutcome('Declined. Nothing was shared.');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not reach itunda. Check your connection and try again.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
