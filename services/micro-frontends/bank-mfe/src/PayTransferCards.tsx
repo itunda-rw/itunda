@@ -56,7 +56,7 @@ export function ScheduledTransfersCard() {
       setShowCreate(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('scheduledTransfers.createError'));
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -69,7 +69,7 @@ export function ScheduledTransfersCard() {
       await cancelScheduledTransfer(id);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('scheduledTransfers.cancelError'));
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -211,7 +211,7 @@ export function DelayedTransfersCard() {
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         setNeedsDeviceVerification(true);
       } else {
-        setError(err instanceof ApiError ? err.message : t('delayedTransfers.createError'));
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
       }
     } finally {
       setBusy(false);
@@ -225,7 +225,7 @@ export function DelayedTransfersCard() {
       await cancelDelayedTransfer(id);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('delayedTransfers.cancelError'));
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }

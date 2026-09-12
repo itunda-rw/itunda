@@ -17967,3 +17967,57 @@ untouched by this pass), `accessibility-lint.py` clean on all 30 touched
 files, `vite build` clean, `file-size-lint.py` clean (no file crossed its
 baseline -- this pass was import/hook additions plus literal-string swaps,
 not structural growth).
+
+## 284. The error-copy wash's own real next candidate, closed same session: 24 already-`t()`-wired dedicated keys that were plain duplicates of the canonical fallback
+
+Section 283 named "a wider set of ~15-20 already-`t()`-wired but still-
+dedicated per-screen fallback keys" as a real candidate needing its own wash
+before touching, since key names alone aren't proof of duplication. This
+section is that wash, done the same session once the pattern was checked.
+
+**The proof, not a guess**: every one of these keys sits inside the exact
+same `err instanceof ApiError ? err.message : t('X')` ternary the canonical
+`common.loadError`/`common.actionError` keys were built for -- meaning the
+real backend message is tried first, and the key is purely the display for
+"backend gave nothing parseable at all." Confirmed this by grepping the call
+site of each candidate, not by reading English text: the 3 genuine
+domain-specific keys correctly kept in Section 283
+(`youthAccount.ageIneligible`, `ussd.pinLengthError`, `ussd.pinMismatchError`)
+are called unconditionally (`setError(t('X'))`, no ternary, no `ApiError`
+check) on a specifically detected condition -- a structurally different
+shape, not just different-sounding copy. All 24 candidates matched the
+ternary shape with zero exceptions.
+
+**24 keys removed** (all 4 translation files): `autoTopUp.checkError`,
+`autoTopUp.saveError`, `autoTransfers.cancelError`, `autoTransfers.createError`,
+`autoTransfers.toggleError`, `delayedTransfers.cancelError`,
+`delayedTransfers.createError`, `deviceStepUp.genericError`,
+`overview.linkError`, `overview.loadError`, `overview.unlinkError`,
+`pay.couponsLoadError`, `pay.membershipLoadError`, `requestMoney.createError`,
+`requestMoney.payError`, `scheduledTransfers.cancelError`,
+`scheduledTransfers.createError`, `shop.contactError`,
+`transfer.saveContactError`, `transfer.sendError`,
+`transitCollect.collectError`, `youthAccount.birthDateError`,
+`youthAccount.depositError`, `youthAccount.openError`. Each site's call
+routed to `common.loadError` (the 3 shaped as a passive `.catch()` off a
+`fetch`/read call: `pay.couponsLoadError`, `overview.loadError`,
+`pay.membershipLoadError`) or `common.actionError` (the other 21, all
+mutation/verify/collect/create/cancel/toggle/send/open/deposit shapes).
+
+**14 files touched**: `DeviceStepUpPrompt.tsx`, `TransitCollectScreen.tsx`,
+`CouponBoxView.tsx`, `ShopSellerContactPicker.tsx`, `MembershipView.tsx`,
+`PayRequestAndTopUp.tsx` (5 sites), `OverviewAssetsView.tsx` (2 sites),
+`PayTransferCards.tsx` (4 sites), `AccountLinkForm.tsx`, `BankDashboard.tsx`
+(8 sites) -- all already had `useI18n()` in scope, so this pass was purely
+key-swap plus dead-key deletion, no new imports/hooks needed anywhere.
+
+**A real, measured side effect**: removing 24 dead keys x 3 non-English
+languages (72 fewer string entries) shrank the built `I18nContext` chunk
+from 88.05 kB to 82.93 kB gzip-uncounted -- a real, if small, confirmation
+that duplicate translation keys carry real bundle-size cost, not just
+maintenance cost.
+
+**Verification**: `tsc -b` clean, `oxlint` exit 0 (pre-existing unrelated
+`CertificateView.tsx` unused-catch-var warnings only), `accessibility-lint.py`
+clean on all 14 touched files, `vite build` clean, `file-size-lint.py`
+clean.

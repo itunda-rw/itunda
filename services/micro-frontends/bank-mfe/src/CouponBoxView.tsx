@@ -35,7 +35,7 @@ export function CouponBoxView({ onBack, onBrowseMerchants }: { onBack: () => voi
   useEffect(() => {
     Promise.all([browseCoupons(), fetchMyCouponRedemptions()])
       .then(([c, r]) => { setCoupons(c); setRedemptions(r); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : t('pay.couponsLoadError')));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   }, [t]);
 
   const received = (coupons ?? []).filter((c) => c.eligible && !c.alreadyRedeemed);

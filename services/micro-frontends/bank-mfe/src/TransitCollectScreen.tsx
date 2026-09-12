@@ -50,7 +50,7 @@ export function TransitCollectScreen() {
       const result = await tapTransitFareByCode(code, operator, fare);
       setCollected(result);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('transitCollect.collectError'));
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }

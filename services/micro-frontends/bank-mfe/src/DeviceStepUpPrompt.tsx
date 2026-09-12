@@ -32,7 +32,7 @@ export function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () =>
       await verifyDevice(password);
       onVerified();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('deviceStepUp.genericError'));
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }

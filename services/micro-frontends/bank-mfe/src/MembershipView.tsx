@@ -34,7 +34,7 @@ export function MembershipView({ onBack, onOpenRewards, onOpenPayMoney }: { onBa
         setRewards(rewardTasks);
         setLoyalty(loyaltyBalances);
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : t('pay.membershipLoadError')));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   }, [t]);
 
   const loading = payBalance === null || rewards === null || loyalty === null;

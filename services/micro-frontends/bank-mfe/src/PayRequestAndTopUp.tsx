@@ -52,7 +52,7 @@ export function RequestMoneyCard() {
       setShowCreate(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('requestMoney.createError'));
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setCreating(false);
     }
@@ -71,7 +71,7 @@ export function RequestMoneyCard() {
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         setNeedsDeviceVerification(true);
       } else {
-        setError(err instanceof ApiError ? err.message : t('requestMoney.payError'));
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
       }
     } finally {
       setPaying(false);
@@ -179,7 +179,7 @@ export function AutoTopUpCard({ accountId }: { accountId: string }) {
       setShowForm(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('autoTopUp.saveError'));
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -193,7 +193,7 @@ export function AutoTopUpCard({ accountId }: { accountId: string }) {
       await configureAutoTopUp(accountId, setting.linkedAccountId, setting.thresholdAmount, setting.topUpAmount, setting.dailyTriggerCap, !setting.enabled);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('autoTopUp.saveError'));
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -207,7 +207,7 @@ export function AutoTopUpCard({ accountId }: { accountId: string }) {
       setTriggerResult(r.reason);
       load();
     } catch (err) {
-      setTriggerResult(err instanceof ApiError ? err.message : t('autoTopUp.checkError'));
+      setTriggerResult(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setTriggering(false);
     }

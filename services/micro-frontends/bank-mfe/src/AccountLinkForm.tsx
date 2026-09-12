@@ -39,7 +39,7 @@ export function AccountLinkForm({ myPhoneNumber, onLinked, onError }: { myPhoneN
         onError(linked.failureReason ?? t('overview.verificationFailed', { provider: submittedProvider }));
       }
     } catch (err) {
-      onError(err instanceof ApiError ? err.message : t('overview.linkError'));
+      onError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }

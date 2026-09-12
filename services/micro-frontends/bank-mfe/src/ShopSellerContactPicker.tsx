@@ -52,7 +52,7 @@ export function ShopSellerContactPicker({
       }
       onOpened(conversation.id);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('shop.contactError'));
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
       setSending(false);
     }
   };

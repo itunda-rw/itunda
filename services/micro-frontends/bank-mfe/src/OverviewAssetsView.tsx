@@ -86,7 +86,7 @@ export function OverviewAssetsView({ onNavigateToTab }: { onNavigateToTab: (tab:
     setError(null);
     Promise.all([fetchOverview(), fetchLinkedAccounts()])
       .then(([o, linked]) => { setOverview(o); setLinkedAccounts(linked); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : t('overview.loadError')));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(refresh, []);
@@ -98,7 +98,7 @@ export function OverviewAssetsView({ onNavigateToTab }: { onNavigateToTab: (tab:
       await unlinkAccount(id);
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('overview.unlinkError'));
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }

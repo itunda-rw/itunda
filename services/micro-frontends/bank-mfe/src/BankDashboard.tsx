@@ -364,7 +364,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
       setNewContactName(''); setNewContactPhone(''); setShowAddContact(false);
       loadContacts();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('transfer.saveContactError'));
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     }
   };
 
@@ -444,7 +444,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
       } else {
         // A real, honest error surfaces here as-is -- e.g. a recipient that doesn't
         // match any real itunda account real-404s rather than silently doing nothing.
-        setError(err instanceof ApiError ? err.message : t('transfer.sendError'));
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
       }
     } finally {
       setBusy(false);
@@ -1156,7 +1156,7 @@ export function YouthAccountCard() {
       } else if (err instanceof ApiError && err.code === 'YOUTH_ACCOUNT_AGE_INELIGIBLE') {
         setError(t('youthAccount.ageIneligible'));
       } else {
-        setError(err instanceof ApiError ? err.message : t('youthAccount.openError'));
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
       }
     } finally {
       setBusy(false);
@@ -1172,7 +1172,7 @@ export function YouthAccountCard() {
       await setBirthDate(birthDate);
       await handleOpen();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('youthAccount.birthDateError'));
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
       setBusy(false);
     }
   };
@@ -1189,7 +1189,7 @@ export function YouthAccountCard() {
       setShowDeposit(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('youthAccount.depositError'));
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -1312,7 +1312,7 @@ export function AutoTransfersCard() {
       setShowCreate(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('autoTransfers.createError'));
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -1326,7 +1326,7 @@ export function AutoTransfersCard() {
       else await resumeAutoTransfer(at.id);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('autoTransfers.toggleError'));
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -1339,7 +1339,7 @@ export function AutoTransfersCard() {
       await cancelAutoTransfer(id);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('autoTransfers.cancelError'));
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
