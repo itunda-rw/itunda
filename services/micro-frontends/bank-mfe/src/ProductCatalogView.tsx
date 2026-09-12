@@ -54,7 +54,7 @@ function ProductCatalogView({
       .then((r) => setCatalog({ businessName: r.merchant.businessName, products: r.products.filter((p) => p.durationMinutes == null) }))
       .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
     fetchMyFavoriteProducts()
-      .then((favorites) => setFavoritedIds(new Set(favorites.map((f) => f.productId))))
+      .then((r) => setFavoritedIds(new Set(r.favorites.map((f) => f.productId))))
       .catch(() => {
         // Real, non-critical -- a wishlist-status fetch failure shouldn't block browsing.
       });

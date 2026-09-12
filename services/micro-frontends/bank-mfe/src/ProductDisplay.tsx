@@ -81,7 +81,7 @@ export function ProductDetailView({
 
   useEffect(() => {
     fetchMyFavoriteProducts()
-      .then((favorites) => setFavorited(favorites.some((f) => f.productId === product.id)))
+      .then((r) => setFavorited(r.favorites.some((f) => f.productId === product.id)))
       .catch(() => {
         // Real, non-critical -- a wishlist-status fetch failure shouldn't block viewing.
       });

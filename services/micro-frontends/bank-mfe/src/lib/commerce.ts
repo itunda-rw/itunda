@@ -319,5 +319,12 @@ export const addProductFavorite = (productId: string) =>
 export const removeProductFavorite = (productId: string) =>
   apiFetch<{ success: boolean }>(`/api/v1/orders/products/${productId}/favorite`, { method: 'DELETE' });
 
-export const fetchMyFavoriteProducts = () =>
-  apiFetch<{ success: boolean; favorites: FavoriteProduct[] }>('/api/v1/orders/products/favorites').then((r) => r.favorites);
+// Real pagination-discard fix (2026-09-12, same systemic gap fixed for
+// my-orders/merchant-orders/return-requests/inquiries/product-reviews above --
+// see project_itunda_pagination_discard_sweep memory) -- OrderController's
+// real Pageable/pageMeta endpoint was always there; page just wasn't ever
+// sent, silently capping a user's saved wishlist items at the most recent 20.
+export const fetchMyFavoriteProducts = (page = 0) =>
+  apiFetch<{ success: boolean; favorites: FavoriteProduct[]; page: number; totalPages: number }>(
+    `/api/v1/orders/products/favorites?page=${page}&size=20`,
+  );
