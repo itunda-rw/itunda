@@ -322,28 +322,37 @@ class GroupAccountService(
         val alreadyRemindedUserIds = groupAccountDuesReminderRepository.findByGroupAccountIdAndCycleMonth(account.id, cycleMonth)
             .map { it.userId }.toSet()
 
-        var remindedCount = 0
-        for (m in members) {
+        val toRemind = members.filter { m ->
             val contributed = contributedByUser[m.userId] ?: BigDecimal.ZERO
-            if (contributed >= duesAmount) continue
-            if (m.userId in alreadyRemindedUserIds) continue
-
-            val reminderTitle = "Dues reminder for \"${account.name}\""
-            val reminderBody = "You haven't paid this month's ${duesAmount.toPlainString()} RWF dues yet."
-            notificationRepository.save(
+            contributed < duesAmount && m.userId !in alreadyRemindedUserIds
+        }
+        val reminderTitle = "Dues reminder for \"${account.name}\""
+        val reminderBody = "You haven't paid this month's ${duesAmount.toPlainString()} RWF dues yet."
+        // Real transaction-poisoning fix (2026-09-12) -- see MerchantFollowService
+        // .broadcastToFollowers's own doc comment for the identical real bug this was:
+        // a per-member save() inside a loop nested in this method's own @Transactional
+        // caller (sendAutomaticDuesRemindersFor) meant a DB failure partway through
+        // would roll back every already-saved Notification/GroupAccountDuesReminder row
+        // from THIS poll, while the real pushes already sent to earlier members (an
+        // external, non-transactional FCM call) could never be un-sent. Batching both
+        // saves before any push fires closes the same real partial-broadcast
+        // inconsistency window that fix already established the shape for.
+        notificationRepository.saveAll(
+            toRemind.map { m ->
                 Notification(
                     id = "notif_${UUID.randomUUID()}", userId = m.userId, type = "GROUP_ACCOUNT_DUES_REMINDER",
                     title = reminderTitle, body = reminderBody,
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"groupAccountId\":\"${account.id}\"}",
-                ),
-            )
-            groupAccountDuesReminderRepository.save(
-                GroupAccountDuesReminder(id = "grpdue_${UUID.randomUUID()}", groupAccountId = account.id, userId = m.userId, cycleMonth = cycleMonth),
-            )
+                )
+            },
+        )
+        groupAccountDuesReminderRepository.saveAll(
+            toRemind.map { m -> GroupAccountDuesReminder(id = "grpdue_${UUID.randomUUID()}", groupAccountId = account.id, userId = m.userId, cycleMonth = cycleMonth) },
+        )
+        toRemind.forEach { m ->
             pushNotificationService.sendToUser(m.userId, reminderTitle, reminderBody, mapOf("groupAccountId" to account.id))
-            remindedCount++
         }
-        return remindedCount
+        return toRemind.size
     }
 
     // Real transparency, matching Kakao Bank's own real-time shared-activity feed --

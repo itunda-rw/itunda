@@ -12,6 +12,7 @@ import rw.itunda.core.domain.GroupAccount
 import rw.itunda.core.domain.GroupAccountContribution
 import rw.itunda.core.domain.GroupAccountDuesReminder
 import rw.itunda.core.domain.GroupAccountMember
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
@@ -364,16 +365,23 @@ class GroupAccountServiceTest : BehaviorSpec({
             every { groupAccountDuesReminderRepository.findByGroupAccountIdAndCycleMonth("grp_1", cycleMonth) } returns listOf(
                 GroupAccountDuesReminder(id = "grpdue_1", groupAccountId = "grp_1", userId = "member_3", cycleMonth = cycleMonth),
             )
-            every { notificationRepository.save(any()) } answers { firstArg() }
-            every { groupAccountDuesReminderRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.saveAll<Notification>(any()) } answers { firstArg() }
+            every { groupAccountDuesReminderRepository.saveAll<GroupAccountDuesReminder>(any()) } answers { firstArg() }
 
             val remindedCount = service.requestUnpaidDues("owner_1", "grp_1")
 
-            Then("it reminds only the real never-yet-reminded unpaid member -- not the paid owner, not the already-reminded member") {
+            Then("it reminds only the real never-yet-reminded unpaid member, in one batched saveAll -- not the paid owner, not the already-reminded member") {
                 remindedCount shouldBe 1
-                verify(exactly = 1) { notificationRepository.save(match { it.userId == "member_2" && it.type == "GROUP_ACCOUNT_DUES_REMINDER" }) }
-                verify(exactly = 0) { notificationRepository.save(match { it.userId == "owner_1" && it.type == "GROUP_ACCOUNT_DUES_REMINDER" }) }
-                verify(exactly = 0) { notificationRepository.save(match { it.userId == "member_3" && it.type == "GROUP_ACCOUNT_DUES_REMINDER" }) }
+                verify(exactly = 1) {
+                    notificationRepository.saveAll<Notification>(match { batch ->
+                        batch.count() == 1 && batch.any { it.userId == "member_2" && it.type == "GROUP_ACCOUNT_DUES_REMINDER" }
+                    })
+                }
+                verify(exactly = 1) {
+                    groupAccountDuesReminderRepository.saveAll<GroupAccountDuesReminder>(match { batch ->
+                        batch.count() == 1 && batch.any { it.userId == "member_2" }
+                    })
+                }
             }
 
             Then("only the real never-yet-reminded unpaid member gets a real mobile push notification") {
