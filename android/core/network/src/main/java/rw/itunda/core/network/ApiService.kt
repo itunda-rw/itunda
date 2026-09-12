@@ -1204,7 +1204,7 @@ data class KeywordAlertsResponse(val success: Boolean, val alerts: List<KeywordA
 data class SetKeywordAlertQuietHoursRequest(val startTime: String, val endTime: String, val enabled: Boolean)
 data class KeywordAlertQuietHoursDto(val id: String, val userId: String, val startTime: String, val endTime: String, val enabled: Boolean)
 data class KeywordAlertQuietHoursResponse(val success: Boolean, val quietHours: KeywordAlertQuietHoursDto?)
-data class FavoriteJobPostsResponse(val success: Boolean, val favorites: List<FavoriteJobPostDto>)
+data class FavoriteJobPostsResponse(val success: Boolean, val favorites: List<FavoriteJobPostDto>, val page: Int = 0, val totalPages: Int = 1, val totalElements: Int = 0)
 
 // Real 당근알바-style structured application (2026-07-25) -- see backend
 // JobApplicationService's own doc comment.
@@ -3525,7 +3525,7 @@ interface ApiService {
     suspend fun removeJobPostFavorite(@Path("id") jobPostId: String): SuccessResponse
 
     @GET("api/v1/jobs/posts/favorites")
-    suspend fun getMyFavoriteJobPosts(): FavoriteJobPostsResponse
+    suspend fun getMyFavoriteJobPosts(@Query("page") page: Int = 0, @Query("size") size: Int = 20): FavoriteJobPostsResponse
 
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see AuthApi.setNeighborhood.
     @GET("api/v1/jobs/posts/my-neighborhood")

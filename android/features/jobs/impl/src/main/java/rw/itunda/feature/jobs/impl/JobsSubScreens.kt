@@ -59,6 +59,9 @@ import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.HoodReviewForm
 import rw.itunda.core.designsystem.components.HoodReviewResultView
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
@@ -97,12 +100,40 @@ internal fun JobPostWishlistView(onRemoved: () -> Unit) {
     var favorites by remember { mutableStateOf<List<FavoriteJobPostDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var removingId by remember { mutableStateOf<String?>(null) }
+    // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getMyFavoriteJobPosts
+    // silently capped this list at the first 20 favorited jobs.
+    var page by remember { mutableStateOf(0) }
+    var hasMore by remember { mutableStateOf(false) }
+    var loadingMore by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     fun load() = scope.launch {
-        try { favorites = NetworkClient.apiService.getMyFavoriteJobPosts().favorites; error = null }
-        catch (e: Exception) { error = "Couldn't load your saved jobs. Check your connection and try again." }
+        try {
+            val res = NetworkClient.apiService.getMyFavoriteJobPosts(page = 0)
+            favorites = res.favorites; page = 0; hasMore = res.page + 1 < res.totalPages
+            error = null
+        } catch (e: Exception) { error = "Couldn't load your saved jobs. Check your connection and try again." }
     }
     LaunchedEffect(Unit) { load() }
+
+    fun loadMore() {
+        val nextPage = page + 1
+        loadingMore = true
+        scope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyFavoriteJobPosts(page = nextPage)
+                favorites = (favorites ?: emptyList()) + res.favorites
+                page = nextPage
+                hasMore = res.page + 1 < res.totalPages
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded page stays visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMore = false
+            }
+        }
+    }
+
     when {
         error != null -> ErrorCard(error!!, onRetry = ::load)
         favorites == null -> SkeletonBlock()
@@ -126,6 +157,15 @@ internal fun JobPostWishlistView(onRemoved: () -> Unit) {
                         }
                     })
                 }
+            }
+            if (hasMore) {
+                IdsButton(
+                    text = if (loadingMore) "Loading…" else "Load more",
+                    onClick = ::loadMore,
+                    enabled = !loadingMore,
+                    variant = IdsButtonVariant.Tinted,
+                    size = IdsButtonSize.Medium,
+                )
             }
         }
     }
