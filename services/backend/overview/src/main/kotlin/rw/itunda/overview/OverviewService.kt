@@ -219,6 +219,16 @@ class OverviewService(
         return netWorthSnapshotRepository.existsByUserIdAndCapturedAtGreaterThanEqual(userId, startOfToday)
     }
 
+    // Real N+1 fix (2026-09-12) -- NetWorthSnapshotScheduler.captureAll used to call
+    // hasSnapshotToday once per real user in its nightly loop, an N-query cost scaling
+    // with the user base on a real, guaranteed-to-run-every-night job. One batched
+    // query up front instead, matching DiscoverService's own real N+1 fix (2026-09-08:
+    // "call frequency, not table size, is the real signal for this bug class").
+    fun getUserIdsWithSnapshotToday(): Set<String> {
+        val startOfToday = LocalDate.now(ZoneOffset.UTC).atStartOfDay().toInstant(ZoneOffset.UTC)
+        return netWorthSnapshotRepository.findDistinctUserIdsCapturedSince(startOfToday).toSet()
+    }
+
     // Buckets by calendar month and keeps the LAST snapshot in each bucket (the
     // month-end value, matching a real personal-finance product's own convention) --
     // never averages or interpolates, since interpolating a missing day would be

@@ -81,8 +81,23 @@ class NetWorthSnapshotTest : BehaviorSpec({
         When("checking hasSnapshotToday") {
             val result = service.hasSnapshotToday("user_1")
 
-            Then("it real-reports true, so NetWorthSnapshotScheduler skips this user rather than writing a duplicate row") {
+            Then("it real-reports true") {
                 result shouldBe true
+            }
+        }
+    }
+
+    Given("real users, only one of whom already has a snapshot captured earlier today") {
+        val netWorthSnapshotRepository = mockk<NetWorthSnapshotRepository>()
+        val sinceSlot = slot<Instant>()
+        every { netWorthSnapshotRepository.findDistinctUserIdsCapturedSince(capture(sinceSlot)) } returns listOf("user_1")
+        val service = newService(netWorthSnapshotRepository = netWorthSnapshotRepository)
+
+        When("checking getUserIdsWithSnapshotToday") {
+            val result = service.getUserIdsWithSnapshotToday()
+
+            Then("it real-reports only that one user, so NetWorthSnapshotScheduler skips them without a per-user query") {
+                result shouldBe setOf("user_1")
             }
         }
     }
@@ -132,8 +147,7 @@ class NetWorthSnapshotTest : BehaviorSpec({
             rw.itunda.core.domain.User(id = "user_1", phoneNumber = "0780000001", firstName = "A", lastName = "One", passwordHash = "x"),
             rw.itunda.core.domain.User(id = "user_2", phoneNumber = "0780000002", firstName = "B", lastName = "Two", passwordHash = "x"),
         )
-        every { overviewService.hasSnapshotToday("user_1") } returns true
-        every { overviewService.hasSnapshotToday("user_2") } returns false
+        every { overviewService.getUserIdsWithSnapshotToday() } returns setOf("user_1")
         every { overviewService.captureSnapshot("user_2") } returns NetWorthSnapshot(id = "s1", userId = "user_2", liquidTotal = BigDecimal.ZERO)
         val scheduler = NetWorthSnapshotScheduler(userRepository, overviewService)
 
@@ -144,6 +158,12 @@ class NetWorthSnapshotTest : BehaviorSpec({
                 captured shouldBe 1
                 verify(exactly = 0) { overviewService.captureSnapshot("user_1") }
                 verify(exactly = 1) { overviewService.captureSnapshot("user_2") }
+            }
+            // Real N+1 regression test (2026-09-12): captureAll used to call
+            // hasSnapshotToday once per user inside the loop -- confirm it's now
+            // exactly ONE batched call regardless of how many real users exist.
+            Then("it checks the whole user base's snapshot status with exactly one batched call, not one per user") {
+                verify(exactly = 1) { overviewService.getUserIdsWithSnapshotToday() }
             }
         }
     }

@@ -13,11 +13,13 @@ import rw.itunda.core.repository.UserRepository
  * a snapshot is captured for every real user -- a plain DB read + write per user,
  * cheap enough not to need AiSummaryScheduler's own "small bounded batch" limit.
  *
- * `hasSnapshotToday` guards against a double-run on the same calendar day (a
- * manual re-trigger, or the job firing twice across a deploy) leaving two rows for
+ * `getUserIdsWithSnapshotToday` guards against a double-run on the same calendar day
+ * (a manual re-trigger, or the job firing twice across a deploy) leaving two rows for
  * one day -- `getNetWorthHistory` would still only read the LAST one per month, but
  * skipping the redundant write outright keeps the table honest (one row per user
- * per day, not "however many times this happened to run").
+ * per day, not "however many times this happened to run"). Checked as one batched
+ * query up front (2026-09-12 N+1 fix), not per-user inside the loop below -- see
+ * OverviewService.getUserIdsWithSnapshotToday's own doc comment.
  */
 @Component
 class NetWorthSnapshotScheduler(
@@ -33,8 +35,9 @@ class NetWorthSnapshotScheduler(
 
     fun captureAll(): Int {
         var captured = 0
+        val alreadyCapturedToday = overviewService.getUserIdsWithSnapshotToday()
         for (user in userRepository.findAll()) {
-            if (overviewService.hasSnapshotToday(user.id)) continue
+            if (user.id in alreadyCapturedToday) continue
             try {
                 overviewService.captureSnapshot(user.id)
                 captured++
