@@ -59,6 +59,15 @@
     <string name="overview_load_error">Could not load your overview.</string>
     <string name="overview_net_worth">Net worth</string>
     <string name="overview_amount_rwf">RWF %1$s</string>
+    <string name="net_worth_detail_current_total">Current total assets</string>
+    <string name="net_worth_detail_accounts">Accounts</string>
+    <string name="net_worth_detail_points">Points</string>
+    <string name="net_worth_detail_empty">You don\'t have any tracked assets yet.</string>
+    <string name="net_worth_detail_trend_title">Asset change</string>
+    <string name="net_worth_detail_trend_empty">Not enough history yet -- check back after a few days.</string>
+    <string name="net_worth_detail_trend_disclosure_a">Loans, investments, and linked external accounts aren\'t included.</string>
+    <string name="net_worth_detail_trend_disclosure_b">They\'re excluded because they\'d affect how accurate the trend is.</string>
+    <string name="net_worth_detail_history_error">Could not load your asset history.</string>
     <string name="overview_accounts">Accounts</string>
     <string name="overview_savings_title">Savings</string>
     <string name="overview_savings_value">RWF %1$s across %2$d goal(s)</string>

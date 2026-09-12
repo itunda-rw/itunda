@@ -42,6 +42,15 @@
     <string name="overview_load_error">Impossible de charger votre aperçu.</string>
     <string name="overview_net_worth">Valeur nette</string>
     <string name="overview_amount_rwf">RWF %1$s</string>
+    <string name="net_worth_detail_current_total">Total des actifs actuels</string>
+    <string name="net_worth_detail_accounts">Comptes</string>
+    <string name="net_worth_detail_points">Points</string>
+    <string name="net_worth_detail_empty">Vous n\'avez pas encore d\'actifs suivis.</string>
+    <string name="net_worth_detail_trend_title">Évolution des actifs</string>
+    <string name="net_worth_detail_trend_empty">Pas encore assez d\'historique -- revenez dans quelques jours.</string>
+    <string name="net_worth_detail_trend_disclosure_a">Les prêts, investissements et comptes externes liés ne sont pas inclus.</string>
+    <string name="net_worth_detail_trend_disclosure_b">Ils sont exclus car ils affecteraient la précision de la tendance.</string>
+    <string name="net_worth_detail_history_error">Impossible de charger l\'historique de vos actifs.</string>
     <string name="overview_accounts">Comptes</string>
     <string name="overview_savings_title">Épargne</string>
     <string name="overview_savings_value">RWF %1$s sur %2$d objectif(s)</string>

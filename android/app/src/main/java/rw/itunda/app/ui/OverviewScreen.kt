@@ -110,6 +110,9 @@ fun OverviewScreen(
     var myPhoneNumber by remember { mutableStateOf("") }
     var activeTab by remember { mutableStateOf(AssetTab.ACCOUNTS) }
     val scope = rememberCoroutineScope()
+    // Real Toss "총자산" detail screen (2026-09-12) -- tapping the net worth header
+    // opens it. See NetWorthDetailScreen.kt's own doc comment.
+    var showNetWorthDetail by remember { mutableStateOf(false) }
 
     suspend fun refresh() {
         try {
@@ -127,6 +130,11 @@ fun OverviewScreen(
         }
     }
 
+    if (showNetWorthDetail && overview != null) {
+        NetWorthDetailScreen(overview = overview!!, onBack = { showNetWorthDetail = false })
+        return
+    }
+
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(20.dp)) {
             BackTopBar(title = stringResource(R.string.overview_title), onBack = onBack)
@@ -138,7 +146,7 @@ fun OverviewScreen(
                 else item { SkeletonBlock() }
             } else {
                 item {
-                    Card(Modifier.fillMaxWidth()) {
+                    Card(Modifier.fillMaxWidth().clickable { showNetWorthDetail = true }) {
                         Column(Modifier.padding(16.dp)) {
                             Text(stringResource(R.string.overview_net_worth), style = MaterialTheme.typography.labelMedium)
                             Text(stringResource(R.string.overview_amount_rwf, current.netWorth), style = MaterialTheme.typography.headlineMedium)

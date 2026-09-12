@@ -2162,6 +2162,9 @@ data class OverviewResponse(
     val points: OverviewPointsSummaryDto,
 )
 
+data class NetWorthHistoryPointDto(val month: String, val liquidTotal: java.math.BigDecimal)
+data class NetWorthHistoryResponse(val success: Boolean, val history: List<NetWorthHistoryPointDto>)
+
 // Real external bank/MoMo account linking (rw.itunda.overview.LinkedAccountService) --
 // a real simulated per-rail verification (same ProviderConnector/RailCatalog
 // mechanism transfers/bills/airtime use), demo balance only generated when linking
@@ -4405,6 +4408,13 @@ interface ApiService {
 
     @GET("api/v1/overview")
     suspend fun getOverview(): OverviewResponse
+
+    // Real Toss "자산 변화" (asset change over time) reference (2026-09-12, direct
+    // user-supplied total-assets screenshots) -- see the backend's NetWorthSnapshot
+    // doc comment for why liquidTotal is deliberately narrower than
+    // OverviewResponse.netWorth (account balances + reward points only).
+    @GET("api/v1/overview/net-worth-history")
+    suspend fun getNetWorthHistory(): NetWorthHistoryResponse
 
     // Idempotency-Key added 2026-09-07 (Overview product-completeness pass) -- a lost
     // response after a real successful link previously created a genuine duplicate

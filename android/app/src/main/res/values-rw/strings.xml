@@ -41,6 +41,15 @@
     <string name="overview_load_error">Ntibishoboka gushaka amakuru y\'umutungo wawe.</string>
     <string name="overview_net_worth">Umutungo wose</string>
     <string name="overview_amount_rwf">RWF %1$s</string>
+    <string name="net_worth_detail_current_total">Umutungo wose ufite ubu</string>
+    <string name="net_worth_detail_accounts">Konti</string>
+    <string name="net_worth_detail_points">Amanota</string>
+    <string name="net_worth_detail_empty">Nta mutungo ukurikiranwa ufite kugeza ubu.</string>
+    <string name="net_worth_detail_trend_title">Impinduka mu mutungo</string>
+    <string name="net_worth_detail_trend_empty">Nta makuru ahagije yabitswe -- garuka nyuma y\'iminsi mike.</string>
+    <string name="net_worth_detail_trend_disclosure_a">Inguzanyo, ishoramari, na konti z\'amahanga zihujwe ntabwo bishyirwamo.</string>
+    <string name="net_worth_detail_trend_disclosure_b">Ntibishyirwamo kuko byagira ingaruka ku kuri kw\'impinduka zigaragazwa.</string>
+    <string name="net_worth_detail_history_error">Ntibyakunze gushaka amateka y\'umutungo wawe.</string>
     <string name="overview_accounts">Konti</string>
     <string name="overview_savings_title">Ubwizigame</string>
     <string name="overview_savings_value">RWF %1$s mu migambi %2$d</string>
