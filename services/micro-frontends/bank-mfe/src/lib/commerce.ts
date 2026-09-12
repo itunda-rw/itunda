@@ -220,9 +220,14 @@ export const submitProductReview = (orderItemId: string, rating: number, comment
     body: JSON.stringify({ rating, comment }),
   }).then((r) => r.review);
 
-export const fetchProductReviews = (productId: string) =>
-  apiFetch<{ success: boolean; reviews: ProductReview[] }>(`/api/v1/orders/products/${productId}/reviews`).then(
-    (r) => r.reviews,
+// Real pagination-discard fix (2026-09-12, same systemic gap fixed for
+// my-orders/merchant-orders/return-requests/inquiries above -- see
+// project_itunda_pagination_discard_sweep memory) -- OrderController's real
+// Pageable/pageMeta endpoint was always there; page just wasn't ever sent,
+// silently capping a popular product's reviews at the most recent 20.
+export const fetchProductReviews = (productId: string, page = 0) =>
+  apiFetch<{ success: boolean; reviews: ProductReview[]; page: number; totalPages: number }>(
+    `/api/v1/orders/products/${productId}/reviews?page=${page}&size=20`,
   );
 
 // Real Coupang-style pre-purchase product Q&A (상품문의) (2026-07-26) -- see

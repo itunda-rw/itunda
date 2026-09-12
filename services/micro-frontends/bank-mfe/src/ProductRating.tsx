@@ -7,6 +7,11 @@ export function ProductRatingBadge({ productId }: { productId: string }) {
   const [rating, setRating] = useState<{ average: number | null; count: number } | null>(null);
   const [open, setOpen] = useState(false);
   const [reviews, setReviews] = useState<ProductReview[] | null>(null);
+  // Real pagination-discard fix (2026-09-12) -- see lib/commerce.ts's own doc
+  // comment on fetchProductReviews.
+  const [reviewsPage, setReviewsPage] = useState(0);
+  const [reviewsHasMore, setReviewsHasMore] = useState(false);
+  const [loadingMoreReviews, setLoadingMoreReviews] = useState(false);
   // Real "도움돼요" (helpful) toggle (2026-08-25) -- see lib/commerce.ts's own doc
   // comment, mirrors RestaurantRatingBadge's own identical treatment exactly.
   const [helpfulVoted, setHelpfulVoted] = useState<Set<string>>(new Set());
@@ -35,8 +40,23 @@ export function ProductRatingBadge({ productId }: { productId: string }) {
     const next = !open;
     setOpen(next);
     if (next && reviews === null) {
-      fetchProductReviews(productId).then(setReviews).catch(() => setReviews([]));
+      fetchProductReviews(productId, 0)
+        .then((r) => { setReviews(r.reviews); setReviewsHasMore(r.page + 1 < r.totalPages); })
+        .catch(() => setReviews([]));
     }
+  };
+
+  const loadMoreReviews = () => {
+    const nextPage = reviewsPage + 1;
+    setLoadingMoreReviews(true);
+    fetchProductReviews(productId, nextPage)
+      .then((r) => {
+        setReviews((prev) => [...(prev ?? []), ...r.reviews]);
+        setReviewsPage(nextPage);
+        setReviewsHasMore(r.page + 1 < r.totalPages);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreReviews(false));
   };
 
   if (!rating || rating.count === 0) return null;
@@ -74,6 +94,14 @@ export function ProductRatingBadge({ productId }: { productId: string }) {
                 </button>
               </div>
             ))
+          )}
+          {reviewsHasMore && (
+            <button
+              type="button" onClick={loadMoreReviews} disabled={loadingMoreReviews}
+              style={{ alignSelf: 'flex-start', fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', padding: 0 }}
+            >
+              {loadingMoreReviews ? 'Loading…' : 'Load more reviews'}
+            </button>
           )}
         </div>
       )}
