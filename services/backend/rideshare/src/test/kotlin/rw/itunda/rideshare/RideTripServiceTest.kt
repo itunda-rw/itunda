@@ -893,7 +893,13 @@ class RideTripServiceTest : BehaviorSpec({
     Given("a real DRIVER_ASSIGNED trip its own driver wants to cancel before pickup") {
         val rideDriverRepository = mockk<RideDriverRepository>()
         val rideTripRepository = mockk<RideTripRepository>()
-        val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(
+            rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
+        )
 
         val driver = RideDriver(id = "driver_cancel_2", userId = "driver_user_cancel_2", accountId = "account_driver_cancel_2", available = true, licenseNumber = "LIC-TEST")
         val nearbyDriver = RideDriver(id = "driver_next", userId = "driver_user_next", accountId = "account_next", available = true, currentLatitude = -1.95, currentLongitude = 30.06, licenseNumber = "LIC-TEST")
@@ -917,6 +923,15 @@ class RideTripServiceTest : BehaviorSpec({
             Then("it real-excludes this driver and redispatches to the next real nearby driver, no fee involved") {
                 result.excludedDriverUserIds shouldBe "driver_user_cancel_2"
                 savedSlot.captured.offeredDriverId shouldBe "driver_next"
+            }
+
+            // Real sibling-asymmetry fix (2026-09-13, against acceptTrip's own
+            // already-verified passenger notification above).
+            Then("it real-alerts the passenger that their driver had to cancel") {
+                verify(exactly = 1) {
+                    notificationRepository.save(match { it.userId == "passenger_dc" && it.type == "RIDE_TRIP_UPDATE" })
+                }
+                verify(exactly = 1) { pushNotificationService.sendToUser("passenger_dc", any(), any(), any()) }
             }
         }
     }

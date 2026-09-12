@@ -511,6 +511,24 @@ class RideTripService(
         trip.updatedAt = Instant.now()
         val saved = rideTripRepository.save(trip)
         dispatchToNextDriver(saved)
+
+        // Real sibling-asymmetry fix (2026-09-13) -- acceptTrip above notifies the
+        // passenger the moment a driver is assigned ("Driver assigned"); this is the
+        // real undo of that exact same state, yet sent nothing. A passenger just told
+        // "a driver is on the way" otherwise sees the app silently searching again
+        // with no explanation for why.
+        run {
+            val title = "Finding a new driver"
+            val body = "Your driver had to cancel. We're finding you another one."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = saved.passengerId, type = "RIDE_TRIP_UPDATE",
+                    title = title, body = body,
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${saved.id}\"}",
+                ),
+            )
+            sendTripPushAfterCommit(saved.passengerId, title, body, saved.id)
+        }
         return saved
     }
 
