@@ -15,6 +15,7 @@ import rw.itunda.core.domain.Agent
 import rw.itunda.core.domain.AgentCashIn
 import rw.itunda.core.domain.AgentCashOut
 import rw.itunda.core.domain.AgentOperator
+import rw.itunda.core.domain.AgentTillFunding
 import rw.itunda.core.domain.AgentTillReconciliation
 import rw.itunda.core.domain.TillReconciliationStatus
 import rw.itunda.core.domain.EmailVerificationToken
@@ -363,6 +364,10 @@ interface AgentTillReconciliationRepository : JpaRepository<AgentTillReconciliat
     fun findByAgentIdAndBusinessDate(agentId: String, businessDate: LocalDate): AgentTillReconciliation?
     fun findByStatusOrderByCreatedAtDesc(status: TillReconciliationStatus): List<AgentTillReconciliation>
     fun findByBusinessDateBetweenOrderByCreatedAtDesc(from: LocalDate, to: LocalDate): List<AgentTillReconciliation>
+}
+
+interface AgentTillFundingRepository : JpaRepository<AgentTillFunding, String> {
+    fun findByAgentIdOrderByCreatedAtDesc(agentId: String): List<AgentTillFunding>
 }
 
 // TransactionRepository extracted to its own file, TransactionRepository.kt

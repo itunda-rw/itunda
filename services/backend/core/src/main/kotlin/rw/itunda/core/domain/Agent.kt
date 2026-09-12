@@ -154,3 +154,23 @@ class AgentTillReconciliation(
     @Column(name = "reviewed_at") var reviewedAt: Instant? = null,
     @Column(name = "created_at", nullable = false) val createdAt: Instant = Instant.now(),
 ) { protected constructor() : this("", "", LocalDate.MIN, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, "", TillReconciliationStatus.MATCHED) }
+
+/**
+ * Immutable audit row for real cash float sent to an agent's till -- real admin-
+ * accountability gap closed (2026-09-12): unlike cashIn/cashOut (which record who
+ * accepted/paid, albeit primarily for real commission routing) and till reconciliation
+ * (reviewedByUserId), funding a till previously left zero record of which admin
+ * created that real spendable balance, the single highest-stakes action in this whole
+ * admin surface. Same immutable-receipt-row shape as AgentCashIn/AgentCashOut.
+ */
+@Entity
+@Table(name = "agent_till_fundings")
+class AgentTillFunding(
+    @Id @Column(length = 64) val id: String,
+    @Column(name = "agent_id", nullable = false, length = 64) val agentId: String,
+    @Column(name = "ledger_transaction_id", nullable = false, unique = true, length = 64) val ledgerTransactionId: String,
+    @Column(nullable = false, precision = 18, scale = 2) val amount: BigDecimal,
+    @Column(nullable = false, length = 80) val reference: String,
+    @Column(name = "funded_by_user_id", nullable = false, length = 64) val fundedByUserId: String,
+    @Column(name = "created_at", nullable = false) val createdAt: Instant = Instant.now(),
+) { protected constructor() : this("", "", "", BigDecimal.ZERO, "", "") }

@@ -17,6 +17,7 @@ import rw.itunda.core.repository.AgentCashInRepository
 import rw.itunda.core.repository.AgentCashOutRepository
 import rw.itunda.core.repository.AgentOperatorRepository
 import rw.itunda.core.repository.AgentRepository
+import rw.itunda.core.repository.AgentTillFundingRepository
 import rw.itunda.core.repository.AgentTillReconciliationRepository
 import rw.itunda.core.repository.LedgerAccountRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -30,7 +31,7 @@ import java.util.Optional
 class AgentTillReconciliationReviewTest : BehaviorSpec({
     val reconciliations = mockk<AgentTillReconciliationRepository>()
     val service = AgentService(
-        mockk<AgentRepository>(), mockk<AgentOperatorRepository>(), reconciliations,
+        mockk<AgentRepository>(), mockk<AgentOperatorRepository>(), reconciliations, mockk<AgentTillFundingRepository>(),
         mockk<AgentCashInRepository>(), mockk<AgentCashOutRepository>(), mockk<AccountRepository>(),
         mockk<LedgerAccountRepository>(), mockk<LedgerService>(), mockk<TransactionRepository>(),
         mockk<UserRepository>(), mockk<AgentWithdrawalAuthorizationService>(), mockk<NotificationRepository>(), mockk<PushNotificationService>(relaxed = true), mockk<FraudRuleEngine>(relaxed = true), mockk<RateLimiter>(relaxed = true),

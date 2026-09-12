@@ -10,6 +10,7 @@ import rw.itunda.core.domain.AgentCashIn
 import rw.itunda.core.domain.AgentCashOut
 import rw.itunda.core.domain.AgentStatus
 import rw.itunda.core.domain.AgentOperator
+import rw.itunda.core.domain.AgentTillFunding
 import rw.itunda.core.domain.AgentTillReconciliation
 import rw.itunda.core.domain.TillReconciliationStatus
 import rw.itunda.core.domain.LedgerAccount
@@ -29,6 +30,7 @@ import rw.itunda.core.repository.AgentCashInRepository
 import rw.itunda.core.repository.AgentCashOutRepository
 import rw.itunda.core.repository.AgentRepository
 import rw.itunda.core.repository.AgentOperatorRepository
+import rw.itunda.core.repository.AgentTillFundingRepository
 import rw.itunda.core.repository.AgentTillReconciliationRepository
 import rw.itunda.core.repository.LedgerAccountRepository
 import rw.itunda.core.repository.TransactionRepository
@@ -91,6 +93,7 @@ class AgentService(
     private val agentRepository: AgentRepository,
     private val agentOperatorRepository: AgentOperatorRepository,
     private val tillReconciliationRepository: AgentTillReconciliationRepository,
+    private val agentTillFundingRepository: AgentTillFundingRepository,
     private val agentCashInRepository: AgentCashInRepository,
     private val agentCashOutRepository: AgentCashOutRepository,
     private val accountRepository: AccountRepository,
@@ -144,7 +147,7 @@ class AgentService(
     }
 
     @Transactional
-    fun fundTill(agentId: String, amount: BigDecimal, reference: String): Map<String, Any?> {
+    fun fundTill(agentId: String, amount: BigDecimal, reference: String, fundedByUserId: String): Map<String, Any?> {
         require(amount > BigDecimal.ZERO) { "Till funding amount must be greater than zero" }
         val trimmedReference = reference.trim()
         require(trimmedReference.length in 3..80) { "Funding reference must be between 3 and 80 characters" }
@@ -155,6 +158,17 @@ class AgentService(
             listOf(
                 LedgerLeg(agent.cashAccountId, LedgerAccountType.AGENT_CASH, LedgerDirection.DEBIT, amount, "Till float received: $trimmedReference"),
                 LedgerLeg("cash_vault", LedgerAccountType.CASH_VAULT, LedgerDirection.CREDIT, amount, "Till float sent to ${agent.displayName}: $trimmedReference"),
+            ),
+        )
+        // Real admin-accountability gap closed (2026-09-12, sibling-asymmetry check
+        // against resolveTillReconciliation's own reviewedByUserId just below) --
+        // funding a till creates real spendable balance, the highest-stakes action in
+        // this whole admin surface, yet previously left zero record of which admin
+        // acted. Same immutable-receipt-row shape as AgentCashIn/AgentCashOut.
+        agentTillFundingRepository.save(
+            AgentTillFunding(
+                id = "agenttillfund_${UUID.randomUUID()}", agentId = agent.id, ledgerTransactionId = result.transactionId,
+                amount = amount, reference = trimmedReference, fundedByUserId = fundedByUserId,
             ),
         )
         return mapOf("agent" to agent, "ledgerTransactionId" to result.transactionId, "amount" to amount, "reference" to trimmedReference)

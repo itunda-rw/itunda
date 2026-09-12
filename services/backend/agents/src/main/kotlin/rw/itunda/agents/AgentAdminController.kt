@@ -68,14 +68,19 @@ class AgentAdminController(
         @RequestBody request: SetAgentOperatorStatusRequest,
     ) = ResponseEntity.ok(mapOf("success" to true, "operator" to agentService.setOperatorStatus(agentId, userId, request.isActive)))
 
+    // Real admin-accountability gap closed (2026-09-12) -- this real till-funding
+    // endpoint previously took no admin identity at all, unlike its siblings
+    // resolveTillReconciliation/cashIn/cashOut right below, which already thread
+    // currentUser.userId through.
     @PostMapping("/{agentId}/float")
     fun fundTill(
         @PathVariable agentId: String,
         @RequestBody request: FundAgentTillRequest,
         @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/system/agents/$agentId/float", idempotencyKey, request) {
-            200 to (mapOf("success" to true) + agentService.fundTill(agentId, request.amount, request.reference))
+            200 to (mapOf("success" to true) + agentService.fundTill(agentId, request.amount, request.reference, currentUser.userId))
         }
         return ResponseEntity.status(status).body(body)
     }

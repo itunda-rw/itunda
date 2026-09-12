@@ -22,6 +22,7 @@ import rw.itunda.core.repository.AgentCashInRepository
 import rw.itunda.core.repository.AgentCashOutRepository
 import rw.itunda.core.repository.AgentRepository
 import rw.itunda.core.repository.AgentOperatorRepository
+import rw.itunda.core.repository.AgentTillFundingRepository
 import rw.itunda.core.repository.AgentTillReconciliationRepository
 import rw.itunda.core.repository.LedgerAccountRepository
 import rw.itunda.core.repository.TransactionRepository
@@ -41,6 +42,7 @@ class AgentCashOutServiceTest : BehaviorSpec({
         val cashOutRepository = mockk<AgentCashOutRepository>()
         val operatorRepository = mockk<AgentOperatorRepository>()
         val tillReconciliationRepository = mockk<AgentTillReconciliationRepository>()
+        val agentTillFundingRepository = mockk<AgentTillFundingRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerAccountRepository = mockk<LedgerAccountRepository>()
         val ledgerService = mockk<LedgerService>()
@@ -51,9 +53,9 @@ class AgentCashOutServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = AgentService(agentRepository, operatorRepository, tillReconciliationRepository, cashInRepository, cashOutRepository, accountRepository, ledgerAccountRepository, ledgerService, transactionRepository, userRepository, withdrawalAuthorizationService, notificationRepository, pushNotificationService, fraudRuleEngine, rateLimiter)
+        val service = AgentService(agentRepository, operatorRepository, tillReconciliationRepository, agentTillFundingRepository, cashInRepository, cashOutRepository, accountRepository, ledgerAccountRepository, ledgerService, transactionRepository, userRepository, withdrawalAuthorizationService, notificationRepository, pushNotificationService, fraudRuleEngine, rateLimiter)
         val agent = Agent("agent_1", "Kigali Central", "agent_cash_1", AgentStatus.ACTIVE, BigDecimal("100000"), BigDecimal("80000"))
-        val account = Account("account_1", "user_1", "2024100001", "Jean Main", AccountType.MAIN, BigDecimal("50000"), BigDecimal("50000"))
+        val account = Account(id = "account_1", userId = "user_1", accountNumber = "2024100001", accountName = "Jean Main", type = AccountType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"))
         every { cashOutRepository.existsByReceiptNumber("KGL-W-001") } returns false
         every { cashInRepository.existsByReceiptNumber("KGL-W-001") } returns false
         every { agentRepository.findByIdForUpdate(agent.id) } returns Optional.of(agent)
@@ -112,6 +114,7 @@ class AgentCashOutServiceTest : BehaviorSpec({
         val cashOutRepository = mockk<AgentCashOutRepository>()
         val operatorRepository = mockk<AgentOperatorRepository>()
         val tillReconciliationRepository = mockk<AgentTillReconciliationRepository>()
+        val agentTillFundingRepository = mockk<AgentTillFundingRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerAccountRepository = mockk<LedgerAccountRepository>()
         val ledgerService = mockk<LedgerService>()
@@ -124,7 +127,7 @@ class AgentCashOutServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit("agent:cash-out:agent_1", limit = 30, window = java.time.Duration.ofMinutes(1)) } throws
             rw.itunda.auth.RateLimitExceededException("Too many requests")
-        val service = AgentService(agentRepository, operatorRepository, tillReconciliationRepository, cashInRepository, cashOutRepository, accountRepository, ledgerAccountRepository, ledgerService, transactionRepository, userRepository, withdrawalAuthorizationService, notificationRepository, pushNotificationService, fraudRuleEngine, rateLimiter)
+        val service = AgentService(agentRepository, operatorRepository, tillReconciliationRepository, agentTillFundingRepository, cashInRepository, cashOutRepository, accountRepository, ledgerAccountRepository, ledgerService, transactionRepository, userRepository, withdrawalAuthorizationService, notificationRepository, pushNotificationService, fraudRuleEngine, rateLimiter)
 
         Then("cash-out real-429s before ever locking the agent row or touching the ledger") {
             io.kotest.assertions.throwables.shouldThrow<rw.itunda.auth.RateLimitExceededException> {
