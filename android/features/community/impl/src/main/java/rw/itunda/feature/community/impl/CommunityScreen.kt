@@ -51,7 +51,6 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
-import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.IdsButton
@@ -62,16 +61,13 @@ import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.itundaface.HeartFilled
 import rw.itunda.core.designsystem.itundaface.SpeechBubbleGlyph
-import rw.itunda.core.designsystem.itundaface.WishlistHeart
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
 import rw.itunda.core.designsystem.components.ScrollFog
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.relativeTimeAgo
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
 import rw.itunda.core.designsystem.theme.Ids
-import rw.itunda.core.network.AddCommunityCommentRequest
 import rw.itunda.core.network.CommunityCategoryDto
-import rw.itunda.core.network.CommunityCommentWithAuthorDto
 import rw.itunda.core.network.CommunityPostDto
 import rw.itunda.core.network.CreateCommunityPostRequest
 import rw.itunda.core.network.FinalizeGroupBuyRequest
@@ -751,113 +747,6 @@ private fun CommunityPostCard(
         }
     }
 }
-
-@Composable
-private fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
-    val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
-    var post by remember { mutableStateOf<CommunityPostDto?>(null) }
-    var authorName by remember { mutableStateOf("") }
-    var likedByMe by remember { mutableStateOf(false) }
-    var comments by remember { mutableStateOf<List<CommunityCommentWithAuthorDto>?>(null) }
-    var commentBody by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf<String?>(null) }
-    var liking by remember { mutableStateOf(false) }
-    var commenting by remember { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
-
-    fun load() {
-        coroutineScope.launch {
-            try {
-                val detail = NetworkClient.apiService.getCommunityPost(postId)
-                post = detail.post; authorName = detail.authorName; likedByMe = detail.likedByMe
-            } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
-            } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
-            }
-            try {
-                comments = NetworkClient.apiService.getCommunityComments(postId).comments
-            } catch (e: Exception) { /* non-critical -- the post itself still renders */ }
-        }
-    }
-    LaunchedEffect(postId) { load() }
-
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
-        BackTopBar("Post", onBack)
-        Spacer(modifier = Modifier.height(12.dp))
-        error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
-        post?.let { p ->
-            // Real fix (flat-design sweep): dropped the Card wrapper -- this is the
-            // screen's own main content, not a separate module.
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(p.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                    Text("by $authorName", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                    Text(p.body, color = Ids.colors.textPrimary, fontSize = 14.sp)
-                    ListingActionButton("${p.likeCount}", liking, icon = { WishlistHeart(favorited = likedByMe, size = 14.dp) }) {
-                        liking = true
-                        coroutineScope.launch {
-                            try {
-                                val liked = NetworkClient.apiService.toggleCommunityLike(postId).liked
-                                likedByMe = liked
-                                post = p.copy(likeCount = p.likeCount + if (liked) 1 else -1)
-                            } catch (e: HttpException) {
-                                error = superAppErrorMessage(e)
-                            } finally {
-                                liking = false
-                            }
-                        }
-                    }
-                }
-        }
-        post?.takeIf { it.category == "meetup" }?.let { p -> MeetupSessionsSection(post = p, currentUserId = currentUserId) }
-        post?.takeIf { it.category == "group_buy" }?.let { p -> GroupBuyFinalizeSection(post = p, currentUserId = currentUserId) }
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("Comments", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-        Spacer(modifier = Modifier.height(8.dp))
-        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (comments == null) {
-                item { SkeletonBlock() }
-            } else if (comments!!.isEmpty()) {
-                item { EmptyState("No comments yet -- be the first to reply.", icon = Icons.AutoMirrored.Outlined.Comment) }
-            } else {
-                items(comments!!, key = { it.comment.id }) { c ->
-                    // Real fix (flat-design sweep): dropped the per-row Card -- a
-                    // comment list separates entries with spacing alone.
-                    Column {
-                            Text(c.authorName, color = Ids.colors.textSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                            Text(c.comment.body, color = Ids.colors.textPrimary, fontSize = 13.sp)
-                    }
-                }
-            }
-        }
-        Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            IdsTextField(
-                value = commentBody, onValueChange = { commentBody = it }, label = "Add a comment",
-                singleLine = true, modifier = Modifier.weight(1f),
-            )
-            Box(
-                modifier = Modifier
-                    .background(if (commentBody.isBlank()) Ids.colors.textSecondary else Ids.colors.brand, RoundedCornerShape(10.dp))
-                    .pressScaleClickable(enabled = !commenting && commentBody.isNotBlank()) {
-                        commenting = true
-                        coroutineScope.launch {
-                            try {
-                                NetworkClient.apiService.addCommunityComment(postId, AddCommunityCommentRequest(commentBody))
-                                commentBody = ""
-                                load()
-                            } catch (e: HttpException) {
-                                error = superAppErrorMessage(e)
-                            } finally {
-                                commenting = false
-                            }
-                        }
-                    }
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-            ) { Text(if (commenting) "…" else "Send", color = Color.White, fontSize = 13.sp) }
-        }
-    }
-}
-
 
 // Real Karrot 동네생활 "새 댓글 알림 끄기" (turn off new-comment notifications) -- ported
 // from bank-mfe (2026-09-03, real gap: fully built on the backend, wired on web, zero

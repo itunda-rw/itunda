@@ -1142,7 +1142,7 @@ data class SetCommentNotificationsEnabledRequest(val enabled: Boolean)
 data class CommunityPostDetailResponse(val success: Boolean, val post: CommunityPostDto, val authorName: String, val likedByMe: Boolean)
 data class CommunityCommentDto(val id: String, val postId: String, val authorId: String, val body: String, val createdAt: String)
 data class CommunityCommentWithAuthorDto(val comment: CommunityCommentDto, val authorName: String)
-data class CommunityCommentsResponse(val success: Boolean, val comments: List<CommunityCommentWithAuthorDto>)
+data class CommunityCommentsResponse(val success: Boolean, val comments: List<CommunityCommentWithAuthorDto>, val page: Int = 0, val totalPages: Int = 1)
 data class AddCommunityCommentRequest(val body: String)
 data class CommunityCommentResponse(val success: Boolean, val comment: CommunityCommentDto)
 data class ToggleCommunityLikeResponse(val success: Boolean, val liked: Boolean)
@@ -3454,7 +3454,7 @@ interface ApiService {
     suspend fun removeCommunityPost(@Path("id") postId: String): CommunityPostResponse
 
     @GET("api/v1/community/posts/{id}/comments")
-    suspend fun getCommunityComments(@Path("id") postId: String): CommunityCommentsResponse
+    suspend fun getCommunityComments(@Path("id") postId: String, @Query("page") page: Int = 0, @Query("size") size: Int = 20): CommunityCommentsResponse
 
     @POST("api/v1/community/posts/{id}/comments")
     suspend fun addCommunityComment(@Path("id") postId: String, @Body request: AddCommunityCommentRequest): CommunityCommentResponse
