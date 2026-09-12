@@ -156,6 +156,10 @@ class StudentLoanService(
 
     @Transactional
     fun repay(userId: String, loanId: String, amount: BigDecimal): StudentLoan {
+        // Real anti-spam/cost limit -- same "frequent, repeatable money-movement action"
+        // convention LoansService.repayLoan/OverdraftService.repay already establish,
+        // never wired in here until now.
+        rateLimiter.checkLimit("student-loan:repay:$userId", limit = 30, window = Duration.ofHours(1))
         val loan = studentLoanRepository.findById(loanId).orElseThrow { StudentLoanNotFoundException("Student loan not found") }
         if (loan.userId != userId) throw StudentLoanNotFoundException("Student loan not found")
         // IN_GRACE_PERIOD/REQUESTED/DISBURSED are explicitly NOT repayable -- repayment

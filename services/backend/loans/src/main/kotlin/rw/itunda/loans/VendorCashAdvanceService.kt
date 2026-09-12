@@ -293,6 +293,10 @@ class VendorCashAdvanceService(
 
     @Transactional
     fun repayEarly(userId: String, advanceId: String, amount: BigDecimal): VendorCashAdvance {
+        // Real anti-spam/cost limit -- same "frequent, repeatable money-movement action"
+        // convention LoansService.repayLoan/OverdraftService.repay already establish,
+        // never wired in here until now.
+        rateLimiter.checkLimit("vendor-advance:repay-early:$userId", limit = 30, window = Duration.ofHours(1))
         val (advance, merchant) = getOwnedAdvance(userId, advanceId)
         if (advance.status != VendorCashAdvanceStatus.DISBURSED) {
             throw VendorCashAdvanceNotRepayableException("Only a DISBURSED vendor cash advance can be repaid")

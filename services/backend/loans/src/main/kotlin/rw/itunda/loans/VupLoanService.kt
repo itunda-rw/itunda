@@ -138,6 +138,10 @@ class VupLoanService(
 
     @Transactional
     fun repay(userId: String, loanId: String, amount: BigDecimal): VupLoan {
+        // Real anti-spam/cost limit -- same "frequent, repeatable money-movement action"
+        // convention LoansService.repayLoan/OverdraftService.repay already establish,
+        // never wired in here until now.
+        rateLimiter.checkLimit("vup-loan:repay:$userId", limit = 30, window = Duration.ofHours(1))
         val loan = vupLoanRepository.findById(loanId).orElseThrow { VupLoanNotFoundException("VUP loan not found") }
         if (loan.userId != userId) throw VupLoanNotFoundException("VUP loan not found")
         if (loan.status != VupLoanStatus.DISBURSED && loan.status != VupLoanStatus.OVERDUE) {

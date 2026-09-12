@@ -24,6 +24,7 @@ import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.VendorCashAdvanceRepository
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.Instant
 import java.util.Optional
 
@@ -239,9 +240,10 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
         val merchantRepository = mockk<MerchantRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = newService(
             vendorCashAdvanceRepository = vendorCashAdvanceRepository, merchantRepository = merchantRepository,
-            accountRepository = accountRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService, rateLimiter = rateLimiter,
         )
 
         val m = merchant("merchant_5", "user_1", "account_5")
@@ -269,6 +271,12 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
                             legs.any { it.accountId == "loan_payable" && it.accountType == LedgerAccountType.LOAN_PAYABLE && it.direction == LedgerDirection.CREDIT }
                     })
                 }
+            }
+
+            // Real gap found live (sibling comparison against LoansService.repayLoan/
+            // OverdraftService.repay, 2026-09-13): repayEarly had no rate limit at all.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("vendor-advance:repay-early:user_1", limit = 30, window = Duration.ofHours(1)) }
             }
         }
 

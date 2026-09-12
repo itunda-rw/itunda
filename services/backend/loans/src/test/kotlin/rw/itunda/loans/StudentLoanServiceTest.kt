@@ -24,6 +24,7 @@ import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.StudentLoanRepository
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.util.Optional
@@ -260,7 +261,8 @@ class StudentLoanServiceTest : BehaviorSpec({
         val studentLoanRepository = mockk<StudentLoanRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(studentLoanRepository = studentLoanRepository, accountRepository = accountRepository, ledgerService = ledgerService)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = newService(studentLoanRepository = studentLoanRepository, accountRepository = accountRepository, ledgerService = ledgerService, rateLimiter = rateLimiter)
 
         val loan = StudentLoan(
             id = "studentloan_5", userId = "user_1", level = StudentLoanLevel.UNDERGRADUATE,
@@ -279,6 +281,12 @@ class StudentLoanServiceTest : BehaviorSpec({
             Then("the loan stays REPAYING with a real reduced outstanding balance") {
                 result.status shouldBe StudentLoanStatus.REPAYING
                 result.outstandingBalance shouldBe BigDecimal("300000")
+            }
+
+            // Real gap found live (sibling comparison against LoansService.repayLoan/
+            // OverdraftService.repay, 2026-09-13): repay had no rate limit at all.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("student-loan:repay:user_1", limit = 30, window = Duration.ofHours(1)) }
             }
         }
 
