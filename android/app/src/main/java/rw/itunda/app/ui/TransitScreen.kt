@@ -33,6 +33,9 @@ import retrofit2.HttpException
 import rw.itunda.app.R
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -67,6 +70,13 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
     var mode by remember { mutableStateOf(TransitMode.LOADING) }
     var balance by remember { mutableStateOf<TransitBalanceDto?>(null) }
     var trips by remember { mutableStateOf<List<TransitTripDto>>(emptyList()) }
+    // Real pagination-discard fix (2026-09-13, see project_itunda_pagination_discard_sweep
+    // memory) -- getTransitTrips already supported page/size and totalPages, but this
+    // screen only ever fetched page 0, permanently capping ride history at the most
+    // recent 20 taps.
+    var tripsPage by remember { mutableStateOf(0) }
+    var tripsHasMore by remember { mutableStateOf(false) }
+    var loadingMoreTrips by remember { mutableStateOf(false) }
     var topUpAmount by remember { mutableStateOf("1000") }
     var operator by remember { mutableStateOf(TRANSIT_OPERATORS[0]) }
     var fare by remember { mutableStateOf(MIN_FARE.toFloat()) }
@@ -86,7 +96,10 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
             try {
                 balance = NetworkClient.apiService.getMyTransitBalance().balance
                 mode = TransitMode.ACTIVE
-                trips = runCatching { NetworkClient.apiService.getTransitTrips().trips }.getOrDefault(emptyList())
+                val res = runCatching { NetworkClient.apiService.getTransitTrips(page = 0) }.getOrNull()
+                trips = res?.trips ?: emptyList()
+                tripsPage = 0
+                tripsHasMore = (res?.totalPages ?: 1) > 1
             } catch (e: HttpException) {
                 if (apiErrorCode(e) == "TRANSIT_NO_ACCOUNT") {
                     mode = TransitMode.NO_BALANCE
@@ -99,6 +112,24 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
         }
     }
     LaunchedEffect(Unit) { load() }
+
+    fun loadMoreTrips() {
+        val nextPage = tripsPage + 1
+        loadingMoreTrips = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getTransitTrips(page = nextPage)
+                trips = trips + res.trips
+                tripsPage = nextPage
+                tripsHasMore = nextPage + 1 < res.totalPages
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded trips stay visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMoreTrips = false
+            }
+        }
+    }
 
     fun topUp() {
         val amount = topUpAmount.trim().toBigDecimalOrNull()
@@ -265,6 +296,17 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
                                         Text(trip.createdAt, fontSize = 11.sp, color = Ids.colors.textSecondary)
                                     }
                                     Text("${formatMoneyTransit(trip.fare)} RWF", fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                }
+                            }
+                            if (tripsHasMore) {
+                                item {
+                                    IdsButton(
+                                        text = if (loadingMoreTrips) "Loading…" else "Load more",
+                                        onClick = ::loadMoreTrips,
+                                        enabled = !loadingMoreTrips,
+                                        variant = IdsButtonVariant.Tinted,
+                                        size = IdsButtonSize.Medium,
+                                    )
                                 }
                             }
                         }
