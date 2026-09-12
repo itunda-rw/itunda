@@ -18,11 +18,7 @@ import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.RateReview
-import androidx.compose.material.icons.outlined.Restaurant
-import androidx.compose.material.icons.outlined.Storefront
 import rw.itunda.core.designsystem.theme.IdsIcons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -43,104 +39,18 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.EmptyState
-import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.IdsTextField
-import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.StarGold
 import rw.itunda.core.designsystem.components.StarRatingRow
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.EatsOrderDto
 import rw.itunda.core.network.EatsRatingResponse
 import rw.itunda.core.network.EatsReviewDto
-import rw.itunda.core.network.FavoriteRestaurantDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.ReportEatsReviewRequest
 import rw.itunda.core.network.SubmitEatsReviewRequest
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
-
-
-
-
-@Composable
-internal fun FavoriteRestaurantsView(onOpen: (FavoriteRestaurantDto) -> Unit, onChanged: () -> Unit) {
-    var favorites by remember { mutableStateOf<List<FavoriteRestaurantDto>?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var removingId by remember { mutableStateOf<String?>(null) }
-    val coroutineScope = rememberCoroutineScope()
-
-    fun load() {
-        coroutineScope.launch {
-            try {
-                val res = NetworkClient.apiService.getMyFavoriteRestaurants()
-                if (res.success) favorites = res.favorites
-                error = null
-            } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
-            } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
-            }
-        }
-    }
-    LaunchedEffect(Unit) { load() }
-
-    fun remove(restaurantId: String) {
-        removingId = restaurantId
-        coroutineScope.launch {
-            try {
-                NetworkClient.apiService.removeFavoriteRestaurant(restaurantId)
-                favorites = favorites?.filterNot { it.restaurantId == restaurantId }
-                onChanged()
-            } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
-            } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
-            } finally {
-                removingId = null
-            }
-        }
-    }
-
-    when {
-        error != null -> ErrorCard(error!!, onRetry = ::load)
-        favorites == null -> SkeletonBlock()
-        favorites!!.isEmpty() -> EmptyState("No favorite restaurants yet. Tap the heart on a restaurant to save it here.", icon = Icons.Outlined.FavoriteBorder)
-        else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            favorites!!.forEach { f ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
-                        .background(Ids.colors.surface)
-                        .pressScaleClickable { onOpen(f) }
-                        .padding(18.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.Storefront, contentDescription = null, modifier = Modifier.size(20.dp), tint = Ids.colors.brand)
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(f.businessName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text(
-                            if (f.category != null) "${f.category} · Real menu, real delivery" else "Real menu, real delivery",
-                            color = Ids.colors.textSecondary,
-                            fontSize = 12.sp,
-                        )
-                    }
-                    Icon(
-                        Icons.Filled.Favorite,
-                        contentDescription = "Remove from favorites",
-                        tint = Ids.colors.danger,
-                        modifier = Modifier
-                            .size(22.dp)
-                            .pressScaleClickable(enabled = removingId != f.restaurantId) { remove(f.restaurantId) },
-                    )
-                }
-            }
-        }
-    }
-}
 
 // Real written-review list + owner-reply display (item 184/185) -- bank-mfe already has
 // this (item 184); this is the first Android client. Mirrors ProductRatingBadge's own

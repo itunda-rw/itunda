@@ -2060,7 +2060,7 @@ data class RiderResponse(val success: Boolean, val rider: RiderDto)
 // Real bookmarked/favorited restaurants (2026-07-19) -- add/remove are both idempotent
 // on the backend, see EatsFavoriteService.kt's own doc comment.
 data class FavoriteRestaurantDto(val restaurantId: String, val businessName: String, val category: String?, val favoritedAt: String)
-data class FavoriteRestaurantsResponse(val success: Boolean, val favorites: List<FavoriteRestaurantDto>)
+data class FavoriteRestaurantsResponse(val success: Boolean, val favorites: List<FavoriteRestaurantDto>, val page: Int = 0, val totalPages: Int = 1, val totalElements: Int = 0)
 data class AddFavoriteResponse(val success: Boolean)
 
 // Real Karrot "이 글 숨기기" (hide this post) -- the client only needs to know the call
@@ -4339,7 +4339,7 @@ interface ApiService {
     suspend fun removeFavoriteRestaurant(@Path("id") restaurantId: String): RemoveFavoriteResponse
 
     @GET("api/v1/eats/favorites")
-    suspend fun getMyFavoriteRestaurants(): FavoriteRestaurantsResponse
+    suspend fun getMyFavoriteRestaurants(@Query("page") page: Int = 0, @Query("size") size: Int = 20): FavoriteRestaurantsResponse
 
     // Real Baemin Club (배민클럽)-style free-delivery membership (item 209) -- backend
     // real since 2026-07-26, bank-mfe client since 2026-07-28 (item 102); this is the
