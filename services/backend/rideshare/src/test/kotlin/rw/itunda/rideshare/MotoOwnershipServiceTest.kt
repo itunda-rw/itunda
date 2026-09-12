@@ -19,6 +19,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.MotoOwnershipPlanRepository
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
+import java.time.Duration
 import java.util.Optional
 
 /**
@@ -133,7 +134,8 @@ class MotoOwnershipServiceTest : BehaviorSpec({
         val motoOwnershipPlanRepository = mockk<MotoOwnershipPlanRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, accountRepository = accountRepository, ledgerService = ledgerService)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, accountRepository = accountRepository, ledgerService = ledgerService, rateLimiter = rateLimiter)
 
         val plan = MotoOwnershipPlan(
             id = "motoown_1", userId = "user_1", bikePrice = BigDecimal("600000"),
@@ -158,6 +160,13 @@ class MotoOwnershipServiceTest : BehaviorSpec({
                     })
                 }
             }
+
+            // Real gap found live (sibling comparison against this class's own
+            // createPlan sibling and every repay/deposit method across
+            // loans/savings, 2026-09-13): contribute had no rate limit at all.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("moto-ownership:contribute:user_1", limit = 30, window = Duration.ofHours(1)) }
+            }
         }
 
         When("someone else tries to contribute (IDOR)") {
@@ -171,7 +180,8 @@ class MotoOwnershipServiceTest : BehaviorSpec({
         val motoOwnershipPlanRepository = mockk<MotoOwnershipPlanRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, accountRepository = accountRepository, ledgerService = ledgerService)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, accountRepository = accountRepository, ledgerService = ledgerService, rateLimiter = rateLimiter)
 
         val plan = MotoOwnershipPlan(
             id = "motoown_2", userId = "user_1", bikePrice = BigDecimal("600000"),
@@ -196,6 +206,13 @@ class MotoOwnershipServiceTest : BehaviorSpec({
                             legs.any { it.accountId == "account_1" && it.direction == LedgerDirection.CREDIT }
                     })
                 }
+            }
+
+            // Real gap found live (sibling comparison against Grow31SavingsService
+            // .cancel's identical convention, 2026-09-13): cancel had no rate limit
+            // at all.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("moto-ownership:cancel:user_1", limit = 10, window = Duration.ofHours(1)) }
             }
         }
 
@@ -231,7 +248,8 @@ class MotoOwnershipServiceTest : BehaviorSpec({
         val motoOwnershipPlanRepository = mockk<MotoOwnershipPlanRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, accountRepository = accountRepository, ledgerService = ledgerService)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, accountRepository = accountRepository, ledgerService = ledgerService, rateLimiter = rateLimiter)
 
         val plan = MotoOwnershipPlan(
             id = "motoown_4", userId = "user_1", bikePrice = BigDecimal("600000"),
@@ -281,6 +299,13 @@ class MotoOwnershipServiceTest : BehaviorSpec({
                 debits shouldBe credits
                 debits shouldBe BigDecimal("600000")
             }
+
+            // Real gap found live (sibling comparison against cancel's identical
+            // one-time-per-plan-lifecycle convention, 2026-09-13): convertToLoan had
+            // no rate limit at all.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("moto-ownership:convert:user_1", limit = 10, window = Duration.ofHours(1)) }
+            }
         }
 
         When("someone else tries to convert it (IDOR)") {
@@ -294,7 +319,8 @@ class MotoOwnershipServiceTest : BehaviorSpec({
         val motoOwnershipPlanRepository = mockk<MotoOwnershipPlanRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, accountRepository = accountRepository, ledgerService = ledgerService)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, accountRepository = accountRepository, ledgerService = ledgerService, rateLimiter = rateLimiter)
 
         val plan = MotoOwnershipPlan(
             id = "motoown_5", userId = "user_1", bikePrice = BigDecimal("600000"),
@@ -320,6 +346,13 @@ class MotoOwnershipServiceTest : BehaviorSpec({
                             legs.any { it.accountId == "loan_payable" && it.accountType == LedgerAccountType.LOAN_PAYABLE && it.direction == LedgerDirection.CREDIT }
                     })
                 }
+            }
+
+            // Real gap found live (sibling comparison against LoansService.repayLoan/
+            // VupLoanService.repay/CooperativeService.repayAdvance, 2026-09-13):
+            // repay had no rate limit at all.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("moto-ownership:repay:user_1", limit = 30, window = Duration.ofHours(1)) }
             }
         }
 

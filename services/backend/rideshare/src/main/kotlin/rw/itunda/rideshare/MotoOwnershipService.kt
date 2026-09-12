@@ -121,6 +121,10 @@ class MotoOwnershipService(
         val plan = getOwnedPlan(userId, planId)
         if (plan.status != MotoOwnershipPlanStatus.SAVING) throw MotoOwnershipPlanNotSavingException("Only a SAVING plan can receive contributions")
         if (amount <= BigDecimal.ZERO) throw InvalidMotoOwnershipAmountException("Contribution amount must be positive")
+        // Real anti-spam limit, matching this class's own createPlan sibling and every
+        // other repeatable-contribution method in this codebase (Grow31SavingsService
+        // .deposit, SavingsService.depositToGoal, InsuranceService.contributeToFund).
+        rateLimiter.checkLimit("moto-ownership:contribute:$userId", limit = 30, window = Duration.ofHours(1))
 
         val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
             ?: throw MotoOwnershipNoAccountException("No account found for this account")
@@ -148,6 +152,9 @@ class MotoOwnershipService(
     fun cancel(userId: String, planId: String): MotoOwnershipPlan {
         val plan = getOwnedPlan(userId, planId)
         if (plan.status != MotoOwnershipPlanStatus.SAVING) throw MotoOwnershipPlanNotCancellableException("Only a SAVING plan can be cancelled")
+        // Real anti-spam limit, matching Grow31SavingsService.cancel's identical
+        // one-time-per-plan-lifecycle convention.
+        rateLimiter.checkLimit("moto-ownership:cancel:$userId", limit = 10, window = Duration.ofHours(1))
 
         val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
             ?: throw MotoOwnershipNoAccountException("No account found for this account")
@@ -206,6 +213,9 @@ class MotoOwnershipService(
         if (plan.savedAmount < plan.downPaymentTarget) {
             throw MotoOwnershipDownPaymentNotMetException("The down payment target (${plan.downPaymentTarget}) has not been met yet")
         }
+        // Real anti-spam limit, matching cancel's identical one-time-per-plan-lifecycle
+        // convention just above.
+        rateLimiter.checkLimit("moto-ownership:convert:$userId", limit = 10, window = Duration.ofHours(1))
 
         val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
             ?: throw MotoOwnershipNoAccountException("No account found for this account")
@@ -233,6 +243,10 @@ class MotoOwnershipService(
         val plan = getOwnedPlan(userId, planId)
         if (plan.status != MotoOwnershipPlanStatus.LOAN_ACTIVE) throw MotoOwnershipPlanNotRepayableException("Only a LOAN_ACTIVE plan can be repaid")
         if (amount <= BigDecimal.ZERO) throw InvalidMotoOwnershipAmountException("Repayment amount must be positive")
+        // Real anti-spam limit -- same "frequent, repeatable money-movement action"
+        // convention LoansService.repayLoan/VupLoanService.repay/CooperativeService
+        // .repayAdvance already establish, never wired in here until now.
+        rateLimiter.checkLimit("moto-ownership:repay:$userId", limit = 30, window = Duration.ofHours(1))
 
         val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
             ?: throw MotoOwnershipNoAccountException("No account found for this account")
