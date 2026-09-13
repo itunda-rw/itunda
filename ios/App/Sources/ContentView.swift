@@ -732,6 +732,12 @@ struct ContentView: View {
                     Text("Messages")
                 }
                 .tag(3)
+                // Real cross-platform-parity gap found live (2026-09-13) -- web
+                // already shows this exact numeric badge (BankDashboard.tsx, capped
+                // "99+" there; SwiftUI's native .badge() applies its own "99+"-style
+                // truncation automatically, so no manual capping needed here) on the
+                // Messages tab; iOS had none at all.
+                .badge(bankViewModel.messagesUnreadCount)
 
             // Real, dedicated primary tab (2026-08-10, see this TabView's own doc
             // comment) -- MyTabView's own real content (orders/favorites/listings) is

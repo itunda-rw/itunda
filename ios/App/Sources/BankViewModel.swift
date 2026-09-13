@@ -51,6 +51,11 @@ final class BankViewModel: ObservableObject {
     // Home. Matches Android's/web's own "a dot, never a number" design rule.
     @Published private(set) var unreadNotificationCount: Int = 0
 
+    // Real cross-platform-parity gap found live (2026-09-13) -- web already shows a
+    // real numeric Messages-tab badge (BankDashboard.tsx) using this exact unbounded
+    // backend aggregate; iOS had neither the endpoint nor any tab-badge state.
+    @Published private(set) var messagesUnreadCount: Int = 0
+
     // Real offline queue + connectivity signal (2026-07-13) -- see
     // docs/TOSS_PARITY_MATRIX.md's Offline row. Started once, from init(), matching
     // Android's MainViewModel.init{} calling connectivityObserver.start immediately.
@@ -233,6 +238,13 @@ final class BankViewModel: ObservableObject {
             // must never block the rest of Home from loading real data.
             if let notificationsRes = try? await NetworkClient.shared.getNotifications(), notificationsRes.success {
                 unreadNotificationCount = notificationsRes.unreadCount
+            }
+
+            // Real cross-platform-parity gap found live (2026-09-13) -- see
+            // messagesUnreadCount's own doc comment above. Same non-blocking,
+            // leave-stale-on-failure discipline as the notifications fetch above.
+            if let unreadRes = try? await NetworkClient.shared.getUnreadCount(), unreadRes.success {
+                messagesUnreadCount = unreadRes.total
             }
 
             isOffline = false

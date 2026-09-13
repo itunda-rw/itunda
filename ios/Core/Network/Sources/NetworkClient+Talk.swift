@@ -150,4 +150,14 @@ extension NetworkClient {
     public func voteGroupPoll(groupId: String, pollId: String, optionId: String) async throws -> GroupPollResponse {
         try await authenticatedPost("api/v1/messages/groups/\(groupId)/polls/\(pollId)/vote", body: VoteGroupPollRequest(optionId: optionId))
     }
+
+    // Real cross-platform-parity gap found live (2026-09-13) -- web already shows a
+    // real numeric badge (capped "99+") on the Messages tab using this exact
+    // unbounded aggregate endpoint (BankDashboard.tsx); iOS had neither the endpoint
+    // nor any tab-badge state at all.
+    public func getUnreadCount() async throws -> UnreadCountResponse {
+        try await get("api/v1/messages/unread-count")
+    }
 }
+
+public struct UnreadCountResponse: Decodable { public let success: Bool; public let conversationsUnread: Int; public let groupsUnread: Int; public let total: Int }
