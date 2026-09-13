@@ -1,9 +1,12 @@
 package rw.itunda.rideshare
 
+import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.LocationUpdateRateLimit
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.DesignatedDriver
@@ -11,6 +14,7 @@ import rw.itunda.core.domain.DesignatedDriverTrip
 import rw.itunda.core.domain.DesignatedDriverTripStatus
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
@@ -20,8 +24,10 @@ import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.DesignatedDriverRepository
 import rw.itunda.core.repository.DesignatedDriverTripRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.pricing.CancellationPolicy
@@ -63,7 +69,11 @@ class DesignatedDriverService(
     private val transactionRepository: TransactionRepository,
     private val rateLimiter: RateLimiter,
     private val fraudRuleEngine: FraudRuleEngine,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(DesignatedDriverService::class.java)
+
     companion object {
         // Consolidated 2026-09-06 into core/pricing/PlatformFees -- see its own doc comment.
         private val platformFeeRate = PlatformFees.PLATFORM_FEE_RATE
@@ -236,7 +246,23 @@ class DesignatedDriverService(
         trip.status = DesignatedDriverTripStatus.ACCEPTED
         trip.driverAcceptedAt = Instant.now()
         trip.updatedAt = Instant.now()
-        return designatedDriverTripRepository.save(trip)
+        val saved = designatedDriverTripRepository.save(trip)
+
+        // Real gap found live (2026-09-14, sibling-asymmetry sweep): this whole class
+        // had zero notification wiring at all, despite its own doc comment claiming to
+        // reuse RideTripService's real escrow/payout shape -- that mirroring stopped at
+        // the ledger mechanics. Same "driver assigned" alert RideTripService.acceptTrip
+        // already sends the passenger.
+        val title = "Driver assigned"
+        val body = "A designated driver is on the way to ${trip.pickupAddress}."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = trip.customerId, type = "DESIGNATED_DRIVER_TRIP_UPDATE",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${trip.id}\"}",
+            ),
+        )
+        sendTripPushAfterCommit(trip.customerId, title, body, trip.id)
+        return saved
     }
 
     private fun getOwnedTrip(tripId: String, driverId: String): DesignatedDriverTrip {
@@ -256,7 +282,18 @@ class DesignatedDriverService(
         }
         trip.status = DesignatedDriverTripStatus.DRIVING
         trip.updatedAt = Instant.now()
-        return designatedDriverTripRepository.save(trip)
+        val saved = designatedDriverTripRepository.save(trip)
+
+        val title = "Trip started"
+        val body = "Your designated driver is now driving you to ${trip.dropoffAddress}."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = trip.customerId, type = "DESIGNATED_DRIVER_TRIP_UPDATE",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${trip.id}\"}",
+            ),
+        )
+        sendTripPushAfterCommit(trip.customerId, title, body, trip.id)
+        return saved
     }
 
     /** Real release -- the driver delivered the customer home, paid out of holding
@@ -296,7 +333,18 @@ class DesignatedDriverService(
         trip.status = DesignatedDriverTripStatus.COMPLETED
         trip.payoutTransactionId = result.transactionId
         trip.updatedAt = Instant.now()
-        return designatedDriverTripRepository.save(trip)
+        val saved = designatedDriverTripRepository.save(trip)
+
+        val title = "Trip completed"
+        val body = "You arrived at ${trip.dropoffAddress}. Fare: ${trip.fare} RWF."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = trip.customerId, type = "DESIGNATED_DRIVER_TRIP_UPDATE",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${trip.id}\"}",
+            ),
+        )
+        sendTripPushAfterCommit(trip.customerId, title, body, trip.id)
+        return saved
     }
 
     /** Real gap closed 2026-08-18: previously only a still-REQUESTED trip (no driver
@@ -337,9 +385,9 @@ class DesignatedDriverService(
         }
         val refundAmount = trip.fare.subtract(cancellationFee)
 
+        val driver = trip.driverId?.let { designatedDriverRepository.findById(it).orElse(null) }
         val driverAccount = if (cancellationFee > BigDecimal.ZERO) {
-            trip.driverId?.let { designatedDriverRepository.findById(it).orElse(null) }
-                ?.let { accountRepository.findById(it.accountId).orElse(null) }
+            driver?.let { accountRepository.findById(it.accountId).orElse(null) }
         } else {
             null
         }
@@ -362,7 +410,35 @@ class DesignatedDriverService(
         trip.status = DesignatedDriverTripStatus.CANCELLED
         trip.refundTransactionId = result.transactionId
         trip.updatedAt = Instant.now()
-        return designatedDriverTripRepository.save(trip)
+        val saved = designatedDriverTripRepository.save(trip)
+
+        // Real gap found live (2026-09-14, sibling-asymmetry sweep): this whole class
+        // had zero notification wiring -- a driver who'd already committed (and, in the
+        // fee-paid branch, was just credited real money) was never told the customer
+        // cancelled. Same two-branch shape RideTripService.cancelTrip already
+        // establishes.
+        if (cancellationFee > BigDecimal.ZERO && driverAccount != null && driver != null) {
+            val title = "Customer cancelled -- you were paid a cancellation fee"
+            val body = "The customer cancelled after you were already on the way. You received a ${cancellationFee} RWF cancellation fee."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = driver.userId, type = "DESIGNATED_DRIVER_CANCELLATION_FEE_PAID",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${trip.id}\"}",
+                ),
+            )
+            sendTripPushAfterCommit(driver.userId, title, body, trip.id)
+        } else if (driver != null) {
+            val title = "Trip cancelled"
+            val body = "The customer cancelled this trip."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = driver.userId, type = "DESIGNATED_DRIVER_TRIP_UPDATE",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${trip.id}\"}",
+                ),
+            )
+            sendTripPushAfterCommit(driver.userId, title, body, trip.id)
+        }
+        return saved
     }
 
     fun getMyTrips(customerId: String, pageable: Pageable): Page<DesignatedDriverTrip> =
@@ -371,5 +447,24 @@ class DesignatedDriverService(
     fun getMyDriverTrips(driverUserId: String, pageable: Pageable): Page<DesignatedDriverTrip> {
         val driver = getMyDriver(driverUserId)
         return designatedDriverTripRepository.findByDriverIdOrderByCreatedAtDesc(driver.id, pageable)
+    }
+
+    /** Trip and settlement updates must reflect committed state -- same discipline
+     * RideTripService.sendTripPushAfterCommit already establishes. */
+    private fun sendTripPushAfterCommit(userId: String, title: String, body: String, tripId: String) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body, mapOf("tripId" to tripId))
+            } catch (e: Exception) {
+                log.warn("Could not send designated-driver trip push for trip {}", tripId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 }

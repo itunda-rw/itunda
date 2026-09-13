@@ -14,8 +14,10 @@ import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.DesignatedDriverRepository
 import rw.itunda.core.repository.DesignatedDriverTripRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
@@ -37,7 +39,12 @@ class DesignatedDriverServiceTest : BehaviorSpec({
         transactionRepository: TransactionRepository = mockk<TransactionRepository>(relaxed = true).also { every { it.save(any()) } answers { firstArg() } },
         rateLimiter: RateLimiter = mockk(relaxed = true),
         fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
-    ) = DesignatedDriverService(designatedDriverRepository, designatedDriverTripRepository, accountRepository, ledgerService, transactionRepository, rateLimiter, fraudRuleEngine)
+        notificationRepository: NotificationRepository = mockk(relaxed = true),
+        pushNotificationService: PushNotificationService = mockk(relaxed = true),
+    ) = DesignatedDriverService(
+        designatedDriverRepository, designatedDriverTripRepository, accountRepository, ledgerService, transactionRepository,
+        rateLimiter, fraudRuleEngine, notificationRepository, pushNotificationService,
+    )
 
     Given("a fresh account with a real account") {
         val designatedDriverRepository = mockk<DesignatedDriverRepository>()
@@ -141,14 +148,96 @@ class DesignatedDriverServiceTest : BehaviorSpec({
         }
     }
 
+    // Real gap found live (2026-09-14, sibling-asymmetry sweep): this whole class had
+    // zero notification wiring at all, despite its own doc comment claiming to reuse
+    // RideTripService's real escrow/payout shape -- that mirroring stopped at the
+    // ledger mechanics. First-ever test coverage for a real driver genuinely accepting
+    // a real trip.
+    Given("a real driver accepting a real customer's requested trip") {
+        val designatedDriverRepository = mockk<DesignatedDriverRepository>()
+        val designatedDriverTripRepository = mockk<DesignatedDriverTripRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(
+            designatedDriverRepository = designatedDriverRepository, designatedDriverTripRepository = designatedDriverTripRepository,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
+        )
+
+        val driver = DesignatedDriver(id = "designated_driver_1", userId = "driver_user_1", accountId = "account_driver", licenseNumber = "DL-1", available = true)
+        val trip = DesignatedDriverTrip(
+            id = "designated_trip_1", customerId = "customer_1", pickupAddress = "A", pickupLatitude = -1.9, pickupLongitude = 30.0,
+            dropoffAddress = "B", dropoffLatitude = -1.95, dropoffLongitude = 30.05, vehicleMake = "Toyota", vehicleModel = "RAV4",
+            vehiclePlate = "RAB 123 A", distanceKm = BigDecimal("5.000"), fare = BigDecimal("4250.00"), platformFee = BigDecimal("63.75"),
+            holdTransactionId = "ledgertxn_1",
+        )
+        every { designatedDriverRepository.findByUserId("driver_user_1") } returns driver
+        every { designatedDriverTripRepository.findByIdForUpdate("designated_trip_1") } returns Optional.of(trip)
+        every { designatedDriverTripRepository.save(any()) } answers { firstArg() }
+
+        When("the driver accepts it") {
+            val result = service.acceptTrip("driver_user_1", "designated_trip_1")
+
+            Then("the trip is real-assigned to the real driver") {
+                result.status shouldBe DesignatedDriverTripStatus.ACCEPTED
+                result.driverId shouldBe "designated_driver_1"
+            }
+
+            Then("the real customer is real-notified a driver was assigned") {
+                io.mockk.verify(exactly = 1) { notificationRepository.save(match { it.userId == "customer_1" && it.type == "DESIGNATED_DRIVER_TRIP_UPDATE" }) }
+                io.mockk.verify(exactly = 1) { pushNotificationService.sendToUser("customer_1", any(), any(), any()) }
+            }
+        }
+    }
+
+    Given("a real ACCEPTED trip a driver is starting to drive") {
+        val designatedDriverRepository = mockk<DesignatedDriverRepository>()
+        val designatedDriverTripRepository = mockk<DesignatedDriverTripRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(
+            designatedDriverRepository = designatedDriverRepository, designatedDriverTripRepository = designatedDriverTripRepository,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
+        )
+
+        val driver = DesignatedDriver(id = "designated_driver_1", userId = "driver_user_1", accountId = "account_driver", licenseNumber = "DL-1", available = true)
+        val trip = DesignatedDriverTrip(
+            id = "designated_trip_1", customerId = "customer_1", driverId = "designated_driver_1", pickupAddress = "A", pickupLatitude = -1.9,
+            pickupLongitude = 30.0, dropoffAddress = "B", dropoffLatitude = -1.95, dropoffLongitude = 30.05, vehicleMake = "Toyota",
+            vehicleModel = "RAV4", vehiclePlate = "RAB 123 A", distanceKm = BigDecimal("5.000"), fare = BigDecimal("4250.00"),
+            platformFee = BigDecimal("63.75"), holdTransactionId = "ledgertxn_1", status = DesignatedDriverTripStatus.ACCEPTED,
+        )
+        every { designatedDriverRepository.findByUserId("driver_user_1") } returns driver
+        every { designatedDriverTripRepository.findById("designated_trip_1") } returns Optional.of(trip)
+        every { designatedDriverTripRepository.save(any()) } answers { firstArg() }
+
+        When("the driver starts driving") {
+            val result = service.startDriving("driver_user_1", "designated_trip_1")
+
+            Then("the trip real-advances to DRIVING") {
+                result.status shouldBe DesignatedDriverTripStatus.DRIVING
+            }
+
+            Then("the real customer is real-notified the trip has started") {
+                io.mockk.verify(exactly = 1) { notificationRepository.save(match { it.userId == "customer_1" && it.type == "DESIGNATED_DRIVER_TRIP_UPDATE" }) }
+                io.mockk.verify(exactly = 1) { pushNotificationService.sendToUser("customer_1", any(), any(), any()) }
+            }
+        }
+    }
+
     Given("a real DRIVING trip a driver just completed") {
         val designatedDriverRepository = mockk<DesignatedDriverRepository>()
         val designatedDriverTripRepository = mockk<DesignatedDriverTripRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             designatedDriverRepository = designatedDriverRepository, designatedDriverTripRepository = designatedDriverTripRepository,
             accountRepository = accountRepository, ledgerService = ledgerService,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
         )
 
         val driver = DesignatedDriver(id = "designated_driver_1", userId = "driver_user_1", accountId = "account_driver", licenseNumber = "DL-1", available = true)
@@ -180,6 +269,11 @@ class DesignatedDriverServiceTest : BehaviorSpec({
             // locks the row rather than the shared unlocked getOwnedTrip path.
             Then("it real-locks the trip row before releasing the fare, same discipline GroupEatsOrderService.finalizeOrder already establishes") {
                 io.mockk.verify(exactly = 1) { designatedDriverTripRepository.findByIdForUpdate("designated_trip_1") }
+            }
+
+            Then("the real customer is real-notified the trip completed") {
+                io.mockk.verify(exactly = 1) { notificationRepository.save(match { it.userId == "customer_1" && it.type == "DESIGNATED_DRIVER_TRIP_UPDATE" }) }
+                io.mockk.verify(exactly = 1) { pushNotificationService.sendToUser("customer_1", any(), any(), any()) }
             }
         }
     }
@@ -226,15 +320,20 @@ class DesignatedDriverServiceTest : BehaviorSpec({
         val designatedDriverTripRepository = mockk<DesignatedDriverTripRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             designatedDriverRepository = designatedDriverRepository, designatedDriverTripRepository = designatedDriverTripRepository,
             accountRepository = accountRepository, ledgerService = ledgerService,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
         )
 
         val customerAccount = Account(
             id = "account_customer", userId = "customer_1", accountNumber = "1000000002", accountName = "Customer",
             type = AccountType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
         )
+        val driver = DesignatedDriver(id = "designated_driver_1", userId = "driver_user_1", accountId = "account_driver", licenseNumber = "DL-1")
         val trip = DesignatedDriverTrip(
             id = "designated_trip_1", customerId = "customer_1", driverId = "designated_driver_1", pickupAddress = "A", pickupLatitude = -1.9,
             pickupLongitude = 30.0, dropoffAddress = "B", dropoffLatitude = -1.95, dropoffLongitude = 30.05, vehicleMake = "Toyota",
@@ -244,6 +343,7 @@ class DesignatedDriverServiceTest : BehaviorSpec({
         )
         every { designatedDriverTripRepository.findByIdForUpdate("designated_trip_1") } returns Optional.of(trip)
         every { accountRepository.findByUserIdAndType("customer_1", AccountType.MAIN) } returns customerAccount
+        every { designatedDriverRepository.findById("designated_driver_1") } returns Optional.of(driver)
         val legsSlot = slot<List<rw.itunda.core.ledger.LedgerLeg>>()
         every { ledgerService.postLedgerTransaction(any(), capture(legsSlot)) } returns LedgerPostResult("ledgertxn_refund", emptyList())
         every { designatedDriverTripRepository.save(any()) } answers { firstArg() }
@@ -256,6 +356,14 @@ class DesignatedDriverServiceTest : BehaviorSpec({
                 legsSlot.captured.size shouldBe 2
                 legsSlot.captured[1].amount.compareTo(BigDecimal("4250.00")) shouldBe 0
             }
+
+            // Real gap found live (2026-09-14, sibling-asymmetry sweep): the driver
+            // (who had already committed by accepting) was never told the customer
+            // cancelled, even in the no-fee grace-period case.
+            Then("the real driver is real-notified the trip was cancelled, even with no fee") {
+                io.mockk.verify(exactly = 1) { notificationRepository.save(match { it.userId == "driver_user_1" && it.type == "DESIGNATED_DRIVER_TRIP_UPDATE" }) }
+                io.mockk.verify(exactly = 1) { pushNotificationService.sendToUser("driver_user_1", any(), any(), any()) }
+            }
         }
     }
 
@@ -264,9 +372,13 @@ class DesignatedDriverServiceTest : BehaviorSpec({
         val designatedDriverTripRepository = mockk<DesignatedDriverTripRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             designatedDriverRepository = designatedDriverRepository, designatedDriverTripRepository = designatedDriverTripRepository,
             accountRepository = accountRepository, ledgerService = ledgerService,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
         )
 
         val customerAccount = Account(
@@ -302,6 +414,14 @@ class DesignatedDriverServiceTest : BehaviorSpec({
                 legsSlot.captured[1].amount.compareTo(BigDecimal("1250.00")) shouldBe 0
                 legsSlot.captured[2].accountId shouldBe "account_driver"
                 legsSlot.captured[2].amount.compareTo(BigDecimal("3000")) shouldBe 0
+            }
+
+            // Real gap found live (2026-09-14, sibling-asymmetry sweep): the driver's
+            // account was credited real cancellation-fee money with zero notification
+            // of why.
+            Then("the real driver is real-notified they were paid a real cancellation fee") {
+                io.mockk.verify(exactly = 1) { notificationRepository.save(match { it.userId == "driver_user_1" && it.type == "DESIGNATED_DRIVER_CANCELLATION_FEE_PAID" }) }
+                io.mockk.verify(exactly = 1) { pushNotificationService.sendToUser("driver_user_1", any(), any(), any()) }
             }
         }
     }
