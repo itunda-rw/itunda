@@ -13,6 +13,7 @@ import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantBooking
 import rw.itunda.core.domain.MerchantBookingStatus
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
@@ -60,10 +61,11 @@ class MerchantBookingServiceNoShowTest : BehaviorSpec({
         bookingDepositRepository: BookingDepositRepository = mockk(),
         pushNotificationService: PushNotificationService = mockk(relaxed = true),
         autoTopUpService: rw.itunda.account.AutoTopUpService = mockk(relaxed = true),
+        fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
     ) = MerchantBookingService(
         merchantRepository, merchantProductRepository, availabilityWindowRepository, merchantBookingRepository,
         notificationRepository, accountRepository, ledgerService, transactionRepository, bookingDepositRepository,
-        pushNotificationService, autoTopUpService,
+        pushNotificationService, autoTopUpService, fraudRuleEngine,
     )
 
     Given("real overdue CONFIRMED bookings the poll must sweep, one with a real held deposit") {

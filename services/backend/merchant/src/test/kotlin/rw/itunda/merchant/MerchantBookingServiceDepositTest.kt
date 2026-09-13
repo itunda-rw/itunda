@@ -11,6 +11,7 @@ import rw.itunda.core.domain.AccountType
 import rw.itunda.core.domain.BookingDeposit
 import rw.itunda.core.domain.BookingDepositStatus
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantAvailabilityWindow
 import rw.itunda.core.domain.MerchantBooking
@@ -72,10 +73,12 @@ class MerchantBookingServiceDepositTest : BehaviorSpec({
         // deposit -- the short-balance test below overrides this with a more specific
         // stub for its own exact (userId, account, amount) triple.
         every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = MerchantBookingService(
             merchantRepository, merchantProductRepository, availabilityWindowRepository,
             merchantBookingRepository, notificationRepository, accountRepository, ledgerService,
             transactionRepository, bookingDepositRepository, pushNotificationService, autoTopUpService,
+            fraudRuleEngine,
         )
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_merchant", businessName = "Kigali Spa")
@@ -109,6 +112,7 @@ class MerchantBookingServiceDepositTest : BehaviorSpec({
                 payerLeg.amount shouldBe BigDecimal("8000")
                 payerLeg.direction shouldBe LedgerDirection.DEBIT
                 verify(exactly = 1) { autoTopUpService.ensureSufficientPayBalance("customer_1", payerAccount, BigDecimal("8000")) }
+                verify(exactly = 1) { fraudRuleEngine.evaluate("customer_1", "owner_1", BigDecimal("8000"), "ledgertxn_hold") }
             }
         }
 
@@ -147,10 +151,12 @@ class MerchantBookingServiceDepositTest : BehaviorSpec({
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val availabilityWindowRepository = mockk<MerchantAvailabilityWindowRepository>()
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = MerchantBookingService(
             merchantRepository, merchantProductRepository, availabilityWindowRepository,
             merchantBookingRepository, notificationRepository, accountRepository, ledgerService,
             transactionRepository, bookingDepositRepository, pushNotificationService, autoTopUpService,
+            fraudRuleEngine,
         )
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_merchant", businessName = "Kigali Spa")

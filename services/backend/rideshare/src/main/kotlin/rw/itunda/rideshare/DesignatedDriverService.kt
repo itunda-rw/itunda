@@ -15,6 +15,7 @@ import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
@@ -61,6 +62,7 @@ class DesignatedDriverService(
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
     private val rateLimiter: RateLimiter,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     companion object {
         // Consolidated 2026-09-06 into core/pricing/PlatformFees -- see its own doc comment.
@@ -191,6 +193,14 @@ class DesignatedDriverService(
             completedAt = Instant.now(),
         )
         transactionRepository.save(holdTransaction)
+        // Real gap found (2026-09-13, repo-wide FraudRuleEngine re-sweep) -- this
+        // class's own doc comment says it "reuses the real escrow/payout shape from
+        // RideTripService," which already calls fraudRuleEngine.evaluate on the
+        // identical hold-at-request-time shape (RideTripService.requestTrip). No
+        // driver has been matched yet at request time (open-list claim, dispatch
+        // happens later), same reasoning as that call: only HIGH_VALUE/VELOCITY
+        // apply here, not NEW_RECIPIENT.
+        fraudRuleEngine.evaluate(customerId, null, fare, holdResult.transactionId)
 
         return designatedDriverTripRepository.save(
             DesignatedDriverTrip(

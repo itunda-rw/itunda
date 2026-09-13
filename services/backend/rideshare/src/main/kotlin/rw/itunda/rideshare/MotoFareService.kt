@@ -10,6 +10,7 @@ import rw.itunda.core.domain.AccountType
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.MotoFareTrip
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.AccountRepository
@@ -46,6 +47,7 @@ class MotoFareService(
     private val autoTopUpService: AutoTopUpService,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     private val paymentEligibleAccountTypes = setOf(AccountType.PAY, AccountType.MAIN, AccountType.FOREIGN_CURRENCY)
 
@@ -100,6 +102,11 @@ class MotoFareService(
                 LedgerLeg(driverAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, fare, "Moto-taxi fare collected"),
             ),
         )
+        // Real gap found (2026-09-13, repo-wide FraudRuleEngine re-sweep): a real,
+        // direct WALLET-to-WALLET payment between two known itunda users with zero
+        // fraud coverage -- P2pService/MerchantService.chargeByCustomerCode (the exact
+        // same customer-presented-code shape) already have it, this sibling never did.
+        fraudRuleEngine.evaluate(riderUserId, driverUserId, fare, result.transactionId)
 
         motoFareTripRepository.save(
             MotoFareTrip(

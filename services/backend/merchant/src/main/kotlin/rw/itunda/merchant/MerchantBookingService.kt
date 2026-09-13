@@ -17,6 +17,7 @@ import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
@@ -75,6 +76,7 @@ class MerchantBookingService(
     private val bookingDepositRepository: BookingDepositRepository,
     private val pushNotificationService: PushNotificationService,
     private val autoTopUpService: rw.itunda.account.AutoTopUpService,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     companion object {
         // Consolidated 2026-09-06 into core/pricing/PlatformFees -- see its own doc comment.
@@ -219,6 +221,13 @@ class MerchantBookingService(
                 LedgerLeg("booking_deposit_holding", LedgerAccountType.BOOKING_DEPOSIT_HOLDING, LedgerDirection.CREDIT, amount, "Booking deposit held - ${booking.serviceName}"),
             ),
         )
+        // Real gap found (2026-09-13, repo-wide FraudRuleEngine re-sweep): "real
+        // merchant collection (held, then paid out or refunded), same as QR/code
+        // payment" per this method's own doc comment above -- MerchantService.collect/
+        // chargeByCustomerCode already call fraudRuleEngine.evaluate(payerUserId,
+        // merchant.ownerUserId, ...) for the identical customer-pays-merchant shape,
+        // this sibling never did.
+        fraudRuleEngine.evaluate(customerId, merchant.ownerUserId, amount, result.transactionId)
         transactionRepository.save(
             Transaction(
                 id = result.transactionId,

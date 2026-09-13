@@ -12,6 +12,7 @@ import rw.itunda.core.domain.AccountType
 import rw.itunda.core.domain.CustomerPaymentCode
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
@@ -42,13 +43,15 @@ class MotoFareServiceTest : BehaviorSpec({
         },
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = MotoFareService(motoFareTripRepository, accountRepository, customerPaymentCodeRepository, autoTopUpService, ledgerService, rateLimiter)
+        fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
+    ) = MotoFareService(motoFareTripRepository, accountRepository, customerPaymentCodeRepository, autoTopUpService, ledgerService, rateLimiter, fraudRuleEngine)
 
     Given("a real driver tapping/scanning a rider's still-valid, unused payment code") {
         val motoFareTripRepository = mockk<MotoFareTripRepository>()
         val accountRepository = mockk<AccountRepository>()
         val customerPaymentCodeRepository = mockk<CustomerPaymentCodeRepository>()
         val ledgerService = mockk<LedgerService>()
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val riderAccount = account("rider_pay_1", "rider_1")
         val driverAccount = account("driver_pay_1", "driver_1")
         every { motoFareTripRepository.save(any()) } answers { firstArg() }
@@ -58,7 +61,7 @@ class MotoFareServiceTest : BehaviorSpec({
         every { accountRepository.findByUserIdAndType("driver_1", AccountType.PAY) } returns driverAccount
         val legsSlot = mutableListOf<List<LedgerLeg>>()
         every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_1", emptyList())
-        val service = newService(motoFareTripRepository = motoFareTripRepository, accountRepository = accountRepository, customerPaymentCodeRepository = customerPaymentCodeRepository, ledgerService = ledgerService)
+        val service = newService(motoFareTripRepository = motoFareTripRepository, accountRepository = accountRepository, customerPaymentCodeRepository = customerPaymentCodeRepository, ledgerService = ledgerService, fraudRuleEngine = fraudRuleEngine)
 
         When("the driver collects a real, in-range fare") {
             val result = service.collectFare("driver_1", "abc123", BigDecimal("1500"))
@@ -71,6 +74,7 @@ class MotoFareServiceTest : BehaviorSpec({
                 legs.first { it.accountId == "driver_pay_1" }.direction shouldBe LedgerDirection.CREDIT
                 legs.all { it.accountType == LedgerAccountType.WALLET } shouldBe true
                 verify(exactly = 1) { customerPaymentCodeRepository.save(match { it.usedAt != null }) }
+                verify(exactly = 1) { fraudRuleEngine.evaluate("rider_1", "driver_1", BigDecimal("1500"), "ledgertxn_1") }
             }
         }
     }

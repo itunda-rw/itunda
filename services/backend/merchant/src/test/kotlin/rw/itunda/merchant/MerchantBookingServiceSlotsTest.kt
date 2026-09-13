@@ -9,6 +9,7 @@ import io.mockk.mockk
 import rw.itunda.core.domain.MerchantAvailabilityWindow
 import rw.itunda.core.domain.MerchantBooking
 import rw.itunda.core.domain.MerchantProduct
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.BookingDepositRepository
@@ -46,10 +47,12 @@ class MerchantBookingServiceSlotsTest : BehaviorSpec({
         val bookingDepositRepository = mockk<BookingDepositRepository>()
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = MerchantBookingService(
             merchantRepository, merchantProductRepository, availabilityWindowRepository,
             merchantBookingRepository, notificationRepository, accountRepository, ledgerService,
             transactionRepository, bookingDepositRepository, pushNotificationService, autoTopUpService,
+            fraudRuleEngine,
         )
 
         val service30Min = MerchantProduct(

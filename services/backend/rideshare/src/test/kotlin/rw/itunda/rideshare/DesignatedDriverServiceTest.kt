@@ -11,6 +11,7 @@ import rw.itunda.core.domain.DesignatedDriverTrip
 import rw.itunda.core.domain.DesignatedDriverTripStatus
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.DesignatedDriverRepository
@@ -35,7 +36,8 @@ class DesignatedDriverServiceTest : BehaviorSpec({
         ledgerService: LedgerService = mockk(),
         transactionRepository: TransactionRepository = mockk<TransactionRepository>(relaxed = true).also { every { it.save(any()) } answers { firstArg() } },
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = DesignatedDriverService(designatedDriverRepository, designatedDriverTripRepository, accountRepository, ledgerService, transactionRepository, rateLimiter)
+        fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
+    ) = DesignatedDriverService(designatedDriverRepository, designatedDriverTripRepository, accountRepository, ledgerService, transactionRepository, rateLimiter, fraudRuleEngine)
 
     Given("a fresh account with a real account") {
         val designatedDriverRepository = mockk<DesignatedDriverRepository>()
@@ -81,7 +83,8 @@ class DesignatedDriverServiceTest : BehaviorSpec({
         val designatedDriverTripRepository = mockk<DesignatedDriverTripRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(designatedDriverTripRepository = designatedDriverTripRepository, accountRepository = accountRepository, ledgerService = ledgerService)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = newService(designatedDriverTripRepository = designatedDriverTripRepository, accountRepository = accountRepository, ledgerService = ledgerService, fraudRuleEngine = fraudRuleEngine)
 
         val customerAccount = Account(
             id = "account_customer", userId = "customer_1", accountNumber = "1000000002", accountName = "Customer",
@@ -103,6 +106,10 @@ class DesignatedDriverServiceTest : BehaviorSpec({
                 result.driverId shouldBe null
                 result.fare.compareTo(BigDecimal.ZERO) shouldBe 1
                 savedSlot.captured.customerId shouldBe "customer_1"
+            }
+
+            Then("the real escrow hold is real-evaluated for fraud, same as RideTripService.requestTrip's identical shape") {
+                io.mockk.verify(exactly = 1) { fraudRuleEngine.evaluate("customer_1", null, result.fare, "ledgertxn_1") }
             }
         }
     }
