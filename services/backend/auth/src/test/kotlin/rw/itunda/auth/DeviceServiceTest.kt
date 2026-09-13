@@ -201,12 +201,21 @@ class DeviceServiceTest : BehaviorSpec({
             every { userRepository.findById("user_3") } returns Optional.of(user)
             every { trustedDeviceRepository.findByUserIdAndDeviceId("user_3", "device_pending") } returns device
             every { trustedDeviceRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
 
             val result = service.verifyDevice("user_3", "device_pending", "real-password")
 
             Then("the device becomes trusted") {
                 result.trusted shouldBe true
                 result.verifiedAt shouldNotBe null
+            }
+
+            // Real sibling-asymmetry fix (2026-09-13) -- granting real money-moving
+            // trust now alerts the real owner, matching recordLoginDevice's own
+            // "new device seen" alert for the earlier, less-sensitive event.
+            Then("it sends a real DEVICE_TRUSTED security alert") {
+                verify(exactly = 1) { notificationRepository.save(match<Notification> { it.type == "DEVICE_TRUSTED" && it.userId == "user_3" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_3", "Device verified", any(), any()) }
             }
         }
 
@@ -288,6 +297,7 @@ class DeviceServiceTest : BehaviorSpec({
             every { userRepository.findById("user_5") } returns Optional.of(user)
             every { trustedDeviceRepository.findByUserIdAndDeviceId("user_5", "device_key_pending") } returns device
             every { trustedDeviceRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
 
             val result = service.registerDeviceKey("user_5", "device_key_pending", publicKeyBase64, "real-password")
 
@@ -303,6 +313,15 @@ class DeviceServiceTest : BehaviorSpec({
             // would have compiled and passed silently.
             Then("the real rate limiter is actually consulted, not just mocked away") {
                 verify(exactly = 1) { rateLimiter.checkLimit("auth:device-verify:user_5", limit = 5, window = java.time.Duration.ofMinutes(1)) }
+            }
+
+            // Real sibling-asymmetry fix (2026-09-13) -- same real DEVICE_TRUSTED
+            // alert as verifyDevice, since a successful key registration marks the
+            // device trusted just as immediately (see registerDeviceKey's own doc
+            // comment on why this is exactly as strong a trust decision).
+            Then("it sends a real DEVICE_TRUSTED security alert") {
+                verify(exactly = 1) { notificationRepository.save(match<Notification> { it.type == "DEVICE_TRUSTED" && it.userId == "user_5" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_5", "Device verified", any(), any()) }
             }
         }
 
@@ -391,12 +410,20 @@ class DeviceServiceTest : BehaviorSpec({
             val device = TrustedDevice(id = "trusted_device_7", userId = "user_7", deviceId = "device_7", deviceName = null, trusted = false, publicKey = publicKeyBase64)
             every { trustedDeviceRepository.findByUserIdAndDeviceId("user_7", "device_7") } returns device
             every { trustedDeviceRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
 
             val result = service.verifyDeviceBySignature("user_7", "device_7", sign(privateKey, challengeBytes))
 
             Then("the device becomes trusted") {
                 result.trusted shouldBe true
                 result.verifiedAt shouldNotBe null
+            }
+
+            // Real sibling-asymmetry fix (2026-09-13) -- same real DEVICE_TRUSTED
+            // alert as the other two trust-granting paths.
+            Then("it sends a real DEVICE_TRUSTED security alert") {
+                verify(exactly = 1) { notificationRepository.save(match<Notification> { it.type == "DEVICE_TRUSTED" && it.userId == "user_7" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_7", "Device verified", any(), any()) }
             }
         }
 

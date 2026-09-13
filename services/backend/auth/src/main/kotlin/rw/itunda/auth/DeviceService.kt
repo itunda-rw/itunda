@@ -160,7 +160,9 @@ class DeviceService(
         device.trusted = true
         device.verifiedAt = Instant.now()
         device.lastSeenAt = Instant.now()
-        return trustedDeviceRepository.save(device)
+        val saved = trustedDeviceRepository.save(device)
+        notifyDeviceTrustedAfterCommit(userId, deviceId, device.deviceName)
+        return saved
     }
 
     /** Real "forget this device" -- the same self-service device management Toss's own
@@ -202,7 +204,9 @@ class DeviceService(
         device.trusted = true
         device.verifiedAt = Instant.now()
         device.lastSeenAt = Instant.now()
-        return trustedDeviceRepository.save(device)
+        val saved = trustedDeviceRepository.save(device)
+        notifyDeviceTrustedAfterCommit(userId, deviceId, device.deviceName)
+        return saved
     }
 
     /** A fresh, single-use, short-lived nonce for the caller's current device to sign.
@@ -238,7 +242,37 @@ class DeviceService(
         device.trusted = true
         device.verifiedAt = Instant.now()
         device.lastSeenAt = Instant.now()
-        return trustedDeviceRepository.save(device)
+        val saved = trustedDeviceRepository.save(device)
+        notifyDeviceTrustedAfterCommit(userId, deviceId, device.deviceName)
+        return saved
+    }
+
+    /** Real sibling-asymmetry fix (2026-09-13) -- [recordLoginDevice]'s own real
+     * "new device seen" alert covers the INFORMATIONAL half of device trust; this
+     * covers the half that actually matters more: the moment a device is granted
+     * real money-moving capability (see [verifyDevice]/[registerDeviceKey]/
+     * [verifyDeviceBySignature]'s own doc comments -- "marks it trusted for future
+     * money-moving calls"). All 3 trust-granting paths had zero alert until this fix
+     * -- a stolen JWT + password, or a compromised device key, could silently
+     * upgrade a device to money-moving trust with the real owner never finding out. */
+    private fun notifyDeviceTrustedAfterCommit(userId: String, deviceId: String, deviceName: String?) {
+        val title = "Device verified"
+        val body = "A device (${deviceName ?: "unknown device"}) was just verified and can now move money on your account. If this wasn't you, revoke it immediately in Security settings."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = userId, type = "DEVICE_TRUSTED",
+                title = title, body = body,
+                isRead = false, createdAt = Instant.now(), dataJson = "{\"deviceId\":\"$deviceId\"}",
+            ),
+        )
+        val send = { pushNotificationService.sendToUser(userId, title, body, mapOf("deviceId" to deviceId)) }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     // Real passwordless-login rollout (2026-08-24, direct user follow-up after a real
