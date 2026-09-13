@@ -93,10 +93,16 @@ class FloatMarketplaceService(
         val operator = activeOperator(userId)
         require(GeoUtils.isValidCoordinate(latitude, longitude) && GeoUtils.isWithinRwanda(latitude, longitude)) { "Search location must be within Rwanda" }
         require(radiusKm in 0.1..100.0) { "radiusKm must be between 0.1 and 100" }
-        return floatListingRepository.findByStatus(FloatListingStatus.OPEN).asSequence()
+        val openListings = floatListingRepository.findByStatus(FloatListingStatus.OPEN)
             .filter { it.agentId != operator.agentId && it.remainingAmount() > BigDecimal.ZERO }
+        // Real N+1 fix (2026-09-13, structural N+1 re-sweep): batch-resolve every
+        // listing's agent in one query instead of one findById per listing, same
+        // findAllById-then-associateBy idiom MerchantFeeWaiverService.getRevocationCandidates
+        // and the other list-of-records-referencing-an-entity-by-id services already use.
+        val agentsById = agentRepository.findAllById(openListings.map { it.agentId }.distinct()).associateBy { it.id }
+        return openListings.asSequence()
             .mapNotNull { listing ->
-                val agent = agentRepository.findById(listing.agentId).orElse(null) ?: return@mapNotNull null
+                val agent = agentsById[listing.agentId] ?: return@mapNotNull null
                 if (agent.latitude == null || agent.longitude == null) return@mapNotNull null
                 val distanceKm = GeoUtils.haversineKm(latitude, longitude, agent.latitude!!, agent.longitude!!)
                 if (distanceKm > radiusKm) return@mapNotNull null

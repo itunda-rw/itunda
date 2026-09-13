@@ -245,6 +245,38 @@ class FloatMarketplaceServiceTest : BehaviorSpec({
         }
     }
 
+    // Real N+1 fix (2026-09-13, structural N+1 re-sweep): getNearbyListings used to
+    // call agentRepository.findById once PER open listing instead of batching, same
+    // fix shape MerchantFeeWaiverService.getRevocationCandidates already established.
+    Given("two OPEN listings from two different, nearby agents") {
+        val agentRepository = mockk<AgentRepository>()
+        val operatorRepository = mockk<AgentOperatorRepository>()
+        val listingRepository = mockk<FloatListingRepository>()
+        val svc = service(agentRepository = agentRepository, operatorRepository = operatorRepository, listingRepository = listingRepository)
+        val operator = AgentOperator("operator_own", "agent_own", "user_own")
+        val agentA = Agent("agent_a", "Kigali Central", "agent_cash_a", AgentStatus.ACTIVE, BigDecimal("100000"), BigDecimal("80000"), latitude = -1.9536, longitude = 30.0605)
+        val agentB = Agent("agent_b", "Nyamirambo", "agent_cash_b", AgentStatus.ACTIVE, BigDecimal("100000"), BigDecimal("80000"), latitude = -1.9606, longitude = 30.0705)
+        val listingA = FloatListing("floatlisting_a", "agent_a", BigDecimal("20000"))
+        val listingB = FloatListing("floatlisting_b", "agent_b", BigDecimal("15000"))
+        every { operatorRepository.findByUserId("user_own") } returns operator
+        every { agentRepository.findById("agent_own") } returns Optional.of(Agent("agent_own", "Own Agent", "agent_cash_own", AgentStatus.ACTIVE, BigDecimal("100000"), BigDecimal("80000")))
+        every { listingRepository.findByStatus(FloatListingStatus.OPEN) } returns listOf(listingA, listingB)
+        every { agentRepository.findAllById(match { it.toSet() == setOf("agent_a", "agent_b") }) } returns listOf(agentA, agentB)
+
+        When("a nearby operator searches") {
+            val results = svc.getNearbyListings("user_own", -1.95, 30.06, 20.0)
+
+            Then("both listings' agents are batch-resolved in a single findAllById call, never a per-listing findById") {
+                results.map { it.listing.id } shouldBe listOf("floatlisting_a", "floatlisting_b")
+                verify(exactly = 1) { agentRepository.findAllById(any()) }
+                // findById is only ever called once, for activeOperator's own caller-identity
+                // check -- never per-listing for agent_a/agent_b.
+                verify(exactly = 0) { agentRepository.findById("agent_a") }
+                verify(exactly = 0) { agentRepository.findById("agent_b") }
+            }
+        }
+    }
+
     Given("an agent with two of their own listings and requests against both") {
         val agentRepository = mockk<AgentRepository>()
         val operatorRepository = mockk<AgentOperatorRepository>()
