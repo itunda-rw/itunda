@@ -17,8 +17,10 @@ import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.BikeRentalSessionRepository
 import rw.itunda.core.repository.BikeRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
@@ -39,7 +41,12 @@ class BikeRentalServiceTest : BehaviorSpec({
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
         fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
-    ) = BikeRentalService(bikeRepository, bikeRentalSessionRepository, accountRepository, ledgerService, rateLimiter, fraudRuleEngine)
+        notificationRepository: NotificationRepository = mockk(relaxed = true),
+        pushNotificationService: PushNotificationService = mockk(relaxed = true),
+    ) = BikeRentalService(
+        bikeRepository, bikeRentalSessionRepository, accountRepository, ledgerService, rateLimiter, fraudRuleEngine,
+        notificationRepository, pushNotificationService,
+    )
 
     Given("a fresh owner account with a real account") {
         val bikeRepository = mockk<BikeRepository>()
@@ -194,9 +201,13 @@ class BikeRentalServiceTest : BehaviorSpec({
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             bikeRepository = bikeRepository, bikeRentalSessionRepository = bikeRentalSessionRepository,
             accountRepository = accountRepository, ledgerService = ledgerService, fraudRuleEngine = fraudRuleEngine,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
         )
 
         val bike = Bike(id = "bike_1", ownerUserId = "owner_1", accountId = "account_owner", type = BikeType.REGULAR, currentLatitude = -1.9, currentLongitude = 30.0)
@@ -241,6 +252,14 @@ class BikeRentalServiceTest : BehaviorSpec({
             // already closed.
             Then("the real fraud engine is evaluated against the rider and the real bike owner") {
                 verify(exactly = 1) { fraudRuleEngine.evaluate("rider_1", "owner_1", BigDecimal("400.00"), "ledgertxn_1") }
+            }
+
+            // Real gap found live (2026-09-14, sibling-asymmetry sweep): this class
+            // had zero notification wiring -- the owner has no way to know their bike
+            // was rented and paid out otherwise.
+            Then("the real bike owner is real-notified of the payout") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "owner_1" && it.type == "BIKE_RENTAL_PAYOUT" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("owner_1", any(), any(), any()) }
             }
         }
     }
@@ -288,9 +307,11 @@ class BikeRentalServiceTest : BehaviorSpec({
         val bikeRentalSessionRepository = mockk<BikeRentalSessionRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val service = newService(
             bikeRepository = bikeRepository, bikeRentalSessionRepository = bikeRentalSessionRepository,
-            accountRepository = accountRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
         )
 
         val bike = Bike(id = "bike_1", ownerUserId = "owner_1", accountId = "account_owner", type = BikeType.ELECTRIC, currentLatitude = -1.90, currentLongitude = 30.00)

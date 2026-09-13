@@ -1,21 +1,27 @@
 package rw.itunda.rideshare
 
+import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.BusBooking
 import rw.itunda.core.domain.BusBookingStatus
 import rw.itunda.core.domain.BusTrip
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.BusBookingRepository
 import rw.itunda.core.repository.BusTripRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -52,7 +58,11 @@ class BusService(
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
     private val fraudRuleEngine: FraudRuleEngine,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(BusService::class.java)
+
     companion object {
         // itunda's own honest fare bound -- no real published Kakao T Bus fare
         // schedule exists to source (real intercity fares vary by route/distance/
@@ -166,12 +176,29 @@ class BusService(
         trip.availableSeats -= seatCount
         busTripRepository.save(trip)
 
-        return busBookingRepository.save(
+        val saved = busBookingRepository.save(
             BusBooking(
                 id = "bus_booking_${UUID.randomUUID()}", tripId = tripId, riderUserId = riderUserId, seatCount = seatCount,
                 totalFare = totalFare, platformFee = platformFee, paymentTransactionId = result.transactionId,
             ),
         )
+
+        // Real gap found live (2026-09-14, sibling-asymmetry sweep): this class had
+        // zero notification wiring at all -- the same "someone else's asset earned
+        // money while they weren't looking" gap DesignatedDriverService's own
+        // completeTrip already closed earlier the same day. The operator has no way
+        // to know a real rider booked seats on their trip otherwise.
+        val title = "New bus ticket sale"
+        val body = "$seatCount seat(s) sold for ${trip.origin} -> ${trip.destination}. You earned $netToOperator RWF."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = trip.operatorUserId, type = "BUS_TICKET_SOLD",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"bookingId\":\"${saved.id}\"}",
+            ),
+        )
+        sendBookingPushAfterCommit(trip.operatorUserId, title, body, saved.id)
+
+        return saved
     }
 
     // Real gap found 2026-09-05 (concurrency audit): cancelBooking (this method's own
@@ -220,7 +247,38 @@ class BusService(
 
         booking.status = BusBookingStatus.CANCELLED
         booking.refundTransactionId = result.transactionId
-        return busBookingRepository.save(booking)
+        val saved = busBookingRepository.save(booking)
+
+        val title = "A bus booking was cancelled"
+        val body = "A rider cancelled ${booking.seatCount} seat(s) on ${trip.origin} -> ${trip.destination}. The sale was refunded."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = trip.operatorUserId, type = "BUS_BOOKING_CANCELLED",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"bookingId\":\"${booking.id}\"}",
+            ),
+        )
+        sendBookingPushAfterCommit(trip.operatorUserId, title, body, booking.id)
+
+        return saved
+    }
+
+    /** A sale/cancellation alert must never announce a booking whose enclosing
+     * transaction rolled back. */
+    private fun sendBookingPushAfterCommit(userId: String, title: String, body: String, bookingId: String) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body, mapOf("bookingId" to bookingId))
+            } catch (e: Exception) {
+                log.warn("Could not send bus-booking push for booking {}", bookingId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     fun getMyBookings(riderUserId: String, pageable: Pageable): Page<BusBooking> =

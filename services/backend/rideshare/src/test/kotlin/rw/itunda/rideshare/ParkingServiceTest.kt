@@ -16,8 +16,10 @@ import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.ParkingSessionRepository
 import rw.itunda.core.repository.ParkingSpotRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
@@ -38,7 +40,12 @@ class ParkingServiceTest : BehaviorSpec({
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
         fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
-    ) = ParkingService(parkingSpotRepository, parkingSessionRepository, accountRepository, ledgerService, rateLimiter, fraudRuleEngine)
+        notificationRepository: NotificationRepository = mockk(relaxed = true),
+        pushNotificationService: PushNotificationService = mockk(relaxed = true),
+    ) = ParkingService(
+        parkingSpotRepository, parkingSessionRepository, accountRepository, ledgerService, rateLimiter, fraudRuleEngine,
+        notificationRepository, pushNotificationService,
+    )
 
     Given("a fresh owner account with a real account") {
         val parkingSpotRepository = mockk<ParkingSpotRepository>()
@@ -176,9 +183,13 @@ class ParkingServiceTest : BehaviorSpec({
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             parkingSpotRepository = parkingSpotRepository, parkingSessionRepository = parkingSessionRepository,
             accountRepository = accountRepository, ledgerService = ledgerService, fraudRuleEngine = fraudRuleEngine,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
         )
 
         val spot = ParkingSpot(
@@ -226,6 +237,14 @@ class ParkingServiceTest : BehaviorSpec({
             Then("the real fraud engine is evaluated against the renter and the real spot owner") {
                 verify(exactly = 1) { fraudRuleEngine.evaluate("renter_1", "owner_1", BigDecimal("1000.00"), "ledgertxn_1") }
             }
+
+            // Real gap found live (2026-09-14, sibling-asymmetry sweep): this class
+            // had zero notification wiring -- the owner has no way to know their spot
+            // was occupied and paid out otherwise.
+            Then("the real spot owner is real-notified of the payout") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "owner_1" && it.type == "PARKING_SESSION_PAYOUT" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("owner_1", any(), any(), any()) }
+            }
         }
     }
 
@@ -271,9 +290,11 @@ class ParkingServiceTest : BehaviorSpec({
         val parkingSessionRepository = mockk<ParkingSessionRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val service = newService(
             parkingSpotRepository = parkingSpotRepository, parkingSessionRepository = parkingSessionRepository,
-            accountRepository = accountRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
         )
 
         val spot = ParkingSpot(

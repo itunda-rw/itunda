@@ -1,9 +1,12 @@
 package rw.itunda.rideshare
 
+import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.LocationUpdateRateLimit
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Bike
@@ -12,13 +15,16 @@ import rw.itunda.core.domain.BikeRentalStatus
 import rw.itunda.core.domain.BikeType
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.BikeRentalSessionRepository
 import rw.itunda.core.repository.BikeRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -49,7 +55,11 @@ class BikeRentalService(
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
     private val fraudRuleEngine: FraudRuleEngine,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(BikeRentalService::class.java)
+
     companion object {
         // itunda's own honest per-minute rate choice -- no real published Kakao T Bike
         // fare schedule exists to source (pricing varies live by city/bike-type/demand
@@ -275,7 +285,44 @@ class BikeRentalService(
         bike.available = true
         bikeRepository.save(bike)
 
-        return bikeRentalSessionRepository.save(session)
+        val saved = bikeRentalSessionRepository.save(session)
+
+        // Real gap found live (2026-09-14, sibling-asymmetry sweep): this class had
+        // zero notification wiring at all -- the same "someone else's asset earned
+        // money while they weren't looking" gap DesignatedDriverService's own
+        // completeTrip already closed earlier the same day. The owner has no way to
+        // know their bike was rented and paid out otherwise, including via the
+        // scheduler-triggered forceEndAbandonedRental path where there's no live UI
+        // interaction at all.
+        val title = "Your bike was rented"
+        val body = "You earned ${netToOwner} RWF from a ${durationMinutes}-minute rental."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${java.util.UUID.randomUUID()}", userId = bike.ownerUserId, type = "BIKE_RENTAL_PAYOUT",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"sessionId\":\"${session.id}\"}",
+            ),
+        )
+        sendRentalPushAfterCommit(bike.ownerUserId, title, body, session.id)
+
+        return saved
+    }
+
+    /** A payout alert must never announce a rental whose enclosing transaction rolled back. */
+    private fun sendRentalPushAfterCommit(userId: String, title: String, body: String, sessionId: String) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body, mapOf("sessionId" to sessionId))
+            } catch (e: Exception) {
+                log.warn("Could not send bike-rental payout push for session {}", sessionId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     fun getMyRentalHistory(riderUserId: String, pageable: Pageable): Page<BikeRentalSession> =

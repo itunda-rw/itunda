@@ -16,8 +16,10 @@ import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.BusBookingRepository
 import rw.itunda.core.repository.BusTripRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
@@ -39,7 +41,12 @@ class BusServiceTest : BehaviorSpec({
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
         fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
-    ) = BusService(busTripRepository, busBookingRepository, accountRepository, ledgerService, rateLimiter, fraudRuleEngine)
+        notificationRepository: NotificationRepository = mockk(relaxed = true),
+        pushNotificationService: PushNotificationService = mockk(relaxed = true),
+    ) = BusService(
+        busTripRepository, busBookingRepository, accountRepository, ledgerService, rateLimiter, fraudRuleEngine,
+        notificationRepository, pushNotificationService,
+    )
 
     Given("a real operator with a account posting a real future trip") {
         val busTripRepository = mockk<BusTripRepository>()
@@ -122,9 +129,13 @@ class BusServiceTest : BehaviorSpec({
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             busTripRepository = busTripRepository, busBookingRepository = busBookingRepository,
             accountRepository = accountRepository, ledgerService = ledgerService, fraudRuleEngine = fraudRuleEngine,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
         )
 
         val trip = BusTrip(
@@ -168,6 +179,14 @@ class BusServiceTest : BehaviorSpec({
             Then("the real fraud engine is evaluated against the rider and the real bus operator") {
                 verify(exactly = 1) { fraudRuleEngine.evaluate("rider_1", "operator_1", BigDecimal("6000.00"), "ledgertxn_1") }
             }
+
+            // Real gap found live (2026-09-14, sibling-asymmetry sweep): this class
+            // had zero notification wiring -- the operator has no way to know a real
+            // rider booked seats on their trip otherwise.
+            Then("the real bus operator is real-notified of the ticket sale") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "operator_1" && it.type == "BUS_TICKET_SOLD" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("operator_1", any(), any(), any()) }
+            }
         }
     }
 
@@ -176,9 +195,13 @@ class BusServiceTest : BehaviorSpec({
         val busBookingRepository = mockk<BusBookingRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             busTripRepository = busTripRepository, busBookingRepository = busBookingRepository,
             accountRepository = accountRepository, ledgerService = ledgerService,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
         )
 
         val trip = BusTrip(
@@ -212,6 +235,14 @@ class BusServiceTest : BehaviorSpec({
             Then("a real full refund posts and the booking is marked CANCELLED") {
                 result.status shouldBe BusBookingStatus.CANCELLED
                 result.refundTransactionId shouldBe "ledgertxn_refund"
+            }
+
+            // Real gap found live (2026-09-14, sibling-asymmetry sweep): the operator
+            // has no way to know their real ticket revenue was just reversed
+            // otherwise.
+            Then("the real bus operator is real-notified of the cancellation") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "operator_1" && it.type == "BUS_BOOKING_CANCELLED" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("operator_1", any(), any(), any()) }
             }
         }
     }

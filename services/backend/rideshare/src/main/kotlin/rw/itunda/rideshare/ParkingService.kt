@@ -1,12 +1,16 @@
 package rw.itunda.rideshare
 
+import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.ParkingSession
 import rw.itunda.core.domain.ParkingSessionStatus
 import rw.itunda.core.domain.ParkingSpot
@@ -15,8 +19,10 @@ import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.ParkingSessionRepository
 import rw.itunda.core.repository.ParkingSpotRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -51,7 +57,11 @@ class ParkingService(
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
     private val fraudRuleEngine: FraudRuleEngine,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(ParkingService::class.java)
+
     companion object {
         // itunda's own honest per-hour rate bound -- no real published Kakao T Parking
         // fare schedule exists to source (pricing varies live by lot/city/demand in the
@@ -252,7 +262,44 @@ class ParkingService(
         spot.available = true
         parkingSpotRepository.save(spot)
 
-        return parkingSessionRepository.save(session)
+        val saved = parkingSessionRepository.save(session)
+
+        // Real gap found live (2026-09-14, sibling-asymmetry sweep): this class had
+        // zero notification wiring at all -- the same "someone else's asset earned
+        // money while they weren't looking" gap DesignatedDriverService's own
+        // completeTrip already closed earlier the same day. The owner has no way to
+        // know their spot was occupied and paid out otherwise, including via the
+        // scheduler-triggered forceEndAbandonedSession path.
+        val title = "Your parking spot was used"
+        val body = "You earned ${netToOwner} RWF from a ${billedHours}-hour session."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = spot.ownerUserId, type = "PARKING_SESSION_PAYOUT",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"sessionId\":\"${session.id}\"}",
+            ),
+        )
+        sendSessionPushAfterCommit(spot.ownerUserId, title, body, session.id)
+
+        return saved
+    }
+
+    /** A payout alert must never announce a session whose enclosing transaction
+     * rolled back. */
+    private fun sendSessionPushAfterCommit(userId: String, title: String, body: String, sessionId: String) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body, mapOf("sessionId" to sessionId))
+            } catch (e: Exception) {
+                log.warn("Could not send parking-session payout push for session {}", sessionId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     fun getMyRentalHistory(renterUserId: String, pageable: Pageable): Page<ParkingSession> =
