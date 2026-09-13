@@ -14,6 +14,7 @@ import rw.itunda.core.domain.BikeRentalStatus
 import rw.itunda.core.domain.BikeType
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.BikeRentalSessionRepository
@@ -37,7 +38,8 @@ class BikeRentalServiceTest : BehaviorSpec({
         accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = BikeRentalService(bikeRepository, bikeRentalSessionRepository, accountRepository, ledgerService, rateLimiter)
+        fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
+    ) = BikeRentalService(bikeRepository, bikeRentalSessionRepository, accountRepository, ledgerService, rateLimiter, fraudRuleEngine)
 
     Given("a fresh owner account with a real account") {
         val bikeRepository = mockk<BikeRepository>()
@@ -191,9 +193,10 @@ class BikeRentalServiceTest : BehaviorSpec({
         val bikeRentalSessionRepository = mockk<BikeRentalSessionRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = newService(
             bikeRepository = bikeRepository, bikeRentalSessionRepository = bikeRentalSessionRepository,
-            accountRepository = accountRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService, fraudRuleEngine = fraudRuleEngine,
         )
 
         val bike = Bike(id = "bike_1", ownerUserId = "owner_1", accountId = "account_owner", type = BikeType.REGULAR, currentLatitude = -1.9, currentLongitude = 30.0)
@@ -229,6 +232,15 @@ class BikeRentalServiceTest : BehaviorSpec({
                 result.platformFee shouldBe BigDecimal("60.00")
                 result.payoutTransactionId shouldBe "ledgertxn_1"
                 bikeSavedSlot.captured.available shouldBe true
+            }
+
+            // Real gap found live (2026-09-14, FraudRuleEngine-verify sweep): this
+            // class has no upfront hold to have evaluated the owner as counterparty
+            // earlier -- settleRental is the ONE AND ONLY money-movement event for a
+            // real rental, same shape MotoFareService.collectFare's own identical gap
+            // already closed.
+            Then("the real fraud engine is evaluated against the rider and the real bike owner") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("rider_1", "owner_1", BigDecimal("400.00"), "ledgertxn_1") }
             }
         }
     }

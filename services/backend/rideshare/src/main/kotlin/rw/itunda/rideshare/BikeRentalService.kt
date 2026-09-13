@@ -13,6 +13,7 @@ import rw.itunda.core.domain.BikeType
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
@@ -47,6 +48,7 @@ class BikeRentalService(
     private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     companion object {
         // itunda's own honest per-minute rate choice -- no real published Kakao T Bike
@@ -252,6 +254,12 @@ class BikeRentalService(
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, platformFee, "Bike rental platform fee"),
             ),
         )
+        // Real gap found live (2026-09-14, FraudRuleEngine-verify sweep): this class
+        // has no upfront hold to have evaluated the owner as counterparty earlier --
+        // settleRental is the ONE AND ONLY money-movement event for a real rental, a
+        // direct known-recipient WALLET-to-WALLET payment, same shape
+        // MotoFareService.collectFare's own identical gap already closed.
+        fraudRuleEngine.evaluate(session.riderUserId, bike.ownerUserId, totalFare, result.transactionId)
 
         session.endedAt = endedAt
         session.endLatitude = endLatitude
