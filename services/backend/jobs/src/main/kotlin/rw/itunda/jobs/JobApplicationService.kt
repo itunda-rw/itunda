@@ -1,17 +1,23 @@
 package rw.itunda.jobs
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.JobApplication
 import rw.itunda.core.domain.JobApplicationStatus
 import rw.itunda.core.domain.JobPostStatus
+import rw.itunda.core.domain.Notification
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.JobApplicationRepository
 import rw.itunda.core.repository.JobPostRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.messaging.MessagingService
 import java.time.Duration
 import java.time.Instant
@@ -37,7 +43,10 @@ class JobApplicationService(
     private val messagingService: MessagingService,
     private val resumeService: ResumeService,
     private val objectMapper: ObjectMapper,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(JobApplicationService::class.java)
     @Transactional
     fun apply(applicantId: String, jobPostId: String, message: String): JobApplication {
         val post = jobPostRepository.findById(jobPostId).orElseThrow { JobPostNotFoundException("Job post not found") }
@@ -116,6 +125,50 @@ class JobApplicationService(
         jobApplicationRepository.save(application)
 
         val conversation = if (accept) messagingService.startOrGetConversation(posterId, application.applicantId) else null
+
+        // Real gap found live (2026-09-13, sibling-asymmetry sweep): this terminal
+        // decision on someone else's real application used to notify nobody -- on
+        // decline, absolutely nothing; on accept, only a silent Conversation row (no
+        // message, no push). Same "a terminal decision deserves a real notification to
+        // the person it happened to" discipline PropertyOwnershipService.decide/
+        // InsuranceService.decideClaim/OrderReturnService.decide already establish.
+        val title = if (accept) "Your application was accepted" else "Your application wasn't selected"
+        val body = if (accept) {
+            "\"${post.title}\" accepted your application. Start chatting to arrange the details."
+        } else {
+            "\"${post.title}\" wasn't a match this time. Keep applying -- new jobs are posted every day."
+        }
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = application.applicantId, type = "JOB_APPLICATION_DECIDED",
+                title = title, body = body, isRead = false, createdAt = Instant.now(),
+                dataJson = "{\"applicationId\":\"${application.id}\"}",
+            ),
+        )
+        sendPushAfterCommit(application.applicantId, title, body, application.id)
+
         return application to conversation
+    }
+
+    // Same real "defer the mobile push until the real status change is durable, but the
+    // in-app Notification row is saved immediately" discipline PropertyOwnershipService
+    // .sendPushAfterCommit/InsuranceService.sendPolicyPushAfterCommit already establish
+    // for a structurally identical terminal decision.
+    private fun sendPushAfterCommit(userId: String, title: String, body: String, applicationId: String) {
+        val data = mapOf("applicationId" to applicationId)
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body, data)
+            } catch (e: Exception) {
+                log.warn("Could not send job-application-decision push for application {}", applicationId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 }

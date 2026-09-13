@@ -33,7 +33,9 @@ class JobApplicationServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>(relaxed = true)
         val resumeService = mockk<ResumeService>(relaxed = true)
         val objectMapper = mockk<com.fasterxml.jackson.databind.ObjectMapper>(relaxed = true)
-        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true).also { every { it.save(any()) } answers { firstArg() } }
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper, notificationRepository, pushNotificationService)
 
         val post = openJobPost("job_post_1", "poster_1")
         every { jobPostRepository.findById("job_post_1") } returns Optional.of(post)
@@ -76,7 +78,9 @@ class JobApplicationServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>(relaxed = true)
         val resumeService = mockk<ResumeService>(relaxed = true)
         val objectMapper = mockk<com.fasterxml.jackson.databind.ObjectMapper>(relaxed = true)
-        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true).also { every { it.save(any()) } answers { firstArg() } }
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper, notificationRepository, pushNotificationService)
 
         val post = openJobPost("job_post_2", "poster_2")
         every { jobPostRepository.findById("job_post_2") } returns Optional.of(post)
@@ -108,7 +112,9 @@ class JobApplicationServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>(relaxed = true)
         val resumeService = mockk<ResumeService>(relaxed = true)
         val objectMapper = mockk<com.fasterxml.jackson.databind.ObjectMapper>(relaxed = true)
-        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true).also { every { it.save(any()) } answers { firstArg() } }
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper, notificationRepository, pushNotificationService)
 
         val post = openJobPost("job_post_3", "poster_3")
         every { jobPostRepository.findById("job_post_3") } returns Optional.of(post)
@@ -139,7 +145,9 @@ class JobApplicationServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>(relaxed = true)
         val resumeService = mockk<ResumeService>(relaxed = true)
         val objectMapper = mockk<com.fasterxml.jackson.databind.ObjectMapper>(relaxed = true)
-        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true).also { every { it.save(any()) } answers { firstArg() } }
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper, notificationRepository, pushNotificationService)
 
         val post = openJobPost("job_post_4", "poster_4")
         every { jobPostRepository.findById("job_post_4") } returns Optional.of(post)
@@ -164,7 +172,9 @@ class JobApplicationServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>(relaxed = true)
         val resumeService = mockk<ResumeService>(relaxed = true)
         val objectMapper = mockk<com.fasterxml.jackson.databind.ObjectMapper>(relaxed = true)
-        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true).also { every { it.save(any()) } answers { firstArg() } }
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper, notificationRepository, pushNotificationService)
 
         val post = openJobPost("job_post_5", "poster_5").apply { status = JobPostStatus.FILLED }
         every { jobPostRepository.findById("job_post_5") } returns Optional.of(post)
@@ -188,7 +198,9 @@ class JobApplicationServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>()
         val resumeService = mockk<ResumeService>(relaxed = true)
         val objectMapper = mockk<com.fasterxml.jackson.databind.ObjectMapper>(relaxed = true)
-        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true).also { every { it.save(any()) } answers { firstArg() } }
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper, notificationRepository, pushNotificationService)
 
         val post = openJobPost("job_post_6", "poster_6")
         val application = JobApplication(id = "job_application_1", jobPostId = "job_post_6", applicantId = "applicant_6", message = "Pick me")
@@ -205,6 +217,48 @@ class JobApplicationServiceTest : BehaviorSpec({
                 decided.status shouldBe JobApplicationStatus.ACCEPTED
                 resultConversation?.id shouldBe "conversation_1"
             }
+
+            // Real gap found live (2026-09-13, sibling-asymmetry sweep): this terminal
+            // decision used to notify nobody -- only a silent Conversation row on
+            // accept, absolutely nothing on decline.
+            Then("the real applicant is notified their application was accepted") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "applicant_6" && it.type == "JOB_APPLICATION_DECIDED" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("applicant_6", "Your application was accepted", any(), any()) }
+            }
+        }
+    }
+
+    Given("a poster reviewing and declining a real pending application") {
+        val jobApplicationRepository = mockk<JobApplicationRepository>()
+        val jobPostRepository = mockk<JobPostRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val messagingService = mockk<MessagingService>(relaxed = true)
+        val resumeService = mockk<ResumeService>(relaxed = true)
+        val objectMapper = mockk<com.fasterxml.jackson.databind.ObjectMapper>(relaxed = true)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true).also { every { it.save(any()) } answers { firstArg() } }
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper, notificationRepository, pushNotificationService)
+
+        val post = openJobPost("job_post_8", "poster_8")
+        val application = JobApplication(id = "job_application_3", jobPostId = "job_post_8", applicantId = "applicant_8", message = "Pick me")
+        every { jobApplicationRepository.findById("job_application_3") } returns Optional.of(application)
+        every { jobPostRepository.findById("job_post_8") } returns Optional.of(post)
+        every { jobApplicationRepository.save(any()) } answers { firstArg() }
+
+        When("declining") {
+            val (decided, resultConversation) = service.respond("poster_8", "job_application_3", accept = false)
+
+            Then("it marks the application DECLINED and never opens a conversation") {
+                decided.status shouldBe JobApplicationStatus.DECLINED
+                resultConversation shouldBe null
+            }
+
+            // Real gap found live (2026-09-13, sibling-asymmetry sweep): a decline used
+            // to notify the applicant of absolutely nothing at all.
+            Then("the real applicant is still notified, even though there's no conversation to open") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "applicant_8" && it.type == "JOB_APPLICATION_DECIDED" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("applicant_8", "Your application wasn't selected", any(), any()) }
+            }
         }
     }
 
@@ -215,7 +269,9 @@ class JobApplicationServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>()
         val resumeService = mockk<ResumeService>(relaxed = true)
         val objectMapper = mockk<com.fasterxml.jackson.databind.ObjectMapper>(relaxed = true)
-        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true).also { every { it.save(any()) } answers { firstArg() } }
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper, notificationRepository, pushNotificationService)
 
         val post = openJobPost("job_post_7", "poster_7")
         val application = JobApplication(id = "job_application_2", jobPostId = "job_post_7", applicantId = "applicant_7", message = "Pick me")

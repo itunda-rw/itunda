@@ -50,6 +50,7 @@ class MeetupSessionNotFoundException(message: String) : RuntimeException(message
 class MeetupAttendanceAlreadyCheckedInException(message: String) : RuntimeException(message)
 class MeetupAttendanceNotAMemberException(message: String) : RuntimeException(message)
 class InvalidGroupBuyFinalizeException(message: String) : RuntimeException(message)
+class GroupBuyAlreadyFinalizedException(message: String) : RuntimeException(message)
 
 data class CommunityCategory(val id: String, val label: String)
 
@@ -554,6 +555,19 @@ class CommunityService(
         }
         val groupId = post.groupConversationId
             ?: throw InvalidGroupBuyFinalizeException("This group buy has no real participants to split the cost with yet")
+        // Real gap found live (2026-09-13, sibling-asymmetry sweep): the controller's
+        // own Idempotency-Key check only catches a literal retry of the identical
+        // request -- a genuinely NEW finalize call (a fresh key, days later, or a
+        // client bug) had no real state-level guard at all, unlike every other
+        // repeat-sensitive action in this class (checkIntoSession's
+        // MeetupAttendanceAlreadyCheckedInException, joinMeetup's row-locked capacity
+        // check). Each group conversation belongs to exactly one CommunityPost (created
+        // lazily, once, the first time someone joins -- see joinMeetup above), so "any
+        // real split bill already exists for this group" is an exact proxy for "this
+        // group buy was already finalized."
+        if (splitBillService.getSplitBillsForGroup(organizerId, groupId).isNotEmpty()) {
+            throw GroupBuyAlreadyFinalizedException("This group buy has already been finalized")
+        }
         val participantIds = groupConversationMemberRepository.findByGroupConversationId(groupId)
             .map { it.userId }
             .filter { it != organizerId }

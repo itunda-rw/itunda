@@ -27,6 +27,7 @@ import rw.itunda.community.CommunityService
 import rw.itunda.community.InvalidCommunityCommentException
 import rw.itunda.community.InvalidCommunityCoordinatesException
 import rw.itunda.community.InvalidCommunityPostException
+import rw.itunda.community.GroupBuyAlreadyFinalizedException
 import rw.itunda.community.InvalidGroupBuyFinalizeException
 import rw.itunda.community.InvalidMeetupException
 import rw.itunda.community.InvalidMeetupScheduleException
@@ -361,6 +362,13 @@ class CommunityController(private val communityService: CommunityService, privat
     @ExceptionHandler(InvalidGroupBuyFinalizeException::class)
     fun handleInvalidGroupBuyFinalize(ex: InvalidGroupBuyFinalizeException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_GROUP_BUY_FINALIZE", ex.message ?: "Bad request"))
+
+    // Real gap found live (2026-09-13): a genuinely new finalize call (not caught by
+    // the Idempotency-Key replay above) had no real state-level guard against
+    // double-charging every participant a second time.
+    @ExceptionHandler(GroupBuyAlreadyFinalizedException::class)
+    fun handleGroupBuyAlreadyFinalized(ex: GroupBuyAlreadyFinalizedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("GROUP_BUY_ALREADY_FINALIZED", ex.message ?: "Conflict"))
 
     // Real exceptions SplitBillService.createSplitBill itself can throw, reachable via
     // finalizeGroupBuy -- same clean 4xx handling every other real cross-module reuse

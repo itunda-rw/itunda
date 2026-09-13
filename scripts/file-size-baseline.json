@@ -41,7 +41,7 @@
   "services/backend/commerce/src/main/kotlin/rw/itunda/commerce/OrderService.kt": 697,
   "services/backend/commerce/src/main/kotlin/rw/itunda/commerce/web/OrderController.kt": 549,
   "services/backend/commerce/src/test/kotlin/rw/itunda/commerce/OrderServiceTest.kt": 827,
-  "services/backend/community/src/main/kotlin/rw/itunda/community/CommunityService.kt": 582,
+  "services/backend/community/src/main/kotlin/rw/itunda/community/CommunityService.kt": 591,
   "services/backend/community/src/test/kotlin/rw/itunda/community/CommunityServiceTest.kt": 1077,
   "services/backend/eats/src/main/kotlin/rw/itunda/eats/EatsOrderService.kt": 1648,
   "services/backend/eats/src/main/kotlin/rw/itunda/eats/web/EatsController.kt": 907,

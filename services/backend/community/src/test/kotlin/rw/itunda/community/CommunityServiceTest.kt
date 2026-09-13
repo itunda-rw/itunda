@@ -823,6 +823,7 @@ class CommunityServiceTest : BehaviorSpec({
         )
 
         When("the real organizer finalizes with the real total amount") {
+            every { splitBillService.getSplitBillsForGroup("organizer_1", "group_1") } returns emptyList()
             val resultSlot = slot<List<String>>()
             every {
                 splitBillService.createSplitBill("organizer_1", "group_1", BigDecimal("9000"), "25kg rice", capture(resultSlot))
@@ -832,6 +833,23 @@ class CommunityServiceTest : BehaviorSpec({
 
             Then("it real-delegates to SplitBillService with every real member except the organizer") {
                 resultSlot.captured.toSet() shouldBe setOf("member_1", "member_2")
+            }
+        }
+
+        // Real gap found live (2026-09-13, sibling-asymmetry sweep): the controller's
+        // own Idempotency-Key check only catches a literal retry of the identical
+        // request -- a genuinely new finalize call had no real state-level guard at
+        // all, unlike every other repeat-sensitive action in this class.
+        When("the real organizer tries to finalize the same group buy a second time") {
+            every { splitBillService.getSplitBillsForGroup("organizer_1", "group_1") } returns listOf(mockk(relaxed = true))
+
+            Then("it throws GroupBuyAlreadyFinalizedException before ever touching SplitBillService again") {
+                try {
+                    service.finalizeGroupBuy("organizer_1", "post_1", BigDecimal("9000"), "25kg rice")
+                    error("expected GroupBuyAlreadyFinalizedException")
+                } catch (e: GroupBuyAlreadyFinalizedException) {
+                    verify(exactly = 0) { splitBillService.createSplitBill(any(), any(), any(), any(), any()) }
+                }
             }
         }
 
