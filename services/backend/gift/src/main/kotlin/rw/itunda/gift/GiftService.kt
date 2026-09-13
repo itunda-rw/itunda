@@ -267,6 +267,31 @@ class GiftService(
 
     fun getExpiredPendingGifts(): List<Gift> =
         giftRepository.findByStatusAndExpiresAtBefore(GiftStatus.PENDING, Instant.now())
+
+    fun getGiftsDueForExpiryReminder(): List<Gift> {
+        val cutoff = Instant.now().plus(Gift.EXPIRY_REMINDER_WINDOW)
+        return giftRepository.findByStatusAndExpiryReminderSentAtIsNull(GiftStatus.PENDING)
+            .filter { !it.expiresAt.isAfter(cutoff) }
+    }
+
+    /** One real expiry-reminder message, called per-gift by the scheduler -- re-checks
+     * `status`/`expiryReminderSentAt` right before sending so a genuine race can't
+     * double-fire, same resilience discipline GiftVoucherService.sendExpiryReminder's
+     * own doc comment already establishes. Posted as the sender into the existing real
+     * sender<->recipient conversation, same "no system/bot sender concept yet"
+     * convention this class's own send/claim/expire messages already use. */
+    @Transactional
+    fun sendExpiryReminder(giftId: String) {
+        val gift = giftRepository.findById(giftId).orElse(null) ?: return
+        if (gift.status != GiftStatus.PENDING || gift.expiryReminderSentAt != null) return
+
+        messagingService.sendMessage(
+            gift.senderId, gift.conversationId,
+            "⏳ Your gift of ${formatAmount(gift.amount)} RWF expires soon -- open it before ${gift.expiresAt} or it'll be refunded",
+        )
+        gift.expiryReminderSentAt = Instant.now()
+        giftRepository.save(gift)
+    }
 }
 
 /** A gift's chat message body is a real, stable, machine-parseable format (same

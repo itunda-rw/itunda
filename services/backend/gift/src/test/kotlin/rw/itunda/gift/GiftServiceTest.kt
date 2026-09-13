@@ -345,6 +345,77 @@ class GiftServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real sibling-asymmetry fix (2026-09-13) -- GiftVoucher already nudges its
+    // recipient before real expiry; this near-identical money-envelope concept had no
+    // equivalent, so the recipient got zero further signal for the whole EXPIRY
+    // window before the money silently returned to the sender.
+    Given("a real pending gift approaching its expiry, never yet reminded") {
+        val giftRepository = mockk<GiftRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val userRepository = mockk<UserRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val messagingService = mockk<MessagingService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = GiftService(giftRepository, accountRepository, userRepository, transactionRepository, ledgerService, messagingService, rateLimiter, fraudRuleEngine)
+
+        val dueGift = Gift(
+            id = "gift_5", senderId = "user_sender", recipientId = "user_recipient", conversationId = "conversation_1",
+            messageId = "message_5", amount = BigDecimal("3000"), note = null, holdTransactionId = "ledgertxn_7",
+            expiresAt = Instant.now().plusSeconds(3600),
+        )
+
+        every { giftRepository.findByStatusAndExpiryReminderSentAtIsNull(GiftStatus.PENDING) } returns listOf(dueGift)
+        every { giftRepository.findById("gift_5") } returns Optional.of(dueGift)
+        every { giftRepository.save(any()) } answers { firstArg() }
+
+        When("the reminder scheduler checks for gifts due soon") {
+            val due = service.getGiftsDueForExpiryReminder()
+
+            Then("it real-finds the gift that's within the reminder window") {
+                due.map { it.id } shouldBe listOf("gift_5")
+            }
+        }
+
+        When("a real reminder is sent") {
+            service.sendExpiryReminder("gift_5")
+
+            Then("it messages the sender's own conversation and marks the reminder sent, never double-firing on a re-check") {
+                verify(exactly = 1) { messagingService.sendMessage("user_sender", "conversation_1", match { it.contains("expires soon") }) }
+                verify(exactly = 1) { giftRepository.save(match { it.expiryReminderSentAt != null }) }
+            }
+        }
+    }
+
+    Given("a real pending gift with plenty of time left before expiry") {
+        val giftRepository = mockk<GiftRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val userRepository = mockk<UserRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val messagingService = mockk<MessagingService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = GiftService(giftRepository, accountRepository, userRepository, transactionRepository, ledgerService, messagingService, rateLimiter, fraudRuleEngine)
+
+        val freshGift = Gift(
+            id = "gift_6", senderId = "user_sender", recipientId = "user_recipient", conversationId = "conversation_1",
+            messageId = "message_6", amount = BigDecimal("1000"), note = null, holdTransactionId = "ledgertxn_8",
+            expiresAt = Instant.now().plus(Gift.EXPIRY),
+        )
+
+        every { giftRepository.findByStatusAndExpiryReminderSentAtIsNull(GiftStatus.PENDING) } returns listOf(freshGift)
+
+        When("the reminder scheduler checks for gifts due soon") {
+            val due = service.getGiftsDueForExpiryReminder()
+
+            Then("it real-excludes a gift that's still well outside the reminder window") {
+                due shouldBe emptyList()
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

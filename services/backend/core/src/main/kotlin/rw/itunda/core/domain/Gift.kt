@@ -82,6 +82,18 @@ class Gift(
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 
+    // Real sibling-asymmetry fix (2026-09-13) -- GiftVoucher.expiryReminderSentAt
+    // already nudges a recipient before a real gifticon expires (KakaoTalk's own real
+    // multi-push cadence, see that field's own doc comment); this near-identical
+    // money-envelope concept had no equivalent -- a gift's creation message can get
+    // buried in an active chat thread, and today the recipient gets zero further
+    // signal for the whole [EXPIRY] window before the money silently returns to the
+    // sender with only the sender told (see GiftService.expireGift's own message).
+    // Null until a real reminder has been sent, same one-shot re-check-before-send
+    // discipline every other *ReminderSentAt field in this codebase already uses.
+    @Column(name = "expiry_reminder_sent_at")
+    var expiryReminderSentAt: Instant? = null,
+
     // Recipient claim and scheduled expiry/refund both settle the same holding balance.
     // Only one of them may transition this gift out of PENDING.
     @Version
@@ -95,5 +107,11 @@ class Gift(
 
     companion object {
         val EXPIRY: java.time.Duration = java.time.Duration.ofDays(7)
+
+        // A 7-day EXPIRY window is much shorter than GiftVoucher's 180-day
+        // DEFAULT_VALIDITY, so voucher's own 7-day EXPIRY_REMINDER_WINDOW would fire
+        // immediately at creation here -- a proportionally shorter, still-meaningful
+        // nudge partway through this shorter window instead.
+        val EXPIRY_REMINDER_WINDOW: java.time.Duration = java.time.Duration.ofDays(1)
     }
 }
