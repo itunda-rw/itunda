@@ -17,6 +17,7 @@ import rw.itunda.core.domain.User
 import rw.itunda.core.domain.UserEmoticonPack
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
@@ -52,10 +53,11 @@ class EmoticonServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = EmoticonService(
             emoticonPackRepository, emoticonRepository, userEmoticonPackRepository, accountRepository,
             userRepository, notificationRepository, ledgerService, messagingService, groupMessagingService, rateLimiter,
-            pushNotificationService,
+            pushNotificationService, fraudRuleEngine,
         )
 
         When("purchasing a pack they don't already own") {
@@ -80,6 +82,12 @@ class EmoticonServiceTest : BehaviorSpec({
             }
             Then("it rate-limits the purchase, same convention every other real purchase endpoint carries") {
                 verify(exactly = 1) { rateLimiter.checkLimit("emoticon:purchase:user_1", limit = 20, window = any()) }
+            }
+            // Real gap found (2026-09-13): real money movement with zero FraudRuleEngine
+            // coverage before this fix -- CardChargeService/GiftService/P2pService all
+            // already had it, this sibling service never did.
+            Then("the real purchase is evaluated against the buyer's own fraud history") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("user_1", null, BigDecimal("500"), "ledgertxn_1") }
             }
         }
 
@@ -139,10 +147,11 @@ class EmoticonServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = EmoticonService(
             emoticonPackRepository, emoticonRepository, userEmoticonPackRepository, accountRepository,
             userRepository, notificationRepository, ledgerService, messagingService, groupMessagingService, rateLimiter,
-            pushNotificationService,
+            pushNotificationService, fraudRuleEngine,
         )
 
         val recipient = User(id = "user_recipient", phoneNumber = "+250788000002", firstName = "Recipient", lastName = "Test", passwordHash = "hash")
@@ -175,6 +184,12 @@ class EmoticonServiceTest : BehaviorSpec({
 
             Then("the recipient also gets a real mobile push notification, not just the in-app one") {
                 verify(exactly = 1) { pushNotificationService.sendToUser("user_recipient", "You received a gift!", any(), any()) }
+            }
+            // Real gap found (2026-09-13), same as purchasePack -- this gift DOES have
+            // a real counterparty (the recipient), so recipientUserId is passed rather
+            // than null, matching P2pService.sendDirect's own NEW_RECIPIENT-rule shape.
+            Then("the real gift is evaluated against the giver's fraud history, with the recipient as the counterparty") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("user_giver", "user_recipient", BigDecimal("500"), "ledgertxn_2") }
             }
         }
 
@@ -236,10 +251,11 @@ class EmoticonServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = EmoticonService(
             emoticonPackRepository, emoticonRepository, userEmoticonPackRepository, accountRepository,
             userRepository, notificationRepository, ledgerService, messagingService, groupMessagingService, rateLimiter,
-            pushNotificationService,
+            pushNotificationService, fraudRuleEngine,
         )
 
         val emoticon = Emoticon(id = "emoticon_1", packId = "pack_1", imageUrl = "/uploads/smile.png")

@@ -11,6 +11,7 @@ import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.UserEmoticonPack
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
@@ -68,6 +69,7 @@ class EmoticonService(
     private val groupMessagingService: GroupMessagingService,
     private val rateLimiter: RateLimiter,
     private val pushNotificationService: PushNotificationService,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     fun listPacks(): List<EmoticonPack> = emoticonPackRepository.findByActiveTrue()
 
@@ -96,13 +98,21 @@ class EmoticonService(
         val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
             ?: throw EmoticonNoAccountException("No account found for this account")
 
-        ledgerService.postLedgerTransaction(
+        val result = ledgerService.postLedgerTransaction(
             account.currency,
             listOf(
                 LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, pack.price, "Emoticon pack purchase - ${pack.title}"),
                 LedgerLeg("emoticon_revenue", LedgerAccountType.EMOTICON_REVENUE, LedgerDirection.CREDIT, pack.price, "Emoticon pack sale - ${pack.title}"),
             ),
         )
+        // Real gap found (2026-09-13): real money movement (buyer's ACCOUNT debited)
+        // with zero FraudRuleEngine coverage -- CardChargeService.chargeWithCard,
+        // GiftService.sendGift, P2pService.pay/send all already have this exact fix,
+        // this sibling service never did. recipientUserId is null -- a store purchase
+        // has no counterparty the NEW_RECIPIENT rule's shape fits, so only
+        // HIGH_VALUE/VELOCITY apply, same reasoning MerchantService.chargeCard's own
+        // fix uses.
+        fraudRuleEngine.evaluate(userId, null, pack.price, result.transactionId)
 
         return userEmoticonPackRepository.save(
             UserEmoticonPack(id = "user_emoticon_pack_${UUID.randomUUID()}", userId = userId, packId = packId, source = EmoticonAcquisitionSource.PURCHASED),
@@ -125,13 +135,18 @@ class EmoticonService(
         val giverAccount = accountRepository.findByUserIdAndType(giverUserId, AccountType.MAIN)
             ?: throw EmoticonNoAccountException("No account found for this account")
 
-        ledgerService.postLedgerTransaction(
+        val result = ledgerService.postLedgerTransaction(
             giverAccount.currency,
             listOf(
                 LedgerLeg(giverAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, pack.price, "Emoticon pack gift - ${pack.title}"),
                 LedgerLeg("emoticon_revenue", LedgerAccountType.EMOTICON_REVENUE, LedgerDirection.CREDIT, pack.price, "Emoticon pack gift sale - ${pack.title}"),
             ),
         )
+        // Real gap found (2026-09-13), same as purchasePack above -- this one DOES
+        // have a real counterparty (the recipient resolved by phone number, the same
+        // real shape P2pService.sendDirect's own NEW_RECIPIENT rule exists for), so
+        // recipientUserId is passed rather than null.
+        fraudRuleEngine.evaluate(giverUserId, recipient.id, pack.price, result.transactionId)
 
         val gifted = userEmoticonPackRepository.save(
             UserEmoticonPack(id = "user_emoticon_pack_${UUID.randomUUID()}", userId = recipient.id, packId = packId, source = EmoticonAcquisitionSource.GIFTED),
