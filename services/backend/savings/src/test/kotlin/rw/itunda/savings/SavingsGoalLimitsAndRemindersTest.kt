@@ -56,6 +56,47 @@ class SavingsGoalLimitsAndRemindersTest : BehaviorSpec({
         }
     }
 
+    // Real gap found live (2026-09-14, sibling-asymmetry sweep): depositToGoal/
+    // withdrawFromGoal both reject a non-positive amount before it reaches the ledger;
+    // createGoal's own equally attacker-controlled targetAmount never did, letting a
+    // zero/negative goal reach depositToGoal later and throw an unhandled
+    // LedgerImbalanceException (500) with no controller-level handler anywhere in this
+    // codebase.
+    Given("a real user trying to create a goal with a real non-positive target amount") {
+        val accountRepository = mockk<AccountRepository>()
+        val savingsGoalRepository = mockk<SavingsGoalRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val ledgerAccountRepository = mockk<LedgerAccountRepository>(relaxed = true)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>(relaxed = true)
+        val service = SavingsService(accountRepository, savingsGoalRepository, ledgerService, rateLimiter, notificationRepository, pushNotificationService, ledgerAccountRepository, ledgerEntryRepository)
+
+        When("targetAmount is zero") {
+            Then("it real-400s (via the existing InsufficientGoalBalanceException mapping) before ever touching the account or the goal table") {
+                try {
+                    service.createGoal("user_10", "Goal", BigDecimal.ZERO, null, null, null)
+                    error("expected InsufficientGoalBalanceException")
+                } catch (e: InsufficientGoalBalanceException) {
+                    verify(exactly = 0) { accountRepository.findByUserIdAndType(any(), any()) }
+                    verify(exactly = 0) { savingsGoalRepository.save(any()) }
+                }
+            }
+        }
+
+        When("targetAmount is negative") {
+            Then("it real-rejects the same way") {
+                try {
+                    service.createGoal("user_10", "Goal", BigDecimal("-500"), null, null, null)
+                    error("expected InsufficientGoalBalanceException")
+                } catch (e: InsufficientGoalBalanceException) {
+                    verify(exactly = 0) { savingsGoalRepository.save(any()) }
+                }
+            }
+        }
+    }
+
     Given("a real KB국민은행-style savings goal maturity reminder") {
         val accountRepository = mockk<AccountRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()

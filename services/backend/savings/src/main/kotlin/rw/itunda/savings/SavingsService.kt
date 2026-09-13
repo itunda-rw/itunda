@@ -108,6 +108,18 @@ class SavingsService(
         // deposit/claim (both money-moving, both already Idempotency-Key protected),
         // goal creation is free row creation with zero protection of any kind.
         rateLimiter.checkLimit("savings:goal:$userId", limit = 10, window = Duration.ofHours(1))
+        // Real gap found live (2026-09-14, sibling-asymmetry sweep): depositToGoal/
+        // withdrawFromGoal both reject a non-positive amount before it reaches the
+        // ledger (their own "Amount must be positive" check just below), but nothing
+        // validated this same targetAmount here -- a zero/negative goal lets
+        // depositToGoal's actualAmount = amount.min(targetAmount - currentAmount)
+        // evaluate to <= 0, which LedgerService.postLedgerTransaction's own leg filter
+        // (rawLegs.filter { it.amount > ZERO }) turns into an empty leg list and an
+        // unhandled LedgerImbalanceException (500) -- the exact "validate before the
+        // ledger, don't rely on a ledger-level handler" bug class already fixed for
+        // Stocks/Account/Bills. Reuses depositToGoal/withdrawFromGoal's own exact
+        // exception+message for consistency within this file.
+        if (targetAmount <= BigDecimal.ZERO) throw InsufficientGoalBalanceException("Amount must be positive")
         val savingsAccount = accountRepository.findByUserIdAndType(userId, AccountType.SAVINGS) ?: throw NoAccountException("No savings account found for this account")
         return savingsGoalRepository.save(
             SavingsGoal(
