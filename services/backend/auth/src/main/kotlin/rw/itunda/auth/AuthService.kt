@@ -3,7 +3,10 @@ package rw.itunda.auth
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.InterestJar
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.TermsAcceptance
 import rw.itunda.core.domain.TermsCatalog
 import rw.itunda.core.domain.User
@@ -11,8 +14,10 @@ import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.NominatimGeocodingClient
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.InterestJarRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TermsAcceptanceRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.AccountRepository
@@ -51,6 +56,8 @@ class AuthService(
     private val accountNumberGenerator: AccountNumberGenerator,
     private val termsAcceptanceRepository: TermsAcceptanceRepository,
     private val userVerificationService: UserVerificationService,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private val passwordEncoder = BCryptPasswordEncoder()
 
@@ -311,6 +318,13 @@ class AuthService(
     // requires, reused rather than re-implemented.
     @Transactional
     fun setPin(userId: String, request: SetPinRequest): PublicUser {
+        // Real sibling-asymmetry fix (2026-09-13) -- CardService.setPin reuses this
+        // exact same passwordEncoder.matches proof-of-ownership pattern for the card
+        // PIN, and already rate-limits + sends a security alert on success. This
+        // method changes the LOGIN credential (at least as security-sensitive) but
+        // had neither -- unreachable from any real UI until 2026-09-12's "Change
+        // password" screens shipped, now a real brute-forceable endpoint.
+        rateLimiter.checkLimit("auth:set-pin:$userId", limit = 5, window = Duration.ofHours(1))
         if (!PIN_PATTERN.matches(request.newPin)) {
             throw InvalidPinException("Your PIN must be exactly 6 digits")
         }
@@ -321,7 +335,29 @@ class AuthService(
         user.passwordHash = passwordEncoder.encode(request.newPin)
         user.pinSet = true
         userRepository.save(user)
+        val title = "Your itunda password was changed"
+        val body = "Your itunda login password/PIN was just changed. If this wasn't you, contact support immediately."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = userId, type = "PASSWORD_CHANGED",
+                title = title, body = body,
+                isRead = false, createdAt = Instant.now(), dataJson = "{}",
+            ),
+        )
+        sendPasswordChangedPushAfterCommit(userId, title, body)
         return user.toPublic()
+    }
+
+    /** An external security alert must not claim a credential change that rolled back. */
+    private fun sendPasswordChangedPushAfterCommit(userId: String, title: String, body: String) {
+        val send = { pushNotificationService.sendToUser(userId, title, body) }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     fun getProfile(userId: String): PublicUser {

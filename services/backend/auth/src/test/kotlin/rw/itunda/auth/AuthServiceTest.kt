@@ -99,7 +99,7 @@ class AuthServiceTest : BehaviorSpec({
         val service = AuthService(
             userRepository, accountRepository, interestJarRepository, jwtService, tokenBlocklistService, rateLimiter,
             nominatimGeocodingClient, deviceService, realtimeMessagePublisher, accountNumberGenerator,
-            termsAcceptanceRepository, userVerificationService,
+            termsAcceptanceRepository, userVerificationService, notificationRepository, pushNotificationService,
         )
         val requiredTermsIds = TermsCatalog.requiredIds().toList()
 
@@ -464,6 +464,8 @@ class AuthServiceTest : BehaviorSpec({
             )
             every { userRepository.findById("user_7") } returns Optional.of(user)
             every { userRepository.save(any()) } answers { firstArg() }
+            val notificationSlot = mutableListOf<Notification>()
+            every { notificationRepository.save(capture(notificationSlot)) } answers { firstArg() }
 
             val result = service.setPin("user_7", SetPinRequest("old-free-form-password", "654321"))
 
@@ -471,6 +473,15 @@ class AuthServiceTest : BehaviorSpec({
                 result.pinSet shouldBe true
                 passwordEncoder.matches("654321", user.passwordHash) shouldBe true
                 passwordEncoder.matches("old-free-form-password", user.passwordHash) shouldBe false
+            }
+
+            // Real sibling-asymmetry fix (2026-09-13) -- see AuthService.setPin's own
+            // doc comment: this credential change now alerts the real owner exactly
+            // like CardService.setPin's own already-established card-PIN-changed alert.
+            Then("it real-rate-limits and sends a real security alert, matching CardService.setPin's own convention") {
+                verify(exactly = 1) { rateLimiter.checkLimit("auth:set-pin:user_7", 5, any()) }
+                notificationSlot.single().type shouldBe "PASSWORD_CHANGED"
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_7", any(), any()) }
             }
         }
 
