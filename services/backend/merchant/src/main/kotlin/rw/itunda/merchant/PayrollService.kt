@@ -1,9 +1,13 @@
 package rw.itunda.merchant
 
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.PayrollEmployee
 import rw.itunda.core.domain.PayrollRun
 import rw.itunda.core.domain.Payslip
@@ -14,7 +18,9 @@ import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PayrollEmployeeRepository
 import rw.itunda.core.repository.PayrollRunRepository
 import rw.itunda.core.repository.PayslipRepository
@@ -65,7 +71,11 @@ class PayrollService(
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
     private val fraudRuleEngine: FraudRuleEngine,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(PayrollService::class.java)
+
     // Real gap found 2026-09-05: PayrollEmployee.employeeName has no explicit @Column
     // length (Hibernate's 255 default), but firstName (bounded 234 chars by
     // AuthService.register) and lastName (bounded 255, not concatenated anywhere at
@@ -225,6 +235,15 @@ class PayrollService(
         }
         payslipRepository.saveAll(payslips)
 
+        // Real sibling-asymmetry fix (2026-09-13) -- this class's own doc comment
+        // claims parity with P2pService.payRequest ("the first real account-to-account
+        // money movement... where both sides are known itunda accounts"), which
+        // notifies both sides on every transfer. This real salary payment notified
+        // neither: an employee's account is credited with zero way to know it
+        // happened except by polling their transaction history.
+        roster.forEach { employee -> notifySalaryReceived(employee, merchant.businessName) }
+        notifyPayrollRunCompleted(merchant.ownerUserId, merchant.businessName, roster.size, totalAmount)
+
         return mapOf(
             "payrollRunId" to run.id,
             "totalAmount" to totalAmount,
@@ -249,5 +268,53 @@ class PayrollService(
             throw PayrollRunNotFoundException("Payroll run not found")
         }
         return payslipRepository.findByPayrollRunId(payrollRunId)
+    }
+
+    // Best-effort: a notification failure must never roll back or fail money that
+    // already moved, same "auxiliary side-effect can't block real money movement"
+    // discipline P2pNotificationService.notifyMoneyReceived already establishes.
+    private fun notifySalaryReceived(employee: PayrollEmployee, businessName: String) {
+        try {
+            val title = "Salary received"
+            val body = "$businessName paid you ${employee.salaryAmount} RWF."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = employee.employeeUserId, type = "SALARY_RECEIVED",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(),
+                    dataJson = "{\"amount\":\"${employee.salaryAmount}\"}",
+                ),
+            )
+            sendPushAfterCommit(employee.employeeUserId, title, body)
+        } catch (e: Exception) {
+            log.warn("Failed to notify employee {} of salary received", employee.employeeUserId, e)
+        }
+    }
+
+    private fun notifyPayrollRunCompleted(ownerUserId: String, businessName: String, employeeCount: Int, totalAmount: BigDecimal) {
+        try {
+            val title = "Payroll run completed"
+            val body = "You paid $employeeCount employee(s) a total of $totalAmount RWF at $businessName."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = ownerUserId, type = "PAYROLL_RUN_COMPLETED",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(),
+                    dataJson = "{\"employeeCount\":\"$employeeCount\",\"totalAmount\":\"$totalAmount\"}",
+                ),
+            )
+            sendPushAfterCommit(ownerUserId, title, body)
+        } catch (e: Exception) {
+            log.warn("Failed to notify merchant owner {} of payroll run completion", ownerUserId, e)
+        }
+    }
+
+    private fun sendPushAfterCommit(userId: String, title: String, body: String) {
+        val send = { pushNotificationService.sendToUser(userId, title, body) }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 }

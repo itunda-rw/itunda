@@ -20,6 +20,8 @@ import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.PayrollEmployeeRepository
 import rw.itunda.core.repository.PayrollRunRepository
@@ -56,9 +58,12 @@ class PayrollServiceTest : BehaviorSpec({
         ledgerService: LedgerService = mockk(),
         transactionRepository: TransactionRepository = mockk(relaxed = true),
         fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
+        notificationRepository: NotificationRepository = mockk<NotificationRepository>(relaxed = true).also { repo -> every { repo.save(any()) } answers { firstArg() } },
+        pushNotificationService: PushNotificationService = mockk(relaxed = true),
     ) = PayrollService(
         merchantRepository, payrollEmployeeRepository, payrollRunRepository, payslipRepository,
         userRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
+        notificationRepository, pushNotificationService,
     )
 
     Given("a registered merchant adding an employee to the payroll roster") {
@@ -182,6 +187,9 @@ class PayrollServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         every { transactionRepository.save(any()) } answers { firstArg() }
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
 
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
         val merchantAccount = account("account_merchant", "owner_1")
@@ -201,6 +209,7 @@ class PayrollServiceTest : BehaviorSpec({
             payrollRunRepository = payrollRunRepository, payslipRepository = payslipRepository,
             accountRepository = accountRepository, ledgerService = ledgerService,
             transactionRepository = transactionRepository, fraudRuleEngine = fraudRuleEngine,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
         )
 
         When("payroll is run") {
@@ -234,6 +243,18 @@ class PayrollServiceTest : BehaviorSpec({
             Then("a real Transaction row is saved per employee, fraud-evaluated before saving") {
                 verify(exactly = 2) { transactionRepository.save(any()) }
                 verify(exactly = 2) { fraudRuleEngine.evaluate("owner_1", any(), any(), any()) }
+            }
+
+            // Real sibling-asymmetry fix (2026-09-13) -- this class's own doc comment
+            // claims parity with P2pService.payRequest, which notifies both sides of
+            // every transfer; this real salary payment notified neither before this fix.
+            Then("each employee is notified their salary was received, and the owner gets one run-summary notification") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "emp_1" && it.type == "SALARY_RECEIVED" }) }
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "emp_2" && it.type == "SALARY_RECEIVED" }) }
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "owner_1" && it.type == "PAYROLL_RUN_COMPLETED" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("emp_1", "Salary received", any()) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("emp_2", "Salary received", any()) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("owner_1", "Payroll run completed", any()) }
             }
         }
 
