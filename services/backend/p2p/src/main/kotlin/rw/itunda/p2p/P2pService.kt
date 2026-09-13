@@ -133,6 +133,15 @@ class P2pService(
         if (payerAccount.availableBalance < request.amount) {
             throw InsufficientFundsException("Insufficient available balance for this payment")
         }
+        // Real gap found live (2026-09-14, sibling-asymmetry sweep): this method
+        // already got the p2pTransferLimitService fix below for the identical
+        // "QR-pay loophole" shape, but never got sendDirect's own
+        // FamilyLinkService.enforceSpendLimit call -- a guardian-linked child could
+        // fully bypass their real daily spend limit simply by paying a QR code /
+        // payment request instead of using Send Money. Same ordering as sendDirect:
+        // after the balance check, before the transfer-limit check, before any
+        // ledger post.
+        familyLinkService.enforceSpendLimit(payerUserId, payerAccount.id, request.amount)
         // Real Korean "이체한도" (transfer limit) enforcement (2026-09-06, Pay
         // product-completeness pass) -- see P2pTransferLimitService's own doc
         // comment for the full sourced account. Closes a real, disclosed gap that

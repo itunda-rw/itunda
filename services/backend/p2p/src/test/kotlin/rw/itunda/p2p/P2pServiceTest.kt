@@ -132,6 +132,13 @@ class P2pServiceTest : BehaviorSpec({
             Then("the real fraud engine is evaluated with the real payer/requester/amount/transaction, not silently skipped") {
                 verify(exactly = 1) { fraudRuleEngine.evaluate("payer_1", "requester_1", BigDecimal("2000"), transaction.id) }
             }
+
+            // Real gap found live (2026-09-14, sibling-asymmetry sweep): this method
+            // already got the p2pTransferLimitService fix for the identical "QR-pay
+            // loophole" shape, but never got sendDirect's own family-spend-limit call.
+            Then("the real family daily spend limit is enforced, not silently skipped") {
+                verify(exactly = 1) { familyLinkService.enforceSpendLimit("payer_1", "account_payer", BigDecimal("2000")) }
+            }
         }
     }
 
@@ -567,6 +574,49 @@ class P2pServiceTest : BehaviorSpec({
                     service.sendDirect("child_1", "+250788000099", BigDecimal("2000"), "")
                     throw AssertionError("expected FamilySpendLimitExceededException")
                 } catch (e: rw.itunda.family.FamilySpendLimitExceededException) {
+                    io.mockk.verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+    }
+
+    // Real gap found live (2026-09-14, sibling-asymmetry sweep): payRequest (QR-pay)
+    // never got sendDirect's own real FamilyLinkService.enforceSpendLimit call, so a
+    // guardian-linked child could bypass their real daily spend limit entirely by
+    // paying a QR code / payment request instead of using Send Money.
+    Given("a real linked child whose QR-pay would exceed their real guardian-set daily spend limit") {
+        val p2pPaymentRequestRepository = mockk<P2pPaymentRequestRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val p2pNotificationService = mockk<P2pNotificationService>(relaxed = true)
+        val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>()
+        val autoTopUpService = mockk<AutoTopUpService>(relaxed = true)
+        val p2pTransferLimitService = mockk<P2pTransferLimitService>(relaxed = true)
+        val service = P2pService(
+            p2pPaymentRequestRepository, accountRepository, userRepository, transactionRepository, ledgerService,
+            fraudRuleEngine, rateLimiter, roundUpService, familyLinkService, autoTopUpService,
+            p2pTransferLimitService, p2pNotificationService,
+        )
+
+        val request = P2pPaymentRequest(id = "p2p_child_1", requesterUserId = "requester_1", amount = BigDecimal("2000"), description = "Lunch", expiresAt = Instant.now().plusSeconds(900))
+        every { p2pPaymentRequestRepository.findById("p2p_child_1") } returns Optional.of(request)
+        every { accountRepository.findByUserIdAndType("child_1", AccountType.MAIN) } returns account("account_child", "child_1", "10000")
+        every { accountRepository.findByUserIdAndType("requester_1", AccountType.MAIN) } returns account("account_requester", "requester_1", "0")
+        every { familyLinkService.enforceSpendLimit("child_1", "account_child", BigDecimal("2000")) } throws
+            rw.itunda.family.FamilySpendLimitExceededException("This transfer would exceed your real daily spend limit set by your guardian")
+
+        When("the child tries to pay a QR/payment request past their real limit") {
+            Then("it's real-blocked before the transfer-limit check or the ledger are ever touched") {
+                try {
+                    service.payRequest("child_1", "p2p_child_1")
+                    throw AssertionError("expected FamilySpendLimitExceededException")
+                } catch (e: rw.itunda.family.FamilySpendLimitExceededException) {
+                    io.mockk.verify(exactly = 0) { p2pTransferLimitService.enforce(any(), any(), any()) }
                     io.mockk.verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
             }
