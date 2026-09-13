@@ -192,7 +192,7 @@ class AgentService(
     }
 
     @Transactional
-    fun assignOperator(agentId: String, userId: String): AgentOperator {
+    fun assignOperator(agentId: String, userId: String, adminUserId: String): AgentOperator {
         get(agentId)
         if (agentOperatorRepository.findByUserId(userId) != null) {
             throw AgentOperatorAlreadyAssignedException("This user is already assigned to an agent")
@@ -200,7 +200,9 @@ class AgentService(
         val user = userRepository.findById(userId).orElseThrow { IllegalArgumentException("Itunda user not found") }
         require(user.role != "ADMIN") { "An administrator cannot be assigned as an agent operator" }
         user.role = "AGENT"
-        return agentOperatorRepository.save(AgentOperator("agent_operator_${UUID.randomUUID()}", agentId, userId))
+        return agentOperatorRepository.save(
+            AgentOperator("agent_operator_${UUID.randomUUID()}", agentId, userId, assignedByUserId = adminUserId),
+        )
     }
 
     fun getMyOperator(userId: String): AgentOperator = activeOperator(userId)
@@ -214,11 +216,13 @@ class AgentService(
     }
 
     @Transactional
-    fun setOperatorStatus(agentId: String, userId: String, isActive: Boolean): AgentOperator {
+    fun setOperatorStatus(agentId: String, userId: String, isActive: Boolean, adminUserId: String): AgentOperator {
         val operator = agentOperatorRepository.findByUserId(userId)
             ?: throw AgentOperatorNotAuthorizedException("Agent operator not found")
         require(operator.agentId == agentId) { "This operator is not assigned to this agent" }
         operator.isActive = isActive
+        operator.statusChangedByUserId = adminUserId
+        operator.statusChangedAt = java.time.Instant.now()
         return agentOperatorRepository.save(operator)
     }
 
@@ -305,9 +309,11 @@ class AgentService(
     }
 
     @Transactional
-    fun setStatus(agentId: String, status: AgentStatus): Agent {
+    fun setStatus(agentId: String, status: AgentStatus, adminUserId: String): Agent {
         val agent = get(agentId)
         agent.status = status
+        agent.statusChangedByUserId = adminUserId
+        agent.statusChangedAt = java.time.Instant.now()
         return agentRepository.save(agent)
     }
 

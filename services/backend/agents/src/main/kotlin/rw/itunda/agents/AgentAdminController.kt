@@ -45,28 +45,37 @@ class AgentAdminController(
     fun register(@RequestBody request: RegisterAgentRequest) =
         ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "agent" to agentService.register(request.displayName, request.dailyCashInLimit, request.dailyCashOutLimit)))
 
+    // Real admin-accountability gap closed (2026-09-13) -- suspending/reactivating an
+    // agent previously took no admin identity at all, the same gap class already
+    // closed for fundTill below (see AgentTillFunding's own doc comment).
     @PostMapping("/{agentId}/status")
-    fun setStatus(@PathVariable agentId: String, @RequestBody request: SetAgentStatusRequest) =
-        ResponseEntity.ok(mapOf("success" to true, "agent" to agentService.setStatus(agentId, request.status)))
+    fun setStatus(@PathVariable agentId: String, @RequestBody request: SetAgentStatusRequest, @AuthenticationPrincipal currentUser: CurrentUser) =
+        ResponseEntity.ok(mapOf("success" to true, "agent" to agentService.setStatus(agentId, request.status, currentUser.userId)))
 
     @GetMapping("/{agentId}/operators")
     fun operators(@PathVariable agentId: String) =
         ResponseEntity.ok(mapOf("success" to true, "operators" to agentService.getOperators(agentId)))
 
+    // Real admin-accountability gap closed (2026-09-13) -- this grants a real AGENT-role
+    // privilege (cash-in/cash-out authority) with previously zero record of which admin
+    // approved it.
     @PostMapping("/{agentId}/operators")
-    fun assignOperator(@PathVariable agentId: String, @RequestBody request: AssignAgentOperatorRequest) =
-        ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "operator" to agentService.assignOperator(agentId, request.userId)))
+    fun assignOperator(@PathVariable agentId: String, @RequestBody request: AssignAgentOperatorRequest, @AuthenticationPrincipal currentUser: CurrentUser) =
+        ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "operator" to agentService.assignOperator(agentId, request.userId, currentUser.userId)))
 
     @PostMapping("/{agentId}/location")
     fun setLocation(@PathVariable agentId: String, @RequestBody request: SetAgentLocationRequest) =
         ResponseEntity.ok(mapOf("success" to true, "agent" to agentService.setLocation(agentId, request.latitude, request.longitude)))
 
+    // Real admin-accountability gap closed (2026-09-13) -- same gap class as setStatus
+    // above, on the sibling per-operator activate/deactivate action.
     @PostMapping("/{agentId}/operators/{userId}/status")
     fun setOperatorStatus(
         @PathVariable agentId: String,
         @PathVariable userId: String,
         @RequestBody request: SetAgentOperatorStatusRequest,
-    ) = ResponseEntity.ok(mapOf("success" to true, "operator" to agentService.setOperatorStatus(agentId, userId, request.isActive)))
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ) = ResponseEntity.ok(mapOf("success" to true, "operator" to agentService.setOperatorStatus(agentId, userId, request.isActive, currentUser.userId)))
 
     // Real admin-accountability gap closed (2026-09-12) -- this real till-funding
     // endpoint previously took no admin identity at all, unlike its siblings

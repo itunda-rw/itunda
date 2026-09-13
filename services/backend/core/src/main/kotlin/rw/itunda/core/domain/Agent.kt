@@ -45,6 +45,16 @@ class Agent(
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
+
+    // Real admin-accountability gap closed (2026-09-13) -- suspending/reactivating an
+    // agent (setStatus) previously left zero record of which admin acted, the same
+    // gap class already closed for fundTill (see AgentTillFunding's own doc comment)
+    // in this same file, just missed here.
+    @Column(name = "status_changed_by_user_id", length = 64)
+    var statusChangedByUserId: String? = null,
+
+    @Column(name = "status_changed_at")
+    var statusChangedAt: Instant? = null,
 ) {
     protected constructor() : this("", "", "", dailyCashInLimit = BigDecimal.ZERO)
 }
@@ -132,6 +142,21 @@ class AgentOperator(
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
+
+    // Real admin-accountability gap closed (2026-09-13) -- assigning a real AGENT-role
+    // grant (assignOperator) and later activating/deactivating that operator's access
+    // (setOperatorStatus) both previously left zero record of which admin acted --
+    // assignOperator in particular grants real cash-in/cash-out authority, the same
+    // stakes class this codebase's own admin-accountability precedent already treats
+    // seriously elsewhere (e.g. Partner.kt's statusChangedBy for a role-adjacent grant).
+    @Column(name = "assigned_by_user_id", length = 64)
+    val assignedByUserId: String? = null,
+
+    @Column(name = "status_changed_by_user_id", length = 64)
+    var statusChangedByUserId: String? = null,
+
+    @Column(name = "status_changed_at")
+    var statusChangedAt: Instant? = null,
 ) {
     protected constructor() : this("", "", "")
 }
