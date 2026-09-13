@@ -8,6 +8,8 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import io.mockk.verifyOrder
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.CouponDiscountType
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantCoupon
@@ -37,9 +39,10 @@ class MerchantCouponServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = MerchantCouponService(
             merchantRepository, merchantCouponRepository, merchantCouponRedemptionRepository,
-            transactionRepository, notificationRepository, pushNotificationService,
+            transactionRepository, notificationRepository, pushNotificationService, rateLimiter,
         )
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
@@ -119,6 +122,63 @@ class MerchantCouponServiceTest : BehaviorSpec({
         }
     }
 
+    // Real gap found live (2026-09-14, sibling-asymmetry sweep): createCoupon had zero
+    // test coverage of any kind, and zero rate limiting -- every structurally identical
+    // "post a listing" sibling elsewhere in this codebase rate-limits
+    // (MarketplaceService.createListing, GroupEatsOrderService.create).
+    Given("a real merchant owner creating a real coupon") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val merchantCouponRepository = mockk<MerchantCouponRepository>()
+        val merchantCouponRedemptionRepository = mockk<MerchantCouponRedemptionRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = MerchantCouponService(
+            merchantRepository, merchantCouponRepository, merchantCouponRedemptionRepository,
+            transactionRepository, notificationRepository, pushNotificationService, rateLimiter,
+        )
+
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
+        every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
+        every { merchantCouponRepository.save(any()) } answers { firstArg() }
+
+        When("creating a valid real coupon") {
+            service.createCoupon("owner_1", "10% off", null, CouponDiscountType.PERCENT, BigDecimal.TEN, false, null)
+
+            Then("the per-merchant coupon-creation rate limit is enforced") {
+                verify(exactly = 1) { rateLimiter.checkLimit("merchant:coupon-create:owner_1", limit = any(), window = any()) }
+            }
+        }
+    }
+
+    Given("a real merchant owner who has exceeded the real coupon-creation rate limit") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val merchantCouponRepository = mockk<MerchantCouponRepository>()
+        val merchantCouponRedemptionRepository = mockk<MerchantCouponRedemptionRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>()
+        val service = MerchantCouponService(
+            merchantRepository, merchantCouponRepository, merchantCouponRedemptionRepository,
+            transactionRepository, notificationRepository, pushNotificationService, rateLimiter,
+        )
+        every { merchantRepository.findByOwnerUserId("owner_9") } returns Merchant(id = "merchant_9", ownerUserId = "owner_9", accountId = "account_9", businessName = "Test", status = MerchantStatus.ACTIVE)
+        every { rateLimiter.checkLimit("merchant:coupon-create:owner_9", limit = any(), window = any()) } throws RateLimitExceededException("Too many requests")
+
+        When("they try to create another real coupon") {
+            Then("it real-propagates RateLimitExceededException before ever touching the coupon table") {
+                try {
+                    service.createCoupon("owner_9", "10% off", null, CouponDiscountType.PERCENT, BigDecimal.TEN, false, null)
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { merchantCouponRepository.save(any()) }
+                }
+            }
+        }
+    }
+
     // Real "Coupon box" cross-merchant browse (itunda Pay redesign, 2026-08-28) --
     // the first real read of MerchantCoupon across every merchant at once, see
     // browseCoupons's own doc comment.
@@ -129,9 +189,10 @@ class MerchantCouponServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = MerchantCouponService(
             merchantRepository, merchantCouponRepository, merchantCouponRedemptionRepository,
-            transactionRepository, notificationRepository, pushNotificationService,
+            transactionRepository, notificationRepository, pushNotificationService, rateLimiter,
         )
 
         val merchant1 = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
@@ -179,9 +240,10 @@ class MerchantCouponServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = MerchantCouponService(
             merchantRepository, merchantCouponRepository, merchantCouponRedemptionRepository,
-            transactionRepository, notificationRepository, pushNotificationService,
+            transactionRepository, notificationRepository, pushNotificationService, rateLimiter,
         )
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
         val couponA = couponWithExpiry("coupon_a", "merchant_1", Instant.now().plus(10, ChronoUnit.DAYS))
@@ -215,9 +277,10 @@ class MerchantCouponServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = MerchantCouponService(
             merchantRepository, merchantCouponRepository, merchantCouponRedemptionRepository,
-            transactionRepository, notificationRepository, pushNotificationService,
+            transactionRepository, notificationRepository, pushNotificationService, rateLimiter,
         )
         val redemption = rw.itunda.core.domain.MerchantCouponRedemption(
             id = "redemption_1", couponId = "coupon_1", merchantId = "merchant_1", customerId = "customer_1",

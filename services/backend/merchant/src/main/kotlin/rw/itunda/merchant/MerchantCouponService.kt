@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.CouponDiscountType
 import rw.itunda.core.domain.MerchantCoupon
 import rw.itunda.core.domain.MerchantCouponRedemption
@@ -49,6 +50,7 @@ class MerchantCouponService(
     private val transactionRepository: TransactionRepository,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
+    private val rateLimiter: RateLimiter,
 ) {
     companion object {
         // itunda's own honest scoping choice -- see MerchantCoupon.kt's own doc comment.
@@ -81,6 +83,13 @@ class MerchantCouponService(
         expiresAt: Instant?,
     ): MerchantCoupon {
         val merchant = getMyMerchant(ownerUserId)
+        // Real gap found live (2026-09-14, sibling-asymmetry sweep): this class had no
+        // RateLimiter at all -- every structurally identical "post a listing" sibling
+        // elsewhere in this codebase rate-limits (MarketplaceService.createListing,
+        // GroupEatsOrderService.create), and BusService.postTrip's own doc comment
+        // names this exact "spam-listing flood" vector as the reason it does too. These
+        // coupons feed the real cross-merchant "Coupon box" browse (browseCoupons).
+        rateLimiter.checkLimit("merchant:coupon-create:$ownerUserId", limit = 10, window = Duration.ofHours(1))
         val trimmedTitle = title.trim()
         if (trimmedTitle.isEmpty() || trimmedTitle.length > 100) {
             throw InvalidCouponException("Title must be 1-100 characters")
