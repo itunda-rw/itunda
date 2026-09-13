@@ -8,6 +8,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import io.mockk.verifyOrder
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
@@ -330,6 +331,16 @@ class StudentLoanServiceTest : BehaviorSpec({
                 verify { notificationRepository.save(match<Notification> { it.userId == "user_1" && it.type == "STUDENT_LOAN_GRACE_PERIOD_ENDING_SOON" }) }
                 verify { pushNotificationService.sendToUser("user_1", any(), any(), mapOf("loanId" to "studentloan_6")) }
                 verify { studentLoanRepository.save(loan) }
+            }
+
+            // Real fix (2026-09-13, push-before-commit ordering sweep): graceEndReminderSentAt
+            // must be saved BEFORE the push fires -- otherwise a rollback after the push
+            // leaves the flag unset and the next scheduler pass resends it.
+            Then("the graceEndReminderSentAt flag is saved before the push is sent") {
+                verifyOrder {
+                    studentLoanRepository.save(loan)
+                    pushNotificationService.sendToUser("user_1", any(), any(), any())
+                }
             }
         }
     }

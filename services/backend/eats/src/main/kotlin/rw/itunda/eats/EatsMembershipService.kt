@@ -2,6 +2,8 @@ package rw.itunda.eats
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.EatsMembership
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
@@ -115,8 +117,22 @@ class EatsMembershipService(
                 title = title, body = body, isRead = false, createdAt = now, dataJson = "{\"membershipId\":\"${membership.id}\"}",
             ),
         )
-        pushNotificationService.sendToUser(membership.userId, title, body, mapOf("membershipId" to membership.id))
         membership.reminderSentAt = now
         eatsMembershipRepository.save(membership)
+        // Real fix (2026-09-13, push-before-commit ordering sweep): the push used to
+        // fire BEFORE reminderSentAt was saved -- a rollback after the push would
+        // leave the flag unset and the next scheduler pass would resend it.
+        sendExpiryPushAfterCommit(membership.userId, title, body, membership.id)
+    }
+
+    private fun sendExpiryPushAfterCommit(userId: String, title: String, body: String, membershipId: String) {
+        val send = { pushNotificationService.sendToUser(userId, title, body, mapOf("membershipId" to membershipId)) }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 }

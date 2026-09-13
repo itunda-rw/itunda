@@ -430,9 +430,32 @@ class InsuranceService(
                 title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"policyId\":\"${policy.id}\"}",
             ),
         )
-        pushNotificationService.sendToUser(policy.userId, title, body, mapOf("policyId" to policy.id))
         policy.renewalReminderSentAt = Instant.now()
         insurancePolicyRepository.save(policy)
+        // Real fix (2026-09-13, push-before-commit ordering sweep): the push used to
+        // fire BEFORE renewalReminderSentAt was saved -- a rollback after the push
+        // would leave the flag unset and the next scheduler pass would resend it.
+        // Same discipline this class's own claim-decision sendPushAfterCommit above
+        // already establishes.
+        sendRenewalPushAfterCommit(policy.userId, title, body, policy.id)
+    }
+
+    private fun sendRenewalPushAfterCommit(userId: String, title: String, body: String, policyId: String) {
+        val data = mapOf("policyId" to policyId)
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body, data)
+            } catch (e: Exception) {
+                log.warn("Could not send insurance-renewal-reminder push for policy {}", policyId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     companion object {

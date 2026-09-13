@@ -2,6 +2,8 @@ package rw.itunda.loans
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
@@ -268,8 +270,22 @@ class StudentLoanService(
                 title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"loanId\":\"${loan.id}\"}",
             ),
         )
-        pushNotificationService.sendToUser(loan.userId, title, body, mapOf("loanId" to loan.id))
         loan.graceEndReminderSentAt = Instant.now()
         studentLoanRepository.save(loan)
+        // Real fix (2026-09-13, push-before-commit ordering sweep): the push used to
+        // fire BEFORE graceEndReminderSentAt was saved -- a rollback after the push
+        // would leave the flag unset and the next scheduler pass would resend it.
+        sendGraceEndPushAfterCommit(loan.userId, title, body, loan.id)
+    }
+
+    private fun sendGraceEndPushAfterCommit(userId: String, title: String, body: String, loanId: String) {
+        val send = { pushNotificationService.sendToUser(userId, title, body, mapOf("loanId" to loanId)) }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 }

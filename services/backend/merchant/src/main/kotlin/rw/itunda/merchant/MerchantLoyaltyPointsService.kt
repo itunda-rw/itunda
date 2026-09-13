@@ -2,6 +2,8 @@ package rw.itunda.merchant
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantLoyaltyAccount
 import rw.itunda.core.domain.Notification
@@ -235,9 +237,23 @@ class MerchantLoyaltyPointsService(
                 title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"merchantId\":\"${account.merchantId}\"}",
             ),
         )
-        pushNotificationService.sendToUser(account.customerId, title, body)
         account.expiryReminderSentAt = Instant.now()
         merchantLoyaltyAccountRepository.save(account)
+        // Real fix (2026-09-13, push-before-commit ordering sweep): the push used to
+        // fire BEFORE expiryReminderSentAt was saved -- a rollback after the push
+        // would leave the flag unset and the next scheduler pass would resend it.
+        sendExpiryPushAfterCommit(account.customerId, title, body)
+    }
+
+    private fun sendExpiryPushAfterCommit(userId: String, title: String, body: String) {
+        val send = { pushNotificationService.sendToUser(userId, title, body) }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     companion object {

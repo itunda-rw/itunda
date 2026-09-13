@@ -7,6 +7,7 @@ import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import io.mockk.verifyOrder
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.SavingsGoal
@@ -111,6 +112,16 @@ class SavingsGoalLimitsAndRemindersTest : BehaviorSpec({
             Then("it real-notifies once and real-marks maturityNotifiedAt") {
                 verify(exactly = 1) { notificationRepository.save(match { it.type == "SAVINGS_GOAL_MATURED" && it.userId == "user_d" }) }
                 goal.maturityNotifiedAt shouldNotBe null
+            }
+
+            // Real fix (2026-09-13, push-before-commit ordering sweep): maturityNotifiedAt
+            // must be saved BEFORE the push fires -- otherwise a rollback after the push
+            // leaves the flag unset and the next scheduler pass resends it.
+            Then("the maturityNotifiedAt flag is saved before the push is sent") {
+                verifyOrder {
+                    savingsGoalRepository.save(any())
+                    pushNotificationService.sendToUser("user_d", any(), any(), any())
+                }
             }
         }
 

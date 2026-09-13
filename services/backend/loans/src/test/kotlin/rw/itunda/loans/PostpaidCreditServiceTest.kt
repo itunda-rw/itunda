@@ -8,6 +8,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import io.mockk.verifyOrder
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.creditscore.CreditScoreResult
@@ -370,6 +371,16 @@ class PostpaidCreditServiceTest : BehaviorSpec({
                 notifSlot.captured.type shouldBe "POSTPAID_CREDIT_PAYMENT_DUE_SOON"
                 notifSlot.captured.userId shouldBe "user_1"
                 verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any()) }
+            }
+
+            // Real fix (2026-09-13, push-before-commit ordering sweep): paymentReminderSentAt
+            // must be saved BEFORE the push fires -- otherwise a rollback after the push
+            // leaves the flag unset and the next scheduler pass resends it.
+            Then("the paymentReminderSentAt flag is saved before the push is sent") {
+                verifyOrder {
+                    postpaidCreditLineRepository.save(any())
+                    pushNotificationService.sendToUser("user_1", any(), any(), any())
+                }
             }
         }
 

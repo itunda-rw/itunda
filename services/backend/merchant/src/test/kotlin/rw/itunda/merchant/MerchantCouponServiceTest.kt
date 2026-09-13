@@ -7,6 +7,7 @@ import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import io.mockk.verifyOrder
 import rw.itunda.core.domain.CouponDiscountType
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantCoupon
@@ -82,6 +83,16 @@ class MerchantCouponServiceTest : BehaviorSpec({
             Then("it real-notifies the merchant owner once and real-marks expiryReminderSentAt") {
                 verify(exactly = 1) { notificationRepository.save(match { it.type == "MERCHANT_COUPON_EXPIRING_SOON" && it.userId == "seller_1" }) }
                 coupon.expiryReminderSentAt shouldNotBe null
+            }
+
+            // Real fix (2026-09-13, push-before-commit ordering sweep): expiryReminderSentAt
+            // must be saved BEFORE the push fires -- otherwise a rollback after the push
+            // leaves the flag unset and the next scheduler pass resends it.
+            Then("the expiryReminderSentAt flag is saved before the push is sent") {
+                verifyOrder {
+                    merchantCouponRepository.save(any())
+                    pushNotificationService.sendToUser("seller_1", any(), any(), any())
+                }
             }
         }
 

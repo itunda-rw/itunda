@@ -2,6 +2,8 @@ package rw.itunda.merchant
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.CouponDiscountType
 import rw.itunda.core.domain.MerchantCoupon
 import rw.itunda.core.domain.MerchantCouponRedemption
@@ -265,8 +267,22 @@ class MerchantCouponService(
                 title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"couponId\":\"${coupon.id}\"}",
             ),
         )
-        pushNotificationService.sendToUser(merchant.ownerUserId, title, body, mapOf("couponId" to coupon.id))
         coupon.expiryReminderSentAt = Instant.now()
         merchantCouponRepository.save(coupon)
+        // Real fix (2026-09-13, push-before-commit ordering sweep): the push used to
+        // fire BEFORE expiryReminderSentAt was saved -- a rollback after the push
+        // would leave the flag unset and the next scheduler pass would resend it.
+        sendExpiryPushAfterCommit(merchant.ownerUserId, title, body, coupon.id)
+    }
+
+    private fun sendExpiryPushAfterCommit(userId: String, title: String, body: String, couponId: String) {
+        val send = { pushNotificationService.sendToUser(userId, title, body, mapOf("couponId" to couponId)) }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 }

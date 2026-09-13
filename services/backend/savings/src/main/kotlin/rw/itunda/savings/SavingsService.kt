@@ -346,9 +346,25 @@ class SavingsService(
                 title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"goalId\":\"${goal.id}\"}",
             ),
         )
-        pushNotificationService.sendToUser(goal.userId, title, body, mapOf("goalId" to goal.id))
         goal.maturityNotifiedAt = Instant.now()
         savingsGoalRepository.save(goal)
+        // Real fix (2026-09-13, push-before-commit ordering sweep): the push used to
+        // fire BEFORE the maturityNotifiedAt flag was saved -- if the transaction then
+        // rolled back, the flag reverted but the push had already gone out, and the
+        // next scheduler pass would resend it. Same discipline this file's own
+        // sendGoalCompletedPushAfterCommit below already establishes.
+        sendMaturityPushAfterCommit(goal.userId, title, body, goal.id)
+    }
+
+    private fun sendMaturityPushAfterCommit(userId: String, title: String, body: String, goalId: String) {
+        val send = { pushNotificationService.sendToUser(userId, title, body, mapOf("goalId" to goalId)) }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     // Real celebratory moment (2026-08-23, itunda's own product-feel initiative) --

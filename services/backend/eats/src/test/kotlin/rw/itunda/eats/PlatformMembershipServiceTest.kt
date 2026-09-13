@@ -7,6 +7,7 @@ import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import io.mockk.verifyOrder
 import rw.itunda.core.domain.PlatformMembership
 import rw.itunda.core.domain.AccountType
 import rw.itunda.core.domain.Account
@@ -108,6 +109,16 @@ class PlatformMembershipServiceTest : BehaviorSpec({
             Then("it real-notifies the member once and real-marks reminderSentAt") {
                 verify(exactly = 1) { notificationRepository.save(match { it.type == "PLATFORM_MEMBERSHIP_EXPIRING_SOON" && it.userId == "user_1" }) }
                 membership.reminderSentAt shouldNotBe null
+            }
+
+            // Real fix (2026-09-13, push-before-commit ordering sweep): reminderSentAt must
+            // be saved BEFORE the push fires -- otherwise a rollback after the push leaves
+            // the flag unset and the next scheduler pass resends it.
+            Then("the reminderSentAt flag is saved before the push is sent") {
+                verifyOrder {
+                    platformMembershipRepository.save(any())
+                    pushNotificationService.sendToUser("user_1", any(), any(), any())
+                }
             }
         }
 

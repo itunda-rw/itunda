@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import io.mockk.verifyOrder
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantLoyaltyAccount
 import rw.itunda.core.domain.MerchantStatus
@@ -322,6 +323,16 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "customer_1" && it.type == "MERCHANT_LOYALTY_POINTS_EXPIRING_SOON" }) }
                 verify(exactly = 1) { pushNotificationService.sendToUser("customer_1", "Your store points are expiring soon", any()) }
                 account.expiryReminderSentAt shouldNotBe null
+            }
+
+            // Real fix (2026-09-13, push-before-commit ordering sweep): expiryReminderSentAt
+            // must be saved BEFORE the push fires -- otherwise a rollback after the push
+            // leaves the flag unset and the next scheduler pass resends it.
+            Then("the expiryReminderSentAt flag is saved before the push is sent") {
+                verifyOrder {
+                    merchantLoyaltyAccountRepository.save(any())
+                    pushNotificationService.sendToUser("customer_1", any(), any())
+                }
             }
         }
     }

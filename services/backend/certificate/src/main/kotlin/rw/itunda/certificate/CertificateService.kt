@@ -2,6 +2,8 @@ package rw.itunda.certificate
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Certificate
 import rw.itunda.core.domain.CertificateStatus
@@ -229,8 +231,22 @@ class CertificateService(
                 title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"certificateId\":\"${cert.id}\"}",
             ),
         )
-        pushNotificationService.sendToUser(cert.userId, title, body, mapOf("certificateId" to cert.id))
         cert.renewalReminderSentAt = Instant.now()
         certificateRepository.save(cert)
+        // Real fix (2026-09-13, push-before-commit ordering sweep): the push used to
+        // fire BEFORE renewalReminderSentAt was saved -- a rollback after the push
+        // would leave the flag unset and the next scheduler pass would resend it.
+        sendRenewalPushAfterCommit(cert.userId, title, body, cert.id)
+    }
+
+    private fun sendRenewalPushAfterCommit(userId: String, title: String, body: String, certificateId: String) {
+        val send = { pushNotificationService.sendToUser(userId, title, body, mapOf("certificateId" to certificateId)) }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 }
