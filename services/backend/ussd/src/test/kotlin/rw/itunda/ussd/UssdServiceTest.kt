@@ -6,8 +6,10 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldStartWith
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
@@ -15,6 +17,8 @@ import rw.itunda.core.domain.User
 import rw.itunda.core.domain.UssdPin
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PaymentIntentRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
@@ -55,7 +59,12 @@ class UssdServiceTest : BehaviorSpec({
         rateLimiter: RateLimiter = mockk(relaxed = true),
         paymentIntentRepository: PaymentIntentRepository = mockk(),
         merchantService: MerchantService = mockk(),
-    ) = UssdService(ussdPinRepository, userRepository, accountRepository, transactionRepository, p2pService, rateLimiter, paymentIntentRepository, merchantService)
+        notificationRepository: NotificationRepository = mockk<NotificationRepository>(relaxed = true).also { repo -> every { repo.save(any()) } answers { firstArg() } },
+        pushNotificationService: PushNotificationService = mockk(relaxed = true),
+    ) = UssdService(
+        ussdPinRepository, userRepository, accountRepository, transactionRepository, p2pService, rateLimiter,
+        paymentIntentRepository, merchantService, notificationRepository, pushNotificationService,
+    )
 
     Given("a session-start request from a real registered phone number") {
         val userRepository = mockk<UserRepository>()
@@ -208,7 +217,13 @@ class UssdServiceTest : BehaviorSpec({
     Given("a real user with no USSD PIN yet, setting one for the first time via a real 2-step sequence") {
         val userRepository = mockk<UserRepository>()
         val ussdPinRepository = mockk<UssdPinRepository>()
-        val service = newService(userRepository = userRepository, ussdPinRepository = ussdPinRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(
+            userRepository = userRepository, ussdPinRepository = ussdPinRepository,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
+        )
 
         every { userRepository.findByPhoneNumber("+250788111111") } returns user("u1", "+250788111111")
         every { ussdPinRepository.findByUserId("u1") } returns null
@@ -221,6 +236,14 @@ class UssdServiceTest : BehaviorSpec({
 
             Then("the real PIN is set") {
                 result shouldBe "END Your USSD PIN has been set."
+            }
+
+            // Real sibling-asymmetry fix (2026-09-13) -- AuthService.setPin and
+            // CardService.setPin (the codebase's other 2 real PIN/password-hash-set
+            // sites) both alert the real owner on success; this USSD PIN didn't.
+            Then("it sends a real USSD_PIN_CHANGED security alert") {
+                verify(exactly = 1) { notificationRepository.save(match<Notification> { it.type == "USSD_PIN_CHANGED" && it.userId == "u1" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("u1", "USSD PIN changed", any()) }
             }
         }
 

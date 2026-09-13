@@ -3,10 +3,15 @@ package rw.itunda.ussd
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.UssdPin
 import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.InsufficientFundsException
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PaymentIntentRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
@@ -25,6 +30,7 @@ import rw.itunda.p2p.P2pSelfPaymentException
 import rw.itunda.p2p.P2pService
 import java.math.BigDecimal
 import java.time.Duration
+import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.time.ZoneId
 import java.util.UUID
@@ -67,6 +73,8 @@ class UssdService(
     private val rateLimiter: RateLimiter,
     private val paymentIntentRepository: PaymentIntentRepository,
     private val merchantService: MerchantService,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private val passwordEncoder = BCryptPasswordEncoder()
     private val dateFormatter = DateTimeFormatter.ofPattern("MMM d").withZone(ZoneId.of("Africa/Kigali"))
@@ -76,12 +84,40 @@ class UssdService(
         rateLimiter.checkLimit("ussd:pin:set:$userId", limit = 10, window = Duration.ofHours(1))
         validatePinFormat(pin)
         val existing = ussdPinRepository.findByUserId(userId)
-        if (existing != null) {
+        val saved = if (existing != null) {
             existing.pinHash = passwordEncoder.encode(pin)
-            existing.updatedAt = java.time.Instant.now()
-            return ussdPinRepository.save(existing)
+            existing.updatedAt = Instant.now()
+            ussdPinRepository.save(existing)
+        } else {
+            ussdPinRepository.save(UssdPin(id = "ussdpin_${UUID.randomUUID()}", userId = userId, pinHash = passwordEncoder.encode(pin)))
         }
-        return ussdPinRepository.save(UssdPin(id = "ussdpin_${UUID.randomUUID()}", userId = userId, pinHash = passwordEncoder.encode(pin)))
+        // Real sibling-asymmetry fix (2026-09-13) -- AuthService.setPin and
+        // CardService.setPin (the other 2 real places a security-sensitive PIN/
+        // password hash gets set in this codebase) both alert the real owner on
+        // success; this USSD PIN (which grants balance-check/send-money/pay-merchant
+        // access via USSD -- see handleSendMoney/handlePayMerchant) had none.
+        notifyPinChangedAfterCommit(userId)
+        return saved
+    }
+
+    private fun notifyPinChangedAfterCommit(userId: String) {
+        val title = "USSD PIN changed"
+        val body = "Your itunda USSD PIN was just set or changed. If this wasn't you, contact support immediately."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = userId, type = "USSD_PIN_CHANGED",
+                title = title, body = body,
+                isRead = false, createdAt = Instant.now(), dataJson = "{}",
+            ),
+        )
+        val send = { pushNotificationService.sendToUser(userId, title, body) }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     private fun validatePinFormat(pin: String) {
