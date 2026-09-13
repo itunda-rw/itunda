@@ -1,4 +1,4 @@
-package rw.itunda.app.observability
+package rw.itunda.core.observability
 
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertEquals

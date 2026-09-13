@@ -97,4 +97,22 @@ class WiringTest {
             "IdempotencyExceptionHandler is not reachable via this service's own scanBasePackages ($basePackages) -- a malformed Idempotency-Key header or a real optimistic-lock conflict would surface as a raw 500 instead of a clean 400/409",
         )
     }
+
+    // Real gap this closes (2026-09-14): RequestCorrelationFilter -- the ONLY place in
+    // the whole backend that ever calls MDC.put -- lived in rw.itunda.app.observability,
+    // a package this service's own scanBasePackages never included -- same exact bug
+    // class as the IdempotencyExceptionHandler fix above. Every service's own
+    // application.yml logging pattern expects a real requestId in the MDC; without this
+    // filter registered, every log line this service emits prints a permanently-empty
+    // [requestId=], and the X-Request-ID response header is never set either. Moved to
+    // rw.itunda.core.observability (already scanned) -- this test proves it's actually
+    // reachable via this service's own real scanBasePackages.
+    @Test
+    fun `the repo's only log-correlation MDC filter is actually reachable via this service's own real scanBasePackages`() {
+        val scanned = scanBeanClassNames(basePackages)
+        assertTrue(
+            scanned.contains("rw.itunda.core.observability.RequestCorrelationFilter"),
+            "RequestCorrelationFilter is not reachable via this service's own scanBasePackages ($basePackages) -- every log line this service emits would print a permanently-empty [requestId=] and X-Request-ID would never be set",
+        )
+    }
 }
