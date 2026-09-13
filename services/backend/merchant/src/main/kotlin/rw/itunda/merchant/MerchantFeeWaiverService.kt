@@ -74,22 +74,29 @@ class MerchantFeeWaiverService(
     /**
      * Real ops review closing the gap this class's own doc comment names above:
      * every merchant with a currently-active waiver whose real 30-day PAYMENT
-     * volume has since grown to or past [SMALL_MERCHANT_MONTHLY_VOLUME_THRESHOLD]
-     * -- reuses the exact same volume query [applyForFeeWaiver] already proves
-     * correct, rather than a second, driftable copy. Read-only: does NOT
-     * auto-revoke, matching this backend's own "ops reviews, an admin decides"
-     * convention (e.g. `VupLoanService.decide`'s write-off is admin-triggered,
-     * never automatic).
+     * volume has since grown to or past [SMALL_MERCHANT_MONTHLY_VOLUME_THRESHOLD].
+     * Read-only: does NOT auto-revoke, matching this backend's own "ops reviews,
+     * an admin decides" convention (e.g. `VupLoanService.decide`'s write-off is
+     * admin-triggered, never automatic).
+     *
+     * Real N+1 fix (2026-09-13) -- this used to call the single-merchant
+     * [applyForFeeWaiver] volume query once per currently-waived merchant, each
+     * pulling that merchant's full 30-day row set into memory just to fold a sum.
+     * One batched GROUP BY SUM instead, same real "batch, don't N+1" discipline
+     * TransactionRepository.countBySenderIdAndRecipientIdInAndTypeAndStatus already
+     * established for an identical-shape per-recipient aggregate.
      */
     fun getRevocationCandidates(): List<Map<String, Any?>> {
         val now = Instant.now()
-        return merchantRepository.findByFeeRateOverride(WAIVED_FEE_RATE)
-            .map { merchant ->
-                val recentVolume = transactionRepository
-                    .findByRecipientIdAndTypeAndCreatedAtBetween(merchant.ownerUserId, TransactionType.PAYMENT, now.minus(LOOKBACK_WINDOW), now)
-                    .fold(BigDecimal.ZERO) { total, transaction -> total.add(transaction.amount) }
-                merchant to recentVolume
-            }
+        val waivedMerchants = merchantRepository.findByFeeRateOverride(WAIVED_FEE_RATE)
+        if (waivedMerchants.isEmpty()) return emptyList()
+        val volumeByOwnerUserId = transactionRepository
+            .sumAmountByRecipientIdInAndTypeAndCreatedAtBetween(
+                waivedMerchants.map { it.ownerUserId }, TransactionType.PAYMENT, now.minus(LOOKBACK_WINDOW), now,
+            )
+            .associate { it.recipientId to it.volume }
+        return waivedMerchants
+            .map { merchant -> merchant to (volumeByOwnerUserId[merchant.ownerUserId] ?: BigDecimal.ZERO) }
             .filter { (_, recentVolume) -> recentVolume >= SMALL_MERCHANT_MONTHLY_VOLUME_THRESHOLD }
             .map { (merchant, recentVolume) ->
                 mapOf(

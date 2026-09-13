@@ -18,6 +18,11 @@ interface RecipientTransactionCountProjection {
     val count: Long
 }
 
+interface RecipientTransactionVolumeProjection {
+    val recipientId: String
+    val volume: java.math.BigDecimal
+}
+
 interface TransactionRepository : JpaRepository<Transaction, String> {
     fun findBySenderIdOrRecipientIdOrderByCreatedAtDesc(senderId: String, recipientId: String): List<Transaction>
     // Real Toss Bank/Toss Pay separation follow-up (2026-08-21, user-provided real
@@ -55,6 +60,24 @@ interface TransactionRepository : JpaRepository<Transaction, String> {
         from: Instant,
         to: Instant,
     ): List<Transaction>
+
+    // Real N+1 fix (2026-09-13) -- MerchantFeeWaiverService.getRevocationCandidates
+    // used to call findByRecipientIdAndTypeAndCreatedAtBetween above once per currently-
+    // waived merchant, each pulling that merchant's full 30-day row set into memory
+    // just to fold a sum. One batched GROUP BY SUM instead, same real "batch, don't
+    // N+1" discipline countBySenderIdAndRecipientIdInAndTypeAndStatus above already
+    // established for an identical-shape per-recipient aggregate.
+    @Query(
+        "SELECT t.recipientId as recipientId, COALESCE(SUM(t.amount), 0) as volume FROM Transaction t " +
+            "WHERE t.recipientId IN :recipientIds AND t.type = :type AND t.createdAt BETWEEN :from AND :to " +
+            "GROUP BY t.recipientId",
+    )
+    fun sumAmountByRecipientIdInAndTypeAndCreatedAtBetween(
+        @Param("recipientIds") recipientIds: List<String>,
+        @Param("type") type: TransactionType,
+        @Param("from") from: Instant,
+        @Param("to") to: Instant,
+    ): List<RecipientTransactionVolumeProjection>
 
     // Real FamilyLink daily spend-limit enforcement (2026-07-27) -- see FamilyLink.kt's
     // own doc comment. The child's own real sends since a real UTC day boundary,

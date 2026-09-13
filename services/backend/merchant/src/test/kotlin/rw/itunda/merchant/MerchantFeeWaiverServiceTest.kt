@@ -14,9 +14,12 @@ import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.RecipientTransactionVolumeProjection
 import rw.itunda.core.repository.TransactionRepository
 import java.math.BigDecimal
 import java.util.Optional
+
+private data class FakeVolumeProjection(override val recipientId: String, override val volume: BigDecimal) : RecipientTransactionVolumeProjection
 
 /**
  * First test coverage for the real Naver Pay 영세 가맹점 수수료 지원 (small-merchant
@@ -116,10 +119,9 @@ class MerchantFeeWaiverServiceTest : BehaviorSpec({
             status = MerchantStatus.ACTIVE, feeRateOverride = BigDecimal.ZERO,
         )
         every { merchantRepository.findByFeeRateOverride(BigDecimal.ZERO) } returns listOf(outgrown, stillSmall)
-        every { transactionRepository.findByRecipientIdAndTypeAndCreatedAtBetween("owner_4", TransactionType.PAYMENT, any(), any()) } returns
-            listOf(transaction(BigDecimal("500000")))
-        every { transactionRepository.findByRecipientIdAndTypeAndCreatedAtBetween("owner_5", TransactionType.PAYMENT, any(), any()) } returns
-            listOf(transaction(BigDecimal("50000")))
+        every {
+            transactionRepository.sumAmountByRecipientIdInAndTypeAndCreatedAtBetween(listOf("owner_4", "owner_5"), TransactionType.PAYMENT, any(), any())
+        } returns listOf(FakeVolumeProjection("owner_4", BigDecimal("500000")), FakeVolumeProjection("owner_5", BigDecimal("50000")))
 
         When("listing revocation candidates") {
             val candidates = service.getRevocationCandidates()
@@ -127,6 +129,12 @@ class MerchantFeeWaiverServiceTest : BehaviorSpec({
             Then("only the merchant who has genuinely outgrown the threshold appears") {
                 candidates.size shouldBe 1
                 candidates[0]["merchantId"] shouldBe "merchant_4"
+            }
+
+            // Real N+1 fix (2026-09-13) -- one batched GROUP BY call for every
+            // currently-waived merchant, never one call per merchant.
+            Then("the real batched volume query is called exactly once, never once per merchant") {
+                verify(exactly = 1) { transactionRepository.sumAmountByRecipientIdInAndTypeAndCreatedAtBetween(any(), any(), any(), any()) }
             }
         }
     }
