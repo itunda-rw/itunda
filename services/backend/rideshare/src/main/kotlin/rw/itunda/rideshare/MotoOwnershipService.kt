@@ -8,10 +8,13 @@ import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.MotoOwnershipPlan
 import rw.itunda.core.domain.MotoOwnershipPlanStatus
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MotoOwnershipPlanRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
@@ -68,6 +71,8 @@ class MotoOwnershipService(
     private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private val log = LoggerFactory.getLogger(MotoOwnershipService::class.java)
 
@@ -264,8 +269,30 @@ class MotoOwnershipService(
         )
 
         plan.loanOutstanding = plan.loanOutstanding.subtract(actualAmount)
-        plan.status = if (plan.loanOutstanding <= BigDecimal.ZERO) MotoOwnershipPlanStatus.COMPLETED else MotoOwnershipPlanStatus.LOAN_ACTIVE
-        return motoOwnershipPlanRepository.save(plan)
+        val justCompleted = plan.status != MotoOwnershipPlanStatus.COMPLETED && plan.loanOutstanding <= BigDecimal.ZERO
+        plan.status = if (justCompleted) MotoOwnershipPlanStatus.COMPLETED else MotoOwnershipPlanStatus.LOAN_ACTIVE
+        val saved = motoOwnershipPlanRepository.save(plan)
+        // Real gap found live (2026-09-14, sibling-asymmetry sweep): this whole class
+        // had zero notification wiring at all -- COMPLETED is the single most
+        // significant event in this feature's whole two-phase (savings->loan)
+        // lifecycle (the user now fully owns their bike), yet nobody was ever told.
+        // Same real celebratory-moment gap LoansService.repayLoan's own
+        // notifyLoanPaidOff/VupLoanService.repay's own identical fix already close for
+        // regular/VUP loans (2026-08-23 product-feel initiative, sourced from
+        // toss.tech/article/1st_interaction_designer), never propagated here.
+        if (justCompleted) {
+            val title = "You own your moto now! 🎉"
+            val body = "You've paid off your moto-taxi ownership loan -- the bike is fully yours."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = plan.userId, type = "MOTO_OWNERSHIP_COMPLETED",
+                    title = title, body = body,
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"planId\":\"${plan.id}\"}",
+                ),
+            )
+            pushNotificationService.sendToUser(plan.userId, title, body, mapOf("planId" to plan.id))
+        }
+        return saved
     }
 
     fun getMyPlans(userId: String): List<MotoOwnershipPlan> = motoOwnershipPlanRepository.findByUserId(userId)

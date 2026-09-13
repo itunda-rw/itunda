@@ -166,12 +166,32 @@ class VupLoanService(
         )
 
         loan.outstandingPrincipal = loan.outstandingPrincipal.subtract(actualAmount)
+        val justRepaid = loan.status != VupLoanStatus.REPAID && loan.outstandingPrincipal <= BigDecimal.ZERO
         loan.status = when {
-            loan.outstandingPrincipal <= BigDecimal.ZERO -> VupLoanStatus.REPAID
+            justRepaid -> VupLoanStatus.REPAID
             loan.dueDate != null && loan.dueDate!!.isBefore(LocalDate.now()) -> VupLoanStatus.OVERDUE
             else -> VupLoanStatus.DISBURSED
         }
-        return vupLoanRepository.save(loan)
+        val saved = vupLoanRepository.save(loan)
+        // Real gap found live (2026-09-14, sibling-asymmetry sweep): this class already
+        // notifies on going OVERDUE (markOverdue) and DUE_SOON (sendDueReminder), but
+        // never on the actual payoff moment -- the most positive one. Same real
+        // celebratory-moment gap LoansService.repayLoan's own notifyLoanPaidOff already
+        // closed for regular loans (2026-08-23 product-feel initiative, sourced from
+        // toss.tech/article/1st_interaction_designer), never propagated here.
+        if (justRepaid) {
+            val title = "VUP loan fully paid off! 🎉"
+            val body = "You've paid off your VUP Financial Services loan -- nice work."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = loan.userId, type = "VUP_LOAN_PAID_OFF",
+                    title = title, body = body,
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"loanId\":\"${loan.id}\"}",
+                ),
+            )
+            pushNotificationService.sendToUser(loan.userId, title, body, mapOf("loanId" to loan.id))
+        }
+        return saved
     }
 
     fun getMyLoans(userId: String): List<VupLoan> = vupLoanRepository.findByUserId(userId)

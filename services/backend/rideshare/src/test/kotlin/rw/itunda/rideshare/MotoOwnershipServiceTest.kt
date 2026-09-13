@@ -16,7 +16,9 @@ import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MotoOwnershipPlanRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
@@ -55,7 +57,9 @@ class MotoOwnershipServiceTest : BehaviorSpec({
         accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = MotoOwnershipService(motoOwnershipPlanRepository, accountRepository, ledgerService, rateLimiter)
+        notificationRepository: NotificationRepository = mockk(relaxed = true),
+        pushNotificationService: PushNotificationService = mockk(relaxed = true),
+    ) = MotoOwnershipService(motoOwnershipPlanRepository, accountRepository, ledgerService, rateLimiter, notificationRepository, pushNotificationService)
 
     Given("a user creating a moto-taxi ownership plan") {
         val motoOwnershipPlanRepository = mockk<MotoOwnershipPlanRepository>()
@@ -320,7 +324,13 @@ class MotoOwnershipServiceTest : BehaviorSpec({
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, accountRepository = accountRepository, ledgerService = ledgerService, rateLimiter = rateLimiter)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(
+            motoOwnershipPlanRepository = motoOwnershipPlanRepository, accountRepository = accountRepository, ledgerService = ledgerService,
+            rateLimiter = rateLimiter, notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
+        )
 
         val plan = MotoOwnershipPlan(
             id = "motoown_5", userId = "user_1", bikePrice = BigDecimal("600000"),
@@ -353,6 +363,17 @@ class MotoOwnershipServiceTest : BehaviorSpec({
             // repay had no rate limit at all.
             Then("the real rate limiter is actually consulted, not just mocked away") {
                 verify(exactly = 1) { rateLimiter.checkLimit("moto-ownership:repay:user_1", limit = 30, window = Duration.ofHours(1)) }
+            }
+
+            // Real gap found live (2026-09-14, sibling-asymmetry sweep): this whole
+            // class had zero notification wiring -- COMPLETED is the single most
+            // significant event in this feature's whole lifecycle (the user now fully
+            // owns their bike), yet nobody was ever told. Same real celebratory-moment
+            // gap LoansService.repayLoan/VupLoanService.repay already close for
+            // regular/VUP loans.
+            Then("the real borrower is real-notified their moto is fully paid off") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_1" && it.type == "MOTO_OWNERSHIP_COMPLETED" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any()) }
             }
         }
 

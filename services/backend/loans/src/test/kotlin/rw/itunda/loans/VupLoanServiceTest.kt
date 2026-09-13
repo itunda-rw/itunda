@@ -177,7 +177,13 @@ class VupLoanServiceTest : BehaviorSpec({
         val vupLoanRepository = mockk<VupLoanRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(vupLoanRepository = vupLoanRepository, accountRepository = accountRepository, ledgerService = ledgerService)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(
+            vupLoanRepository = vupLoanRepository, accountRepository = accountRepository, ledgerService = ledgerService,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
+        )
 
         val loan = VupLoan(
             id = "vuploan_3", userId = "user_1", declaredUbudeheCategory = 2, purpose = VupLoanPurpose.FARMING,
@@ -202,6 +208,16 @@ class VupLoanServiceTest : BehaviorSpec({
                             legs.any { it.accountId == "loan_payable" && it.accountType == LedgerAccountType.LOAN_PAYABLE && it.direction == LedgerDirection.CREDIT }
                     })
                 }
+            }
+
+            // Real gap found live (2026-09-14, sibling-asymmetry sweep): this class
+            // already notifies on going OVERDUE and DUE_SOON, but never on the actual
+            // payoff moment -- same real celebratory-moment gap
+            // LoansService.repayLoan's own notifyLoanPaidOff already closed for
+            // regular loans, never propagated here.
+            Then("the real borrower is real-notified their VUP loan is fully paid off") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_1" && it.type == "VUP_LOAN_PAID_OFF" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any()) }
             }
         }
     }
