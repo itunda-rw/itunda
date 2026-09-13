@@ -109,4 +109,49 @@ class GroupPollAnnouncementServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real gap found live (2026-09-13): allowMultiple is persisted and voted on, but
+    // no real UI on any platform ever sets it -- so this branch was never exercised,
+    // and a real re-tap-the-same-option double-vote would have hit
+    // GroupPollVote's own real DB unique constraint (poll_id, option_id, user_id) as
+    // an unhandled 500 rather than a clean toggle-off.
+    Given("a real multi-select poll a user has already voted on") {
+        val groupMessagingService = mockk<GroupMessagingService>(relaxed = true)
+        val groupAnnouncementRepository = mockk<GroupAnnouncementRepository>(relaxed = true)
+        val groupPollRepository = mockk<GroupPollRepository>()
+        val groupPollOptionRepository = mockk<GroupPollOptionRepository>()
+        val groupPollVoteRepository = mockk<GroupPollVoteRepository>(relaxed = true)
+        val service = GroupPollAnnouncementService(groupMessagingService, groupAnnouncementRepository, groupPollRepository, groupPollOptionRepository, groupPollVoteRepository)
+
+        val poll = GroupPoll(id = "poll_2", groupConversationId = "group_1", createdBy = "user_1", question = "Q?", allowMultiple = true)
+        val optionA = GroupPollOption(id = "option_a", pollId = "poll_2", text = "A")
+        val optionB = GroupPollOption(id = "option_b", pollId = "poll_2", text = "B")
+        every { groupPollRepository.findById("poll_2") } returns java.util.Optional.of(poll)
+        every { groupPollOptionRepository.findById("option_a") } returns java.util.Optional.of(optionA)
+        every { groupPollOptionRepository.findById("option_b") } returns java.util.Optional.of(optionB)
+        every { groupPollRepository.findByGroupConversationIdOrderByCreatedAtDesc("group_1") } returns listOf(poll)
+        every { groupPollOptionRepository.findByPollIdIn(listOf("poll_2")) } returns listOf(optionA, optionB)
+        every { groupPollVoteRepository.findByPollIdIn(listOf("poll_2")) } returns listOf(GroupPollVote(id = "vote_a", pollId = "poll_2", optionId = "option_a", userId = "user_1"))
+        every { groupPollVoteRepository.save(any()) } answers { firstArg() }
+
+        When("the same user votes for a genuinely new option") {
+            every { groupPollVoteRepository.existsByPollIdAndOptionIdAndUserId("poll_2", "option_b", "user_1") } returns false
+            service.vote("user_1", "group_1", "poll_2", "option_b")
+
+            Then("the new vote is added alongside the existing one -- never replaced, and never a naive re-insert") {
+                io.mockk.verify(exactly = 0) { groupPollVoteRepository.deleteByPollIdAndUserId("poll_2", "user_1") }
+                io.mockk.verify(exactly = 1) { groupPollVoteRepository.save(match { it.optionId == "option_b" && it.userId == "user_1" }) }
+            }
+        }
+
+        When("the same user votes for an option they already voted for") {
+            every { groupPollVoteRepository.existsByPollIdAndOptionIdAndUserId("poll_2", "option_a", "user_1") } returns true
+
+            Then("it real-toggles the vote off (delete), never attempting a duplicate insert the DB's unique constraint would reject") {
+                service.vote("user_1", "group_1", "poll_2", "option_a")
+                io.mockk.verify(exactly = 1) { groupPollVoteRepository.deleteByPollIdAndOptionIdAndUserId("poll_2", "option_a", "user_1") }
+                io.mockk.verify(exactly = 0) { groupPollVoteRepository.save(match { it.optionId == "option_a" && it.userId == "user_1" }) }
+            }
+        }
+    }
 })

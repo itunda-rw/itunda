@@ -24,7 +24,11 @@ interface GroupPollVoteRepository : JpaRepository<GroupPollVote, String> {
     fun findByPollId(pollId: String): List<GroupPollVote>
     fun findByPollIdIn(pollIds: List<String>): List<GroupPollVote>
     fun findByPollIdAndUserId(pollId: String, userId: String): List<GroupPollVote>
+    fun existsByPollIdAndOptionIdAndUserId(pollId: String, optionId: String, userId: String): Boolean
 
     @Modifying
     fun deleteByPollIdAndUserId(pollId: String, userId: String)
+
+    @Modifying
+    fun deleteByPollIdAndOptionIdAndUserId(pollId: String, optionId: String, userId: String)
 }

@@ -108,7 +108,20 @@ class GroupPollAnnouncementService(
         val option = groupPollOptionRepository.findById(optionId).orElseThrow { GroupPollOptionNotFoundException("Option not found") }
         if (option.pollId != pollId) throw GroupPollOptionNotFoundException("Option not found")
 
-        if (!poll.allowMultiple) {
+        if (poll.allowMultiple) {
+            // Real bug found live (2026-09-13): this branch was completely unreached by
+            // any real UI (allowMultiple is persisted and voted on, but never set to
+            // true anywhere on web/Android/iOS), so a real tap-the-same-option-twice
+            // double-vote was never caught -- it would have hit GroupPollVote's own
+            // real DB unique constraint (poll_id, option_id, user_id) as an unhandled
+            // 500, not a clean no-op. Real toggle semantics: voting for an option
+            // you've already voted for removes that one vote; a genuinely new option
+            // is added alongside your other votes, never replacing them.
+            if (groupPollVoteRepository.existsByPollIdAndOptionIdAndUserId(pollId, optionId, userId)) {
+                groupPollVoteRepository.deleteByPollIdAndOptionIdAndUserId(pollId, optionId, userId)
+                return getPolls(userId, groupId).first { it.poll.id == pollId }
+            }
+        } else {
             groupPollVoteRepository.deleteByPollIdAndUserId(pollId, userId)
         }
         groupPollVoteRepository.save(GroupPollVote(id = "group_poll_vote_${UUID.randomUUID()}", pollId = pollId, optionId = optionId, userId = userId))
