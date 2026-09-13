@@ -460,6 +460,35 @@ class MarketplaceServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        // Real gap found live (2026-09-14, FraudRuleEngine-verify sweep): boostListing
+        // had zero test coverage of any kind and zero FraudRuleEngine coverage --
+        // same "self-service platform-fee purchase, no real counterparty" shape
+        // EmoticonService.purchasePack already covers.
+        When("the real owner boosts their own active listing for the real flat 3-day fee") {
+            val boostListing = Listing(
+                id = "listing_boost_1", sellerId = "seller_1", title = "Bicycle", description = "desc",
+                price = BigDecimal("15000"), category = "sports",
+            )
+            every { listingRepository.findById("listing_boost_1") } returns Optional.of(boostListing)
+            val sellerAccount = Account(
+                id = "account_seller_boost", userId = "seller_1", accountNumber = "5", accountName = "Seller",
+                type = rw.itunda.core.domain.AccountType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
+            )
+            every { accountRepository.findByUserIdAndType("seller_1", rw.itunda.core.domain.AccountType.MAIN) } returns sellerAccount
+            every { ledgerService.postLedgerTransaction(any(), any()) } returns rw.itunda.core.ledger.LedgerPostResult("boosttxn_1", emptyList())
+            every { listingRepository.save(any()) } answers { firstArg() }
+
+            val result = service.boostListing("seller_1", "listing_boost_1", 3)
+
+            Then("it real-extends boostedUntil by 3 days") {
+                result.boostedUntil shouldNotBe null
+            }
+
+            Then("the real fraud engine is evaluated against the seller with no counterparty, before the boost completes") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("seller_1", null, BigDecimal("500"), "boosttxn_1") }
+            }
+        }
     }
 
     Given("browsing the real marketplace") {

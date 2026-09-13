@@ -438,13 +438,19 @@ class MarketplaceService(
         val sellerAccount = accountRepository.findByUserIdAndType(sellerId, AccountType.MAIN)
             ?: throw SellerNoAccountException("No account found for this account")
 
-        ledgerService.postLedgerTransaction(
+        val result = ledgerService.postLedgerTransaction(
             sellerAccount.currency,
             listOf(
                 LedgerLeg(sellerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, price, "Boost listing \"${listing.title}\" for $days days"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, price, "Listing boost -- ${listing.title}"),
             ),
         )
+        // Real gap found live (2026-09-14, FraudRuleEngine-verify sweep): this real
+        // wallet-debit-to-fee_revenue purchase had zero FraudRuleEngine coverage --
+        // same "self-service platform-fee purchase, no real counterparty" shape
+        // EmoticonService.purchasePack already covers (evaluate against a null
+        // counterparty, since the platform itself is the recipient, not another user).
+        fraudRuleEngine.evaluate(sellerId, null, price, result.transactionId)
 
         val now = Instant.now()
         val currentBoostedUntil = listing.boostedUntil?.takeIf { it.isAfter(now) } ?: now
