@@ -1,6 +1,5 @@
 package rw.itunda.splitbill
 
-import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
@@ -73,8 +72,6 @@ class SplitBillService(
     private val rateLimiter: RateLimiter,
     private val fraudRuleEngine: FraudRuleEngine,
 ) {
-    private val log = LoggerFactory.getLogger(SplitBillService::class.java)
-
     /**
      * Create a real split bill within an existing group conversation -- the organizer
      * already fronted [totalAmount] outside this system and is requesting it back from
@@ -305,7 +302,7 @@ class SplitBillService(
 
     /**
      * Real KakaoPay-style explicit settlement "round" escalation -- distinct from
-     * [sendDueReminders]'s automatic, silent, every-24h per-participant nudge. Round 1 is
+     * [sendReminderForParticipant]'s automatic, silent, every-24h per-participant nudge. Round 1 is
      * the original request itself (sent at [createSplitBill] time); the organizer calling
      * this explicitly starts a NEW round, re-announcing the request in the same group
      * thread to whoever is still unpaid, with the round number itself now visible as a
@@ -432,37 +429,55 @@ class SplitBillService(
         return savedParticipant
     }
 
-    // Real scheduled reminder nudges -- see SplitBillReminderScheduler's own doc
-    // comment. A real chat-embedded nudge (same "chat-embedded financial action" shell
-    // this whole feature already uses), sent as the organizer -- the same real person a
-    // participant would expect to hear from asking "did you pay yet?" -- into the same
-    // group thread the original request itself lives in, not a separate push channel.
-    // Resilient per-participant: one bad row (e.g. a since-left group member) must
-    // never block the reminder sweep for every other real due participant.
-    fun sendDueReminders(): Int {
-        var remindedCount = 0
+    // Real read-only scheduler feed -- every real PENDING participant across every OPEN
+    // bill whose last reminder is null or older than REMINDER_INTERVAL. Deliberately not
+    // @Transactional (a plain read), same "get list, act per row" split
+    // P2pDelayedTransferService.getDueForReminder/sendReminder already establishes.
+    fun getParticipantsDueForReminder(): List<SplitBillParticipant> {
         val openBills = splitBillRepository.findByStatus(SplitBillStatus.OPEN)
-        for (bill in openBills) {
-            val pendingParticipants = splitBillParticipantRepository.findBySplitBillId(bill.id)
+        return openBills.flatMap { bill ->
+            splitBillParticipantRepository.findBySplitBillId(bill.id)
                 .filter { it.status == SplitBillParticipantStatus.PENDING }
-            for (participant in pendingParticipants) {
-                val lastReminder = participant.lastReminderSentAt
-                val due = lastReminder == null || Duration.between(lastReminder, Instant.now()) >= REMINDER_INTERVAL
-                if (!due) continue
-                try {
-                    groupMessagingService.sendMessage(
-                        bill.organizerId, bill.groupConversationId,
-                        "⏰ Reminder: you still owe ${formatAmount(participant.shareAmount)} RWF for \"${bill.description}\"",
-                    )
-                    participant.lastReminderSentAt = Instant.now()
-                    splitBillParticipantRepository.save(participant)
-                    remindedCount++
-                } catch (e: Exception) {
-                    log.warn("Split bill reminder skipped for participant {}: {}", participant.id, e.message)
-                }
-            }
+                .filter { val last = it.lastReminderSentAt; last == null || Duration.between(last, Instant.now()) >= REMINDER_INTERVAL }
         }
-        return remindedCount
+    }
+
+    /**
+     * Real per-participant reminder nudge -- see [SplitBillReminderScheduler]'s own doc
+     * comment for why this is its own real, individually-transactional method rather
+     * than one big sweep. A real chat-embedded nudge (same "chat-embedded financial
+     * action" shell this whole feature already uses), sent as the organizer -- the same
+     * real person a participant would expect to hear from asking "did you pay yet?" --
+     * into the same group thread the original request itself lives in, not a separate
+     * push channel.
+     *
+     * Real fix (2026-09-13, push-before-commit ordering sweep): this used to be inlined
+     * inside one big, non-`@Transactional` sweep loop, so [groupMessagingService]
+     * .sendMessage's OWN internal transaction (the chat message + notification rows)
+     * committed independently of, and before, this method's own
+     * `lastReminderSentAt` save -- an interrupted save between the two would leave a
+     * permanent, unremoveable duplicate reminder message in the real group chat on the
+     * very next 30-second sweep. Now `@Transactional`, so the message and the flag save
+     * commit as one atomic unit. Re-checks eligibility itself (same discipline
+     * [P2pDelayedTransferService.sendReminder] already establishes) since the caller's
+     * own due-list was fetched moments earlier and could be stale.
+     */
+    @Transactional
+    fun sendReminderForParticipant(participantId: String): Boolean {
+        val participant = splitBillParticipantRepository.findById(participantId).orElse(null) ?: return false
+        if (participant.status != SplitBillParticipantStatus.PENDING) return false
+        val lastReminder = participant.lastReminderSentAt
+        val due = lastReminder == null || Duration.between(lastReminder, Instant.now()) >= REMINDER_INTERVAL
+        if (!due) return false
+        val bill = splitBillRepository.findById(participant.splitBillId).orElse(null) ?: return false
+        if (bill.status != SplitBillStatus.OPEN) return false
+        groupMessagingService.sendMessage(
+            bill.organizerId, bill.groupConversationId,
+            "⏰ Reminder: you still owe ${formatAmount(participant.shareAmount)} RWF for \"${bill.description}\"",
+        )
+        participant.lastReminderSentAt = Instant.now()
+        splitBillParticipantRepository.save(participant)
+        return true
     }
 
     companion object {

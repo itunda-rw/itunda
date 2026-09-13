@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import io.mockk.verifyOrder
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.GroupConversation
 import rw.itunda.core.domain.GroupMessage
@@ -437,7 +438,9 @@ class SplitBillServiceTest : BehaviorSpec({
     }
 
     // Real scheduled reminder nudges (2026-07-27) -- see SplitBillReminderScheduler's
-    // own doc comment.
+    // own doc comment. Split (2026-09-13, push-before-commit ordering sweep) into a
+    // read-only due-list feed and a real, individually-@Transactional per-participant
+    // send -- see SplitBillService.sendReminderForParticipant's own doc comment.
     Given("a real OPEN split bill with a real never-yet-reminded PENDING participant") {
         val splitBillRepository = mockk<SplitBillRepository>()
         val splitBillParticipantRepository = mockk<SplitBillParticipantRepository>()
@@ -452,17 +455,36 @@ class SplitBillServiceTest : BehaviorSpec({
         val bill = SplitBill(id = "splitbill_1", organizerId = "organizer_1", groupConversationId = "group_1", messageId = "msg_1", totalAmount = BigDecimal("3000"), description = "Dinner")
         val participant = SplitBillParticipant(id = "participant_1", splitBillId = "splitbill_1", userId = "user_a", shareAmount = BigDecimal("1000"))
         every { splitBillRepository.findByStatus(SplitBillStatus.OPEN) } returns listOf(bill)
+        every { splitBillRepository.findById("splitbill_1") } returns Optional.of(bill)
         every { splitBillParticipantRepository.findBySplitBillId("splitbill_1") } returns listOf(participant)
+        every { splitBillParticipantRepository.findById("participant_1") } returns Optional.of(participant)
         val savedSlot = mutableListOf<SplitBillParticipant>()
         every { splitBillParticipantRepository.save(capture(savedSlot)) } answers { firstArg() }
 
-        When("the real sweep runs") {
-            val remindedCount = service.sendDueReminders()
+        When("checking who's due") {
+            Then("this real never-yet-reminded participant is included") {
+                service.getParticipantsDueForReminder().map { it.id } shouldBe listOf("participant_1")
+            }
+        }
+
+        When("sending their real reminder") {
+            val sent = service.sendReminderForParticipant("participant_1")
 
             Then("it real-nudges the group chat as the organizer and stamps the real reminder timestamp") {
-                remindedCount shouldBe 1
+                sent shouldBe true
                 verify(exactly = 1) { groupMessagingService.sendMessage("organizer_1", "group_1", any()) }
                 (savedSlot.first().lastReminderSentAt != null) shouldBe true
+            }
+
+            // Real fix (2026-09-13, push-before-commit ordering sweep): the flag save
+            // must happen (and, being inside the same @Transactional method as the
+            // message send, commit) as one atomic unit with the send -- not after an
+            // independently-committed groupMessagingService.sendMessage call.
+            Then("the lastReminderSentAt flag is saved before the method returns, in the same transaction as the send") {
+                verifyOrder {
+                    groupMessagingService.sendMessage("organizer_1", "group_1", any())
+                    splitBillParticipantRepository.save(participant)
+                }
             }
         }
     }
@@ -485,12 +507,19 @@ class SplitBillServiceTest : BehaviorSpec({
         )
         every { splitBillRepository.findByStatus(SplitBillStatus.OPEN) } returns listOf(bill)
         every { splitBillParticipantRepository.findBySplitBillId("splitbill_1") } returns listOf(participant)
+        every { splitBillParticipantRepository.findById("participant_1") } returns Optional.of(participant)
 
-        When("the real sweep runs less than 24 real hours later") {
-            val remindedCount = service.sendDueReminders()
+        When("checking who's due") {
+            Then("it honestly excludes this participant -- not a spammy repeat") {
+                service.getParticipantsDueForReminder() shouldBe emptyList()
+            }
+        }
 
-            Then("it honestly skips this participant -- not a spammy repeat") {
-                remindedCount shouldBe 0
+        When("sending their reminder is attempted anyway (a stale due-list re-check)") {
+            val sent = service.sendReminderForParticipant("participant_1")
+
+            Then("it real-re-checks and skips") {
+                sent shouldBe false
                 verify(exactly = 0) { groupMessagingService.sendMessage(any(), any(), any()) }
             }
         }
@@ -511,12 +540,19 @@ class SplitBillServiceTest : BehaviorSpec({
         val paidParticipant = SplitBillParticipant(id = "participant_1", splitBillId = "splitbill_1", userId = "user_a", shareAmount = BigDecimal("1000"), status = SplitBillParticipantStatus.PAID)
         every { splitBillRepository.findByStatus(SplitBillStatus.OPEN) } returns listOf(bill)
         every { splitBillParticipantRepository.findBySplitBillId("splitbill_1") } returns listOf(paidParticipant)
+        every { splitBillParticipantRepository.findById("participant_1") } returns Optional.of(paidParticipant)
 
-        When("the real sweep runs") {
-            val remindedCount = service.sendDueReminders()
+        When("checking who's due") {
+            Then("it never includes someone who already real-paid") {
+                service.getParticipantsDueForReminder() shouldBe emptyList()
+            }
+        }
 
-            Then("it never nudges someone who already real-paid") {
-                remindedCount shouldBe 0
+        When("sending their reminder is attempted anyway (a stale due-list re-check)") {
+            val sent = service.sendReminderForParticipant("participant_1")
+
+            Then("it real-re-checks and skips") {
+                sent shouldBe false
                 verify(exactly = 0) { groupMessagingService.sendMessage(any(), any(), any()) }
             }
         }
