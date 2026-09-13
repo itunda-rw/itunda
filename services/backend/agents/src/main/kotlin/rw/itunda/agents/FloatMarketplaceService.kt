@@ -5,6 +5,7 @@ import jakarta.persistence.LockModeType
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.domain.FloatListing
 import rw.itunda.core.domain.FloatListingStatus
@@ -15,13 +16,16 @@ import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.AgentOperatorRepository
 import rw.itunda.core.repository.AgentRepository
 import rw.itunda.core.repository.FloatListingRepository
 import rw.itunda.core.repository.FloatTransferRequestRepository
 import rw.itunda.core.repository.LedgerAccountRepository
+import rw.itunda.core.repository.NotificationRepository
 import java.math.BigDecimal
 import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 
 class FloatListingNotFoundException(message: String) : RuntimeException(message)
@@ -69,6 +73,8 @@ class FloatMarketplaceService(
     private val rateLimiter: RateLimiter,
     private val fraudRuleEngine: FraudRuleEngine,
     private val entityManager: EntityManager,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
 
     @Transactional
@@ -121,9 +127,19 @@ class FloatMarketplaceService(
         // repayAdvance lesson: never trust a caller-supplied amount without a real,
         // current server-side check against what's actually still available.
         if (amount > listing.remainingAmount()) throw FloatListingInsufficientRemainingException("Requested amount exceeds what remains available on this listing")
-        return floatTransferRequestRepository.save(
+        val saved = floatTransferRequestRepository.save(
             FloatTransferRequest(id = "floattransferreq_${UUID.randomUUID()}", listingId = listingId, requestingAgentId = operator.agentId, amount = amount),
         )
+        // Real sibling-asymmetry fix (2026-09-13) -- P2pService notifies both parties
+        // of a request/resolution on the identical "request against you" shape
+        // (markExpired/payRequest); this sibling service sent zero notifications
+        // anywhere in its lifecycle until now.
+        notifyAgentOperators(
+            listing.agentId, "New float request",
+            "You have a new ${amount.toPlainString()} RWF float request against your listing.",
+            "{\"listingId\":\"${listing.id}\",\"requestId\":\"${saved.id}\"}",
+        )
+        return saved
     }
 
     /**
@@ -221,6 +237,18 @@ class FloatMarketplaceService(
         if (listing.claimedAmount >= listing.amount) listing.status = FloatListingStatus.FULFILLED
         floatListingRepository.save(listing)
 
+        // Real sibling-asymmetry fix (2026-09-13) -- real money just moved between two
+        // agents' own cash accounts with zero notification to either side. Only the
+        // REQUESTING agent is notified, not the listing agent -- the accepting operator
+        // performed this action themselves and needs no push telling them what they
+        // just did, same "who's absent from this action" reasoning AgentService's own
+        // single-party cashIn/cashOut notifications already follow.
+        notifyAgentOperators(
+            requestingAgent.id, "Float received",
+            "${listingAgent.displayName} sent you ${lockedRequest.amount.toPlainString()} RWF via the float marketplace.",
+            "{\"requestId\":\"${lockedRequest.id}\",\"transactionId\":\"${ledger.transactionId}\"}",
+        )
+
         return lockedRequest
     }
 
@@ -239,9 +267,19 @@ class FloatMarketplaceService(
         val lockedRequest = floatTransferRequestRepository.findByIdForUpdate(requestId).orElseThrow { FloatTransferRequestNotFoundException("Float transfer request not found") }
         if (lockedRequest.status != FloatTransferRequestStatus.REQUESTED) throw FloatTransferRequestNotPendingException("This request has already been resolved")
         lockedRequest.status = FloatTransferRequestStatus.DECLINED
-        return floatTransferRequestRepository.save(lockedRequest)
+        val saved = floatTransferRequestRepository.save(lockedRequest)
+        notifyRequestDeclined(saved, "was declined")
+        return saved
     }
 
+    /**
+     * Real gap closed 2026-09-13: a cancelled listing left any still-REQUESTED
+     * request against it permanently stuck -- acceptRequest rejects a non-OPEN
+     * listing forever (FloatListingNotOpenException), but nothing ever auto-declined
+     * the orphaned request or told its requester the listing was gone. Now mirrors
+     * declineRequest's own real resolution + notification for every pending request
+     * this cancellation orphans.
+     */
     @Transactional
     fun cancelListing(userId: String, listingId: String): FloatListing {
         val operator = activeOperator(userId)
@@ -249,7 +287,38 @@ class FloatMarketplaceService(
         if (listing.agentId != operator.agentId) throw FloatListingNotFoundException("Float listing not found")
         if (listing.status != FloatListingStatus.OPEN) throw FloatListingNotOpenException("Only an open listing can be cancelled")
         listing.status = FloatListingStatus.CANCELLED
-        return floatListingRepository.save(listing)
+        val saved = floatListingRepository.save(listing)
+        val orphanedRequests = floatTransferRequestRepository.findByListingIdAndStatus(listingId, FloatTransferRequestStatus.REQUESTED)
+        for (orphaned in orphanedRequests) {
+            orphaned.status = FloatTransferRequestStatus.DECLINED
+            val savedOrphan = floatTransferRequestRepository.save(orphaned)
+            notifyRequestDeclined(savedOrphan, "was declined because the listing was cancelled")
+        }
+        return saved
+    }
+
+    private fun notifyRequestDeclined(request: FloatTransferRequest, reasonSuffix: String) {
+        notifyAgentOperators(
+            request.requestingAgentId, "Float request declined",
+            "Your float request for ${request.amount.toPlainString()} RWF $reasonSuffix.",
+            "{\"requestId\":\"${request.id}\"}",
+        )
+    }
+
+    /** Notifies every active operator of an agent -- an agent can have more than one
+     * real operator (AgentOperatorRepository.findByAgentId), so "the agent" is told by
+     * telling every currently-active person who actually runs its till. */
+    private fun notifyAgentOperators(agentId: String, title: String, body: String, dataJson: String?) {
+        val operators = agentOperatorRepository.findByAgentId(agentId).filter { it.isActive }
+        for (op in operators) {
+            notificationRepository.save(
+                Notification(
+                    id = "notification_${UUID.randomUUID()}", userId = op.userId, type = "float_marketplace",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = dataJson,
+                ),
+            )
+            pushNotificationService.sendToUser(op.userId, title, body)
+        }
     }
 
     @Transactional(readOnly = true)
