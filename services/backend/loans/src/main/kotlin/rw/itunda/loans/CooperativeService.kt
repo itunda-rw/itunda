@@ -199,7 +199,24 @@ class CooperativeService(
         advance.status = HarvestAdvanceStatus.REPAID
         advance.repaidAt = Instant.now()
         advance.repaymentTransactionId = result.transactionId
-        return advanceRepository.save(advance)
+        val saved = advanceRepository.save(advance)
+        // Real gap found live (2026-09-14, sibling-asymmetry sweep): this method is
+        // "full settlement only" per its own doc comment above, so every successful
+        // call IS a full payoff -- yet this class already notifies on markOverdue and
+        // the write-off path in decide() but never on the single most positive event,
+        // the farmer actually paying it off. Same real celebratory-moment gap
+        // LoansService.repayLoan's own notifyLoanPaidOff/VupLoanService.repay's own
+        // identical fix already close for regular/VUP loans.
+        val title = "Harvest advance fully paid off! 🎉"
+        val body = "You've paid off your harvest advance -- nice work."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = membership.userId, type = "HARVEST_ADVANCE_PAID_OFF",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"advanceId\":\"${advance.id}\"}",
+            ),
+        )
+        pushNotificationService.sendToUser(membership.userId, title, body, mapOf("advanceId" to advance.id))
+        return saved
     }
 
     // Real overdue detection (Bank product-completeness pass, cycle 2, 2026-09-08) --

@@ -228,7 +228,13 @@ class StudentLoanServiceTest : BehaviorSpec({
         val studentLoanRepository = mockk<StudentLoanRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(studentLoanRepository = studentLoanRepository, accountRepository = accountRepository, ledgerService = ledgerService)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(
+            studentLoanRepository = studentLoanRepository, accountRepository = accountRepository, ledgerService = ledgerService,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
+        )
 
         val loan = StudentLoan(
             id = "studentloan_4", userId = "user_1", level = StudentLoanLevel.UNDERGRADUATE,
@@ -254,6 +260,16 @@ class StudentLoanServiceTest : BehaviorSpec({
                             legs.any { it.accountId == "loan_payable" && it.accountType == LedgerAccountType.LOAN_PAYABLE && it.direction == LedgerDirection.CREDIT }
                     })
                 }
+            }
+
+            // Real gap found live (2026-09-14, sibling-asymmetry sweep): this class
+            // already notifies on the grace period ending soon, but never on the
+            // actual payoff moment -- same real celebratory-moment gap
+            // LoansService.repayLoan/VupLoanService.repay already close for
+            // regular/VUP loans.
+            Then("the real borrower is real-notified their student loan is fully paid off") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_1" && it.type == "STUDENT_LOAN_PAID_OFF" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any()) }
             }
         }
     }

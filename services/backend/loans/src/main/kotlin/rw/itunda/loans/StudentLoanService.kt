@@ -189,8 +189,26 @@ class StudentLoanService(
         )
 
         loan.outstandingBalance = loan.outstandingBalance.subtract(actualAmount)
-        loan.status = if (loan.outstandingBalance <= BigDecimal.ZERO) StudentLoanStatus.REPAID else StudentLoanStatus.REPAYING
-        return studentLoanRepository.save(loan)
+        val justRepaid = loan.status != StudentLoanStatus.REPAID && loan.outstandingBalance <= BigDecimal.ZERO
+        loan.status = if (justRepaid) StudentLoanStatus.REPAID else StudentLoanStatus.REPAYING
+        val saved = studentLoanRepository.save(loan)
+        // Real gap found live (2026-09-14, sibling-asymmetry sweep): this class already
+        // notifies on the grace period ending soon (sendGraceEndReminder), but never on
+        // the actual payoff moment -- the most positive one. Same real celebratory-
+        // moment gap LoansService.repayLoan's own notifyLoanPaidOff/VupLoanService
+        // .repay's own identical fix already close for regular/VUP loans.
+        if (justRepaid) {
+            val title = "Student loan fully paid off! 🎉"
+            val body = "You've paid off your BRD student loan -- nice work."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = loan.userId, type = "STUDENT_LOAN_PAID_OFF",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"loanId\":\"${loan.id}\"}",
+                ),
+            )
+            pushNotificationService.sendToUser(loan.userId, title, body, mapOf("loanId" to loan.id))
+        }
+        return saved
     }
 
     fun getMyLoans(userId: String): List<StudentLoan> = studentLoanRepository.findByUserId(userId)

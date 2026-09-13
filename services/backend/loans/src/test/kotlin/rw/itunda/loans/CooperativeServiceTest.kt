@@ -204,9 +204,13 @@ class CooperativeServiceTest : BehaviorSpec({
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             membershipRepository = membershipRepository, advanceRepository = advanceRepository,
             accountRepository = accountRepository, ledgerService = ledgerService, rateLimiter = rateLimiter,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
         )
 
         val membership = CooperativeMembership(id = "coopmem_1", cooperativeId = "coop_1", userId = "user_1", accountId = "account_1")
@@ -239,6 +243,16 @@ class CooperativeServiceTest : BehaviorSpec({
             // .repayEarly, 2026-09-13): repayAdvance had no rate limit at all.
             Then("the real rate limiter is actually consulted, not just mocked away") {
                 verify(exactly = 1) { rateLimiter.checkLimit("harvest-advance:repay:user_1", limit = 30, window = Duration.ofHours(1)) }
+            }
+
+            // Real gap found live (2026-09-14, sibling-asymmetry sweep): this class
+            // already notifies on markOverdue and the write-off path, but never on
+            // repayAdvance -- which is "full settlement only" per its own doc comment,
+            // so every successful call IS a full payoff, the single most positive
+            // event in the whole lifecycle.
+            Then("the real farmer is real-notified their harvest advance is fully paid off") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_1" && it.type == "HARVEST_ADVANCE_PAID_OFF" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any()) }
             }
         }
 
