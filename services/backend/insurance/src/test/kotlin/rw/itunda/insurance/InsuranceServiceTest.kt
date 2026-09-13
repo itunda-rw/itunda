@@ -96,6 +96,13 @@ class InsuranceServiceTest : BehaviorSpec({
                 policy.status shouldBe "active"
                 verify(exactly = 1) { insurancePolicyRepository.save(any()) }
             }
+
+            // Real gap found live (2026-09-13, sibling-asymmetry sweep): every other
+            // mutating method in this class rate-limits; this real money-moving one
+            // (the first premium charge) never did.
+            Then("the per-user enrollment rate limit is enforced") {
+                verify(exactly = 1) { rateLimiter.checkLimit("insurance:enroll:user_1", limit = any(), window = any()) }
+            }
         }
 
         When("enrolling in a plan that doesn't exist") {
@@ -352,6 +359,30 @@ class InsuranceServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a real user exceeds the real plan-enrollment rate limit") {
+        val insurancePolicyRepository = mockk<InsurancePolicyRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, accountRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository, notificationRepository, pushNotificationService)
+        every { rateLimiter.checkLimit("insurance:enroll:user_9", limit = any(), window = any()) } throws RateLimitExceededException("Too many requests")
+
+        When("they try to enroll in another real plan") {
+            Then("it real-propagates RateLimitExceededException before ever touching the ledger") {
+                try {
+                    service.enrollInPlan("user_9", "ins_1")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+    }
+
     Given("a real user exceeds the real claim-filing rate limit") {
         val insurancePolicyRepository = mockk<InsurancePolicyRepository>()
         val accountRepository = mockk<AccountRepository>()
@@ -472,6 +503,10 @@ class InsuranceServiceTest : BehaviorSpec({
         every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_main", "user_1", AccountType.MAIN, balance = BigDecimal("1000"))
         every { insurancePremiumFundRepository.findByPolicyIdAndStatus("pol_due_3", InsurancePremiumFundStatus.active) } returns null
         every { insurancePolicyRepository.save(any()) } answers { firstArg() }
+        // Same real relaxed-mockk generic-return-type ClassCastException pitfall this
+        // codebase's other tests document repeatedly -- explicit stub for the new
+        // real lapse-notification save() this fix adds.
+        every { notificationRepository.save(any()) } answers { firstArg() }
 
         When("collecting the premium") {
             val result = service.collectPremium(duePolicy)
@@ -481,6 +516,14 @@ class InsuranceServiceTest : BehaviorSpec({
                 duePolicy.status shouldBe "lapsed"
                 verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 verify(exactly = 1) { insurancePolicyRepository.save(duePolicy) }
+            }
+
+            // Real gap found live (2026-09-13, sibling-asymmetry sweep): losing
+            // coverage entirely used to notify nobody -- only a scheduler log line --
+            // unlike the far less consequential sendRenewalReminder/decideClaim, both
+            // of which do notify.
+            Then("the real user is notified their coverage lapsed") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_1" && it.type == "INSURANCE_POLICY_LAPSED" }) }
             }
         }
     }

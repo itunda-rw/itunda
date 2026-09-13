@@ -117,7 +117,8 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
         val seasonRainfallIndexRepository = mockk<SeasonRainfallIndexRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, accountRepository, ledgerService)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, accountRepository, ledgerService, rateLimiter)
 
         val enrolledPolicy = policy("wip_1", "user_1", premiumAmount = BigDecimal("6000"))
         every { weatherIndexPolicyRepository.findById("wip_1") } returns Optional.of(enrolledPolicy)
@@ -140,6 +141,14 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
             }
             Then("it marks the policy CANCELLED") {
                 cancelled.status shouldBe WeatherIndexPolicyStatus.CANCELLED
+            }
+
+            // Real gap found live (2026-09-13, sibling-asymmetry sweep): enroll (above)
+            // and InsuranceService.cancelFund (the equivalent refund action in the
+            // sibling insurance service) both rate-limit; this real full-refund action
+            // never did.
+            Then("the per-farmer cancellation rate limit is enforced") {
+                verify(exactly = 1) { rateLimiter.checkLimit("weather-index:cancel:user_1", limit = any(), window = any()) }
             }
         }
     }

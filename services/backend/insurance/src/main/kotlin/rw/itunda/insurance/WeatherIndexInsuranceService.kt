@@ -152,6 +152,10 @@ class WeatherIndexInsuranceService(
 
     @Transactional
     fun cancel(userId: String, policyId: String): WeatherIndexPolicy {
+        // Real gap found live (2026-09-13, sibling-asymmetry sweep): enroll (above) and
+        // InsuranceService.cancelFund (the equivalent refund action in the sibling
+        // insurance service) both rate-limit; this real full-refund action never did.
+        rateLimiter.checkLimit("weather-index:cancel:$userId", limit = 10, window = Duration.ofDays(1))
         val policy = getPolicy(userId, policyId)
         if (policy.status != WeatherIndexPolicyStatus.ENROLLED) {
             throw WeatherIndexPolicyNotCancellableException("Cannot cancel a ${policy.status} policy")

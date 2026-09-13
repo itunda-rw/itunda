@@ -72,6 +72,11 @@ class InsuranceService(
 
     @Transactional
     fun enrollInPlan(userId: String, planId: String): InsurancePolicy {
+        // Real gap found live (2026-09-13, sibling-asymmetry sweep): every OTHER
+        // mutating method in this class (submitClaim, createPremiumFund,
+        // contributeToFund, cancelFund) rate-limits; this one, which moves real money
+        // via the first premium charge, never did.
+        rateLimiter.checkLimit("insurance:enroll:$userId", limit = 10, window = Duration.ofHours(1))
         val plan = insurancePlans.find { it["id"] == planId } ?: throw PlanNotFoundException("Plan not found")
         val premiumAccount = accountRepository.findByUserId(userId).find { it.type == AccountType.MAIN } ?: throw NoAccountException("No account found for this account")
 
@@ -158,9 +163,23 @@ class InsuranceService(
         }
 
         // Real-world consequence of a genuinely unpaid premium: coverage lapses, the same
-        // way a real insurer would stop covering a policyholder who stops paying.
+        // way a real insurer would stop covering a policyholder who stops paying. Real
+        // gap found live (2026-09-13, sibling-asymmetry sweep): this used to flip status
+        // with only a scheduler log line -- no notification at all, unlike the far less
+        // consequential sendRenewalReminder/decideClaim below, which both notify. A user
+        // losing coverage entirely deserves at least as much signal as a routine renewal
+        // reminder.
+        val title = "Your ${policy.planName} policy has lapsed"
+        val body = "Your \"${policy.planName}\" policy lapsed because a premium payment could not be collected. Renew to restore coverage."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = policy.userId, type = "INSURANCE_POLICY_LAPSED",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"policyId\":\"${policy.id}\"}",
+            ),
+        )
         policy.status = "lapsed"
         insurancePolicyRepository.save(policy)
+        sendPolicyPushAfterCommit(policy.userId, title, body, policy.id)
         return false
     }
 
@@ -437,16 +456,18 @@ class InsuranceService(
         // would leave the flag unset and the next scheduler pass would resend it.
         // Same discipline this class's own claim-decision sendPushAfterCommit above
         // already establishes.
-        sendRenewalPushAfterCommit(policy.userId, title, body, policy.id)
+        sendPolicyPushAfterCommit(policy.userId, title, body, policy.id)
     }
 
-    private fun sendRenewalPushAfterCommit(userId: String, title: String, body: String, policyId: String) {
+    // Shared by both real policy-level pushes this class fires outside a claim decision
+    // -- the renewal reminder above and collectPremium's own real lapse notification.
+    private fun sendPolicyPushAfterCommit(userId: String, title: String, body: String, policyId: String) {
         val data = mapOf("policyId" to policyId)
         val send = {
             try {
                 pushNotificationService.sendToUser(userId, title, body, data)
             } catch (e: Exception) {
-                log.warn("Could not send insurance-renewal-reminder push for policy {}", policyId, e)
+                log.warn("Could not send insurance policy push for policy {}", policyId, e)
             }
         }
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
