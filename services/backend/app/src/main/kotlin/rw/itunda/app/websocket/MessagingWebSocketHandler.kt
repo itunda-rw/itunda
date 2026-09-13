@@ -182,6 +182,20 @@ class MessagingWebSocketHandler(
         } catch (e: Exception) {
             return
         }
+        // Real fix (2026-09-13): answer/decline/end signals used to only relay the raw
+        // frame -- CallSession's own persisted answeredAt/endedAt/endReason (what the
+        // call-log tab and verifyActiveParticipant's own already-ended guard both
+        // depend on) never updated for a call ended over an already-live socket, only
+        // via CallController's separate REST path. Best-effort: a stale/racing failure
+        // here must never block the actual signaling relay both peers need to tear
+        // down their real WebRTC connection cleanly.
+        if (type == "call_answer" || type == "call_decline" || type == "call_end") {
+            try {
+                callService.recordSignalState(userId, callId, type)
+            } catch (e: Exception) {
+                log.warn("Could not record call signal state for call {}: {}", callId, e.message)
+            }
+        }
         val relayed = json.deepCopy<com.fasterxml.jackson.databind.node.ObjectNode>()
         relayed.put("fromUserId", userId)
         sendToUser(otherUserId, objectMapper.writeValueAsString(relayed))

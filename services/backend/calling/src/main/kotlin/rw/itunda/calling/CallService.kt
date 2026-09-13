@@ -146,6 +146,46 @@ class CallService(
 
     fun getHistory(userId: String, pageable: Pageable): Page<CallSession> = callSessionRepository.findByParticipant(userId, pageable)
 
+    /**
+     * Real state transition for a call whose answer/decline/hangup signal arrived over
+     * an already-live WebSocket -- see `MessagingWebSocketHandler.handleCallSignal`'s
+     * own doc comment. `answerCall`/`endCall` above are real, but only ever reachable
+     * via `CallController`'s own separate REST path (used before either side is
+     * connected, e.g. cancelling before the callee ever answers); the far more common
+     * "both sides already have a live socket, one hangs up" path only ever relayed the
+     * raw SDP frame and never touched this real persisted state at all -- a genuine gap
+     * found live in this already-shipped, already-tested code (2026-09-13). `call_end`'s
+     * real reason is inferred from the call's own already-persisted `answeredAt`
+     * (COMPLETED if it was ever answered, CANCELLED if the caller gave up first) rather
+     * than trusted from the client -- the raw signaling frame doesn't even carry a
+     * reason field, and this backend never trusts a client-asserted domain decision it
+     * can derive itself. `call_decline` is unambiguous on its own. Deliberately its own
+     * self-contained method (not delegating to `answerCall`/`endCall` via a same-class
+     * call) to avoid this codebase's own documented self-invocation `@Transactional`
+     * pitfall -- see `project_itunda_bills_autopay_transaction_bug`.
+     */
+    @Transactional
+    fun recordSignalState(userId: String, callId: String, type: String) {
+        val call = requireParticipant(userId, callId)
+        if (call.endedAt != null) return
+        when (type) {
+            "call_answer" -> {
+                call.answeredAt = Instant.now()
+                callSessionRepository.save(call)
+            }
+            "call_decline" -> endCallState(call, userId, CallEndReason.DECLINED)
+            "call_end" -> endCallState(call, userId, if (call.answeredAt != null) CallEndReason.COMPLETED else CallEndReason.CANCELLED)
+        }
+    }
+
+    private fun endCallState(call: CallSession, userId: String, reason: CallEndReason) {
+        call.endedAt = Instant.now()
+        call.endReason = reason
+        callSessionRepository.save(call)
+        val otherUserId = if (call.callerId == userId) call.calleeId else call.callerId
+        realtimeMessagePublisher.publishCallEnded(otherUserId, call.id, reason.name)
+    }
+
     /** Real IDOR check for `MessagingWebSocketHandler`'s own inline signaling relay
      * -- never trust a client-asserted callId/recipient. Returns the real other
      * participant to relay to, or throws if the caller isn't a real participant of a

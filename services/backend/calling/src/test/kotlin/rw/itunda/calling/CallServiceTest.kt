@@ -112,6 +112,87 @@ class CallServiceTest : BehaviorSpec({
         }
     }
 
+    // Real gap found live (2026-09-13): the only real caller of answerCall/endCall was
+    // CallController's own REST path (used before either side is connected); a call
+    // answered/ended over an already-live WebSocket relayed the raw signaling frame but
+    // never persisted answeredAt/endedAt/endReason at all. recordSignalState is the new
+    // real fix MessagingWebSocketHandler.handleCallSignal now calls.
+    Given("a real, still-active call, its real callee answering over the live socket") {
+        val (service, callSessionRepository) = newService()
+        val call = CallSession(id = "call_signal_1", conversationId = "conversation_1", callerId = "user_a", calleeId = "user_b", callType = CallType.VOICE)
+        every { callSessionRepository.findById("call_signal_1") } returns Optional.of(call)
+
+        When("a real call_answer signal arrives from the real callee") {
+            service.recordSignalState("user_b", "call_signal_1", "call_answer")
+
+            Then("it real-stamps answeredAt, same real state answerCall's own REST path sets") {
+                call.answeredAt shouldNotBe null
+                call.endedAt shouldBe null
+            }
+        }
+    }
+
+    Given("a real, still-active, never-answered call, its real callee declining over the live socket") {
+        val (service, callSessionRepository) = newService()
+        val call = CallSession(id = "call_signal_2", conversationId = "conversation_1", callerId = "user_a", calleeId = "user_b", callType = CallType.VOICE)
+        every { callSessionRepository.findById("call_signal_2") } returns Optional.of(call)
+
+        When("a real call_decline signal arrives") {
+            service.recordSignalState("user_b", "call_signal_2", "call_decline")
+
+            Then("it real-ends the call with DECLINED, unambiguous on its own") {
+                call.endedAt shouldNotBe null
+                call.endReason shouldBe CallEndReason.DECLINED
+            }
+        }
+    }
+
+    Given("a real, still-active, never-answered call, the real caller hanging up before the callee ever answers") {
+        val (service, callSessionRepository) = newService()
+        val call = CallSession(id = "call_signal_3", conversationId = "conversation_1", callerId = "user_a", calleeId = "user_b", callType = CallType.VOICE)
+        every { callSessionRepository.findById("call_signal_3") } returns Optional.of(call)
+
+        When("a real call_end signal arrives from the real caller") {
+            service.recordSignalState("user_a", "call_signal_3", "call_end")
+
+            Then("it real-infers CANCELLED from the call's own persisted state -- never answered") {
+                call.endReason shouldBe CallEndReason.CANCELLED
+            }
+        }
+    }
+
+    Given("a real, already-answered call, either side hanging up over the live socket") {
+        val (service, callSessionRepository) = newService()
+        val call = CallSession(id = "call_signal_4", conversationId = "conversation_1", callerId = "user_a", calleeId = "user_b", callType = CallType.VOICE)
+        call.answeredAt = java.time.Instant.now()
+        every { callSessionRepository.findById("call_signal_4") } returns Optional.of(call)
+
+        When("a real call_end signal arrives") {
+            service.recordSignalState("user_b", "call_signal_4", "call_end")
+
+            Then("it real-infers COMPLETED from the call's own persisted state -- it was answered") {
+                call.endReason shouldBe CallEndReason.COMPLETED
+            }
+        }
+    }
+
+    Given("a real call that already ended, a real racing duplicate signal arriving anyway") {
+        val (service, callSessionRepository) = newService()
+        val endedCall = CallSession(id = "call_signal_5", conversationId = "conversation_1", callerId = "user_a", calleeId = "user_b", callType = CallType.VOICE)
+        endedCall.endedAt = java.time.Instant.now()
+        endedCall.endReason = CallEndReason.COMPLETED
+        every { callSessionRepository.findById("call_signal_5") } returns Optional.of(endedCall)
+
+        When("a real, stale call_end signal arrives after the call already ended") {
+            service.recordSignalState("user_a", "call_signal_5", "call_end")
+
+            Then("it real-no-ops -- never overwrites the real already-recorded end reason") {
+                endedCall.endReason shouldBe CallEndReason.COMPLETED
+                verify(exactly = 0) { callSessionRepository.save(any()) }
+            }
+        }
+    }
+
     Given("a real call that already ended") {
         val (service, callSessionRepository) = newService()
         val endedCall = CallSession(id = "call_ended", conversationId = "conversation_1", callerId = "user_a", calleeId = "user_b", callType = CallType.VOICE)

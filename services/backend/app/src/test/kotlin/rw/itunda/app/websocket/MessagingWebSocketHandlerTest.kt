@@ -97,6 +97,41 @@ class MessagingWebSocketHandlerTest {
         assertEquals("user_1", relayed.get("fromUserId").asText())
     }
 
+    // Real gap found live (2026-09-13): answer/decline/end signals used to only relay
+    // the raw frame -- CallService's own persisted CallSession state (answeredAt/
+    // endedAt/endReason) never updated for a call ended over an already-live socket.
+    @Test
+    fun `a real call_answer frame records the real CallSession state and still relays`() {
+        val callerSession = sessionWithExpiry(Instant.now().plusSeconds(3600), userId = "user_1")
+        val calleeSession = sessionWithExpiry(Instant.now().plusSeconds(3600), userId = "user_2")
+        `when`(conversationRepository.findPartnerUserIds("user_1")).thenReturn(emptyList())
+        `when`(conversationRepository.findPartnerUserIds("user_2")).thenReturn(emptyList())
+        `when`(callService.verifyActiveParticipant("user_1", "call_1")).thenReturn("user_2")
+
+        handler.afterConnectionEstablished(callerSession)
+        handler.afterConnectionEstablished(calleeSession)
+        handler.handleMessage(callerSession, TextMessage("""{"type":"call_answer","callId":"call_1"}"""))
+
+        verify(callService).recordSignalState("user_1", "call_1", "call_answer")
+        verify(calleeSession).sendMessage(any(TextMessage::class.java))
+    }
+
+    @Test
+    fun `a real call_end frame still relays even if recording the real state fails`() {
+        val callerSession = sessionWithExpiry(Instant.now().plusSeconds(3600), userId = "user_1")
+        val calleeSession = sessionWithExpiry(Instant.now().plusSeconds(3600), userId = "user_2")
+        `when`(conversationRepository.findPartnerUserIds("user_1")).thenReturn(emptyList())
+        `when`(conversationRepository.findPartnerUserIds("user_2")).thenReturn(emptyList())
+        `when`(callService.verifyActiveParticipant("user_1", "call_1")).thenReturn("user_2")
+        org.mockito.Mockito.doThrow(RuntimeException("racing hangup")).`when`(callService).recordSignalState("user_1", "call_1", "call_end")
+
+        handler.afterConnectionEstablished(callerSession)
+        handler.afterConnectionEstablished(calleeSession)
+        handler.handleMessage(callerSession, TextMessage("""{"type":"call_end","callId":"call_1"}"""))
+
+        verify(calleeSession).sendMessage(any(TextMessage::class.java))
+    }
+
     @Test
     fun `a real call_offer frame from a non-participant is silently dropped, never relayed`() {
         val strangerSession = sessionWithExpiry(Instant.now().plusSeconds(3600), userId = "user_stranger")
