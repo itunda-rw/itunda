@@ -3,6 +3,7 @@ package rw.itunda.marketplace
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -1034,6 +1035,99 @@ class MarketplaceServiceTest : BehaviorSpec({
 
             Then("it's a real honest no-op -- never double-releasing or touching the ledger a second time") {
                 io.mockk.verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+    }
+
+    // Real sibling-asymmetry fix (2026-09-13) -- Gift/GiftVoucher/MerchantCoupon all
+    // warn the party who needs to act before their own hold-then-auto-release window
+    // closes; this real, arbitrary-amount marketplace escrow had none.
+    Given("real escrows of every real age, checking which are due for a real pre-auto-release reminder") {
+        val listingRepository = mockk<ListingRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val messagingService = mockk<MessagingService>(relaxed = true)
+        val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>(relaxed = true)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val accountRepository = mockk<AccountRepository>(relaxed = true)
+        val ledgerService = mockk<LedgerService>(relaxed = true)
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>()
+        val listingLikeRepository = mockk<ListingLikeRepository>()
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val listingFavoriteRepository = mockk<ListingFavoriteRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = MarketplaceService(
+            listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
+            accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            listingFavoriteRepository, notificationRepository, pushNotificationService,
+            mockk(relaxed = true),
+        )
+
+        val dueSoon = MarketplaceEscrow(
+            id = "escrow_d", listingId = "listing_d", buyerId = "buyer_d", sellerId = "seller_d",
+            amount = BigDecimal("10000"), fee = BigDecimal("150"), holdTransactionId = "ledgertxn_d",
+            createdAt = java.time.Instant.now().minus(java.time.Duration.ofDays(5)),
+        )
+        val notYetDue = MarketplaceEscrow(
+            id = "escrow_e", listingId = "listing_e", buyerId = "buyer_e", sellerId = "seller_e",
+            amount = BigDecimal("10000"), fee = BigDecimal("150"), holdTransactionId = "ledgertxn_e",
+            createdAt = java.time.Instant.now().minus(java.time.Duration.ofDays(1)),
+        )
+        every { marketplaceEscrowRepository.findByStatusAndAutoReleaseReminderSentAtIsNull(rw.itunda.core.domain.MarketplaceEscrowStatus.HELD) } returns listOf(dueSoon, notYetDue)
+
+        When("getEscrowsDueForAutoReleaseReminder runs") {
+            val due = service.getEscrowsDueForAutoReleaseReminder()
+
+            Then("it real-includes only the escrow within the real reminder window, honestly excluding the too-recent one") {
+                due shouldBe listOf(dueSoon)
+            }
+        }
+    }
+
+    Given("a real still-HELD escrow within its real pre-auto-release reminder window, never yet reminded") {
+        val listingRepository = mockk<ListingRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val messagingService = mockk<MessagingService>(relaxed = true)
+        val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>(relaxed = true)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val accountRepository = mockk<AccountRepository>(relaxed = true)
+        val ledgerService = mockk<LedgerService>(relaxed = true)
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>()
+        val listingLikeRepository = mockk<ListingLikeRepository>()
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val listingFavoriteRepository = mockk<ListingFavoriteRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = MarketplaceService(
+            listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
+            accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            listingFavoriteRepository, notificationRepository, pushNotificationService,
+            mockk(relaxed = true),
+        )
+
+        val escrow = MarketplaceEscrow(
+            id = "escrow_f", listingId = "listing_f", buyerId = "buyer_f", sellerId = "seller_f",
+            amount = BigDecimal("10000"), fee = BigDecimal("150"), holdTransactionId = "ledgertxn_f",
+            createdAt = java.time.Instant.now().minus(java.time.Duration.ofDays(5)),
+        )
+        every { marketplaceEscrowRepository.findById("escrow_f") } returns java.util.Optional.of(escrow)
+        every { listingRepository.findById("listing_f") } returns java.util.Optional.empty()
+        every { marketplaceEscrowRepository.save(any()) } answers { firstArg() }
+        every { notificationRepository.save(any()) } answers { firstArg() }
+
+        When("sendAutoReleaseReminder runs") {
+            service.sendAutoReleaseReminder("escrow_f")
+
+            Then("it real-alerts the BUYER (the one who can still act), never the seller, and marks the reminder sent") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_f" && it.type == "MARKETPLACE_ESCROW_AUTO_RELEASE_REMINDER" }) }
+                verify(exactly = 0) { notificationRepository.save(match { it.userId == "seller_f" }) }
+                escrow.autoReleaseReminderSentAt shouldNotBe null
             }
         }
     }

@@ -705,6 +705,45 @@ class MarketplaceService(
         }
     }
 
+    // Real sibling-asymmetry fix (2026-09-13) -- see
+    // MarketplaceEscrow.autoReleaseReminderSentAt's own doc comment: the buyer, not
+    // the seller, is the one who needs a nudge here -- they're the party who still has
+    // a real chance to confirm receipt or dispute before the money is gone for good.
+    fun getEscrowsDueForAutoReleaseReminder(): List<MarketplaceEscrow> {
+        val cutoff = MarketplaceEscrow.AUTO_RELEASE_TIMEOUT.minus(MarketplaceEscrow.AUTO_RELEASE_REMINDER_WINDOW)
+        return marketplaceEscrowRepository.findByStatusAndAutoReleaseReminderSentAtIsNull(MarketplaceEscrowStatus.HELD)
+            .filter { Duration.between(it.createdAt, Instant.now()) >= cutoff }
+    }
+
+    /** One real pre-auto-release reminder to the buyer, called per-escrow by the
+     * scheduler -- re-checks `status`/`autoReleaseReminderSentAt` right before sending
+     * so a genuine race can't double-fire, same resilience discipline
+     * GiftVoucherService.sendExpiryReminder/MerchantCouponService.sendExpiryReminder's
+     * own doc comments already establish. */
+    @Transactional
+    fun sendAutoReleaseReminder(escrowId: String) {
+        val escrow = marketplaceEscrowRepository.findById(escrowId).orElse(null) ?: return
+        if (escrow.status != MarketplaceEscrowStatus.HELD || escrow.autoReleaseReminderSentAt != null) return
+        val listing = listingRepository.findById(escrow.listingId).orElse(null)
+        val daysLeft = MarketplaceEscrow.AUTO_RELEASE_TIMEOUT.minus(Duration.between(escrow.createdAt, Instant.now())).toDays().coerceAtLeast(0)
+        val title = "Confirm receipt or raise a dispute soon"
+        val body = if (listing != null) {
+            "Your payment for \"${listing.title}\" auto-releases to the seller in about $daysLeft day(s). Confirm receipt or dispute now if there's a problem."
+        } else {
+            "A marketplace payment you made auto-releases to the seller in about $daysLeft day(s). Confirm receipt or dispute now if there's a problem."
+        }
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = escrow.buyerId, type = "MARKETPLACE_ESCROW_AUTO_RELEASE_REMINDER",
+                title = title, body = body, isRead = false, createdAt = Instant.now(),
+                dataJson = "{\"escrowId\":\"${escrow.id}\"}",
+            ),
+        )
+        escrow.autoReleaseReminderSentAt = Instant.now()
+        marketplaceEscrowRepository.save(escrow)
+        sendPushAfterCommit(escrow.buyerId, title, body, escrow.id)
+    }
+
     /** Real admin resolution -- `release = true` pays the seller (the trade was
      * legitimate), `false` refunds the buyer in full, no fee charged, and reopens the
      * listing for sale again (the trade genuinely didn't happen). */

@@ -7,6 +7,7 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import jakarta.persistence.Version
+import rw.itunda.core.pricing.ReminderWindows
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -100,6 +101,17 @@ class MarketplaceEscrow(
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
 
+    // Real sibling-asymmetry fix (2026-09-13) -- Gift/GiftVoucher/MerchantCoupon all
+    // warn the party who needs to act before their own hold-then-auto-release/refund
+    // window closes; this escrow (real, arbitrary-amount marketplace money, strictly
+    // higher-stakes than a gift or coupon) had none -- a buyer who simply hadn't
+    // opened the app in a week lost all recourse the instant AUTO_RELEASE_TIMEOUT hit,
+    // with zero warning beforehand (only an after-the-fact message to the SELLER).
+    // Null until a real reminder has been sent, same one-shot re-check-before-send
+    // discipline every other *ReminderSentAt field in this codebase already uses.
+    @Column(name = "auto_release_reminder_sent_at")
+    var autoReleaseReminderSentAt: Instant? = null,
+
     // Confirmation, automatic release, and a buyer dispute can arrive at nearly the
     // same time.  Versioning makes only one state transition win; the loser is retried
     // by the client/admin rather than posting a second ledger release or overwriting a
@@ -125,5 +137,12 @@ class MarketplaceEscrow(
         // seller isn't left waiting indefinitely for money that's rightfully theirs
         // once nothing has gone wrong.
         val AUTO_RELEASE_TIMEOUT: java.time.Duration = java.time.Duration.ofDays(7)
+
+        // Same real "N days before a paid perk/payment is due" family
+        // ReminderWindows' own doc comment already establishes (MerchantCoupon,
+        // EatsMembership, PlatformMembership, VupLoan/PostpaidCredit all reuse it) --
+        // this pre-auto-release nudge is the same shape, reused rather than
+        // independently re-declared.
+        val AUTO_RELEASE_REMINDER_WINDOW: java.time.Duration = ReminderWindows.PRE_EXPIRY_REMINDER_WINDOW
     }
 }

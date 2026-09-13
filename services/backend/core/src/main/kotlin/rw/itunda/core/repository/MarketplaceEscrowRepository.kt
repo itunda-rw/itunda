@@ -13,4 +13,9 @@ interface MarketplaceEscrowRepository : JpaRepository<MarketplaceEscrow, String>
     // (every real HELD escrow), exact due-or-not logic in the service, same discipline
     // this codebase's other scheduled sweeps already use.
     fun findByStatus(status: MarketplaceEscrowStatus): List<MarketplaceEscrow>
+
+    // Real pre-auto-release reminder sweep (2026-09-13) -- see
+    // MarketplaceEscrow.AUTO_RELEASE_REMINDER_WINDOW's own doc comment. Same coarse-
+    // filter-then-exact-check-in-service split as findByStatus above.
+    fun findByStatusAndAutoReleaseReminderSentAtIsNull(status: MarketplaceEscrowStatus): List<MarketplaceEscrow>
 }
