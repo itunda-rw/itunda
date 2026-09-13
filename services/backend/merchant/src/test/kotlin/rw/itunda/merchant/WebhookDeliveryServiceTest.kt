@@ -199,11 +199,17 @@ class WebhookDeliveryServiceTest : BehaviorSpec({
         every { repository.save(capture(saved)) } answers { saved.captured }
 
         When("the admin replays it") {
-            val result = service.replayExhaustedAsAdmin("whd_original")
+            val result = service.replayExhaustedAsAdmin("whd_original", "admin_1")
 
             Then("it real-looks-up the merchant's CURRENT webhookUrl server-side, not a client-supplied one") {
                 result["replayOf"] shouldBe "whd_original"
                 saved.captured.webhookUrl shouldBe "https://current.example.test/webhook"
+            }
+
+            // Real admin-accountability gap closed (2026-09-13) -- same gap class
+            // already closed for Merchant/Vehicle-Inspection/Partner, missed here.
+            Then("the real replayed-by admin is recorded on the new delivery row") {
+                saved.captured.replayedByAdminId shouldBe "admin_1"
             }
         }
     }
@@ -271,7 +277,7 @@ class WebhookDeliveryServiceTest : BehaviorSpec({
         When("an admin tries to replay it") {
             Then("it real-blocks with WebhookUrlNotConfiguredException rather than replaying to nowhere") {
                 io.kotest.assertions.throwables.shouldThrow<WebhookUrlNotConfiguredException> {
-                    service.replayExhaustedAsAdmin("whd_original")
+                    service.replayExhaustedAsAdmin("whd_original", "admin_1")
                 }
             }
         }

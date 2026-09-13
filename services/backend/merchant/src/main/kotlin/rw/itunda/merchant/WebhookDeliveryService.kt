@@ -122,7 +122,7 @@ class WebhookDeliveryService(
             )
         }
 
-    fun replayExhausted(merchantId: String, deliveryId: String, currentWebhookUrl: String): Map<String, Any?>? {
+    fun replayExhausted(merchantId: String, deliveryId: String, currentWebhookUrl: String, replayedByAdminId: String? = null): Map<String, Any?>? {
         val original = webhookDeliveryRepository.findById(deliveryId).orElse(null)
             ?.takeIf { it.merchantId == merchantId && it.status == WebhookDeliveryStatus.EXHAUSTED }
             ?: return null
@@ -140,6 +140,7 @@ class WebhookDeliveryService(
                 // WebhookDelivery.signature doc comment) -- a replay is conceptually
                 // the same event being resent, not a new one to re-sign.
                 signature = original.signature,
+                replayedByAdminId = replayedByAdminId,
             ),
         )
         return mapOf("id" to replay.id, "status" to replay.status.name, "replayOf" to original.id)
@@ -171,15 +172,20 @@ class WebhookDeliveryService(
      * reason to know or supply it) rather than trusting a client-provided one, same
      * "never trust a client for a value the server already owns" discipline every
      * other admin action in this codebase follows.
+     *
+     * Real admin-accountability gap closed (2026-09-13) -- this cross-merchant replay
+     * previously had zero record of which admin acted, the exact same gap class this
+     * codebase already closed for Merchant/Vehicle-Inspection/Partner but missed for
+     * this endpoint. [adminUserId] is threaded through to [WebhookDelivery.replayedByAdminId].
      */
-    fun replayExhaustedAsAdmin(deliveryId: String): Map<String, Any?> {
+    fun replayExhaustedAsAdmin(deliveryId: String, adminUserId: String): Map<String, Any?> {
         val original = webhookDeliveryRepository.findById(deliveryId).orElse(null)
             ?.takeIf { it.status == WebhookDeliveryStatus.EXHAUSTED }
             ?: throw WebhookDeliveryNotFoundException("Delivery not found or not exhausted")
         val merchantId = original.merchantId ?: throw WebhookDeliveryNotFoundException("Delivery not found or not exhausted")
         val currentWebhookUrl = merchantRepository.findById(merchantId).orElse(null)?.webhookUrl
             ?: throw WebhookUrlNotConfiguredException("This merchant no longer has a webhook URL configured")
-        return replayExhausted(merchantId, deliveryId, currentWebhookUrl)
+        return replayExhausted(merchantId, deliveryId, currentWebhookUrl, replayedByAdminId = adminUserId)
             ?: throw WebhookDeliveryNotFoundException("Delivery not found or not exhausted")
     }
 

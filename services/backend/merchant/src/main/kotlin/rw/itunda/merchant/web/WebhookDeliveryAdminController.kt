@@ -4,12 +4,14 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.merchant.WebhookDeliveryNotFoundException
@@ -36,9 +38,12 @@ class WebhookDeliveryAdminController(private val webhookDeliveryService: Webhook
         return ResponseEntity.ok(mapOf("success" to true, "deliveries" to page.content) + pageMeta(page))
     }
 
+    // Real admin-accountability gap closed (2026-09-13) -- this cross-merchant replay
+    // previously had zero record of which admin acted, the exact same gap class this
+    // codebase already closed for Merchant/Vehicle-Inspection/Partner but missed here.
     @PostMapping("/{deliveryId}/replay")
-    fun replay(@PathVariable deliveryId: String): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "replay" to webhookDeliveryService.replayExhaustedAsAdmin(deliveryId)))
+    fun replay(@PathVariable deliveryId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "replay" to webhookDeliveryService.replayExhaustedAsAdmin(deliveryId, currentUser.userId)))
 
     @ExceptionHandler(WebhookDeliveryNotFoundException::class)
     fun handleNotFound(ex: WebhookDeliveryNotFoundException) =

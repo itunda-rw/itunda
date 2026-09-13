@@ -65,6 +65,16 @@ class WebhookDelivery(
     // delivery's signature. Null when the merchant never generated a webhook secret.
     @Column(length = 64)
     val signature: String? = null,
+
+    // Real admin-accountability gap closed (2026-09-13) -- WebhookDeliveryAdminController
+    // .replay had zero record of which admin acted, the exact same gap class this
+    // codebase already closed for Merchant/Vehicle-Inspection/Partner (see Partner.kt's
+    // own statusChangedBy doc comment) but missed for this endpoint, which lives in
+    // that same merchant module. Null for every OTHER row (a normal WebhookRetryScheduler
+    // retry, or a merchant's own self-service replay via MerchantController) -- only an
+    // admin-triggered cross-merchant replay ever sets this.
+    @Column(name = "replayed_by_admin_id", length = 64)
+    val replayedByAdminId: String? = null,
 ) {
     protected constructor() : this(
         id = "", merchantId = null, eventType = null, webhookUrl = "", payload = "", nextAttemptAt = Instant.now(),
