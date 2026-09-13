@@ -20,6 +20,8 @@ import rw.itunda.core.domain.WeatherIndexPolicyStatus
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.SeasonRainfallIndexRepository
 import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.repository.WeatherIndexPolicyRepository
@@ -70,7 +72,9 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
         accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-        payoutExecutor: WeatherIndexPayoutExecutor = WeatherIndexPayoutExecutor(weatherIndexPolicyRepository, accountRepository, ledgerService),
+        notificationRepository: NotificationRepository = mockk<NotificationRepository>(relaxed = true).also { repo -> every { repo.save(any()) } answers { firstArg() } },
+        pushNotificationService: PushNotificationService = mockk(relaxed = true),
+        payoutExecutor: WeatherIndexPayoutExecutor = WeatherIndexPayoutExecutor(weatherIndexPolicyRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService),
     ) = WeatherIndexInsuranceService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, accountRepository, ledgerService, rateLimiter, payoutExecutor)
 
     Given("a farmer with a MAIN account enrolling in Maize cover (6% flat rate)") {
@@ -220,7 +224,13 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
         val seasonRainfallIndexRepository = mockk<SeasonRainfallIndexRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, accountRepository, ledgerService)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val service = newService(
+            weatherIndexPolicyRepository, seasonRainfallIndexRepository, accountRepository, ledgerService,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
+        )
 
         val policyA = policy("wip_a", "farmer_a", insuredAmount = BigDecimal("100000"))
         val policyB = policy("wip_b", "farmer_b", insuredAmount = BigDecimal("200000"))
@@ -264,6 +274,15 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
                 val accountLegB = legsForB.first { it.accountType == LedgerAccountType.WALLET }
                 accountLegB.amount shouldBe BigDecimal("200000")
             }
+
+            // Real sibling-asymmetry fix (2026-09-13) -- InsuranceService.decideClaim
+            // notifies on both outcomes; this sibling payout path notified on neither.
+            Then("both farmers are notified their real drought payout landed") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "farmer_a" && it.type == "WEATHER_INDEX_PAYOUT_TRIGGERED" }) }
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "farmer_b" && it.type == "WEATHER_INDEX_PAYOUT_TRIGGERED" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("farmer_a", "Drought payout received", any()) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("farmer_b", "Drought payout received", any()) }
+            }
         }
     }
 
@@ -272,7 +291,13 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
         val seasonRainfallIndexRepository = mockk<SeasonRainfallIndexRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, accountRepository, ledgerService)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val service = newService(
+            weatherIndexPolicyRepository, seasonRainfallIndexRepository, accountRepository, ledgerService,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
+        )
 
         val policyC = policy("wip_c", "farmer_c", insuredAmount = BigDecimal("100000"))
         every { seasonRainfallIndexRepository.findByDistrictAndSeason("Nyagatare", "2026B") } returns null
@@ -288,6 +313,13 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
                 policyC.payoutAt shouldBe null
                 verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 verify(exactly = 0) { accountRepository.findByUserIdAndType(any(), any()) }
+            }
+
+            // Real sibling-asymmetry fix (2026-09-13) -- "every real insurer notifies
+            // on both outcomes," matching InsuranceService.decideClaim's own reasoning.
+            Then("the farmer is still notified the season ended with no payout") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "farmer_c" && it.type == "WEATHER_INDEX_SEASON_ENDED_NO_PAYOUT" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("farmer_c", "Crop insurance season ended", any()) }
             }
         }
     }

@@ -3,16 +3,22 @@ package rw.itunda.insurance
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.WeatherIndexPolicy
 import rw.itunda.core.domain.WeatherIndexPolicyStatus
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.WeatherIndexPolicyRepository
 import java.time.Instant
+import java.util.UUID
 
 /**
  * Real bug found in this feature's own build-time review (2026-08-02):
@@ -43,6 +49,8 @@ class WeatherIndexPayoutExecutor(
     private val weatherIndexPolicyRepository: WeatherIndexPolicyRepository,
     private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private val log = LoggerFactory.getLogger(WeatherIndexPayoutExecutor::class.java)
 
@@ -56,6 +64,10 @@ class WeatherIndexPayoutExecutor(
         if (!droughtTriggered) {
             policy.status = WeatherIndexPolicyStatus.SEASON_ENDED_NO_PAYOUT
             weatherIndexPolicyRepository.save(policy)
+            // Real sibling-asymmetry fix (2026-09-13) -- InsuranceService.decideClaim
+            // notifies on BOTH outcomes ("every real insurer notifies on both
+            // outcomes"); this sibling payout path notified on neither.
+            notifySeasonEnded(policy)
             return false
         }
 
@@ -76,6 +88,47 @@ class WeatherIndexPayoutExecutor(
         policy.status = WeatherIndexPolicyStatus.PAYOUT_TRIGGERED
         policy.payoutAt = Instant.now()
         weatherIndexPolicyRepository.save(policy)
+        notifyPayoutTriggered(policy)
         return true
+    }
+
+    private fun notifyPayoutTriggered(policy: WeatherIndexPolicy) {
+        val title = "Drought payout received"
+        val body = "Your ${policy.cropType} crop insurance (${policy.district}, ${policy.season}) triggered a drought payout of ${policy.insuredAmount.toPlainString()} RWF, credited to your account."
+        notifyPolicyholder(policy, title, body, "WEATHER_INDEX_PAYOUT_TRIGGERED")
+    }
+
+    private fun notifySeasonEnded(policy: WeatherIndexPolicy) {
+        val title = "Crop insurance season ended"
+        val body = "Your ${policy.cropType} crop insurance (${policy.district}, ${policy.season}) season ended with no drought trigger -- no payout was due."
+        notifyPolicyholder(policy, title, body, "WEATHER_INDEX_SEASON_ENDED_NO_PAYOUT")
+    }
+
+    private fun notifyPolicyholder(policy: WeatherIndexPolicy, title: String, body: String, type: String) {
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = policy.userId, type = type,
+                title = title, body = body, isRead = false, createdAt = Instant.now(),
+                dataJson = "{\"policyId\":\"${policy.id}\"}",
+            ),
+        )
+        sendPushAfterCommit(policy.userId, title, body)
+    }
+
+    private fun sendPushAfterCommit(userId: String, title: String, body: String) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body)
+            } catch (e: Exception) {
+                log.warn("Could not send weather-index payout push to user {}", userId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 }
