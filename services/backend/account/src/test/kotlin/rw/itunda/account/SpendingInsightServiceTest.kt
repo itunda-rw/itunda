@@ -63,7 +63,7 @@ class SpendingInsightServiceTest : BehaviorSpec({
         val internalDebit = entry("e7", "txn_internal", "account_9", LedgerAccountType.WALLET, LedgerDirection.DEBIT, "300")
         val internalCounterpart = entry("e7b", "txn_internal", "account_savings_9", LedgerAccountType.WALLET, LedgerDirection.CREDIT, "300")
 
-        every { ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc("account_9") } returns
+        every { ledgerEntryRepository.findByAccountIdInOrderByCreatedAtDesc(setOf("account_9")) } returns
             listOf(transferDebit, insuranceDebit, billDebit, airtimeDebit, internalDebit)
         // Real N+1 fix (2026-07-19 sweep): one batched findByTransactionIdIn stub instead
         // of one findByTransactionId stub per transaction id, matching the real service's
@@ -125,6 +125,46 @@ class SpendingInsightServiceTest : BehaviorSpec({
         }
     }
 
+    // Real N+1 fix (2026-09-13, structural N+1 re-sweep): getSpendingInsight/
+    // getMonthlySpendingReport used to call ledgerEntryRepository.findByAccountId...
+    // once PER account instead of batching -- a real user with a GROUP/Ikimina account
+    // and a MAIN account, not just one.
+    Given("a real user with two real accounts (MAIN and GROUP)") {
+        val accountRepository = mockk<AccountRepository>()
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        val spendingBudgetRepository = mockk<SpendingBudgetRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = SpendingInsightService(accountRepository, ledgerEntryRepository, spendingBudgetRepository, notificationRepository, pushNotificationService)
+
+        fun entry(id: String, txnId: String, accountId: String, amount: String) = LedgerEntry(
+            id = id, transactionId = txnId, accountId = accountId, accountType = LedgerAccountType.WALLET,
+            direction = LedgerDirection.DEBIT, amount = BigDecimal(amount), currency = "RWF", balanceAfter = BigDecimal.ZERO, memo = "test",
+        )
+
+        val mainAccount = account("account_main", "user_multi", "0")
+        val groupAccount = Account(
+            id = "account_group", userId = "user_multi", accountNumber = "ACC-account_group", accountName = "Group account",
+            type = AccountType.GROUP, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        )
+        every { accountRepository.findByUserId("user_multi") } returns listOf(mainAccount, groupAccount)
+        val mainDebit = entry("entry_main", "txn_main", "account_main", "1000")
+        val groupDebit = entry("entry_group", "txn_group", "account_group", "500")
+        every {
+            ledgerEntryRepository.findByAccountIdInOrderByCreatedAtDesc(match { it.toSet() == setOf("account_main", "account_group") })
+        } returns listOf(mainDebit, groupDebit)
+        every { ledgerEntryRepository.findByTransactionIdIn(match { it.toSet() == setOf("txn_main", "txn_group") }) } returns listOf(mainDebit, groupDebit)
+
+        When("computing the spending insight") {
+            val result = service.getSpendingInsight("user_multi")
+
+            Then("both accounts' debits are resolved in a single batched call and both amounts are counted") {
+                result.totalSpent shouldBe BigDecimal("1500")
+                verify(exactly = 1) { ledgerEntryRepository.findByAccountIdInOrderByCreatedAtDesc(any()) }
+            }
+        }
+    }
+
     Given("a real fee-charging transfer, which posts THREE legs, not two") {
         val accountRepository = mockk<AccountRepository>()
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
@@ -148,7 +188,7 @@ class SpendingInsightServiceTest : BehaviorSpec({
         val railLeg = entry("entry_3_rail", "txn_fee_transfer", "rail_suspense", LedgerAccountType.RAIL_SUSPENSE, LedgerDirection.CREDIT, "5000", "Rail settlement for +250788555999")
 
         every { accountRepository.findByUserId("user_fee") } returns listOf(account("account_9", "user_fee", "0"))
-        every { ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc("account_9") } returns listOf(accountDebit)
+        every { ledgerEntryRepository.findByAccountIdInOrderByCreatedAtDesc(setOf("account_9")) } returns listOf(accountDebit)
         every { ledgerEntryRepository.findByTransactionIdIn(listOf("txn_fee_transfer")) } returns listOf(feeLeg, accountDebit, railLeg)
 
         When("computing the spending insight") {
@@ -180,7 +220,7 @@ class SpendingInsightServiceTest : BehaviorSpec({
         )
         every { spendingBudgetRepository.findByUserIdAndMonth("user_1", month) } returns listOf(budget)
         every { accountRepository.findByUserId("user_1") } returns listOf(account("account_1", "user_1", "0"))
-        every { ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc("account_1") } returns listOf(debit)
+        every { ledgerEntryRepository.findByAccountIdInOrderByCreatedAtDesc(setOf("account_1")) } returns listOf(debit)
         every { ledgerEntryRepository.findByTransactionIdIn(listOf("txn_1")) } returns emptyList()
         every { notificationRepository.save(any()) } answers { firstArg() }
         every { spendingBudgetRepository.save(any()) } answers { firstArg() }

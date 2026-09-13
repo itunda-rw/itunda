@@ -45,8 +45,10 @@ class SpendingInsightService(
     // transactionId) reveal what it actually paid for.
     fun getSpendingInsight(userId: String): SpendingInsightResult {
         val accountIds = accountRepository.findByUserId(userId).map { it.id }.toSet()
-        val debits = accountIds
-            .flatMap { ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc(it) }
+        // Real N+1 fix (2026-09-13) -- see LedgerEntryRepository.findByAccountIdInOrderByCreatedAtDesc's
+        // own doc comment: a real user can hold several accounts (GROUP per Ikimina joined,
+        // FOREIGN_CURRENCY per currency held), so this was one query per account, not 1-3.
+        val debits = (if (accountIds.isEmpty()) emptyList() else ledgerEntryRepository.findByAccountIdInOrderByCreatedAtDesc(accountIds))
             .filter { it.direction == LedgerDirection.DEBIT }
         return categorizeDebits(debits)
     }
@@ -65,8 +67,8 @@ class SpendingInsightService(
         val accountIds = accountRepository.findByUserId(userId).map { it.id }.toSet()
         val startOfLastMonth = YearMonth.now().minusMonths(1).atDay(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()
         val startOfThisMonth = YearMonth.now().atDay(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()
-        val debitsSinceLastMonth = accountIds
-            .flatMap { ledgerEntryRepository.findByAccountIdAndCreatedAtAfter(it, startOfLastMonth) }
+        // Real N+1 fix (2026-09-13) -- same fix shape as getSpendingInsight above.
+        val debitsSinceLastMonth = (if (accountIds.isEmpty()) emptyList() else ledgerEntryRepository.findByAccountIdInAndCreatedAtAfter(accountIds, startOfLastMonth))
             .filter { it.direction == LedgerDirection.DEBIT }
         val (currentMonthDebits, lastMonthDebits) = debitsSinceLastMonth.partition { !it.createdAt.isBefore(startOfThisMonth) }
 

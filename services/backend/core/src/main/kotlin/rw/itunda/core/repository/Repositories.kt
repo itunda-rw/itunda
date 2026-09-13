@@ -328,6 +328,15 @@ interface LedgerEntryRepository : JpaRepository<LedgerEntry, String> {
     // call per debit (a real N+1 found in a 2026-07-19 performance sweep, same shape as
     // PayrollService.runPayroll's/GroupMessagingService's own already-fixed N+1s).
     fun findByTransactionIdIn(transactionIds: List<String>): List<LedgerEntry>
+
+    // Real N+1 fix (2026-09-13) -- SpendingInsightService.getSpendingInsight/
+    // getMonthlySpendingReport used to call findByAccountIdOrderByCreatedAtDesc/
+    // findByAccountIdAndCreatedAtAfter above once PER account (a real user can hold
+    // several -- one per GROUP/Ikimina they've joined, one per FOREIGN_CURRENCY held --
+    // AccountType has 11 real values, not a fixed 1-3). Same batch-instead-of-N+1
+    // discipline findByTransactionIdIn above already establishes for an identical shape.
+    fun findByAccountIdInOrderByCreatedAtDesc(accountIds: Collection<String>): List<LedgerEntry>
+    fun findByAccountIdInAndCreatedAtAfter(accountIds: Collection<String>, createdAt: Instant): List<LedgerEntry>
 }
 
 interface AgentRepository : JpaRepository<Agent, String> {
