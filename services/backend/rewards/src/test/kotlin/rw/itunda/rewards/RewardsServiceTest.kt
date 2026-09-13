@@ -254,7 +254,7 @@ class RewardsServiceTest : BehaviorSpec({
 
         every { rewardClaimRepository.existsByUserIdAndTaskId("user_7", "task_referral") } returns false
         every { userRepository.findAllByReferredByUserId("user_7") } returns listOf(friend)
-        every { transactionRepository.existsBySenderIdAndTypeAndStatus("user_friend", TransactionType.TRANSFER, TransactionStatus.COMPLETED) } returns true
+        every { transactionRepository.findDistinctSenderIdsBySenderIdInAndTypeAndStatus(listOf("user_friend"), TransactionType.TRANSFER, TransactionStatus.COMPLETED) } returns listOf("user_friend")
         every { accountRepository.findByUserIdAndType("user_7", AccountType.MAIN) } returns account("account_main", "user_7")
         every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
         every { rewardClaimRepository.save(any()) } answers { firstArg() }
@@ -291,7 +291,7 @@ class RewardsServiceTest : BehaviorSpec({
 
         every { rewardClaimRepository.existsByUserIdAndTaskId("user_8", "task_referral") } returns false
         every { userRepository.findAllByReferredByUserId("user_8") } returns listOf(friend)
-        every { transactionRepository.existsBySenderIdAndTypeAndStatus("user_friend_2", TransactionType.TRANSFER, TransactionStatus.COMPLETED) } returns false
+        every { transactionRepository.findDistinctSenderIdsBySenderIdInAndTypeAndStatus(listOf("user_friend_2"), TransactionType.TRANSFER, TransactionStatus.COMPLETED) } returns emptyList()
 
         When("claiming task_referral before the friend has transacted") {
             Then("it throws RewardTaskNotEligibleException -- a referral with no activity yet doesn't pay out") {
@@ -328,7 +328,7 @@ class RewardsServiceTest : BehaviorSpec({
         )
         every { userRepository.findById("user_9") } returns java.util.Optional.of(self)
         every { userRepository.findAllByReferredByUserId("user_9") } returns listOf(friend)
-        every { transactionRepository.existsBySenderIdAndTypeAndStatus("user_friend_3", TransactionType.TRANSFER, TransactionStatus.COMPLETED) } returns false
+        every { transactionRepository.findDistinctSenderIdsBySenderIdInAndTypeAndStatus(listOf("user_friend_3"), TransactionType.TRANSFER, TransactionStatus.COMPLETED) } returns emptyList()
 
         When("fetching referral info") {
             val info = service.getReferralInfo("user_9")
@@ -337,6 +337,53 @@ class RewardsServiceTest : BehaviorSpec({
                 info.referralCode shouldBe "ITDCAROL"
                 info.referredCount shouldBe 1
                 info.completedReferralCount shouldBe 0
+            }
+        }
+    }
+
+    // Real N+1 fix (2026-09-13): both isEligible("task_referral") and getReferralInfo
+    // used to call existsBySenderIdAndTypeAndStatus once per referred friend -- this
+    // proves the batched replacement resolves all referred friends in ONE call and
+    // still attributes completion to the right friend.
+    Given("a user with two referred friends, only one of whom has transacted") {
+        val rewardClaimRepository = mockk<RewardClaimRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val savingsGoalRepository = mockk<SavingsGoalRepository>()
+        val userRepository = mockk<UserRepository>()
+        val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
+        val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
+        val eatsReviewRepository = mockk<EatsReviewRepository>()
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+
+        val self = User(
+            id = "user_10", phoneNumber = "+250788000095", firstName = "Eve", lastName = "R",
+            passwordHash = "unused", referralCode = "ITDEVE",
+        )
+        val friendA = User(
+            id = "user_friend_a", phoneNumber = "+250788000094", firstName = "Frank", lastName = "R",
+            passwordHash = "unused", referredByUserId = "user_10",
+        )
+        val friendB = User(
+            id = "user_friend_b", phoneNumber = "+250788000093", firstName = "Grace", lastName = "R",
+            passwordHash = "unused", referredByUserId = "user_10",
+        )
+        every { userRepository.findById("user_10") } returns java.util.Optional.of(self)
+        every { userRepository.findAllByReferredByUserId("user_10") } returns listOf(friendA, friendB)
+        every {
+            transactionRepository.findDistinctSenderIdsBySenderIdInAndTypeAndStatus(
+                match { it.toSet() == setOf("user_friend_a", "user_friend_b") }, TransactionType.TRANSFER, TransactionStatus.COMPLETED,
+            )
+        } returns listOf("user_friend_a")
+
+        When("fetching referral info") {
+            val info = service.getReferralInfo("user_10")
+
+            Then("both friends are resolved in a single batched query, and only the transacted one counts as completed") {
+                info.referredCount shouldBe 2
+                info.completedReferralCount shouldBe 1
+                verify(exactly = 1) { transactionRepository.findDistinctSenderIdsBySenderIdInAndTypeAndStatus(any(), any(), any()) }
             }
         }
     }

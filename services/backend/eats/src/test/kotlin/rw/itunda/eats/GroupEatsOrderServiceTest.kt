@@ -2,8 +2,11 @@ package rw.itunda.eats
 
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.mockk.Runs
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
@@ -16,6 +19,8 @@ import rw.itunda.core.domain.GroupEatsOrderItem
 import rw.itunda.core.domain.GroupEatsOrderParticipant
 import rw.itunda.core.domain.GroupEatsOrderStatus
 import rw.itunda.core.domain.Merchant
+import rw.itunda.core.domain.MenuOptionChoice
+import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.repository.GroupEatsOrderItemRepository
 import rw.itunda.core.repository.GroupEatsOrderParticipantRepository
@@ -141,6 +146,58 @@ class GroupEatsOrderServiceTest : BehaviorSpec({
     // rateLimiter.checkLimit call (line 92) but this file had zero coverage
     // for create() at all -- the mock's default relaxed=true stub let any
     // test silently pass even if the real call were deleted.
+    // Real N+1 fix (2026-09-13): setMyItems already batched the menu-item lookup
+    // (menuItemsById above) but left the sibling menu-option-choice lookup unbatched --
+    // one findAllById per line item instead of one for the whole submitted cart.
+    Given("a participant setting two items, each with its own real, priced menu-option choice") {
+        val groupEatsOrderRepository = mockk<GroupEatsOrderRepository>()
+        val groupEatsOrderParticipantRepository = mockk<GroupEatsOrderParticipantRepository>()
+        val groupEatsOrderItemRepository = mockk<GroupEatsOrderItemRepository>()
+        val merchantProductRepository = mockk<MerchantProductRepository>()
+        val menuOptionChoiceRepository = mockk<MenuOptionChoiceRepository>()
+        val svc = buildService(
+            groupEatsOrderRepository = groupEatsOrderRepository,
+            groupEatsOrderParticipantRepository = groupEatsOrderParticipantRepository,
+            groupEatsOrderItemRepository = groupEatsOrderItemRepository,
+            merchantProductRepository = merchantProductRepository,
+            menuOptionChoiceRepository = menuOptionChoiceRepository,
+        )
+        val order = groupOrder()
+        val me = participant("user_1")
+        every { groupEatsOrderRepository.findById("grouporder_1") } returns Optional.of(order)
+        every { groupEatsOrderParticipantRepository.findByGroupOrderIdAndUserId("grouporder_1", "user_1") } returns me
+        every { groupEatsOrderItemRepository.deleteByGroupOrderIdAndUserId("grouporder_1", "user_1") } just Runs
+        val productA = MerchantProduct(id = "product_a", merchantId = "restaurant_1", name = "Burger", price = BigDecimal("3000"))
+        val productB = MerchantProduct(id = "product_b", merchantId = "restaurant_1", name = "Fries", price = BigDecimal("1500"))
+        every { merchantProductRepository.findAllById(match<Iterable<String>> { it.toSet() == setOf("product_a", "product_b") }) } returns listOf(productA, productB)
+        val choiceLarge = MenuOptionChoice(id = "choice_large", groupId = "group_1", name = "Large", priceDelta = BigDecimal("500"))
+        val choiceCheese = MenuOptionChoice(id = "choice_cheese", groupId = "group_2", name = "Extra cheese", priceDelta = BigDecimal("300"))
+        every { menuOptionChoiceRepository.findAllById(match<Iterable<String>> { it.toSet() == setOf("choice_large", "choice_cheese") }) } returns listOf(choiceLarge, choiceCheese)
+        val savedSlot = slot<List<GroupEatsOrderItem>>()
+        every { groupEatsOrderItemRepository.saveAll(capture(savedSlot)) } answers { firstArg() }
+        // getDetail(), called at the end of setMyItems to return the fresh view.
+        every { groupEatsOrderParticipantRepository.findByGroupOrderId("grouporder_1") } returns listOf(me)
+        every { groupEatsOrderItemRepository.findByGroupOrderId("grouporder_1") } returns emptyList()
+        every { merchantProductRepository.findAllById(emptyList()) } returns emptyList()
+
+        When("they submit both items in one call") {
+            val items = listOf(
+                EatsOrderItemRequest(menuItemId = "product_a", quantity = 1, selectedChoiceIds = listOf("choice_large")),
+                EatsOrderItemRequest(menuItemId = "product_b", quantity = 1, selectedChoiceIds = listOf("choice_cheese")),
+            )
+            svc.setMyItems("user_1", "grouporder_1", items)
+
+            Then("every selected choice across both items is resolved in one batched findAllById call, never one per item") {
+                verify(exactly = 1) { menuOptionChoiceRepository.findAllById(any()) }
+            }
+
+            Then("each item's own saved unit price includes only its own choice's price delta, not the other item's") {
+                savedSlot.captured.first { it.productId == "product_a" }.unitPriceSnapshot shouldBe BigDecimal("3500")
+                savedSlot.captured.first { it.productId == "product_b" }.unitPriceSnapshot shouldBe BigDecimal("1800")
+            }
+        }
+    }
+
     Given("a host who has already created 10 group orders in the last hour") {
         val groupEatsOrderRepository = mockk<GroupEatsOrderRepository>()
         val merchantRepository = mockk<MerchantRepository>()

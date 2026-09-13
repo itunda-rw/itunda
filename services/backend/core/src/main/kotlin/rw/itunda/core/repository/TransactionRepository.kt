@@ -143,4 +143,16 @@ interface TransactionRepository : JpaRepository<Transaction, String> {
         types: List<TransactionType>,
         status: TransactionStatus,
     ): List<Transaction>
+
+    // Real N+1 fix (2026-09-13) -- RewardsService.isEligible("task_referral") and
+    // getReferralInfo both used to call existsBySenderIdAndTypeAndStatus above once per
+    // referred friend (User.referredByUserId has no cap), just to check which ones have
+    // ever sent a real completed transfer. One batched DISTINCT senderId query instead,
+    // same "batch, don't N+1" discipline this file's other In-suffixed queries establish.
+    @Query("SELECT DISTINCT t.senderId FROM Transaction t WHERE t.senderId IN :senderIds AND t.type = :type AND t.status = :status")
+    fun findDistinctSenderIdsBySenderIdInAndTypeAndStatus(
+        @Param("senderIds") senderIds: List<String>,
+        @Param("type") type: TransactionType,
+        @Param("status") status: TransactionStatus,
+    ): List<String>
 }

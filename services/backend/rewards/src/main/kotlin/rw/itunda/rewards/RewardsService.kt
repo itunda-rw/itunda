@@ -102,8 +102,12 @@ class RewardsService(
         "task_first_transfer" -> transactionRepository.existsBySenderIdAndTypeAndStatus(userId, TransactionType.TRANSFER, TransactionStatus.COMPLETED)
         "task_first_bill" -> transactionRepository.existsBySenderIdAndTypeAndStatus(userId, TransactionType.BILL, TransactionStatus.COMPLETED)
         "task_savings_goal" -> savingsGoalRepository.existsByUserId(userId)
-        "task_referral" -> userRepository.findAllByReferredByUserId(userId).any { referred ->
-            transactionRepository.existsBySenderIdAndTypeAndStatus(referred.id, TransactionType.TRANSFER, TransactionStatus.COMPLETED)
+        // Real N+1 fix (2026-09-13): one batched DISTINCT-senderId query for every
+        // referred friend instead of one existsBy call per friend -- same fix shape as
+        // getReferralInfo below, which has the identical per-referred-friend check.
+        "task_referral" -> userRepository.findAllByReferredByUserId(userId).map { it.id }.let { referredIds ->
+            referredIds.isNotEmpty() &&
+                transactionRepository.findDistinctSenderIdsBySenderIdInAndTypeAndStatus(referredIds, TransactionType.TRANSFER, TransactionStatus.COMPLETED).isNotEmpty()
         }
         "task_profile" -> userRepository.findById(userId)
             .map { it.profilePhotoUrl != null && it.emailVerified }
@@ -118,7 +122,15 @@ class RewardsService(
     fun getReferralInfo(userId: String): ReferralInfo {
         val user = userRepository.findById(userId).orElseThrow { RewardsUserNotFoundException("User not found") }
         val referred = userRepository.findAllByReferredByUserId(userId)
-        val completed = referred.count { transactionRepository.existsBySenderIdAndTypeAndStatus(it.id, TransactionType.TRANSFER, TransactionStatus.COMPLETED) }
+        // Real N+1 fix (2026-09-13) -- see isEligible("task_referral")'s identical fix
+        // above for the full rationale.
+        val referredIds = referred.map { it.id }
+        val completedSenderIds = if (referredIds.isEmpty()) {
+            emptySet()
+        } else {
+            transactionRepository.findDistinctSenderIdsBySenderIdInAndTypeAndStatus(referredIds, TransactionType.TRANSFER, TransactionStatus.COMPLETED).toSet()
+        }
+        val completed = referred.count { it.id in completedSenderIds }
         return ReferralInfo(user.referralCode, referred.size, completed)
     }
 

@@ -170,14 +170,16 @@ class GroupEatsOrderService(
         val menuItemsById = items.map { it.menuItemId }.distinct().let { ids ->
             if (ids.isEmpty()) emptyMap() else merchantProductRepository.findAllById(ids).associateBy { it.id }
         }
+        // Real N+1 fix (2026-09-13) -- the sibling menu-item batch above already fixed
+        // this same shape for menuItemsById; the choice lookup right below it was left
+        // unbatched, one findAllById per line item instead of one for the whole order.
+        val choicePriceById = items.flatMap { it.selectedChoiceIds }.distinct().let { ids ->
+            if (ids.isEmpty()) emptyMap() else menuOptionChoiceRepository.findAllById(ids).associate { it.id to it.priceDelta }
+        }
         val resolved = items.map { item ->
             val product = menuItemsById[item.menuItemId]
                 ?: throw MenuItemNotFoundException("Menu item not found")
-            val choiceDeltaSum = if (item.selectedChoiceIds.isEmpty()) {
-                BigDecimal.ZERO
-            } else {
-                menuOptionChoiceRepository.findAllById(item.selectedChoiceIds).sumOf { it.priceDelta }
-            }
+            val choiceDeltaSum = item.selectedChoiceIds.sumOf { choicePriceById[it] ?: BigDecimal.ZERO }
             GroupEatsOrderItem(
                 id = "group_eats_order_item_${java.util.UUID.randomUUID()}",
                 groupOrderId = groupOrder.id,
