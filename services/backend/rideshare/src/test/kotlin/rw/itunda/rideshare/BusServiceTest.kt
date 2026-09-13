@@ -13,6 +13,7 @@ import rw.itunda.core.domain.BusBookingStatus
 import rw.itunda.core.domain.BusTrip
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.BusBookingRepository
@@ -37,7 +38,8 @@ class BusServiceTest : BehaviorSpec({
         accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = BusService(busTripRepository, busBookingRepository, accountRepository, ledgerService, rateLimiter)
+        fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
+    ) = BusService(busTripRepository, busBookingRepository, accountRepository, ledgerService, rateLimiter, fraudRuleEngine)
 
     Given("a real operator with a account posting a real future trip") {
         val busTripRepository = mockk<BusTripRepository>()
@@ -119,9 +121,10 @@ class BusServiceTest : BehaviorSpec({
         val busBookingRepository = mockk<BusBookingRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = newService(
             busTripRepository = busTripRepository, busBookingRepository = busBookingRepository,
-            accountRepository = accountRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService, fraudRuleEngine = fraudRuleEngine,
         )
 
         val trip = BusTrip(
@@ -155,6 +158,15 @@ class BusServiceTest : BehaviorSpec({
                 result.status shouldBe BusBookingStatus.BOOKED
                 result.paymentTransactionId shouldBe "ledgertxn_1"
                 savedSlot.captured.seatCount shouldBe 2
+            }
+
+            // Real gap found live (2026-09-14, FraudRuleEngine-verify sweep): this
+            // class's own doc comment says it bills "the same direct
+            // account-to-account-at-purchase shape MerchantService.collect already
+            // establishes" -- but never copied collect()'s real fraudRuleEngine.evaluate
+            // call.
+            Then("the real fraud engine is evaluated against the rider and the real bus operator") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("rider_1", "operator_1", BigDecimal("6000.00"), "ledgertxn_1") }
             }
         }
     }

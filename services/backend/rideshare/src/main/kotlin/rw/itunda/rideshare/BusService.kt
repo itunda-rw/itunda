@@ -11,6 +11,7 @@ import rw.itunda.core.domain.BusTrip
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.BusBookingRepository
@@ -50,6 +51,7 @@ class BusService(
     private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     companion object {
         // itunda's own honest fare bound -- no real published Kakao T Bus fare
@@ -154,6 +156,12 @@ class BusService(
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, platformFee, "Bus ticket platform fee"),
             ),
         )
+        // Real gap found live (2026-09-14, FraudRuleEngine-verify sweep): this class's
+        // own doc comment says it bills "the same direct account-to-account-at-purchase
+        // shape MerchantService.collect already establishes" -- but never copied
+        // collect()'s real fraudRuleEngine.evaluate call. A direct, known-counterparty
+        // (trip.operatorUserId) WALLET-to-WALLET payment with zero fraud coverage.
+        fraudRuleEngine.evaluate(riderUserId, trip.operatorUserId, totalFare, result.transactionId)
 
         trip.availableSeats -= seatCount
         busTripRepository.save(trip)

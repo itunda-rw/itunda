@@ -11,6 +11,7 @@ import rw.itunda.core.domain.ParkingSession
 import rw.itunda.core.domain.ParkingSessionStatus
 import rw.itunda.core.domain.ParkingSpot
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
@@ -49,6 +50,7 @@ class ParkingService(
     private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     companion object {
         // itunda's own honest per-hour rate bound -- no real published Kakao T Parking
@@ -232,6 +234,13 @@ class ParkingService(
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, platformFee, "Parking platform fee"),
             ),
         )
+        // Real gap found live (2026-09-14, FraudRuleEngine-verify sweep): this class's
+        // own doc comment says it uses "the same shape BikeRentalService already
+        // establishes" -- but only copied the ledger-leg pattern, not the
+        // fraudRuleEngine.evaluate call already added to that sibling's own
+        // settleRental. No upfront hold exists to have evaluated the owner as
+        // counterparty earlier -- this is the ONE AND ONLY money-movement event.
+        fraudRuleEngine.evaluate(session.renterUserId, spot.ownerUserId, totalFare, result.transactionId)
 
         session.endedAt = endedAt
         session.durationMinutes = durationMinutes

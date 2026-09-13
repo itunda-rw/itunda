@@ -13,6 +13,7 @@ import rw.itunda.core.domain.ParkingSessionStatus
 import rw.itunda.core.domain.ParkingSpot
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.ParkingSessionRepository
@@ -36,7 +37,8 @@ class ParkingServiceTest : BehaviorSpec({
         accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = ParkingService(parkingSpotRepository, parkingSessionRepository, accountRepository, ledgerService, rateLimiter)
+        fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
+    ) = ParkingService(parkingSpotRepository, parkingSessionRepository, accountRepository, ledgerService, rateLimiter, fraudRuleEngine)
 
     Given("a fresh owner account with a real account") {
         val parkingSpotRepository = mockk<ParkingSpotRepository>()
@@ -173,9 +175,10 @@ class ParkingServiceTest : BehaviorSpec({
         val parkingSessionRepository = mockk<ParkingSessionRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = newService(
             parkingSpotRepository = parkingSpotRepository, parkingSessionRepository = parkingSessionRepository,
-            accountRepository = accountRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService, fraudRuleEngine = fraudRuleEngine,
         )
 
         val spot = ParkingSpot(
@@ -214,6 +217,14 @@ class ParkingServiceTest : BehaviorSpec({
                 result.platformFee shouldBe BigDecimal("150.00")
                 result.payoutTransactionId shouldBe "ledgertxn_1"
                 spotSavedSlot.captured.available shouldBe true
+            }
+
+            // Real gap found live (2026-09-14, FraudRuleEngine-verify sweep): this
+            // class's own doc comment says it uses "the same shape BikeRentalService
+            // already establishes" -- but only copied the ledger-leg pattern, not the
+            // fraudRuleEngine.evaluate call already added to that sibling.
+            Then("the real fraud engine is evaluated against the renter and the real spot owner") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("renter_1", "owner_1", BigDecimal("1000.00"), "ledgertxn_1") }
             }
         }
     }
