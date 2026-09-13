@@ -48,7 +48,7 @@ enum class P2pDelayedTransferStatus { PENDING, COMPLETED, CANCELLED }
  * real scheduler's release could race the same still-PENDING row at the same instant
  * -- optimistic locking (backed by the existing global
  * `ObjectOptimisticLockingFailureException` -> 409 handler,
- * `rw.itunda.app.web.IdempotencyExceptionHandler`) makes only one of the two state
+ * `rw.itunda.core.web.IdempotencyExceptionHandler`) makes only one of the two state
  * transitions win; the loser real-409s rather than either double-refunding or
  * double-crediting the same held money.
  */

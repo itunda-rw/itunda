@@ -114,4 +114,21 @@ class WiringTest {
 
         assertTrue(failures.isEmpty(), "Found ${failures.size} unsatisfiable constructor dependency(s) in overview-service's own real wiring:\n" + failures.joinToString("\n"))
     }
+
+    // Real gap this closes (2026-09-14): IdempotencyExceptionHandler lived in
+    // rw.itunda.app.web, a package this service's own scanBasePackages never
+    // included -- the repo's only @RestControllerAdvice was silently never
+    // registered here, turning a malformed Idempotency-Key header or a real
+    // ObjectOptimisticLockingFailureException into a raw 500 instead of the
+    // intended clean 400/409. Moved to rw.itunda.core.web (already scanned) --
+    // this test proves it's actually reachable via this service's own real
+    // scanBasePackages, not just present somewhere on the classpath.
+    @Test
+    fun `the repo's global IdempotencyExceptionHandler is actually reachable via this service's own real scanBasePackages`() {
+        val scanned = scanBeanClassNames(basePackages)
+        assertTrue(
+            scanned.contains("rw.itunda.core.web.IdempotencyExceptionHandler"),
+            "IdempotencyExceptionHandler is not reachable via this service's own scanBasePackages ($basePackages) -- a malformed Idempotency-Key header or a real optimistic-lock conflict would surface as a raw 500 instead of a clean 400/409",
+        )
+    }
 }
