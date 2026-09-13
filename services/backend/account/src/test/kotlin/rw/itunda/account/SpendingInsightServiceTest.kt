@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import io.mockk.verifyOrder
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.LedgerEntry
@@ -121,6 +122,38 @@ class SpendingInsightServiceTest : BehaviorSpec({
             }
             Then("it writes one real over-budget notification, not a duplicate") {
                 verify(exactly = 1) { notificationRepository.save(any()) }
+            }
+
+            // Real fix (2026-09-13, push-before-commit ordering sweep): notifiedOver must
+            // be saved BEFORE the push fires -- otherwise a rollback after the push leaves
+            // the flag unset and the very next GET /budgets poll resends it.
+            Then("the notifiedOver flag is saved before the push is sent") {
+                verifyOrder {
+                    spendingBudgetRepository.save(budget)
+                    pushNotificationService.sendToUser("user_9", any(), any())
+                }
+            }
+        }
+
+        When("an overall 4500 RWF budget is checked against the real 4000 RWF actually spent -- 88%, NEAR but not OVER") {
+            val budget = SpendingBudget(id = "budget_3", userId = "user_9", category = null, monthlyLimit = BigDecimal("4500"), month = YearMonth.now().toString())
+            every { spendingBudgetRepository.findByUserIdAndMonth("user_9", any()) } returns listOf(budget)
+            every { spendingBudgetRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
+
+            val budgets = service.getBudgets("user_9")
+
+            Then("it correctly reports NEAR status") {
+                budgets[0].status shouldBe rw.itunda.account.BudgetStatus.NEAR
+            }
+
+            // Real fix (2026-09-13, push-before-commit ordering sweep) -- same as the
+            // OVER branch's own fix above.
+            Then("the notifiedNear flag is saved before the push is sent") {
+                verifyOrder {
+                    spendingBudgetRepository.save(budget)
+                    pushNotificationService.sendToUser("user_9", any(), any())
+                }
             }
         }
     }

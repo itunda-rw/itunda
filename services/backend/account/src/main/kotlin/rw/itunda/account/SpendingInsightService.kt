@@ -2,6 +2,8 @@ package rw.itunda.account
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.LedgerEntry
@@ -317,8 +319,12 @@ class SpendingInsightService(
                     isRead = false, createdAt = Instant.now(), dataJson = null,
                 ),
             )
-            pushNotificationService.sendToUser(budget.userId, title, body)
             spendingBudgetRepository.save(budget)
+            // Real fix (2026-09-13, push-before-commit ordering sweep): the push used to
+            // fire BEFORE notifiedOver was saved -- a rollback after the push would leave
+            // the flag unset and the very next GET /budgets poll would resend it. Same
+            // discipline SavingsService.sendMaturityReminder's own fix already establishes.
+            sendBudgetPushAfterCommit(budget.userId, title, body)
         } else if (status == BudgetStatus.NEAR && !budget.notifiedNear) {
             budget.notifiedNear = true
             val title = "Approaching budget limit"
@@ -330,8 +336,21 @@ class SpendingInsightService(
                     isRead = false, createdAt = Instant.now(), dataJson = null,
                 ),
             )
-            pushNotificationService.sendToUser(budget.userId, title, body)
             spendingBudgetRepository.save(budget)
+            // Real fix (2026-09-13, push-before-commit ordering sweep) -- same as the
+            // OVER branch above.
+            sendBudgetPushAfterCommit(budget.userId, title, body)
         }
+    }
+
+    private fun sendBudgetPushAfterCommit(userId: String, title: String, body: String) {
+        val send = { pushNotificationService.sendToUser(userId, title, body) }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 }
