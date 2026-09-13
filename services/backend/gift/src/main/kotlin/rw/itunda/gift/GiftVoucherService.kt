@@ -242,24 +242,32 @@ class GiftVoucherService(
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, fee, "Gift voucher redemption fee -- ${merchant.businessName}"),
             ),
         )
-        transactionRepository.save(
-            Transaction(
-                id = redeemResult.transactionId,
-                referenceNumber = "GIFTVOUCHERREDEEM${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
-                senderId = voucher.recipientId,
-                recipientId = merchant.ownerUserId,
-                fromAccountId = null,
-                toAccountId = merchantAccount.id,
-                amount = voucher.amount,
-                fee = fee,
-                currency = merchantAccount.currency,
-                type = TransactionType.PAYMENT,
-                status = TransactionStatus.COMPLETED,
-                description = "Gift voucher redemption -- ${merchant.businessName}",
-                channel = "GIFT_VOUCHER",
-                completedAt = Instant.now(),
-            ),
+        val transaction = Transaction(
+            id = redeemResult.transactionId,
+            referenceNumber = "GIFTVOUCHERREDEEM${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
+            senderId = voucher.recipientId,
+            recipientId = merchant.ownerUserId,
+            fromAccountId = null,
+            toAccountId = merchantAccount.id,
+            amount = voucher.amount,
+            fee = fee,
+            currency = merchantAccount.currency,
+            type = TransactionType.PAYMENT,
+            status = TransactionStatus.COMPLETED,
+            description = "Gift voucher redemption -- ${merchant.businessName}",
+            channel = "GIFT_VOUCHER",
+            completedAt = Instant.now(),
         )
+        // Real gap found live (2026-09-14, FraudRuleEngine-verify sweep): this method
+        // mirrors MerchantService.collect()'s own real "merchant collects" pattern per
+        // this class's own doc comment, but never copied collect()'s real
+        // fraudRuleEngine.evaluate call -- redeemVoucher moves real money into a real
+        // merchant account with zero fraud review. Evaluated before the transaction row
+        // is saved, same ordering reasoning as MerchantService.collect's own comment
+        // (evaluating after the save would let this transaction match itself as prior
+        // history).
+        fraudRuleEngine.evaluate(voucher.recipientId, merchant.ownerUserId, voucher.amount, transaction.id)
+        transactionRepository.save(transaction)
 
         voucher.status = GiftVoucherStatus.REDEEMED
         voucher.redeemTransactionId = redeemResult.transactionId

@@ -235,7 +235,8 @@ class GiftVoucherServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val messagingService = mockk<MessagingService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val svc = service(giftVoucherRepository = giftVoucherRepository, merchantRepository = merchantRepository, accountRepository = accountRepository, transactionRepository = transactionRepository, ledgerService = ledgerService, messagingService = messagingService, rateLimiter = rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val svc = service(giftVoucherRepository = giftVoucherRepository, merchantRepository = merchantRepository, accountRepository = accountRepository, transactionRepository = transactionRepository, ledgerService = ledgerService, messagingService = messagingService, rateLimiter = rateLimiter, fraudRuleEngine = fraudRuleEngine)
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
         val voucher = GiftVoucher(
@@ -271,6 +272,13 @@ class GiftVoucherServiceTest : BehaviorSpec({
             // rate limit at all despite the RateLimiter bean already being injected.
             Then("the real rate limiter is actually consulted, not just mocked away") {
                 verify(exactly = 1) { rateLimiter.checkLimit("giftvoucher:redeem:seller_1", limit = 30, window = java.time.Duration.ofHours(1)) }
+            }
+
+            // Real gap found live (2026-09-14, FraudRuleEngine-verify sweep): this
+            // method mirrors MerchantService.collect()'s own doc comment, but never
+            // copied collect()'s real fraudRuleEngine.evaluate call.
+            Then("the real fraud engine is actually consulted, not just mocked away") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("user_recipient", "seller_1", BigDecimal("3000"), "redeemtxn_1") }
             }
         }
 
