@@ -6,6 +6,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.MerchantAvailabilityWindow
 import rw.itunda.core.domain.MerchantBooking
 import rw.itunda.core.domain.MerchantProduct
@@ -48,11 +49,12 @@ class MerchantBookingServiceSlotsTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = MerchantBookingService(
             merchantRepository, merchantProductRepository, availabilityWindowRepository,
             merchantBookingRepository, notificationRepository, accountRepository, ledgerService,
             transactionRepository, bookingDepositRepository, pushNotificationService, autoTopUpService,
-            fraudRuleEngine,
+            fraudRuleEngine, rateLimiter,
         )
 
         val service30Min = MerchantProduct(

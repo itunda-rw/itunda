@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.BookingDeposit
 import rw.itunda.core.domain.BookingDepositStatus
 import rw.itunda.core.domain.LedgerAccountType
@@ -77,6 +78,7 @@ class MerchantBookingService(
     private val pushNotificationService: PushNotificationService,
     private val autoTopUpService: rw.itunda.account.AutoTopUpService,
     private val fraudRuleEngine: FraudRuleEngine,
+    private val rateLimiter: RateLimiter,
 ) {
     companion object {
         // Consolidated 2026-09-06 into core/pricing/PlatformFees -- see its own doc comment.
@@ -162,6 +164,13 @@ class MerchantBookingService(
 
     @Transactional
     fun book(customerId: String, merchantId: String, serviceId: String, date: LocalDate, startTime: LocalTime, notes: String? = null): MerchantBooking {
+        // Real gap found live (2026-09-14, sibling-asymmetry sweep): every structurally
+        // similar "create a new record against another merchant/user" action elsewhere
+        // in this codebase rate-limits (KnowledgeService.postQuestion,
+        // PropertyPriceOfferService.makeOffer, PropertyListingService.createListing,
+        // VehicleValuationService.registerVehicle) -- this one, which occupies a real
+        // merchant calendar slot and can hold a real money deposit, never did.
+        rateLimiter.checkLimit("merchant:booking:$customerId", limit = 20, window = Duration.ofHours(1))
         val merchant = merchantRepository.findById(merchantId)
             .orElseThrow { MerchantNotFoundException("Merchant not found") }
         if (merchant.ownerUserId == customerId) {
@@ -332,6 +341,11 @@ class MerchantBookingService(
         booking.updatedAt = Instant.now()
         val saved = merchantBookingRepository.save(booking)
         payOutDeposit(saved, merchant, BookingDepositStatus.RELEASED)
+        // Real gap found live (2026-09-14, sibling-asymmetry sweep): every OTHER
+        // booking-status-transition method in this class (respond, cancel,
+        // processNoShow) notifies the affected party; this one -- which also releases
+        // any held prepay deposit -- never did.
+        notify(booking.customerId, saved, "Booking completed", "${merchant.businessName}: ${booking.serviceName} on ${booking.bookingDate} at ${booking.startTime} was marked completed.")
         return saved
     }
 

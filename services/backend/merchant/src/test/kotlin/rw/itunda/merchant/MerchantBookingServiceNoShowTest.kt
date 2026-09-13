@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.BookingDeposit
 import rw.itunda.core.domain.BookingDepositStatus
 import rw.itunda.core.domain.LedgerDirection
@@ -62,10 +63,11 @@ class MerchantBookingServiceNoShowTest : BehaviorSpec({
         pushNotificationService: PushNotificationService = mockk(relaxed = true),
         autoTopUpService: rw.itunda.account.AutoTopUpService = mockk(relaxed = true),
         fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
+        rateLimiter: RateLimiter = mockk(relaxed = true),
     ) = MerchantBookingService(
         merchantRepository, merchantProductRepository, availabilityWindowRepository, merchantBookingRepository,
         notificationRepository, accountRepository, ledgerService, transactionRepository, bookingDepositRepository,
-        pushNotificationService, autoTopUpService, fraudRuleEngine,
+        pushNotificationService, autoTopUpService, fraudRuleEngine, rateLimiter,
     )
 
     Given("real overdue CONFIRMED bookings the poll must sweep, one with a real held deposit") {
@@ -110,6 +112,63 @@ class MerchantBookingServiceNoShowTest : BehaviorSpec({
                 deposit.status shouldBe BookingDepositStatus.FORFEITED
                 val creditLeg = legsSlot.captured.first { it.direction == LedgerDirection.CREDIT && it.accountId == "account_merchant" }
                 creditLeg.amount shouldBe BigDecimal("4925")
+            }
+        }
+    }
+
+    // Real gap found live (2026-09-14, sibling-asymmetry sweep): markCompleted --
+    // which also releases any held prepay deposit -- had zero test coverage
+    // anywhere in this codebase, and its own doc comment (until this fix) never
+    // mentioned notifying the customer at all, unlike its own siblings respond/
+    // cancel/processNoShow, all of which do.
+    Given("a real CONFIRMED booking with a real held deposit, the merchant marking it completed") {
+        val merchantBookingRepository = mockk<MerchantBookingRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
+        val bookingDepositRepository = mockk<BookingDepositRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        // Same real relaxed-mockk generic-return-type ClassCastException pitfall this
+        // codebase's other tests document repeatedly -- explicit stub for the real
+        // save() the new notify() call adds.
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true).also { every { it.save(any()) } answers { firstArg() } }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(
+            merchantRepository = merchantRepository, merchantBookingRepository = merchantBookingRepository,
+            bookingDepositRepository = bookingDepositRepository, accountRepository = accountRepository, ledgerService = ledgerService,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
+        )
+
+        val confirmedBooking = booking("booking_confirmed", MerchantBookingStatus.CONFIRMED, LocalDate.now(), LocalTime.of(10, 0))
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_merchant", businessName = "Salon")
+        val deposit = BookingDeposit(
+            id = "deposit_2", bookingId = "booking_confirmed", merchantId = "merchant_1", customerId = "customer_1",
+            amount = BigDecimal("5000"), fee = BigDecimal("75"), holdTransactionId = "ledgertxn_hold_2",
+        )
+
+        every { merchantBookingRepository.findById("booking_confirmed") } returns Optional.of(confirmedBooking)
+        every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
+        every { merchantBookingRepository.save(any()) } answers { firstArg() }
+        every { bookingDepositRepository.findByBookingIdForUpdate("booking_confirmed") } returns deposit
+        every { bookingDepositRepository.save(any()) } answers { firstArg() }
+        every { accountRepository.findById("account_merchant") } returns Optional.of(
+            rw.itunda.core.domain.Account(
+                id = "account_merchant", userId = "owner_1", accountNumber = "ACC-1", accountName = "Merchant account",
+                type = rw.itunda.core.domain.AccountType.MAIN, balance = BigDecimal("0"), availableBalance = BigDecimal("0"),
+            ),
+        )
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_release_1", emptyList())
+
+        When("the merchant marks it completed") {
+            val result = service.markCompleted("owner_1", "booking_confirmed")
+
+            Then("it real-marks the booking COMPLETED and real-releases the deposit to the merchant") {
+                result.status shouldBe MerchantBookingStatus.COMPLETED
+                deposit.status shouldBe BookingDepositStatus.RELEASED
+            }
+
+            Then("the real customer is notified their booking was completed") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "customer_1" && it.type == "MERCHANT_BOOKING_UPDATE" && it.title == "Booking completed" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("customer_1", "Booking completed", any(), any()) }
             }
         }
     }
