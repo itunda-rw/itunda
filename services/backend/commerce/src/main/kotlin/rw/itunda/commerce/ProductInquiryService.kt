@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.ProductInquiry
 import rw.itunda.core.push.PushNotificationService
@@ -12,6 +13,7 @@ import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.ProductInquiryRepository
 import org.slf4j.LoggerFactory
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -31,11 +33,17 @@ class ProductInquiryService(
     private val merchantRepository: MerchantRepository,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
+    private val rateLimiter: RateLimiter,
 ) {
     private val log = LoggerFactory.getLogger(ProductInquiryService::class.java)
 
     @Transactional
     fun askQuestion(buyerId: String, productId: String, question: String): ProductInquiry {
+        // Real gap found live (2026-09-14, zero-RateLimiter-class sweep): this class had
+        // no RateLimiter at all -- KnowledgeService.postQuestion's own identical
+        // "user posts a free-text question" shape already rate-limits at 10/hour, and an
+        // unbounded askQuestion flood spams a real merchant with a real push per call.
+        rateLimiter.checkLimit("commerce:product-inquiry:$buyerId", limit = 10, window = Duration.ofHours(1))
         val trimmedQuestion = question.trim()
         if (trimmedQuestion.isEmpty() || trimmedQuestion.length > 500) {
             throw InvalidProductInquiryException("Question must be between 1 and 500 characters")

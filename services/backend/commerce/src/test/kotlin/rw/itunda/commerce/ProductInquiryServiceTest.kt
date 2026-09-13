@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.domain.MerchantStatus
@@ -26,7 +27,8 @@ class ProductInquiryServiceTest : BehaviorSpec({
         val merchantRepository = mockk<MerchantRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = ProductInquiryService(productInquiryRepository, merchantProductRepository, merchantRepository, notificationRepository, pushNotificationService)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = ProductInquiryService(productInquiryRepository, merchantProductRepository, merchantRepository, notificationRepository, pushNotificationService, rateLimiter)
 
         val product = MerchantProduct(id = "product_1", merchantId = "merchant_1", name = "Widget", price = BigDecimal("2000"))
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Shop", status = MerchantStatus.ACTIVE)
@@ -54,6 +56,13 @@ class ProductInquiryServiceTest : BehaviorSpec({
             // real merchant to learn about a question without polling.
             Then("it real-pushes the real merchant owner of the new question") {
                 verify(exactly = 1) { pushNotificationService.sendToUser("owner_1", any(), any(), any()) }
+            }
+
+            // Real gap found live (2026-09-14, zero-RateLimiter-class sweep): this class
+            // had no RateLimiter at all -- an unbounded askQuestion flood spams a real
+            // merchant with a real push per call.
+            Then("the per-buyer question rate limit is enforced") {
+                verify(exactly = 1) { rateLimiter.checkLimit("commerce:product-inquiry:shopper_1", limit = any(), window = any()) }
             }
         }
 
@@ -88,7 +97,8 @@ class ProductInquiryServiceTest : BehaviorSpec({
         val merchantRepository = mockk<MerchantRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = ProductInquiryService(productInquiryRepository, merchantProductRepository, merchantRepository, notificationRepository, pushNotificationService)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = ProductInquiryService(productInquiryRepository, merchantProductRepository, merchantRepository, notificationRepository, pushNotificationService, rateLimiter)
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Shop", status = MerchantStatus.ACTIVE)
         val inquiry = ProductInquiry(id = "product_inquiry_1", productId = "product_1", merchantId = "merchant_1", buyerId = "shopper_1", question = "Is this in blue?")
