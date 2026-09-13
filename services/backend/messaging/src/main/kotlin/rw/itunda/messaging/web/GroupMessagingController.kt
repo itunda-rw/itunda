@@ -35,6 +35,7 @@ import rw.itunda.messaging.GroupNotFoundException
 import rw.itunda.messaging.GroupPhotoUrlTooLongException
 import rw.itunda.messaging.GroupDescriptionTooLongException
 import rw.itunda.messaging.GroupPollAnnouncementService
+import rw.itunda.messaging.GroupPollClosedException
 import rw.itunda.messaging.GroupPollNotFoundException
 import rw.itunda.messaging.GroupPollOptionNotFoundException
 import rw.itunda.messaging.InvalidForwardDestinationException
@@ -482,4 +483,8 @@ class GroupMessagingController(
     @ExceptionHandler(GroupPollOptionNotFoundException::class)
     fun handlePollOptionNotFound(ex: GroupPollOptionNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("POLL_OPTION_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(GroupPollClosedException::class)
+    fun handlePollClosed(ex: GroupPollClosedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("POLL_CLOSED", ex.message ?: "This poll has already closed"))
 }

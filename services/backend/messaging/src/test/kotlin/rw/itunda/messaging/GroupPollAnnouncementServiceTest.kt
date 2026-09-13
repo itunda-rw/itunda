@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import java.time.Instant
 import rw.itunda.core.domain.GroupConversation
 import rw.itunda.core.domain.GroupPoll
 import rw.itunda.core.domain.GroupPollOption
@@ -151,6 +152,33 @@ class GroupPollAnnouncementServiceTest : BehaviorSpec({
                 service.vote("user_1", "group_1", "poll_2", "option_a")
                 io.mockk.verify(exactly = 1) { groupPollVoteRepository.deleteByPollIdAndOptionIdAndUserId("poll_2", "option_a", "user_1") }
                 io.mockk.verify(exactly = 0) { groupPollVoteRepository.save(match { it.optionId == "option_a" && it.userId == "user_1" }) }
+            }
+        }
+    }
+
+    // Real gap found live (2026-09-13): closesAt is a real, persisted, API-accepted
+    // field but was never actually enforced -- a poll could be voted on forever
+    // regardless of its own stated closing time.
+    Given("a real poll whose closesAt is already in the past") {
+        val groupMessagingService = mockk<GroupMessagingService>(relaxed = true)
+        val groupAnnouncementRepository = mockk<GroupAnnouncementRepository>(relaxed = true)
+        val groupPollRepository = mockk<GroupPollRepository>()
+        val groupPollOptionRepository = mockk<GroupPollOptionRepository>()
+        val groupPollVoteRepository = mockk<GroupPollVoteRepository>(relaxed = true)
+        val service = GroupPollAnnouncementService(groupMessagingService, groupAnnouncementRepository, groupPollRepository, groupPollOptionRepository, groupPollVoteRepository)
+
+        val poll = GroupPoll(
+            id = "poll_3", groupConversationId = "group_1", createdBy = "user_1", question = "Q?",
+            closesAt = Instant.now().minusSeconds(60),
+        )
+        val optionA = GroupPollOption(id = "option_a", pollId = "poll_3", text = "A")
+        every { groupPollRepository.findById("poll_3") } returns java.util.Optional.of(poll)
+        every { groupPollOptionRepository.findById("option_a") } returns java.util.Optional.of(optionA)
+
+        When("a real member tries to vote after it closed") {
+            Then("it rejects with a real GroupPollClosedException, never accepting a real vote on a closed poll") {
+                shouldThrow<GroupPollClosedException> { service.vote("user_1", "group_1", "poll_3", "option_a") }
+                io.mockk.verify(exactly = 0) { groupPollVoteRepository.save(any()) }
             }
         }
     }

@@ -17,6 +17,7 @@ class InvalidGroupAnnouncementException(message: String) : RuntimeException(mess
 class InvalidGroupPollException(message: String) : RuntimeException(message)
 class GroupPollNotFoundException(message: String) : RuntimeException(message)
 class GroupPollOptionNotFoundException(message: String) : RuntimeException(message)
+class GroupPollClosedException(message: String) : RuntimeException(message)
 
 data class GroupPollWithResults(val poll: GroupPoll, val options: List<GroupPollOption>, val voteCountByOptionId: Map<String, Int>, val myVoteOptionIds: Set<String>)
 
@@ -107,6 +108,16 @@ class GroupPollAnnouncementService(
         if (poll.groupConversationId != groupId) throw GroupPollNotFoundException("Poll not found")
         val option = groupPollOptionRepository.findById(optionId).orElseThrow { GroupPollOptionNotFoundException("Option not found") }
         if (option.pollId != pollId) throw GroupPollOptionNotFoundException("Option not found")
+        // Real gap found live (2026-09-13): closesAt is a real, persisted, API-accepted
+        // field (createPoll/CreateGroupPollRequest) but was never actually enforced --
+        // a poll could be voted on forever regardless of its own stated closing time.
+        // No real UI sets closesAt yet (a real, disclosed follow-up -- see
+        // project_itunda_group_poll_multiselect_unreached memory), but the backend
+        // must be correct for anyone calling the real API directly regardless.
+        val closesAt = poll.closesAt
+        if (closesAt != null && Instant.now().isAfter(closesAt)) {
+            throw GroupPollClosedException("This poll has already closed")
+        }
 
         if (poll.allowMultiple) {
             // Real bug found live (2026-09-13): this branch was completely unreached by
