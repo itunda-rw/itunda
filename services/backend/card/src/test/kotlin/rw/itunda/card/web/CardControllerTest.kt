@@ -8,6 +8,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import org.springframework.http.HttpStatus
+import rw.itunda.card.CardChargeService
 import rw.itunda.card.CardService
 import rw.itunda.card.CardView
 import rw.itunda.core.domain.DebitCard
@@ -29,8 +30,9 @@ class CardControllerTest : BehaviorSpec({
 
     Given("a first-time card issuance request") {
         val cardService = mockk<CardService>()
+        val cardChargeService = mockk<CardChargeService>(relaxed = true)
         val idempotencyService = mockk<IdempotencyService>()
-        val controller = CardController(cardService, idempotencyService)
+        val controller = CardController(cardService, cardChargeService, idempotencyService)
 
         val card = mockk<DebitCard>(relaxed = true)
         every { card.id } returns "card_1"
@@ -57,8 +59,9 @@ class CardControllerTest : BehaviorSpec({
 
     Given("a retried card issuance request using the same Idempotency-Key as a completed one") {
         val cardService = mockk<CardService>()
+        val cardChargeService = mockk<CardChargeService>(relaxed = true)
         val idempotencyService = mockk<IdempotencyService>()
-        val controller = CardController(cardService, idempotencyService)
+        val controller = CardController(cardService, cardChargeService, idempotencyService)
 
         every {
             idempotencyService.replayOrExecute("POST /api/v1/card/issue", "key-1", any(), any())
@@ -80,8 +83,9 @@ class CardControllerTest : BehaviorSpec({
     // above, proving the wiring can't silently regress.
     Given("a first-time card reissue request") {
         val cardService = mockk<CardService>()
+        val cardChargeService = mockk<CardChargeService>(relaxed = true)
         val idempotencyService = mockk<IdempotencyService>()
-        val controller = CardController(cardService, idempotencyService)
+        val controller = CardController(cardService, cardChargeService, idempotencyService)
 
         val cardView = mockk<CardView>(relaxed = true)
         every { cardService.reissue("user_1") } returns cardView
@@ -104,8 +108,9 @@ class CardControllerTest : BehaviorSpec({
 
     Given("a retried card reissue request using the same Idempotency-Key as a completed one") {
         val cardService = mockk<CardService>()
+        val cardChargeService = mockk<CardChargeService>(relaxed = true)
         val idempotencyService = mockk<IdempotencyService>()
-        val controller = CardController(cardService, idempotencyService)
+        val controller = CardController(cardService, cardChargeService, idempotencyService)
 
         every {
             idempotencyService.replayOrExecute("POST /api/v1/card/reissue", "key-1", any(), any())

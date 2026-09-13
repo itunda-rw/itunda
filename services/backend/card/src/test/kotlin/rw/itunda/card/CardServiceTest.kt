@@ -8,17 +8,12 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import rw.itunda.auth.RateLimiter
-import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.domain.DebitCard
 import rw.itunda.core.domain.DebitCardDesign
-import rw.itunda.core.domain.Account
-import rw.itunda.core.domain.AccountType
-import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.DebitCardRepository
 import rw.itunda.core.repository.DebitCardTransactionRepository
 import rw.itunda.core.repository.NotificationRepository
-import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.domain.User
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
@@ -27,13 +22,10 @@ import java.time.Instant
 import java.util.Optional
 
 /** First test coverage for the real Toss Bank 체크카드 (check/debit card) -- see
- * DebitCard.kt's own doc comment for the full sourced account. */
+ * DebitCard.kt's own doc comment for the full sourced account. Charging coverage lives
+ * in CardChargeServiceTest.kt (charging moved to its own CardChargeService, 2026-09-13,
+ * once this file crossed the 500-line file-size-lint guideline). */
 class CardServiceTest : BehaviorSpec({
-
-    fun account(id: String, userId: String, type: AccountType = AccountType.MAIN) = Account(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
-        type = type, balance = BigDecimal("1000000"), availableBalance = BigDecimal("1000000"),
-    )
 
     fun freshCard(userId: String) = DebitCard(
         id = "card_1", userId = userId, last4 = "1234",
@@ -53,14 +45,11 @@ class CardServiceTest : BehaviorSpec({
     fun newService(
         debitCardRepository: DebitCardRepository = mockk(),
         debitCardTransactionRepository: DebitCardTransactionRepository = mockk(),
-        accountRepository: AccountRepository = mockk(),
-        ledgerService: LedgerService = mockk(),
         notificationRepository: NotificationRepository = notificationRepositoryMock(),
         pushNotificationService: PushNotificationService = mockk(relaxed = true),
         rateLimiter: RateLimiter = mockk(relaxed = true),
         userRepository: UserRepository = mockk(),
-        fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
-    ) = CardService(debitCardRepository, debitCardTransactionRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService, rateLimiter, userRepository, fraudRuleEngine)
+    ) = CardService(debitCardRepository, debitCardTransactionRepository, notificationRepository, pushNotificationService, rateLimiter, userRepository)
 
     Given("a real user issuing their first itunda debit card") {
         val debitCardRepository = mockk<DebitCardRepository>()
@@ -216,6 +205,39 @@ class CardServiceTest : BehaviorSpec({
                 // validating the requested amounts, so this real-400 path still
                 // exercises it -- nothing previously proved this call was live code.
                 verify(exactly = 1) { rateLimiter.checkLimit("card:set-limits:user_1", limit = any(), window = any()) }
+            }
+        }
+    }
+
+    // Real sibling-asymmetry fix (2026-09-13) -- every other card-state mutation
+    // (freeze/unfreeze/reportLost/closeCard/reissue/setPin) sends a real security
+    // alert; setLimits didn't, even though raising your own spend limit is exactly
+    // what an attacker with temporary device+credential access would do before
+    // draining the card.
+    Given("a real user setting valid new card limits") {
+        val debitCardRepository = mockk<DebitCardRepository>()
+        val debitCardTransactionRepository = mockk<DebitCardTransactionRepository>()
+        val card = freshCard("user_1")
+        every { debitCardRepository.findByUserId("user_1") } returns card
+        every { debitCardRepository.save(any()) } answers { firstArg() }
+        every { debitCardTransactionRepository.sumAmountByCardIdAndCreatedAtSince(any(), any()) } returns BigDecimal.ZERO
+        val notificationRepository = notificationRepositoryMock()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(
+            debitCardRepository = debitCardRepository,
+            debitCardTransactionRepository = debitCardTransactionRepository,
+            notificationRepository = notificationRepository,
+            pushNotificationService = pushNotificationService,
+        )
+
+        When("the new limits are within bounds") {
+            val view = service.setLimits("user_1", BigDecimal("600000"), BigDecimal("6000000"))
+
+            Then("it real-updates the limits and sends a real security alert") {
+                view.dailyLimit shouldBe BigDecimal("600000")
+                view.monthlyLimit shouldBe BigDecimal("6000000")
+                verify(exactly = 1) { notificationRepository.save(match { it.type == "CARD_LIMITS_CHANGED" && it.userId == "user_1" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", "Card limits changed", any(), any()) }
             }
         }
     }

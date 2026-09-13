@@ -21,18 +21,18 @@ import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.repository.DebitCardRepository
 import rw.itunda.core.repository.DebitCardTransactionRepository
 import rw.itunda.core.repository.NotificationRepository
-import rw.itunda.core.repository.UserRepository
 import java.math.BigDecimal
 import java.util.Optional
 
-/** CardService.chargeWithCard coverage -- extracted from CardServiceTest.kt
- * (2026-09-12) once that file crossed the 500-line file-size-lint guideline; charging
- * is a genuinely distinct concern from issuance/freeze/PIN-management, the same split
- * rationale PinUpgradeCard.swift's own doc comment already establishes for a
- * self-contained new piece. Helper functions are deliberately duplicated from
- * CardServiceTest.kt rather than shared, matching this codebase's own established
- * small-duplicate-helper-across-split-files convention (see e.g. iOS's
- * TalkScreen.errorMessage/ShopBestSellerBadge). */
+/** CardChargeService.chargeWithCard coverage -- originally extracted from
+ * CardServiceTest.kt (2026-09-12) once that file crossed the 500-line file-size-lint
+ * guideline, while chargeWithCard itself still lived on CardService; the real
+ * implementation followed the same split on 2026-09-13 once CardService.kt crossed
+ * 500 lines again, into its own CardChargeService -- this file just started
+ * constructing that new class instead of CardService. Helper functions are
+ * deliberately duplicated from CardServiceTest.kt rather than shared, matching this
+ * codebase's own established small-duplicate-helper-across-split-files convention
+ * (see e.g. iOS's TalkScreen.errorMessage/ShopBestSellerBadge). */
 class CardChargeServiceTest : BehaviorSpec({
 
     fun account(id: String, userId: String, type: AccountType = AccountType.MAIN) = Account(
@@ -59,9 +59,8 @@ class CardChargeServiceTest : BehaviorSpec({
         notificationRepository: NotificationRepository = notificationRepositoryMock(),
         pushNotificationService: PushNotificationService = mockk(relaxed = true),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-        userRepository: UserRepository = mockk(),
         fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
-    ) = CardService(debitCardRepository, debitCardTransactionRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService, rateLimiter, userRepository, fraudRuleEngine)
+    ) = CardChargeService(debitCardRepository, debitCardTransactionRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService, rateLimiter, fraudRuleEngine)
 
     Given("a real frozen card") {
         val debitCardRepository = mockk<DebitCardRepository>()

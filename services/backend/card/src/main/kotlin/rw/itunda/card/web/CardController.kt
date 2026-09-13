@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.card.CardAlreadyIssuedException
+import rw.itunda.card.CardChargeService
 import rw.itunda.card.CardClosedException
 import rw.itunda.card.CardDailyLimitExceededException
 import rw.itunda.card.CardFrozenException
@@ -61,6 +62,7 @@ data class IssueCardRequest(val design: String? = null)
 @RequestMapping("/api/v1/card")
 class CardController(
     private val cardService: CardService,
+    private val cardChargeService: CardChargeService,
     private val idempotencyService: IdempotencyService,
 ) {
     // Real gap found 2026-09-05, same class as StudentLoanController.apply's
@@ -144,7 +146,7 @@ class CardController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/card/charge", idempotencyKey, request) {
-            val result = cardService.chargeWithCard(
+            val result = cardChargeService.chargeWithCard(
                 currentUser.userId, request.amount, request.merchantName, request.fundingAccountType ?: AccountType.MAIN,
             )
             201 to mapOf("success" to true, "transaction" to result.transaction, "card" to result.card)
