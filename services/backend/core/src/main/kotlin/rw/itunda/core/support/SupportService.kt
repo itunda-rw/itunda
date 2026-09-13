@@ -1,17 +1,23 @@
 package rw.itunda.core.support
 
+import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.SupportTicket
 import rw.itunda.core.domain.SupportTicketCategory
 import rw.itunda.core.domain.SupportTicketResolution
 import rw.itunda.core.domain.SupportTicketStatus
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.LedgerEntryRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.SupportTicketRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.AccountRepository
@@ -37,7 +43,11 @@ class SupportService(
     private val accountRepository: AccountRepository,
     private val ledgerEntryRepository: LedgerEntryRepository,
     private val ledgerService: LedgerService,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(SupportService::class.java)
+
     companion object {
         // Real itunda-defined SLA (not a sourced Toss number -- see SupportTicket's own
         // doc comment). ACCOUNT_TAKEOVER is tightest given a account is frozen and the
@@ -127,10 +137,12 @@ class SupportService(
         // end of the review, whether it confirmed the takeover (REFUNDED) or found the
         // activity legitimate (REJECTED); either way the account shouldn't stay frozen
         // once a human has looked at it.
+        var wasFrozen = false
         ticket.frozeAccountId?.let { accountId ->
             accountRepository.findById(accountId).orElse(null)?.let { account ->
                 account.isActive = true
                 accountRepository.save(account)
+                wasFrozen = true
             }
         }
 
@@ -139,7 +151,60 @@ class SupportService(
         ticket.resolutionNotes = notes
         ticket.reviewedBy = reviewerId
         ticket.resolvedAt = Instant.now()
-        return supportTicketRepository.save(ticket)
+        val saved = supportTicketRepository.save(ticket)
+
+        // Real gap found live (2026-09-14, sibling-asymmetry sweep): this is a real
+        // terminal decision on a real user-filed ticket (can move real refund money
+        // and, for ACCOUNT_TAKEOVER, unfreeze the user's own account), yet this class
+        // had zero notification wiring -- unlike every other structurally identical
+        // "terminal decision on someone's own submission" class in this codebase
+        // (OrderReturnService.decide, InsuranceService.decideClaim,
+        // MarketplaceService.resolveDispute, PropertyOwnershipService.decide,
+        // IdentityService.decide). The submitter had no way to learn their ticket was
+        // resolved short of manually polling getMyTickets.
+        val title = if (resolution == SupportTicketResolution.REFUNDED) "Support ticket resolved -- refunded" else "Support ticket resolved"
+        val body = buildString {
+            append(
+                if (resolution == SupportTicketResolution.REFUNDED) {
+                    "Your support ticket was reviewed and the transaction was refunded."
+                } else {
+                    "Your support ticket was reviewed. No refund was issued."
+                },
+            )
+            if (wasFrozen) append(" Your account has been restored.")
+            if (!notes.isNullOrBlank()) append(" Note: $notes")
+        }
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = ticket.userId, type = "SUPPORT_TICKET_RESOLVED",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"ticketId\":\"${ticket.id}\"}",
+            ),
+        )
+        sendPushAfterCommit(ticket.userId, title, body, ticket.id)
+
+        return saved
+    }
+
+    // Same real "defer the mobile push until the real status change is durable, but
+    // the in-app Notification row is saved immediately" discipline
+    // OrderReturnService.sendPushAfterCommit/InsuranceService.sendPushAfterCommit/
+    // IdentityService.sendPushAfterCommit already establish for a structurally
+    // identical terminal decision.
+    private fun sendPushAfterCommit(userId: String, title: String, body: String, ticketId: String) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body, mapOf("ticketId" to ticketId))
+            } catch (e: Exception) {
+                log.warn("Could not send support-ticket-resolved push for ticket {}", ticketId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     /**

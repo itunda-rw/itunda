@@ -21,7 +21,9 @@ import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.LedgerEntryRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.SupportTicketRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.AccountRepository
@@ -42,7 +44,12 @@ class SupportServiceTest : BehaviorSpec({
         val accountRepository = mockk<AccountRepository>()
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = SupportService(supportTicketRepository, transactionRepository, accountRepository, ledgerEntryRepository, ledgerService)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = SupportService(
+            supportTicketRepository, transactionRepository, accountRepository, ledgerEntryRepository, ledgerService,
+            notificationRepository, pushNotificationService,
+        )
 
         val payerAccount = account("account_payer", "user_1")
         val transaction = Transaction(
@@ -118,7 +125,13 @@ class SupportServiceTest : BehaviorSpec({
         val accountRepository = mockk<AccountRepository>()
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = SupportService(supportTicketRepository, transactionRepository, accountRepository, ledgerEntryRepository, ledgerService)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = SupportService(
+            supportTicketRepository, transactionRepository, accountRepository, ledgerEntryRepository, ledgerService,
+            notificationRepository, pushNotificationService,
+        )
 
         val frozenAccount = account("account_payer", "user_1").apply { isActive = false }
         val ticket = SupportTicket(
@@ -176,6 +189,17 @@ class SupportServiceTest : BehaviorSpec({
             }
             Then("the frozen account is real-unfrozen") {
                 frozenAccount.isActive shouldBe true
+            }
+
+            // Real gap found live (2026-09-14, sibling-asymmetry sweep): this class
+            // had zero notification wiring at all -- unlike every other structurally
+            // identical "terminal decision on someone's own submission" class in this
+            // codebase (OrderReturnService.decide, InsuranceService.decideClaim,
+            // MarketplaceService.resolveDispute, PropertyOwnershipService.decide,
+            // IdentityService.decide).
+            Then("the real ticket submitter is real-notified their ticket was resolved") {
+                io.mockk.verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_1" && it.type == "SUPPORT_TICKET_RESOLVED" }) }
+                io.mockk.verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any()) }
             }
         }
 
