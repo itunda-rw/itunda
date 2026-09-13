@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchMapPlaceDetail, EATS_GOOD_POINT_LABELS, type MapPlaceDetail } from './lib/maps';
+import { fetchMapPlaceDetail, toggleMerchantUpdateLike, EATS_GOOD_POINT_LABELS, type MapPlaceDetail } from './lib/maps';
 
 const TEXT = '#191F28';
 const TEXT_SECONDARY = '#4E5968';
@@ -191,10 +191,48 @@ function NewsTab({ detail }: { detail: MapPlaceDetail }) {
               {update.periodStart?.slice(0, 10) ?? ''} ~ {update.periodEnd?.slice(0, 10) ?? ''}
             </span>
           )}
-          <span style={{ fontSize: '11px', color: TEXT_TERTIARY }}>♡ {update.likeCount}</span>
+          <UpdateLikeRow updateId={update.id} initialLikeCount={update.likeCount} />
         </div>
       ))}
     </>
+  );
+}
+
+// Real gap found live (cross-platform-parity check, 2026-09-13): Android/iOS already
+// fixed this exact "like count is inert static text" bug -- MerchantUpdateController
+// .toggleLike had a real Android/iOS caller but web's own port of that fix was never
+// made. See lib/maps.ts's toggleMerchantUpdateLike for the same disclosed
+// "liked only tracks this session's own toggle" limitation Android/iOS already have.
+function UpdateLikeRow({ updateId, initialLikeCount }: { updateId: string; initialLikeCount: number }) {
+  const [likeCount, setLikeCount] = useState(initialLikeCount);
+  const [liked, setLiked] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const toggle = async () => {
+    setBusy(true);
+    try {
+      const nowLiked = await toggleMerchantUpdateLike(updateId);
+      setLiked(nowLiked);
+      setLikeCount((c) => c + (nowLiked ? 1 : -1));
+    } catch {
+      // Non-critical -- the count just stays at its last-known value.
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={busy}
+      style={{
+        fontSize: '11px', color: liked ? 'var(--itunda-red)' : TEXT_TERTIARY, background: 'none', border: 'none',
+        padding: 0, cursor: busy ? 'default' : 'pointer', alignSelf: 'flex-start',
+      }}
+    >
+      {liked ? '♥' : '♡'} {likeCount}
+    </button>
   );
 }
 

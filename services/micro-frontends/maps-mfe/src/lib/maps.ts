@@ -374,6 +374,15 @@ export interface MapPlaceDetail {
 export const fetchMapPlaceDetail = (merchantId: string) =>
   apiFetch<{ success: boolean; place: MapPlaceDetail }>(`/api/v1/maps/places/${encodeURIComponent(merchantId)}`).then((r) => r.place);
 
+// Real gap found live (cross-platform-parity check, 2026-09-13): Android/iOS already
+// fixed this exact "like count is inert static text" bug (see their own
+// UpdateLikeRow/MapPlaceUpdateLikeRow doc comments) -- web's own port of that fix was
+// never made. The list endpoint doesn't say whether the CURRENT user already liked a
+// given update (no such field on the backend DTO), so `liked` only tracks whether
+// THIS session toggled it, matching Android/iOS's own identical, disclosed limitation.
+export const toggleMerchantUpdateLike = (updateId: string) =>
+  apiFetch<{ success: boolean; liked: boolean }>(`/api/v1/merchant/updates/${updateId}/like`, { method: 'POST' }).then((r) => r.liked);
+
 // Real, free, keyless Kigali weather (2026-08-28, itunda Maps redesign) -- see
 // KigaliWeatherClient's own doc comment on the backend. `weather` is null when the
 // real upstream is unreachable and there's no still-fresh cache -- never fabricated.
