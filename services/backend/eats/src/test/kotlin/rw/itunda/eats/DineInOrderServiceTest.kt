@@ -8,6 +8,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import org.springframework.transaction.support.TransactionSynchronizationManager
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.DineInOrderStatus
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.Merchant
@@ -69,11 +70,12 @@ class DineInOrderServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = DineInOrderService(
             merchantRepository, merchantProductRepository, dineInOrderRepository, dineInOrderItemRepository,
             menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService,
             transactionRepository, fraudRuleEngine, ledgerEntryRepository, notificationRepository,
-            pushNotificationService, autoTopUpService,
+            pushNotificationService, autoTopUpService, rateLimiter,
         )
 
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
@@ -119,6 +121,14 @@ class DineInOrderServiceTest : BehaviorSpec({
             // fraudRuleEngine.evaluate call would have compiled and passed silently.
             Then("the real fraud engine is actually consulted, not just mocked away") {
                 verify(exactly = 1) { fraudRuleEngine.evaluate("buyer_1", "owner_1", BigDecimal("6000"), "ledgertxn_1") }
+            }
+
+            // Real gap found live (2026-09-14, zero-RateLimiter-class sweep): this
+            // class's own doc comment calls it "the direct sibling of
+            // EatsOrderService," but never copied EatsOrderService.placeOrder's own
+            // rate limit.
+            Then("the per-buyer order rate limit is enforced") {
+                verify(exactly = 1) { rateLimiter.checkLimit("eats:dine-in-order:buyer_1", limit = any(), window = any()) }
             }
         }
 
@@ -287,11 +297,12 @@ class DineInOrderServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = DineInOrderService(
             merchantRepository, merchantProductRepository, dineInOrderRepository, dineInOrderItemRepository,
             menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService,
             transactionRepository, fraudRuleEngine, ledgerEntryRepository, notificationRepository,
-            pushNotificationService, autoTopUpService,
+            pushNotificationService, autoTopUpService, rateLimiter,
         )
 
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)

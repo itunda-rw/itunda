@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.DineInOrder
 import rw.itunda.core.domain.DineInOrderItem
 import rw.itunda.core.domain.DineInOrderStatus
@@ -34,6 +35,7 @@ import rw.itunda.core.pricing.PlatformFees
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -82,6 +84,7 @@ class DineInOrderService(
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
     private val autoTopUpService: rw.itunda.account.AutoTopUpService,
+    private val rateLimiter: RateLimiter,
 ) {
     private val logger = LoggerFactory.getLogger(DineInOrderService::class.java)
 
@@ -96,6 +99,12 @@ class DineInOrderService(
 
     @Transactional
     fun placeOrder(buyerId: String, restaurantId: String, tableNumber: String, items: List<DineInOrderItemRequest>, notes: String? = null): DineInOrderDetail {
+        // Real gap found live (2026-09-14, zero-RateLimiter-class sweep): this class's
+        // own doc comment calls it "the direct sibling of EatsOrderService," but never
+        // copied EatsOrderService.placeOrder's own real rate limit (added after a real
+        // 2026-09-06 live incident) -- same real money-movement order-creation shape,
+        // same commerce.OrderService.placeOrder precedent.
+        rateLimiter.checkLimit("eats:dine-in-order:$buyerId", limit = 20, window = Duration.ofHours(1))
         if (items.isEmpty()) {
             throw EmptyDineInOrderException("An order needs at least one item")
         }
