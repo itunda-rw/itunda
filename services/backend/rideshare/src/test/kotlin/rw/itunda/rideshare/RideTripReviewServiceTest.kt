@@ -6,6 +6,8 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.RideTrip
 import rw.itunda.core.domain.RideTripReview
 import rw.itunda.core.domain.RideTripStatus
@@ -25,7 +27,8 @@ class RideTripReviewServiceTest : BehaviorSpec({
     Given("a real completed trip") {
         val rideTripRepository = mockk<RideTripRepository>()
         val rideTripReviewRepository = mockk<RideTripReviewRepository>()
-        val service = RideTripReviewService(rideTripRepository, rideTripReviewRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = RideTripReviewService(rideTripRepository, rideTripReviewRepository, rateLimiter)
 
         val completedTrip = RideTrip(
             id = "ride_trip_1", passengerId = "passenger_1", driverId = "driver_1", pickupAddress = "A",
@@ -46,6 +49,14 @@ class RideTripReviewServiceTest : BehaviorSpec({
                 review.driverId shouldBe "driver_1"
                 review.rating shouldBe 5
                 review.comment shouldBe "Great driver!"
+            }
+
+            // Real gap found live (2026-09-14, sibling-asymmetry sweep): this class's
+            // own doc comment says it mirrors EatsReviewService.submitReview's exact
+            // ownership + state discipline, but only copied the IDOR/state checks, not
+            // the rate limiter EatsReviewService added after its own real live incident.
+            Then("the per-passenger review-submission rate limit is enforced") {
+                verify(exactly = 1) { rateLimiter.checkLimit("rideshare:trip-review:submit:passenger_1", limit = any(), window = any()) }
             }
         }
 

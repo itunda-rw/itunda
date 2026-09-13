@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.MerchantBookingReview
 import rw.itunda.core.domain.MerchantBookingStatus
 import rw.itunda.core.domain.Notification
@@ -13,6 +14,7 @@ import rw.itunda.core.repository.MerchantBookingReviewRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.RatingSummaryProjection
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -38,9 +40,17 @@ class MerchantBookingReviewService(
     private val merchantBookingReviewRepository: MerchantBookingReviewRepository,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
+    private val rateLimiter: RateLimiter,
 ) {
     @Transactional
     fun submitReview(customerId: String, bookingId: String, rating: Int, comment: String?): MerchantBookingReview {
+        // Real gap found live (2026-09-14, sibling-asymmetry sweep): this class had no
+        // RateLimiter at all -- EatsReviewService.submitReview's own doc comment
+        // documents a real live incident fixing the identical gap ("shipped with zero
+        // rate limiting despite this same class's own helpful-vote/report endpoints
+        // already having one") for the exact same review-submission shape this class
+        // never got.
+        rateLimiter.checkLimit("merchant:booking-review:submit:$customerId", limit = 20, window = Duration.ofHours(1))
         if (rating !in 1..5) {
             throw InvalidBookingRatingException("Rating must be between 1 and 5")
         }

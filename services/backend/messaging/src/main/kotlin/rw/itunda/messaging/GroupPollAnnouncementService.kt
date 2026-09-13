@@ -1,9 +1,11 @@
 package rw.itunda.messaging
 
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.GroupAnnouncement
 import rw.itunda.core.domain.GroupPoll
 import rw.itunda.core.domain.GroupPollOption
@@ -38,6 +40,7 @@ class GroupPollAnnouncementService(
     private val groupPollRepository: GroupPollRepository,
     private val groupPollOptionRepository: GroupPollOptionRepository,
     private val groupPollVoteRepository: GroupPollVoteRepository,
+    private val rateLimiter: RateLimiter,
 ) {
     companion object {
         private const val MAX_BODY_LENGTH = 1000
@@ -49,6 +52,12 @@ class GroupPollAnnouncementService(
     @Transactional
     fun postAnnouncement(userId: String, groupId: String, body: String): GroupAnnouncement {
         groupMessagingService.getGroupForMember(userId, groupId)
+        // Real gap found live (2026-09-14, sibling-asymmetry sweep): this class had no
+        // RateLimiter at all -- GroupMessagingService.sendMessage (same package, same
+        // itunda Talk redesign) already rate-limits, and unlike a personal-account
+        // abuse case, an unbounded announcement/poll flood is visible-to-others spam
+        // for every real member of the group.
+        rateLimiter.checkLimit("messaging:group-announce:$userId", limit = 10, window = Duration.ofHours(1))
         val trimmed = body.trim()
         if (trimmed.isEmpty()) throw InvalidGroupAnnouncementException("Announcement body is required")
         if (trimmed.length > MAX_BODY_LENGTH) throw InvalidGroupAnnouncementException("Announcement must be $MAX_BODY_LENGTH characters or fewer")
@@ -65,6 +74,9 @@ class GroupPollAnnouncementService(
     @Transactional
     fun createPoll(userId: String, groupId: String, question: String, options: List<String>, allowMultiple: Boolean, closesAt: Instant?): GroupPollWithResults {
         groupMessagingService.getGroupForMember(userId, groupId)
+        // Real gap found live (2026-09-14, sibling-asymmetry sweep) -- same rationale
+        // as postAnnouncement's own identical fix above.
+        rateLimiter.checkLimit("messaging:group-poll:$userId", limit = 10, window = Duration.ofHours(1))
         val trimmedQuestion = question.trim()
         if (trimmedQuestion.isEmpty()) throw InvalidGroupPollException("A poll question is required")
         if (trimmedQuestion.length > MAX_QUESTION_LENGTH) throw InvalidGroupPollException("Poll question must be $MAX_QUESTION_LENGTH characters or fewer")

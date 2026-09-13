@@ -7,6 +7,7 @@ import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantBooking
 import rw.itunda.core.domain.MerchantBookingReview
@@ -30,9 +31,10 @@ class MerchantBookingReviewServiceTest : BehaviorSpec({
         val merchantBookingReviewRepository = mockk<MerchantBookingReviewRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = MerchantBookingReviewService(
             merchantRepository, merchantBookingRepository, merchantBookingReviewRepository,
-            notificationRepository, pushNotificationService,
+            notificationRepository, pushNotificationService, rateLimiter,
         )
 
         val booking = MerchantBooking(
@@ -53,6 +55,14 @@ class MerchantBookingReviewServiceTest : BehaviorSpec({
                 review.merchantId shouldBe "merchant_1"
                 review.customerId shouldBe "customer_1"
                 review.rating shouldBe 5
+            }
+
+            // Real gap found live (2026-09-14, sibling-asymmetry sweep): this class had
+            // no RateLimiter at all -- EatsReviewService.submitReview's own doc comment
+            // documents a real live incident fixing the identical gap for the exact
+            // same review-submission shape this class never got.
+            Then("the per-customer review-submission rate limit is enforced") {
+                verify(exactly = 1) { rateLimiter.checkLimit("merchant:booking-review:submit:customer_1", limit = any(), window = any()) }
             }
         }
 
@@ -123,9 +133,10 @@ class MerchantBookingReviewServiceTest : BehaviorSpec({
         val merchantBookingReviewRepository = mockk<MerchantBookingReviewRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = MerchantBookingReviewService(
             merchantRepository, merchantBookingRepository, merchantBookingReviewRepository,
-            notificationRepository, pushNotificationService,
+            notificationRepository, pushNotificationService, rateLimiter,
         )
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
@@ -198,9 +209,10 @@ class MerchantBookingReviewServiceTest : BehaviorSpec({
         val merchantBookingReviewRepository = mockk<MerchantBookingReviewRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = MerchantBookingReviewService(
             merchantRepository, merchantBookingRepository, merchantBookingReviewRepository,
-            notificationRepository, pushNotificationService,
+            notificationRepository, pushNotificationService, rateLimiter,
         )
 
         When("checking a merchant's real rating summary") {

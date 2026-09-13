@@ -4,10 +4,12 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.RideTripReview
 import rw.itunda.core.domain.RideTripStatus
 import rw.itunda.core.repository.RideTripRepository
 import rw.itunda.core.repository.RideTripReviewRepository
+import java.time.Duration
 import java.util.UUID
 
 class RideTripNotYetCompletedException(message: String) : RuntimeException(message)
@@ -29,9 +31,17 @@ data class RideDriverRatingSummary(val average: Double?, val count: Long)
 class RideTripReviewService(
     private val rideTripRepository: RideTripRepository,
     private val rideTripReviewRepository: RideTripReviewRepository,
+    private val rateLimiter: RateLimiter,
 ) {
     @Transactional
     fun submitReview(passengerId: String, tripId: String, rating: Int, comment: String?): RideTripReview {
+        // Real gap found live (2026-09-14, sibling-asymmetry sweep): this class's own
+        // doc comment says it "mirrors EatsReviewService.submitReview's exact ownership
+        // + state discipline," but only copied the IDOR/state checks, not the rate
+        // limiter EatsReviewService added after its own real live incident ("shipped
+        // with zero rate limiting despite this same class's own helpful-vote/report
+        // endpoints already having one").
+        rateLimiter.checkLimit("rideshare:trip-review:submit:$passengerId", limit = 20, window = Duration.ofHours(1))
         if (rating !in 1..5) {
             throw InvalidRideRatingException("Rating must be between 1 and 5")
         }

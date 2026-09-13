@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import java.time.Instant
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.GroupConversation
 import rw.itunda.core.domain.GroupPoll
 import rw.itunda.core.domain.GroupPollOption
@@ -18,7 +19,7 @@ import rw.itunda.core.repository.GroupPollVoteRepository
 
 class GroupPollAnnouncementServiceTest : BehaviorSpec({
 
-    fun newService(): GroupPollAnnouncementService {
+    fun newService(rateLimiter: RateLimiter = mockk(relaxed = true)): GroupPollAnnouncementService {
         val groupMessagingService = mockk<GroupMessagingService>(relaxed = true)
         val groupAnnouncementRepository = mockk<GroupAnnouncementRepository>(relaxed = true)
         val groupPollRepository = mockk<GroupPollRepository>(relaxed = true)
@@ -28,7 +29,7 @@ class GroupPollAnnouncementServiceTest : BehaviorSpec({
         every { groupPollRepository.save(any()) } answers { firstArg() }
         every { groupPollOptionRepository.save(any()) } answers { firstArg() }
         every { groupPollVoteRepository.save(any()) } answers { firstArg() }
-        return GroupPollAnnouncementService(groupMessagingService, groupAnnouncementRepository, groupPollRepository, groupPollOptionRepository, groupPollVoteRepository)
+        return GroupPollAnnouncementService(groupMessagingService, groupAnnouncementRepository, groupPollRepository, groupPollOptionRepository, groupPollVoteRepository, rateLimiter)
     }
 
     Given("a real group member posting an announcement") {
@@ -37,7 +38,8 @@ class GroupPollAnnouncementServiceTest : BehaviorSpec({
         val groupPollRepository = mockk<GroupPollRepository>(relaxed = true)
         val groupPollOptionRepository = mockk<GroupPollOptionRepository>(relaxed = true)
         val groupPollVoteRepository = mockk<GroupPollVoteRepository>(relaxed = true)
-        val service = GroupPollAnnouncementService(groupMessagingService, groupAnnouncementRepository, groupPollRepository, groupPollOptionRepository, groupPollVoteRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = GroupPollAnnouncementService(groupMessagingService, groupAnnouncementRepository, groupPollRepository, groupPollOptionRepository, groupPollVoteRepository, rateLimiter)
         every { groupMessagingService.getGroupForMember("user_1", "group_1") } returns GroupConversation(id = "group_1", name = "Test group", createdBy = "user_1")
         every { groupAnnouncementRepository.save(any()) } answers { firstArg() }
 
@@ -47,6 +49,14 @@ class GroupPollAnnouncementServiceTest : BehaviorSpec({
             Then("it real-trims and creates it -- open to any real member, no admin gate") {
                 announcement.body shouldBe "Real announcement body"
                 announcement.createdBy shouldBe "user_1"
+            }
+
+            // Real gap found live (2026-09-14, sibling-asymmetry sweep): this class had
+            // no RateLimiter at all -- GroupMessagingService.sendMessage (same package)
+            // already rate-limits, and an unbounded flood here is visible-to-others spam
+            // for every real member of the group.
+            Then("the per-user announcement rate limit is enforced") {
+                io.mockk.verify(exactly = 1) { rateLimiter.checkLimit("messaging:group-announce:user_1", limit = any(), window = any()) }
             }
         }
 
@@ -66,7 +76,8 @@ class GroupPollAnnouncementServiceTest : BehaviorSpec({
     }
 
     Given("a real group member creating a real poll") {
-        val service = newService()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = newService(rateLimiter)
 
         When("real options are given") {
             val result = service.createPoll("user_1", "group_1", "Which day works?", listOf("Mon", "Tue"), allowMultiple = false, closesAt = null)
@@ -74,6 +85,12 @@ class GroupPollAnnouncementServiceTest : BehaviorSpec({
             Then("it creates a real poll with real options") {
                 result.poll.question shouldBe "Which day works?"
                 result.options.map { it.text } shouldBe listOf("Mon", "Tue")
+            }
+
+            // Real gap found live (2026-09-14, sibling-asymmetry sweep) -- same
+            // rationale as postAnnouncement's own identical fix above.
+            Then("the per-user poll-creation rate limit is enforced") {
+                io.mockk.verify(exactly = 1) { rateLimiter.checkLimit("messaging:group-poll:user_1", limit = any(), window = any()) }
             }
         }
 
@@ -90,7 +107,8 @@ class GroupPollAnnouncementServiceTest : BehaviorSpec({
         val groupPollRepository = mockk<GroupPollRepository>()
         val groupPollOptionRepository = mockk<GroupPollOptionRepository>()
         val groupPollVoteRepository = mockk<GroupPollVoteRepository>(relaxed = true)
-        val service = GroupPollAnnouncementService(groupMessagingService, groupAnnouncementRepository, groupPollRepository, groupPollOptionRepository, groupPollVoteRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = GroupPollAnnouncementService(groupMessagingService, groupAnnouncementRepository, groupPollRepository, groupPollOptionRepository, groupPollVoteRepository, rateLimiter)
 
         val poll = GroupPoll(id = "poll_1", groupConversationId = "group_1", createdBy = "user_1", question = "Q?", allowMultiple = false)
         val optionA = GroupPollOption(id = "option_a", pollId = "poll_1", text = "A")
@@ -122,7 +140,8 @@ class GroupPollAnnouncementServiceTest : BehaviorSpec({
         val groupPollRepository = mockk<GroupPollRepository>()
         val groupPollOptionRepository = mockk<GroupPollOptionRepository>()
         val groupPollVoteRepository = mockk<GroupPollVoteRepository>(relaxed = true)
-        val service = GroupPollAnnouncementService(groupMessagingService, groupAnnouncementRepository, groupPollRepository, groupPollOptionRepository, groupPollVoteRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = GroupPollAnnouncementService(groupMessagingService, groupAnnouncementRepository, groupPollRepository, groupPollOptionRepository, groupPollVoteRepository, rateLimiter)
 
         val poll = GroupPoll(id = "poll_2", groupConversationId = "group_1", createdBy = "user_1", question = "Q?", allowMultiple = true)
         val optionA = GroupPollOption(id = "option_a", pollId = "poll_2", text = "A")
@@ -165,7 +184,8 @@ class GroupPollAnnouncementServiceTest : BehaviorSpec({
         val groupPollRepository = mockk<GroupPollRepository>()
         val groupPollOptionRepository = mockk<GroupPollOptionRepository>()
         val groupPollVoteRepository = mockk<GroupPollVoteRepository>(relaxed = true)
-        val service = GroupPollAnnouncementService(groupMessagingService, groupAnnouncementRepository, groupPollRepository, groupPollOptionRepository, groupPollVoteRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = GroupPollAnnouncementService(groupMessagingService, groupAnnouncementRepository, groupPollRepository, groupPollOptionRepository, groupPollVoteRepository, rateLimiter)
 
         val poll = GroupPoll(
             id = "poll_3", groupConversationId = "group_1", createdBy = "user_1", question = "Q?",
