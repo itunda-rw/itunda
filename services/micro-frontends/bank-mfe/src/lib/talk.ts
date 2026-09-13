@@ -87,9 +87,9 @@ export const postGroupAnnouncement = (groupId: string, body: string) =>
 export const fetchGroupPolls = (groupId: string) =>
   apiFetch<{ success: boolean; polls: GroupPollWithVotes[] }>(`/api/v1/messages/groups/${groupId}/polls`).then((r) => r.polls);
 
-export const createGroupPoll = (groupId: string, question: string, options: string[], allowMultiple = false) =>
+export const createGroupPoll = (groupId: string, question: string, options: string[], allowMultiple = false, closesAt?: string) =>
   apiFetch<{ success: boolean; poll: GroupPollWithVotes }>(`/api/v1/messages/groups/${groupId}/polls`, {
-    method: 'POST', body: JSON.stringify({ question, options, allowMultiple }),
+    method: 'POST', body: JSON.stringify({ question, options, allowMultiple, closesAt: closesAt ?? null }),
   }).then((r) => r.poll);
 
 export const voteGroupPoll = (groupId: string, pollId: string, optionId: string) =>

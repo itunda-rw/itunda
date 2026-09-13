@@ -51,10 +51,12 @@ public struct CreateGroupPollRequest: Encodable {
     public let question: String
     public let options: [String]
     public let allowMultiple: Bool
-    public init(question: String, options: [String], allowMultiple: Bool = false) {
+    public let closesAt: String?
+    public init(question: String, options: [String], allowMultiple: Bool = false, closesAt: String? = nil) {
         self.question = question
         self.options = options
         self.allowMultiple = allowMultiple
+        self.closesAt = closesAt
     }
 }
 public struct VoteGroupPollRequest: Encodable { public let optionId: String }
@@ -143,8 +145,8 @@ extension NetworkClient {
         try await get("api/v1/messages/groups/\(groupId)/polls")
     }
 
-    public func createGroupPoll(groupId: String, question: String, options: [String], allowMultiple: Bool = false) async throws -> GroupPollResponse {
-        try await authenticatedPost("api/v1/messages/groups/\(groupId)/polls", body: CreateGroupPollRequest(question: question, options: options, allowMultiple: allowMultiple))
+    public func createGroupPoll(groupId: String, question: String, options: [String], allowMultiple: Bool = false, closesAt: String? = nil) async throws -> GroupPollResponse {
+        try await authenticatedPost("api/v1/messages/groups/\(groupId)/polls", body: CreateGroupPollRequest(question: question, options: options, allowMultiple: allowMultiple, closesAt: closesAt))
     }
 
     public func voteGroupPoll(groupId: String, pollId: String, optionId: String) async throws -> GroupPollResponse {

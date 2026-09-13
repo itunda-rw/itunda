@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -80,7 +81,9 @@ internal fun GroupAnnouncementPollView(groupId: String, onBack: () -> Unit) {
         NewGroupPollForm(
             onCancel = { showNewPoll = false },
             onCreated = { showNewPoll = false; coroutineScope.launch { load() } },
-            createPoll = { question, options -> NetworkClient.talkApi.createGroupPoll(groupId, CreateGroupPollRequest(question, options)) },
+            createPoll = { question, options, allowMultiple, closesAt ->
+                NetworkClient.talkApi.createGroupPoll(groupId, CreateGroupPollRequest(question, options, allowMultiple, closesAt))
+            },
         )
         return
     }
@@ -157,6 +160,13 @@ private fun GroupPollCard(poll: GroupPollWithVotesDto, onVote: (String) -> Unit)
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surfaceSoft).padding(12.dp),
     ) {
         Text(poll.poll.question, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        if (poll.poll.allowMultiple || poll.poll.closesAt != null) {
+            val parts = listOfNotNull(
+                "Multiple answers allowed".takeIf { poll.poll.allowMultiple },
+                poll.poll.closesAt?.let { "Closes $it" },
+            )
+            Text(parts.joinToString(" · "), color = Ids.colors.textSecondary, fontSize = 11.sp)
+        }
         Spacer(modifier = Modifier.height(6.dp))
         poll.options.forEach { option ->
             val count = poll.voteCountByOptionId[option.id] ?: 0
@@ -184,11 +194,13 @@ private fun GroupPollCard(poll: GroupPollWithVotesDto, onVote: (String) -> Unit)
 private fun NewGroupPollForm(
     onCancel: () -> Unit,
     onCreated: () -> Unit,
-    createPoll: suspend (question: String, options: List<String>) -> GroupPollResponse,
+    createPoll: suspend (question: String, options: List<String>, allowMultiple: Boolean, closesAt: String?) -> GroupPollResponse,
 ) {
     BackHandler(onBack = onCancel)
     var question by remember { mutableStateOf("") }
     var optionsText by remember { mutableStateOf(listOf("", "")) }
+    var allowMultiple by remember { mutableStateOf(false) }
+    var closesInHours by remember { mutableStateOf("") }
     var creating by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
@@ -213,14 +225,30 @@ private fun NewGroupPollForm(
                 )
             }
             item {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.pressScaleClickable { allowMultiple = !allowMultiple }) {
+                    Checkbox(checked = allowMultiple, onCheckedChange = { allowMultiple = it })
+                    Text("Allow multiple answers", color = Ids.colors.textPrimary, fontSize = 13.sp)
+                }
+            }
+            item {
+                IdsTextField(
+                    value = closesInHours,
+                    onValueChange = { closesInHours = it.filter { c -> c.isDigit() } },
+                    label = "Closes in how many hours (optional)",
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            item {
                 IdsButton(
                     text = if (creating) "Creating…" else "Create poll",
                     enabled = !creating && question.isNotBlank() && optionsText.count { it.isNotBlank() } >= 2,
                     onClick = {
                         creating = true
+                        val closesAt = closesInHours.toLongOrNull()?.takeIf { it > 0 }
+                            ?.let { hours -> java.time.Instant.now().plus(hours, java.time.temporal.ChronoUnit.HOURS).toString() }
                         coroutineScope.launch {
                             try {
-                                createPoll(question.trim(), optionsText.map { it.trim() }.filter { it.isNotBlank() })
+                                createPoll(question.trim(), optionsText.map { it.trim() }.filter { it.isNotBlank() }, allowMultiple, closesAt)
                                 onCreated()
                             } catch (e: HttpException) {
                                 error = superAppErrorMessage(e)

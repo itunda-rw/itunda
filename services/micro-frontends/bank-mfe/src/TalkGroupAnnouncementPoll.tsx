@@ -42,7 +42,14 @@ function PollsList({ polls, onVote }: { polls: GroupPollWithVotes[] | null; onVo
         const totalVotes = Object.values(voteCountByOptionId).reduce((a, b) => a + b, 0);
         return (
           <div key={poll.id} style={{ padding: '12px 14px', backgroundColor: 'var(--itunda-grey-50)', borderRadius: 'var(--itunda-radius-md)' }}>
-            <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-grey-900)', marginBottom: '8px' }}>{poll.question}</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-grey-900)', marginBottom: '4px' }}>{poll.question}</p>
+            {(poll.allowMultiple || poll.closesAt) && (
+              <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-400)', marginBottom: '8px' }}>
+                {poll.allowMultiple ? 'Multiple answers allowed' : ''}
+                {poll.allowMultiple && poll.closesAt ? ' · ' : ''}
+                {poll.closesAt ? `Closes ${new Date(poll.closesAt).toLocaleString()}` : ''}
+              </p>
+            )}
             {options.map((opt) => {
               const count = voteCountByOptionId[opt.id] ?? 0;
               const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
@@ -84,6 +91,8 @@ export function TalkGroupAnnouncementPoll({ groupId, onBack }: { groupId: string
   const [showNewPoll, setShowNewPoll] = useState(false);
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState(['', '']);
+  const [pollAllowMultiple, setPollAllowMultiple] = useState(false);
+  const [pollClosesAt, setPollClosesAt] = useState('');
   const [creatingPoll, setCreatingPoll] = useState(false);
 
   const load = () => {
@@ -109,8 +118,16 @@ export function TalkGroupAnnouncementPoll({ groupId, onBack }: { groupId: string
     const options = pollOptions.map((o) => o.trim()).filter(Boolean);
     if (!question || options.length < 2) return;
     setCreatingPoll(true);
-    createGroupPoll(groupId, question, options)
-      .then((poll) => { setPolls((prev) => [poll, ...(prev ?? [])]); setShowNewPoll(false); setPollQuestion(''); setPollOptions(['', '']); })
+    const closesAtIso = pollClosesAt ? new Date(pollClosesAt).toISOString() : undefined;
+    createGroupPoll(groupId, question, options, pollAllowMultiple, closesAtIso)
+      .then((poll) => {
+        setPolls((prev) => [poll, ...(prev ?? [])]);
+        setShowNewPoll(false);
+        setPollQuestion('');
+        setPollOptions(['', '']);
+        setPollAllowMultiple(false);
+        setPollClosesAt('');
+      })
       .catch(() => {})
       .finally(() => setCreatingPoll(false));
   };
@@ -176,6 +193,19 @@ export function TalkGroupAnnouncementPoll({ groupId, onBack }: { groupId: string
             <button type="button" onClick={() => setPollOptions((prev) => [...prev, ''])} style={{ alignSelf: 'flex-start', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)', background: 'none', border: 'none', cursor: 'pointer' }}>
               + Add option
             </button>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-700)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={pollAllowMultiple} onChange={(e) => setPollAllowMultiple(e.target.checked)} />
+              Allow multiple answers
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-700)' }}>
+              Closes at (optional)
+              <input
+                type="datetime-local"
+                value={pollClosesAt}
+                onChange={(e) => setPollClosesAt(e.target.value)}
+                style={{ padding: '8px 10px', borderRadius: 'var(--itunda-radius-sm)', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
+              />
+            </label>
             <button type="button" className="itunda-btn itunda-btn-primary" disabled={creatingPoll} onClick={submitPoll}>
               Create poll
             </button>

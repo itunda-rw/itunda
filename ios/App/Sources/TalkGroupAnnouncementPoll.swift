@@ -39,8 +39,8 @@ struct TalkGroupAnnouncementPollView: View {
             })
         }
         .sheet(isPresented: $showCreatePoll) {
-            CreatePollSheet(onCreate: { question, options in
-                Task { await createPoll(question: question, options: options) }
+            CreatePollSheet(onCreate: { question, options, allowMultiple, closesAt in
+                Task { await createPoll(question: question, options: options, allowMultiple: allowMultiple, closesAt: closesAt) }
             })
         }
     }
@@ -111,9 +111,9 @@ struct TalkGroupAnnouncementPollView: View {
         }
     }
 
-    private func createPoll(question: String, options: [String]) async {
+    private func createPoll(question: String, options: [String], allowMultiple: Bool, closesAt: String?) async {
         do {
-            let res = try await NetworkClient.shared.createGroupPoll(groupId: groupId, question: question, options: options)
+            let res = try await NetworkClient.shared.createGroupPoll(groupId: groupId, question: question, options: options, allowMultiple: allowMultiple, closesAt: closesAt)
             polls = (polls ?? []) + [res.poll]
             showCreatePoll = false
         } catch {
@@ -140,6 +140,13 @@ private struct PollCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(poll.poll.question).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+            if poll.poll.allowMultiple || poll.poll.closesAt != nil {
+                let parts = [
+                    poll.poll.allowMultiple ? "Multiple answers allowed" : nil,
+                    poll.poll.closesAt.map { "Closes \($0)" },
+                ].compactMap { $0 }
+                Text(parts.joined(separator: " · ")).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            }
             ForEach(poll.options) { option in
                 let count = poll.voteCountByOptionId[option.id] ?? 0
                 let mine = poll.myVoteOptionIds.contains(option.id)
@@ -192,12 +199,19 @@ private struct ComposeAnnouncementSheet: View {
 }
 
 private struct CreatePollSheet: View {
-    let onCreate: (String, [String]) -> Void
+    let onCreate: (String, [String], Bool, String?) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var question = ""
     @State private var options: [String] = ["", ""]
+    @State private var allowMultiple = false
+    @State private var closesInHours = ""
 
     private var validOptions: [String] { options.map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }
+
+    private var closesAt: String? {
+        guard let hours = Int(closesInHours), hours > 0 else { return nil }
+        return ISO8601DateFormatter().string(from: Date().addingTimeInterval(TimeInterval(hours) * 3600))
+    }
 
     var body: some View {
         NavigationView {
@@ -207,7 +221,9 @@ private struct CreatePollSheet: View {
                     IdsTextField("Option \(i + 1)", text: $options[i])
                 }
                 Button("Add option") { options.append("") }.font(.caption)
-                Button("Create poll") { onCreate(question, validOptions) }
+                Toggle("Allow multiple answers", isOn: $allowMultiple)
+                IdsTextField("Closes in how many hours (optional)", text: $closesInHours, keyboardType: .numberPad)
+                Button("Create poll") { onCreate(question, validOptions, allowMultiple, closesAt) }
                     .disabled(question.trimmingCharacters(in: .whitespaces).isEmpty || validOptions.count < 2)
                 Spacer()
             }
