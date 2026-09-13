@@ -735,6 +735,13 @@ class RideTripService(
                 LedgerLeg(driverAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Tip received"),
             ),
         )
+        // Real gap found live (2026-09-14, FraudRuleEngine-verify sweep): requestTrip's
+        // own evaluate call is always against a null counterparty (no driver assigned
+        // yet at request time), so a tip is real new money to a real counterparty (the
+        // driver) that has never once been evaluated anywhere in this trip's whole
+        // lifecycle. Same "new counterparty enters the picture" shape
+        // MerchantService.chargeCard/EmoticonService.giftPack already cover.
+        fraudRuleEngine.evaluate(passengerUserId, driver.userId, amount, result.transactionId)
         trip.tipAmount = amount
         trip.tipTransactionId = result.transactionId
         val saved = rideTripRepository.save(trip)

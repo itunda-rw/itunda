@@ -766,6 +766,14 @@ class EatsOrderService(
                 LedgerLeg(riderAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Tip received"),
             ),
         )
+        // Real gap found live (2026-09-14, FraudRuleEngine-verify sweep): placeOrder's
+        // own evaluate call only ever assesses the restaurant as counterparty -- the
+        // rider is never assigned yet at order-placement time, so a tip is real new
+        // money to a real counterparty (the rider) that has never once been evaluated
+        // anywhere in this order's whole lifecycle. Same "new counterparty enters the
+        // picture" shape MerchantService.chargeCard/EmoticonService.giftPack already
+        // cover.
+        fraudRuleEngine.evaluate(buyerId, rider.userId, amount, result.transactionId)
         order.tipAmount = amount
         order.tipTransactionId = result.transactionId
         val saved = eatsOrderRepository.save(order)

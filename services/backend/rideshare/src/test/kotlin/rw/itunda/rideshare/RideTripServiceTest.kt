@@ -657,6 +657,62 @@ class RideTripServiceTest : BehaviorSpec({
         }
     }
 
+    // Real gap found live (2026-09-14, FraudRuleEngine-verify sweep): tipDriver had
+    // zero FraudRuleEngine coverage -- requestTrip's own evaluate call is always
+    // against a null counterparty (no driver assigned yet at request time), so a tip
+    // is real new money to a real counterparty (the driver) never once evaluated
+    // anywhere in this trip's whole lifecycle.
+    Given("a real COMPLETED trip the passenger wants to tip") {
+        val rideDriverRepository = mockk<RideDriverRepository>()
+        val rideTripRepository = mockk<RideTripRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val fraudRuleEngine = mockk<rw.itunda.core.fraud.FraudRuleEngine>(relaxed = true)
+        val service = newService(
+            rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
+            accountRepository = accountRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
+            pushNotificationService = pushNotificationService, fraudRuleEngine = fraudRuleEngine,
+        )
+
+        val driver = RideDriver(id = "driver_4", userId = "driver_user_4", accountId = "account_driver_4", available = true, licenseNumber = "LIC-TIP")
+        val driverAccount = Account(
+            id = "account_driver_4", userId = "driver_user_4", accountNumber = "1000000004", accountName = "Driver",
+            type = AccountType.MAIN, balance = BigDecimal("0"), availableBalance = BigDecimal("0"),
+        )
+        val passengerAccount = Account(
+            id = "account_passenger_tip", userId = "passenger_5", accountNumber = "1000000005", accountName = "Passenger",
+            type = AccountType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
+        )
+        val trip = RideTrip(
+            id = "ride_trip_3", passengerId = "passenger_5", driverId = "driver_4", pickupAddress = "A", pickupLatitude = -1.95,
+            pickupLongitude = 30.06, dropoffAddress = "B", dropoffLatitude = -1.96, dropoffLongitude = 30.09,
+            distanceKm = BigDecimal("4.0"), fare = BigDecimal("2000"), platformFee = BigDecimal("30"),
+            transactionId = "ledgertxn_z", status = RideTripStatus.COMPLETED,
+        )
+        every { rideTripRepository.findByIdForUpdate("ride_trip_3") } returns Optional.of(trip)
+        every { rideDriverRepository.findById("driver_4") } returns Optional.of(driver)
+        every { accountRepository.findByUserIdAndType("passenger_5", AccountType.MAIN) } returns passengerAccount
+        every { accountRepository.findById("account_driver_4") } returns Optional.of(driverAccount)
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("tiptxn_1", emptyList())
+        every { rideTripRepository.save(any()) } answers { firstArg() }
+
+        When("the real passenger tips the real driver") {
+            val result = service.tipDriver("passenger_5", "ride_trip_3", BigDecimal("500"))
+
+            Then("it real-records the tip amount and transaction id") {
+                result.tipAmount shouldBe BigDecimal("500")
+                result.tipTransactionId shouldBe "tiptxn_1"
+            }
+
+            Then("the real fraud engine is evaluated against the passenger and the driver, a counterparty never assessed before now") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("passenger_5", "driver_user_4", BigDecimal("500"), "tiptxn_1") }
+            }
+        }
+    }
+
     Given("a real DRIVER_ASSIGNED trip with a real PIN, a driver starting it") {
         val rideDriverRepository = mockk<RideDriverRepository>()
         val rideTripRepository = mockk<RideTripRepository>()

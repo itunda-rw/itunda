@@ -2286,6 +2286,37 @@ class EatsOrderServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        // Real gap found live (2026-09-14, FraudRuleEngine-verify sweep): tipRider had
+        // zero FraudRuleEngine coverage -- placeOrder's own evaluate call only ever
+        // assesses the restaurant as counterparty (no rider is assigned yet at
+        // order-placement time), so a tip is real new money to a real counterparty (the
+        // rider) never once evaluated anywhere in this order's whole lifecycle.
+        When("a real buyer tips the real rider who delivered their order") {
+            val deliveredOrder = EatsOrder(
+                id = "eats_order_tip_1", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_1", riderId = "rider_1", status = EatsOrderStatus.DELIVERED,
+            )
+            every { eatsOrderRepository.findByIdForUpdate("eats_order_tip_1") } returns Optional.of(deliveredOrder)
+            every { riderRepository.findById("rider_1") } returns Optional.of(rider)
+            val buyerAccount = account("account_buyer_tip", "buyer_1")
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findById("account_rider") } returns Optional.of(riderAccount)
+            every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("tiptxn_1", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            val result = service.tipRider("buyer_1", "eats_order_tip_1", BigDecimal("500"))
+
+            Then("it real-records the tip amount and transaction id") {
+                result.tipAmount shouldBe BigDecimal("500")
+                result.tipTransactionId shouldBe "tiptxn_1"
+            }
+
+            Then("the real fraud engine is evaluated against the buyer and the rider, a counterparty never assessed before now") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("buyer_1", "rider_user_1", BigDecimal("500"), "tiptxn_1") }
+            }
+        }
     }
 
     Given("a real buyer checking their rider's real live location") {
