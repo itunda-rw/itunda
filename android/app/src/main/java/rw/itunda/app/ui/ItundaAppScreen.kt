@@ -1798,7 +1798,8 @@ fun ItundaAppScreen(
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
-                ItundaBottomBar(selectedTab = selectedTab, onSelect = { selectedTab = it })
+                val messagesUnreadCount by viewModel.messagesUnreadCount.collectAsState()
+                ItundaBottomBar(selectedTab = selectedTab, onSelect = { selectedTab = it }, messagesUnreadCount = messagesUnreadCount)
             }
         ) { paddingValues ->
             Box(

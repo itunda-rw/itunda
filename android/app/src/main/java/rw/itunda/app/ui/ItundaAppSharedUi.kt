@@ -6,8 +6,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -51,7 +54,7 @@ import rw.itunda.core.designsystem.theme.IdsIcons
  * against real Toss screenshots, 2026-07-10).
  */
 @Composable
-internal fun ItundaBottomBar(selectedTab: ItundaTab, onSelect: (ItundaTab) -> Unit) {
+internal fun ItundaBottomBar(selectedTab: ItundaTab, onSelect: (ItundaTab) -> Unit, messagesUnreadCount: Long = 0) {
     Column {
         Divider(color = Ids.colors.divider, thickness = 0.5.dp)
         Row(
@@ -84,12 +87,38 @@ internal fun ItundaBottomBar(selectedTab: ItundaTab, onSelect: (ItundaTab) -> Un
                         .padding(top = 8.dp, bottom = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(
-                        imageVector = tab.icon,
-                        contentDescription = tab.label,
-                        modifier = Modifier.size(24.dp),
-                        tint = if (selected) Ids.colors.brand else Ids.colors.textTertiary
-                    )
+                    Box {
+                        Icon(
+                            imageVector = tab.icon,
+                            contentDescription = tab.label,
+                            modifier = Modifier.size(24.dp),
+                            tint = if (selected) Ids.colors.brand else Ids.colors.textTertiary
+                        )
+                        // Real cross-platform-parity gap found live (2026-09-13) -- web
+                        // already shows this exact numeric badge (BankDashboard.tsx,
+                        // capped "99+") on the Messages tab; Android had none at all.
+                        if (tab == ItundaTab.Messages && messagesUnreadCount > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 7.dp, y = (-4).dp)
+                                    .heightIn(min = 16.dp)
+                                    .defaultMinSize(minWidth = 16.dp)
+                                    .clip(RoundedCornerShape(50))
+                                    .background(Ids.colors.danger)
+                                    .padding(horizontal = 3.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = if (messagesUnreadCount > 99) "99+" else messagesUnreadCount.toString(),
+                                    color = androidx.compose.ui.graphics.Color.White,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    lineHeight = 10.sp,
+                                )
+                            }
+                        }
+                    }
                     Spacer(modifier = Modifier.height(3.dp))
                     Text(
                         text = tab.label,

@@ -76,6 +76,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _unreadNotificationCount = MutableStateFlow(0)
     val unreadNotificationCount: StateFlow<Int> = _unreadNotificationCount
 
+    // Real cross-platform-parity gap found live (2026-09-13) -- web already shows a
+    // real numeric Messages-tab badge (BankDashboard.tsx) using this exact unbounded
+    // backend aggregate; Android had neither the endpoint nor any bottom-nav badge.
+    private val _messagesUnreadCount = MutableStateFlow(0L)
+    val messagesUnreadCount: StateFlow<Long> = _messagesUnreadCount
+
     // Real Partner SDK catalog (2026-07-17) -- approved third-party mini-apps a user can
     // actually tap into, closing the mobile half of docs/TOSS_PARITY_MATRIX.md's Partner
     // SDK row. See miniapps/PartnerMiniAppLoader.kt for the download/render mechanism.
@@ -217,6 +223,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 } catch (e: retrofit2.HttpException) {
                     // Leave whatever Home already had rather than clobber it with 0/empty.
+                }
+
+                // Real cross-platform-parity gap found live (2026-09-13) -- see
+                // _messagesUnreadCount's own doc comment above. Same non-blocking,
+                // leave-stale-on-failure discipline as the notifications fetch above.
+                try {
+                    val unreadRes = NetworkClient.talkApi.getUnreadCount()
+                    if (unreadRes.success) {
+                        _messagesUnreadCount.value = unreadRes.total
+                    }
+                } catch (e: retrofit2.HttpException) {
+                    // Leave whatever Home already had rather than clobber it with 0.
                 }
                 _isOffline.value = false
             } catch (e: retrofit2.HttpException) {

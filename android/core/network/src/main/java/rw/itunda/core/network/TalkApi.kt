@@ -92,4 +92,13 @@ interface TalkApi {
 
     @POST("api/v1/messages/groups/{groupId}/polls/{pollId}/vote")
     suspend fun voteGroupPoll(@Path("groupId") groupId: String, @Path("pollId") pollId: String, @Body request: VoteGroupPollRequest): GroupPollResponse
+
+    // Real cross-platform-parity gap found live (2026-09-13) -- web already shows a
+    // real numeric badge (capped "99+") on the Messages tab using this exact
+    // unbounded aggregate endpoint (BankDashboard.tsx); Android had neither the
+    // endpoint nor any bottom-nav badge mechanism at all.
+    @GET("api/v1/messages/unread-count")
+    suspend fun getUnreadCount(): UnreadCountResponse
 }
+
+data class UnreadCountResponse(val success: Boolean, val conversationsUnread: Long, val groupsUnread: Long, val total: Long)
