@@ -17,6 +17,7 @@ import rw.itunda.core.domain.MerchantBillingSubscriptionStatus
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
@@ -65,7 +66,8 @@ class MerchantBillingServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
-        val chargeExecutor = MerchantBillingChargeExecutor(ledgerService, transactionRepository, notificationRepository, pushNotificationService, autoTopUpService)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val chargeExecutor = MerchantBillingChargeExecutor(ledgerService, transactionRepository, notificationRepository, pushNotificationService, autoTopUpService, fraudRuleEngine)
         val service = MerchantBillingService(
             merchantBillingPlanRepository, merchantBillingSubscriptionRepository, merchantRepository,
             accountRepository, chargeExecutor, rateLimiter, notificationRepository, pushNotificationService,
@@ -98,6 +100,14 @@ class MerchantBillingServiceTest : BehaviorSpec({
 
             Then("it posts one real 3-leg ledger transaction for the first cycle") {
                 verify(exactly = 1) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+
+            // Real gap found live (2026-09-14, FraudRuleEngine-verify sweep): this
+            // class's own doc comment says a subscription charge "is the same real
+            // merchant-collection moment collect() handles for QR payments" -- but
+            // never copied collect()'s real fraudRuleEngine.evaluate call.
+            Then("the real fraud engine is evaluated against the customer and the real merchant owner") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("customer_1", "owner_1", BigDecimal("5000"), "txn_1") }
             }
 
             Then("it sends a real charged notification to the customer") {
@@ -217,7 +227,8 @@ class MerchantBillingServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
-        val chargeExecutor = MerchantBillingChargeExecutor(ledgerService, transactionRepository, notificationRepository, pushNotificationService, autoTopUpService)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val chargeExecutor = MerchantBillingChargeExecutor(ledgerService, transactionRepository, notificationRepository, pushNotificationService, autoTopUpService, fraudRuleEngine)
         val service = MerchantBillingService(
             merchantBillingPlanRepository, merchantBillingSubscriptionRepository, merchantRepository,
             accountRepository, chargeExecutor, rateLimiter, notificationRepository, pushNotificationService,
@@ -243,6 +254,14 @@ class MerchantBillingServiceTest : BehaviorSpec({
             Then("it returns true and advances the schedule without throwing") {
                 succeeded shouldBe true
                 subscription.chargeCount shouldBe 4
+            }
+
+            // Real gap found live (2026-09-14, FraudRuleEngine-verify sweep): chargeOne
+            // is a scheduler-triggered recurring charge with zero customer action in
+            // the loop at all, making a missing fraud check on this path a real,
+            // fully-unattended money-movement gap.
+            Then("the real fraud engine is evaluated against the customer and the real merchant owner") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("customer_1", "owner_1", BigDecimal("5000"), "txn_2") }
             }
         }
 

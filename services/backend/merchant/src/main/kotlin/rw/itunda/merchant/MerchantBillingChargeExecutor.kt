@@ -15,6 +15,7 @@ import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.Account
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.pricing.PlatformFees
@@ -49,6 +50,7 @@ class MerchantBillingChargeExecutor(
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
     private val autoTopUpService: rw.itunda.account.AutoTopUpService,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     private val log = LoggerFactory.getLogger(MerchantBillingChargeExecutor::class.java)
 
@@ -83,18 +85,28 @@ class MerchantBillingChargeExecutor(
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, fee, "Subscription fee - ${plan.name}"),
             ),
         )
-        transactionRepository.save(
-            Transaction(
-                id = result.transactionId,
-                referenceNumber = "BILLING${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
-                senderId = subscription.customerId, recipientId = merchant.ownerUserId,
-                fromAccountId = resolvedCustomerAccount.id, toAccountId = merchantAccount.id,
-                amount = plan.amount, fee = fee, currency = resolvedCustomerAccount.currency,
-                type = TransactionType.PAYMENT, status = TransactionStatus.COMPLETED,
-                description = "Subscription charge - ${plan.name}", channel = "MERCHANT_BILLING",
-                completedAt = Instant.now(),
-            ),
+        val transaction = Transaction(
+            id = result.transactionId,
+            referenceNumber = "BILLING${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
+            senderId = subscription.customerId, recipientId = merchant.ownerUserId,
+            fromAccountId = resolvedCustomerAccount.id, toAccountId = merchantAccount.id,
+            amount = plan.amount, fee = fee, currency = resolvedCustomerAccount.currency,
+            type = TransactionType.PAYMENT, status = TransactionStatus.COMPLETED,
+            description = "Subscription charge - ${plan.name}", channel = "MERCHANT_BILLING",
+            completedAt = Instant.now(),
         )
+        // Real gap found live (2026-09-14, FraudRuleEngine-verify sweep): this class's
+        // own doc comment says a recurring subscription charge "is the same real
+        // merchant-collection moment collect() handles for QR payments, so it gets the
+        // identical treatment" -- but never copied collect()'s real
+        // fraudRuleEngine.evaluate call. Reachable from chargeOne with zero customer
+        // action in the loop at all (a scheduler-triggered recurring charge), so this
+        // is a real, unattended money-movement path with no fraud review whatsoever.
+        // Evaluated before the transaction row is saved, same ordering as
+        // MerchantService.collect's own comment (evaluating after the save would let
+        // this transaction match itself as prior history).
+        fraudRuleEngine.evaluate(subscription.customerId, merchant.ownerUserId, plan.amount, transaction.id)
+        transactionRepository.save(transaction)
         subscription.lastFailureReason = null
         subscription.chargeCount += 1
         subscription.lastChargedAt = Instant.now()
