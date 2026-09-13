@@ -3,6 +3,7 @@ package rw.itunda.p2p
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -376,6 +377,63 @@ class P2pDelayedTransferServiceTest : BehaviorSpec({
 
             Then("it's silently skipped, never double-processed -- the same guard MarketplaceService.autoReleaseEscrow already establishes") {
                 verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+    }
+
+    // Real sibling-asymmetry fix (2026-09-13) -- Gift/GiftVoucher/MerchantCoupon/
+    // MarketplaceEscrow all warn the party who can still act before their own
+    // hold-then-auto-settle window closes; this feature's ENTIRE purpose is giving the
+    // sender a window to cancel, yet nothing ever reminded them it was closing.
+    Given("real delayed transfers of every real age, checking which are due for a real pre-release reminder") {
+        val p2pDelayedTransferRepository = mockk<P2pDelayedTransferRepository>()
+        val service = buildService(p2pDelayedTransferRepository = p2pDelayedTransferRepository)
+
+        val dueSoon = P2pDelayedTransfer(
+            id = "p2p_delayed_6", senderUserId = "sender_1", senderAccountId = "account_sender",
+            recipientUserId = "recipient_1", recipientAccountId = "account_recipient", amount = BigDecimal("2000"),
+            description = "Rent", holdTransactionId = "ledgertxn_hold_6", releaseAt = Instant.now().plusSeconds(60),
+        )
+        val notYetDue = P2pDelayedTransfer(
+            id = "p2p_delayed_7", senderUserId = "sender_1", senderAccountId = "account_sender",
+            recipientUserId = "recipient_1", recipientAccountId = "account_recipient", amount = BigDecimal("2000"),
+            description = "Rent", holdTransactionId = "ledgertxn_hold_7", releaseAt = Instant.now().plus(Duration.ofHours(2)),
+        )
+        every { p2pDelayedTransferRepository.findByStatusAndRemindedAtIsNull(P2pDelayedTransferStatus.PENDING) } returns listOf(dueSoon, notYetDue)
+
+        When("getDueForReminder runs") {
+            val due = service.getDueForReminder()
+
+            Then("it real-includes only the transfer within the real reminder window, honestly excluding the too-early one") {
+                due shouldBe listOf(dueSoon)
+            }
+        }
+    }
+
+    Given("a real still-PENDING delayed transfer within its real pre-release reminder window, never yet reminded") {
+        val p2pDelayedTransferRepository = mockk<P2pDelayedTransferRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = buildService(
+            p2pDelayedTransferRepository = p2pDelayedTransferRepository,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
+        )
+
+        val transfer = P2pDelayedTransfer(
+            id = "p2p_delayed_8", senderUserId = "sender_1", senderAccountId = "account_sender",
+            recipientUserId = "recipient_1", recipientAccountId = "account_recipient", amount = BigDecimal("2000"),
+            description = "Rent", holdTransactionId = "ledgertxn_hold_8", releaseAt = Instant.now().plusSeconds(60),
+        )
+        every { p2pDelayedTransferRepository.findById("p2p_delayed_8") } returns Optional.of(transfer)
+        every { p2pDelayedTransferRepository.save(any()) } answers { firstArg() }
+        every { notificationRepository.save(any()) } answers { firstArg() }
+
+        When("sendReminder runs") {
+            service.sendReminder("p2p_delayed_8")
+
+            Then("it real-alerts the SENDER (the one who can still cancel) and marks the reminder sent, never double-firing on a re-check") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "sender_1" && it.type == "P2P_DELAYED_TRANSFER_REMINDER" }) }
+                transfer.remindedAt shouldNotBe null
             }
         }
     }

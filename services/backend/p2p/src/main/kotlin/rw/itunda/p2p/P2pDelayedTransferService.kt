@@ -196,6 +196,38 @@ class P2pDelayedTransferService(
         p2pDelayedTransferRepository.findByStatus(P2pDelayedTransferStatus.PENDING)
             .filter { !it.releaseAt.isAfter(Instant.now()) }
 
+    // Real pre-release reminder sweep (2026-09-13) -- see
+    // P2pDelayedTransfer.remindedAt's own doc comment. Same coarse-repo-filter +
+    // exact-due-window-in-service split as getDueForRelease above.
+    fun getDueForReminder(): List<P2pDelayedTransfer> {
+        val cutoff = Instant.now().plus(P2pDelayedTransfer.REMINDER_WINDOW)
+        return p2pDelayedTransferRepository.findByStatusAndRemindedAtIsNull(P2pDelayedTransferStatus.PENDING)
+            .filter { !it.releaseAt.isAfter(cutoff) }
+    }
+
+    /** One real pre-release reminder to the SENDER (the only party who can still
+     * cancel), called per-transfer by the scheduler -- re-checks `status`/
+     * `remindedAt` right before sending so a genuine race can't double-fire, same
+     * resilience discipline GiftService.sendExpiryReminder/
+     * MarketplaceService.sendAutoReleaseReminder's own doc comments already
+     * establish. */
+    @Transactional
+    fun sendReminder(transferId: String) {
+        val transfer = p2pDelayedTransferRepository.findById(transferId).orElse(null) ?: return
+        if (transfer.status != P2pDelayedTransferStatus.PENDING || transfer.remindedAt != null) return
+        val title = "Delayed transfer releasing soon"
+        val body = "Your ${transfer.amount} RWF delayed transfer releases soon. Cancel now if this wasn't you."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = transfer.senderUserId, type = "P2P_DELAYED_TRANSFER_REMINDER",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = null,
+            ),
+        )
+        transfer.remindedAt = Instant.now()
+        p2pDelayedTransferRepository.save(transfer)
+        pushNotificationService.sendToUser(transfer.senderUserId, title, body, type = "P2P_DELAYED_TRANSFER_REMINDER")
+    }
+
     /**
      * Real per-item release, called only from [P2pDelayedTransferReleaseScheduler]'s own
      * try/catch-per-row loop -- never a batch-transactional loop over every due row

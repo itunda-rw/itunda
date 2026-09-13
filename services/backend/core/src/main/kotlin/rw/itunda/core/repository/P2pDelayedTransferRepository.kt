@@ -16,4 +16,9 @@ interface P2pDelayedTransferRepository : JpaRepository<P2pDelayedTransfer, Strin
     // logic lives in the service, same discipline MarketplaceEscrowRepository.
     // findByStatus already establishes for its own auto-release sweep.
     fun findByStatus(status: P2pDelayedTransferStatus): List<P2pDelayedTransfer>
+
+    // Real pre-release reminder sweep (2026-09-13) -- see
+    // P2pDelayedTransfer.REMINDER_WINDOW's own doc comment. Same coarse-filter-then-
+    // exact-check-in-service split as findByStatus above.
+    fun findByStatusAndRemindedAtIsNull(status: P2pDelayedTransferStatus): List<P2pDelayedTransfer>
 }

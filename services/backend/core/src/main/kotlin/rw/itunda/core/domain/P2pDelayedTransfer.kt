@@ -96,6 +96,19 @@ class P2pDelayedTransfer(
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
 
+    // Real sibling-asymmetry fix (2026-09-13) -- Gift/GiftVoucher/MerchantCoupon/
+    // MarketplaceEscrow all warn the party who can still act before their own
+    // hold-then-auto-settle window closes; this feature's ENTIRE purpose is giving the
+    // sender a window to cancel a phishing-pressured or fat-fingered transfer, yet
+    // nothing ever reminded them that window was closing -- the safety property this
+    // class's own doc comment describes ("a transfer made under active phishing
+    // pressure can still be cancelled") silently degraded to "can be cancelled only if
+    // the sender happens to remember on their own." Null until a real reminder has
+    // been sent, same one-shot re-check-before-send discipline every other
+    // *ReminderSentAt-style field in this codebase already uses.
+    @Column(name = "reminded_at")
+    var remindedAt: Instant? = null,
+
     @Version
     @Column(nullable = false)
     var version: Long = 0,
@@ -112,5 +125,12 @@ class P2pDelayedTransfer(
         // uses is demo-speed on purpose, matching every other scheduler in this
         // codebase -- the *business* window here is the real sourced one.
         val DELAY_WINDOW: Duration = Duration.ofHours(3)
+
+        // DELAY_WINDOW is far shorter than any other hold-then-auto-settle window in
+        // this codebase (Gift/MarketplaceEscrow are both real DAYS), so neither of
+        // their own reminder-window constants fit -- 30 minutes is proportionally
+        // similar to Gift's own "roughly a sixth of the total window" reminder choice,
+        // long enough to be a real, actionable warning before a 3-hour window closes.
+        val REMINDER_WINDOW: Duration = Duration.ofMinutes(30)
     }
 }
