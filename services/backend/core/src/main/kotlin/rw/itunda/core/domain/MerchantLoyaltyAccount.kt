@@ -65,6 +65,18 @@ class MerchantLoyaltyAccount(
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
 
+    // Real sibling-asymmetry fix (2026-09-13) -- MerchantCoupon (same module) already
+    // warns its owner before real expiry via expiryReminderSentAt; this near-identical
+    // "dormant balance auto-expires" concept had none -- a customer's earned store
+    // points just silently vanished after EXPIRY_WINDOW with zero prior warning. Reset
+    // to null by accrue/recordRedemption whenever real activity bumps `updatedAt`, so a
+    // customer who's reminded once, then transacts again, can be reminded again for the
+    // NEXT dormancy cycle rather than never again. Null until a real reminder has been
+    // sent, same one-shot re-check-before-send discipline every other *ReminderSentAt
+    // field in this codebase already uses.
+    @Column(name = "expiry_reminder_sent_at")
+    var expiryReminderSentAt: Instant? = null,
+
     @Version
     @Column(nullable = false)
     var version: Long = 0,

@@ -158,6 +158,11 @@ interface MerchantLoyaltyAccountRepository : JpaRepository<MerchantLoyaltyAccoun
     // same "coarse repo filter, exact logic in the service" shape
     // P2pDelayedTransferService.getDueForRelease already establishes.
     fun findByPointBalanceGreaterThanAndUpdatedAtBefore(pointBalance: java.math.BigDecimal, cutoff: java.time.Instant): List<MerchantLoyaltyAccount>
+
+    // Real pre-expiry reminder sweep (2026-09-13) -- see
+    // MerchantLoyaltyPointsService.EXPIRY_REMINDER_WINDOW's own doc comment. Same
+    // coarse-filter-then-exact-check-in-service split as the sibling query above.
+    fun findByPointBalanceGreaterThanAndExpiryReminderSentAtIsNull(pointBalance: java.math.BigDecimal): List<MerchantLoyaltyAccount>
 }
 
 interface WeeklySavingsPlanRepository : JpaRepository<WeeklySavingsPlan, String> {

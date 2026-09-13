@@ -4,8 +4,12 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantLoyaltyAccount
+import rw.itunda.core.domain.Notification
+import rw.itunda.core.pricing.ReminderWindows
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantLoyaltyAccountRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.NotificationRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -62,6 +66,8 @@ data class LoyaltyBalanceView(val merchantId: String, val merchantName: String, 
 class MerchantLoyaltyPointsService(
     private val merchantLoyaltyAccountRepository: MerchantLoyaltyAccountRepository,
     private val merchantRepository: MerchantRepository,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
 
     // Real re-check-before-act helper shared by every real balance read/write path --
@@ -121,6 +127,11 @@ class MerchantLoyaltyPointsService(
         if (isExpired(account)) account.pointBalance = BigDecimal.ZERO
         account.pointBalance = account.pointBalance.add(earned)
         account.updatedAt = Instant.now()
+        // Real activity resets the inactivity clock -- a customer already reminded
+        // once must be eligible to be reminded again for the NEXT dormancy cycle,
+        // not silently skipped forever because expiryReminderSentAt was still set
+        // from a prior cycle.
+        account.expiryReminderSentAt = null
         merchantLoyaltyAccountRepository.save(account)
     }
 
@@ -164,6 +175,7 @@ class MerchantLoyaltyPointsService(
         }
         account.pointBalance = available.subtract(pointsRedeemed)
         account.updatedAt = Instant.now()
+        account.expiryReminderSentAt = null
         merchantLoyaltyAccountRepository.save(account)
     }
 
@@ -192,11 +204,53 @@ class MerchantLoyaltyPointsService(
         merchantLoyaltyAccountRepository.save(account)
     }
 
+    // Real pre-expiry reminder sweep (2026-09-13) -- see
+    // MerchantCoupon.expiryReminderSentAt's own doc comment for the sibling this
+    // mirrors. Coarse repo filter (a nonzero balance never yet reminded), exact
+    // due-window check here -- same "coarse filter, exact logic in the service"
+    // split getExpirableAccounts above already establishes.
+    fun getAccountsDueForExpiryReminder(): List<MerchantLoyaltyAccount> {
+        val cutoff = Instant.now().minus(EXPIRY_WINDOW).plus(EXPIRY_REMINDER_WINDOW)
+        return merchantLoyaltyAccountRepository.findByPointBalanceGreaterThanAndExpiryReminderSentAtIsNull(BigDecimal.ZERO)
+            .filter { !it.updatedAt.isAfter(cutoff) }
+    }
+
+    /** One real expiry-reminder notification to the customer, called per-account by
+     * the scheduler -- re-checks the real balance/reminder-sent state right before
+     * sending so a genuine race (a purchase resetting the inactivity clock moments
+     * earlier) can't double-fire, same resilience discipline
+     * MerchantCouponService.sendExpiryReminder's own doc comment already
+     * establishes. */
+    @Transactional
+    fun sendExpiryReminder(accountId: String) {
+        val account = merchantLoyaltyAccountRepository.findById(accountId).orElse(null) ?: return
+        if (account.pointBalance <= BigDecimal.ZERO || account.expiryReminderSentAt != null || isExpired(account)) return
+        val merchant = merchantRepository.findById(account.merchantId).orElse(null) ?: return
+
+        val title = "Your store points are expiring soon"
+        val body = "Your ${account.pointBalance} points at ${merchant.businessName} will expire soon due to inactivity. Make a purchase there to keep them."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = account.customerId, type = "MERCHANT_LOYALTY_POINTS_EXPIRING_SOON",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"merchantId\":\"${account.merchantId}\"}",
+            ),
+        )
+        pushNotificationService.sendToUser(account.customerId, title, body)
+        account.expiryReminderSentAt = Instant.now()
+        merchantLoyaltyAccountRepository.save(account)
+    }
+
     companion object {
         val ACCRUAL_RATE: BigDecimal = BigDecimal("0.01")
 
         // itunda's own real, self-declared choice -- NOT a sourced Toss Place number
         // (see this class's own doc comment for the full honest accounting of why).
         val EXPIRY_WINDOW: Duration = Duration.ofDays(365)
+
+        // Same real "N days before a paid perk/payment is due" family
+        // ReminderWindows' own doc comment already establishes (MerchantCoupon reuses
+        // it directly) -- this pre-expiry nudge is the same shape, reused rather than
+        // independently re-declared.
+        val EXPIRY_REMINDER_WINDOW: Duration = ReminderWindows.PRE_EXPIRY_REMINDER_WINDOW
     }
 }

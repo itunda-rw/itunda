@@ -2,6 +2,7 @@ package rw.itunda.merchant
 
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -9,8 +10,10 @@ import io.mockk.verify
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantLoyaltyAccount
 import rw.itunda.core.domain.MerchantStatus
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantLoyaltyAccountRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.NotificationRepository
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -20,7 +23,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("a customer with no prior real points at a merchant") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk(), mockk(relaxed = true), mockk(relaxed = true))
         every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns null
 
         When("checking their real balance") {
@@ -58,7 +61,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("a customer with a real existing 500-point balance at a merchant") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk(), mockk(relaxed = true), mockk(relaxed = true))
         every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns freshAccount()
 
         When("checking their real balance") {
@@ -82,7 +85,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("a customer with a real existing 500-point balance, completing another real payment") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk(), mockk(relaxed = true), mockk(relaxed = true))
         val account = freshAccount()
         every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns account
         every { merchantLoyaltyAccountRepository.save(any()) } answers { firstArg() }
@@ -99,7 +102,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("a customer with a real existing 500-point balance, redeeming too many points") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk(), mockk(relaxed = true), mockk(relaxed = true))
         every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns freshAccount()
 
         When("they try to redeem more real points than they actually have") {
@@ -116,7 +119,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("a customer with a real existing 500-point balance, whose real redemption is recorded after a real successful payment") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk(), mockk(relaxed = true), mockk(relaxed = true))
         every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns freshAccount()
         val savedSlot = slot<MerchantLoyaltyAccount>()
         every { merchantLoyaltyAccountRepository.save(capture(savedSlot)) } answers { firstArg() }
@@ -132,7 +135,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("a customer with zero real points at a merchant, attempting to redeem anyway") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk(), mockk(relaxed = true), mockk(relaxed = true))
         every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_2") } returns null
 
         When("real redemption is attempted against a real account that was never created") {
@@ -171,7 +174,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("a customer whose real 500-point balance has sat untouched past the real expiry window") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk(), mockk(relaxed = true), mockk(relaxed = true))
         every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns dormantAccount()
 
         When("checking their real balance") {
@@ -194,7 +197,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("a customer whose real dormant 500-point balance is re-recorded on redemption without going through validateAndComputeRedemption first") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk(), mockk(relaxed = true), mockk(relaxed = true))
         every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns dormantAccount()
 
         When("recordRedemption is called directly against the real stale row") {
@@ -211,7 +214,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("a customer whose real dormant 500-point balance earns a new real purchase after the real expiry window") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk(), mockk(relaxed = true), mockk(relaxed = true))
         val account = dormantAccount()
         every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns account
         val savedSlot = slot<MerchantLoyaltyAccount>()
@@ -228,7 +231,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("a customer whose real 500-point balance is still within the real expiry window") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk(), mockk(relaxed = true), mockk(relaxed = true))
         every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns freshlyActiveAccount()
 
         When("checking their real balance") {
@@ -240,7 +243,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("MerchantLoyaltyPointsExpiryScheduler's own per-item expiry method, a real dormant account due for expiry") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk(), mockk(relaxed = true), mockk(relaxed = true))
         val account = dormantAccount()
         every { merchantLoyaltyAccountRepository.findById("acct_dormant") } returns java.util.Optional.of(account)
         val savedSlot = slot<MerchantLoyaltyAccount>()
@@ -258,7 +261,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("MerchantLoyaltyPointsExpiryScheduler's own per-item expiry method, a real account whose activity moments earlier already reset its clock") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk(), mockk(relaxed = true), mockk(relaxed = true))
         val account = freshlyActiveAccount()
         every { merchantLoyaltyAccountRepository.findById("acct_active") } returns java.util.Optional.of(account)
 
@@ -271,6 +274,58 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
         }
     }
 
+    // Real sibling-asymmetry fix (2026-09-13) -- MerchantCoupon (same module) already
+    // warns its owner before real expiry; this near-identical "dormant balance
+    // auto-expires" concept had none -- a customer's earned store points just
+    // silently vanished after EXPIRY_WINDOW with zero prior warning.
+    Given("real loyalty accounts of every real age, checking which are due for a real pre-expiry reminder") {
+        val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk(), mockk(relaxed = true), mockk(relaxed = true))
+        val dueSoon = MerchantLoyaltyAccount(
+            id = "acct_due_soon", merchantId = "merchant_1", customerId = "customer_1", pointBalance = BigDecimal("500.00"),
+            updatedAt = Instant.now().minus(MerchantLoyaltyPointsService.EXPIRY_WINDOW).plus(MerchantLoyaltyPointsService.EXPIRY_REMINDER_WINDOW).minusSeconds(3600),
+        )
+        val notYetDue = MerchantLoyaltyAccount(
+            id = "acct_not_due", merchantId = "merchant_1", customerId = "customer_2", pointBalance = BigDecimal("300.00"),
+            updatedAt = Instant.now().minus(MerchantLoyaltyPointsService.EXPIRY_WINDOW).plus(MerchantLoyaltyPointsService.EXPIRY_REMINDER_WINDOW).plusSeconds(3600),
+        )
+        every { merchantLoyaltyAccountRepository.findByPointBalanceGreaterThanAndExpiryReminderSentAtIsNull(BigDecimal.ZERO) } returns listOf(dueSoon, notYetDue)
+
+        When("getAccountsDueForExpiryReminder runs") {
+            val due = service.getAccountsDueForExpiryReminder()
+
+            Then("it real-includes only the account within the real reminder window, honestly excluding the too-recent one") {
+                due shouldBe listOf(dueSoon)
+            }
+        }
+    }
+
+    Given("a real loyalty account within its real pre-expiry reminder window, never yet reminded") {
+        val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, merchantRepository, notificationRepository, pushNotificationService)
+        val account = MerchantLoyaltyAccount(
+            id = "acct_due_soon2", merchantId = "merchant_1", customerId = "customer_1", pointBalance = BigDecimal("500.00"),
+            updatedAt = Instant.now().minus(MerchantLoyaltyPointsService.EXPIRY_WINDOW).plus(MerchantLoyaltyPointsService.EXPIRY_REMINDER_WINDOW).minusSeconds(3600),
+        )
+        every { merchantLoyaltyAccountRepository.findById("acct_due_soon2") } returns java.util.Optional.of(account)
+        every { merchantRepository.findById("merchant_1") } returns java.util.Optional.of(merchant)
+        every { merchantLoyaltyAccountRepository.save(any()) } answers { firstArg() }
+        every { notificationRepository.save(any()) } answers { firstArg() }
+
+        When("sendExpiryReminder runs") {
+            service.sendExpiryReminder("acct_due_soon2")
+
+            Then("it real-notifies the customer and marks the reminder sent, never double-firing on a re-check") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "customer_1" && it.type == "MERCHANT_LOYALTY_POINTS_EXPIRING_SOON" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("customer_1", "Your store points are expiring soon", any()) }
+                account.expiryReminderSentAt shouldNotBe null
+            }
+        }
+    }
+
     // Real Membership-screen "Store points" row (itunda Pay redesign, 2026-08-28) --
     // the first real cross-merchant read of this data, see getMyBalances's own doc
     // comment for the honesty reasoning (real itunda merchant balances only, never
@@ -278,7 +333,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
     Given("a customer with real nonzero points at two merchants, zero at a third, and an expired balance at a fourth") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
         val merchantRepository = mockk<MerchantRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, merchantRepository)
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, merchantRepository, mockk(relaxed = true), mockk(relaxed = true))
         val merchant2 = Merchant(id = "merchant_2", ownerUserId = "owner_2", accountId = "account_2", businessName = "Nyamirambo Bakery", status = MerchantStatus.ACTIVE)
 
         every { merchantLoyaltyAccountRepository.findByCustomerId("customer_1") } returns listOf(
