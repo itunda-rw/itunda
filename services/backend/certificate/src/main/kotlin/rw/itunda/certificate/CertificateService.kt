@@ -126,7 +126,24 @@ class CertificateService(
             publicKeyBase64 = publicKeyBase64,
             expiresAt = Instant.now().plus(validityDays, ChronoUnit.DAYS),
         )
-        return certificateRepository.save(certificate) to privateKeyBase64
+        val saved = certificateRepository.save(certificate)
+        // Real sibling-asymmetry gap found live (2026-09-14): this class's own
+        // sendRenewalReminder already sends a real notification, but issue() itself --
+        // which silently REVOKES the caller's prior certificate and mints a new
+        // signing key -- sent none. Same security-alert precedent CardService.setPin
+        // already establishes: if someone with temporary device/session access
+        // reissued the real user's e-signature certificate, they previously had no
+        // way to find out.
+        val issueTitle = "Your itunda Certificate was issued"
+        val issueBody = "A new signing certificate (serial ${saved.serialNumber}) was issued for your account. If this wasn't you, contact support immediately."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = userId, type = "CERTIFICATE_ISSUED",
+                title = issueTitle, body = issueBody, isRead = false, createdAt = Instant.now(), dataJson = "{\"certificateId\":\"${saved.id}\"}",
+            ),
+        )
+        sendRenewalPushAfterCommit(userId, issueTitle, issueBody, saved.id)
+        return saved to privateKeyBase64
     }
 
     fun getMyCertificate(userId: String): Certificate? =
@@ -142,7 +159,18 @@ class CertificateService(
             ?: throw NoCertificateFoundException("No active certificate to revoke")
         cert.status = CertificateStatus.REVOKED
         cert.revokedAt = Instant.now()
-        return certificateRepository.save(cert)
+        val saved = certificateRepository.save(cert)
+        // Same real security-alert gap as issue() above, for the same reason.
+        val revokeTitle = "Your itunda Certificate was revoked"
+        val revokeBody = "Your signing certificate (serial ${saved.serialNumber}) was revoked. If this wasn't you, contact support immediately."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = userId, type = "CERTIFICATE_REVOKED",
+                title = revokeTitle, body = revokeBody, isRead = false, createdAt = Instant.now(), dataJson = "{\"certificateId\":\"${saved.id}\"}",
+            ),
+        )
+        sendRenewalPushAfterCommit(userId, revokeTitle, revokeBody, saved.id)
+        return saved
     }
 
     // Rate-limited 2026-09-07 (Certificate product-completeness pass) -- this route is

@@ -34,6 +34,7 @@ class CertificateServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
 
@@ -60,6 +61,10 @@ class CertificateServiceTest : BehaviorSpec({
                 val daysUntilExpiry = java.time.Duration.between(Instant.now(), certificate.expiresAt).toDays()
                 (daysUntilExpiry in 360..366) shouldBe true
             }
+            Then("a real security alert is sent -- silently reissuing a signing cert is at least as sensitive as a card PIN change") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_1" && it.type == "CERTIFICATE_ISSUED" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", "Your itunda Certificate was issued", any(), any()) }
+            }
         }
     }
 
@@ -69,6 +74,7 @@ class CertificateServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
 
@@ -92,6 +98,7 @@ class CertificateServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
 
@@ -125,6 +132,7 @@ class CertificateServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
 
@@ -160,6 +168,7 @@ class CertificateServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
 
@@ -220,6 +229,7 @@ class CertificateServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
 
@@ -237,6 +247,10 @@ class CertificateServiceTest : BehaviorSpec({
             Then("the real revoke is rate-limited against the caller's own userId") {
                 io.mockk.verify(exactly = 1) { rateLimiter.checkLimit("certificate:revoke:user_6", limit = 10, window = java.time.Duration.ofHours(1)) }
             }
+            Then("a real security alert is sent -- same reasoning as issue()'s own alert") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_6" && it.type == "CERTIFICATE_REVOKED" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_6", "Your itunda Certificate was revoked", any(), any()) }
+            }
         }
     }
 
@@ -245,6 +259,7 @@ class CertificateServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
         every { certificateRepository.findByUserIdAndStatus("user_7", CertificateStatus.ACTIVE) } returns null
@@ -267,6 +282,7 @@ class CertificateServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
 
@@ -297,6 +313,7 @@ class CertificateServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
         every { certificateRepository.findBySerialNumber("UNKNOWN") } returns null
@@ -324,6 +341,7 @@ class CertificateServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
 
