@@ -145,7 +145,25 @@ class FamilyLinkService(
         if (link.status != FamilyLinkStatus.ACTIVE) throw FamilyLinkNotActiveException("Only an active family link can be revoked")
         link.status = FamilyLinkStatus.REVOKED
         link.respondedAt = Instant.now()
-        return familyLinkRepository.save(link)
+        val saved = familyLinkRepository.save(link)
+
+        // Real sibling-asymmetry gap found live (2026-09-14): inviteChild/respondToInvite
+        // both notify the other party of a real family-link-state change; revokeLink --
+        // real-callable by EITHER the guardian or the child -- notified neither. The
+        // OTHER party (whoever didn't initiate) previously had no way to know the link
+        // was gone until the next time they happened to check their family list.
+        val otherUserId = if (userId == link.guardianUserId) link.childUserId else link.guardianUserId
+        val title = "Family link removed"
+        val body = "A family link on your account was removed."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = otherUserId, type = "FAMILY_LINK_REVOKED",
+                title = title, body = body,
+                isRead = false, createdAt = Instant.now(), dataJson = "{\"linkId\":\"${link.id}\"}",
+            ),
+        )
+        pushNotificationService.sendToUser(otherUserId, title, body, mapOf("linkId" to link.id))
+        return saved
     }
 
     // Real spend-limit enforcement (2026-07-27) -- see FamilyLink.kt's own doc comment
@@ -163,7 +181,28 @@ class FamilyLinkService(
             throw FamilyLinkInvalidSpendLimitException("Spend limit must be greater than zero")
         }
         link.dailySpendLimit = dailySpendLimit
-        return familyLinkRepository.save(link)
+        val saved = familyLinkRepository.save(link)
+
+        // Real sibling-asymmetry gap found live (2026-09-14): a guardian-set daily
+        // spend limit directly controls whether the child's own P2pService.sendDirect
+        // calls succeed (enforceSpendLimit below) -- a real, meaningful account-state
+        // change from the child's own point of view, but the child was never told it
+        // changed, tightened, loosened, or was cleared.
+        val title = "Your spend limit changed"
+        val body = if (dailySpendLimit != null) {
+            "Your daily spend limit was set to ${dailySpendLimit.toPlainString()} RWF."
+        } else {
+            "Your daily spend limit was removed."
+        }
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = childUserId, type = "FAMILY_SPEND_LIMIT_CHANGED",
+                title = title, body = body,
+                isRead = false, createdAt = Instant.now(), dataJson = "{\"linkId\":\"${link.id}\"}",
+            ),
+        )
+        pushNotificationService.sendToUser(childUserId, title, body, mapOf("linkId" to link.id))
+        return saved
     }
 
     // Real spend-limit enforcement -- see FamilyLink.kt's own doc comment. Called from

@@ -434,6 +434,65 @@ class FamilyLinkServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real sibling-asymmetry gap found live (2026-09-14): inviteChild/respondToInvite
+    // both notify the other party; revokeLink -- real-callable by either side -- notified
+    // neither.
+    Given("a real active family link, the guardian revoking it") {
+        val familyLinkRepository = mockk<FamilyLinkRepository>(relaxed = true)
+        every { familyLinkRepository.save(any()) } answers { firstArg() }
+        val userRepository = mockk<UserRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = FamilyLinkService(familyLinkRepository, userRepository, accountRepository, transactionRepository, notificationRepository, rateLimiter, pushNotificationService)
+
+        val link = FamilyLink(id = "familylink_7", guardianUserId = "guardian_7", childUserId = "child_7", status = FamilyLinkStatus.ACTIVE)
+        every { familyLinkRepository.findByIdAndGuardianUserId("familylink_7", "guardian_7") } returns link
+
+        When("the guardian revokes it") {
+            val result = service.revokeLink("guardian_7", "familylink_7")
+
+            Then("it's real-revoked") {
+                result.status shouldBe FamilyLinkStatus.REVOKED
+            }
+            Then("the OTHER party (the child, who didn't initiate) is notified") {
+                io.mockk.verify(exactly = 1) { notificationRepository.save(match { it.userId == "child_7" && it.type == "FAMILY_LINK_REVOKED" }) }
+                io.mockk.verify(exactly = 1) { pushNotificationService.sendToUser("child_7", "Family link removed", any(), any()) }
+            }
+        }
+    }
+
+    // Real sibling-asymmetry gap found live (2026-09-14): a guardian-set spend limit
+    // directly controls whether the child's own transfers succeed, but the child was
+    // never told it changed.
+    Given("a real active family link, the guardian setting a spend limit") {
+        val familyLinkRepository = mockk<FamilyLinkRepository>(relaxed = true)
+        every { familyLinkRepository.save(any()) } answers { firstArg() }
+        val userRepository = mockk<UserRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = FamilyLinkService(familyLinkRepository, userRepository, accountRepository, transactionRepository, notificationRepository, rateLimiter, pushNotificationService)
+
+        val link = FamilyLink(id = "familylink_8", guardianUserId = "guardian_8", childUserId = "child_8", status = FamilyLinkStatus.ACTIVE)
+        every { familyLinkRepository.findByGuardianUserIdAndChildUserIdAndStatus("guardian_8", "child_8", FamilyLinkStatus.ACTIVE) } returns link
+
+        When("the guardian sets a real 5,000 RWF daily limit") {
+            service.setSpendLimit("guardian_8", "child_8", BigDecimal("5000"))
+
+            Then("the child is notified of the real new limit") {
+                io.mockk.verify(exactly = 1) { notificationRepository.save(match { it.userId == "child_8" && it.type == "FAMILY_SPEND_LIMIT_CHANGED" && it.body.contains("5000") }) }
+                io.mockk.verify(exactly = 1) { pushNotificationService.sendToUser("child_8", "Your spend limit changed", any(), any()) }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }
