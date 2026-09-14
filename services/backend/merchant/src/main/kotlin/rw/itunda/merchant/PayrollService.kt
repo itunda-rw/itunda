@@ -317,8 +317,21 @@ class PayrollService(
         }
     }
 
+    // Real structural drift found live (2026-09-14, duplicated-helper sweep): this
+    // copy of the established sendPushAfterCommit pattern (16 copies repo-wide) was
+    // missing the try/catch every other copy has around the actual send() call --
+    // registerSynchronization's afterCommit() callback runs on the same thread right
+    // after a real commit, so an uncaught exception here (a transient FCM error, a
+    // stale device token) would propagate back to the ORIGINAL caller, turning an
+    // already-successfully-committed payroll run into an apparent 500 error.
     private fun sendPushAfterCommit(userId: String, title: String, body: String) {
-        val send = { pushNotificationService.sendToUser(userId, title, body) }
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body)
+            } catch (e: Exception) {
+                log.warn("Could not send payroll push to user {}", userId, e)
+            }
+        }
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             send()
             return

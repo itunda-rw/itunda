@@ -351,6 +351,25 @@ class AgentServiceTest : BehaviorSpec({
                 TransactionSynchronizationManager.clearSynchronization()
             }
         }
+
+        // Real structural drift found live (2026-09-14, duplicated-helper sweep):
+        // this class's own sendPushAfterCommit copy was missing the try/catch every
+        // other copy of this repo-wide pattern has -- a transient push failure here
+        // would have propagated back through afterCommit() to the original caller,
+        // turning an already-successfully-committed cash-in into an apparent error.
+        Then("a real cash-in stays successful even when the push provider fails after commit") {
+            every { pushNotificationService3.sendToUser(any(), any(), any(), any()) } throws IllegalStateException("provider unavailable")
+            TransactionSynchronizationManager.initSynchronization()
+            try {
+                val result = service3.cashIn(agent3.id, customerAccount3.accountNumber, BigDecimal("15000"), "KGL-C-004", "account_less_operator")
+                result["operatorCommission"] shouldBe BigDecimal.ZERO
+                runCatching {
+                    TransactionSynchronizationManager.getSynchronizations().single().afterCommit()
+                }.isSuccess shouldBe true
+            } finally {
+                TransactionSynchronizationManager.clearSynchronization()
+            }
+        }
     }
 
     Given("real amounts across every real commission tier band") {

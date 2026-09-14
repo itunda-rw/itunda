@@ -1,5 +1,6 @@
 package rw.itunda.agents
 
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionSynchronization
@@ -107,6 +108,8 @@ class AgentService(
     private val fraudRuleEngine: FraudRuleEngine,
     private val rateLimiter: RateLimiter,
 ) {
+    private val log = LoggerFactory.getLogger(AgentService::class.java)
+
     @Transactional
     fun register(displayName: String, dailyCashInLimit: BigDecimal, dailyCashOutLimit: BigDecimal): Agent {
         require(displayName.isNotBlank()) { "Agent display name is required" }
@@ -505,8 +508,21 @@ class AgentService(
         .orElseThrow { AgentNotFoundException("Agent not found") }
 
     /** A push is irreversible; only expose a cash movement after its ledger transaction commits. */
+    // Real structural drift found live (2026-09-14, duplicated-helper sweep): this
+    // copy of the established sendPushAfterCommit pattern (16 copies repo-wide) was
+    // missing the try/catch every other copy has around the actual send() call --
+    // registerSynchronization's afterCommit() callback runs on the same thread right
+    // after a real commit, so an uncaught exception here (a transient FCM error, a
+    // stale device token) would propagate back to the ORIGINAL caller, turning an
+    // already-successfully-committed cash-in/cash-out into an apparent 500 error.
     private fun sendPushAfterCommit(userId: String, title: String, body: String, transactionId: String) {
-        val send = { pushNotificationService.sendToUser(userId, title, body, mapOf("transactionId" to transactionId)) }
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body, mapOf("transactionId" to transactionId))
+            } catch (e: Exception) {
+                log.warn("Could not send agent push to user {}", userId, e)
+            }
+        }
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             send()
             return

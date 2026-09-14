@@ -30,6 +30,7 @@ import rw.itunda.core.repository.PayslipRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.AccountRepository
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.math.BigDecimal
 import java.util.Optional
 
@@ -274,6 +275,59 @@ class PayrollServiceTest : BehaviorSpec({
                     // expected
                 }
                 verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+    }
+
+    // Real structural drift found live (2026-09-14, duplicated-helper sweep): this
+    // class's own sendPushAfterCommit copy was missing the try/catch every other
+    // copy of this repo-wide pattern has -- a transient push failure here would have
+    // propagated back through afterCommit() to the original caller, turning an
+    // already-successfully-committed payroll run into an apparent error.
+    Given("a real payroll run whose push provider fails after commit") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val payrollEmployeeRepository = mockk<PayrollEmployeeRepository>()
+        val payrollRunRepository = mockk<PayrollRunRepository>()
+        val payslipRepository = mockk<PayslipRepository>(relaxed = true)
+        val accountRepository = mockk<AccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        every { transactionRepository.saveAll(any<List<Transaction>>()) } answers { firstArg() }
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>()
+        every { pushNotificationService.sendToUser(any(), any(), any()) } throws IllegalStateException("provider unavailable")
+
+        val merchant2 = Merchant(id = "merchant_2", ownerUserId = "owner_2", accountId = "account_merchant_2", businessName = "Kigali Coffee 2", status = MerchantStatus.ACTIVE)
+        every { merchantRepository.findByOwnerUserId("owner_2") } returns merchant2
+        val merchantAccount = account("account_merchant_2", "owner_2")
+        every { accountRepository.findById("account_merchant_2") } returns Optional.of(merchantAccount)
+        val emp = PayrollEmployee(id = "payroll_emp_3", merchantId = "merchant_2", employeeUserId = "emp_3", employeeName = "Carol V", salaryAmount = BigDecimal("100000"))
+        every { payrollEmployeeRepository.findByMerchantIdAndActiveTrue("merchant_2") } returns listOf(emp)
+        every { accountRepository.findByUserIdInAndType(listOf("emp_3"), AccountType.MAIN) } returns listOf(account("account_emp_3", "emp_3"))
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_payroll_2", emptyList())
+        every { payrollRunRepository.save(any()) } answers { firstArg() }
+
+        val service = buildService(
+            merchantRepository = merchantRepository, payrollEmployeeRepository = payrollEmployeeRepository,
+            payrollRunRepository = payrollRunRepository, payslipRepository = payslipRepository,
+            accountRepository = accountRepository, ledgerService = ledgerService,
+            transactionRepository = transactionRepository, fraudRuleEngine = fraudRuleEngine,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
+        )
+
+        Then("the payroll run stays successful, and every deferred push resolves without propagating the failure") {
+            TransactionSynchronizationManager.initSynchronization()
+            try {
+                service.runPayroll("owner_2")
+                val synchronizations = TransactionSynchronizationManager.getSynchronizations()
+                synchronizations.isEmpty() shouldBe false
+                runCatching {
+                    synchronizations.forEach { it.afterCommit() }
+                }.isSuccess shouldBe true
+            } finally {
+                TransactionSynchronizationManager.clearSynchronization()
             }
         }
     }
