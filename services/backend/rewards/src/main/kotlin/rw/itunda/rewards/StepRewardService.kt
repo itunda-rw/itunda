@@ -1,15 +1,21 @@
 package rw.itunda.rewards
 
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.DailyStepReward
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.DailyStepRewardRepository
 import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.repository.NotificationRepository
 import java.math.BigDecimal
 import java.security.SecureRandom
 import java.time.Instant
@@ -71,11 +77,15 @@ class StepRewardService(
     private val dailyStepRewardRepository: DailyStepRewardRepository,
     private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
     // Real randomness in production (SecureRandom, the default) -- injectable so a test
     // can substitute a deterministic java.util.Random and assert both the win and the
     // lose path of the lottery draw, rather than being at the mercy of real randomness.
     private val random: java.util.Random = SecureRandom(),
 ) {
+    private val log = LoggerFactory.getLogger(StepRewardService::class.java)
+
     companion object {
         // Real sanity ceiling against obviously-garbage step reports -- not a real
         // anti-spoofing measure (see DailyStepReward.kt's own doc comment for why that's
@@ -156,6 +166,11 @@ class StepRewardService(
         }
 
         val saved = dailyStepRewardRepository.save(reward)
+        if (newlyEarned.isNotEmpty()) {
+            val newlyCreditedAmount = newlyEarned.fold(BigDecimal.ZERO) { acc, tier -> acc.add(tier.rewardAmount) }
+                .add(lotteryBonusWon.fold(BigDecimal.ZERO) { acc, tier -> acc.add(tier.lotteryBonusAmount) })
+            notifyStepRewardEarned(userId, newlyCreditedAmount, lotteryBonusWon.isNotEmpty())
+        }
         return StepReportResult(saved, newlyEarned, totalEarnedToday, lotteryBonusWon, lotteryBonusTotal)
     }
 
@@ -188,4 +203,42 @@ class StepRewardService(
 
     fun getToday(userId: String, today: LocalDate = LocalDate.now(ZoneOffset.UTC)): DailyStepReward? =
         dailyStepRewardRepository.findByUserIdAndRewardDate(userId, today.toString())
+
+    // Real whole-class zero-notification gap found live (2026-09-14, same sweep that
+    // already fixed RewardsService.claim/ShoppingCashbackService.awardCashback):
+    // reportSteps is very often called by a background step-sync job while the app
+    // isn't open, unlike RewardsService.claim's explicit user tap -- a tier reward or,
+    // worse, a real lottery-bonus win (the whole point of which, per this class's own
+    // doc comment, is a surprise that "sustained user engagement" in Toss's own real
+    // A/B result) previously had zero chance of ever reaching the user if they weren't
+    // staring at the app the instant it happened.
+    private fun notifyStepRewardEarned(userId: String, newlyCreditedAmount: BigDecimal, wonLottery: Boolean) {
+        val title = if (wonLottery) "Bonus! You earned a walking reward" else "You earned a walking reward"
+        val body = "You earned ${newlyCreditedAmount.toPlainString()} RWF for hitting today's step goal."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = userId, type = "STEP_REWARD_EARNED",
+                title = title, body = body, isRead = false, createdAt = Instant.now(),
+                dataJson = "{}",
+            ),
+        )
+        sendPushAfterCommit(userId, title, body)
+    }
+
+    private fun sendPushAfterCommit(userId: String, title: String, body: String) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body)
+            } catch (e: Exception) {
+                log.warn("Could not send step-reward push to user {}", userId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
+    }
 }

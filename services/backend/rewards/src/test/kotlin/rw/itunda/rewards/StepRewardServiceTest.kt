@@ -14,8 +14,10 @@ import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.DailyStepRewardRepository
 import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.repository.NotificationRepository
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -39,7 +41,10 @@ class StepRewardServiceTest : BehaviorSpec({
         // dedicated loss-path Given block below already established.
         val random = mockk<java.util.Random>()
         every { random.nextDouble() } returns 0.99
-        val service = StepRewardService(dailyStepRewardRepository, accountRepository, ledgerService, random)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = StepRewardService(dailyStepRewardRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService, random)
         val today = LocalDate.of(2026, 7, 27)
 
         every { dailyStepRewardRepository.findByUserIdAndRewardDateForUpdate("user_1", "2026-07-27") } returns null
@@ -110,7 +115,10 @@ class StepRewardServiceTest : BehaviorSpec({
         // unseeded SecureRandom default could spuriously break on a lottery win.
         val random = mockk<java.util.Random>()
         every { random.nextDouble() } returns 0.99
-        val service = StepRewardService(dailyStepRewardRepository, accountRepository, ledgerService, random)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = StepRewardService(dailyStepRewardRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService, random)
         val today = LocalDate.of(2026, 7, 27)
 
         val existing = DailyStepReward(id = "stepreward_1", userId = "user_1", rewardDate = "2026-07-27", steps = 1200, claimedTier1000 = true)
@@ -125,6 +133,7 @@ class StepRewardServiceTest : BehaviorSpec({
             Then("it never double-credits the already-claimed 1,000-step tier") {
                 result.newlyEarned shouldBe emptyList()
                 verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                verify(exactly = 0) { notificationRepository.save(any()) }
             }
         }
 
@@ -162,7 +171,10 @@ class StepRewardServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = StepRewardService(dailyStepRewardRepository, accountRepository, ledgerService)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = StepRewardService(dailyStepRewardRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService)
         val today = LocalDate.of(2026, 7, 27)
 
         val existing = DailyStepReward(id = "stepreward_9", userId = "user_9", rewardDate = "2026-07-27", steps = 500)
@@ -192,7 +204,10 @@ class StepRewardServiceTest : BehaviorSpec({
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val random = mockk<java.util.Random>()
-        val service = StepRewardService(dailyStepRewardRepository, accountRepository, ledgerService, random)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = StepRewardService(dailyStepRewardRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService, random)
         val today = LocalDate.of(2026, 7, 27)
 
         every { dailyStepRewardRepository.findByUserIdAndRewardDateForUpdate("user_3", "2026-07-27") } returns null
@@ -222,6 +237,10 @@ class StepRewardServiceTest : BehaviorSpec({
                 // Two separate real ledger postings: the guaranteed reward and the bonus.
                 verify(exactly = 2) { ledgerService.postLedgerTransaction(any(), any()) }
             }
+            Then("the user is notified -- a surprise lottery win the user might not see live otherwise") {
+                verify(exactly = 1) { notificationRepository.save(any()) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_3", "Bonus! You earned a walking reward", any()) }
+            }
         }
     }
 
@@ -230,7 +249,10 @@ class StepRewardServiceTest : BehaviorSpec({
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val random = mockk<java.util.Random>()
-        val service = StepRewardService(dailyStepRewardRepository, accountRepository, ledgerService, random)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = StepRewardService(dailyStepRewardRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService, random)
         val today = LocalDate.of(2026, 7, 27)
 
         every { dailyStepRewardRepository.findByUserIdAndRewardDateForUpdate("user_4", "2026-07-27") } returns null
@@ -259,7 +281,10 @@ class StepRewardServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = StepRewardService(dailyStepRewardRepository, accountRepository, ledgerService)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = StepRewardService(dailyStepRewardRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService)
         val today = LocalDate.of(2026, 7, 27)
 
         every { dailyStepRewardRepository.findByUserIdAndRewardDateForUpdate("user_2", "2026-07-27") } returns null
