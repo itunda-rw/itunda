@@ -614,6 +614,54 @@ class RideTripServiceTest : BehaviorSpec({
         }
     }
 
+    // Real zero-test-coverage gap found live (2026-09-14, test-coverage sweep):
+    // declineTrip is the real, live route RideController.declineTrip calls, but had
+    // no test at all anywhere in this file.
+    Given("a real driver with an active offer on a trip, declining it") {
+        val rideDriverRepository = mockk<RideDriverRepository>()
+        val rideTripRepository = mockk<RideTripRepository>()
+        val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
+
+        val driver = RideDriver(id = "driver_9", userId = "driver_user_9", accountId = "account_driver_9", available = true, licenseNumber = "LIC-TEST")
+        val trip = RideTrip(
+            id = "ride_trip_9", passengerId = "passenger_9", pickupAddress = "A", pickupLatitude = -1.95, pickupLongitude = 30.06,
+            dropoffAddress = "B", dropoffLatitude = -1.96, dropoffLongitude = 30.09, distanceKm = BigDecimal("3.5"),
+            fare = BigDecimal("1875"), platformFee = BigDecimal("28.13"), transactionId = "ledgertxn_y",
+            status = RideTripStatus.REQUESTED, offeredDriverId = "driver_9", offerExpiresAt = Instant.now().plusSeconds(10),
+        )
+        every { rideDriverRepository.findByUserId("driver_user_9") } returns driver
+        every { rideTripRepository.findById("ride_trip_9") } returns Optional.of(trip)
+        val savedSlot = slot<RideTrip>()
+        every { rideTripRepository.save(capture(savedSlot)) } answers { firstArg() }
+        // dispatchToNextDriver's own re-ranking is best-effort (wrapped in its own
+        // try/catch) and not what this test is about -- an empty candidate pool takes
+        // the real "no driver available, stays open-list" branch cleanly.
+        every { rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns emptyList()
+
+        When("they decline the offer") {
+            val result = service.declineTrip("driver_user_9", "ride_trip_9")
+
+            Then("their own userId is added to the trip's excluded-drivers list, and the offer is cleared") {
+                result.excludedDriverUserIds shouldBe "driver_user_9"
+                result.offeredDriverId shouldBe null
+                result.offerExpiresAt shouldBe null
+            }
+        }
+
+        When("they try to decline a trip whose offer already expired") {
+            trip.offerExpiresAt = Instant.now().minusSeconds(5)
+
+            Then("it throws RideNoActiveOfferException") {
+                try {
+                    service.declineTrip("driver_user_9", "ride_trip_9")
+                    error("expected RideNoActiveOfferException")
+                } catch (e: RideNoActiveOfferException) {
+                    // expected
+                }
+            }
+        }
+    }
+
     Given("a real IN_PROGRESS trip a driver is completing") {
         val rideDriverRepository = mockk<RideDriverRepository>()
         val rideTripRepository = mockk<RideTripRepository>()
