@@ -120,8 +120,15 @@ class MerchantAdService(
             throw InvalidCoordinateException("Invalid coordinate")
         }
         val candidates = merchantAdRepository.findByActiveUntilAfter(Instant.now())
+        // Real N+1 fix (2026-09-14, closure-syntax sweep continuation): this ran one
+        // merchantRepository.findById per active ad platform-wide (not scoped to any
+        // one merchant, so it scales with total ad volume, and could repeat the same
+        // merchant lookup multiple times if they had several active ads) -- same
+        // "coarse filter, then per-item findById" shape already fixed across the
+        // commerce/eats checkout paths. Batched into one findAllById up front.
+        val merchantsById = merchantRepository.findAllById(candidates.map { it.merchantId }.distinct()).associateBy { it.id }
         return candidates.mapNotNull { ad ->
-            val merchant = merchantRepository.findById(ad.merchantId).orElse(null) ?: return@mapNotNull null
+            val merchant = merchantsById[ad.merchantId] ?: return@mapNotNull null
             val lat = merchant.latitude ?: return@mapNotNull null
             val lng = merchant.longitude ?: return@mapNotNull null
             val distanceKm = GeoUtils.haversineKm(latitude, longitude, lat, lng)
