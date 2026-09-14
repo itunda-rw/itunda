@@ -21,7 +21,6 @@ class InvalidAdRadiusException(message: String) : RuntimeException(message)
 class InvalidAdDurationException(message: String) : RuntimeException(message)
 class InvalidAdTitleException(message: String) : RuntimeException(message)
 class MerchantLocationRequiredException(message: String) : RuntimeException(message)
-class MerchantAdNotFoundException(message: String) : RuntimeException(message)
 class InvalidCoordinateException(message: String) : RuntimeException(message)
 
 data class NearbyAd(val ad: MerchantAd, val businessName: String, val distanceKm: Double)

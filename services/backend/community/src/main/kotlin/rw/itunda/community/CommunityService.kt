@@ -37,7 +37,6 @@ import java.time.Instant
 import java.util.UUID
 
 class CommunityPostNotFoundException(message: String) : RuntimeException(message)
-class CommunityPostNotOwnedException(message: String) : RuntimeException(message)
 class InvalidCommunityPostException(message: String) : RuntimeException(message)
 class InvalidCommunityCommentException(message: String) : RuntimeException(message)
 class InvalidCommunityCoordinatesException(message: String) : RuntimeException(message)

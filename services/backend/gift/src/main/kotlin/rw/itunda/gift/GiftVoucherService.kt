@@ -41,7 +41,6 @@ class GiftVoucherInvalidAmountException(message: String) : RuntimeException(mess
 class GiftVoucherMerchantNotFoundException(message: String) : RuntimeException(message)
 class GiftVoucherProductNotFoundException(message: String) : RuntimeException(message)
 class GiftVoucherProductUnavailableException(message: String) : RuntimeException(message)
-class GiftVoucherNotMerchantOwnerException(message: String) : RuntimeException(message)
 class GiftVoucherNotExtendableException(message: String) : RuntimeException(message)
 class GiftVoucherAlreadyExtendedException(message: String) : RuntimeException(message)
 

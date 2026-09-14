@@ -50,7 +50,6 @@ import java.time.Instant
 import java.util.UUID
 
 class ListingNotFoundException(message: String) : RuntimeException(message)
-class ListingNotOwnedException(message: String) : RuntimeException(message)
 class InvalidListingException(message: String) : RuntimeException(message)
 class ListingNotActiveException(message: String) : RuntimeException(message)
 class OwnListingException(message: String) : RuntimeException(message)
