@@ -203,9 +203,15 @@ class AgentService(
         val user = userRepository.findById(userId).orElseThrow { IllegalArgumentException("Itunda user not found") }
         require(user.role != "ADMIN") { "An administrator cannot be assigned as an agent operator" }
         user.role = "AGENT"
-        return agentOperatorRepository.save(
+        val saved = agentOperatorRepository.save(
             AgentOperator("agent_operator_${UUID.randomUUID()}", agentId, userId, assignedByUserId = adminUserId),
         )
+        // Real sibling-asymmetry gap found live (2026-09-14): this grants a real,
+        // significant role change (user.role -> "AGENT", real cash-handling authority
+        // at a physical till) with zero notification -- the affected user had no way
+        // to know their account's authority just changed.
+        notifyOperatorStatusChangeAfterCommit(userId, "You're now an agent operator", "Your account can now operate an itunda agent till.")
+        return saved
     }
 
     fun getMyOperator(userId: String): AgentOperator = activeOperator(userId)
@@ -226,7 +232,33 @@ class AgentService(
         operator.isActive = isActive
         operator.statusChangedByUserId = adminUserId
         operator.statusChangedAt = java.time.Instant.now()
-        return agentOperatorRepository.save(operator)
+        val saved = agentOperatorRepository.save(operator)
+        // Same real gap as assignOperator above -- deactivating (or reactivating) an
+        // operator's real till authority previously notified nobody.
+        val title = if (isActive) "Your agent operator access was restored" else "Your agent operator access was suspended"
+        val body = if (isActive) "You can operate an itunda agent till again." else "Your access to operate an itunda agent till has been suspended."
+        notifyOperatorStatusChangeAfterCommit(userId, title, body)
+        return saved
+    }
+
+    private fun notifyOperatorStatusChangeAfterCommit(userId: String, title: String, body: String) {
+        notificationRepository.save(
+            Notification(id = "notification_${UUID.randomUUID()}", userId = userId, type = "agent_operator_status_change", title = title, body = body, isRead = false, createdAt = java.time.Instant.now(), dataJson = null),
+        )
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body)
+            } catch (e: Exception) {
+                log.warn("Could not send agent-operator-status-change push to user {}", userId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     @Transactional(readOnly = true)

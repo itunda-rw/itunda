@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.agents.AgentWithdrawalAuthorizationService
 import rw.itunda.core.domain.Agent
@@ -47,11 +48,13 @@ class AgentAdminAccountabilityTest : BehaviorSpec({
         agentRepository: AgentRepository = mockk(),
         agentOperatorRepository: AgentOperatorRepository = mockk(),
         userRepository: UserRepository = mockk(),
+        notificationRepository: NotificationRepository = mockk<NotificationRepository>(relaxed = true).also { every { it.save(any()) } answers { firstArg() } },
+        pushNotificationService: PushNotificationService = mockk(relaxed = true),
     ) = AgentService(
         agentRepository, agentOperatorRepository, mockk(), mockk(), mockk(), mockk(),
         mockk<AccountRepository>(), mockk<LedgerAccountRepository>(), mockk<LedgerService>(), mockk<TransactionRepository>(),
-        userRepository, mockk<AgentWithdrawalAuthorizationService>(relaxed = true), mockk<NotificationRepository>(relaxed = true),
-        mockk<PushNotificationService>(relaxed = true), mockk<FraudRuleEngine>(relaxed = true), mockk<RateLimiter>(relaxed = true),
+        userRepository, mockk<AgentWithdrawalAuthorizationService>(relaxed = true), notificationRepository,
+        pushNotificationService, mockk<FraudRuleEngine>(relaxed = true), mockk<RateLimiter>(relaxed = true),
     )
 
     Given("an active agent an admin is about to suspend") {
@@ -76,7 +79,13 @@ class AgentAdminAccountabilityTest : BehaviorSpec({
         val agentRepository = mockk<AgentRepository>()
         val agentOperatorRepository = mockk<AgentOperatorRepository>()
         val userRepository = mockk<UserRepository>()
-        val service = service(agentRepository = agentRepository, agentOperatorRepository = agentOperatorRepository, userRepository = userRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = service(
+            agentRepository = agentRepository, agentOperatorRepository = agentOperatorRepository, userRepository = userRepository,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
+        )
         val agent = Agent("agent_1", "Kigali Central", "agent_cash_1", AgentStatus.ACTIVE, BigDecimal("100000"))
         val user = User(id = "user_1", phoneNumber = "+250788000001", firstName = "Jean", lastName = "B", passwordHash = "hash")
         every { agentRepository.findById("agent_1") } returns Optional.of(agent)
@@ -91,12 +100,21 @@ class AgentAdminAccountabilityTest : BehaviorSpec({
                 user.role shouldBe "AGENT"
                 result.assignedByUserId shouldBe "admin_1"
             }
+            // Real sibling-asymmetry gap found live (2026-09-14): granting real
+            // cash-handling authority previously notified nobody.
+            Then("the newly-granted operator is notified their account authority changed") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_1" && it.type == "agent_operator_status_change" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", "You're now an agent operator", any()) }
+            }
         }
     }
 
     Given("a real active agent operator an admin is about to deactivate") {
         val agentOperatorRepository = mockk<AgentOperatorRepository>()
-        val service = service(agentOperatorRepository = agentOperatorRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = service(agentOperatorRepository = agentOperatorRepository, notificationRepository = notificationRepository, pushNotificationService = pushNotificationService)
         val operator = AgentOperator("agent_operator_1", "agent_1", "user_1")
         every { agentOperatorRepository.findByUserId("user_1") } returns operator
         every { agentOperatorRepository.save(any()) } answers { firstArg() }
@@ -108,6 +126,10 @@ class AgentAdminAccountabilityTest : BehaviorSpec({
                 result.isActive shouldBe false
                 result.statusChangedByUserId shouldBe "admin_1"
                 result.statusChangedAt shouldNotBe null
+            }
+            Then("the affected operator is notified their access was suspended") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_1" && it.type == "agent_operator_status_change" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", "Your agent operator access was suspended", any()) }
             }
         }
     }
