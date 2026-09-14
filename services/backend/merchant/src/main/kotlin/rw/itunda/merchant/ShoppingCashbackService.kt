@@ -1,15 +1,21 @@
 package rw.itunda.merchant
 
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.Account
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -87,7 +93,11 @@ import java.util.UUID
 class ShoppingCashbackService(
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(ShoppingCashbackService::class.java)
+
     companion object {
         val DEFAULT_CASHBACK_RATE: BigDecimal = BigDecimal("0.01")
         val MAX_CASHBACK_RATE: BigDecimal = BigDecimal("0.05")
@@ -149,6 +159,44 @@ class ShoppingCashbackService(
                 completedAt = Instant.now(),
             ),
         )
+        notifyCashbackAwarded(payerAccount.userId, cashbackAmount, merchantName)
         return cashbackAmount
+    }
+
+    // Real whole-class zero-notification gap found live (2026-09-14, same sweep that
+    // already fixed SupportService.resolve/DesignatedDriverService/etc.): cashback was
+    // silently credited with no push/in-app notification at all -- a payer had no way
+    // to know a purchase just earned them money unless they happened to open the app
+    // and notice an unexplained CASHBACK transaction in their history. RewardsService's
+    // own sibling task-claim-reward credit has the identical gap (tracked separately,
+    // not fixed here to keep this change scoped to the one class actually touched).
+    private fun notifyCashbackAwarded(userId: String, cashbackAmount: BigDecimal, merchantName: String) {
+        val title = "You earned cashback"
+        val body = "You earned ${cashbackAmount.toPlainString()} RWF cashback on your purchase at $merchantName."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = userId, type = "SHOPPING_CASHBACK_AWARDED",
+                title = title, body = body, isRead = false, createdAt = Instant.now(),
+                dataJson = "{}",
+            ),
+        )
+        sendPushAfterCommit(userId, title, body)
+    }
+
+    private fun sendPushAfterCommit(userId: String, title: String, body: String) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body)
+            } catch (e: Exception) {
+                log.warn("Could not send shopping-cashback push to user {}", userId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 }

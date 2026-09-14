@@ -9,6 +9,7 @@ import io.mockk.slot
 import io.mockk.verify
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.Account
@@ -16,6 +17,8 @@ import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -31,7 +34,10 @@ class ShoppingCashbackServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         every { transactionRepository.save(any()) } answers { firstArg() }
-        val service = ShoppingCashbackService(ledgerService, transactionRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = ShoppingCashbackService(ledgerService, transactionRepository, notificationRepository, pushNotificationService)
 
         val legsSlot = slot<List<LedgerLeg>>()
         every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_cashback", emptyList())
@@ -64,6 +70,14 @@ class ShoppingCashbackServiceTest : BehaviorSpec({
                 txSlot.captured.type shouldBe TransactionType.DEPOSIT
                 txSlot.captured.channel shouldBe "CASHBACK"
             }
+            Then("the payer is notified they earned cashback -- silently crediting money with no notification is a real gap") {
+                val notifSlot = slot<Notification>()
+                verify(exactly = 1) { notificationRepository.save(capture(notifSlot)) }
+                notifSlot.captured.userId shouldBe "user_1"
+                notifSlot.captured.type shouldBe "SHOPPING_CASHBACK_AWARDED"
+                notifSlot.captured.body shouldBe "You earned 50.00 RWF cashback on your purchase at Kigali Coffee."
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", "You earned cashback", notifSlot.captured.body) }
+            }
         }
     }
 
@@ -71,7 +85,10 @@ class ShoppingCashbackServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         every { transactionRepository.save(any()) } answers { firstArg() }
-        val service = ShoppingCashbackService(ledgerService, transactionRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = ShoppingCashbackService(ledgerService, transactionRepository, notificationRepository, pushNotificationService)
 
         val legsSlot = slot<List<LedgerLeg>>()
         every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_cashback_boosted", emptyList())
@@ -112,14 +129,17 @@ class ShoppingCashbackServiceTest : BehaviorSpec({
     Given("a purchase small enough that cashback would round to zero") {
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
-        val service = ShoppingCashbackService(ledgerService, transactionRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = ShoppingCashbackService(ledgerService, transactionRepository, notificationRepository, pushNotificationService)
 
         When("awarding cashback on a tiny purchase") {
             val cashback = service.awardCashback(payerAccount(), BigDecimal("0.01"), "Tiny Shop")
 
-            Then("no real ledger transaction is posted for a zero-value reward") {
+            Then("no real ledger transaction is posted for a zero-value reward, and no notification either") {
                 cashback shouldBe BigDecimal.ZERO
                 verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                verify(exactly = 0) { notificationRepository.save(any()) }
             }
         }
     }
