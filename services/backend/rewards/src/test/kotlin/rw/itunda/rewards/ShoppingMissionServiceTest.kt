@@ -16,6 +16,8 @@ import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.ShoppingMissionRewardRepository
 import rw.itunda.core.repository.ShoppingWelcomeBonusClaimRepository
 import rw.itunda.core.repository.AccountRepository
@@ -36,7 +38,10 @@ class ShoppingMissionServiceTest : BehaviorSpec({
         val welcomeBonusRepository = mockk<ShoppingWelcomeBonusClaimRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, accountRepository, ledgerService)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService)
         val today = LocalDate.of(2026, 8, 12)
 
         every { missionRepository.findByUserIdAndMissionDate("user_1", "2026-08-12") } returns null
@@ -61,6 +66,10 @@ class ShoppingMissionServiceTest : BehaviorSpec({
                     )
                 }
             }
+            Then("the user is notified their mission reward was earned") {
+                verify(exactly = 1) { notificationRepository.save(any()) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", "Reward earned", any()) }
+            }
         }
     }
 
@@ -69,7 +78,10 @@ class ShoppingMissionServiceTest : BehaviorSpec({
         val welcomeBonusRepository = mockk<ShoppingWelcomeBonusClaimRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, accountRepository, ledgerService)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService)
         val today = LocalDate.of(2026, 8, 12)
 
         val existing = ShoppingMissionReward(id = "shopmission_1", userId = "user_1", missionDate = "2026-08-12", checkedIn = true)
@@ -105,7 +117,10 @@ class ShoppingMissionServiceTest : BehaviorSpec({
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val random = mockk<java.util.Random>()
-        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, accountRepository, ledgerService, random)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService, random)
         val today = LocalDate.of(2026, 8, 12)
 
         every { missionRepository.findByUserIdAndMissionDate("user_5", "2026-08-12") } returns null
@@ -141,7 +156,10 @@ class ShoppingMissionServiceTest : BehaviorSpec({
         val welcomeBonusRepository = mockk<ShoppingWelcomeBonusClaimRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, accountRepository, ledgerService)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService)
 
         every { welcomeBonusRepository.existsById("user_6") } returns false
         every { accountRepository.findByUserIdAndType("user_6", AccountType.MAIN) } returns account("user_6")
@@ -156,6 +174,10 @@ class ShoppingMissionServiceTest : BehaviorSpec({
                 result.amountEarned shouldBe ShoppingMissionType.WELCOME_BONUS.rewardAmount
                 savedSlot.first().userId shouldBe "user_6"
             }
+            Then("the user is notified their welcome bonus was earned") {
+                verify(exactly = 1) { notificationRepository.save(any()) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_6", "Reward earned", any()) }
+            }
         }
     }
 
@@ -164,7 +186,10 @@ class ShoppingMissionServiceTest : BehaviorSpec({
         val welcomeBonusRepository = mockk<ShoppingWelcomeBonusClaimRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, accountRepository, ledgerService)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService)
 
         every { welcomeBonusRepository.existsById("user_7") } returns true
 
@@ -185,7 +210,10 @@ class ShoppingMissionServiceTest : BehaviorSpec({
         val welcomeBonusRepository = mockk<ShoppingWelcomeBonusClaimRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, accountRepository, ledgerService)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService)
         val today = LocalDate.of(2026, 8, 12)
 
         every { missionRepository.findByUserIdAndMissionDate("user_8", "2026-08-12") } returns null

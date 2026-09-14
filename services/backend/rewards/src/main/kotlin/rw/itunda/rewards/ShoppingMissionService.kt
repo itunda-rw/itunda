@@ -1,14 +1,20 @@
 package rw.itunda.rewards
 
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.ShoppingMissionReward
 import rw.itunda.core.domain.ShoppingWelcomeBonusClaim
 import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.ShoppingMissionRewardRepository
 import rw.itunda.core.repository.ShoppingWelcomeBonusClaimRepository
 import rw.itunda.core.repository.AccountRepository
@@ -65,8 +71,12 @@ class ShoppingMissionService(
     private val welcomeBonusRepository: ShoppingWelcomeBonusClaimRepository,
     private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
     private val random: java.util.Random = SecureRandom(),
 ) {
+    private val log = LoggerFactory.getLogger(ShoppingMissionService::class.java)
+
     fun getStatus(userId: String, today: LocalDate = LocalDate.now(ZoneOffset.UTC)): List<MissionStatusEntry> {
         val reward = missionRepository.findByUserIdAndMissionDate(userId, today.toString())
         val welcomeClaimed = welcomeBonusRepository.existsById(userId)
@@ -114,6 +124,7 @@ class ShoppingMissionService(
         }
         reward.updatedAt = Instant.now()
         missionRepository.save(reward)
+        notifyMissionRewardEarned(userId, amount)
         return MissionClaimResult(type, amount, newBalance)
     }
 
@@ -124,7 +135,43 @@ class ShoppingMissionService(
         // The real once-ever guard: a second concurrent claim fails this unique-PK
         // insert instead of racing an app-level boolean check.
         welcomeBonusRepository.save(ShoppingWelcomeBonusClaim(userId = userId))
+        notifyMissionRewardEarned(userId, ShoppingMissionType.WELCOME_BONUS.rewardAmount)
         return MissionClaimResult(ShoppingMissionType.WELCOME_BONUS, ShoppingMissionType.WELCOME_BONUS.rewardAmount, newBalance)
+    }
+
+    // Real whole-class zero-notification gap found live (2026-09-14, same sweep that
+    // already fixed RewardsService.claim/StepRewardService.reportSteps/
+    // ShoppingCashbackService.awardCashback -- this class's own doc comment says it
+    // follows "StepRewardService's exact established architecture", but that
+    // architecture now includes a notification this class never copied).
+    private fun notifyMissionRewardEarned(userId: String, amount: BigDecimal) {
+        val title = "Reward earned"
+        val body = "You earned ${amount.toPlainString()} RWF for completing a shopping mission."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = userId, type = "SHOPPING_MISSION_REWARD_EARNED",
+                title = title, body = body, isRead = false, createdAt = Instant.now(),
+                dataJson = "{}",
+            ),
+        )
+        sendPushAfterCommit(userId, title, body)
+    }
+
+    private fun sendPushAfterCommit(userId: String, title: String, body: String) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body)
+            } catch (e: Exception) {
+                log.warn("Could not send shopping-mission push to user {}", userId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     private fun drawSpinReward(): BigDecimal {
