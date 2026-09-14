@@ -248,13 +248,14 @@ class DeviceServiceTest : BehaviorSpec({
         val trustedDeviceRepository = mockk<TrustedDeviceRepository>()
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val redisTemplate = mockk<StringRedisTemplate>(relaxed = true)
         val service = DeviceService(trustedDeviceRepository, userRepository, notificationRepository, rateLimiter, pushNotificationService, redisTemplate)
 
         When("the device is real and theirs") {
-            val device = TrustedDevice(id = "trusted_device_3", userId = "user_4", deviceId = "device_old", deviceName = null, trusted = true)
+            val device = TrustedDevice(id = "trusted_device_3", userId = "user_4", deviceId = "device_old", deviceName = "Pixel 8", trusted = true)
             every { trustedDeviceRepository.findByUserIdAndDeviceId("user_4", "device_old") } returns device
             every { trustedDeviceRepository.delete(device) } returns Unit
 
@@ -262,6 +263,12 @@ class DeviceServiceTest : BehaviorSpec({
 
             Then("it's real-deleted") {
                 verify(exactly = 1) { trustedDeviceRepository.delete(device) }
+            }
+            // Real sibling-asymmetry fix (2026-09-14) -- every other device-trust-state
+            // change already alerts the user; this was the one gap.
+            Then("the real owner is alerted -- a stolen JWT alone could otherwise silently strip a trusted device") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_4" && it.type == "DEVICE_REVOKED" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_4", "Device removed", any(), any()) }
             }
         }
 

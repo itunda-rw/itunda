@@ -168,11 +168,39 @@ class DeviceService(
     /** Real "forget this device" -- the same self-service device management Toss's own
      * security settings page offers. A stranger can't revoke someone else's device
      * since this is always scoped to the caller's own userId, never a client-supplied one. */
+    // Real sibling-asymmetry gap found live (2026-09-14): every OTHER device-trust-
+    // state-change method in this class (recordLoginDevice/verifyDevice/
+    // registerDeviceKey/verifyDeviceBySignature) fires a real security alert, but
+    // revokeDevice -- the one call site with no password/signature re-proof at all --
+    // sent none. An attacker with a merely-stolen JWT could silently strip the real
+    // owner's OTHER trusted devices (removing a competing trust anchor, or setting up
+    // a lockout) with the real owner never finding out.
     @Transactional
     fun revokeDevice(userId: String, deviceId: String) {
         val device = trustedDeviceRepository.findByUserIdAndDeviceId(userId, deviceId)
             ?: throw DeviceNotFoundException("Device not found")
         trustedDeviceRepository.delete(device)
+        notifyDeviceRevokedAfterCommit(userId, deviceId, device.deviceName)
+    }
+
+    private fun notifyDeviceRevokedAfterCommit(userId: String, deviceId: String, deviceName: String?) {
+        val title = "Device removed"
+        val body = "A trusted device (${deviceName ?: "unknown device"}) was removed from your account. If this wasn't you, contact support immediately."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = userId, type = "DEVICE_REVOKED",
+                title = title, body = body,
+                isRead = false, createdAt = Instant.now(), dataJson = "{\"deviceId\":\"$deviceId\"}",
+            ),
+        )
+        val send = { pushNotificationService.sendToUser(userId, title, body, mapOf("deviceId" to deviceId)) }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     /** Real Keystore/Secure-Enclave-signed-challenge device verification (item 246) --
