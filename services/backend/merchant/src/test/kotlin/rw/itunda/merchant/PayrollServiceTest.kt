@@ -13,6 +13,7 @@ import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.domain.PayrollEmployee
 import rw.itunda.core.domain.PayrollRun
+import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
@@ -185,7 +186,7 @@ class PayrollServiceTest : BehaviorSpec({
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
-        every { transactionRepository.save(any()) } answers { firstArg() }
+        every { transactionRepository.saveAll(any<List<Transaction>>()) } answers { firstArg() }
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
@@ -240,8 +241,11 @@ class PayrollServiceTest : BehaviorSpec({
                 payslips.size shouldBe 2
             }
 
-            Then("a real Transaction row is saved per employee, fraud-evaluated before saving") {
-                verify(exactly = 2) { transactionRepository.save(any()) }
+            Then("a real Transaction row is saved per employee, fraud-evaluated before saving, batched in ONE saveAll") {
+                val transactionsSlot = slot<List<Transaction>>()
+                verify(exactly = 1) { transactionRepository.saveAll(capture(transactionsSlot)) }
+                transactionsSlot.captured.size shouldBe 2
+                verify(exactly = 0) { transactionRepository.save(any()) }
                 verify(exactly = 2) { fraudRuleEngine.evaluate("owner_1", any(), any(), any()) }
             }
 

@@ -201,10 +201,17 @@ class PayrollService(
         // payment shows up in the employee's own transaction history and is visible to
         // FraudRuleEngine's velocity/new-recipient checks -- same reasoning
         // MerchantService.collect's own comment gives for why this can't be skipped.
-        // fraudRuleEngine.evaluate() is called before transactionRepository.save() for
-        // each employee, same ordering P2pService.payRequest and MerchantService.collect
+        // fraudRuleEngine.evaluate() is called before this batch's own transactionRepository
+        // .saveAll() below, same ordering P2pService.payRequest and MerchantService.collect
         // already established (evaluating after save lets a transaction match itself).
-        val payslips = roster.map { employee ->
+        // Real N+1 fix (2026-09-14, closure-syntax sweep continuation): transactionRepository
+        // .save() used to run once per roster employee here -- the exact same "half the
+        // discipline applied" shape this method's own accountRepository batching above
+        // already fixed, just one step further down in the same method. transaction.id
+        // is a client-generated UUID (not DB-assigned), so building every Transaction
+        // first and saving them all in one saveAll() below changes nothing about
+        // ordering or the fraud-evaluation-before-persistence guarantee.
+        val transactions = roster.map { employee ->
             val account = employeeAccounts.getValue(employee)
             val transaction = Transaction(
                 id = "payrolltxn_${UUID.randomUUID()}",
@@ -223,7 +230,10 @@ class PayrollService(
                 completedAt = Instant.now(),
             )
             fraudRuleEngine.evaluate(merchant.ownerUserId, employee.employeeUserId, employee.salaryAmount, transaction.id)
-            transactionRepository.save(transaction)
+            transaction
+        }
+        transactionRepository.saveAll(transactions)
+        val payslips = roster.zip(transactions).map { (employee, transaction) ->
             Payslip(
                 id = "payslip_${UUID.randomUUID()}",
                 payrollRunId = run.id,
