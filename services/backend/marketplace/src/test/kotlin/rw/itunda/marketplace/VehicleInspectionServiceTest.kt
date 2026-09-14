@@ -149,10 +149,13 @@ class VehicleInspectionServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             vehicleInspectionMechanicRepository = vehicleInspectionMechanicRepository, vehicleInspectionBookingRepository = vehicleInspectionBookingRepository,
             listingRepository = listingRepository, accountRepository = accountRepository, ledgerService = ledgerService, rateLimiter = rateLimiter,
-            fraudRuleEngine = fraudRuleEngine,
+            fraudRuleEngine = fraudRuleEngine, notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
         )
 
         val listing = Listing(
@@ -186,6 +189,10 @@ class VehicleInspectionServiceTest : BehaviorSpec({
             // MarketplaceService.escrowPay already establishes for the identical shape.
             Then("the real inspection fee is evaluated against the buyer's own fraud history") {
                 verify(exactly = 1) { fraudRuleEngine.evaluate("buyer_1", "mechanic_user_1", BigDecimal("15000"), "ledgertxn_inspect_1") }
+            }
+            Then("the mechanic is notified a real paying request arrived -- their fee is already held in escrow") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "mechanic_user_1" && it.type == "VEHICLE_INSPECTION_UPDATE" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("mechanic_user_1", "New inspection request", any(), any()) }
             }
         }
 

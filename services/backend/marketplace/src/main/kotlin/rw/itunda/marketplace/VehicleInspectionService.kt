@@ -179,12 +179,20 @@ class VehicleInspectionService(
             ),
         )
 
-        return vehicleInspectionBookingRepository.save(
+        val saved = vehicleInspectionBookingRepository.save(
             VehicleInspectionBooking(
                 id = "inspection_${UUID.randomUUID()}", listingId = listingId, buyerId = buyerId, mechanicId = mechanicId,
                 fee = fee, platformFee = platformFee, scheduledFor = scheduledFor, holdTransactionId = result.transactionId,
             ),
         )
+        // Real sibling-asymmetry gap found live (2026-09-14): acceptInspection/
+        // completeInspection/cancelInspection all notify the affected party, but the
+        // event that STARTS this whole workflow -- a real paying request arriving,
+        // with the buyer's fee already held in escrow -- notified the mechanic of
+        // nothing. A mechanic had no way to know a real booking (and its held fee)
+        // existed short of polling getMyMechanicBookings.
+        notifyBookingUpdate(mechanic.userId, "New inspection request", "A buyer requested an inspection for \"${listing.title}\". Review and accept it to get started.", saved.id)
+        return saved
     }
 
     fun getMyBookings(buyerId: String): List<VehicleInspectionBooking> = vehicleInspectionBookingRepository.findByBuyerIdOrderByCreatedAtDesc(buyerId)
