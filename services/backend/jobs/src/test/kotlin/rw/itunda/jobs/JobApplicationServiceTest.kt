@@ -68,6 +68,10 @@ class JobApplicationServiceTest : BehaviorSpec({
             Then("the real rate limiter is actually consulted, not just mocked away") {
                 verify(exactly = 1) { rateLimiter.checkLimit("jobs:application:applicant_1", limit = 10, window = java.time.Duration.ofHours(1)) }
             }
+            Then("the poster is notified a new application arrived -- the sibling gap to respond()'s own decision notification") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "poster_1" && it.type == "JOB_APPLICATION_RECEIVED" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("poster_1", "New application received", any(), any()) }
+            }
         }
     }
 

@@ -88,12 +88,29 @@ class JobApplicationService(
             null
         }
 
-        return jobApplicationRepository.save(
+        val saved = jobApplicationRepository.save(
             JobApplication(
                 id = "job_application_${UUID.randomUUID()}", jobPostId = jobPostId, applicantId = applicantId,
                 message = trimmedMessage, resumeSnapshotJson = resumeSnapshotJson,
             ),
         )
+        // Real sibling-asymmetry gap found live (2026-09-14): respond()'s own doc
+        // comment already establishes that a terminal decision on someone else's real
+        // application deserves a Notification+push -- but the poster-facing event at
+        // the OTHER end of the same workflow, a brand-new application arriving, notified
+        // nobody at all. A poster previously had no way to know an application existed
+        // short of manually re-checking the app.
+        val title = "New application received"
+        val body = "Someone applied to \"${post.title}\"."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = post.posterId, type = "JOB_APPLICATION_RECEIVED",
+                title = title, body = body, isRead = false, createdAt = Instant.now(),
+                dataJson = "{\"applicationId\":\"${saved.id}\"}",
+            ),
+        )
+        sendPushAfterCommit(post.posterId, title, body, saved.id)
+        return saved
     }
 
     fun getApplicationsForPost(posterId: String, jobPostId: String, pageable: Pageable): Page<JobApplication> {
