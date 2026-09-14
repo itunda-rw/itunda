@@ -114,7 +114,23 @@ class InterestJarService(
         // a reason a design gets discarded, not shipped. earnedTotal is a lifetime
         // running total that's never reset (unlike earnedThisMonth), so "was zero,
         // about to become positive" is a safe, genuinely once-ever signal per jar.
-        val isFirstAccrualEver = jar.earnedTotal == BigDecimal.ZERO && accrued > BigDecimal.ZERO
+        //
+        // Real bug found live (2026-09-14, BigDecimal scale-sensitivity sweep): `==`
+        // on BigDecimal is Java's structural equals(), which considers SCALE, not just
+        // numeric value -- BigDecimal.ZERO (scale 0) never equals "0.00" (scale 2).
+        // earned_total is a real DECIMAL(18,2) column (see InterestJar.kt's own
+        // @Column(precision = 18, scale = 2)), so every jar this method is EVER called
+        // with in production (always loaded from the database by
+        // InterestAccrualScheduler, never freshly constructed) has earnedTotal at
+        // scale 2 -- meaning this comparison was structurally FALSE for every real
+        // jar, even a genuinely brand-new one that has never earned a single RWF, so
+        // the celebratory first-accrual notification could never actually fire outside
+        // a test that (like this file's own, before this fix) happens to construct the
+        // jar with a bare, scale-0 `BigDecimal.ZERO` literal instead of a real
+        // DB-shaped value. `compareTo`, unlike `equals`, is the correct scale-agnostic
+        // comparison -- same established idiom RoundUpService/SplitBillService/
+        // SpendingInsightService already use for an identical zero-check.
+        val isFirstAccrualEver = jar.earnedTotal.compareTo(BigDecimal.ZERO) == 0 && accrued > BigDecimal.ZERO
         if (accrued > BigDecimal.ZERO) {
             val ledger = ledgerService.postLedgerTransaction(
                 "RWF",

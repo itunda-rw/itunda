@@ -140,7 +140,16 @@ class InterestJarServiceTest : BehaviorSpec({
         }
 
         When("accruing interest for a jar backed by a real nonzero savings balance") {
-            val theJar = jar("user_1", Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS))
+            // Real bug found live (2026-09-14, BigDecimal scale-sensitivity sweep):
+            // earnedTotal is a real DECIMAL(18,2) column, so every jar this method is
+            // EVER called with in production comes back from Hibernate at scale 2
+            // ("0.00"), never the bare scale-0 BigDecimal.ZERO the shared jar() helper
+            // above constructs in-memory -- using the helper's default here would have
+            // kept masking the exact "==" vs "compareTo" scale bug this Then block
+            // exists to catch (the original `==` comparison happened to pass against
+            // this file's own scale-0 test data despite being structurally broken
+            // against real, scale-2 production data).
+            val theJar = jar("user_1", Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS)).also { it.earnedTotal = BigDecimal("0.00") }
             every { accountRepository.findById("account_user_1") } returns Optional.of(account("account_user_1", "user_1", AccountType.SAVINGS, BigDecimal("36500")))
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_interest_1", emptyList())
             every { interestJarRepository.save(any()) } answers { firstArg() }
