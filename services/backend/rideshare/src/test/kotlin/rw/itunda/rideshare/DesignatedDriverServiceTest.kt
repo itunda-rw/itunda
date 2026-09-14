@@ -234,10 +234,12 @@ class DesignatedDriverServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = newService(
             designatedDriverRepository = designatedDriverRepository, designatedDriverTripRepository = designatedDriverTripRepository,
             accountRepository = accountRepository, ledgerService = ledgerService,
             notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
+            fraudRuleEngine = fraudRuleEngine,
         )
 
         val driver = DesignatedDriver(id = "designated_driver_1", userId = "driver_user_1", accountId = "account_driver", licenseNumber = "DL-1", available = true)
@@ -274,6 +276,14 @@ class DesignatedDriverServiceTest : BehaviorSpec({
             Then("the real customer is real-notified the trip completed") {
                 io.mockk.verify(exactly = 1) { notificationRepository.save(match { it.userId == "customer_1" && it.type == "DESIGNATED_DRIVER_TRIP_UPDATE" }) }
                 io.mockk.verify(exactly = 1) { pushNotificationService.sendToUser("customer_1", any(), any(), any()) }
+            }
+
+            // Real gap found live (2026-09-14, FraudRuleEngine per-call-site sweep):
+            // requestTrip's own evaluate is always against a null recipient (no driver
+            // assigned yet at request time), so the driver who actually receives the
+            // fare here was never evaluated anywhere in this trip's whole lifecycle.
+            Then("the real fraud engine is evaluated against the customer and the real driver receiving the fare") {
+                io.mockk.verify(exactly = 1) { fraudRuleEngine.evaluate("customer_1", "driver_user_1", BigDecimal("4250.00"), "ledgertxn_2") }
             }
         }
     }
@@ -375,10 +385,12 @@ class DesignatedDriverServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = newService(
             designatedDriverRepository = designatedDriverRepository, designatedDriverTripRepository = designatedDriverTripRepository,
             accountRepository = accountRepository, ledgerService = ledgerService,
             notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
+            fraudRuleEngine = fraudRuleEngine,
         )
 
         val customerAccount = Account(
@@ -422,6 +434,12 @@ class DesignatedDriverServiceTest : BehaviorSpec({
             Then("the real driver is real-notified they were paid a real cancellation fee") {
                 io.mockk.verify(exactly = 1) { notificationRepository.save(match { it.userId == "driver_user_1" && it.type == "DESIGNATED_DRIVER_CANCELLATION_FEE_PAID" }) }
                 io.mockk.verify(exactly = 1) { pushNotificationService.sendToUser("driver_user_1", any(), any(), any()) }
+            }
+
+            // Real gap found live (2026-09-14, same sweep as completeTrip's own fix):
+            // this fee is real money to the driver, who requestTrip never evaluated.
+            Then("the real fraud engine is evaluated against the customer and the real driver receiving the cancellation fee") {
+                io.mockk.verify(exactly = 1) { fraudRuleEngine.evaluate("customer_1", "driver_user_1", match { it.compareTo(BigDecimal("3000")) == 0 }, "ledgertxn_refund") }
             }
         }
     }

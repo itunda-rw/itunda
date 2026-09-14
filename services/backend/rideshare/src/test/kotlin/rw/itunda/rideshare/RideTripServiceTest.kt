@@ -670,10 +670,11 @@ class RideTripServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val fraudRuleEngine = mockk<rw.itunda.core.fraud.FraudRuleEngine>(relaxed = true)
         val service = newService(
             rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
             accountRepository = accountRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
-            pushNotificationService = pushNotificationService,
+            pushNotificationService = pushNotificationService, fraudRuleEngine = fraudRuleEngine,
         )
 
         val driver = RideDriver(id = "driver_3", userId = "driver_user_3", accountId = "account_driver_3", available = true, licenseNumber = "LIC-TEST")
@@ -702,6 +703,14 @@ class RideTripServiceTest : BehaviorSpec({
                 result.payoutTransactionId shouldBe "ledgertxn_payout"
                 val netLeg = legsSlot.captured.find { it.accountId == "account_driver_3" }
                 netLeg?.amount shouldBe BigDecimal("1970")
+            }
+
+            // Real gap found live (2026-09-14, FraudRuleEngine per-call-site sweep):
+            // requestTrip's own evaluate is always against a null recipient (no driver
+            // assigned yet at request time), so the driver who actually receives the
+            // fare here was never evaluated anywhere in this trip's whole lifecycle.
+            Then("the real fraud engine is evaluated against the passenger and the real driver receiving the fare") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("passenger_4", "driver_user_3", BigDecimal("2000"), "ledgertxn_payout") }
             }
         }
     }
@@ -920,10 +929,11 @@ class RideTripServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val fraudRuleEngine = mockk<rw.itunda.core.fraud.FraudRuleEngine>(relaxed = true)
         val service = newService(
             rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
             accountRepository = accountRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
-            pushNotificationService = pushNotificationService,
+            pushNotificationService = pushNotificationService, fraudRuleEngine = fraudRuleEngine,
         )
 
         val driver = RideDriver(id = "driver_cancel_2", userId = "driver_user_cancel_2", accountId = "account_driver_cancel_2", licenseNumber = "LIC-TEST")
@@ -966,6 +976,12 @@ class RideTripServiceTest : BehaviorSpec({
                 verify(exactly = 1) {
                     notificationRepository.save(match { it.userId == "driver_user_cancel_2" && it.type == "RIDE_CANCELLATION_FEE_PAID" })
                 }
+            }
+
+            // Real gap found live (2026-09-14, same sweep as completeTrip's own fix):
+            // this fee is real money to the driver, who requestTrip never evaluated.
+            Then("the real fraud engine is evaluated against the passenger and the real driver receiving the cancellation fee") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("passenger_cancel_2", "driver_user_cancel_2", BigDecimal("1000"), "ledgertxn_refund_fee") }
             }
         }
     }

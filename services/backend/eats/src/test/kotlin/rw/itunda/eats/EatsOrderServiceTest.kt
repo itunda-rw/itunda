@@ -2235,6 +2235,15 @@ class EatsOrderServiceTest : BehaviorSpec({
             Then("it real-notifies the buyer that their order was delivered") {
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_1" && it.type == "EATS_ORDER_UPDATE" }) }
             }
+
+            // Real gap found live (2026-09-14, FraudRuleEngine per-call-site sweep):
+            // placeOrder's own evaluate only covers buyerId -> restaurant.ownerUserId --
+            // no rider is assigned at order-placement time, so the rider who actually
+            // receives this delivery fee here was never evaluated as a fraud
+            // counterparty anywhere in the order's lifecycle.
+            Then("the real fraud engine is evaluated against the buyer and the real rider receiving the delivery fee") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("buyer_1", "rider_user_1", BigDecimal("1500"), "payout_txn_1") }
+            }
         }
 
         When("the assigned rider marks it DELIVERED with a real 안심배달 proof photo") {

@@ -679,6 +679,27 @@ class RideTripService(
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, trip.platformFee, "Ride platform fee"),
             ),
         )
+        // Real gap found live (2026-09-14, FraudRuleEngine per-call-site sweep):
+        // requestTrip's own evaluate deliberately passes recipientUserId = null since
+        // no driver is assigned yet at hold time (see its own doc comment) -- meaning
+        // the driver who actually ends up receiving the fare here is NEVER evaluated
+        // as a fraud counterparty at any point in the trip lifecycle. Distinct from a
+        // release-of-already-vetted-escrow shape (VehicleInspectionService/
+        // MerchantBookingService, where the counterparty IS chosen and evaluated at
+        // hold time) -- same "new counterparty revealed partway through the flow"
+        // shape tipDriver/tipRider were already fixed for, just for the mandatory fare
+        // itself instead of an optional tip.
+        // Real gap found live (2026-09-14, FraudRuleEngine per-call-site sweep):
+        // requestTrip's own evaluate deliberately passes recipientUserId = null since
+        // no driver is assigned yet at hold time (see its own doc comment) -- meaning
+        // the driver who actually ends up receiving the fare here is NEVER evaluated
+        // as a fraud counterparty at any point in the trip lifecycle. Distinct from a
+        // release-of-already-vetted-escrow shape (VehicleInspectionService/
+        // MerchantBookingService, where the counterparty IS chosen and evaluated at
+        // hold time) -- same "new counterparty revealed partway through the flow"
+        // shape tipDriver/tipRider were already fixed for, just for the mandatory fare
+        // itself instead of an optional tip.
+        fraudRuleEngine.evaluate(trip.passengerId, driver.userId, trip.fare, result.transactionId)
         trip.status = RideTripStatus.COMPLETED
         trip.payoutTransactionId = result.transactionId
         trip.updatedAt = Instant.now()
@@ -823,6 +844,19 @@ class RideTripService(
             legs[1] = LedgerLeg(passengerAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, trip.fare, "Ride cancelled -- refund")
         }
         val result = ledgerService.postLedgerTransaction(passengerAccount.currency, legs)
+        // Real gap found live (2026-09-14, same sweep as completeTrip's own fix above):
+        // this specific leg is real money moving to the driver, who requestTrip never
+        // evaluated (recipientUserId = null pre-dispatch) -- only fire it when the fee
+        // leg actually landed (the account-gone fallback above collapses to a pure
+        // passenger refund, so there's no driver payment to evaluate in that branch).
+        // Real gap found live (2026-09-14, same sweep as completeTrip's own fix above):
+        // this specific leg is real money moving to the driver, who requestTrip never
+        // evaluated (recipientUserId = null pre-dispatch) -- only fire it when the fee
+        // leg actually landed (the account-gone fallback above collapses to a pure
+        // passenger refund, so there's no driver payment to evaluate in that branch).
+        if (cancellationFee > BigDecimal.ZERO && driverAccount != null && driver != null) {
+            fraudRuleEngine.evaluate(passengerId, driver.userId, cancellationFee, result.transactionId)
+        }
 
         trip.status = RideTripStatus.CANCELLED
         trip.refundTransactionId = result.transactionId

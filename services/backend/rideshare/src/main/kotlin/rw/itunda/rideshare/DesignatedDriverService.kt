@@ -330,6 +330,15 @@ class DesignatedDriverService(
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, trip.platformFee, "Designated driver platform fee"),
             ),
         )
+        // Real gap found live (2026-09-14, FraudRuleEngine per-call-site sweep) -- same
+        // fix and reasoning as RideTripService.completeTrip: requestTrip's own evaluate
+        // deliberately passes recipientUserId = null pre-dispatch, so the driver who
+        // actually receives this fare is never evaluated at any point otherwise.
+        // Real gap found live (2026-09-14, FraudRuleEngine per-call-site sweep) -- same
+        // fix and reasoning as RideTripService.completeTrip: requestTrip's own evaluate
+        // deliberately passes recipientUserId = null pre-dispatch, so the driver who
+        // actually receives this fare is never evaluated at any point otherwise.
+        fraudRuleEngine.evaluate(trip.customerId, driver.userId, trip.fare, result.transactionId)
         trip.status = DesignatedDriverTripStatus.COMPLETED
         trip.payoutTransactionId = result.transactionId
         trip.updatedAt = Instant.now()
@@ -406,6 +415,17 @@ class DesignatedDriverService(
             legs[1] = LedgerLeg(customerAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, trip.fare, "Designated driver cancelled -- refund")
         }
         val result = ledgerService.postLedgerTransaction(customerAccount.currency, legs)
+        // Real gap found live (2026-09-14, same sweep as completeTrip's own fix above):
+        // this leg is real money moving to the driver, never evaluated by requestTrip
+        // (recipientUserId = null pre-dispatch) -- only fire when the fee leg actually
+        // landed (the account-gone fallback above collapses to a pure customer refund).
+        // Real gap found live (2026-09-14, same sweep as completeTrip's own fix above):
+        // this leg is real money moving to the driver, never evaluated by requestTrip
+        // (recipientUserId = null pre-dispatch) -- only fire when the fee leg actually
+        // landed (the account-gone fallback above collapses to a pure customer refund).
+        if (cancellationFee > BigDecimal.ZERO && driverAccount != null && driver != null) {
+            fraudRuleEngine.evaluate(customerId, driver.userId, cancellationFee, result.transactionId)
+        }
 
         trip.status = DesignatedDriverTripStatus.CANCELLED
         trip.refundTransactionId = result.transactionId

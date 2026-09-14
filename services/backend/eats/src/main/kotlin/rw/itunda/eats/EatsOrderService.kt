@@ -1617,6 +1617,21 @@ class EatsOrderService(
                     LedgerLeg(riderAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, order.deliveryFee, "Delivery fee payout - order ${order.id}"),
                 ),
             )
+            // Real gap found live (2026-09-14, FraudRuleEngine per-call-site sweep):
+            // placeOrder's own evaluate only covers buyerId -> restaurant.ownerUserId --
+            // no rider is assigned at order-placement time, so the rider who actually
+            // receives this delivery fee here is never evaluated as a fraud
+            // counterparty at any point. Same "new counterparty revealed partway
+            // through the flow" shape tipRider was already fixed for, just for the
+            // mandatory delivery fee itself instead of an optional tip.
+            // Real gap found live (2026-09-14, FraudRuleEngine per-call-site sweep):
+            // placeOrder's own evaluate only covers buyerId -> restaurant.ownerUserId --
+            // no rider is assigned at order-placement time, so the rider who actually
+            // receives this delivery fee here is never evaluated as a fraud
+            // counterparty at any point. Same "new counterparty revealed partway
+            // through the flow" shape tipRider was already fixed for, just for the
+            // mandatory delivery fee itself instead of an optional tip.
+            fraudRuleEngine.evaluate(order.buyerId, rider.userId, order.deliveryFee, payout.transactionId)
             order.deliveryPayoutTransactionId = payout.transactionId
         }
 
