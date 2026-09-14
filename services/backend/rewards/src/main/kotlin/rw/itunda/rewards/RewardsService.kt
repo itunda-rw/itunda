@@ -1,18 +1,24 @@
 package rw.itunda.rewards
 
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.RewardClaim
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.DailyStepRewardRepository
 import rw.itunda.core.repository.EatsReviewRepository
 import rw.itunda.core.repository.KnowledgeAnswerRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.RewardClaimRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.TransactionRepository
@@ -56,7 +62,10 @@ class RewardsService(
     private val dailyStepRewardRepository: DailyStepRewardRepository,
     private val knowledgeAnswerRepository: KnowledgeAnswerRepository,
     private val eatsReviewRepository: EatsReviewRepository,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(RewardsService::class.java)
 
     // Static catalog, same convention as InsuranceService's insurancePlans / LoansService's
     // offers -- "Refer a friend" deliberately matches the 5,000 RWF figure already shown as
@@ -194,6 +203,46 @@ class RewardsService(
         )
 
         val newTotal = rewardClaimRepository.findByUserId(userId).fold(BigDecimal.ZERO) { acc, c -> acc + c.amount }
+        notifyRewardClaimed(userId, task.title, task.rewardAmount)
         return ClaimRewardResult("Reward claimed", task.rewardAmount, newTotal)
+    }
+
+    // Real whole-class zero-notification gap found live (2026-09-14, same sweep that
+    // already fixed ShoppingCashbackService.awardCashback -- this class's own doc
+    // comment for ShoppingCashbackService names it as the sibling this reused
+    // rewards_expense pattern was copied from, with the identical gap never closed
+    // here). claim() already returns a synchronous ClaimRewardResult the UI shows
+    // immediately, but every other real money-crediting event in this codebase
+    // (loan payoff, marketplace escrow, weather-index payout) ALSO fires a durable
+    // Notification row + push on top of its own synchronous response -- this was the
+    // one real exception, not a deliberate choice.
+    private fun notifyRewardClaimed(userId: String, taskTitle: String, rewardAmount: BigDecimal) {
+        val title = "Reward claimed"
+        val body = "You earned ${rewardAmount.toPlainString()} RWF for \"$taskTitle\"."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = userId, type = "REWARD_CLAIMED",
+                title = title, body = body, isRead = false, createdAt = Instant.now(),
+                dataJson = "{}",
+            ),
+        )
+        sendPushAfterCommit(userId, title, body)
+    }
+
+    private fun sendPushAfterCommit(userId: String, title: String, body: String) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body)
+            } catch (e: Exception) {
+                log.warn("Could not send reward-claimed push to user {}", userId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 }

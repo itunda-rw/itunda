@@ -18,9 +18,11 @@ import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.domain.User
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.DailyStepRewardRepository
 import rw.itunda.core.repository.EatsReviewRepository
 import rw.itunda.core.repository.KnowledgeAnswerRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.RewardClaimRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.TransactionRepository
@@ -46,7 +48,10 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository, notificationRepository, pushNotificationService)
 
         every { rewardClaimRepository.findByUserId("user_1") } returns emptyList()
         every { transactionRepository.existsBySenderIdAndTypeAndStatus("user_1", any(), TransactionStatus.COMPLETED) } returns false
@@ -89,7 +94,10 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository, notificationRepository, pushNotificationService)
 
         every { rewardClaimRepository.existsByUserIdAndTaskId("user_12", "task_first_photo_review") } returns false
         every { accountRepository.findByUserIdAndType("user_12", AccountType.MAIN) } returns account("account_main", "user_12")
@@ -134,7 +142,10 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository, notificationRepository, pushNotificationService)
 
         val completeUser = User(
             id = "user_10", phoneNumber = "+250788000095", firstName = "Eve", lastName = "R",
@@ -169,7 +180,10 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository, notificationRepository, pushNotificationService)
 
         every { rewardClaimRepository.existsByUserIdAndTaskId("user_11", "task_knowledge_answer_adopted") } returns false
         every { accountRepository.findByUserIdAndType("user_11", AccountType.MAIN) } returns account("account_main", "user_11")
@@ -213,7 +227,10 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository, notificationRepository, pushNotificationService)
 
         val partialUser = User(
             id = "user_11", phoneNumber = "+250788000094", firstName = "Frank", lastName = "R",
@@ -245,7 +262,10 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository, notificationRepository, pushNotificationService)
 
         val friend = User(
             id = "user_friend", phoneNumber = "+250788000099", firstName = "Alice", lastName = "R",
@@ -282,7 +302,10 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository, notificationRepository, pushNotificationService)
 
         val friend = User(
             id = "user_friend_2", phoneNumber = "+250788000098", firstName = "Bob", lastName = "R",
@@ -316,7 +339,10 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository, notificationRepository, pushNotificationService)
 
         val self = User(
             id = "user_9", phoneNumber = "+250788000097", firstName = "Carol", lastName = "R",
@@ -355,7 +381,10 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository, notificationRepository, pushNotificationService)
 
         val self = User(
             id = "user_10", phoneNumber = "+250788000095", firstName = "Eve", lastName = "R",
@@ -398,7 +427,10 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository, notificationRepository, pushNotificationService)
 
         every { rewardClaimRepository.existsByUserIdAndTaskId("user_2", "task_first_transfer") } returns false
         every { transactionRepository.existsBySenderIdAndTypeAndStatus("user_2", TransactionType.TRANSFER, TransactionStatus.COMPLETED) } returns true
@@ -429,6 +461,13 @@ class RewardsServiceTest : BehaviorSpec({
                 result.newBalance shouldBe BigDecimal("1000")
                 verify(exactly = 1) { rewardClaimRepository.save(any()) }
             }
+            Then("the user is notified their reward was claimed -- a synchronous return value alone isn't enough") {
+                val notifSlot = slot<rw.itunda.core.domain.Notification>()
+                verify(exactly = 1) { notificationRepository.save(capture(notifSlot)) }
+                notifSlot.captured.userId shouldBe "user_2"
+                notifSlot.captured.type shouldBe "REWARD_CLAIMED"
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_2", "Reward claimed", notifSlot.captured.body) }
+            }
         }
     }
 
@@ -442,7 +481,10 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository, notificationRepository, pushNotificationService)
 
         every { rewardClaimRepository.existsByUserIdAndTaskId("user_6", "task_first_transfer") } returns false
         every { transactionRepository.existsBySenderIdAndTypeAndStatus("user_6", TransactionType.TRANSFER, TransactionStatus.COMPLETED) } returns false
@@ -471,7 +513,10 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository, notificationRepository, pushNotificationService)
 
         every { rewardClaimRepository.existsByUserIdAndTaskId("user_3", "task_profile") } returns true
 
@@ -498,7 +543,10 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository, notificationRepository, pushNotificationService)
 
         When("claiming it") {
             Then("it throws RewardTaskNotFoundException before checking claim status at all") {
@@ -522,7 +570,10 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository, notificationRepository, pushNotificationService)
 
         every { rewardClaimRepository.existsByUserIdAndTaskId("user_5", "task_profile") } returns false
         every { userRepository.findById("user_5") } returns java.util.Optional.of(
@@ -555,7 +606,10 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository, notificationRepository, pushNotificationService)
 
         every { rewardClaimRepository.findByUserId("user_6") } returns emptyList()
         every { dailyStepRewardRepository.countByUserId("user_6") } returns 0L
@@ -582,7 +636,10 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository, notificationRepository, pushNotificationService)
 
         every { rewardClaimRepository.findByUserId("user_7") } returns listOf(
             RewardClaim(id = "claim_1", userId = "user_7", taskId = "task_profile", amount = BigDecimal("500"), claimedAt = Instant.now()),
