@@ -1,21 +1,28 @@
 package rw.itunda.commerce
 
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.AffiliateCommission
 import rw.itunda.core.domain.AffiliateLink
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.AffiliateCommissionRepository
 import rw.itunda.core.repository.AffiliateLinkRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 
 class AffiliateProductNotFoundException(message: String) : RuntimeException(message)
@@ -39,7 +46,11 @@ class AffiliateService(
     private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(AffiliateService::class.java)
+
     companion object {
         // Coupang's own real, published regular-partner commission rate.
         val COMMISSION_RATE: BigDecimal = BigDecimal("0.03")
@@ -113,5 +124,44 @@ class AffiliateService(
                 orderId = orderId, buyerId = buyerId, commissionAmount = commission, payoutTransactionId = result.transactionId,
             ),
         )
+        notifyCommissionEarned(link.userId, commission)
+    }
+
+    // Real whole-class zero-notification gap found live (2026-09-14, same sweep that
+    // fixed ShoppingCashbackService/RewardsService/StepRewardService/
+    // ShoppingMissionService): the strongest instance of this gap found all day -- the
+    // referrer isn't even a party to the HTTP request that triggers this (a DIFFERENT
+    // user's order, via OrderService.placeOrder, credits them), so unlike every other
+    // fix in this family there was never any synchronous UI feedback to fall back on
+    // at all. Without this, a referrer had literally no way to ever learn they earned
+    // a commission short of noticing an unexplained credit in their own history.
+    private fun notifyCommissionEarned(referrerUserId: String, commission: BigDecimal) {
+        val title = "You earned an affiliate commission"
+        val body = "You earned ${commission.toPlainString()} RWF in affiliate commission from a purchase through your link."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = referrerUserId, type = "AFFILIATE_COMMISSION_EARNED",
+                title = title, body = body, isRead = false, createdAt = Instant.now(),
+                dataJson = "{}",
+            ),
+        )
+        sendPushAfterCommit(referrerUserId, title, body)
+    }
+
+    private fun sendPushAfterCommit(userId: String, title: String, body: String) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body)
+            } catch (e: Exception) {
+                log.warn("Could not send affiliate-commission push to user {}", userId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 }

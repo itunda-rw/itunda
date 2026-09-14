@@ -14,10 +14,12 @@ import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.AffiliateCommissionRepository
 import rw.itunda.core.repository.AffiliateLinkRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.repository.NotificationRepository
 import java.math.BigDecimal
 
 /**
@@ -34,7 +36,12 @@ class AffiliateServiceTest : BehaviorSpec({
         accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = AffiliateService(affiliateLinkRepository, affiliateCommissionRepository, merchantProductRepository, accountRepository, ledgerService, rateLimiter)
+        notificationRepository: NotificationRepository = mockk(relaxed = true),
+        pushNotificationService: PushNotificationService = mockk(relaxed = true),
+    ) = AffiliateService(
+        affiliateLinkRepository, affiliateCommissionRepository, merchantProductRepository, accountRepository, ledgerService, rateLimiter,
+        notificationRepository, pushNotificationService,
+    )
 
     Given("a real product a user wants to promote") {
         val affiliateLinkRepository = mockk<AffiliateLinkRepository>()
@@ -80,9 +87,13 @@ class AffiliateServiceTest : BehaviorSpec({
         val affiliateCommissionRepository = mockk<AffiliateCommissionRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             affiliateLinkRepository = affiliateLinkRepository, affiliateCommissionRepository = affiliateCommissionRepository,
             accountRepository = accountRepository, ledgerService = ledgerService,
+            notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
         )
 
         val link = AffiliateLink(id = "affiliate_link_1", userId = "referrer_1", productId = "product_1", code = "AFABC123")
@@ -103,6 +114,10 @@ class AffiliateServiceTest : BehaviorSpec({
                 savedSlot.captured.referrerId shouldBe "referrer_1"
                 savedSlot.captured.commissionAmount shouldBe BigDecimal("300.00")
                 savedSlot.captured.payoutTransactionId shouldBe "ledgertxn_commission"
+            }
+            Then("the referrer is notified -- they aren't even part of this request, so this is their only way to find out") {
+                verify(exactly = 1) { notificationRepository.save(any()) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("referrer_1", "You earned an affiliate commission", any()) }
             }
         }
     }
