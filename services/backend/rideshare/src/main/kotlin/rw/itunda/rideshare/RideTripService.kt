@@ -643,8 +643,18 @@ class RideTripService(
         // A trip requested before this feature shipped has no real PIN to check against
         // (trip.pin is null) -- skip rather than permanently lock out an in-flight trip
         // that predates it.
-        if (trip.pin != null && trip.pin != pin.trim()) {
-            throw RidePinMismatchException("Incorrect PIN -- ask your passenger for the 4-digit code shown in their app")
+        if (trip.pin != null) {
+            // Real gap found live (2026-09-14, rate-limiter sweep continuation): a
+            // 4-digit PIN (10,000 combinations) had zero attempt throttling, unlike
+            // every other real secret-verification check in this codebase
+            // (AuthService.login rate-limits PIN attempts at 5/minute) -- a driver
+            // already assigned to this exact trip could otherwise brute-force it in
+            // seconds, defeating the PIN's real safety purpose (confirming the
+            // passenger getting in is who they claim, not a wrong-car mixup).
+            rateLimiter.checkLimit("rideshare:start-trip-pin:$tripId", limit = 5, window = Duration.ofMinutes(1))
+            if (trip.pin != pin.trim()) {
+                throw RidePinMismatchException("Incorrect PIN -- ask your passenger for the 4-digit code shown in their app")
+            }
         }
         trip.status = RideTripStatus.IN_PROGRESS
         trip.updatedAt = Instant.now()

@@ -33,6 +33,7 @@ import rw.itunda.core.repository.AccountRepository
 import rw.itunda.messaging.ConversationNotFoundException
 import rw.itunda.messaging.MessagingService
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.Instant
 import java.util.Optional
 
@@ -716,7 +717,8 @@ class RideTripServiceTest : BehaviorSpec({
     Given("a real DRIVER_ASSIGNED trip with a real PIN, a driver starting it") {
         val rideDriverRepository = mockk<RideDriverRepository>()
         val rideTripRepository = mockk<RideTripRepository>()
-        val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository, rateLimiter = rateLimiter)
 
         val driver = RideDriver(id = "driver_4", userId = "driver_user_4", accountId = "account_driver_4", available = true, licenseNumber = "LIC-TEST")
         fun freshTrip() = RideTrip(
@@ -735,6 +737,9 @@ class RideTripServiceTest : BehaviorSpec({
             Then("it real-starts the trip") {
                 result.status shouldBe RideTripStatus.IN_PROGRESS
             }
+            Then("the PIN attempt is rate-limited -- a 4-digit code is brute-forceable without one") {
+                verify(exactly = 1) { rateLimiter.checkLimit("rideshare:start-trip-pin:ride_trip_3", limit = 5, window = Duration.ofMinutes(1)) }
+            }
         }
 
         When("the driver enters the wrong PIN") {
@@ -748,6 +753,14 @@ class RideTripServiceTest : BehaviorSpec({
                     // expected
                 }
             }
+            Then("the failed guess still counts against the same rate limit") {
+                try {
+                    service.startTrip("driver_user_4", "ride_trip_3", "0000")
+                } catch (e: RidePinMismatchException) {
+                    // expected
+                }
+                verify(exactly = 1) { rateLimiter.checkLimit("rideshare:start-trip-pin:ride_trip_3", limit = 5, window = Duration.ofMinutes(1)) }
+            }
         }
 
         When("the trip predates this feature and has no real PIN at all") {
@@ -758,6 +771,9 @@ class RideTripServiceTest : BehaviorSpec({
             Then("it starts anyway rather than permanently locking out an old in-flight trip") {
                 val result = service.startTrip("driver_user_4", "ride_trip_3", "anything")
                 result.status shouldBe RideTripStatus.IN_PROGRESS
+            }
+            Then("a trip with no PIN to guess doesn't need the rate limit at all") {
+                verify(exactly = 0) { rateLimiter.checkLimit(any(), any(), any()) }
             }
         }
     }
