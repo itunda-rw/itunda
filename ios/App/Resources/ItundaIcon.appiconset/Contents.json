@@ -1,6 +1,14 @@
 {
-  "images" : [
-    { "filename" : "ItundaIcon.svg", "idiom" : "universal", "scale" : "1x", "size" : "1024x1024" }
+  "images": [
+    {
+      "filename": "ItundaIcon.png",
+      "idiom": "universal",
+      "scale": "1x",
+      "size": "1024x1024"
+    }
   ],
-  "info" : { "author" : "Itunda", "version" : 1 }
+  "info": {
+    "author": "Itunda",
+    "version": 1
+  }
 }
