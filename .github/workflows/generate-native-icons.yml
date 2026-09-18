@@ -1,0 +1,60 @@
+name: generate native icon assets
+
+on:
+  push:
+    paths:
+      - 'ios/App/Resources/ItundaIcon.svg'
+      - '.github/workflows/generate-native-icons.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  icons:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install rasterizer
+        run: python -m pip install --disable-pip-version-check cairosvg pillow
+      - name: Generate PNG icon family
+        run: |
+          python <<'PY'
+          import cairosvg
+          from PIL import Image
+          from pathlib import Path
+
+          src = Path('ios/App/Resources/ItundaIcon.svg')
+          out = Path('ios/App/Resources/ItundaIcon.appiconset/ItundaIcon.png')
+          out.parent.mkdir(parents=True, exist_ok=True)
+          cairosvg.svg2png(url=str(src), write_to=str(out), output_width=1024, output_height=1024)
+
+          base = Image.open(out).convert('RGBA')
+          for size, density in [(48,'mdpi'),(72,'hdpi'),(96,'xhdpi'),(144,'xxhdpi'),(192,'xxxhdpi')]:
+              d = Path(f'android/app/src/main/res/mipmap-{density}')
+              d.mkdir(parents=True, exist_ok=True)
+              resized = base.resize((size,size), Image.Resampling.LANCZOS)
+              resized.save(d/'ic_launcher.png', optimize=True)
+              resized.save(d/'ic_launcher_round.png', optimize=True)
+
+          web = Path('site/assets')
+          web.mkdir(parents=True, exist_ok=True)
+          base.resize((64,64), Image.Resampling.LANCZOS).save(web/'favicon.png', optimize=True)
+          PY
+      - name: Normalize iOS AppIcon catalog
+        run: |
+          cat > ios/App/Resources/ItundaIcon.appiconset/Contents.json <<'JSON'
+          {
+            "images" : [
+              { "filename" : "ItundaIcon.png", "idiom" : "universal", "scale" : "1x", "size" : "1024x1024" }
+            ],
+            "info" : { "author" : "Itunda", "version" : 1 }
+          }
+          JSON
+      - name: Commit generated assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ios/App/Resources/ItundaIcon.appiconset android/app/src/main/res/mipmap-* site/assets/favicon.png
+          git diff --cached --quiet || git commit -m "build: generate native launcher and favicon assets"
+          git push
