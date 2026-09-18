@@ -1,4 +1,5 @@
 name: Deploy Itunda Pages
+# Static site deployment via GitHub Pages Actions.
 
 on:
   push:
