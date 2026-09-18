@@ -174,6 +174,7 @@ allTargets.append(
             "NSLocationWhenInUseUsageDescription": "itunda uses your real location to show it on the map and give you directions.",
         ]),
         sources: ["App/Sources/**"],
+        resources: ["App/Resources/**"],
         dependencies: appDependencies,
         // Real granite mini-app host (2026-07-16, see App/Sources/Saronite/) needs one
         // small ObjC helper (SaroniteBrickBridge.m) for two RN-internal APIs Swift's
