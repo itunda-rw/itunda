@@ -4,7 +4,17 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,18 L84,18 L66,45 L84,45 L45,90 L50,58 L30,58 L54,18 Z" />
+    <!-- Renderer-matched rear volume -->
+    <path android:fillColor="#2D0670"
+        android:pathData="M57,21 L87,21 L69,48 L87,48 L48,93 L53,61 L33,61 L57,21 Z" />
+    <path android:fillColor="#4D0BAF"
+        android:pathData="M55,19 L85,19 L67,46 L85,46 L46,91 L51,59 L31,59 L55,19 Z" />
+    <!-- Renderer front face -->
+    <path android:fillColor="#863BFF"
+        android:pathData="M54,17 L84,17 L66,44 L84,44 L45,89 L50,57 L30,57 L54,17 Z" />
+    <!-- Broad renderer-style highlight -->
+    <path android:fillColor="#BFA7FF"
+        android:pathData="M54,19 L79,19 L64,41 L58,41 L70,23 L54,23 Z" />
+    <path android:fillColor="#47BFFF"
+        android:pathData="M72,47 L82,47 L49,84 L51,70 Z" />
 </vector>
