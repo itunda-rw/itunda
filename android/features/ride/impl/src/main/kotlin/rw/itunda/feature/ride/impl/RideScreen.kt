@@ -75,3 +75,13 @@ fun RideScreen(onBack: () -> Unit, onReportIssue: (String) -> Unit = {}) {
         if (tab == RideTab.RIDE) RidePassengerContent(onReportIssue = onReportIssue) else RideDriverContent()
     }
 }
+
+
+/** Feature composition entry point. Keeps the app shell independent of concrete screen names. */
+@Composable
+fun RideEntryPoint(
+    onBack: () -> Unit,
+    onReportIssue: (String) -> Unit = {},
+) {
+    RideScreen(onBack, onReportIssue)
+}
