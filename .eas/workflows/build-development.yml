@@ -1,5 +1,10 @@
 name: Itunda Slack Lab Development
 
+defaults:
+  tools:
+    corepack: true
+    yarn: '4.17.0'
+
 jobs:
   build_android:
     name: Build Android Development
