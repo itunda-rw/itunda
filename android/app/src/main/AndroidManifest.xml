@@ -81,6 +81,13 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="itunda" android:host="verify" />
             </intent-filter>
+            <!-- Internal Android test harness entry point used by Expo Snack Lab. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="itunda" android:host="test" />
+            </intent-filter>
         </activity>
 
         <!-- Apps-in-Itunda mini-app host activities, see miniapps/MiniAppActivity.kt -->
