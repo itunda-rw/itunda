@@ -105,3 +105,12 @@ fun CreditScoreScreen(onBack: () -> Unit) {
         }
     }
 }
+
+
+/** Feature composition entry point. Keeps the app shell independent of concrete screen names. */
+@Composable
+fun CreditScoreEntryPoint(
+    onBack: () -> Unit,
+) {
+    CreditScoreScreen(onBack)
+}
