@@ -1840,3 +1840,16 @@ internal fun SharedFolderSection(
         }
     }
 }
+
+
+/** Feature composition entry point. Keeps the app shell independent of concrete screen names. */
+@Composable
+fun MapsEntryPoint(
+    onBack: () -> Unit,
+    initialCategory: String? = null,
+    initialSearchQuery: String? = null,
+    initialSharedFolder: Pair<String, String>? = null,
+    onOrderDelivery: (merchantId: String, businessName: String) -> Unit = { _, _ -> },
+) {
+    MapScreen(onBack, initialCategory, initialSearchQuery, initialSharedFolder, onOrderDelivery)
+}
