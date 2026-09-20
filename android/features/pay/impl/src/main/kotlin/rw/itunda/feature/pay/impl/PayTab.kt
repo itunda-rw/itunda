@@ -59,7 +59,7 @@ import rw.itunda.core.designsystem.theme.IdsIcons
 enum class PayTabMode { MY_CODE, PAY_MERCHANT }
 
 @Composable
-fun PayTab(
+fun PayEntryPoint(
     transactions: List<rw.itunda.core.network.TransactionDto>,
     onSend: () -> Unit,
     onCashOutAtAgent: () -> Unit,
