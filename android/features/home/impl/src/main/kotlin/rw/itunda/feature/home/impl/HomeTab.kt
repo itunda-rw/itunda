@@ -346,3 +346,57 @@ fun HomeTab(
         PullToRefreshContainer(state = pullToRefreshState, modifier = Modifier.align(Alignment.TopCenter))
     }
 }
+
+
+/**
+ * Public composition entry point for the Home feature.
+ *
+ * The app shell consumes this entry point instead of importing the concrete
+ * HomeTab implementation. Feature internals stay private to :features:home:impl.
+ */
+@Composable
+fun HomeEntryPoint(
+    discoverItems: List<rw.itunda.core.network.DiscoverItem>,
+    unreadNotificationCount: Int,
+    isOffline: Boolean,
+    primaryAccount: rw.itunda.core.network.Account?,
+    neighborhoodSet: Boolean,
+    isRefreshing: Boolean,
+    onRetry: () -> Unit,
+    onOpenPay: () -> Unit = {},
+    onOpenNotifications: () -> Unit = {},
+    onOpenOverview: () -> Unit = {},
+    onOpenBank: () -> Unit = {},
+    onOpenIdentity: () -> Unit = {},
+    onOpenLoans: () -> Unit = {},
+    onOpenAccountDetail: () -> Unit = {},
+    onOpenMarketplace: () -> Unit = {},
+    onOpenCommunity: () -> Unit = {},
+    onOpenJobs: () -> Unit = {},
+    onOpenProperty: () -> Unit = {},
+    onOpenInvest: () -> Unit = {},
+    onOpenShop: () -> Unit = {},
+) {
+    HomeTab(
+        discoverItems = discoverItems,
+        unreadNotificationCount = unreadNotificationCount,
+        isOffline = isOffline,
+        primaryAccount = primaryAccount,
+        neighborhoodSet = neighborhoodSet,
+        isRefreshing = isRefreshing,
+        onRetry = onRetry,
+        onOpenPay = onOpenPay,
+        onOpenNotifications = onOpenNotifications,
+        onOpenOverview = onOpenOverview,
+        onOpenBank = onOpenBank,
+        onOpenIdentity = onOpenIdentity,
+        onOpenLoans = onOpenLoans,
+        onOpenAccountDetail = onOpenAccountDetail,
+        onOpenMarketplace = onOpenMarketplace,
+        onOpenCommunity = onOpenCommunity,
+        onOpenJobs = onOpenJobs,
+        onOpenProperty = onOpenProperty,
+        onOpenInvest = onOpenInvest,
+        onOpenShop = onOpenShop,
+    )
+}
