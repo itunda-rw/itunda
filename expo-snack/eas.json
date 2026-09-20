@@ -5,8 +5,7 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "corepack": true,
-      "yarn": "4.17.0",
+      "yarn": "1.22.22",
       "distribution": "internal",
       "android": { "image": "latest" },
       "ios": { "image": "latest" }
