@@ -39,4 +39,35 @@ class FeatureIsolationTest {
                 "`api` module instead:\n" + violations.joinToString("\n"),
         )
     }
+    @Test
+    fun `feature impl modules depend on their own api module`() {
+        val features = listOf(
+            "payments", "marketplace", "jobs", "property", "ride", "community",
+            "shop", "eats", "talk", "maps", "bills", "merchant", "credit",
+            "wealth", "insurance", "engagement", "assets", "banking", "home",
+            "pay", "menu", "my",
+        )
+
+        val missing = features.mapNotNull { feature ->
+            val gradleFile = java.io.File(
+                projectDir,
+                "../features/$feature/impl/build.gradle.kts",
+            )
+            if (!gradleFile.isFile) {
+                "$feature: missing impl/build.gradle.kts"
+            } else {
+                val expected = """implementation(project(":features:$feature:api"))"""
+                if (expected !in gradleFile.readText()) {
+                    "$feature: missing $expected"
+                } else null
+            }
+        }
+
+        assertTrue(
+            missing.isEmpty(),
+            "Feature impl modules must explicitly depend on their own api modules:\n" +
+                missing.joinToString("\n"),
+        )
+    }
+
 }
