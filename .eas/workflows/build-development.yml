@@ -8,23 +8,3 @@ jobs:
     params:
       platform: android
       profile: development
-
-  slack_success:
-    name: Slack Lab Android Success
-    after: [build_android]
-    type: slack
-    environment: development
-    if: ${{ after.build_android.status == 'success' }}
-    params:
-      webhook_url: ${{ env.SLACK_WEBHOOK_URL }}
-      message: "Itunda Android Lab build succeeded. Status: ${{ after.build_android.status }}"
-
-  slack_failure:
-    name: Slack Lab Android Failure
-    after: [build_android]
-    type: slack
-    environment: development
-    if: ${{ after.build_android.status == 'failure' }}
-    params:
-      webhook_url: ${{ env.SLACK_WEBHOOK_URL }}
-      message: "Itunda Android Lab build failed. Status: ${{ after.build_android.status }}"
