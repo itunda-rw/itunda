@@ -72,6 +72,27 @@ class FeatureIsolationTest {
 
 
     @Test
+    fun `app shell feature imports are composition entry points`() {
+        val appScreen = java.io.File(
+            projectDir,
+            "../app/src/main/java/rw/itunda/app/ui/ItundaAppScreen.kt",
+        )
+
+        val violations = appScreen.readText()
+            .lineSequence()
+            .filter { it.startsWith("import rw.itunda.feature.") }
+            .filter { ".impl." in it && !it.trimEnd().endsWith("EntryPoint") }
+            .toList()
+
+        assertTrue(
+            violations.isEmpty(),
+            "App shell must consume feature implementations through explicit *EntryPoint " +
+                "composition functions, not concrete screen/content imports:\n" +
+                violations.joinToString("\n"),
+        )
+    }
+
+    @Test
     fun `app shell uses feature composition entry points for primary tabs`() {
         val appScreen = java.io.File(
             projectDir,
