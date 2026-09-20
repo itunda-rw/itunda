@@ -234,3 +234,12 @@ private fun NewDelayedTransferScreen(onBack: () -> Unit, onCreated: () -> Unit) 
         )
     }
 }
+
+
+/** Feature composition entry point. */
+@Composable
+fun DelayedTransferEntryPoint(
+    onBack: () -> Unit,
+) {
+    DelayedTransferListScreen(onBack)
+}
