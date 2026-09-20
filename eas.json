@@ -3,7 +3,8 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "corepack": true
+      "corepack": true,
+      "yarn": "4.17.0"
     }
   }
 }
