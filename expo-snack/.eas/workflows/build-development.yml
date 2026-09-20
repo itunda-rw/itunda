@@ -1,7 +1,7 @@
 name: Itunda Snack Lab Development
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
   push:
     branches:
       - agent/itunda-agent-network
