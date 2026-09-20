@@ -1,9 +1,4 @@
-name: Itunda Slack Lab Development
-
-defaults:
-  tools:
-    yarn: '1.22.22'
-    corepack: false
+name: Itunda Android Lab Development
 
 jobs:
   build_android:
@@ -14,30 +9,22 @@ jobs:
       platform: android
       profile: development
 
-  build_ios:
-    name: Build iOS Development
-    type: build
-    environment: development
-    params:
-      platform: ios
-      profile: development
-
   slack_success:
-    name: Slack Lab Development Success
-    after: [build_android, build_ios]
+    name: Slack Lab Android Success
+    after: [build_android]
     type: slack
     environment: development
-    if: ${{ after.build_android.status == 'success' && after.build_ios.status == 'success' }}
+    if: ${{ after.build_android.status == 'success' }}
     params:
       webhook_url: ${{ env.SLACK_WEBHOOK_URL }}
-      message: "Itunda Lab Development builds succeeded. Android: ${{ after.build_android.status }} | iOS: ${{ after.build_ios.status }}"
+      message: "Itunda Android Lab build succeeded. Status: ${{ after.build_android.status }}"
 
   slack_failure:
-    name: Slack Lab Development Failure
-    after: [build_android, build_ios]
+    name: Slack Lab Android Failure
+    after: [build_android]
     type: slack
     environment: development
-    if: ${{ after.build_android.status == 'failure' || after.build_ios.status == 'failure' }}
+    if: ${{ after.build_android.status == 'failure' }}
     params:
       webhook_url: ${{ env.SLACK_WEBHOOK_URL }}
-      message: "Itunda Lab Development build failed. Android: ${{ after.build_android.status }} | iOS: ${{ after.build_ios.status }}"
+      message: "Itunda Android Lab build failed. Status: ${{ after.build_android.status }}"
