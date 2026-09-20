@@ -872,3 +872,13 @@ fun CommerceShopContent(
     }
 }
 
+
+
+/** Feature composition entry point. Keeps the app shell independent of concrete screen names. */
+@Composable
+fun CommerceShopEntryPoint(
+    deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
+    onMessageSeller: (String) -> Unit = {},
+) {
+    CommerceShopContent(deviceStepUpHost, onMessageSeller)
+}
