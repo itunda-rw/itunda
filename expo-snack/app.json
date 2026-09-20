@@ -1,0 +1,8 @@
+{
+  "expo": {
+    "name": "Itunda Snack Lab",
+    "slug": "itunda-snack-lab",
+    "version": "1.0.0",
+    "platforms": ["ios", "android", "web"]
+  }
+}
