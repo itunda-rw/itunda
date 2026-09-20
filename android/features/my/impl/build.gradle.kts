@@ -24,6 +24,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":features:my:api"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:network"))
 
