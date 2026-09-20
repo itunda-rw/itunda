@@ -55,6 +55,7 @@ class MainActivity : FragmentActivity() {
     private var mapSearchFromDeepLink by mutableStateOf<String?>(null)
     private var mapSharedFolderFromDeepLink by mutableStateOf<Pair<String, String>?>(null)
     private var identityVerifyRequestId by mutableStateOf<String?>(null)
+    private var testRoute by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -80,7 +81,7 @@ class MainActivity : FragmentActivity() {
             )
         }
 
-        applyMapsDeepLink(intent)
+        applyDeepLink(intent)
 
         // Root/FDS gate on the real app entry point, ported from
         // mobile_clients/android's BankActivity (see docs/ARCHITECTURE.md §3) --
@@ -213,6 +214,7 @@ class MainActivity : FragmentActivity() {
                                         initialMapSearchQuery = mapSearchFromDeepLink,
                                         initialMapSharedFolder = mapSharedFolderFromDeepLink,
                                         identityVerifyRequestId = identityVerifyRequestId,
+                                        initialTestRoute = testRoute,
                                         onIdentityVerifyConsumed = { identityVerifyRequestId = null },
                                         onMapDeepLinkConsumed = { mapDeepLinkRequested = false },
                                     )
@@ -249,8 +251,11 @@ class MainActivity : FragmentActivity() {
         applyMapsDeepLink(intent)
     }
 
-    private fun applyMapsDeepLink(intent: Intent?) {
+    private fun applyDeepLink(intent: Intent?) {
         val uri = intent?.data
+        testRoute = if (intent?.action == Intent.ACTION_VIEW && uri?.scheme.equals("itunda", ignoreCase = true) && uri?.host.equals("test", ignoreCase = true)) {
+            uri?.pathSegments.orEmpty().firstOrNull()?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
+        } else null
         mapDeepLinkRequested = intent?.action == Intent.ACTION_VIEW &&
             uri?.scheme.equals("itunda", ignoreCase = true) &&
             uri?.host.equals("maps", ignoreCase = true)
