@@ -47,7 +47,7 @@ import rw.itunda.core.designsystem.theme.Ids
 // cross-Feature coupling before moving, unlike PayTab/MenuScreen. See
 // [[project_itunda_feature_isolation]] for the full account.
 @Composable
-fun MyTab(
+fun MyEntryPoint(
     onBack: () -> Unit,
     onSwitchToShop: () -> Unit = {},
     onSwitchToEats: () -> Unit = {},
