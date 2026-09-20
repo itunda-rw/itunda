@@ -47,7 +47,7 @@ import rw.itunda.core.designsystem.theme.IdsIcons
  * donations).
  */
 @Composable
-fun TransferHubScreen(
+fun TransferHubEntryPoint(
     autoTransferCount: Int,
     onBack: () -> Unit,
     onSendMoney: () -> Unit,
