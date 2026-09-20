@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { SafeAreaView, View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
+import { SafeAreaView, View, Text, Pressable, StyleSheet, ScrollView, Linking, Alert } from "react-native";
 
 const INDIGO = "#7472F4";
 const screens = ["Home", "Identity", "Chat", "Marketplace", "Mini Apps"];
@@ -9,6 +9,16 @@ const faces = [
   ["😮", "Wow", "#FFD39A"], ["😢", "Sad", "#9CC8FF"], ["👍", "Like", "#FFD39A"],
 ];
 
+async function openNative(route) {
+  try {
+    await Linking.openURL(`itunda://test/${route}`);
+  } catch (_error) {
+    Alert.alert("Itunda app not available", "Install the Itunda Android app, then try again.");
+  }
+}
+function routeFor(label) {
+  return {"Home":"home","Identity":"identity","Chat":"messages","Marketplace":"marketplace","Mini Apps":"miniapps"}[label];
+}
 function Header({title}) {
   return <View style={styles.header}><View><Text style={styles.eyebrow}>ITUNDA</Text><Text style={styles.title}>{title}</Text></View><View style={styles.avatar}><Text style={styles.avatarText}>E</Text></View></View>;
 }
@@ -16,7 +26,7 @@ function Home({go}) {
   return <>
     <View testID="screen-home" accessibilityLabel="Home screen" style={styles.hero}><Text style={styles.heroEyebrow}>WELCOME TO ITUNDA</Text><Text style={styles.heroTitle}>Everything you need,</Text><Text style={styles.heroTitle}>in one place.</Text><Text style={styles.heroBody}>Simple services for everyday life in Rwanda.</Text></View>
     <Text style={styles.section}>Quick actions</Text>
-    <View style={styles.grid}>{[["◉","Identity"],["◌","Chat"],["◇","Marketplace"],["✦","Mini Apps"]].map(([icon,label])=><Pressable testID={`quick-${label.toLowerCase().replace(/\s+/g,"-")}`} key={label} style={styles.card} onPress={()=>go(label)}><Text style={styles.cardIcon}>{icon}</Text><Text style={styles.cardTitle}>{label}</Text><Text style={styles.muted}>Open</Text></Pressable>)}</View>
+    <View style={styles.grid}>{[["◉","Identity"],["◌","Chat"],["◇","Marketplace"],["✦","Mini Apps"]].map(([icon,label])=><Pressable testID={`quick-${label.toLowerCase().replace(/\s+/g,"-")}`} key={label} style={styles.card} onPress={()=>{ go(label); openNative(routeFor(label)); }}><Text style={styles.cardIcon}>{icon}</Text><Text style={styles.cardTitle}>{label}</Text><Text style={styles.muted}>Open</Text></Pressable>)}</View>
     <View style={styles.faceCard}><Text style={styles.section}>ItundaFace</Text><Text style={styles.muted}>Original Itunda expression system</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.faceRow}>{faces.map(([emoji,label,color])=><View key={label} style={[styles.face,{backgroundColor:color}]}><Text style={styles.faceText}>{emoji}</Text></View>)}</ScrollView></View>
   </>;
 }
@@ -31,7 +41,7 @@ function Panel({type}) {
 }
 export default function App(){
   const [screen,setScreen]=useState("Home");
-  return <SafeAreaView style={styles.safe}><View style={styles.app}><ScrollView contentContainerStyle={styles.content}><Header title={screen}/>{screen==="Home"?<Home go={setScreen}/>:<Panel type={screen}/>}</ScrollView><View testID="bottom-navigation" style={styles.nav}>{screens.map(x=><Pressable testID={`nav-${x.toLowerCase().replace(/\s+/g,"-")}`} accessibilityRole="button" key={x} style={styles.navItem} onPress={()=>setScreen(x)}><Text style={[styles.navIcon,screen===x&&styles.active]}>{x==="Home"?"⌂":x==="Identity"?"◉":x==="Chat"?"◌":x==="Marketplace"?"◇":"✦"}</Text><Text style={[styles.navText,screen===x&&styles.active]}>{x}</Text></Pressable>)}</View></View></SafeAreaView>;
+  return <SafeAreaView style={styles.safe}><View style={styles.app}><ScrollView contentContainerStyle={styles.content}><Header title={screen}/>{screen==="Home"?<Home go={setScreen}/>:<Panel type={screen}/>}</ScrollView><View testID="bottom-navigation" style={styles.nav}>{screens.map(x=><Pressable testID={`nav-${x.toLowerCase().replace(/\s+/g,"-")}`} accessibilityRole="button" key={x} style={styles.navItem} onPress={()=>{ setScreen(x); openNative(routeFor(x)); }}><Text style={[styles.navIcon,screen===x&&styles.active]}>{x==="Home"?"⌂":x==="Identity"?"◉":x==="Chat"?"◌":x==="Marketplace"?"◇":"✦"}</Text><Text style={[styles.navText,screen===x&&styles.active]}>{x}</Text></Pressable>)}</View></View></SafeAreaView>;
 }
 const styles=StyleSheet.create({
 safe:{flex:1,backgroundColor:"#F7F7FA"},app:{flex:1},content:{padding:20,paddingBottom:120},
