@@ -92,7 +92,7 @@ private const val BANK_HUB_UPFRONT_DEPOSIT_ANNUAL_RATE = UPFRONT_DEPOSIT_ANNUAL_
 // this module's own strings.xml) was resolved the same slice. See
 // [[project_itunda_feature_isolation]] for the full account.
 @Composable
-fun BankHubScreen(
+fun BankHubEntryPoint(
     // Real decoupling (2026-09-02, slice 2) -- was `viewModel: MainViewModel` (the
     // whole 674-line, :app-only ViewModel); narrowed to just the 5 StateFlow values
     // this screen actually reads, hoisted to plain params so this composable has zero
