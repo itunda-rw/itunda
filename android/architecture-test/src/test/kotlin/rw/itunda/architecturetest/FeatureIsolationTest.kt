@@ -70,4 +70,44 @@ class FeatureIsolationTest {
         )
     }
 
+
+    @Test
+    fun `app shell uses feature composition entry points for primary tabs`() {
+        val appScreen = java.io.File(
+            projectDir,
+            "../app/src/main/java/rw/itunda/app/ui/ItundaAppScreen.kt",
+        )
+
+        assertTrue(appScreen.isFile, "Expected native app shell source: ${appScreen.path}")
+
+        val imports = appScreen.readText()
+            .lineSequence()
+            .filter { it.startsWith("import rw.itunda.feature.") }
+            .toList()
+
+        val required = mapOf(
+            "home" to "HomeEntryPoint",
+            "pay" to "PayEntryPoint",
+            "menu" to "MenuEntryPoint",
+            "my" to "MyEntryPoint",
+        )
+
+        val violations = required.mapNotNull { (feature, entryPoint) ->
+            val concreteImports = imports.filter {
+                it.startsWith("import rw.itunda.feature.$feature.impl.")
+            }
+            when {
+                imports.any { it == "import rw.itunda.feature.$feature.impl.$entryPoint" } -> null
+                concreteImports.isEmpty() -> "$feature: missing $entryPoint import"
+                else -> "$feature: app shell still imports concrete impl(s): ${concreteImports.joinToString()}"
+            }
+        }
+
+        assertTrue(
+            violations.isEmpty(),
+            "Primary feature tabs must enter through feature composition entry points:\n" +
+                violations.joinToString("\n"),
+        )
+    }
+
 }
