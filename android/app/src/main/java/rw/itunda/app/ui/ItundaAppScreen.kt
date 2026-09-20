@@ -190,7 +190,7 @@ import rw.itunda.feature.banking.impl.BankHubScreen
 import rw.itunda.feature.banking.impl.GroupAccountScreen
 import rw.itunda.feature.banking.impl.Grow31SavingsScreen
 import rw.itunda.feature.banking.impl.WeeklySavingsScreen
-import rw.itunda.feature.home.impl.HomeTab
+import rw.itunda.feature.home.impl.HomeEntryPoint
 import rw.itunda.feature.pay.impl.AutoTransferListScreen
 import rw.itunda.feature.pay.impl.DelayedTransferListScreen
 import rw.itunda.feature.pay.impl.PayTab
@@ -1834,7 +1834,7 @@ fun ItundaAppScreen(
                         val homePrimaryAccount by viewModel.primaryAccount.collectAsState()
                         val homeProfile by viewModel.profile.collectAsState()
                         val homeIsRefreshing by viewModel.isRefreshing.collectAsState()
-                        HomeTab(
+                        HomeEntryPoint(
                         discoverItems = homeDiscoverItems,
                         unreadNotificationCount = homeUnreadNotificationCount,
                         isOffline = homeIsOffline,
