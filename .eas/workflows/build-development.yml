@@ -2,8 +2,8 @@ name: Itunda Slack Lab Development
 
 defaults:
   tools:
-    corepack: true
-    yarn: '4.17.0'
+    yarn: '1.22.22'
+    corepack: false
 
 jobs:
   build_android:
@@ -40,4 +40,4 @@ jobs:
     if: ${{ after.build_android.status == 'failure' || after.build_ios.status == 'failure' }}
     params:
       webhook_url: ${{ env.SLACK_WEBHOOK_URL }}
-      message: "Itunda Lab Development build failed. Android: ${{ after.build_android.status }} | iOS: ${{ after.build_ios.status }}
+      message: "Itunda Lab Development build failed. Android: ${{ after.build_android.status }} | iOS: ${{ after.build_ios.status }}"
