@@ -1,5 +1,10 @@
 name: Itunda Android Lab Development
 
+on:
+  push:
+    branches:
+      - agent/itunda-agent-network
+
 jobs:
   build_android:
     name: Build Android Development
