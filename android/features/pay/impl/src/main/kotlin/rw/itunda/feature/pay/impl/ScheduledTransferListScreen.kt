@@ -143,3 +143,12 @@ private fun ScheduledTransferCard(transfer: ScheduledTransferDto, onCancel: () -
         }
     }
 }
+
+
+/** Feature composition entry point. */
+@Composable
+fun ScheduledTransferEntryPoint(
+    onBack: () -> Unit,
+) {
+    ScheduledTransferListScreen(onBack)
+}
