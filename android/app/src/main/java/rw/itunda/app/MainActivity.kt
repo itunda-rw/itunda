@@ -248,7 +248,7 @@ class MainActivity : FragmentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        applyMapsDeepLink(intent)
+        applyDeepLink(intent)
     }
 
     private fun applyDeepLink(intent: Intent?) {
