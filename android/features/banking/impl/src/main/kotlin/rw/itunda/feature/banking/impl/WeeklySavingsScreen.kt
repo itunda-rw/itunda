@@ -398,3 +398,12 @@ private fun formatWeeklyDate(iso: String): String = try {
     iso.take(10)
 }
 
+
+
+/** Feature composition entry point. Keeps the app shell independent of concrete screen names. */
+@Composable
+fun WeeklySavingsEntryPoint(
+    onBack: () -> Unit,
+) {
+    WeeklySavingsScreen(onBack)
+}
