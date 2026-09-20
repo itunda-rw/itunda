@@ -182,25 +182,25 @@ import rw.itunda.feature.talk.impl.TalkEntryPoint
 import rw.itunda.feature.maps.impl.MapsEntryPoint
 import rw.itunda.feature.shop.impl.CommerceShopEntryPoint
 import rw.itunda.feature.eats.impl.EatsEntryPoint
-import rw.itunda.feature.credit.impl.LoansScreen
-import rw.itunda.feature.credit.impl.CreditScoreScreen
-import rw.itunda.feature.credit.impl.StudentLoanScreen
-import rw.itunda.feature.credit.impl.VupLoanScreen
-import rw.itunda.feature.banking.impl.BankHubScreen
-import rw.itunda.feature.banking.impl.GroupAccountScreen
-import rw.itunda.feature.banking.impl.Grow31SavingsScreen
-import rw.itunda.feature.banking.impl.WeeklySavingsScreen
+import rw.itunda.feature.credit.impl.LoansEntryPoint
+import rw.itunda.feature.credit.impl.CreditScoreEntryPoint
+import rw.itunda.feature.credit.impl.StudentLoanEntryPoint
+import rw.itunda.feature.credit.impl.VupLoanEntryPoint
+import rw.itunda.feature.banking.impl.BankHubEntryPoint
+import rw.itunda.feature.banking.impl.GroupAccountEntryPoint
+import rw.itunda.feature.banking.impl.Grow31SavingsEntryPoint
+import rw.itunda.feature.banking.impl.WeeklySavingsEntryPoint
 import rw.itunda.feature.home.impl.HomeEntryPoint
-import rw.itunda.feature.pay.impl.AutoTransferListScreen
-import rw.itunda.feature.pay.impl.DelayedTransferListScreen
+import rw.itunda.feature.pay.impl.AutoTransferEntryPoint
+import rw.itunda.feature.pay.impl.DelayedTransferEntryPoint
 import rw.itunda.feature.pay.impl.PayEntryPoint
-import rw.itunda.feature.pay.impl.ScheduledTransferListScreen
-import rw.itunda.feature.pay.impl.TransferHubScreen
+import rw.itunda.feature.pay.impl.ScheduledTransferEntryPoint
+import rw.itunda.feature.pay.impl.TransferHubEntryPoint
 import rw.itunda.feature.menu.impl.MenuEntryPoint
 import rw.itunda.feature.my.impl.MyEntryPoint
 import rw.itunda.feature.wealth.impl.InvestEntryPoint
-import rw.itunda.feature.ride.impl.RideScreen
-import rw.itunda.feature.ride.impl.DesignatedDriverScreen
+import rw.itunda.feature.ride.impl.RideEntryPoint
+import rw.itunda.feature.ride.impl.DesignatedDriverEntryPoint
 import rw.itunda.core.network.BucketDetailTarget
 import rw.itunda.core.network.MoneyActionResult
 import rw.itunda.core.designsystem.theme.AccentIndigo
@@ -1396,7 +1396,7 @@ fun ItundaAppScreen(
         }
         if (showLoans) {
             BackHandler { showLoans = false }
-            LoansScreen(onBack = { showLoans = false })
+            LoansEntryPoint(onBack = { showLoans = false })
             return@IdsTheme
         }
         if (showSupport) {
@@ -1416,7 +1416,7 @@ fun ItundaAppScreen(
         }
         if (showCreditScore) {
             BackHandler { showCreditScore = false }
-            CreditScoreScreen(onBack = { showCreditScore = false })
+            CreditScoreEntryPoint(onBack = { showCreditScore = false })
             return@IdsTheme
         }
         if (showTrustScore) {
@@ -1436,12 +1436,12 @@ fun ItundaAppScreen(
         }
         if (showStudentLoan) {
             BackHandler { showStudentLoan = false }
-            StudentLoanScreen(onBack = { showStudentLoan = false })
+            StudentLoanEntryPoint(onBack = { showStudentLoan = false })
             return@IdsTheme
         }
         if (showVupLoan) {
             BackHandler { showVupLoan = false }
-            VupLoanScreen(onBack = { showVupLoan = false })
+            VupLoanEntryPoint(onBack = { showVupLoan = false })
             return@IdsTheme
         }
         if (showMotoOwnership) {
@@ -1464,14 +1464,14 @@ fun ItundaAppScreen(
         // (WeeklySavingsController/WeeklySavingsService) never had ANY mobile UI before now.
         if (showWeeklySavings) {
             BackHandler { showWeeklySavings = false }
-            WeeklySavingsScreen(onBack = { showWeeklySavings = false })
+            WeeklySavingsEntryPoint(onBack = { showWeeklySavings = false })
             return@IdsTheme
         }
         // Real Toss Bank 키워봐요 31일적금 screen (2026-08-12) -- same Quick-links
         // full-screen pattern as WeeklySavingsScreen directly above.
         if (showGrow31Savings) {
             BackHandler { showGrow31Savings = false }
-            Grow31SavingsScreen(onBack = { showGrow31Savings = false })
+            Grow31SavingsEntryPoint(onBack = { showGrow31Savings = false })
             return@IdsTheme
         }
         // Real Toss Bank 먼저 이자받는 정기예금 screen (2026-07-25) -- same pattern.
@@ -1548,7 +1548,7 @@ fun ItundaAppScreen(
             val bankInterestJar by viewModel.interestJar.collectAsState()
             val bankRoundUpSettings by viewModel.roundUpSettings.collectAsState()
             val bankSpendingInsight by viewModel.spendingInsight.collectAsState()
-            BankHubScreen(
+            BankHubEntryPoint(
                 primaryAccount = bankPrimaryAccount,
                 savingsGoals = bankSavingsGoals,
                 interestJar = bankInterestJar,
@@ -1697,7 +1697,7 @@ fun ItundaAppScreen(
         }
         if (showGroupAccounts) {
             BackHandler { showGroupAccounts = false }
-            GroupAccountScreen(onBack = { showGroupAccounts = false })
+            GroupAccountEntryPoint(onBack = { showGroupAccounts = false })
             return@IdsTheme
         }
         // Real Kakao Pay spending categorization screen (2026-07-28, item 107) -- first
@@ -1731,7 +1731,7 @@ fun ItundaAppScreen(
         }
         if (showRides) {
             BackHandler { showRides = false }
-            RideScreen(
+            RideEntryPoint(
                 onBack = { showRides = false },
                 onReportIssue = { transactionId ->
                     showRides = false
@@ -1743,7 +1743,7 @@ fun ItundaAppScreen(
         }
         if (showDesignatedDriver) {
             BackHandler { showDesignatedDriver = false }
-            DesignatedDriverScreen(onBack = { showDesignatedDriver = false })
+            DesignatedDriverEntryPoint(onBack = { showDesignatedDriver = false })
             return@IdsTheme
         }
         if (showBikeRental) {
@@ -1786,7 +1786,7 @@ fun ItundaAppScreen(
         }
         if (showTransferHub) {
             if (showAutoTransfers) {
-                AutoTransferListScreen(
+                AutoTransferEntryPoint(
                     onBack = { showAutoTransfers = false },
                     onChanged = {
                         coroutineScope.launch {
@@ -1795,11 +1795,11 @@ fun ItundaAppScreen(
                     },
                 )
             } else if (showScheduledTransfers) {
-                ScheduledTransferListScreen(onBack = { showScheduledTransfers = false })
+                ScheduledTransferEntryPoint(onBack = { showScheduledTransfers = false })
             } else if (showDelayedTransfers) {
-                DelayedTransferListScreen(onBack = { showDelayedTransfers = false })
+                DelayedTransferEntryPoint(onBack = { showDelayedTransfers = false })
             } else {
-                TransferHubScreen(
+                TransferHubEntryPoint(
                     autoTransferCount = autoTransferCount,
                     onBack = { showTransferHub = false },
                     onSendMoney = { showTransferHub = false; transferStep = TransferStep.Recipient; transferFromAccount = null },
