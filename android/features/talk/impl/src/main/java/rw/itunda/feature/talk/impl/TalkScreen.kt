@@ -393,3 +393,14 @@ private fun SyntheticTalkChannelRow(name: String, subtitle: String, onClick: () 
         }
     }
 }
+
+
+/** Feature composition entry point. Keeps the app shell independent of concrete screen names. */
+@Composable
+fun TalkEntryPoint(
+    initialConversationId: String?,
+    onConsumedInitial: () -> Unit,
+    deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
+) {
+    TalkTab(initialConversationId, onConsumedInitial, deviceStepUpHost)
+}
