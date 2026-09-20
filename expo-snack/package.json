@@ -10,5 +10,6 @@
     "react-native": "0.86.0",
     "react-native-web": "0.21.0",
     "@expo/metro-runtime": "~6.1.0"
-  }
+  },
+  "packageManager": "yarn@1.22.22"
 }
