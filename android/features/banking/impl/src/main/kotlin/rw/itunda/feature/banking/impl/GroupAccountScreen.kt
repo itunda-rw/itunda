@@ -209,3 +209,12 @@ private fun GroupAccountListContent(refreshKey: Int, onOpen: (String) -> Unit, o
     }
 }
 
+
+
+/** Feature composition entry point. Keeps the app shell independent of concrete screen names. */
+@Composable
+fun GroupAccountEntryPoint(
+    onBack: () -> Unit,
+) {
+    GroupAccountScreen(onBack)
+}
