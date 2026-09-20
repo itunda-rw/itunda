@@ -372,3 +372,12 @@ private fun LenderChip(label: String, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
+
+
+/** Feature composition entry point. Keeps the app shell independent of concrete screen names. */
+@Composable
+fun LoansEntryPoint(
+    onBack: () -> Unit,
+) {
+    LoansScreen(onBack)
+}
