@@ -178,10 +178,10 @@ import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.components.rememberCountUp
 import rw.itunda.core.designsystem.components.rememberSpringOverscrollModifier
 import rw.itunda.core.designsystem.components.trackScrollPressedKey
-import rw.itunda.feature.talk.impl.TalkTab
-import rw.itunda.feature.maps.impl.MapScreen
-import rw.itunda.feature.shop.impl.CommerceShopContent
-import rw.itunda.feature.eats.impl.EatsContent
+import rw.itunda.feature.talk.impl.TalkEntryPoint
+import rw.itunda.feature.maps.impl.MapsEntryPoint
+import rw.itunda.feature.shop.impl.CommerceShopEntryPoint
+import rw.itunda.feature.eats.impl.EatsEntryPoint
 import rw.itunda.feature.credit.impl.LoansScreen
 import rw.itunda.feature.credit.impl.CreditScoreScreen
 import rw.itunda.feature.credit.impl.StudentLoanScreen
@@ -198,7 +198,7 @@ import rw.itunda.feature.pay.impl.ScheduledTransferListScreen
 import rw.itunda.feature.pay.impl.TransferHubScreen
 import rw.itunda.feature.menu.impl.MenuEntryPoint
 import rw.itunda.feature.my.impl.MyEntryPoint
-import rw.itunda.feature.wealth.impl.InvestScreen
+import rw.itunda.feature.wealth.impl.InvestEntryPoint
 import rw.itunda.feature.ride.impl.RideScreen
 import rw.itunda.feature.ride.impl.DesignatedDriverScreen
 import rw.itunda.core.network.BucketDetailTarget
@@ -1232,7 +1232,7 @@ fun ItundaAppScreen(
             BackHandler { showShop = false }
             Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    CommerceShopContent(
+                    CommerceShopEntryPoint(
                         deviceStepUpHost = { visible, onDismiss, onVerified ->
                             DeviceStepUpHost(visible = visible, onDismiss = onDismiss, onVerified = onVerified)
                         },
@@ -1250,7 +1250,7 @@ fun ItundaAppScreen(
             BackHandler { showEats = false }
             Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    EatsContent(
+                    EatsEntryPoint(
                         deviceStepUpHost = { visible, onDismiss, onVerified ->
                             DeviceStepUpHost(visible = visible, onDismiss = onDismiss, onVerified = onVerified)
                         },
@@ -1345,7 +1345,7 @@ fun ItundaAppScreen(
         // pattern as Pay/Benefits above, since the 5-tab bottom nav has no free slot.
         if (showMap) {
             BackHandler { showMap = false }
-            MapScreen(
+            MapsEntryPoint(
                 onBack = { showMap = false },
                 initialCategory = if (showAgentCash) "ITUNDA_AGENT" else null,
                 initialSearchQuery = mapSearchQueryForScreen,
@@ -1374,7 +1374,7 @@ fun ItundaAppScreen(
         // before now, not even the original buy/sell/portfolio.
         if (showInvest) {
             BackHandler { showInvest = false }
-            InvestScreen(onBack = { showInvest = false })
+            InvestEntryPoint(onBack = { showInvest = false })
             return@IdsTheme
         }
         if (showOverview) {
@@ -1915,7 +1915,7 @@ fun ItundaAppScreen(
                     // directly now -- this injection wiring was left as-is since removing
                     // it is an unrelated cleanup, not required to unblock PayTab's own
                     // extraction (the reason this promotion happened).
-                    ItundaTab.Messages -> TalkTab(
+                    ItundaTab.Messages -> TalkEntryPoint(
                         initialConversationId = pendingConversationId,
                         onConsumedInitial = { pendingConversationId = null },
                         deviceStepUpHost = { visible, onDismiss, onVerified ->
