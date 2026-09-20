@@ -290,3 +290,13 @@ fun NewAutoTransferScreen(onBack: () -> Unit, onCreated: () -> Unit) {
         )
     }
 }
+
+
+/** Feature composition entry point. Keeps the app shell independent of concrete screen names. */
+@Composable
+fun AutoTransferEntryPoint(
+    onBack: () -> Unit,
+    onChanged: () -> Unit,
+) {
+    AutoTransferListScreen(onBack, onChanged)
+}
