@@ -70,3 +70,15 @@ fun EatsContent(
         }
     }
 }
+
+
+/** Feature composition entry point. Keeps the app shell independent of concrete screen names. */
+@Composable
+fun EatsEntryPoint(
+    deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
+    pendingMerchantId: String? = null,
+    pendingMerchantName: String? = null,
+    onPendingMerchantConsumed: () -> Unit = {},
+) {
+    EatsContent(deviceStepUpHost, pendingMerchantId, pendingMerchantName, onPendingMerchantConsumed)
+}
