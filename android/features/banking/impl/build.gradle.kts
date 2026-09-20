@@ -24,6 +24,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":features:banking:api"))
     implementation(project(":core:ledger"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:network"))
