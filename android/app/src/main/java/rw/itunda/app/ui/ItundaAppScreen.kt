@@ -193,11 +193,11 @@ import rw.itunda.feature.banking.impl.WeeklySavingsScreen
 import rw.itunda.feature.home.impl.HomeEntryPoint
 import rw.itunda.feature.pay.impl.AutoTransferListScreen
 import rw.itunda.feature.pay.impl.DelayedTransferListScreen
-import rw.itunda.feature.pay.impl.PayTab
+import rw.itunda.feature.pay.impl.PayEntryPoint
 import rw.itunda.feature.pay.impl.ScheduledTransferListScreen
 import rw.itunda.feature.pay.impl.TransferHubScreen
-import rw.itunda.feature.menu.impl.MenuScreen
-import rw.itunda.feature.my.impl.MyTab
+import rw.itunda.feature.menu.impl.MenuEntryPoint
+import rw.itunda.feature.my.impl.MyEntryPoint
 import rw.itunda.feature.wealth.impl.InvestScreen
 import rw.itunda.feature.ride.impl.RideScreen
 import rw.itunda.feature.ride.impl.DesignatedDriverScreen
@@ -1886,7 +1886,7 @@ fun ItundaAppScreen(
                     ItundaTab.Pay -> {
                         val payTransactions by viewModel.transactions.collectAsState()
                         val payContext = androidx.compose.ui.platform.LocalContext.current
-                        PayTab(
+                        PayEntryPoint(
                         transactions = payTransactions,
                         onSend = { transferStep = TransferStep.Recipient; transferFromAccount = null },
                         onCashOutAtAgent = { showAgentCash = true },
@@ -1932,7 +1932,7 @@ fun ItundaAppScreen(
                     ItundaTab.Explore -> {
                         val partnerMiniApps by viewModel.partnerMiniApps.collectAsState()
                         val menuContext = androidx.compose.ui.platform.LocalContext.current
-                        MenuScreen(
+                        MenuEntryPoint(
                             onOpenShop = { showShop = true },
                             onOpenEats = { showEats = true },
                             onOpenMarketplace = { showMarketplace = true },
@@ -2007,7 +2007,7 @@ fun ItundaAppScreen(
                     // is completely unchanged, just reached directly instead of via
                     // Explore's profile icon. No BackHandler, same persistent-tab
                     // reasoning as Pay/Explore above.
-                    ItundaTab.You -> MyTab(
+                    ItundaTab.You -> MyEntryPoint(
                         onBack = {},
                         onSwitchToShop = { showShop = true },
                         onSwitchToEats = { showEats = true },
