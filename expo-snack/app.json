@@ -3,6 +3,12 @@
     "name": "Itunda Snack Lab",
     "slug": "itunda-snack-lab",
     "version": "1.0.0",
-    "platforms": ["ios", "android", "web"]
+    "platforms": ["ios", "android", "web"],
+    "android": {
+      "package": "rw.itunda.snacklab"
+    },
+    "ios": {
+      "bundleIdentifier": "rw.itunda.snacklab"
+    }
   }
 }
