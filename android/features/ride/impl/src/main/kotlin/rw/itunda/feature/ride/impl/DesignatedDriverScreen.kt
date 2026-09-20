@@ -65,3 +65,12 @@ fun DesignatedDriverScreen(onBack: () -> Unit) {
         if (tab == DesignatedDriverTab.REQUEST) DesignatedDriverRequestContent() else DesignatedDriverDriveContent()
     }
 }
+
+
+/** Feature composition entry point. Keeps the app shell independent of concrete screen names. */
+@Composable
+fun DesignatedDriverEntryPoint(
+    onBack: () -> Unit,
+) {
+    DesignatedDriverScreen(onBack)
+}
