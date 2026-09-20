@@ -51,7 +51,7 @@ import rw.itunda.core.designsystem.theme.IdsIcons
 // with an injected callback, same pattern as PayTab's onOpenRewardsMiniApp. See
 // [[project_itunda_feature_isolation]] for the full account.
 @Composable
-fun MenuScreen(
+fun MenuEntryPoint(
     onOpenShop: () -> Unit = {},
     onOpenEats: () -> Unit = {},
     onOpenMarketplace: () -> Unit = {},
