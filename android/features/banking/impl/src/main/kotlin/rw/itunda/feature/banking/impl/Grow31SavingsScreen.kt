@@ -431,3 +431,12 @@ private fun ActionButtonGrow31(label: String, color: Color, enabled: Boolean, on
     }
 }
 
+
+
+/** Feature composition entry point. Keeps the app shell independent of concrete screen names. */
+@Composable
+fun Grow31SavingsEntryPoint(
+    onBack: () -> Unit,
+) {
+    Grow31SavingsScreen(onBack)
+}
