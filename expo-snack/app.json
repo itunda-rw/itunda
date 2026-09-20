@@ -12,7 +12,10 @@
       "package": "rw.itunda.snacklab"
     },
     "ios": {
-      "bundleIdentifier": "rw.itunda.snacklab"
+      "bundleIdentifier": "rw.itunda.snacklab",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "extra": {
       "eas": {
