@@ -538,6 +538,7 @@ fun ItundaAppScreen(
         var showIdentity by rememberSaveable { mutableStateOf(false) }
         // Android test harness entry point. Expo Snack Lab opens these routes to the real
         // native Itunda screens instead of rendering duplicated mock panels.
+        val testRouteContext = androidx.compose.ui.platform.LocalContext.current
         LaunchedEffect(initialTestRoute) {
             when (initialTestRoute) {
                 "home" -> selectedTab = ItundaTab.Home
@@ -548,8 +549,7 @@ fun ItundaAppScreen(
                     showMarketplace = true
                 }
                 "miniapps" -> {
-                    val context = androidx.compose.ui.platform.LocalContext.current
-                    context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java))
+                    testRouteContext.startActivity(android.content.Intent(testRouteContext, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java))
                 }
             }
         }
