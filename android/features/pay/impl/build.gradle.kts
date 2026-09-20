@@ -24,6 +24,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":features:pay:api"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:network"))
 
