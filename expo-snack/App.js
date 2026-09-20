@@ -14,15 +14,15 @@ function Header({title}) {
 }
 function Home({go}) {
   return <>
-    <View style={styles.hero}><Text style={styles.heroEyebrow}>WELCOME TO ITUNDA</Text><Text style={styles.heroTitle}>Everything you need,</Text><Text style={styles.heroTitle}>in one place.</Text><Text style={styles.heroBody}>Simple services for everyday life in Rwanda.</Text></View>
+    <View testID="screen-home" accessibilityLabel="Home screen" style={styles.hero}><Text style={styles.heroEyebrow}>WELCOME TO ITUNDA</Text><Text style={styles.heroTitle}>Everything you need,</Text><Text style={styles.heroTitle}>in one place.</Text><Text style={styles.heroBody}>Simple services for everyday life in Rwanda.</Text></View>
     <Text style={styles.section}>Quick actions</Text>
-    <View style={styles.grid}>{[["◉","Identity"],["◌","Chat"],["◇","Marketplace"],["✦","Mini Apps"]].map(([icon,label])=><Pressable key={label} style={styles.card} onPress={()=>go(label)}><Text style={styles.cardIcon}>{icon}</Text><Text style={styles.cardTitle}>{label}</Text><Text style={styles.muted}>Open</Text></Pressable>)}</View>
+    <View style={styles.grid}>{[["◉","Identity"],["◌","Chat"],["◇","Marketplace"],["✦","Mini Apps"]].map(([icon,label])=><Pressable testID={`quick-${label.toLowerCase().replace(/\s+/g,"-")}`} key={label} style={styles.card} onPress={()=>go(label)}><Text style={styles.cardIcon}>{icon}</Text><Text style={styles.cardTitle}>{label}</Text><Text style={styles.muted}>Open</Text></Pressable>)}</View>
     <View style={styles.faceCard}><Text style={styles.section}>ItundaFace</Text><Text style={styles.muted}>Original Itunda expression system</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.faceRow}>{faces.map(([emoji,label,color])=><View key={label} style={[styles.face,{backgroundColor:color}]}><Text style={styles.faceText}>{emoji}</Text></View>)}</ScrollView></View>
   </>;
 }
 function Panel({type}) {
   const data={Identity:["◉","Itunda Identity","One identity layer for Itunda services."],Chat:["◌","Chat","Fast, simple communication inside Itunda."],Marketplace:["◇","Marketplace","Discover nearby products, services and opportunities."],"Mini Apps":["✦","Mini Apps","Small focused experiences inside the Itunda shell."]}[type];
-  return <View style={styles.panel}><Text style={styles.panelIcon}>{data[0]}</Text><Text style={styles.panelTitle}>{data[1]}</Text><Text style={styles.muted}>{data[2]}</Text>
+  return <View testID={`screen-${type.toLowerCase().replace(/\s+/g,"-")}`} accessibilityLabel={`${type} screen`} style={styles.panel}><Text style={styles.panelIcon}>{data[0]}</Text><Text style={styles.panelTitle}>{data[1]}</Text><Text style={styles.muted}>{data[2]}</Text>
     {type==="Identity"&&<><View style={styles.status}><Text style={styles.statusDot}>●</Text><Text style={styles.statusText}>Identity ready</Text></View><Pressable style={styles.primary}><Text style={styles.primaryText}>View identity</Text></Pressable></>}
     {type==="Chat"&&<><View style={styles.chatBubble}><Text>Welcome to Itunda 👋</Text></View><View style={[styles.chatBubble,styles.right]}><Text>Hello!</Text></View></>}
     {type==="Marketplace"&&["🥬 Fresh market","🛠️ Local services"].map(x=><View key={x} style={styles.listCard}><Text style={styles.listTitle}>{x}</Text></View>)}
@@ -31,7 +31,7 @@ function Panel({type}) {
 }
 export default function App(){
   const [screen,setScreen]=useState("Home");
-  return <SafeAreaView style={styles.safe}><View style={styles.app}><ScrollView contentContainerStyle={styles.content}><Header title={screen}/>{screen==="Home"?<Home go={setScreen}/>:<Panel type={screen}/>}</ScrollView><View style={styles.nav}>{screens.map(x=><Pressable key={x} style={styles.navItem} onPress={()=>setScreen(x)}><Text style={[styles.navIcon,screen===x&&styles.active]}>{x==="Home"?"⌂":x==="Identity"?"◉":x==="Chat"?"◌":x==="Marketplace"?"◇":"✦"}</Text><Text style={[styles.navText,screen===x&&styles.active]}>{x}</Text></Pressable>)}</View></View></SafeAreaView>;
+  return <SafeAreaView style={styles.safe}><View style={styles.app}><ScrollView contentContainerStyle={styles.content}><Header title={screen}/>{screen==="Home"?<Home go={setScreen}/>:<Panel type={screen}/>}</ScrollView><View testID="bottom-navigation" style={styles.nav}>{screens.map(x=><Pressable testID={`nav-${x.toLowerCase().replace(/\s+/g,"-")}`} accessibilityRole="button" key={x} style={styles.navItem} onPress={()=>setScreen(x)}><Text style={[styles.navIcon,screen===x&&styles.active]}>{x==="Home"?"⌂":x==="Identity"?"◉":x==="Chat"?"◌":x==="Marketplace"?"◇":"✦"}</Text><Text style={[styles.navText,screen===x&&styles.active]}>{x}</Text></Pressable>)}</View></View></SafeAreaView>;
 }
 const styles=StyleSheet.create({
 safe:{flex:1,backgroundColor:"#F7F7FA"},app:{flex:1},content:{padding:20,paddingBottom:120},
