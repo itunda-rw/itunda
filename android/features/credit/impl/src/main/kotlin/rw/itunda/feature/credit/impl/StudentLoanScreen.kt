@@ -304,3 +304,12 @@ fun StudentLoanScreen(onBack: () -> Unit) {
     }
 }
 
+
+
+/** Feature composition entry point. Keeps the app shell independent of concrete screen names. */
+@Composable
+fun StudentLoanEntryPoint(
+    onBack: () -> Unit,
+) {
+    StudentLoanScreen(onBack)
+}
