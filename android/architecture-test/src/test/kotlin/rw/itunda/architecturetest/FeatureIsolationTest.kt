@@ -95,6 +95,9 @@ class FeatureIsolationTest {
             "eats" to "EatsEntryPoint",
             "maps" to "MapsEntryPoint",
             "wealth" to "InvestEntryPoint",
+            "credit" to "LoansEntryPoint",
+            "banking" to "BankHubEntryPoint",
+            "ride" to "RideEntryPoint",
         )
 
         val violations = required.mapNotNull { (feature, entryPoint) ->
