@@ -423,6 +423,7 @@ fun ItundaAppScreen(
     initialMapSearchQuery: String? = null,
     initialMapSharedFolder: Pair<String, String>? = null,
     identityVerifyRequestId: String? = null,
+    initialTestRoute: String? = null,
     onIdentityVerifyConsumed: () -> Unit = {},
     onMapDeepLinkConsumed: () -> Unit = {},
 ) {
@@ -535,6 +536,23 @@ fun ItundaAppScreen(
         var showCreditScore by rememberSaveable { mutableStateOf(false) }
         var showCertificate by rememberSaveable { mutableStateOf(false) }
         var showIdentity by rememberSaveable { mutableStateOf(false) }
+        // Android test harness entry point. Expo Snack Lab opens these routes to the real
+        // native Itunda screens instead of rendering duplicated mock panels.
+        LaunchedEffect(initialTestRoute) {
+            when (initialTestRoute) {
+                "home" -> selectedTab = ItundaTab.Home
+                "identity" -> showIdentity = true
+                "messages", "chat" -> selectedTab = ItundaTab.Messages
+                "marketplace" -> {
+                    selectedTab = ItundaTab.Explore
+                    showMarketplace = true
+                }
+                "miniapps" -> {
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java))
+                }
+            }
+        }
         // Real 26-week savings plan screen (2026-07-21) -- this feature's ledger-backed
         // backend (WeeklySavingsController/WeeklySavingsService) never had ANY mobile UI
         // before now.
