@@ -60,5 +60,5 @@ dependencies {
     // GraniteBrownfieldModuleTypes.kt (the real vendored source compiled into
     // this module) uses @SerializedName -- matches the Gson version
     // brick_modules.gradle's own configureBrickModules adds to :app.
-    implementation("com.google.code.gson:gson:2.8.9")
+    implementation(libs.gson.brownfield)
 }
