@@ -43,11 +43,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -RInE 'compose-bom:[0-9]|retrofit:[0-9]|okhttp:[0-9]|gson:[0-9]|lifecycle-[^" ]*:[0-9]|core-ktx:[0-9]' android --include='*.gradle' --include='*.gradle.kts'; then
-            echo "Found a hard-coded Android dependency version. Use android/gradle/libs.versions.toml."
+          if grep -RInE '^[[:space:]]*(implementation|api|runtimeOnly|compileOnly|testImplementation|androidTestImplementation|kapt|ksp)[[:space:]]*\(["'\x27][^"\x27]*:[0-9][^"\x27]*["'\x27]\)' android --include='*.gradle' --include='*.gradle.kts'; then
+            echo "Found a hard-coded Android dependency version in a dependency declaration."
+            echo "Use android/gradle/libs.versions.toml instead."
             exit 1
           fi
-          echo "Android dependency versions are catalog-backed in the audited Gradle files."
+          if grep -RInE '^[[:space:]]*platform[[:space:]]*\(["'\x27][^"\x27]*:[0-9][^"\x27]*["'\x27]\)' android --include='*.gradle' --include='*.gradle.kts'; then
+            echo "Found a hard-coded platform dependency version."
+            echo "Use android/gradle/libs.versions.toml instead."
+            exit 1
+          fi
+          echo "Android dependency versions are catalog-backed in dependency declarations."
 
       - name: Make Gradle wrapper executable
         working-directory: android
