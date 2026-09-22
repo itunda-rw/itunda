@@ -1,5 +1,5 @@
 import SwiftUI
-import CoreNetwork // Assuming module name is CoreNetwork
+import CoreSDUI
 
 /// SDUI Renderer
 /// Takes Server-Driven UI components and maps them to Toss Design System (TDS) views.
