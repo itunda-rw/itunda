@@ -9,7 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsListRow
-import rw.itunda.core.network.SduiComponent
+import rw.itunda.core.sdui.SduiComponent
 
 /**
  * SDUI Renderer
