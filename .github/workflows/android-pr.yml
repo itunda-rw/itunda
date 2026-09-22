@@ -39,6 +39,16 @@ jobs:
         working-directory: packages/saronite
         run: npm install
 
+      - name: Verify dependency catalog usage
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RInE 'compose-bom:[0-9]|retrofit:[0-9]|okhttp:[0-9]|gson:[0-9]|lifecycle-[^" ]*:[0-9]|core-ktx:[0-9]' android --include='*.gradle' --include='*.gradle.kts'; then
+            echo "Found a hard-coded Android dependency version. Use android/gradle/libs.versions.toml."
+            exit 1
+          fi
+          echo "Android dependency versions are catalog-backed in the audited Gradle files."
+
       - name: Make Gradle wrapper executable
         working-directory: android
         run: chmod +x ./gradlew
