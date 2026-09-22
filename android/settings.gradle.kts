@@ -107,6 +107,7 @@ include(":riderapp")
 include(":merchantapp")
 
 // Core Bounded Contexts
+include(":core:sdui")
 include(":core:designsystem")
 include(":core:network")
 include(":core:testing")

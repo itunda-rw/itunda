@@ -1,0 +1,56 @@
+name: Android PR Validation
+
+on:
+  pull_request:
+    paths:
+      - "android/**"
+      - "packages/saronite/**"
+      - ".github/workflows/android-pr.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: android-pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: packages/saronite/package.json
+
+      - name: Install Saronite dependencies
+        working-directory: packages/saronite
+        run: npm install
+
+      - name: Make Gradle wrapper executable
+        working-directory: android
+        run: chmod +x ./gradlew
+
+      - name: Validate Gradle configuration
+        working-directory: android
+        run: ./gradlew help --stacktrace
+
+      - name: Assemble Android debug APK
+        working-directory: android
+        run: ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Run Android unit tests
+        working-directory: android
+        run: ./gradlew test --stacktrace
