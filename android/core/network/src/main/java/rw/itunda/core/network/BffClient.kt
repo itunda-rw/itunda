@@ -1,25 +1,7 @@
 package rw.itunda.core.network
 
-/**
- * Toss-Style Server-Driven UI (SDUI) Response Model
- * The server decides what UI components to render and their data.
- */
-data class SduiResponse(
-    val screenId: String,
-    val version: String,
-    val components: List<SduiComponent>
-)
-
-data class SduiComponent(
-    val type: String, // e.g., "HEADER", "BALANCE_CARD", "TRANSFER_LIST"
-    val data: Map<String, Any>, // The dynamic data for the component
-    val actions: List<SduiAction>? = null // Intents when the component is tapped
-)
-
-data class SduiAction(
-    val actionType: String, // e.g., "NAVIGATE", "API_CALL", "DEEP_LINK"
-    val payload: Map<String, String>
-)
+import rw.itunda.core.sdui.SduiAction
+import rw.itunda.core.sdui.SduiResponse
 
 /**
  * BFF (Backend For Frontend) Client Interface
