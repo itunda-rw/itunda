@@ -163,7 +163,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     // FragmentActivity, not just ComponentActivity, is required by BiometricPrompt's
     // constructor (androidx.biometric:1.1.0) -- see NIDABiometricAuth.kt.
-    implementation("androidx.fragment:fragment-ktx:1.6.2")
+    implementation(libs.androidx.fragment.ktx)
     implementation(platform(libs.compose.bom))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
@@ -227,7 +227,7 @@ dependencies {
     // granite-adoption plan for the staged version-upgrade path).
     implementation("com.facebook.react:react-android")
     implementation("com.facebook.react:hermes-android")
-    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation(libs.androidx.appcompat)
     implementation(libs.okhttp)
     implementation(libs.gson)
 
@@ -241,12 +241,12 @@ dependencies {
     // otherwise fails to resolve ui-test-junit4's version at all.
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation(libs.androidx.test.ext.junit)
     // 3.7.0, not 3.5.1 (2026-07-11): 3.5.1's InputManagerEventInjectionStrategy
     // reflectively calls the hidden android.hardware.input.InputManager.getInstance()
     // -- removed/renamed by the real emulator's API 36 (Android 16) platform,
     // confirmed via a live NoSuchMethodException on that exact call. 3.7.0 targets
     // newer platforms correctly.
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
+    androidTestImplementation(libs.espresso.core)
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
