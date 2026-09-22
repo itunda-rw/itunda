@@ -43,16 +43,25 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -RInE '^[[:space:]]*(implementation|api|runtimeOnly|compileOnly|testImplementation|androidTestImplementation|kapt|ksp)[[:space:]]*\(["'\x27][^"\x27]*:[0-9][^"\x27]*["'\x27]\)' android --include='*.gradle' --include='*.gradle.kts'; then
-            echo "Found a hard-coded Android dependency version in a dependency declaration."
+
+          if grep -RInE '^[[:space:]]*(implementation|api|runtimeOnly|compileOnly|testImplementation|androidTestImplementation|kapt|ksp)[[:space:]]*\("[^"]*:[0-9][^"]*"\)' android --include='*.gradle' --include='*.gradle.kts'; then
+            echo "Found a hard-coded Android dependency version using double-quoted notation."
             echo "Use android/gradle/libs.versions.toml instead."
             exit 1
           fi
-          if grep -RInE '^[[:space:]]*platform[[:space:]]*\(["'\x27][^"\x27]*:[0-9][^"\x27]*["'\x27]\)' android --include='*.gradle' --include='*.gradle.kts'; then
+
+          if grep -RInE "^[[:space:]]*(implementation|api|runtimeOnly|compileOnly|testImplementation|androidTestImplementation|kapt|ksp)[[:space:]]*\\('[^']*:[0-9][^']*\\')" android --include='*.gradle' --include='*.gradle.kts'; then
+            echo "Found a hard-coded Android dependency version using single-quoted notation."
+            echo "Use android/gradle/libs.versions.toml instead."
+            exit 1
+          fi
+
+          if grep -RInE '^[[:space:]]*platform[[:space:]]*\("[^"]*:[0-9][^"]*"\)' android --include='*.gradle' --include='*.gradle.kts'; then
             echo "Found a hard-coded platform dependency version."
             echo "Use android/gradle/libs.versions.toml instead."
             exit 1
           fi
+
           echo "Android dependency versions are catalog-backed in dependency declarations."
 
       - name: Make Gradle wrapper executable
