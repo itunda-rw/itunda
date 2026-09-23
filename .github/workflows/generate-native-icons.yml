@@ -29,7 +29,7 @@ jobs:
           from pathlib import Path
 
           src = Path("ios/App/Resources/ItundaIcon.svg")
-          out = Path("ios/App/Resources/ItundaIcon.appiconset/ItundaIcon.png")
+          out = Path("ios/App/Resources/ItundaIcon.xcassets/ItundaIcon.appiconset/ItundaIcon.png")
           out.parent.mkdir(parents=True, exist_ok=True)
 
           cairosvg.svg2png(
@@ -55,7 +55,7 @@ jobs:
 
       - name: Normalize iOS AppIcon catalog
         run: |
-          cat > ios/App/Resources/ItundaIcon.appiconset/Contents.json <<'JSON'
+          cat > ios/App/Resources/ItundaIcon.xcassets/ItundaIcon.appiconset/Contents.json <<'JSON'
           {
             "images": [
               {
@@ -74,7 +74,7 @@ jobs:
 
       - name: Validate generated assets
         run: |
-          test -s ios/App/Resources/ItundaIcon.appiconset/ItundaIcon.png
+          test -s ios/App/Resources/ItundaIcon.xcassets/ItundaIcon.appiconset/ItundaIcon.png
           test -s site/assets/favicon.png
           find android/app/src/main/res -name 'ic_launcher*.png' -size +0c | grep -q .
 
@@ -82,7 +82,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ios/App/Resources/ItundaIcon.appiconset android/app/src/main/res/mipmap-* site/assets/favicon.png
+          git add ios/App/Resources/ItundaIcon.xcassets android/app/src/main/res/mipmap-* site/assets/favicon.png
           if git diff --cached --quiet; then
             echo "No generated asset changes."
           else
