@@ -57,7 +57,7 @@ jobs:
             exit 1
           fi
 
-          if grep -RInE "^[[:space:]]*(implementation|api|runtimeOnly|compileOnly|testImplementation|androidTestImplementation|kapt|ksp)[[:space:]]*\('[^']*:[0-9][^']*\')" android --include='*.gradle' --include='*.gradle.kts'; then
+          if grep -RInE "^[[:space:]]*(implementation|api|runtimeOnly|compileOnly|testImplementation|androidTestImplementation|kapt|ksp)[[:space:]]*\\('[^']*:[0-9][^']*\\')" android --include='*.gradle' --include='*.gradle.kts'; then
             echo "Found a hard-coded Android dependency version using single-quoted notation."
             echo "Use android/gradle/libs.versions.toml instead."
             exit 1
