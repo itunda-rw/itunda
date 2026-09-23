@@ -9,6 +9,7 @@ export default function App() {
         <Link to="/" className="brand">
           itunda <span className="brand-accent">tech</span>
         </Link>
+        <a href="/itunda/" className="back-link">itunda</a>
       </header>
       <main>
         <Routes>
@@ -18,6 +19,7 @@ export default function App() {
       </main>
       <footer className="site-footer">
         <p>itunda Tech — engineering notes from the team building Rwanda's everyday money app.</p>
+        <a href="/itunda/">Back to itunda</a>
       </footer>
     </div>
   );
