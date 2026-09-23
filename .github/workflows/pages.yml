@@ -1,4 +1,4 @@
-name: Deploy Itunda Pages
+name: Deploy Itunda site to GitHub Pages
 
 on:
   push:
