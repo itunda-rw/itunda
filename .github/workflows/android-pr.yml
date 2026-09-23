@@ -78,4 +78,4 @@ jobs:
 
       - name: Run Android unit tests
         working-directory: android
-        run: ./gradlew test --stacktrace
+        run: ./gradlew testDebugUnitTest --stacktrace
