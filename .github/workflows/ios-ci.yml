@@ -49,6 +49,42 @@ jobs:
           mise install tuist@3.42.3
           mise exec tuist@3.42.3 -- tuist version
 
+      - name: Generate iOS app icon asset catalog
+        working-directory: ios
+        run: |
+          python3 -m pip install --disable-pip-version-check cairosvg pillow
+          python3 <<'PY'
+          import cairosvg
+          from pathlib import Path
+
+          src = Path("Assets/ItundaIcon.svg")
+          out = Path("App/Resources/ItundaIcon.xcassets/ItundaIcon.appiconset/ItundaIcon.png")
+          out.parent.mkdir(parents=True, exist_ok=True)
+
+          cairosvg.svg2png(
+              url=str(src),
+              write_to=str(out),
+              output_width=1024,
+              output_height=1024,
+          )
+          PY
+          cat > App/Resources/ItundaIcon.xcassets/ItundaIcon.appiconset/Contents.json <<'JSON'
+          {
+            "images": [
+              {
+                "filename": "ItundaIcon.png",
+                "idiom": "universal",
+                "scale": "1x",
+                "size": "1024x1024"
+              }
+            ],
+            "info": {
+              "author": "Itunda",
+              "version": 1
+            }
+          }
+          JSON
+
       - name: Generate Xcode project
         working-directory: ios
         run: |
