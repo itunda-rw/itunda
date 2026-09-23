@@ -44,6 +44,15 @@ jobs:
           curl https://mise.run | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
+      - name: Generate Saronite iOS Brick codegen
+        working-directory: packages/saronite/host-app
+        run: |
+          rm -rf ../../../ios/.brick
+          node ../node_modules/.bin/brick-codegen \
+            --platform ios \
+            --output-ios ../../../ios/.brick \
+            --projectRoot .
+
       - name: Install Tuist 3.42.3
         run: |
           mise install tuist@3.42.3
