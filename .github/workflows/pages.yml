@@ -16,13 +16,13 @@ concurrency:
 
 jobs:
   deploy:
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Build blog
         working-directory: services/blog
@@ -36,6 +36,7 @@ jobs:
           mkdir -p /tmp/itunda-pages/blog
           cp -R site/. /tmp/itunda-pages/
           cp -R services/blog/dist/. /tmp/itunda-pages/blog/
+          touch /tmp/itunda-pages/.nojekyll
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
