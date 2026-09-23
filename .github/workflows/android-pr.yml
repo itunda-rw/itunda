@@ -8,7 +8,7 @@ on:
       - ".github/workflows/android-pr.yml"
   push:
     branches:
-      - "architecture/android-dependency-catalog"
+      - "main"
     paths:
       - "android/**"
       - "packages/saronite/**"
@@ -86,5 +86,3 @@ jobs:
       - name: Run Android unit tests
         working-directory: android
         run: ./gradlew testDebugUnitTest --stacktrace
-
-      # Retriggered on branch push so the latest commit receives a fresh CI run.
