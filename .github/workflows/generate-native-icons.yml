@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'ios/App/Resources/ItundaIcon.svg'
+      - 'ios/Assets/ItundaIcon.svg'
       - '.github/workflows/generate-native-icons.yml'
   workflow_dispatch:
 
@@ -28,7 +28,7 @@ jobs:
           from PIL import Image
           from pathlib import Path
 
-          src = Path("ios/App/Resources/ItundaIcon.svg")
+          src = Path("ios/Assets/ItundaIcon.svg")
           out = Path("ios/App/Resources/ItundaIcon.xcassets/ItundaIcon.appiconset/ItundaIcon.png")
           out.parent.mkdir(parents=True, exist_ok=True)
 
