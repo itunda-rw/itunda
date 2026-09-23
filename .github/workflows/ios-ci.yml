@@ -50,6 +50,7 @@ jobs:
           mise exec tuist@3.42.3 -- tuist version
 
       # Keep icon generation isolated from the runner's externally-managed Python.
+      # The source SVG lives under ios/Assets; App/Resources contains only generated XCAssets.
       - name: Generate iOS app icon asset catalog
         working-directory: ios
         run: |
