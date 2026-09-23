@@ -49,11 +49,11 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
-    implementation("androidx.activity:activity-compose:1.8.2")
-    implementation(platform("androidx.compose:compose-bom:2024.02.00"))
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.activity.compose)
+    implementation(platform(libs.compose.bom))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -63,18 +63,18 @@ dependencies {
     // Networking -- a real, minimal client scoped to exactly what a merchant/POS app
     // needs (rw.itunda.merchant's own endpoints + rw.itunda.eats' restaurant-order
     // endpoints), not a dependency on :app's own much larger ApiService.
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.google.code.gson:gson:2.10.1")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
-    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.okhttp)
+    implementation(libs.gson)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.security.crypto)
 
     // Real QR code rendering for the register/POS checkout flow -- itunda://pay?intentId=
     // encoded as a real scannable QR bitmap for a customer's own itunda app to scan, same
     // payload convention merchant-mfe's web POS screen already established. Pure encoding
     // (ZXing core only, no camera/scanning dependency needed here).
-    implementation("com.google.zxing:core:3.5.3")
+    implementation(libs.zxing.core)
 
     implementation(project(":core:designsystem"))
 }

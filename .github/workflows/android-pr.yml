@@ -6,6 +6,13 @@ on:
       - "android/**"
       - "packages/saronite/**"
       - ".github/workflows/android-pr.yml"
+  push:
+    branches:
+      - "architecture/android-dependency-catalog"
+    paths:
+      - "android/**"
+      - "packages/saronite/**"
+      - ".github/workflows/android-pr.yml"
   workflow_dispatch:
 
 concurrency:
@@ -78,4 +85,6 @@ jobs:
 
       - name: Run Android unit tests
         working-directory: android
-        run: ./gradlew test --stacktrace
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      # Retriggered on branch push so the latest commit receives a fresh CI run.
