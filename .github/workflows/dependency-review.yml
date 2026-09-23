@@ -1,0 +1,32 @@
+name: Dependency Review
+
+on:
+  pull_request:
+    branches:
+      - "main"
+    paths:
+      - "android/**"
+      - "packages/saronite/**"
+      - "services/**"
+      - "gradle/**"
+      - "**/build.gradle"
+      - "**/build.gradle.kts"
+      - "**/libs.versions.toml"
+      - "**/package.json"
+      - "**/package-lock.json"
+      - ".github/workflows/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Dependency review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
