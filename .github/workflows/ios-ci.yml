@@ -26,12 +26,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "24"
           cache: npm
           cache-dependency-path: packages/saronite/package.json
 
@@ -48,10 +48,7 @@ jobs:
         working-directory: packages/saronite/host-app
         run: |
           rm -rf ../../../ios/.brick
-          node ../node_modules/.bin/brick-codegen \
-            --platform ios \
-            --output-ios ../../../ios/.brick \
-            --projectRoot .
+          node ../node_modules/.bin/brick-codegen             --platform ios             --output-ios ../../../ios/.brick             --projectRoot .
 
       - name: Install Tuist 3.42.3
         run: |
@@ -109,12 +106,7 @@ jobs:
       - name: Build iOS simulator app
         working-directory: ios
         run: |
-          xcodebuild \
-            -workspace Itunda.xcworkspace \
-            -scheme ItundaApp \
-            -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO \
-            build
+          xcodebuild             -workspace Itunda.xcworkspace             -scheme ItundaApp             -destination 'generic/platform=iOS Simulator'             CODE_SIGNING_ALLOWED=NO             build
 
       - name: Run iOS UI tests
         working-directory: ios
@@ -128,9 +120,4 @@ jobs:
           fi
           xcrun simctl boot "$DEVICE_ID" 2>/dev/null || true
           xcrun simctl bootstatus "$DEVICE_ID" -b
-          xcodebuild \
-            -workspace Itunda.xcworkspace \
-            -scheme ItundaApp \
-            -destination "id=$DEVICE_ID" \
-            CODE_SIGNING_ALLOWED=NO \
-            test
+          xcodebuild             -workspace Itunda.xcworkspace             -scheme ItundaApp             -destination "id=$DEVICE_ID"             CODE_SIGNING_ALLOWED=NO             test
