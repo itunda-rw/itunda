@@ -86,3 +86,5 @@ jobs:
       - name: Run Android unit tests
         working-directory: android
         run: ./gradlew testDebugUnitTest --stacktrace
+
+      # Retriggered on branch push so the latest commit receives a fresh CI run.
