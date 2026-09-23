@@ -184,6 +184,7 @@ allTargets.append(
         // the way adding an ObjC file via Xcode normally would; set explicitly instead.
         settings: .settings(base: [
             "SWIFT_OBJC_BRIDGING_HEADER": "App/Sources/Saronite/Itunda-Bridging-Header.h",
+            "ASSETCATALOG_COMPILER_APPICON_NAME": "ItundaIcon",
         ])
     )
 )
