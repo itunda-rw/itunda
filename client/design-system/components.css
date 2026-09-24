@@ -50,3 +50,12 @@
 .tds-stack-lg{display:flex;flex-direction:column;gap:var(--itunda-space-6)}
 @media(max-width:900px){.tds-grid-3,.tds-grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}.tds-grid-2{grid-template-columns:1fr}}
 @media(max-width:600px){.tds-grid-3,.tds-grid-4{grid-template-columns:1fr}.tds-section{padding-block:72px;padding-inline:20px}}
+
+/* Canonical interaction primitives */
+.tds-card{transition:transform var(--itunda-duration-normal) var(--itunda-ease),box-shadow var(--itunda-duration-normal) var(--itunda-ease)}
+.tds-card:hover{transform:translateY(-3px);box-shadow:var(--itunda-shadow-md)}
+.tds-button{min-height:48px;padding-inline:18px;transition:transform var(--itunda-duration-fast) var(--itunda-ease),background-color var(--itunda-duration-fast) var(--itunda-ease),box-shadow var(--itunda-duration-fast) var(--itunda-ease)}
+.tds-button:active{transform:translateY(1px) scale(.99)}
+.tds-input{min-height:52px;transition:border-color var(--itunda-duration-fast) var(--itunda-ease),box-shadow var(--itunda-duration-fast) var(--itunda-ease)}
+.tds-input:focus{border-color:var(--itunda-color-brand);box-shadow:0 0 0 4px color-mix(in srgb,var(--itunda-color-brand) 14%,transparent)}
+.tds-alert{border-radius:var(--itunda-radius-md);padding:14px 16px}
