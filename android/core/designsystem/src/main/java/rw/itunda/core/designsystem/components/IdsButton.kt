@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsColors
 import rw.itunda.core.designsystem.theme.IdsTypography
+import rw.itunda.core.designsystem.theme.IdsComponentTokens
 
 /**
  * Real fix, 2026-07-21, grounded in Toss's own published account of this exact
@@ -79,13 +80,13 @@ fun IdsButton(
     shape: androidx.compose.ui.graphics.Shape? = null,
 ) {
     val heightDp = when (size) {
-        IdsButtonSize.Large -> 56.dp
-        IdsButtonSize.Medium -> 48.dp
-        IdsButtonSize.Small -> 36.dp
+        IdsButtonSize.Large -> IdsComponentTokens.Button.largeHeight
+        IdsButtonSize.Medium -> IdsComponentTokens.Button.mediumHeight
+        IdsButtonSize.Small -> IdsComponentTokens.Button.smallHeight
     }
     val horizontalPadding = when (size) {
         IdsButtonSize.Large, IdsButtonSize.Medium -> ButtonDefaults.ContentPadding
-        IdsButtonSize.Small -> androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+        IdsButtonSize.Small -> androidx.compose.foundation.layout.PaddingValues(horizontal = IdsComponentTokens.Button.smallHorizontalPadding, vertical = 0.dp)
     }
     val widthModifier = if (size == IdsButtonSize.Large) Modifier.fillMaxWidth() else Modifier
     val (containerColor, contentColor) = when (variant) {
@@ -120,9 +121,9 @@ fun IdsButton(
         interactionSource = interactionSource,
         modifier = modifier
             .then(widthModifier)
-            .scale(pressScale)
+             .scale(pressScale)
             .height(heightDp),
-        shape = shape ?: RoundedCornerShape(if (size == IdsButtonSize.Small) 10.dp else 12.dp),
+        shape = shape ?: RoundedCornerShape(if (size == IdsButtonSize.Small) IdsComponentTokens.Button.smallRadius else IdsComponentTokens.Button.largeRadius),
         contentPadding = horizontalPadding,
         colors = ButtonDefaults.buttonColors(
             containerColor = containerColor,
@@ -132,8 +133,8 @@ fun IdsButton(
         )
     ) {
         if (icon != null) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(if (size == IdsButtonSize.Small) 14.dp else 18.dp))
-            androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(6.dp))
+            Icon(icon, contentDescription = null, modifier = Modifier.size(if (size == IdsButtonSize.Small) IdsComponentTokens.Button.smallIconSize else IdsComponentTokens.Button.iconSize))
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(IdsComponentTokens.Button.iconGap))
         }
         Text(
             text = text,
