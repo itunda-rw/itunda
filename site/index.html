@@ -56,13 +56,13 @@
 .film-card.market small{color:#8a949f}
 .film-platform{position:absolute;right:0;bottom:7%;width:260px;padding:20px;border-radius:24px;background:#11151a;color:#dfe4ea;border:1px solid #292f38;box-shadow:0 25px 70px #0003;transform:translateY(30px);opacity:0;transition:transform .5s,opacity .5s}
 .film-platform code{font:12px/1.8 ui-monospace,SFMono-Regular,Menlo,monospace;color:#a8a6ff}
-.film-stage[data-scene="0"] .film-phone{transform:translate(-50%,-50%) rotate(5deg) scale(1)}
-.film-stage[data-scene="1"] .film-phone{transform:translate(-50%,-50%) rotate(-2deg) scale(1.035)}
-.film-stage[data-scene="2"] .film-phone{transform:translate(-50%,-50%) rotate(-7deg) translateX(-35px) scale(.94)}
-.film-stage[data-scene="3"] .film-phone{transform:translate(-50%,-50%) rotate(1deg) translateX(-80px) scale(.86);box-shadow:0 55px 130px #3f3a8a20}
-.film-stage[data-scene="1"] .market{transform:rotate(2deg) translate(-12px,18px) scale(1.08)}
-.film-stage[data-scene="2"] .market{transform:rotate(-4deg) translate(30px,-10px) scale(1.15)}
-.film-stage[data-scene="3"] .market{transform:rotate(-2deg) translate(55px,-15px) scale(1.18)}
+.film-stage[data-scene="0"] .film-phone{transform:translate(calc(-50% + var(--film-x,0px)),-50%) rotate(calc(5deg + var(--film-rotate,0deg))) scale(calc(1 + var(--film-scale,0)))}
+.film-stage[data-scene="1"] .film-phone{transform:translate(calc(-50% + var(--film-x,0px)),-50%) rotate(calc(-2deg + var(--film-rotate,0deg))) scale(calc(1.035 + var(--film-scale,0)))}
+.film-stage[data-scene="2"] .film-phone{transform:translate(calc(-50% + var(--film-x,-35px)),-50%) rotate(calc(-7deg + var(--film-rotate,0deg))) scale(calc(.94 + var(--film-scale,0)))}
+.film-stage[data-scene="3"] .film-phone{transform:translate(calc(-50% + var(--film-x,-80px)),-50%) rotate(calc(1deg + var(--film-rotate,0deg))) scale(calc(.86 + var(--film-scale,0)));box-shadow:0 55px 130px #3f3a8a20}
+.film-stage[data-scene="1"] .market{transform:rotate(calc(2deg + var(--film-card-rotate,0deg))) translate(calc(-12px + var(--film-card-x,0px)),calc(18px + var(--film-card-y,0px))) scale(calc(1.08 + var(--film-card-scale,0)))}
+.film-stage[data-scene="2"] .market{transform:rotate(calc(-4deg + var(--film-card-rotate,0deg))) translate(calc(30px + var(--film-card-x,0px)),calc(-10px + var(--film-card-y,0px))) scale(calc(1.15 + var(--film-card-scale,0)))}
+.film-stage[data-scene="3"] .market{transform:rotate(calc(-2deg + var(--film-card-rotate,0deg))) translate(calc(55px + var(--film-card-x,0px)),calc(-15px + var(--film-card-y,0px))) scale(calc(1.18 + var(--film-card-scale,0)))}
 .film-stage[data-scene="2"] .identity{transform:rotate(-2deg) translate(15px,-20px) scale(1.08)}
 .film-stage[data-scene="3"] .identity{transform:rotate(2deg) translate(40px,-30px) scale(1.16)}
 .film-stage[data-scene="3"] .film-platform{opacity:1;transform:translateY(0)}
@@ -177,11 +177,17 @@ addEventListener("mousemove",e=>{const x=e.clientX/innerWidth-.5,y=e.clientY/inn
    }
    bar.style.width=(eased*100)+'%';
    const local=eased*4-scene;
-   const phoneTilt=(local-.5)*3;
    stage.style.setProperty('--scene-progress',local);
+   stage.style.setProperty('--film-x',((local-.5)*10).toFixed(2)+'px');
+   stage.style.setProperty('--film-rotate',((local-.5)*2.4).toFixed(2)+'deg');
+   stage.style.setProperty('--film-scale',((scene===0?0.018:scene===1?0.012:scene===2?0.008:0)*(local-.5)).toFixed(4));
+   stage.style.setProperty('--film-card-x',((local-.5)*14).toFixed(2)+'px');
+   stage.style.setProperty('--film-card-y',((.5-local)*10).toFixed(2)+'px');
+   stage.style.setProperty('--film-card-rotate',((local-.5)*3).toFixed(2)+'deg');
+   stage.style.setProperty('--film-card-scale',((local-.5)*.025).toFixed(4));
    if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
      stage.querySelector('.film-phone').style.marginTop=((local-.5)*18)+'px';
-     stage.querySelector('.film-glow').style.transform='scale('+(1+local*.08)+')';
+     stage.querySelector('.film-glow').style.transform='scale('+(1+local*.08)+') translateY('+((local-.5)*8)+'px)';
    }
    ticking=false;
  }
