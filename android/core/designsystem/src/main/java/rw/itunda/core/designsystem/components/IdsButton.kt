@@ -23,11 +23,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -64,6 +68,7 @@ fun IdsButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    loading: Boolean = false,
     variant: IdsButtonVariant = IdsButtonVariant.Filled,
     size: IdsButtonSize = IdsButtonSize.Large,
     // Real Toss reference (user-provided, 2026-08-03): the actual Toss Home account
@@ -117,9 +122,10 @@ fun IdsButton(
 
     Button(
         onClick = onClick,
-        enabled = enabled,
+        enabled = enabled && !loading,
         interactionSource = interactionSource,
         modifier = modifier
+            .clearAndSetSemantics { role = Role.Button }
             .then(widthModifier)
              .scale(pressScale)
             .height(heightDp),
@@ -132,14 +138,22 @@ fun IdsButton(
             disabledContentColor = disabledContentColor
         )
     ) {
-        if (icon != null) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(if (size == IdsButtonSize.Small) IdsComponentTokens.Button.smallIconSize else IdsComponentTokens.Button.iconSize))
-            androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(IdsComponentTokens.Button.iconGap))
+        if (loading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(if (size == IdsButtonSize.Small) IdsComponentTokens.Button.smallIconSize else IdsComponentTokens.Button.iconSize),
+                color = contentColor,
+                strokeWidth = 2.dp,
+            )
+        } else {
+            if (icon != null) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(if (size == IdsButtonSize.Small) IdsComponentTokens.Button.smallIconSize else IdsComponentTokens.Button.iconSize))
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(IdsComponentTokens.Button.iconGap))
+            }
+            Text(
+                text = text,
+                style = if (size == IdsButtonSize.Small) IdsTypography.Body2 else IdsTypography.Button
+            )
         }
-        Text(
-            text = text,
-            style = if (size == IdsButtonSize.Small) IdsTypography.Body2 else IdsTypography.Button
-        )
     }
 }
 
