@@ -1,11 +1,11 @@
-name: Deploy Itunda Web to GitHub Pages
+name: Deploy Itunda Client to GitHub Pages
 
 on:
   push:
     branches:
       - agent/itunda-agent-network
     paths:
-      - "site/**"
+      - "client/**"
       - ".github/workflows/github-pages.yml"
   workflow_dispatch:
 
@@ -21,29 +21,15 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: site
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Prepare static site
-        run: echo "Static Itunda site — no build step required"
-
       - name: Setup Pages
         uses: actions/configure-pages@v5
-
-      - name: Upload Pages artifact
+      - name: Upload client artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: client
 
   deploy:
     environment:
@@ -51,8 +37,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
-
     steps:
-      - name: Deploy to GitHub Pages
+      - name: Deploy client
         id: deployment
         uses: actions/deploy-pages@v4
