@@ -4,6 +4,8 @@ export const idempotencyKeys = {
   date: '2026-06-18',
   author: 'Ledger Platform Team',
   tags: ['ledger', 'kotlin', 'reliability'],
+  image: '/images/posts/idempotency-keys-what-we-got-wrong/hero.webp',
+  imageAlt: 'Idempotency and duplicate payment request flow',
   excerpt:
     "We scoped idempotency keys globally instead of per-route, and our first fix for concurrent duplicate requests introduced a second bug that turned a 409 into a bare 401. Here's how we found both, in that order.",
   content: `
