@@ -34,3 +34,6 @@
 .tds-skeleton::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.75),transparent);animation:tds-shimmer 1.3s infinite}
 .tds-visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 @keyframes tds-shimmer{to{transform:translateX(100%)}}@media(prefers-reduced-motion:reduce){.tds-skeleton::after{animation:none;transform:none}}
+
+.tds-button-secondary{border:1px solid var(--itunda-line)}
+.tds-button:focus-visible,.tds-tab:focus-visible,.tds-input:focus-visible,.tds-link:focus-visible{outline:3px solid color-mix(in srgb,var(--itunda-indigo) 35%,white);outline-offset:3px}
