@@ -22,7 +22,7 @@ button,input{font:inherit}
 .tech-hero h1{font-size:clamp(62px,9vw,118px);line-height:.88;letter-spacing:-7px;margin:0;max-width:900px}
 .tech-hero h1 span{color:var(--primary)}
 .hero-copy{max-width:650px;margin:30px 0 0;color:var(--muted);font-size:20px;line-height:1.55}
-.category-nav{display:flex;gap:8px;overflow:auto;padding:26px 0 14px;border-bottom:1px solid var(--border);scrollbar-width:none}
+.category-nav{position:sticky;top:72px;z-index:10;display:flex;gap:8px;overflow:auto;padding:26px 0 14px;border-bottom:1px solid var(--border);scrollbar-width:none}
 .category-nav::-webkit-scrollbar{display:none}
 .category{border:0;background:transparent;color:var(--muted);padding:9px 13px;border-radius:999px;white-space:nowrap;cursor:pointer;font-size:13px;font-weight:750}
 .category:hover,.category.active{background:var(--surface-strong);color:var(--text)}
@@ -30,7 +30,7 @@ button,input{font:inherit}
 .search-box{display:flex;align-items:center;gap:8px;width:min(420px,100%);padding:12px 15px;background:var(--surface);border-radius:14px;color:var(--subtle)}
 .search-box input{border:0;outline:0;background:transparent;width:100%;color:var(--text);font-size:14px}
 .result-count{font-size:13px;color:var(--subtle);white-space:nowrap}
-.featured{display:grid;grid-template-columns:1fr auto;gap:30px;padding:62px 0 86px;border-bottom:1px solid var(--border)}
+.featured{display:grid;align-items:start;grid-template-columns:1fr auto;gap:30px;padding:62px 0 86px;border-bottom:1px solid var(--border)}
 .featured h2{font-size:clamp(38px,5vw,66px);line-height:.98;letter-spacing:-3px;max-width:760px;margin:0 0 20px}
 .featured-copy>p:not(.section-label){max-width:680px;color:var(--muted);font-size:17px;line-height:1.6}
 .read-link{display:inline-block;margin-top:14px;color:var(--primary-dark);font-weight:800}
@@ -109,3 +109,6 @@ button,input{font:inherit}
 .post-body img{display:block;width:100%;max-height:620px;object-fit:contain;border-radius:18px;margin:30px 0;background:var(--surface)}
 .post-body figure{margin:32px 0}.post-body figcaption{text-align:center;color:var(--subtle);font-size:12px;margin-top:-20px}
 @media(max-width:760px){.featured-image{border-radius:18px}.article-image{border-radius:18px;margin-bottom:24px}.popular-image{border-radius:14px}.post-card-image{width:100%;max-width:420px}.post-body img{border-radius:14px}}
+
+@media(max-width:760px){.category-nav{top:64px;padding-top:14px;background:#ffffffee;backdrop-filter:blur(16px)}}
+@media(prefers-reduced-motion:reduce){.category-nav{scroll-behavior:auto}.popular-card,.post-card>a{transition:none}}
