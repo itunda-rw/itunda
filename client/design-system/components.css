@@ -116,3 +116,12 @@
 .tds-chip{display:inline-flex;align-items:center;min-height:32px;padding:0 12px;border-radius:999px;background:var(--itunda-indigo-soft);color:var(--itunda-indigo-dark);font-size:12px;font-weight:800}
 .tds-prose{max-width:var(--itunda-content-reading);color:var(--itunda-muted);font-size:18px;line-height:1.65}
 @media(max-width:760px){.tds-page-intro{gap:12px}.tds-prose{font-size:16px}}
+
+
+/* Shared interaction polish: consistent lift and press behavior across web surfaces. */
+.tds-hover-lift{transition:transform var(--itunda-motion-normal) var(--itunda-ease),box-shadow var(--itunda-motion-normal) var(--itunda-ease),border-color var(--itunda-motion-normal) var(--itunda-ease)}
+.tds-hover-lift:hover{transform:translateY(-4px);box-shadow:var(--itunda-shadow-md);border-color:#D9D7FF}
+.tds-hover-lift:active{transform:translateY(-1px) scale(.995)}
+.tds-pressable{transition:transform var(--itunda-motion-fast) var(--itunda-ease)}
+.tds-pressable:active{transform:scale(.985)}
+@media(prefers-reduced-motion:reduce){.tds-hover-lift,.tds-pressable{transition:none}.tds-hover-lift:hover,.tds-hover-lift:active,.tds-pressable:active{transform:none}}
