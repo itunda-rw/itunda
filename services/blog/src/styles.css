@@ -101,3 +101,10 @@ button,input{font:inherit}
 .author-profile{display:flex;flex-direction:column;gap:4px;margin:18px 0 20px;padding:16px 18px;border:1px solid var(--border);border-radius:14px;background:#fff;max-width:680px}.author-profile strong{font-size:14px}.author-profile span{color:var(--muted);font-size:13px;line-height:1.5}
 .related-section{border-top:1px solid var(--border);background:#fff}.related-container{padding-top:64px;padding-bottom:72px}.related-container h2{font-size:38px;letter-spacing:-2px;margin:0 0 28px}.related-list{border-top:1px solid var(--border)}.related-card{display:flex;justify-content:space-between;gap:24px;padding:24px 0;border-bottom:1px solid var(--border)}.related-card:hover h3{color:var(--primary-dark)}.related-meta{font-size:12px;color:var(--subtle)}.related-card h3{font-size:22px;line-height:1.25;letter-spacing:-.8px;margin:8px 0}.related-card p{margin:0;max-width:680px;color:var(--muted);font-size:14px;line-height:1.55}.related-card .post-arrow{align-self:center}
 @media(max-width:760px){.author-profile{margin-top:16px}.related-container{padding-top:52px;padding-bottom:58px}.related-container h2{font-size:32px}.related-card{gap:12px}.related-card h3{font-size:19px}.related-card p{font-size:13px}.related-card .post-arrow{display:none}}
+
+.featured-image{display:block;width:min(760px,100%);aspect-ratio:16/9;object-fit:cover;border-radius:24px;margin:0 0 28px;background:var(--surface-strong)}
+.popular-image{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:16px;margin:18px 0 8px;background:var(--surface-strong)}
+.post-card-image{display:block;width:min(280px,100%);aspect-ratio:16/9;object-fit:cover;border-radius:14px;margin:0 0 16px;background:var(--surface-strong)}
+.post-body img{display:block;width:100%;max-height:620px;object-fit:contain;border-radius:18px;margin:30px 0;background:var(--surface)}
+.post-body figure{margin:32px 0}.post-body figcaption{text-align:center;color:var(--subtle);font-size:12px;margin-top:-20px}
+@media(max-width:760px){.featured-image{border-radius:18px}.popular-image{border-radius:14px}.post-card-image{width:100%;max-width:420px}.post-body img{border-radius:14px}}
