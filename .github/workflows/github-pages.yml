@@ -5,7 +5,7 @@ on:
     branches:
       - agent/itunda-agent-network
     paths:
-      - "services/blog/**"
+      - "site/**"
       - ".github/workflows/github-pages.yml"
   workflow_dispatch:
 
@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: services/blog
+        working-directory: site
 
     steps:
       - name: Checkout
@@ -33,14 +33,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: services/blog/package-lock.json
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build -- --base=/itunda/
+      - name: Prepare static site
+        run: echo "Static Itunda site — no build step required"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -48,7 +43,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: services/blog/dist
+          path: site
 
   deploy:
     environment:
