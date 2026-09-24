@@ -239,17 +239,42 @@ fun IdsIconButton(
     contentDescription: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    loading: Boolean = false,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val pressScale = rememberPressScale(interactionSource)
+    val interactive = enabled && !loading
+    val pressScale = rememberPressScale(interactionSource, interactive)
     Box(
         modifier = modifier
             .size(Ids.layout.minTouchTarget)
             .scale(pressScale)
-            .clickable(interactionSource = interactionSource, indication = LocalIndication.current, onClick = onClick)
-            .background(Ids.colors.surfaceSoft, CircleShape),
-        contentAlignment = Alignment.Center
+            .clickable(
+                enabled = interactive,
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            )
+            .semantics { role = Role.Button }
+            .background(
+                if (enabled) Ids.colors.surfaceSoft else Ids.colors.surfaceSoft.copy(alpha = 0.5f),
+                CircleShape,
+            ),
+        contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(20.dp), tint = Ids.colors.textPrimary)
+        if (loading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(IdsComponentTokens.Button.smallIconSize),
+                color = Ids.colors.brand,
+                strokeWidth = 2.dp,
+            )
+        } else {
+            Icon(
+                icon,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(IdsComponentTokens.IconButton.iconSize),
+                tint = if (enabled) Ids.colors.textPrimary else Ids.colors.textTertiary,
+            )
+        }
     }
 }
