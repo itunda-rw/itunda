@@ -86,6 +86,8 @@
 @media(prefers-reduced-motion:reduce){.nav{transition:none}.mobile-panel,.mobile-menu-btn span,.mobile-menu-btn span:before,.mobile-menu-btn span:after{transition:none}}
 </style>
 <link rel="stylesheet" href="design-system/tokens.css"><link rel="stylesheet" href="design-system/typography.css"><link rel="stylesheet" href="design-system/motion.css"><link rel="stylesheet" href="design-system/components.css">
+<link rel="stylesheet" href="design-system/navigation.css">
+<link rel="stylesheet" href="design-system/page-transitions.css">
 </head>
 <body>
 <div class="progress" id="progress"></div>
@@ -190,5 +192,6 @@ addEventListener("mousemove",e=>{const x=e.clientX/innerWidth-.5,y=e.clientY/inn
 })();
 
 </script>
-</body>
+
+<script>(function(){const links=[...document.querySelectorAll('a[href]')];links.forEach(a=>a.addEventListener('click',e=>{const u=new URL(a.href,location.href);if(u.origin!==location.origin||u.hash||a.target==='_blank')return;e.preventDefault();document.body.classList.add('ids-leaving');setTimeout(()=>location.href=u.href,280)}));})();</script></body>
 </html>
