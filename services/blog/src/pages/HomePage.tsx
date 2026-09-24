@@ -27,6 +27,10 @@ export default function HomePage() {
 
   const featured = posts[0];
   const popular = posts.slice(0, 3);
+  const series = [
+    { name: 'Building Reliable Money Movement', description: 'Lessons from payments, idempotency, security, and failure recovery.', posts: posts.filter((post) => ['ledger', 'reliability', 'payments', 'security'].some((tag) => post.tags.includes(tag))).slice(0, 4) },
+    { name: 'Systems That Fail in Production', description: 'The small assumptions that become real incidents.', posts: posts.filter((post) => ['infrastructure', 'reliability', 'operations'].some((tag) => post.tags.includes(tag))).slice(0, 4) },
+  ];
 
   return (
     <div>
@@ -88,6 +92,22 @@ export default function HomePage() {
               </div>
             </section>
 
+            <section className="series-section">
+              <div className="section-heading">
+                <p className="section-label">ARTICLE SERIES</p>
+                <h2>Follow a thread</h2>
+              </div>
+              <div className="series-list">
+                {series.filter((item) => item.posts.length).map((item) => (
+                  <div className="series-card" key={item.name}>
+                    <div className="series-card-head"><div><h3>{item.name}</h3><p>{item.description}</p></div><span>{item.posts.length} stories</span></div>
+                    <div className="series-posts">
+                      {item.posts.map((post) => <Link key={post.slug} to={'/' + post.slug}><span>{post.title}</span><span>→</span></Link>)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
             <section className="discipline-section">
               <div>
                 <p className="section-label">EXPLORE</p>
