@@ -2,14 +2,12 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import federation from '@originjs/vite-plugin-federation'
 
-// Real maps-mfe split (2026-08-19) -- MapView.tsx moved out of this package into its
-// own federated remote (see maps-mfe/vite.config.ts's own exposes block). Defaults to
-// the local dev server's own port (matches maps-mfe's own default VITE_PORT); set
-// VITE_MAPS_MFE_URL to the real deployed cluster URL (see infra/k8s/private-cloud/
-// maps-mfe.yaml) for anything other than local dev.
-const mapsMfeUrl = process.env.VITE_MAPS_MFE_URL ?? 'http://localhost:5006/assets/remoteEntry.js'
+const production = process.env.NODE_ENV === 'production'
+const mapsMfeUrl = process.env.VITE_MAPS_MFE_URL ??
+  (production ? '/app/remotes/maps/assets/remoteEntry.js' : 'http://localhost:5006/assets/remoteEntry.js')
 
 export default defineConfig({
+  base: production ? '/app/remotes/bank/' : '/',
   plugins: [
     react(),
     // @ts-ignore
