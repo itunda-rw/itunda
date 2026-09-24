@@ -87,3 +87,13 @@
 .tds-section-intro .tds-eyebrow{margin-bottom:12px}
 .tds-section-intro .tds-heading{margin-bottom:14px}
 .tds-section-intro .tds-body{max-width:620px}
+
+
+/* Status language: communicate system state without forcing interpretation. */
+.tds-status{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:var(--itunda-muted)}
+.tds-status::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.tds-status-success{color:#16845F}
+.tds-status-warning{color:#9A6B00}
+.tds-status-error{color:#C53D3D}
+.tds-status-info{color:var(--itunda-indigo)}
+.tds-status-neutral{color:var(--itunda-muted)}
