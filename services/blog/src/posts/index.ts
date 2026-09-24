@@ -78,38 +78,7 @@ const escapeXml = (value: string) =>
 
 export function getEditorialImage(post: Post): string {
   if (post.image) return post.image;
-
-  const key = post.tags.find((tag) => coverPalette[tag.toLowerCase()])?.toLowerCase() ?? 'platform';
-  const [accent, soft] = coverPalette[key];
-  const title = escapeXml(post.title);
-  const label = escapeXml(post.tags[0] ?? 'engineering').toUpperCase();
-
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
-    <defs>
-      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="${soft}"/>
-      </linearGradient>
-      <filter id="shadow"><feDropShadow dx="0" dy="24" stdDeviation="28" flood-opacity=".12"/></filter>
-    </defs>
-    <rect width="1600" height="900" fill="url(#bg)"/>
-    <circle cx="1320" cy="120" r="260" fill="${soft}" opacity=".75"/>
-    <circle cx="180" cy="760" r="310" fill="${soft}" opacity=".48"/>
-    <g filter="url(#shadow)">
-      <rect x="420" y="220" width="760" height="460" rx="64" fill="#FFFFFF"/>
-      <rect x="490" y="290" width="620" height="16" rx="8" fill="${soft}"/>
-      <rect x="490" y="344" width="390" height="42" rx="21" fill="${accent}" opacity=".92"/>
-      <rect x="490" y="422" width="500" height="20" rx="10" fill="${soft}"/>
-      <rect x="490" y="468" width="430" height="20" rx="10" fill="${soft}"/>
-      <circle cx="1030" cy="540" r="76" fill="${soft}"/>
-      <circle cx="1030" cy="540" r="44" fill="${accent}"/>
-      <path d="M1030 510v60M1000 540h60" stroke="#fff" stroke-width="14" stroke-linecap="round"/>
-    </g>
-    <text x="490" y="170" font-family="Inter,Arial,sans-serif" font-size="28" font-weight="700" letter-spacing="5" fill="${accent}">${label}</text>
-    <text x="490" y="760" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="700" fill="#191F28">${title}</text>
-    <text x="490" y="812" font-family="Inter,Arial,sans-serif" font-size="22" fill="#6B7684">ITUNDA TECH · ENGINEERING FOR EVERYDAY LIFE</text>
-  </svg>`;
-
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  return `/images/posts/${post.slug}/hero.svg`;
 }
 
 export function getPost(slug: string): Post | undefined {
