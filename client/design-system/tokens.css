@@ -68,3 +68,11 @@
   --itunda-weight-regular:400;--itunda-weight-medium:600;--itunda-weight-bold:750;--itunda-weight-heavy:850;
   --itunda-letter-tight:-.035em;--itunda-letter-normal:-.01em;
 }
+
+
+/* Interaction timing: fast enough to feel immediate, slow enough to remain legible. */
+:root{
+  --itunda-motion-fast:140ms;
+  --itunda-motion-normal:220ms;
+  --itunda-motion-slow:420ms;
+}
