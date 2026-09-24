@@ -28,8 +28,10 @@ export default function HomePage() {
   const featured = posts[0];
   const popular = posts.slice(0, 3);
   const series = [
-    { name: 'Building Reliable Money Movement', description: 'Lessons from payments, idempotency, security, and failure recovery.', posts: posts.filter((post) => ['ledger', 'reliability', 'payments', 'security'].some((tag) => post.tags.includes(tag))).slice(0, 4) },
-    { name: 'Systems That Fail in Production', description: 'The small assumptions that become real incidents.', posts: posts.filter((post) => ['infrastructure', 'reliability', 'operations'].some((tag) => post.tags.includes(tag))).slice(0, 4) },
+    { name: 'Building Reliable Money Movement', description: 'Lessons from payments, idempotency, security, and failure recovery.', posts: posts.filter((post) => ['ledger', 'reliability', 'payments', 'security'].some((tag) => post.tags.includes(tag))).slice(0, 5) },
+    { name: 'Systems That Fail in Production', description: 'The small assumptions that become real incidents.', posts: posts.filter((post) => ['infrastructure', 'reliability', 'operations'].some((tag) => post.tags.includes(tag))).slice(0, 5) },
+    { name: 'Security by Default', description: 'Identity, authentication, abuse prevention, and the boundaries that protect everyday transactions.', posts: posts.filter((post) => ['security', 'identity', 'auth'].some((tag) => post.tags.includes(tag))).slice(0, 5) },
+    { name: 'The Itunda Platform', description: 'The engineering foundations behind mobile, services, APIs, and the connected ecosystem.', posts: posts.filter((post) => ['platform', 'mobile', 'api', 'architecture', 'kotlin'].some((tag) => post.tags.includes(tag))).slice(0, 5) },
   ];
 
   return (
@@ -79,7 +81,7 @@ export default function HomePage() {
 
             <section className="popular-section">
               <div className="section-heading">
-                <p className="section-label">POPULAR</p>
+                <p className="section-label">EDITOR’S PICKS</p>
                 <h2>Worth reading</h2>
               </div>
               <div className="popular-grid">
