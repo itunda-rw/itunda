@@ -43,8 +43,16 @@ export default function PostPage() {
     setMeta('og:title', post.title);
     setMeta('og:description', post.excerpt);
     setMeta('og:type', 'article');
+    setMeta('og:site_name', 'Itunda Tech');
     setMeta('article:published_time', post.date);
     setMeta('article:author', profile.name);
+    if (post.image) {
+      setMeta('og:image', new URL(post.image, window.location.origin).href);
+      setMeta('twitter:card', 'summary_large_image');
+      setMeta('twitter:image', new URL(post.image, window.location.origin).href);
+    } else {
+      setMeta('twitter:card', 'summary');
+    }
   }, [post]);
 
   if (!post) return <Navigate to="/" replace />;
