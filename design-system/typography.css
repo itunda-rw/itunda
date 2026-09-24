@@ -1,0 +1,13 @@
+.tds-display{font-size:clamp(64px,9.2vw,132px);line-height:.9;letter-spacing:-.07em;font-weight:850}
+.tds-section-title{font-size:clamp(50px,6.2vw,88px);line-height:.94;letter-spacing:-.055em;font-weight:850}
+.tds-title{font-size:clamp(28px,3vw,40px);line-height:1.04;letter-spacing:-.035em;font-weight:800}
+.tds-lead{font-size:clamp(17px,1.45vw,20px);line-height:1.6;letter-spacing:-.012em}
+.tds-body{font-size:16px;line-height:1.65}
+.tds-label{font-size:12px;line-height:1.2;letter-spacing:.08em;font-weight:750}
+.tds-ui-display{font-size:30px;line-height:40px;font-weight:750;letter-spacing:-.03em}
+.tds-ui-heading{font-size:22px;line-height:31px;font-weight:750;letter-spacing:-.02em}
+.tds-ui-body{font-size:17px;line-height:25.5px}
+@media (max-width:720px){
+  .tds-display{font-size:clamp(58px,16vw,72px);letter-spacing:-.065em}
+  .tds-section-title{font-size:clamp(45px,13vw,56px);letter-spacing:-.05em}
+}
