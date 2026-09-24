@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { getAuthorProfile, getPost, posts } from '../posts';
+import { getAuthorProfile, getEditorialImage, getPost, posts } from '../posts';
 
 const date = (value: string) =>
   new Date(value).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -26,6 +26,7 @@ export default function PostPage() {
   useEffect(() => {
     if (!post) return;
     const profile = getAuthorProfile(post.author);
+    const editorialImage = getEditorialImage(post);
     document.title = `${post.title} — Itunda Tech`;
 
     const description = document.querySelector('meta[name="description"]') ?? document.createElement('meta');
@@ -46,13 +47,11 @@ export default function PostPage() {
     setMeta('og:site_name', 'Itunda Tech');
     setMeta('article:published_time', post.date);
     setMeta('article:author', profile.name);
-    if (post.image) {
-      setMeta('og:image', new URL(post.image, window.location.origin).href);
-      setMeta('twitter:card', 'summary_large_image');
-      setMeta('twitter:image', new URL(post.image, window.location.origin).href);
-    } else {
-      setMeta('twitter:card', 'summary');
+    if (editorialImage.startsWith('http')) {
+      setMeta('og:image', new URL(editorialImage, window.location.origin).href);
+      setMeta('twitter:image', new URL(editorialImage, window.location.origin).href);
     }
+    setMeta('twitter:card', 'summary_large_image');
   }, [post]);
 
   if (!post) return <Navigate to="/" replace />;
@@ -68,7 +67,7 @@ export default function PostPage() {
           <article className="post">
             <header className="post-header">
               <p className="section-label">{post.tags[0] ?? 'Engineering'}</p>
-              {post.image && <img className="article-image" src={post.image} alt={post.imageAlt ?? post.title} />}
+              <img className="article-image" src={getEditorialImage(post)} alt={post.imageAlt ?? post.title} />
               <h1>{post.title}</h1>
               <p className="article-excerpt">{post.excerpt}</p>
               <div className="post-card-meta">
