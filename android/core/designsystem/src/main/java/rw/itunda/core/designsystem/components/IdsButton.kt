@@ -30,12 +30,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.semantics
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsColors
 import rw.itunda.core.designsystem.theme.IdsTypography
@@ -125,7 +125,7 @@ fun IdsButton(
         enabled = enabled && !loading,
         interactionSource = interactionSource,
         modifier = modifier
-            .clearAndSetSemantics { role = Role.Button }
+            .semantics { role = Role.Button }
             .then(widthModifier)
              .scale(pressScale)
             .height(heightDp),
