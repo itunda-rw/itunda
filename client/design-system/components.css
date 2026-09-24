@@ -97,3 +97,10 @@
 .tds-status-error{color:#C53D3D}
 .tds-status-info{color:var(--itunda-indigo)}
 .tds-status-neutral{color:var(--itunda-muted)}
+
+
+/* Persistent completion action for long flows. */
+.tds-bottom-cta{position:sticky;bottom:0;z-index:20;display:flex;align-items:center;gap:12px;padding:16px max(20px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom));background:color-mix(in srgb,#fff 92%,transparent);border-top:1px solid var(--itunda-line);backdrop-filter:blur(16px)}
+.tds-bottom-cta .tds-button{flex:1}
+@media(min-width:701px){.tds-bottom-cta{justify-content:flex-end}.tds-bottom-cta .tds-button{flex:0 0 auto;min-width:180px}}
+@media(prefers-reduced-transparency:reduce){.tds-bottom-cta{background:#fff}}
