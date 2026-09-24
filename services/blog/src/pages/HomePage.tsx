@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { posts } from '../posts';
+import { getAuthorProfile, posts } from '../posts';
 
 const date = (value: string) =>
   new Date(value).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
@@ -82,7 +82,7 @@ export default function HomePage() {
                   <Link className="popular-card" key={post.slug} to={`/${post.slug}`}>
                     <span className="popular-number">0{index + 1}</span>
                     <h3>{post.title}</h3>
-                    <p>{post.author}</p>
+                    <p>{getAuthorProfile(post.author).role}</p>
                   </Link>
                 ))}
               </div>
@@ -113,7 +113,7 @@ export default function HomePage() {
               <article key={post.slug} className="post-card">
                 <Link to={`/${post.slug}`}>
                   <div className="post-card-main">
-                    <div className="post-card-meta"><span>{date(post.date)}</span><span>·</span><span>{post.author}</span></div>
+                    <div className="post-card-meta"><span>{date(post.date)}</span><span>·</span><span>{getAuthorProfile(post.author).role}</span></div>
                     <h3>{post.title}</h3>
                     <p>{post.excerpt}</p>
                     <div className="tag-row">{post.tags.map((tag) => <span key={tag} className="tag">{tag}</span>)}</div>
