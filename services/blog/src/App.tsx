@@ -7,9 +7,7 @@ export default function App() {
     <div className="page">
       <header className="site-header">
         <div className="header-inner">
-          <Link to="/" className="brand" aria-label="Itunda Tech home">
-            itunda <span className="brand-accent">tech</span>
-          </Link>
+          <Link to="/" className="brand" aria-label="Itunda Tech home"><img src="/brand/itunda-icon.svg" alt="" className="brand-mark" /><span>itunda <span className="brand-accent">tech</span></span></Link>
           <nav className="site-nav" aria-label="Primary">
             <Link to="/" className="nav-active">Articles</Link>
             <a href="/itunda/">Itunda</a>
@@ -28,7 +26,7 @@ export default function App() {
       <footer className="site-footer">
         <div className="footer-inner">
           <div>
-            <strong>itunda tech</strong>
+            <strong className="footer-brand"><img src="/brand/itunda-icon.svg" alt="" className="footer-mark" />itunda tech</strong>
             <p>Engineering stories from the team building Rwanda's everyday digital infrastructure.</p>
           </div>
           <div className="footer-links">
