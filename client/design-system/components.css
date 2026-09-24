@@ -44,3 +44,11 @@
 @media(max-width:720px){.tds-container{width:min(100% - 40px,var(--itunda-max));padding-inline:20px}.tds-button{min-height:50px}.tds-tabs{width:100%}.tds-tab{flex:1}.tds-section{padding-inline:20px}}
 @media(max-width:600px){.tds-grid-3,.tds-grid-4{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.tds-button,.tds-input,.tds-list-row,.tds-card,.tds-link{transition:none}.tds-spinner,.tds-skeleton::after{animation:none}.tds-button:hover,.tds-card:hover{transform:none}}
+
+
+/* Narrative actions: one clear next step, secondary context stays quiet. */
+.tds-action-group{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.tds-action-group .tds-button{min-width:0}
+.tds-action-group .tds-link{padding:10px 4px}
+.tds-action-group--center{justify-content:center}
+@media(max-width:600px){.tds-action-group{gap:8px}.tds-action-group .tds-button{width:100%;justify-content:center}.tds-action-group .tds-link{width:100%;text-align:center}}
