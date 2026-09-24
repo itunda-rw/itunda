@@ -33,6 +33,10 @@ object IdsComponentTokens {
         val borderWidth = 1.dp
     }
 
+    object Divider {
+        val thickness = 0.5.dp
+    }
+
     object IconButton {
         val iconSize = 20.dp
     }
