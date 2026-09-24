@@ -77,3 +77,11 @@ button,input{font:inherit}
 .next-link span{color:var(--primary);font-size:26px}
 .footer-links{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}.footer-links a:hover{text-decoration:underline}
 @media(max-width:760px){.article-excerpt{font-size:17px}.footer-links{margin-top:18px;gap:14px}}
+
+.popular-section{padding:76px 0 82px;border-bottom:1px solid var(--border)}
+.popular-grid{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--border)}
+.popular-card{padding:26px 24px 30px 0;border-right:1px solid var(--border);transition:transform .2s}.popular-card:not(:first-child){padding-left:24px}.popular-card:last-child{border-right:0}
+.popular-card:hover{transform:translateY(-3px)}.popular-number{font-size:12px;font-weight:900;color:var(--primary)}.popular-card h3{font-size:22px;line-height:1.2;letter-spacing:-.8px;margin:28px 0 12px}.popular-card p{font-size:13px;color:var(--subtle);margin:0}
+.discipline-section{display:grid;grid-template-columns:1fr 1.35fr;gap:70px;padding:82px 0;border-bottom:1px solid var(--border)}.discipline-section h2{font-size:40px;letter-spacing:-2px;margin:0 0 12px}.discipline-section>div>p:last-child{color:var(--muted);font-size:16px}.discipline-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--border);border:1px solid var(--border)}.discipline-grid button{border:0;background:#fff;padding:20px;text-align:left;font-weight:800;color:var(--text);cursor:pointer;display:flex;justify-content:space-between}.discipline-grid button:hover{background:var(--surface-strong)}.discipline-grid span{color:var(--primary)}
+.category:focus-visible,.discipline-grid button:focus-visible,.search-box:focus-within{outline:3px solid #d8d6ff;outline-offset:2px}
+@media(max-width:760px){.popular-grid{grid-template-columns:1fr}.popular-card,.popular-card:not(:first-child){border-right:0;border-bottom:1px solid var(--border);padding:24px 0}.popular-card:last-child{border-bottom:0}.discipline-section{grid-template-columns:1fr;gap:32px;padding:62px 0}.discipline-section h2{font-size:34px}}
