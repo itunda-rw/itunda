@@ -52,3 +52,10 @@
 .tds-action-group .tds-link{padding:10px 4px}
 .tds-action-group--center{justify-content:center}
 @media(max-width:600px){.tds-action-group{gap:8px}.tds-action-group .tds-button{width:100%;justify-content:center}.tds-action-group .tds-link{width:100%;text-align:center}}
+
+
+/* Compact actions: use when the action is secondary to the content. */
+.tds-icon-button{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border:0;border-radius:999px;background:transparent;color:var(--itunda-ink);cursor:pointer;transition:background var(--itunda-motion-fast) ease,transform var(--itunda-motion-fast) ease}
+.tds-icon-button:hover{background:var(--itunda-soft)}
+.tds-icon-button:active{transform:scale(.96)}
+.tds-icon-button:focus-visible{outline:3px solid var(--itunda-indigo-soft);outline-offset:2px}
