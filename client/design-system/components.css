@@ -59,3 +59,13 @@
 .tds-icon-button:hover{background:var(--itunda-soft)}
 .tds-icon-button:active{transform:scale(.96)}
 .tds-icon-button:focus-visible{outline:3px solid var(--itunda-indigo-soft);outline-offset:2px}
+
+
+/* Feedback states: explicit, calm, and consistent across product flows. */
+.tds-button-success{background:#18A875;color:#fff}
+.tds-button-error{background:#D64545;color:#fff}
+.tds-button-success:hover,.tds-button-error:hover{filter:brightness(.96)}
+.tds-button-success:disabled,.tds-button-error:disabled{opacity:.48;cursor:not-allowed}
+.tds-button[aria-busy="true"]{pointer-events:none}
+.tds-button[aria-busy="true"] .tds-spinner{display:inline-block}
+.tds-button .tds-spinner{display:none}
