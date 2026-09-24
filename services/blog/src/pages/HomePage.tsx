@@ -50,7 +50,7 @@ export default function HomePage() {
       <div className="wide-container">
         <nav className="category-nav" aria-label="Article categories">
           {categories.map((item) => (
-            <button key={item} className={category === item ? 'category active' : 'category'} onClick={() => setCategory(item)}>
+            <button key={item} className={category === item ? 'category active' : 'category'} aria-pressed={category === item} onClick={() => setCategory(item)}>
               {item}
             </button>
           ))}
