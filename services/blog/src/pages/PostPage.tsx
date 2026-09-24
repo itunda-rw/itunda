@@ -60,6 +60,7 @@ export default function PostPage() {
           <article className="post">
             <header className="post-header">
               <p className="section-label">{post.tags[0] ?? 'Engineering'}</p>
+              {post.image && <img className="article-image" src={post.image} alt={post.imageAlt ?? post.title} />}
               <h1>{post.title}</h1>
               <p className="article-excerpt">{post.excerpt}</p>
               <div className="post-card-meta">
