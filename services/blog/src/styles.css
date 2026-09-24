@@ -11,7 +11,7 @@ button,input{font:inherit}
 .page{min-height:100vh;display:flex;flex-direction:column}
 .site-header{position:sticky;top:0;z-index:20;background:#ffffffdc;backdrop-filter:blur(20px);border-bottom:1px solid #eef0f2}
 .header-inner{height:72px;max-width:1280px;margin:auto;padding:0 32px;display:flex;align-items:center;gap:34px}
-.brand{font-size:24px;font-weight:850;letter-spacing:-1.8px;white-space:nowrap}
+.brand{font-size:24px;font-weight:850;letter-spacing:-1.8px;white-space:nowrap;display:inline-flex;align-items:center;gap:9px}.brand-mark{width:28px;height:28px;display:block}.footer-brand{display:inline-flex;align-items:center;gap:8px}.footer-mark{width:22px;height:22px;vertical-align:middle}
 .brand-accent{color:var(--primary)}
 .site-nav{display:flex;gap:24px;flex:1;font-size:14px;font-weight:650;color:var(--muted)}
 .site-nav a:hover,.site-nav .nav-active{color:var(--text)}
