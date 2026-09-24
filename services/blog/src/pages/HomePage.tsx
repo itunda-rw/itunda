@@ -5,25 +5,28 @@ import { posts } from '../posts';
 const date = (value: string) =>
   new Date(value).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
+const disciplines = ['All', 'Engineering', 'Android', 'iOS', 'Backend', 'Security', 'Infrastructure', 'AI', 'Design'];
+
 export default function HomePage() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All');
 
   const categories = useMemo(
-    () => ['All', ...Array.from(new Set(posts.flatMap((post) => post.tags))).slice(0, 8)],
+    () => ['All', ...Array.from(new Set([...disciplines.slice(1), ...posts.flatMap((post) => post.tags)]))],
     [],
   );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return posts.filter((post) => {
-      const matchesCategory = category === 'All' || post.tags.includes(category);
+      const matchesCategory = category === 'All' || post.tags.some((tag) => tag.toLowerCase() === category.toLowerCase());
       const haystack = [post.title, post.excerpt, post.author, ...post.tags].join(' ').toLowerCase();
       return matchesCategory && (!q || haystack.includes(q));
     });
   }, [category, query]);
 
   const featured = posts[0];
+  const popular = posts.slice(0, 3);
 
   return (
     <div>
@@ -41,11 +44,7 @@ export default function HomePage() {
       <div className="wide-container">
         <nav className="category-nav" aria-label="Article categories">
           {categories.map((item) => (
-            <button
-              key={item}
-              className={category === item ? 'category active' : 'category'}
-              onClick={() => setCategory(item)}
-            >
+            <button key={item} className={category === item ? 'category active' : 'category'} onClick={() => setCategory(item)}>
               {item}
             </button>
           ))}
@@ -60,28 +59,54 @@ export default function HomePage() {
         </div>
 
         {!query && category === 'All' && (
-          <section className="featured">
-            <div className="featured-copy">
-              <p className="section-label">FEATURED</p>
-              <Link to={`/${featured.slug}`}>
-                <h2>{featured.title}</h2>
-                <p>{featured.excerpt}</p>
-                <span className="read-link">Read article →</span>
-              </Link>
-            </div>
-            <div className="featured-meta">
-              <span>{date(featured.date)}</span>
-              <span>{featured.author}</span>
-            </div>
-          </section>
+          <>
+            <section className="featured">
+              <div className="featured-copy">
+                <p className="section-label">FEATURED</p>
+                <Link to={`/${featured.slug}`}>
+                  <h2>{featured.title}</h2>
+                  <p>{featured.excerpt}</p>
+                  <span className="read-link">Read article →</span>
+                </Link>
+              </div>
+              <div className="featured-meta"><span>{date(featured.date)}</span><span>{featured.author}</span></div>
+            </section>
+
+            <section className="popular-section">
+              <div className="section-heading">
+                <p className="section-label">POPULAR</p>
+                <h2>Worth reading</h2>
+              </div>
+              <div className="popular-grid">
+                {popular.map((post, index) => (
+                  <Link className="popular-card" key={post.slug} to={`/${post.slug}`}>
+                    <span className="popular-number">0{index + 1}</span>
+                    <h3>{post.title}</h3>
+                    <p>{post.author}</p>
+                  </Link>
+                ))}
+              </div>
+            </section>
+
+            <section className="discipline-section">
+              <div>
+                <p className="section-label">EXPLORE</p>
+                <h2>Engineering at Itunda</h2>
+                <p>Explore the disciplines behind the platform.</p>
+              </div>
+              <div className="discipline-grid">
+                {disciplines.slice(1).map((item) => (
+                  <button key={item} onClick={() => setCategory(item)}>{item}<span>→</span></button>
+                ))}
+              </div>
+            </section>
+          </>
         )}
 
         <section className="latest">
           <div className="section-heading">
-            <div>
-              <p className="section-label">LATEST</p>
-              <h2>What we're building</h2>
-            </div>
+            <p className="section-label">LATEST</p>
+            <h2>{query || category !== 'All' ? 'Search results' : 'What we’re building'}</h2>
           </div>
           <div className="post-list">
             {filtered.map((post) => (
