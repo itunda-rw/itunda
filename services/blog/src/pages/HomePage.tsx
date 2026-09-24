@@ -68,7 +68,7 @@ export default function HomePage() {
               <div className="featured-copy">
                 <p className="section-label">FEATURED</p>
                 <Link to={`/${featured.slug}`}>
-                  {featured.image && <img className="featured-image" src={featured.image} alt={featured.imageAlt ?? featured.title} />}
+                  {featured.image && <img className="featured-image" src={featured.image} alt={featured.imageAlt ?? featured.title} loading="eager" />}
                   <h2>{featured.title}</h2>
                   <p>{featured.excerpt}</p>
                   <span className="read-link">Read article →</span>
@@ -86,7 +86,7 @@ export default function HomePage() {
                 {popular.map((post, index) => (
                   <Link className="popular-card" key={post.slug} to={`/${post.slug}`}>
                     <span className="popular-number">0{index + 1}</span>
-                    {post.image && <img className="popular-image" src={post.image} alt={post.imageAlt ?? post.title} />}
+                    {post.image && <img className="popular-image" src={post.image} alt={post.imageAlt ?? post.title} loading="lazy" />}
                     <h3>{post.title}</h3>
                     <p>{getAuthorProfile(post.author).role}</p>
                   </Link>
