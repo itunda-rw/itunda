@@ -59,3 +59,11 @@
 .tds-input{min-height:52px;transition:border-color var(--itunda-duration-fast) var(--itunda-ease),box-shadow var(--itunda-duration-fast) var(--itunda-ease)}
 .tds-input:focus{border-color:var(--itunda-color-brand);box-shadow:0 0 0 4px color-mix(in srgb,var(--itunda-color-brand) 14%,transparent)}
 .tds-alert{border-radius:var(--itunda-radius-md);padding:14px 16px}
+
+/* Canonical typography primitives */
+.tds-display{font-family:var(--itunda-font-body);font-size:var(--itunda-text-display);line-height:var(--itunda-leading-tight);letter-spacing:var(--itunda-letter-tight);font-weight:var(--itunda-weight-heavy);color:var(--itunda-color-text)}
+.tds-heading{font-family:var(--itunda-font-body);font-size:clamp(32px,4vw,52px);line-height:1.12;letter-spacing:var(--itunda-letter-tight);font-weight:var(--itunda-weight-heavy);color:var(--itunda-color-text)}
+.tds-subheading{font-family:var(--itunda-font-body);font-size:var(--itunda-text-xl);line-height:1.3;letter-spacing:var(--itunda-letter-tight);font-weight:var(--itunda-weight-bold);color:var(--itunda-color-text)}
+.tds-body{font-family:var(--itunda-font-body);font-size:var(--itunda-text-lg);line-height:var(--itunda-leading-normal);font-weight:var(--itunda-weight-regular);color:var(--itunda-color-text-muted)}
+.tds-caption{font-family:var(--itunda-font-body);font-size:var(--itunda-text-sm);line-height:1.45;font-weight:var(--itunda-weight-medium);color:var(--itunda-color-text-muted)}
+.tds-eyebrow{font-family:var(--itunda-font-body);font-size:var(--itunda-text-xs);line-height:1.2;letter-spacing:.08em;text-transform:uppercase;font-weight:var(--itunda-weight-heavy);color:var(--itunda-color-brand-strong)}
