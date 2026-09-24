@@ -33,6 +33,8 @@ export interface Post {
   tags: string[];
   excerpt: string;
   content: string;
+  image?: string;
+  imageAlt?: string;
 }
 
 export const posts: Post[] = [theTwoLookupsThatWereSupposedToAgree, theOutageWeStoppedDebugging, theFeatureWeShelvedTwice, theScreenWeAllAssumedWasAlreadyDone, theSwitchThatOnlyFlippedOneRoom, theFixThatForgotItsOwnLesson, theLanguageWeNeverAskedAbout, whatWeFoundOutsideOurOwnReference, theMatureFeatureThatForgotWhatItWasSaying, theFormThatClosedOnALie, theFixWeAlreadyHad, theRiskWeAlreadyKnewAbout, threeFlowsTheFraudEngineNeverSaw, theLinterThatLiedToItselfFirst, theKeyThatCantLeaveThePhone, securityAndSimplicityTogether, theAuditWeSaidWeFinished, aRealDebitCardWithNoCardNetwork, oneReportThreeClients, fakeSuccess, hardcodedUserId, idempotencyKeys, jwtRevocation, rateLimiting, theBugThatWasntInfrastructure, diskPressureCascadingFailure].sort(
