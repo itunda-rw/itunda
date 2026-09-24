@@ -1,0 +1,38 @@
+:root{
+  --itunda-indigo:#7472F4;
+  --itunda-indigo-dark:#625FE0;
+  --itunda-indigo-soft:#F0EFFF;
+  --itunda-ink:#191F28;
+  --itunda-muted:#6B7684;
+  --itunda-soft:#F7F8FA;
+  --itunda-line:#EEF0F2;
+  --itunda-dark:#080A10;
+
+  --itunda-space-1:4px;
+  --itunda-space-2:8px;
+  --itunda-space-3:12px;
+  --itunda-space-4:16px;
+  --itunda-space-5:20px;
+  --itunda-space-6:24px;
+  --itunda-space-7:32px;
+  --itunda-space-8:40px;
+  --itunda-space-9:48px;
+  --itunda-space-10:64px;
+  --itunda-space-11:80px;
+  --itunda-space-12:96px;
+  --itunda-space-13:120px;
+  --itunda-space-14:160px;
+
+  --itunda-radius-sm:12px;
+  --itunda-radius-md:20px;
+  --itunda-radius-lg:30px;
+  --itunda-radius-xl:40px;
+  --itunda-radius-display:52px;
+  --itunda-radius-pill:999px;
+
+  --itunda-max:1280px;
+  --itunda-gutter:32px;
+}
+@media (max-width:720px){
+  :root{--itunda-gutter:20px}
+}
