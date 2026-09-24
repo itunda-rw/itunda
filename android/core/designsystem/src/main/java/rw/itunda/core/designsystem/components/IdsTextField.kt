@@ -28,6 +28,7 @@ import kotlinx.coroutines.delay
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.designsystem.theme.IdsTypography
+import rw.itunda.core.designsystem.theme.IdsComponentTokens
 
 /**
  * Real fix, 2026-08-03: this design system had colors/typography/layout/a real button
@@ -131,7 +132,7 @@ fun IdsTextField(
                 trailingIcon
             },
             textStyle = IdsTypography.Body1,
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(IdsComponentTokens.TextField.radius),
             modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Ids.colors.surface,
@@ -167,7 +168,7 @@ fun IdsTextField(
                 text = errorText,
                 style = IdsTypography.Typography7,
                 color = Ids.colors.danger,
-                modifier = Modifier.padding(start = 16.dp, top = 4.dp),
+                modifier = Modifier.padding(start = IdsComponentTokens.TextField.supportingTextStart, top = IdsComponentTokens.TextField.supportingTextTop),
             )
         } else if (!isError && supportingText != null) {
             Text(
