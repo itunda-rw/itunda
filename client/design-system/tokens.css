@@ -76,3 +76,14 @@
   --itunda-motion-normal:220ms;
   --itunda-motion-slow:420ms;
 }
+
+
+/* Accessible semantic contrast roles. */
+:root{
+  --itunda-text-on-indigo:#FFFFFF;
+  --itunda-text-on-dark:#FFFFFF;
+  --itunda-success:#16845F;
+  --itunda-warning:#9A6B00;
+  --itunda-error:#C53D3D;
+  --itunda-info:var(--itunda-indigo);
+}
