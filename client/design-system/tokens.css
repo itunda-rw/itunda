@@ -87,3 +87,29 @@
   --itunda-error:#C53D3D;
   --itunda-info:var(--itunda-indigo);
 }
+
+/* v2 foundations: explicit type, layout, surface and interaction roles. */
+:root{
+  --itunda-space-15:192px;
+  --itunda-content-reading:680px;
+  --itunda-content-narrow:560px;
+  --itunda-nav-height:72px;
+  --itunda-control-height-sm:40px;
+  --itunda-control-height-md:48px;
+  --itunda-control-height-lg:56px;
+  --itunda-border-subtle:rgba(25,31,40,.07);
+  --itunda-border-strong:#DDE2E7;
+  --itunda-surface-raised:#fff;
+  --itunda-surface-sunken:#F7F8FA;
+  --itunda-overlay:rgba(8,10,16,.48);
+  --itunda-ease:cubic-bezier(.22,1,.36,1);
+  --itunda-ease-standard:cubic-bezier(.2,.8,.2,1);
+}
+@media(max-width:720px){
+  :root{
+    --itunda-nav-height:64px;
+    --itunda-text-display:clamp(48px,14vw,72px);
+    --itunda-space-13:96px;
+    --itunda-space-14:120px;
+  }
+}
