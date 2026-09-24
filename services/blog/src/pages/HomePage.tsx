@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getAuthorProfile, posts } from '../posts';
+import { getAuthorProfile, getEditorialImage, posts } from '../posts';
 
 const date = (value: string) =>
   new Date(value).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
@@ -70,7 +70,7 @@ export default function HomePage() {
               <div className="featured-copy">
                 <p className="section-label">FEATURED</p>
                 <Link to={`/${featured.slug}`}>
-                  {featured.image && <img className="featured-image" src={featured.image} alt={featured.imageAlt ?? featured.title} loading="eager" />}
+                  <img className="featured-image" src={getEditorialImage(featured)} alt={featured.imageAlt ?? featured.title} loading="eager" />
                   <h2>{featured.title}</h2>
                   <p>{featured.excerpt}</p>
                   <span className="read-link">Read article →</span>
@@ -88,7 +88,7 @@ export default function HomePage() {
                 {popular.map((post, index) => (
                   <Link className="popular-card" key={post.slug} to={`/${post.slug}`}>
                     <span className="popular-number">0{index + 1}</span>
-                    {post.image && <img className="popular-image" src={post.image} alt={post.imageAlt ?? post.title} loading="lazy" />}
+                    <img className="popular-image" src={getEditorialImage(post)} alt={post.imageAlt ?? post.title} loading="lazy" />
                     <h3>{post.title}</h3>
                     <p>{getAuthorProfile(post.author).role}</p>
                   </Link>
@@ -137,7 +137,7 @@ export default function HomePage() {
               <article key={post.slug} className="post-card">
                 <Link to={`/${post.slug}`}>
                   <div className="post-card-main">
-                    {post.image && <img className="post-card-image" src={post.image} alt={post.imageAlt ?? post.title} />}
+                    <img className="post-card-image" src={getEditorialImage(post)} alt={post.imageAlt ?? post.title} loading="lazy" />
                     <div className="post-card-meta"><span>{date(post.date)}</span><span>·</span><span>{getAuthorProfile(post.author).role}</span></div>
                     <h3>{post.title}</h3>
                     <p>{post.excerpt}</p>
