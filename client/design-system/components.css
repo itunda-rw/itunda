@@ -122,6 +122,7 @@
 .tds-hover-lift{transition:transform var(--itunda-motion-normal) var(--itunda-ease),box-shadow var(--itunda-motion-normal) var(--itunda-ease),border-color var(--itunda-motion-normal) var(--itunda-ease)}
 .tds-hover-lift:hover{transform:translateY(-4px);box-shadow:var(--itunda-shadow-md);border-color:#D9D7FF}
 .tds-hover-lift:active{transform:translateY(-1px) scale(.995)}
+.tds-hover-lift:focus-visible{outline:3px solid color-mix(in srgb,var(--itunda-color-brand,var(--itunda-indigo)) 35%,white);outline-offset:4px}
 .tds-pressable{transition:transform var(--itunda-motion-fast) var(--itunda-ease)}
 .tds-pressable:active{transform:scale(.985)}
 @media(prefers-reduced-motion:reduce){.tds-hover-lift,.tds-pressable{transition:none}.tds-hover-lift:hover,.tds-hover-lift:active,.tds-pressable:active{transform:none}}
