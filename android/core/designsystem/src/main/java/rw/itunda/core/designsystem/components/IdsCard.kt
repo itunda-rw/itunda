@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsComponentTokens
 
 /**
  * Real fix, 2026-08-03, second correction same day: the actual bug behind "Home
@@ -45,7 +46,7 @@ fun IdsCard(
         modifier = modifier,
         shape = shape,
         colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-        border = BorderStroke(1.dp, Ids.colors.divider),
+        border = BorderStroke(IdsComponentTokens.Card.borderWidth, Ids.colors.divider),
         content = content,
     )
 }
