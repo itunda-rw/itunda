@@ -1,39 +1,106 @@
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { posts } from '../posts';
 
+const date = (value: string) =>
+  new Date(value).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+
 export default function HomePage() {
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('All');
+
+  const categories = useMemo(
+    () => ['All', ...Array.from(new Set(posts.flatMap((post) => post.tags))).slice(0, 8)],
+    [],
+  );
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return posts.filter((post) => {
+      const matchesCategory = category === 'All' || post.tags.includes(category);
+      const haystack = [post.title, post.excerpt, post.author, ...post.tags].join(' ').toLowerCase();
+      return matchesCategory && (!q || haystack.includes(q));
+    });
+  }, [category, query]);
+
+  const featured = posts[0];
+
   return (
-    <div className="container">
-      <section className="hero">
-        <h1>Engineering notes from itunda</h1>
-        <p>
-          Real incidents, real fixes, and the reasoning behind them — written by the team building itunda's ledger,
-          security, and mobile apps.
-        </p>
+    <div>
+      <section className="tech-hero">
+        <div className="wide-container">
+          <p className="eyebrow">ITUNDA ENGINEERING</p>
+          <h1>We build for<br /><span>everyday life.</span></h1>
+          <p className="hero-copy">
+            The engineering decisions behind Itunda — from payments and identity to mobile, infrastructure,
+            security, and the systems that connect them.
+          </p>
+        </div>
       </section>
 
-      <ul className="post-list">
-        {posts.map((post) => (
-          <li key={post.slug} className="post-card">
-            <Link to={`/${post.slug}`}>
-              <div className="post-card-meta">
-                <span>{new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                <span aria-hidden="true">·</span>
-                <span>{post.author}</span>
-              </div>
-              <h2>{post.title}</h2>
-              <p>{post.excerpt}</p>
-              <div className="tag-row">
-                {post.tags.map((tag) => (
-                  <span key={tag} className="tag">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <div className="wide-container">
+        <nav className="category-nav" aria-label="Article categories">
+          {categories.map((item) => (
+            <button
+              key={item}
+              className={category === item ? 'category active' : 'category'}
+              onClick={() => setCategory(item)}
+            >
+              {item}
+            </button>
+          ))}
+        </nav>
+
+        <div className="search-row">
+          <label className="search-box">
+            <span aria-hidden="true">⌕</span>
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search Itunda Tech" aria-label="Search articles" />
+          </label>
+          <span className="result-count">{filtered.length} articles</span>
+        </div>
+
+        {!query && category === 'All' && (
+          <section className="featured">
+            <div className="featured-copy">
+              <p className="section-label">FEATURED</p>
+              <Link to={`/${featured.slug}`}>
+                <h2>{featured.title}</h2>
+                <p>{featured.excerpt}</p>
+                <span className="read-link">Read article →</span>
+              </Link>
+            </div>
+            <div className="featured-meta">
+              <span>{date(featured.date)}</span>
+              <span>{featured.author}</span>
+            </div>
+          </section>
+        )}
+
+        <section className="latest">
+          <div className="section-heading">
+            <div>
+              <p className="section-label">LATEST</p>
+              <h2>What we're building</h2>
+            </div>
+          </div>
+          <div className="post-list">
+            {filtered.map((post) => (
+              <article key={post.slug} className="post-card">
+                <Link to={`/${post.slug}`}>
+                  <div className="post-card-main">
+                    <div className="post-card-meta"><span>{date(post.date)}</span><span>·</span><span>{post.author}</span></div>
+                    <h3>{post.title}</h3>
+                    <p>{post.excerpt}</p>
+                    <div className="tag-row">{post.tags.map((tag) => <span key={tag} className="tag">{tag}</span>)}</div>
+                  </div>
+                  <span className="post-arrow" aria-hidden="true">→</span>
+                </Link>
+              </article>
+            ))}
+            {filtered.length === 0 && <div className="empty-state">No articles match that search.</div>}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
