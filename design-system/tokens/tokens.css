@@ -1,0 +1,323 @@
+/*
+ * Single source of truth for itunda's web color tokens (2026-07-11).
+ *
+ * Until this file existed, host-app/src/index.css and bank-mfe/src/index.css each
+ * hand-copied the same Toss palette independently -- and one value had already
+ * drifted: bank-mfe's --toss-green (as these variables were named at the time) was
+ * #34c759 (Apple's iOS system green), not Toss's real green500 (#04C065) that
+ * android/core/designsystem/theme/IdsColors.kt and
+ * ios/Core/DesignSystem/Sources/Theme/IdsTheme.swift both actually use. Fixed here,
+ * corrected everywhere that imports this file instead of its own copy.
+ *
+ * Light values match android/.../IdsSemanticColors.kt's IdsLightSemanticColors and
+ * ios/.../IDS.swift's IDS.Colors exactly (post their own 2026-07-11 reconciliation).
+ * Dark values match IdsDarkSemanticColors -- previously the web apps had *no* dark
+ * mode at all; this gives them the same real dark palette mobile already has,
+ * verified live on Android (see docs/ARCHITECTURE.md §5 item 5), not a guess.
+ *
+ * Variable names renamed --toss-* -> --itunda-* (2026-08-10, user-flagged): the web
+ * layer's own internal vocabulary naming itself after a different company's product
+ * had the exact same "unfinished fork, not a real product" problem Android's
+ * TossBlue/TossTab aliases just got fixed for (see ItundaAppScreen.kt's own doc
+ * comment). Every consuming file (.css and .tsx) was updated to match -- a real
+ * rename this time, not deferred as a "drop-in" alias.
+ *
+ * Grey/blue/red base values below (2026-07-13) are drawn from
+ * packages/design-tokens/tokens.json, this repo's real single source of truth for
+ * the primitive color scale (sourced from Toss's own official TDS docs) -- verified
+ * to match, not codegen'd directly into this file, since this file's own shape is
+ * semantic/light-dark-reactive (--itunda-indigo-active, grey-100 as "app background"),
+ * not a raw numbered primitive scale like Android's IdsColors.kt/iOS's IdsTheme.swift
+ * IdsColors struct, which generate-tokens.js does regenerate directly.
+ */
+
+/* Real typeface fix (2026-08-13, direct user feedback: "we are still far away from
+   toss") -- see android/core/designsystem/.../Pretendard.kt for the full sourced
+   account (github.com/orioncactus/pretendard, SIL Open Font License 1.1, license text
+   bundled at packages/design-tokens/PRETENDARD_LICENSE.txt). Every real web app in
+   this repo was rendering in the plain OS system-font stack (confirmed via grep
+   before this fix, matching Android/iOS's identical gap) despite the whole visual
+   language elsewhere being built around Toss's own real look. font-display: swap so
+   a slow font load never blocks text from rendering -- an instant system-font paint
+   that reflows once Pretendard loads beats a blank screen while it downloads. */
+@font-face {
+  font-family: "Pretendard";
+  src: url("./fonts/Pretendard-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Pretendard";
+  src: url("./fonts/Pretendard-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Pretendard";
+  src: url("./fonts/Pretendard-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Pretendard";
+  src: url("./fonts/Pretendard-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* Single source of truth for the real font stack every consuming app's own body
+     rule should reference -- Pretendard first, falling back to the same real system
+     stack each app already had if it somehow fails to load. */
+  --itunda-font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Brand primary rebranded blue -> indigo (2026-08-22, direct user identity work:
+     petal-shape mark + indigo, chosen after a full shape/color exploration pass --
+     see the itunda-identity.html design artifact and
+     project_itunda_brand_identity.md). Not an invented hex: derived by the same real
+     technique Toss's own engineering blog documents for generating a TDS hue family
+     (toss.tech/article/tds-color-system-update) -- hold OKLCH lightness+chroma of the
+     real Toss blue anchor this token held before, rotate hue to 280 deg (indigo),
+     clamp chroma back into sRGB gamut. Renamed --itunda-blue -> --itunda-indigo (not
+     left as a misleadingly-named alias) across every consumer -- this file's own
+     header already documents the cost of a color token whose name lies about what it
+     holds. WCAG-verified against the same real bars the old blue cleared: white-on-
+     brand 3.85:1 (was 3.71:1, both above the 3:1 AA-large/UI-component threshold this
+     role is actually held to), brand-vs-dark-bg 4.82:1 (was 5.00:1, both comfortably
+     clear 4.5:1 AA-normal-text). */
+  --itunda-indigo: #7472f4;
+  --itunda-indigo-active: #5c55d8;
+  --itunda-indigo-light: #f8f9ff;
+  --itunda-red: #f04452;
+  /* Real gap found 2026-08-08 (Toss Simplicity21 research pass, auditing the P2P
+     transfer flow): bank-mfe's scam-warning tint box hardcoded #FDECEA directly (3
+     call sites in BankDashboard.tsx) instead of a token -- no danger-tint semantic
+     existed here at all, unlike --itunda-indigo-light above. Matches Android's real
+     IdsColors.dangerTint (IdsSemanticColors.kt) exactly, same reconciliation this
+     file's other semantic tokens already follow. */
+  --itunda-red-light: #ffeceb;
+  /* Real WCAG AA contrast fix (item 240, docs/ACCESSIBILITY.md finding #2) -- the
+     original #04c065 measured 2.40:1 against white, failing even the lenient
+     3.0:1 AA-large/UI threshold, let alone 4.5:1 AA-normal-text -- any light-mode
+     "amount increased"/"payment received" text or icon in this color was under
+     WCAG minimums everywhere it appeared. Darkened to #05804a (5.01:1 against
+     white), same hue family, comfortably clearing AA-normal-text. Matches the
+     identical fix applied the same day to Android's IdsSemanticColors.kt and
+     iOS's IDS.swift. Dark mode's own --itunda-green (below) already passes at
+     9+:1 and is unchanged. */
+  --itunda-green: #05804a;
+
+  --itunda-grey-100: #f2f4f6;
+  --itunda-grey-200: #e5e8eb;
+  --itunda-grey-300: #d1d6db;
+  --itunda-grey-400: #b0b8c1;
+  /* Real WCAG AA contrast fix (item 241, docs/ACCESSIBILITY.md finding #1): the
+     original #8b95a1 measured 2.76:1 against the app background (--itunda-grey-100)
+     and only 3.04:1 against white cards -- both fail 4.5:1 AA-normal-text, the
+     threshold that applies since this color renders small caption/timestamp text
+     at 493 real call sites, not just large text or UI components. Darkened to
+     #636e7c (4.70:1 against grey-100, 5.18:1 against white), computed as the
+     minimal step along this token's own hue line toward --itunda-grey-700 that
+     clears 4.5:1 on both real backgrounds. Matches the identical fix applied the
+     same day to Android's IdsSemanticColors.kt textTertiary and iOS's IDS.swift
+     IDS.Colors.textTertiary. The raw Gray500/gray500 primitive scale values used
+     elsewhere for non-text roles are deliberately left untouched. */
+  --itunda-grey-500: #636e7c;
+  --itunda-grey-600: #6b7684;
+  --itunda-grey-700: #4e5968;
+  --itunda-grey-800: #333d4b;
+  --itunda-grey-900: #191f28;
+
+  --itunda-white: #ffffff;
+
+  /* Web-only layout tokens -- no mobile equivalent, kept local to this file rather
+     than invented on the mobile side where they don't apply. */
+  --itunda-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  --itunda-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --itunda-transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+
+  /* Real Toss motion curves (2026-08-24), fetched directly from their own published
+     npm packages (@toss/tds-easings@0.0.1 -- `npm pack` + read the real bundled
+     dist/esm/index.js, not guessed or approximated): the exact 4 cubic-bezier control
+     points Toss ships under each named curve. --itunda-transition above already
+     happened to match --itunda-ease-out byte-for-byte before this fix (an earlier,
+     unlabeled guess that turned out correct) -- the other 4 named curves never
+     existed as tokens before now. Same real values ported to Android
+     (IdsMotion.kt's CubicBezierEasing) and iOS (IDS.Motion's Animation.timingCurve)
+     in the same pass, so all 3 platforms share identical timing curves, not just
+     identical colors/type. Real spring presets (stiffness/damping/mass, for
+     Framer Motion's `type: 'spring'` -- CSS transitions can't do real spring physics,
+     only bezier) live in lib/motion.ts, sourced from the sibling
+     @toss/tds-spring-easing@0.0.1 package the same way. */
+  --itunda-ease-linear: cubic-bezier(0, 0, 1, 1);
+  --itunda-ease-standard: cubic-bezier(0.6, 0, 0, 0.6);
+  --itunda-ease-out: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --itunda-ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --itunda-ease-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --itunda-radius-sm: 8px;
+  --itunda-radius-md: 16px;
+  --itunda-radius-lg: 24px;
+  /* Real gap found 2026-08-11 (UI-consistency audit): pill-shaped chips/tags/segmented
+     controls across BankDashboard.tsx already hardcode 999px inline at 12+ real call
+     sites -- a genuinely distinct shape category from sm/md/lg (a full round-end, not
+     a bigger corner radius), just never named as a token before now. */
+  --itunda-radius-pill: 999px;
+
+  /* Real TDS typography scale, ported from Android's IdsTypography.kt / iOS's IDS.swift
+     (both already sourced 2026-07-13 by directly fetching Toss's own official docs,
+     tossmini-docs.toss.im/tds-mobile/foundation/typography, then extended with the
+     same iOS-originated `largeAmount` semantic step neither platform's raw TDS scale
+     covers -- TDS tops out at 30px, hero currency amounts get 34px on both mobile
+     platforms as a deliberate business decision, not an invented number). bank-mfe had
+     NO typography token file at all before this (2026-08-19 audit, prompted by direct
+     user feedback that itunda's products don't yet FEEL like their real references) --
+     every font-size in this file's own consuming components was a bare inline pixel
+     value chosen ad hoc, with no cross-platform-consistent scale backing it (e.g.
+     AccountBalance's own hero amount hardcoded 36px, matching neither this real 34px
+     largeAmount step nor any other real TDS step). Values quoted exactly as Android/
+     iOS already use them -- this file does not re-derive or approximate them.
+     line-height is unitless (matches this file's own existing convention elsewhere:
+     CSS line-height without a unit scales with font-size, avoiding a second value to
+     keep in sync if font-size ever changes). */
+  --itunda-type-large-amount-size: 34px;
+  --itunda-type-large-amount-line-height: 41px;
+  --itunda-type-large-amount-weight: 700;
+
+  --itunda-type-title1-size: 22px;
+  --itunda-type-title1-line-height: 31px;
+  --itunda-type-title1-weight: 700;
+
+  --itunda-type-title2-size: 20px;
+  --itunda-type-title2-line-height: 29px;
+  --itunda-type-title2-weight: 700;
+
+  --itunda-type-subtitle1-size: 17px;
+  --itunda-type-subtitle1-line-height: 25.5px;
+  --itunda-type-subtitle1-weight: 600;
+
+  --itunda-type-body1-size: 15px;
+  --itunda-type-body1-line-height: 22.5px;
+  --itunda-type-body1-weight: 400;
+
+  --itunda-type-body2-size: 13px;
+  --itunda-type-body2-line-height: 19.5px;
+  --itunda-type-body2-weight: 400;
+
+  --itunda-type-button-size: 16px;
+  --itunda-type-button-line-height: 20px;
+  --itunda-type-button-weight: 600;
+
+  /* Real full raw TDS scale (2026-08-20), sourced by directly fetching
+     tossmini-docs.toss.im/tds-mobile/foundation/typography's complete step table (not
+     just the 7 named Typography1-7 steps above, which are itunda's own established
+     semantic subset already wired at real call sites on Android/iOS) -- the real TDS
+     scale is actually 1px-granular from 11px to 30px, 20 steps total. Named by literal
+     pixel value (scale-N) rather than TDS's own confusing "Typography 3 / sub
+     Typography 7" ordinal numbering, since the ordinals don't sort by pixel value.
+     Font-weight deliberately NOT included per step here (unlike the semantic tokens
+     above) -- TDS's own docs only say "five weights available," not a per-step
+     weight, and itunda has no established per-step-weight precedent for the sub-steps
+     the way it does for the 7 semantic ones. Added specifically to do a real,
+     mechanical `fontSize:` token rollout across bank-mfe (see
+     project_itunda_product_feel.md roadmap item 5) -- every value below is a literal,
+     zero-visual-change swap-in for the exact bare pixel value already used at real
+     call sites, not a redesign. */
+  --itunda-type-scale-30-size: 30px;
+  --itunda-type-scale-30-line-height: 40px;
+  --itunda-type-scale-29-size: 29px;
+  --itunda-type-scale-29-line-height: 38px;
+  --itunda-type-scale-28-size: 28px;
+  --itunda-type-scale-28-line-height: 37px;
+  --itunda-type-scale-27-size: 27px;
+  --itunda-type-scale-27-line-height: 36px;
+  --itunda-type-scale-26-size: 26px;
+  --itunda-type-scale-26-line-height: 35px;
+  --itunda-type-scale-25-size: 25px;
+  --itunda-type-scale-25-line-height: 34px;
+  --itunda-type-scale-24-size: 24px;
+  --itunda-type-scale-24-line-height: 33px;
+  --itunda-type-scale-23-size: 23px;
+  --itunda-type-scale-23-line-height: 32px;
+  --itunda-type-scale-22-size: 22px;
+  --itunda-type-scale-22-line-height: 31px;
+  --itunda-type-scale-21-size: 21px;
+  --itunda-type-scale-21-line-height: 30px;
+  --itunda-type-scale-20-size: 20px;
+  --itunda-type-scale-20-line-height: 29px;
+  --itunda-type-scale-19-size: 19px;
+  --itunda-type-scale-19-line-height: 28px;
+  --itunda-type-scale-18-size: 18px;
+  --itunda-type-scale-18-line-height: 27px;
+  --itunda-type-scale-17-size: 17px;
+  --itunda-type-scale-17-line-height: 25.5px;
+  --itunda-type-scale-16-size: 16px;
+  --itunda-type-scale-16-line-height: 24px;
+  --itunda-type-scale-15-size: 15px;
+  --itunda-type-scale-15-line-height: 22.5px;
+  --itunda-type-scale-14-size: 14px;
+  --itunda-type-scale-14-line-height: 21px;
+  --itunda-type-scale-13-size: 13px;
+  --itunda-type-scale-13-line-height: 19.5px;
+  --itunda-type-scale-12-size: 12px;
+  --itunda-type-scale-12-line-height: 18px;
+  --itunda-type-scale-11-size: 11px;
+  --itunda-type-scale-11-line-height: 16.5px;
+}
+
+/*
+ * Real dark mode -- the web apps had zero dark-mode support before this file
+ * existed. Mapped by the *role* each variable actually plays in the consuming CSS
+ * (grey-100 is the app background; white is the card/raised-surface background;
+ * grey-900/700/500 are primary/secondary/tertiary text; grey-200 is the divider),
+ * not a blind per-token inversion. Roles that have a direct IdsSemanticColors.kt
+ * counterpart use its exact value (blue->brand, red->danger, green->success,
+ * grey-100->background, white->surface, grey-900/700/500->text, grey-200->divider).
+ *
+ * grey-100/200/white/blue corrected 2026-07-21 (matches Android's
+ * IdsSemanticColors.kt / iOS's IDS.swift, same date): the previous true-black
+ * background and #4C8FFF blue were eyeballed from screenshots on 2026-07-10,
+ * which can't reliably tell true black from a very dark grey. Toss's actual
+ * currently-published `@toss/tds-colors@0.1.0` npm package ships the real
+ * adaptive dark values directly (`--adaptiveBackground: #17171c`,
+ * `--adaptiveBackgroundLevel01: #202027`, `--adaptiveHairlineBorder: #3c3c47`,
+ * `--adaptiveBlue500: #3485fa`). grey-300/400/600/800 still have no direct
+ * semantic counterpart -- re-interpolated as smooth steps between the corrected
+ * neighbors (grey-100/200/500), not independently sourced, same as before.
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --itunda-indigo: #7675f8;
+    --itunda-indigo-active: #5c55d8;
+    --itunda-indigo-light: #2b2c52;
+    --itunda-red: #ff6b7a;
+    --itunda-red-light: #3a1418;
+    --itunda-green: #20d394;
+
+    --itunda-grey-100: #17171c;
+    --itunda-grey-200: #3c3c47;
+    --itunda-grey-300: #454751;
+    --itunda-grey-400: #4e515c;
+    /* Real WCAG AA contrast fix (item 241, docs/ACCESSIBILITY.md finding #1), computed
+       against the REAL current dark tokens above (grey-100 #17171c, white #202027) --
+       the accessibility audit's own dark-theme numbers predate the 2026-07-21 true-dark
+       correction and are stale. Original #575c66 measured 2.66:1 against grey-100 and
+       2.41:1 against card, both far below 4.5:1 AA-normal-text. Lightened to #848a96
+       (5.15:1 / 4.67:1), the minimal step toward --itunda-grey-700 that clears 4.5:1 on
+       both real backgrounds. Matches the same-day fix on Android/iOS. */
+    --itunda-grey-500: #848a96;
+    --itunda-grey-600: #787d88;
+    --itunda-grey-700: #989eaa;
+    --itunda-grey-800: #c4c9d1;
+    --itunda-grey-900: #ffffff;
+
+    --itunda-white: #202027;
+
+    --itunda-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    --itunda-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+}

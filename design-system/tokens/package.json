@@ -1,0 +1,7 @@
+{
+  "name": "@itunda/design-system-tokens",
+  "version": "0.1.0",
+  "description": "Shared Itunda Design System tokens for web and native projects.",
+  "license": "MIT",
+  "files": ["tokens.json", "tokens.css", "fonts", "PRETENDARD_LICENSE.txt"]
+}
