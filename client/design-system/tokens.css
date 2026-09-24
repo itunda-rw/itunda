@@ -36,3 +36,25 @@
 @media (max-width:720px){
   :root{--itunda-gutter:20px}
 }
+
+/* Semantic color roles */
+:root{
+  --itunda-color-bg:#fff;
+  --itunda-color-surface:var(--itunda-soft);
+  --itunda-color-surface-strong:#fff;
+  --itunda-color-text:var(--itunda-ink);
+  --itunda-color-text-muted:var(--itunda-muted);
+  --itunda-color-border:var(--itunda-line);
+  --itunda-color-brand:var(--itunda-indigo);
+  --itunda-color-brand-strong:var(--itunda-indigo-dark);
+  --itunda-color-brand-soft:var(--itunda-indigo-soft);
+  --itunda-color-success:#16a34a;
+  --itunda-color-error:#dc2626;
+  --itunda-color-warning:#d97706;
+  --itunda-shadow-sm:0 4px 16px rgba(25,31,40,.06);
+  --itunda-shadow-md:0 12px 36px rgba(25,31,40,.09);
+  --itunda-shadow-lg:0 24px 64px rgba(25,31,40,.12);
+  --itunda-duration-fast:160ms;
+  --itunda-duration-normal:240ms;
+  --itunda-duration-slow:420ms;
+}
