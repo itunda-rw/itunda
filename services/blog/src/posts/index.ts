@@ -39,6 +39,28 @@ export const posts: Post[] = [theTwoLookupsThatWereSupposedToAgree, theOutageWeS
   (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
 );
 
+export interface AuthorProfile {
+  name: string;
+  role: string;
+  bio: string;
+}
+
+const authorRoles: Record<string, string> = {
+  'Ledger Platform Team': 'Payments & Ledger Engineering',
+  'Security Engineering': 'Security Engineering',
+  'Infrastructure Team': 'Infrastructure Engineering',
+  'Mobile Platform Team': 'Mobile Platform Engineering',
+  'Identity Team': 'Identity Engineering',
+};
+
+export function getAuthorProfile(name: string): AuthorProfile {
+  return {
+    name,
+    role: authorRoles[name] ?? 'Itunda Engineering',
+    bio: 'Building reliable systems for money, services, identity, and everyday digital life.',
+  };
+}
+
 export function getPost(slug: string): Post | undefined {
   return posts.find((p) => p.slug === slug);
 }
