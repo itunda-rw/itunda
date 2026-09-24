@@ -84,10 +84,10 @@ export default function HomePage() {
                 <p className="section-label">EDITOR’S PICKS</p>
                 <h2>Worth reading</h2>
               </div>
-              <div className="popular-grid">
+              <div className="popular-grid" aria-label="Selected Itunda Tech articles">
                 {popular.map((post, index) => (
                   <Link className="popular-card" key={post.slug} to={`/${post.slug}`}>
-                    <span className="popular-number">0{index + 1}</span>
+                    <span className="popular-number" aria-label={`Selection ${index + 1}`}>0{index + 1}</span>
                     <img className="popular-image" src={getEditorialImage(post)} alt={post.imageAlt ?? post.title} loading="lazy" />
                     <h3>{post.title}</h3>
                     <p>{getAuthorProfile(post.author).role}</p>
