@@ -78,3 +78,12 @@
 .tds-text-button::after{content:"→";transition:transform var(--itunda-motion-fast) ease}
 .tds-text-button:hover::after{transform:translateX(3px)}
 .tds-text-button:focus-visible{outline:3px solid var(--itunda-indigo-soft);outline-offset:3px;border-radius:6px}
+
+
+/* Content rhythm primitives: separate information without adding visual noise. */
+.tds-divider-label{display:flex;align-items:center;gap:16px;color:var(--itunda-muted);font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.tds-divider-label::before,.tds-divider-label::after{content:"";height:1px;flex:1;background:var(--itunda-line)}
+.tds-section-intro{max-width:760px;margin-bottom:48px}
+.tds-section-intro .tds-eyebrow{margin-bottom:12px}
+.tds-section-intro .tds-heading{margin-bottom:14px}
+.tds-section-intro .tds-body{max-width:620px}
