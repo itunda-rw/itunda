@@ -2,11 +2,13 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import federation from '@originjs/vite-plugin-federation'
 
+const production = process.env.NODE_ENV === 'production'
+
 export default defineConfig({
+  base: production ? '/app/remotes/kyc/' : '/',
   plugins: [
     react(),
-    // @ts-ignore -- same CJS/ESM default-export interop mismatch bank-mfe's
-    // vite.config.ts already works around; federation() is callable at runtime.
+    // @ts-ignore -- vite-plugin-federation's CJS/ESM type interop is runtime-safe.
     federation({
       name: 'kyc_mfe',
       filename: 'remoteEntry.js',
