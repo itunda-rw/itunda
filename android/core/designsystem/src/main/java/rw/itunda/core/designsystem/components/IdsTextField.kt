@@ -21,9 +21,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsComponentTokens
@@ -107,7 +112,15 @@ fun IdsTextField(
             shape = RoundedCornerShape(IdsComponentTokens.TextField.radius),
             modifier = Modifier
                 .fillMaxWidth()
-                .focusRequester(focusRequester),
+                .focusRequester(focusRequester)
+                .semantics {
+                    if (loading) {
+                        contentDescription = "$label, loading"
+                    }
+                    if (readOnly) {
+                        role = Role.Button
+                    }
+                },
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Ids.colors.surface,
                 unfocusedContainerColor = Ids.colors.surfaceSoft,
