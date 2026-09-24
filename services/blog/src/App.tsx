@@ -27,8 +27,16 @@ export default function App() {
       </main>
       <footer className="site-footer">
         <div className="footer-inner">
-          <p>itunda Tech — engineering stories from the team building Rwanda's everyday digital infrastructure.</p>
-          <a href="https://github.com/itunda-rw/itunda">Open source on GitHub</a>
+          <div>
+            <strong>itunda tech</strong>
+            <p>Engineering stories from the team building Rwanda's everyday digital infrastructure.</p>
+          </div>
+          <div className="footer-links">
+            <a href="/itunda/">Itunda</a>
+            <a href="/itunda-business/">Business</a>
+            <a href="/itunda-developers/">Developers</a>
+            <a href="https://github.com/itunda-rw/itunda">GitHub</a>
+          </div>
         </div>
       </footer>
     </div>
