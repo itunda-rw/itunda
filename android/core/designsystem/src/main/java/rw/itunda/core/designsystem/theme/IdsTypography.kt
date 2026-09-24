@@ -106,4 +106,19 @@ object IdsTypography {
         fontSize = 16.sp,
         lineHeight = 20.sp
     )
+
+    /**
+     * Stable semantic roles. Prefer these names in product code over raw scale steps.
+     * The underlying scale can evolve without forcing every screen to understand it.
+     */
+    val Display = Typography1
+    val Headline = Typography3
+    val Title = Title1
+    val SectionTitle = Title2
+    val Body = Body1
+    val SecondaryBody = Body2
+    val Label = Button
+    val Caption = Typography7
+    val Amount = LargeAmount
+
 }
