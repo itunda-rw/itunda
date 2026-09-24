@@ -69,3 +69,12 @@
 .tds-button[aria-busy="true"]{pointer-events:none}
 .tds-button[aria-busy="true"] .tds-spinner{display:inline-block}
 .tds-button .tds-spinner{display:none}
+
+
+/* Secondary action hierarchy, inspired by TDS weak/clear patterns. */
+.tds-button-weak{background:var(--itunda-soft);color:var(--itunda-ink);box-shadow:none}
+.tds-button-weak:hover{background:#EEF0F3}
+.tds-text-button{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:var(--itunda-indigo);font:inherit;font-weight:700;cursor:pointer;padding:8px 2px}
+.tds-text-button::after{content:"→";transition:transform var(--itunda-motion-fast) ease}
+.tds-text-button:hover::after{transform:translateX(3px)}
+.tds-text-button:focus-visible{outline:3px solid var(--itunda-indigo-soft);outline-offset:3px;border-radius:6px}
