@@ -293,6 +293,8 @@ fun IdsTextField(
     errorText: String? = null,
     enabled: Boolean = true,
     singleLine: Boolean = true,
+    keyboardType: androidx.compose.ui.text.input.KeyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
+    visualTransformation: androidx.compose.ui.text.input.VisualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
 ) {
     val supporting = errorText ?: supportingText
     androidx.compose.material3.OutlinedTextField(
@@ -300,6 +302,8 @@ fun IdsTextField(
         onValueChange = onValueChange,
         enabled = enabled,
         singleLine = singleLine,
+        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = keyboardType),
+        visualTransformation = visualTransformation,
         label = { Text(label) },
         placeholder = placeholder?.let { { Text(it) } },
         isError = errorText != null,
