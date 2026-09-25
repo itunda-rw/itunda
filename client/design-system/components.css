@@ -94,3 +94,14 @@
 .tds-dialog-body{padding:0 var(--tds-space-6) var(--tds-space-6);color:var(--tds-text-muted)}
 .tds-dialog-actions{padding:var(--tds-space-4) var(--tds-space-6);border-top:1px solid var(--tds-border);display:flex;justify-content:flex-end;gap:var(--tds-space-2)}
 @media (max-width:640px){.tds-menu{min-width:0;width:100%}.tds-dialog{border-radius:var(--tds-radius-20)}}
+
+
+/* IDS v2.1 — resilient interaction contracts */
+.tds-menu[role="menu"]{max-height:min(480px,70vh);overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.tds-menu-item{min-width:44px;min-height:44px}
+.tds-menu-item[aria-current="true"],.tds-menu-item[aria-selected="true"]{background:var(--tds-brand-soft);color:var(--tds-text-strong);font-weight:650}
+.tds-toast-region{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:var(--tds-z-toast);display:grid;gap:var(--tds-space-3);pointer-events:none}
+.tds-toast-region>*{pointer-events:auto}
+.tds-dialog[open]{animation:tds-dialog-in 220ms var(--tds-ease-out)}
+@keyframes tds-dialog-in{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.tds-dialog[open]{animation:none}}
