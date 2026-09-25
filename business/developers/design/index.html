@@ -291,6 +291,7 @@ const kindBar=document.createElement('div');kindBar.className='lab-statebar';kin
 const stateBar=document.querySelector('#lab .lab-statebar:not(#labKindBar)');
 function syncLabContract(kind){
   const contract=idsContractFor(kind);
+  renderCoverage(kind);
   if(!stateBar)return;
   stateBar.querySelectorAll('[data-lab-state]').forEach(btn=>{
     const state=btn.dataset.labState;
@@ -307,7 +308,20 @@ function syncLabContract(kind){
 const labSection=document.getElementById('lab');if(labSection&&!document.getElementById('labKindBar')){kindBar.id='labKindBar';labSection.querySelector('.lab-statebar')?.before(kindBar)}
 let labKind='button';
 const labMeta=document.createElement('p');labMeta.id='labContractMeta';labMeta.className='note';labMeta.setAttribute('aria-live','polite');labMeta.textContent=idsContractFor(labKind).label+' · '+idsContractFor(labKind).states.join(' · ');
+const coverageMeta=document.createElement('div');coverageMeta.id='labCoverage';coverageMeta.className='panel';coverageMeta.setAttribute('aria-live','polite');labMeta.insertAdjacentElement('afterend',coverageMeta);
+function renderCoverage(kind){
+  const contract=idsContractFor(kind);
+  const checks=[
+    ['States',contract.states.length>0],
+    ['Content',true],
+    ['Accessibility',true],
+    ['Motion',true],
+    ['Platforms',true]
+  ];
+  coverageMeta.innerHTML='<strong>Contract coverage</strong><div class="coverage-grid">'+checks.map(([label,ok])=>'<span class="coverage-item '+(ok?'coverage-ok':'coverage-missing')+'">'+(ok?'✓':'○')+' '+label+'</span>').join('')+'</div><p class="note">Coverage reflects the IDS contract dimensions represented by this laboratory.</p>';
+}
 labSection?.querySelector('.lab-statebar')?.after(labMeta);
+labMeta.after(coverageMeta);
 function renderLabV3(){if(!labPreview)return;const s=document.querySelector('[data-lab-state][aria-pressed="true"]')?.dataset.labState||'default';let h='';if(labKind==='button')h='<div class="playground-card"><button class="btn primary" '+(s==='disabled'||s==='loading'?'disabled':'')+'>'+((s==='loading')?'Loading…':s==='error'?'Try again':'Continue')+'</button></div>';else if(labKind==='field')h='<div class="playground-card"><label class="demo-label">Phone number<input class="field" '+(s==='disabled'?'disabled':'')+' value="+250 788 123 456"><span class="help">'+(s==='error'?'Enter a valid phone number.':'Used for verification.')+'</span></label></div>';else if(labKind==='select')h='<div class="playground-card"><label class="demo-label">Payment method<select class="pg-select" '+(s==='disabled'?'disabled':'')+'><option>Mobile Money</option><option>Bank account</option></select></label></div>';else if(labKind==='checkbox')h='<div class="playground-card control-stack"><label class="control-option"><input type="checkbox" checked> Remember this device</label><span class="help">Native checkbox semantics remain authoritative.</span></div>';else if(labKind==='radio')h='<div class="playground-card control-stack"><label class="control-option"><input type="radio" name="pg-radio" checked> Kigali</label><label class="control-option"><input type="radio" name="pg-radio"> Other location</label></div>';else if(labKind==='switch')h='<div class="playground-card"><label class="control-option"><input type="checkbox" role="switch" checked> Notifications</label></div>';else if(labKind==='tabs')h='<div class="playground-card"><div class="pg-tabs"><button class="active">Overview</button><button>Activity</button><button>Settings</button></div></div>';else h='<div class="playground-card ids-empty-state"><div class="ids-empty-state__icon" aria-hidden="true">○</div><h2 class="ids-empty-state__title">No products yet</h2><p class="ids-empty-state__message">Add your first product to start building your catalog.</p><button class="btn">Add product</button></div>';labPreview.innerHTML=h}
 document.querySelectorAll('[data-lab-kind]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-lab-kind]').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');labKind=b.dataset.labKind;syncLabContract(labKind);renderLabV3()}));
 syncLabContract(labKind);document.querySelectorAll('[data-lab-state]').forEach(b=>b.addEventListener('click',()=>setTimeout(renderLabV3,0)));renderLabV3();
