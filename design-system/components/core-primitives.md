@@ -20,11 +20,11 @@ Rules: labels may wrap; loading preserves layout; minimum target 44px/pt/dp.
 
 ## TextField
 
-**Flat API:** `TextField({ label, value, onChange, helpText, error, disabled, ... })`
+**Flat API:** `TextField({ label, value, onChange, helpText, error, success, disabled, ... })`
 
 Modes: default, search, password.
 States: empty, filled, focus, disabled, error, success.
-Rules: label and validation messaging remain programmatically associated; IME/input behavior follows the platform.
+Rules: label remains visible; help/error/success messaging is programmatically associated; validation meaning is never communicated by color alone; IME/input behavior follows the platform; long labels and validation copy wrap without clipping.
 
 ## Select
 
@@ -115,3 +115,18 @@ Rules: the title is always meaningful; supporting copy wraps without truncation;
 | Android | `IdsEmptyState` |
 | iOS | `IdsEmptyState` |
 
+
+## Text field parity contract
+
+| Concern | Web | Android | iOS |
+|---|---|---|---|
+| Label | visible label + native association | Compose label | visible SwiftUI label |
+| Supporting | `helpText` | `supportingText` | `supportingText` |
+| Validation | `error` / `success` | `errorText` / `successText` | `errorText` / `successText` |
+| Disabled | native disabled | Compose enabled state | SwiftUI disabled state |
+| Focus | visible focus ring | native focus semantics | `FocusState` + brand ring |
+| Input | native input semantics | keyboard type + visual transformation | keyboard type + secure field |
+| Long content | labels/messages wrap | supporting text wraps | validation copy wraps with Dynamic Type |
+| Target | 44px+ | 44dp+ | 44pt+ |
+
+Product screens should not recreate validation or focus styling locally. Extend the primitive contract first.
