@@ -33,7 +33,7 @@ struct PosTab: View {
                     ScrollView {
                         if let products {
                             if products.isEmpty {
-                                Text("No products yet — add some in the Catalog tab first.").foregroundColor(.secondary).padding(16)
+                                IdsEmptyState(title: "No products yet — add some in the Catalog tab first.")
                             } else {
                                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 130))], spacing: 8) {
                                     ForEach(products) { product in
