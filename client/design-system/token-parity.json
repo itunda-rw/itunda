@@ -1,0 +1,39 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "version": "1.0.0",
+  "purpose": "Cross-platform IDS semantic parity contract.",
+  "brand": {
+    "light": "#7472F4",
+    "dark": "#7675F8"
+  },
+  "semanticRoles": [
+    "background",
+    "surface",
+    "surfaceSoft",
+    "textPrimary",
+    "textSecondary",
+    "textTertiary",
+    "brand",
+    "textBrand",
+    "divider",
+    "pressed",
+    "success",
+    "warning",
+    "danger",
+    "iconPrimary",
+    "iconSecondary"
+  ],
+  "web": {
+    "source": "client/design-system/tokens.css"
+  },
+  "android": {
+    "source": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/theme/IdsSemanticColors.kt"
+  },
+  "ios": {
+    "source": "ios/Core/DesignSystem/Sources/IDS.swift"
+  },
+  "legacyCompatibility": {
+    "source": "packages/design-tokens/tokens.json",
+    "rule": "Legacy primitive scales remain compatibility inputs; product-facing code consumes semantic roles."
+  }
+}
