@@ -11,3 +11,6 @@ public enum IDSColor {
 }
 public enum IDSSpacing { public static let xs: CGFloat = 4; public static let sm: CGFloat = 8; public static let md: CGFloat = 16; public static let lg: CGFloat = 24; public static let xl: CGFloat = 32 }
 public enum IDSRadii { public static let sm: CGFloat = 8; public static let md: CGFloat = 12; public static let lg: CGFloat = 16; public static let xl: CGFloat = 20 }
+
+public enum IDSMotion { public static let fast: Double = 0.14; public static let normal: Double = 0.22; public static let slow: Double = 0.42 }
+public enum IDSTypography { public static let bodySize: CGFloat = 18; public static let captionSize: CGFloat = 14; public static let headingMax: CGFloat = 48 }
