@@ -18,7 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.outlined.RateReview
-import rw.itunda.core.designsystem.components.EmptyState
+import rw.itunda.core.designsystem.components.IdsEmptyState
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsTabs
@@ -167,7 +167,7 @@ private fun OrdersTab() {
     val active = list.filter { it.status in setOf("PLACED", "ACCEPTED", "PREPARING", "READY_FOR_PICKUP") }
     if (active.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No open orders right now.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            IdsEmptyState(title = "No open orders right now.")
         }
         return
     }
@@ -320,7 +320,7 @@ private fun ReviewsTab(restaurantId: String) {
     }
     if (restaurantList.isEmpty() && productList.isEmpty() && inquiryList.isEmpty() && bookingList.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            EmptyState("No reviews or questions yet — they'll show up here once customers start ordering.", icon = Icons.Outlined.RateReview)
+            IdsEmptyState(title = "No reviews or questions yet — they'll show up here once customers start ordering.")
         }
         return
     }
