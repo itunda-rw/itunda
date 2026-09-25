@@ -65,7 +65,7 @@ struct CatalogTab: View {
                         // Real copy-voice fix (item 244, round 7): points back to the
                         // real "Add a product" form above, matching Android's
                         // already-shipped wording.
-                        Text("No products yet — add your first one above.").foregroundColor(.secondary)
+                        IdsEmptyState(title: "No products yet — add your first one above.")
                     } else {
                         let lowStock = products.filter { ($0.stockQuantity ?? Int.max) <= 5 }
                         if !lowStock.isEmpty {
@@ -288,7 +288,7 @@ private struct ProductOptionsView: View {
                     }
                     if let groups {
                         if groups.isEmpty {
-                            Text("No option groups yet.").font(.caption).foregroundColor(.secondary)
+                            IdsEmptyState(title: "No option groups yet.")
                         } else {
                             ForEach(groups) { group in
                                 HStack(alignment: .top) {
