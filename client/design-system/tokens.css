@@ -137,3 +137,16 @@
 @media(max-width:720px){
   :root{--itunda-gutter:20px;--itunda-nav-height:64px;--itunda-text-display:clamp(44px,13vw,68px)}
 }
+
+
+/* Component contract tokens */
+:root{
+  --tds-target-min:44px;
+  --tds-overlay:rgb(8 10 16 / .48);
+  --tds-motion-fast:140ms;
+  --tds-motion-standard:220ms;
+  --tds-motion-emphasis:420ms;
+}
+@media (pointer:coarse){
+  :root{--tds-target-min:48px}
+}
