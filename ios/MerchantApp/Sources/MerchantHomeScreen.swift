@@ -196,7 +196,7 @@ private struct OrderCard: View {
                 Text("Note: \(notes)").font(.footnote)
             }
             if let error {
-                Text(error).foregroundColor(.red).font(.caption)
+                Text(error).foregroundColor(IDS.Colors.danger).font(.caption)
             }
             // Real Baemin-style 포장주문 (Pickup) terminal edge (item 208) -- a PICKUP
             // order at READY_FOR_PICKUP has no `nextAction` (there's no rider to hand
@@ -273,7 +273,7 @@ private struct ReviewsTab: View {
     var body: some View {
         Group {
             if let error {
-                Text(error).foregroundColor(.red).padding(16)
+                Text(error).foregroundColor(IDS.Colors.danger).padding(16)
             }
             if let restaurantReviews, let productReviews, let bookingReviews {
                 if restaurantReviews.isEmpty && productReviews.isEmpty && bookingReviews.isEmpty {
@@ -310,7 +310,7 @@ private struct ReviewsTab: View {
                 }
             } else {
                 Spacer()
-                ProgressView()
+                SkeletonBlock(height: 96)
                 Spacer()
             }
         }
