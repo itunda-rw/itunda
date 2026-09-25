@@ -65,6 +65,7 @@ fun BecomeRiderScreen(onRegistered: () -> Unit, onLogout: () -> Unit) {
         IdsButton(
             text = if (busy) "Registering…" else "Become a rider",
             enabled = !busy,
+            loading = busy,
             onClick = {
                 busy = true
                 error = null
