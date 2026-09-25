@@ -3,6 +3,8 @@ package rw.itunda.rider.ui
 import androidx.compose.foundation.background
 import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import rw.itunda.core.designsystem.components.IdsLoading
+import rw.itunda.core.designsystem.components.IdsErrorText
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -283,7 +285,7 @@ fun RiderHomeScreen(
         )
 
         error?.let {
-            Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp))
+            IdsErrorText(it, modifier = Modifier.padding(horizontal = 16.dp))
         }
 
         val eatsList = if (tab == HomeTab.AVAILABLE) available else mine
@@ -293,7 +295,7 @@ fun RiderHomeScreen(
         // rider's claim queue -- loading is "both requests have come back", not
         // "either one has."
         if (eatsList == null && commerceList == null) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { IdsLoading() }
         } else {
             val combined: List<RiderDelivery> =
                 eatsList.orEmpty().map { RiderDelivery.Eats(it) } + commerceList.orEmpty().map { RiderDelivery.Commerce(it) }
