@@ -31,7 +31,7 @@ struct ReportsTab: View {
     private func report(_ days: [ReportDayDto]) -> some View {
         if days.isEmpty {
             Spacer()
-            Text("No settled collections in this range.").foregroundColor(.secondary)
+            IdsEmptyState(title: "No settled collections in this range.")
             Spacer()
         } else {
             let collections = days.reduce(0) { $0 + $1.collectionCount }
@@ -66,7 +66,7 @@ struct ReportsTab: View {
                     Text("Top-selling products").font(.headline).padding(.top, 8)
                     if let topProducts {
                         if topProducts.isEmpty {
-                            Text("No products sold in this range.").foregroundColor(.secondary)
+                            IdsEmptyState(title: "No products sold in this range.")
                                 .padding(16).frame(maxWidth: .infinity, alignment: .leading)
                                 .background(Color(.secondarySystemBackground)).cornerRadius(12)
                         } else {
