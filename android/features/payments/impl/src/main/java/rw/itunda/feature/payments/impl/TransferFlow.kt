@@ -1,6 +1,7 @@
 package rw.itunda.feature.payments.impl
 
 import androidx.compose.foundation.LocalIndication
+import rw.itunda.core.designsystem.components.IdsLoading
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -551,7 +552,7 @@ fun TransferAmountScreen(
 
         if (isSubmitting) {
             Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
-                androidx.compose.material3.CircularProgressIndicator(color = Ids.colors.brand)
+                IdsLoading()
             }
         } else {
             FlowNextBar(
