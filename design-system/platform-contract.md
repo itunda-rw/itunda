@@ -30,6 +30,18 @@ Every public primitive must document:
 9. Light/dark semantic mapping
 10. Platform-specific rendering differences
 
+## Button interaction mapping
+
+| Concern | Web | Android | iOS |
+|---|---|---|---|
+| Primary | `Button` primary | `IdsButtonVariant.Filled` | `IdsButtonVariant.filled` |
+| Secondary | `Button` secondary | `IdsButtonVariant.Tinted` | `IdsButtonVariant.tinted` |
+| Loading | `loading` + `aria-busy` | `loading` | `isLoading` + accessibility value |
+| Disabled | native disabled | Compose enabled state | SwiftUI disabled state |
+| Press | CSS pressed interaction | shared press-scale | `PressScaleButtonStyle` |
+| Focus | visible `focus-visible` | platform semantics | platform semantics |
+| Target | 44px+ | 44dp+ | 44pt+ |
+
 ## Empty state mapping
 
 | Semantic role | Web | Android | iOS |
