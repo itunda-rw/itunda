@@ -67,7 +67,7 @@ body {
   margin: 0 auto;
   min-height: 100svh;
   background-color: var(--itunda-white);
-  box-shadow: 0 0 20px rgba(0,0,0,0.05);
+  box-shadow: var(--itunda-shadow-shell);
   position: relative;
   overflow-x: hidden;
 }
@@ -144,7 +144,7 @@ button:active {
 }
 
 .itunda-btn-primary {
-  background-color: var(--itunda-indigo);
+  background-color: var(--itunda-brand);
   color: var(--itunda-white);
 }
 
@@ -177,8 +177,8 @@ button:active {
 }
 
 .skeleton {
-  background: #f6f7f8;
-  background-image: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%);
+  background: var(--itunda-skeleton-base);
+  background-image: linear-gradient(to right, var(--itunda-skeleton-base) 0%, var(--itunda-skeleton-highlight) 20%, var(--itunda-skeleton-base) 40%, var(--itunda-skeleton-base) 100%);
   background-repeat: no-repeat;
   background-size: 800px 100%;
   animation-duration: 1s;
