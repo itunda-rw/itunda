@@ -62,6 +62,26 @@ Modes: equal-width, scrollable.
 States: default, active, focus, disabled.
 Rules: preserve active-tab visibility when scrolling; keyboard and screen-reader relationships must remain intact.
 
+
+
+## Button parity contract
+
+The Button primitive is the reference for IDS interaction quality across platforms.
+
+| Concern | Web | Android | iOS |
+|---|---|---|---|
+| Sizes | sm / md / lg | small / medium / large | small / medium / large |
+| Primary action | brand fill | brand fill | brand fill |
+| Secondary action | semantic brand-tinted surface | tinted semantic surface | tinted semantic surface |
+| Loading | preserves label width and announces busy state | replaces content with progress indicator | replaces content with progress indicator and announces loading |
+| Disabled | semantic disabled treatment | semantic disabled treatment | semantic disabled treatment |
+| Press feedback | subtle scale/pressed state | shared press-scale interaction | shared press-scale button style |
+| Focus | visible `focus-visible` ring | native platform focus/semantics | native platform focus/semantics |
+| Motion | reduced-motion aware | follows system animation settings | follows Reduce Motion conventions |
+| Target | 44px+ | 44dp+ | 44pt+ |
+
+Product screens should not recreate these states locally. If a new state is required, extend the primitive contract first and document it before adoption.
+
 ## Cross-platform contract
 
 | Concern | Web | Android | iOS |
