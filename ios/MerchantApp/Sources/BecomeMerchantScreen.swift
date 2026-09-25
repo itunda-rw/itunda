@@ -28,7 +28,7 @@ struct BecomeMerchantScreen: View {
             IdsTextField("Business name", text: $businessName)
 
             if let error {
-                Text(error).foregroundColor(.red).font(.footnote)
+                Text(error).foregroundColor(IDS.Colors.danger).font(.footnote)
             }
 
             Button(action: { Task { await register() } }) {
