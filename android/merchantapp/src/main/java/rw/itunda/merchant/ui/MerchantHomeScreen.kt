@@ -309,7 +309,7 @@ private fun ReviewsTab(restaurantId: String) {
         refreshBookings()
     }
 
-    error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp)) }
+    error?.let { Text(it, color = Ids.colors.danger, modifier = Modifier.padding(horizontal = 16.dp)) }
     val restaurantList = restaurantReviews
     val productList = productReviews
     val inquiryList = productInquiries
@@ -410,7 +410,7 @@ private fun ReviewReplyRow(review: rw.itunda.merchant.network.EatsReviewDto, onR
         }
         replying -> {
             IdsTextField(value = reply, onValueChange = { reply = it }, label = "Write a reply", modifier = Modifier.fillMaxWidth())
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            error?.let { Text(it, color = Ids.colors.danger, style = MaterialTheme.typography.bodySmall) }
             IdsButton(
                 text = if (submitting) "Submitting…" else "Reply",
                 enabled = !submitting && reply.isNotBlank(),
@@ -458,7 +458,7 @@ private fun ProductInquiryAnswerRow(inquiry: rw.itunda.merchant.network.ProductI
         }
         answering -> {
             IdsTextField(value = answer, onValueChange = { answer = it }, label = "Write an answer", modifier = Modifier.fillMaxWidth())
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            error?.let { Text(it, color = Ids.colors.danger, style = MaterialTheme.typography.bodySmall) }
             IdsButton(
                 text = if (submitting) "Submitting…" else "Answer",
                 enabled = !submitting && answer.isNotBlank(),
@@ -506,7 +506,7 @@ private fun ProductReviewReplyRow(review: rw.itunda.merchant.network.ProductRevi
         }
         replying -> {
             IdsTextField(value = reply, onValueChange = { reply = it }, label = "Write a reply", modifier = Modifier.fillMaxWidth())
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            error?.let { Text(it, color = Ids.colors.danger, style = MaterialTheme.typography.bodySmall) }
             IdsButton(
                 text = if (submitting) "Submitting…" else "Reply",
                 enabled = !submitting && reply.isNotBlank(),
@@ -554,7 +554,7 @@ private fun BookingReviewReplyRow(review: rw.itunda.merchant.network.BookingRevi
         }
         replying -> {
             IdsTextField(value = reply, onValueChange = { reply = it }, label = "Write a reply", modifier = Modifier.fillMaxWidth())
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            error?.let { Text(it, color = Ids.colors.danger, style = MaterialTheme.typography.bodySmall) }
             IdsButton(
                 text = if (submitting) "Submitting…" else "Reply",
                 enabled = !submitting && reply.isNotBlank(),
