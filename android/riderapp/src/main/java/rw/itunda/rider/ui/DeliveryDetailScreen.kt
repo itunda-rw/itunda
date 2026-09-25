@@ -12,8 +12,9 @@ import androidx.compose.foundation.layout.padding
 import java.util.Locale
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsLoading
+import rw.itunda.core.designsystem.components.IdsErrorText
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -91,7 +92,7 @@ fun DeliveryDetailScreen(orderId: String, onBack: () -> Unit) {
         val current = order
         if (current == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error) else CircularProgressIndicator()
+                if (error != null) IdsErrorText(error!!) else IdsLoading()
             }
             return@Column
         }
@@ -131,7 +132,7 @@ fun DeliveryDetailScreen(orderId: String, onBack: () -> Unit) {
             )
         }
 
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp)) }
+        error?.let { IdsErrorText(it, modifier = Modifier.padding(horizontal = 16.dp)) }
 
         val nextAction = when (current.status) {
             "RIDER_ASSIGNED" -> "PICKED_UP" to "I've picked up the order"
