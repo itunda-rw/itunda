@@ -26,6 +26,7 @@ import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.core.designsystem.components.IdsLoading
 import rw.itunda.core.designsystem.components.IdsErrorText
 import rw.itunda.core.designsystem.components.IdsTabs
+import rw.itunda.core.designsystem.components.IdsEmptyState
 import rw.itunda.merchant.network.ReportDayDto
 import rw.itunda.merchant.network.TopSellingProductDto
 import java.time.LocalDate
@@ -80,9 +81,7 @@ fun ReportsTab() {
         }
         if (list.isEmpty()) {
             item {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Text("No settled collections in this range.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
-                }
+                IdsEmptyState(title = "No settled collections in this range.", modifier = Modifier.fillMaxWidth())
             }
         } else {
             item {
@@ -129,9 +128,7 @@ fun ReportsTab() {
             }
         } else if (products.isEmpty()) {
             item {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Text("No products sold in this range.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
-                }
+                IdsEmptyState(title = "No products sold in this range.", modifier = Modifier.fillMaxWidth())
             }
         } else {
             items(products, key = { it.productId }) { product ->
