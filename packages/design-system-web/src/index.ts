@@ -48,6 +48,7 @@ export interface TextFieldProps extends Omit<React.InputHTMLAttributes<HTMLInput
   label: string;
   helpText?: string;
   error?: string;
+  success?: string;
   required?: boolean;
 }
 
@@ -56,6 +57,7 @@ export function TextField({
   label,
   helpText,
   error,
+  success,
   required,
   className = '',
   ...props
@@ -64,7 +66,8 @@ export function TextField({
   const inputId = id ?? `ids-field-${reactId}`;
   const helpId = helpText ? `${inputId}-help` : undefined;
   const errorId = error ? `${inputId}-error` : undefined;
-  const describedBy = [helpId, errorId].filter(Boolean).join(' ') || undefined;
+  const successId = success ? `${inputId}-success` : undefined;
+  const describedBy = [helpId, errorId, successId].filter(Boolean).join(' ') || undefined;
 
   return (
     <div className={`ids-field ${className}`.trim()}>
@@ -81,7 +84,8 @@ export function TextField({
         aria-required={required || undefined}
       />
       {error ? <p id={errorId} className="ids-field__message ids-field__message--error" role="alert">{error}</p> : null}
-      {!error && helpText ? <p id={helpId} className="ids-field__message">{helpText}</p> : null}
+      {!error && success ? <p id={successId} className="ids-field__message ids-field__message--success">{success}</p> : null}
+      {!error && !success && helpText ? <p id={helpId} className="ids-field__message">{helpText}</p> : null}
     </div>
   );
 }
