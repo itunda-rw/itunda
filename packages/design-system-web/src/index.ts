@@ -164,11 +164,25 @@ export interface TabsProps {
 }
 
 export function Tabs({ items, value, onChange, ariaLabel = 'Tabs' }: TabsProps) {
+  const refs = React.useRef<Array<HTMLButtonElement | null>>([]);
+  const move = (index: number) => {
+    const next = (index + items.length) % items.length;
+    onChange(items[next].id);
+    requestAnimationFrame(() => refs.current[next]?.focus());
+  };
   return (
-    <div className="ids-tabs" role="tablist" aria-label={ariaLabel}>
-      {items.map(item => (
+    <div className="ids-tabs" role="tablist" aria-label={ariaLabel} onKeyDown={(event) => {
+      if (!items.length) return;
+      const index = items.findIndex(item => item.id === value);
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); move(index + 1); }
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { event.preventDefault(); move(index - 1); }
+      if (event.key === 'Home') { event.preventDefault(); move(0); }
+      if (event.key === 'End') { event.preventDefault(); move(items.length - 1); }
+    }}>
+      {items.map((item, index) => (
         <button
           key={item.id}
+          ref={node => { refs.current[index] = node; }}
           type="button"
           role="tab"
           aria-selected={value === item.id}
