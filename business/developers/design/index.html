@@ -269,6 +269,10 @@ const labPreview=document.getElementById('labPreview');
 function renderLab(state){if(!labPreview)return;const labels={default:['Continue','Default component state.'],pressed:['Continue','Pressed state provides immediate feedback.'],focus:['Continue','Focus remains visible for keyboard and assistive technology users.'],disabled:['Continue','Unavailable actions remain understandable.'],loading:['Loading…','Loading preserves the action footprint and prevents duplicate submission.'],error:['Try again','Recovery explains what happened and what to do next.']};const x=labels[state]||labels.default;labPreview.innerHTML='<div class="playground-card"><button class="btn primary" '+(state==='disabled'||state==='loading'?'disabled':'')+' '+(state==='focus'?'style="outline:3px solid color-mix(in srgb,var(--focus) 32%,transparent);outline-offset:3px"':'')+'>'+x[0]+'</button><p class="note" style="margin-top:12px">'+x[1]+'</p></div>'}
 document.querySelectorAll('[data-lab-state]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-lab-state]').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');renderLab(b.dataset.labState)}));renderLab('default');
 </script>
+<script id="ids-contract-source">
+const IDS_CONTRACT_PATH='../../../../design-system/components/contract-manifest.json';
+const IDS_CONTRACT_SUMMARY={version:'3.0.0',components:8};
+</script>
 <script id="ids-lab-v3-js">
 const labKinds=['button','field','select','checkbox','radio','switch','tabs','empty'];
 const labKindLabels={button:'Button',field:'Text field',select:'Select',checkbox:'Checkbox',radio:'Radio',switch:'Switch',tabs:'Tabs',empty:'Empty state'};
