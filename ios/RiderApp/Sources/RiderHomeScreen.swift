@@ -121,16 +121,15 @@ struct RiderHomeScreen: View {
                 .padding(.bottom, 8)
             }
 
-            Picker("", selection: $tab) {
-                Text("Available").tag(HomeTab.available)
-                Text("My deliveries").tag(HomeTab.mine)
-            }
-            .pickerStyle(.segmented)
+            IdsTabs(["Available", "My deliveries"], selectedIndex: Binding(
+                get: { tab == .available ? 0 : 1 },
+                set: { tab = $0 == 0 ? .available : .mine }
+            ))
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
 
             if let error {
-                Text(error).foregroundColor(.red).font(.footnote).padding(.horizontal, 16)
+                Text(error).foregroundColor(IDS.Colors.danger).font(.footnote).padding(.horizontal, 16)
             }
 
             let eatsList = tab == .available ? available : mine
@@ -141,7 +140,7 @@ struct RiderHomeScreen: View {
             // not "either one has."
             if eatsList == nil && commerceList == nil {
                 Spacer()
-                ProgressView()
+                SkeletonBlock(height: 96)
                 Spacer()
             } else {
                 let combined: [RiderDelivery] = (eatsList ?? []).map { RiderDelivery.eats($0) } + (commerceList ?? []).map { RiderDelivery.commerce($0) }
