@@ -89,9 +89,9 @@
      brand 3.85:1 (was 3.71:1, both above the 3:1 AA-large/UI-component threshold this
      role is actually held to), brand-vs-dark-bg 4.82:1 (was 5.00:1, both comfortably
      clear 4.5:1 AA-normal-text). */
-  --itunda-indigo: #7472f4;
-  --itunda-indigo-active: #5c55d8;
-  --itunda-indigo-light: #f8f9ff;
+  --itunda-indigo: #1F78FF;
+  --itunda-indigo-active: #1769E0;
+  --itunda-indigo-light: #EAF3FF;
   --itunda-red: #f04452;
   /* Real gap found 2026-08-08 (Toss Simplicity21 research pass, auditing the P2P
      transfer flow): bank-mfe's scam-warning tint box hardcoded #FDECEA directly (3
@@ -133,6 +133,40 @@
   --itunda-grey-900: #191f28;
 
   --itunda-white: #ffffff;
+  /* IDS 3.0 semantic/component contract. Product code should consume these roles
+     instead of primitive color values. The legacy --itunda-indigo names remain as
+     compatibility aliases for existing consumers; the canonical public role is --itunda-brand. */
+  --itunda-brand: var(--itunda-indigo);
+  --itunda-brand-strong: var(--itunda-indigo-active);
+  --itunda-surface-default: var(--itunda-white);
+  --itunda-surface-subtle: #f7f8fa;
+  --itunda-surface-raised: var(--itunda-white);
+  --itunda-surface-brand: var(--itunda-indigo-light);
+  --itunda-text-primary: var(--itunda-grey-900);
+  --itunda-text-secondary: var(--itunda-grey-700);
+  --itunda-text-tertiary: var(--itunda-grey-600);
+  --itunda-text-disabled: var(--itunda-grey-400);
+  --itunda-text-inverse: var(--itunda-white);
+  --itunda-border-default: var(--itunda-grey-200);
+  --itunda-border-strong: var(--itunda-grey-300);
+  --itunda-focus: var(--itunda-brand);
+  --itunda-pressed: var(--itunda-brand-strong);
+
+  --itunda-control-height-sm: 40px;
+  --itunda-control-height-md: 48px;
+  --itunda-control-height-lg: 56px;
+  --itunda-control-radius: var(--itunda-radius-md);
+  --itunda-control-padding-inline: 16px;
+  --itunda-control-gap: 8px;
+  --itunda-button-primary-fill: var(--itunda-brand);
+  --itunda-button-primary-fill-pressed: var(--itunda-brand-strong);
+  --itunda-button-secondary-fill: var(--itunda-surface-brand);
+  --itunda-button-secondary-text: var(--itunda-brand-strong);
+  --itunda-field-fill: var(--itunda-surface-default);
+  --itunda-field-border: var(--itunda-border-default);
+  --itunda-field-border-focus: var(--itunda-focus);
+  --itunda-field-border-error: var(--itunda-red);
+
 
   /* Web-only layout tokens -- no mobile equivalent, kept local to this file rather
      than invented on the mobile side where they don't apply. */
@@ -291,9 +325,9 @@
  */
 @media (prefers-color-scheme: dark) {
   :root {
-    --itunda-indigo: #7675f8;
-    --itunda-indigo-active: #5c55d8;
-    --itunda-indigo-light: #2b2c52;
+    --itunda-indigo: #4593FC;
+    --itunda-indigo-active: #1769E0;
+    --itunda-indigo-light: #10294A;
     --itunda-red: #ff6b7a;
     --itunda-red-light: #3a1418;
     --itunda-green: #20d394;
