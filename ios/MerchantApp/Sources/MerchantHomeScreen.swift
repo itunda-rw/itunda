@@ -3,6 +3,53 @@ import CoreDesignSystem
 
 private enum MerchantTab { case orders, catalog, register, reports, business, dineIn, reviews, coupons, followers, payroll, ads, booking, billing, cashAdvance, visitors, updates, photos, vouchers }
 
+
+private func merchantTabIndex(_ tab: MerchantTab) -> Int {
+    switch tab {
+    case .orders: return 0
+    case .catalog: return 1
+    case .register: return 2
+    case .reports: return 3
+    case .business: return 4
+    case .dineIn: return 5
+    case .reviews: return 6
+    case .coupons: return 7
+    case .followers: return 8
+    case .payroll: return 9
+    case .ads: return 10
+    case .booking: return 11
+    case .billing: return 12
+    case .cashAdvance: return 13
+    case .visitors: return 14
+    case .updates: return 15
+    case .photos: return 16
+    case .vouchers: return 17
+    }
+}
+
+private func merchantTab(at index: Int) -> MerchantTab {
+    switch index {
+    case 1: return .catalog
+    case 2: return .register
+    case 3: return .reports
+    case 4: return .business
+    case 5: return .dineIn
+    case 6: return .reviews
+    case 7: return .coupons
+    case 8: return .followers
+    case 9: return .payroll
+    case 10: return .ads
+    case 11: return .booking
+    case 12: return .billing
+    case 13: return .cashAdvance
+    case 14: return .visitors
+    case 15: return .updates
+    case 16: return .photos
+    case 17: return .vouchers
+    default: return .orders
+    }
+}
+
 struct MerchantHomeScreen: View {
     let merchant: MerchantDto
     let onLogout: () -> Void
@@ -33,34 +80,13 @@ struct MerchantHomeScreen: View {
             }
             .padding(16)
 
-            Picker("", selection: $tab) {
-                // Wrapped in Group (2026-08-01): past 10 items, this project's
-                // ViewBuilder overload set needs the split -- see
-                // BenefitsShopAllScreens.swift (purely a child-count workaround).
-                Group {
-                    Text("Orders").tag(MerchantTab.orders)
-                    Text("Catalog").tag(MerchantTab.catalog)
-                    Text("Register").tag(MerchantTab.register)
-                    Text("Reports").tag(MerchantTab.reports)
-                    Text("Business").tag(MerchantTab.business)
-                    Text("Dine-in").tag(MerchantTab.dineIn)
-                    Text("Reviews").tag(MerchantTab.reviews)
-                    Text("Coupons").tag(MerchantTab.coupons)
-                    Text("Followers").tag(MerchantTab.followers)
-                    Text("Payroll").tag(MerchantTab.payroll)
-                }
-                Text("Ads").tag(MerchantTab.ads)
-                Text("Booking").tag(MerchantTab.booking)
-                Text("Billing").tag(MerchantTab.billing)
-                Text("Cash advance").tag(MerchantTab.cashAdvance)
-                Text("Visitors").tag(MerchantTab.visitors)
-                // Real gaps found live (uncalled-endpoint sweep, 2026-08-29/30) -- see
-                // UpdatesTab.swift/PhotosTab.swift's own doc comments.
-                Text("Updates").tag(MerchantTab.updates)
-                Text("Photos").tag(MerchantTab.photos)
-                Text("Vouchers").tag(MerchantTab.vouchers)
-            }
-            .pickerStyle(.segmented)
+            IdsTabs(
+                ["Orders", "Catalog", "Register", "Reports", "Business", "Dine-in", "Reviews", "Coupons", "Followers", "Payroll", "Ads", "Booking", "Billing", "Cash advance", "Visitors", "Updates", "Photos", "Vouchers"],
+                selectedIndex: Binding(
+                    get: { merchantTabIndex(tab) },
+                    set: { tab = merchantTab(at: $0) }
+                )
+            )
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
 
