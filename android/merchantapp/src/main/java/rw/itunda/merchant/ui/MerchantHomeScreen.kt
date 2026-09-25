@@ -315,7 +315,7 @@ private fun ReviewsTab(restaurantId: String) {
     val inquiryList = productInquiries
     val bookingList = bookingReviews
     if (restaurantList == null || productList == null || inquiryList == null || bookingList == null) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { IdsLoading() }
         return
     }
     if (restaurantList.isEmpty() && productList.isEmpty() && inquiryList.isEmpty() && bookingList.isEmpty()) {
