@@ -61,6 +61,8 @@ The next IDS layer should standardize real Itunda flows:
 - `tokens.json` — portable token model
 - `components.css` — web primitives and state behavior
 - `../developers/design/` — human-readable documentation and sandbox
+- `PLATFORM_SOURCES.md` — audited Android, iOS, Web, SDUI and Saronite implementation map
+- `../developers/design/platforms/` — visual platform implementation showcase
 
 ## Licensing
 
