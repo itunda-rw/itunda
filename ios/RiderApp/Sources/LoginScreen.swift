@@ -104,7 +104,7 @@ struct LoginScreen: View {
             IdsTextField(t("password"), text: $password, isSecure: true)
 
             if let error {
-                Text(error).foregroundColor(.red).font(.footnote)
+                Text(error).foregroundColor(IDS.Colors.danger).font(.footnote)
             }
 
             Button(action: { Task { await login() } }) {
