@@ -62,6 +62,19 @@
 
 <section class="section" id="motion"><div class="section-head"><div class="eyebrow">06 · Foundations / Motion</div><h2>Immediate, then settled.</h2><p>Motion should communicate cause and effect. Fast feedback is immediate; larger surfaces settle with a softer easing curve. Reduced motion removes decorative animation.</p></div><div class="grid"><div class="panel"><h3>140ms · Fast</h3><p>Press, focus, color and micro-feedback.</p></div><div class="panel"><h3>220ms · Normal</h3><p>Surface transitions and component state changes.</p></div><div class="panel"><h3>420ms · Slow</h3><p>Large surface movement where spatial context matters.</p></div><div class="panel"><h3>Reduced motion</h3><p>Transitions and loading animations are disabled when the OS asks for less motion.</p></div></div></section>
 
+<section id="component-contract" class="section">
+  <div class="section-kicker">COMPONENT CONTRACT</div>
+  <h2>Every component has a contract.</h2>
+  <p class="lede">Structure first, then variants, anatomy, states, content behavior, accessibility, responsive rules, and platform notes.</p>
+  <div class="grid three">
+    <article class="card"><strong>01 · Structure</strong><p>Define anatomy and hierarchy before styling details.</p></article>
+    <article class="card"><strong>02 · Variants & states</strong><p>Default, hover, pressed, focused, disabled, loading, error and empty cases.</p></article>
+    <article class="card"><strong>03 · Edge cases</strong><p>Long text, large text, dark mode, narrow screens, localization and worst-case content.</p></article>
+    <article class="card"><strong>04 · Accessibility</strong><p>Keyboard, screen reader, focus, semantics, contrast and reduced motion belong to the component.</p></article>
+    <article class="card"><strong>05 · Interaction</strong><p>Shared motion, touch targets and feedback replace one-off screen behavior.</p></article>
+    <article class="card"><strong>06 · Platforms</strong><p>Web, Android and iOS share intent while respecting platform conventions.</p></article>
+  </div>
+</section>
 <section class="section" id="actions"><div class="section-head"><div class="eyebrow">07 · Components / Actions</div><h2>Action hierarchy you can feel.</h2><p>Primary, secondary and weak actions have distinct jobs. Pressed and focus states belong to the component contract.</p></div><div class="panel full"><div class="stage"><div class="button-row"><button class="btn primary">Continue</button><button class="btn">Secondary</button><button class="btn weak">Weak</button><button class="btn" disabled>Disabled</button></div></div><div style="height:14px"></div><div class="code"><span class="accent">button</span> · primary / secondary / weak / disabled / loading<br><span class="accent">focus-visible</span> · 3px focus ring + offset<br><span class="accent">press</span> · scale(.985) + immediate feedback</div></div></section>
 
 <section class="section" id="forms"><div class="section-head"><div class="eyebrow">08 · Components / Forms</div><h2>Inputs that explain themselves.</h2><p>Labels, help, errors and focus behavior are part of the field. Never rely on placeholder text as the label.</p></div><div class="grid"><div class="panel"><label class="demo-label">Phone number<input class="field" value="+250 788 123 456"><span class="help">Used to identify your Itunda account.</span></label></div><div class="panel"><label class="demo-label">Amount<input class="field" placeholder="RWF 0"><span class="help">Enter the amount in Rwandan francs.</span></label></div></div></section>
