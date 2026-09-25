@@ -193,7 +193,7 @@ fun RiderHomeScreen(
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(
+                rw.itunda.core.designsystem.components.IdsSwitch(
                     checked = rider?.available == true,
                     enabled = !togglingAvailability && rider != null,
                     onCheckedChange = { newValue ->
@@ -215,6 +215,7 @@ fun RiderHomeScreen(
                             }
                         }
                     },
+                    label = "Availability",
                 )
                 IconButton(onClick = {
                     NetworkClient.currentTokenStore().clearSession()
