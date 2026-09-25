@@ -65,3 +65,8 @@ The next IDS layer should standardize real Itunda flows:
 ## Licensing
 
 Itunda-authored design-system source is intended to be open-source under MIT. Third-party fonts/assets retain their own licenses.
+
+
+## Existing Itunda implementation sources
+
+The IDS v2 layer explicitly includes the design implementations already present in this repository. See [`RECONCILIATION.md`](./RECONCILIATION.md) for the audited Android, iOS, Web, SDUI and product-level sources and the migration rules.
