@@ -122,19 +122,8 @@ public struct IDS {
         // backgroundSecondary/backgroundTertiary here). `pressed` and the tint colors
         // are left untouched since the real package doesn't expose which numbered
         // step its own semantic roles point to.
-        // Brand rebranded blue -> indigo (2026-08-22, direct user identity work:
-        // petal-shape mark + indigo -- see project_itunda_brand_identity.md and web's
-        // packages/design-tokens/tokens.css --itunda-indigo for the full derivation
-        // note). Not invented: same OKLCH hue-rotation technique Toss's own eng blog
-        // documents for generating a TDS hue family
-        // (toss.tech/article/tds-color-system-update), applied to these exact real
-        // anchors -- hold L/C of the old 0x3182F6/0x3485FA, rotate hue to 280deg,
-        // clamp chroma to gamut. WCAG-verified against the same real bars the old
-        // blue cleared: white-on-brand 3.85:1 (was 3.71:1, both above the 3:1
-        // AA-large/UI-component bar this role is held to); brand-vs-dark-background
-        // 4.82:1 (was 5.00:1, both clear 4.5:1 AA-normal-text). Matches the identical
-        // rebrand applied the same day to Android's IdsSemanticColors.kt.
-        public static let brand = Color(light: 0x7472F4, dark: 0x7675F8)
+        // IDS 3.0 canonical semantic brand: blue across Web, Android and iOS.
+        public static let brand = Color(light: 0x1F78FF, dark: 0x4593FC)
         // Real fix (2026-08-24, direct user directive, same pass as web's index.css
         // and Android's IdsSemanticColors.kt): was 0xF2F4F6 (the classic "grey canvas
         // + white cards" dashboard look). Real Toss screenshots (Finance catalog menu,
