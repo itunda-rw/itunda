@@ -178,7 +178,7 @@ struct TransferFlowContainer: View {
                 if let errorMessage {
                     Text(errorMessage)
                         .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
-                        .foregroundColor(.red)
+                        .foregroundColor(IDS.Colors.danger)
                         .padding(.horizontal, 24)
                         .padding(.top, 8)
                 }
