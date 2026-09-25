@@ -136,6 +136,7 @@ public struct IdsButton: View {
     var isLoading: Bool = false
     var variant: IdsButtonVariant = .filled
     var size: IdsButtonSize = .large
+    var fullWidth: Bool = true
 
     public init(
         text: String,
@@ -143,6 +144,7 @@ public struct IdsButton: View {
         isLoading: Bool = false,
         variant: IdsButtonVariant = .filled,
         size: IdsButtonSize = .large,
+        fullWidth: Bool = true,
         action: @escaping () -> Void
     ) {
         self.text = text
@@ -150,6 +152,7 @@ public struct IdsButton: View {
         self.isLoading = isLoading
         self.variant = variant
         self.size = size
+        self.fullWidth = fullWidth
         self.action = action
     }
 
@@ -164,8 +167,8 @@ public struct IdsButton: View {
                         .font(IdsTypeScale.button)
                 }
             }
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: size.height)
+            .frame(maxWidth: fullWidth ? .infinity : nil)
+            .frame(minWidth: fullWidth ? nil : 44, minHeight: size.height)
         }
         .foregroundColor(variant == .filled ? IDS.Colors.textBrand : IDS.Colors.brand)
         .background(
@@ -390,6 +393,49 @@ public struct SkeletonBlock: View {
             try? await Task.sleep(nanoseconds: 200_000_000)
             showSkeleton = true
         }
+    }
+}
+
+/** IDS 3.0 shared loading primitive for screen-level and inline async states. */
+public struct IdsLoading: View {
+    let label: String?
+
+    public init(label: String? = nil) {
+        self.label = label
+    }
+
+    public var body: some View {
+        VStack(spacing: 10) {
+            ProgressView()
+                .tint(IDS.Colors.brand)
+            if let label {
+                Text(label)
+                    .font(IdsTypeScale.body2)
+                    .foregroundColor(IDS.Colors.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text(label ?? "Loading"))
+    }
+}
+
+/** IDS 3.0 shared inline error primitive. */
+public struct IdsErrorText: View {
+    let message: String
+
+    public init(_ message: String) {
+        self.message = message
+    }
+
+    public var body: some View {
+        Text(message)
+            .font(IdsTypeScale.body2)
+            .foregroundColor(IDS.Colors.danger)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityLabel(Text(message))
     }
 }
 
