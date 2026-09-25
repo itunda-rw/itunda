@@ -27,7 +27,7 @@ import kotlinx.coroutines.launch
 import rw.itunda.merchant.network.AddProductRequest
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Inventory2
-import rw.itunda.core.designsystem.components.EmptyState
+import rw.itunda.core.designsystem.components.IdsEmptyState
 import rw.itunda.core.designsystem.components.IdsLoading
 import rw.itunda.merchant.network.MerchantProductDto
 import rw.itunda.merchant.network.NetworkClient
@@ -127,7 +127,7 @@ fun CatalogTab() {
         if (list == null) {
             IdsLoading()
         } else if (list.isEmpty()) {
-            EmptyState("No products yet — add your first one above.", icon = Icons.Outlined.Inventory2)
+            IdsEmptyState(title = "No products yet — add your first one above.")
         } else {
             val lowStock = list.filter { it.stockQuantity != null && it.stockQuantity <= 5 }
             if (lowStock.isNotEmpty()) {
