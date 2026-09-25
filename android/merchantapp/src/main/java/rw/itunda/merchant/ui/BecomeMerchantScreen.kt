@@ -1,6 +1,7 @@
 package rw.itunda.merchant.ui
 
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import rw.itunda.core.designsystem.theme.Ids
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -61,7 +62,7 @@ fun BecomeMerchantScreen(onRegistered: (MerchantDto) -> Unit, onLogout: () -> Un
         IdsTextField(value = businessName, onValueChange = { businessName = it }, label = "Business name", modifier = Modifier.fillMaxWidth())
         error?.let {
             Spacer(modifier = Modifier.height(12.dp))
-            Text(it, color = MaterialTheme.colorScheme.error)
+            Text(it, color = Ids.colors.danger)
         }
         Spacer(modifier = Modifier.height(20.dp))
         IdsButton(
