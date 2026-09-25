@@ -272,6 +272,17 @@ document.querySelectorAll('[data-lab-state]').forEach(b=>b.addEventListener('cli
 <script id="ids-contract-source">
 const IDS_CONTRACT_PATH='../../../../design-system/components/contract-manifest.json';
 const IDS_CONTRACT_SUMMARY={version:'3.0.0',components:8};
+const IDS_CONTRACTS={
+  button:{label:'Button',states:['default','pressed','focus','disabled','loading']},
+  field:{label:'Text field',states:['empty','filled','focus','disabled','error','success']},
+  select:{label:'Select',states:['default','focus','disabled','error']},
+  checkbox:{label:'Checkbox',states:['unchecked','checked','focus','disabled','error']},
+  radio:{label:'Radio',states:['unchecked','checked','focus','disabled','error']},
+  switch:{label:'Switch',states:['off','on','focus','disabled']},
+  tabs:{label:'Tabs',states:['default','selected','focus','disabled']},
+  empty:{label:'Empty state',states:['default']}
+};
+function idsContractFor(kind){return IDS_CONTRACTS[kind]||IDS_CONTRACTS.button}
 </script>
 <script id="ids-lab-v3-js">
 const labKinds=['button','field','select','checkbox','radio','switch','tabs','empty'];
