@@ -46,7 +46,7 @@ struct CatalogTab: View {
                     TextField("Description (optional)", text: $description, axis: .vertical).lineLimit(2...4).padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
                     IdsTextField("Stock (optional — blank means unlimited)", text: $stockQuantity, keyboardType: .numberPad)
                     if let error {
-                        Text(error).foregroundColor(.red).font(.footnote)
+                        Text(error).foregroundColor(IDS.Colors.danger).font(.footnote)
                     }
                     Button(action: { Task { await addProduct() } }) {
                         Text(submitting ? "Adding…" : "Add")
@@ -120,7 +120,7 @@ struct CatalogTab: View {
                         }
                     }
                 } else {
-                    ProgressView()
+                    SkeletonBlock(height: 96)
                 }
             }
             .padding(16)
@@ -308,7 +308,7 @@ private struct ProductOptionsView: View {
                             }
                         }
                     } else {
-                        ProgressView()
+                        SkeletonBlock(height: 96)
                     }
 
                     Text("Add an option group").bold().font(.subheadline)
@@ -419,7 +419,7 @@ private struct PriceTiersView: View {
                             }
                         }
                     } else {
-                        ProgressView()
+                        SkeletonBlock(height: 96)
                     }
                     Button(action: { Task { await save() } }) {
                         Text(saving ? "Saving…" : "Save bulk pricing")
