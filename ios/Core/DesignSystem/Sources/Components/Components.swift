@@ -469,3 +469,182 @@ public struct StarRatingRow: View {
         }
     }
 }
+
+
+public struct IdsSelect: View {
+    let label: String
+    @Binding var selection: String
+    let options: [String]
+    var supportingText: String?
+    var errorText: String?
+    var isEnabled: Bool
+
+    public init(
+        _ label: String,
+        selection: Binding<String>,
+        options: [String],
+        supportingText: String? = nil,
+        errorText: String? = nil,
+        isEnabled: Bool = true
+    ) {
+        self.label = label
+        self._selection = selection
+        self.options = options
+        self.supportingText = supportingText
+        self.errorText = errorText
+        self.isEnabled = isEnabled
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(IdsTypeScale.body2)
+                .foregroundColor(errorText == nil ? IDS.Colors.textSecondary : IDS.Colors.danger)
+            Picker(label, selection: $selection) {
+                ForEach(options, id: \.self) { option in
+                    Text(option).tag(option)
+                }
+            }
+            .pickerStyle(.menu)
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .padding(.horizontal, 12)
+            .background(IDS.Colors.card)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(errorText == nil ? IDS.Colors.divider : IDS.Colors.danger, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .disabled(!isEnabled)
+            if let message = errorText ?? supportingText {
+                Text(message)
+                    .font(IdsTypeScale.caption)
+                    .foregroundColor(errorText == nil ? IDS.Colors.textSecondary : IDS.Colors.danger)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .opacity(isEnabled ? 1 : 0.55)
+        .accessibilityLabel(Text(label))
+    }
+}
+
+public struct IdsCheckbox: View {
+    let label: String
+    @Binding var isChecked: Bool
+    var isEnabled: Bool
+
+    public init(_ label: String, isChecked: Binding<Bool>, isEnabled: Bool = true) {
+        self.label = label
+        self._isChecked = isChecked
+        self.isEnabled = isEnabled
+    }
+
+    public var body: some View {
+        Button {
+            isChecked.toggle()
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: isChecked ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 22))
+                    .foregroundColor(isChecked ? IDS.Colors.brand : IDS.Colors.iconSecondary)
+                    .frame(width: 44, height: 44)
+                Text(label)
+                    .font(IdsTypeScale.body2)
+                    .foregroundColor(IDS.Colors.textPrimary)
+                    .multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressScaleButtonStyle(enabled: isEnabled))
+        .disabled(!isEnabled)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(label))
+        .accessibilityValue(Text(isChecked ? "Checked" : "Unchecked"))
+        .accessibilityAddTraits(isChecked ? .isSelected : [])
+        .accessibilityRemoveTraits(.isButton)
+    }
+}
+
+public struct IdsRadio: View {
+    let label: String
+    @Binding var isSelected: Bool
+    var isEnabled: Bool
+
+    public init(_ label: String, isSelected: Binding<Bool>, isEnabled: Bool = true) {
+        self.label = label
+        self._isSelected = isSelected
+        self.isEnabled = isEnabled
+    }
+
+    public var body: some View {
+        Button {
+            isSelected = true
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
+                    .font(.system(size: 22))
+                    .foregroundColor(isSelected ? IDS.Colors.brand : IDS.Colors.iconSecondary)
+                    .frame(width: 44, height: 44)
+                Text(label)
+                    .font(IdsTypeScale.body2)
+                    .foregroundColor(IDS.Colors.textPrimary)
+                    .multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressScaleButtonStyle(enabled: isEnabled))
+        .disabled(!isEnabled)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(label))
+        .accessibilityValue(Text(isSelected ? "Selected" : "Not selected"))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityRemoveTraits(.isButton)
+    }
+}
+
+public struct IdsSwitch: View {
+    let label: String
+    @Binding var isOn: Bool
+    var isEnabled: Bool
+
+    public init(_ label: String, isOn: Binding<Bool>, isEnabled: Bool = true) {
+        self.label = label
+        self._isOn = isOn
+        self.isEnabled = isEnabled
+    }
+
+    public var body: some View {
+        Toggle(isOn: $isOn) {
+            Text(label)
+                .font(IdsTypeScale.body2)
+                .foregroundColor(IDS.Colors.textPrimary)
+                .multilineTextAlignment(.leading)
+        }
+        .toggleStyle(.switch)
+        .frame(minHeight: 44)
+        .disabled(!isEnabled)
+        .accessibilityLabel(Text(label))
+    }
+}
+
+public struct IdsTabs: View {
+    let labels: [String]
+    @Binding var selectedIndex: Int
+
+    public init(_ labels: [String], selectedIndex: Binding<Int>) {
+        self.labels = labels
+        self._selectedIndex = selectedIndex
+    }
+
+    public var body: some View {
+        Picker("Tabs", selection: $selectedIndex) {
+            ForEach(Array(labels.enumerated()), id: \.offset) { index, label in
+                Text(label).tag(index)
+            }
+        }
+        .pickerStyle(.segmented)
+        .frame(minHeight: 44)
+        .accessibilityLabel(Text("Tabs"))
+    }
+}
