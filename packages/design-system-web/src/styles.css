@@ -108,6 +108,7 @@
   line-height: 1.45;
 }
 .ids-field__message--error { color: var(--itunda-field-border-error); }
+.ids-field__message--success { color: var(--itunda-green); }
 
 @media (prefers-reduced-motion: reduce) {
   .ids-button { transition: none; }
