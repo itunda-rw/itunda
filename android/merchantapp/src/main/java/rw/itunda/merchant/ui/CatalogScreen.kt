@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.IdsButton
@@ -28,6 +27,7 @@ import rw.itunda.merchant.network.AddProductRequest
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Inventory2
 import rw.itunda.core.designsystem.components.EmptyState
+import rw.itunda.core.designsystem.components.IdsLoading
 import rw.itunda.merchant.network.MerchantProductDto
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.network.TimeDealViewDto
@@ -85,7 +85,7 @@ fun CatalogTab() {
                         val stock = stockQuantity.trim().ifBlank { null }?.toIntOrNull()
                         if (durationMinutes.isNotBlank() && duration == null) {
                             error = "Booking duration must be a whole number of minutes."
-                            return@Button
+                            return@IdsButton
                         }
                         if (originalPrice.isNotBlank() && (previousPrice == null || previousPrice <= amount)) {
                             error = "Original price must be greater than the current price."
