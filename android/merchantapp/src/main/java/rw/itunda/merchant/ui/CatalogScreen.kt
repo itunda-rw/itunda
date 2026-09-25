@@ -89,7 +89,7 @@ fun CatalogTab() {
                         }
                         if (originalPrice.isNotBlank() && (previousPrice == null || previousPrice <= amount)) {
                             error = "Original price must be greater than the current price."
-                            return@Button
+                            return@IdsButton
                         }
                         if (stockQuantity.isNotBlank() && (stock == null || stock < 0)) {
                             error = "Stock must be a whole number of zero or more."
