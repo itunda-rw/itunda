@@ -129,12 +129,9 @@ val IdsDarkSemanticColors = IdsSemanticColors(
     // far below 4.5:1. Lightened to 0xFF848A96 (5.15:1 / 4.67:1). Matches the same-day
     // fix on web/iOS.
     textTertiary = Color(0xFF848A96),
-    // Same rebrand as light mode's brand field above -- rotated from the old
-    // 0xFF3485FA (Toss's real adaptive-dark blue) to indigo at the same hue.
-    // WCAG-verified: brand-vs-background 4.82:1 (was 5.00:1 against 0xFF17171C),
-    // both comfortably clear 4.5:1 AA-normal-text.
-    brand = Color(0xFF7675F8),
-    textBrand = Color(0xFF7675F8),
+    // Dark-mode semantic brand token: the accessible blue counterpart used by the cross-platform contract.
+    brand = Color(0xFF4593FC),
+    textBrand = Color(0xFF4593FC),
     divider = Color(0xFF3C3C47),
     chip = Color(0xFF2C2C35),
     pressed = Color(0xFF2B2C52),
