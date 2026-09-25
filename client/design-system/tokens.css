@@ -1,115 +1,109 @@
+/* Itunda Design System v2 — foundations
+   Primitive → semantic → component roles.
+   Identity stays Itunda; product surfaces consume semantic roles.
+*/
 :root{
-  --itunda-indigo:#7472F4;
-  --itunda-indigo-dark:#625FE0;
-  --itunda-indigo-soft:#F0EFFF;
-  --itunda-ink:#191F28;
-  --itunda-muted:#6B7684;
-  --itunda-soft:#F7F8FA;
-  --itunda-line:#EEF0F2;
-  --itunda-dark:#080A10;
+  --itunda-indigo-50:#F7F6FF;
+  --itunda-indigo-100:#F0EFFF;
+  --itunda-indigo-200:#E2E0FF;
+  --itunda-indigo-300:#C9C6FF;
+  --itunda-indigo-400:#A7A4FF;
+  --itunda-indigo-500:#7472F4;
+  --itunda-indigo-600:#625FE0;
+  --itunda-indigo-700:#514FC4;
+  --itunda-ink-950:#101318;
+  --itunda-ink-900:#191F28;
+  --itunda-ink-800:#303844;
+  --itunda-ink-700:#4A5562;
+  --itunda-ink-600:#6B7684;
+  --itunda-ink-500:#8B95A1;
+  --itunda-ink-400:#AEB5BD;
+  --itunda-ink-300:#DDE2E7;
+  --itunda-ink-200:#EEF0F2;
+  --itunda-ink-100:#F7F8FA;
+  --itunda-white:#FFFFFF;
 
-  --itunda-space-1:4px;
-  --itunda-space-2:8px;
-  --itunda-space-3:12px;
-  --itunda-space-4:16px;
-  --itunda-space-5:20px;
-  --itunda-space-6:24px;
-  --itunda-space-7:32px;
-  --itunda-space-8:40px;
-  --itunda-space-9:48px;
-  --itunda-space-10:64px;
-  --itunda-space-11:80px;
-  --itunda-space-12:96px;
-  --itunda-space-13:120px;
-  --itunda-space-14:160px;
+  --itunda-success-500:#16845F;
+  --itunda-success-100:#EAF9F1;
+  --itunda-warning-500:#9A6B00;
+  --itunda-warning-100:#FFF7D9;
+  --itunda-error-500:#C53D3D;
+  --itunda-error-100:#FFF0EF;
+  --itunda-info-500:#7472F4;
+  --itunda-info-100:#F0EFFF;
 
-  --itunda-radius-sm:12px;
-  --itunda-radius-md:20px;
-  --itunda-radius-lg:30px;
-  --itunda-radius-xl:40px;
-  --itunda-radius-display:52px;
-  --itunda-radius-pill:999px;
+  --itunda-space-1:4px; --itunda-space-2:8px; --itunda-space-3:12px;
+  --itunda-space-4:16px; --itunda-space-5:20px; --itunda-space-6:24px;
+  --itunda-space-7:32px; --itunda-space-8:40px; --itunda-space-9:48px;
+  --itunda-space-10:64px; --itunda-space-11:80px; --itunda-space-12:96px;
+  --itunda-space-13:120px; --itunda-space-14:160px; --itunda-space-15:192px;
 
-  --itunda-max:1280px;
-  --itunda-gutter:32px;
-}
-@media (max-width:720px){
-  :root{--itunda-gutter:20px}
-}
+  --itunda-radius-xs:8px; --itunda-radius-sm:12px; --itunda-radius-md:16px;
+  --itunda-radius-lg:20px; --itunda-radius-xl:28px; --itunda-radius-2xl:36px;
+  --itunda-radius-display:44px; --itunda-radius-pill:999px;
 
-/* Semantic color roles */
-:root{
-  --itunda-color-bg:#fff;
-  --itunda-color-surface:var(--itunda-soft);
-  --itunda-color-surface-strong:#fff;
-  --itunda-color-text:var(--itunda-ink);
-  --itunda-color-text-muted:var(--itunda-muted);
-  --itunda-color-border:var(--itunda-line);
-  --itunda-color-brand:var(--itunda-indigo);
-  --itunda-color-brand-strong:var(--itunda-indigo-dark);
-  --itunda-color-brand-soft:var(--itunda-indigo-soft);
-  --itunda-color-success:#16a34a;
-  --itunda-color-error:#dc2626;
-  --itunda-color-warning:#d97706;
-  --itunda-shadow-sm:0 4px 16px rgba(25,31,40,.06);
-  --itunda-shadow-md:0 12px 36px rgba(25,31,40,.09);
-  --itunda-shadow-lg:0 24px 64px rgba(25,31,40,.12);
-  --itunda-duration-fast:160ms;
-  --itunda-duration-normal:240ms;
-  --itunda-duration-slow:420ms;
-}
-
-/* Typography scale */
-:root{
   --itunda-font-body:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  --itunda-text-xs:12px;--itunda-text-sm:14px;--itunda-text-md:16px;--itunda-text-lg:20px;
-  --itunda-text-xl:28px;--itunda-text-2xl:40px;--itunda-text-3xl:56px;--itunda-text-display:clamp(56px,7vw,96px);
-  --itunda-leading-tight:1.08;--itunda-leading-normal:1.5;--itunda-leading-relaxed:1.65;
-  --itunda-weight-regular:400;--itunda-weight-medium:600;--itunda-weight-bold:750;--itunda-weight-heavy:850;
-  --itunda-letter-tight:-.035em;--itunda-letter-normal:-.01em;
-}
+  --itunda-font-mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  --itunda-text-xs:12px; --itunda-text-sm:14px; --itunda-text-md:16px;
+  --itunda-text-lg:18px; --itunda-text-xl:22px; --itunda-text-2xl:28px;
+  --itunda-text-3xl:36px; --itunda-text-4xl:48px;
+  --itunda-text-display:clamp(48px,7vw,88px);
+  --itunda-leading-tight:1.08; --itunda-leading-normal:1.5; --itunda-leading-relaxed:1.65;
+  --itunda-weight-regular:400; --itunda-weight-medium:500; --itunda-weight-semibold:650;
+  --itunda-weight-bold:750; --itunda-weight-heavy:850;
+  --itunda-letter-tight:-.04em; --itunda-letter-normal:-.01em;
 
+  --itunda-nav-height:72px; --itunda-control-height-sm:40px;
+  --itunda-control-height-md:48px; --itunda-control-height-lg:56px;
+  --itunda-max:1200px; --itunda-gutter:32px;
+  --itunda-content-reading:680px; --itunda-content-narrow:560px;
 
-/* Interaction timing: fast enough to feel immediate, slow enough to remain legible. */
-:root{
-  --itunda-motion-fast:140ms;
-  --itunda-motion-normal:220ms;
-  --itunda-motion-slow:420ms;
-}
-
-
-/* Accessible semantic contrast roles. */
-:root{
-  --itunda-text-on-indigo:#FFFFFF;
-  --itunda-text-on-dark:#FFFFFF;
-  --itunda-success:#16845F;
-  --itunda-warning:#9A6B00;
-  --itunda-error:#C53D3D;
-  --itunda-info:var(--itunda-indigo);
-}
-
-/* v2 foundations: explicit type, layout, surface and interaction roles. */
-:root{
-  --itunda-space-15:192px;
-  --itunda-content-reading:680px;
-  --itunda-content-narrow:560px;
-  --itunda-nav-height:72px;
-  --itunda-control-height-sm:40px;
-  --itunda-control-height-md:48px;
-  --itunda-control-height-lg:56px;
-  --itunda-border-subtle:rgba(25,31,40,.07);
-  --itunda-border-strong:#DDE2E7;
-  --itunda-surface-raised:#fff;
-  --itunda-surface-sunken:#F7F8FA;
-  --itunda-overlay:rgba(8,10,16,.48);
+  --itunda-z-nav:20; --itunda-z-popover:40; --itunda-z-sheet:60;
+  --itunda-z-modal:80; --itunda-z-toast:100;
+  --itunda-motion-fast:140ms; --itunda-motion-normal:220ms; --itunda-motion-slow:420ms;
   --itunda-ease:cubic-bezier(.22,1,.36,1);
   --itunda-ease-standard:cubic-bezier(.2,.8,.2,1);
 }
+
+/* Semantic roles */
+:root{
+  --itunda-color-bg:var(--itunda-white);
+  --itunda-color-surface:var(--itunda-white);
+  --itunda-color-surface-sunken:var(--itunda-ink-100);
+  --itunda-color-surface-brand:var(--itunda-indigo-100);
+  --itunda-color-text:var(--itunda-ink-900);
+  --itunda-color-text-strong:var(--itunda-ink-950);
+  --itunda-color-text-muted:var(--itunda-ink-600);
+  --itunda-color-text-subtle:var(--itunda-ink-500);
+  --itunda-color-border:var(--itunda-ink-200);
+  --itunda-color-border-strong:var(--itunda-ink-300);
+  --itunda-color-brand:var(--itunda-indigo-500);
+  --itunda-color-brand-strong:var(--itunda-indigo-600);
+  --itunda-color-brand-soft:var(--itunda-indigo-100);
+  --itunda-color-success:var(--itunda-success-500);
+  --itunda-color-success-soft:var(--itunda-success-100);
+  --itunda-color-warning:var(--itunda-warning-500);
+  --itunda-color-warning-soft:var(--itunda-warning-100);
+  --itunda-color-error:var(--itunda-error-500);
+  --itunda-color-error-soft:var(--itunda-error-100);
+  --itunda-color-info:var(--itunda-info-500);
+  --itunda-color-info-soft:var(--itunda-info-100);
+  --itunda-focus:var(--itunda-indigo-400);
+  --itunda-overlay:rgba(16,19,24,.48);
+  --itunda-shadow-sm:0 2px 10px rgba(16,19,24,.06);
+  --itunda-shadow-md:0 10px 30px rgba(16,19,24,.10);
+  --itunda-shadow-lg:0 24px 64px rgba(16,19,24,.14);
+}
+[data-theme="dark"]{
+  --itunda-color-bg:#080A10; --itunda-color-surface:#101318; --itunda-color-surface-sunken:#080A10;
+  --itunda-color-surface-brand:#211F48; --itunda-color-text:#F7F8FA; --itunda-color-text-strong:#fff;
+  --itunda-color-text-muted:#AEB5BD; --itunda-color-text-subtle:#8B95A1; --itunda-color-border:#252B33;
+  --itunda-color-border-strong:#343C47; --itunda-color-brand:#8C8AF8; --itunda-color-brand-strong:#A7A4FF;
+  --itunda-color-brand-soft:#211F48; --itunda-color-success-soft:#103C2D; --itunda-color-warning-soft:#40350F;
+  --itunda-color-error-soft:#421E20; --itunda-color-info-soft:#211F48; --itunda-overlay:rgba(0,0,0,.64);
+  --itunda-shadow-sm:0 2px 12px rgba(0,0,0,.22); --itunda-shadow-md:0 12px 36px rgba(0,0,0,.30);
+  --itunda-shadow-lg:0 24px 70px rgba(0,0,0,.42);
+}
 @media(max-width:720px){
-  :root{
-    --itunda-nav-height:64px;
-    --itunda-text-display:clamp(48px,14vw,72px);
-    --itunda-space-13:96px;
-    --itunda-space-14:120px;
-  }
+  :root{--itunda-gutter:20px;--itunda-nav-height:64px;--itunda-text-display:clamp(44px,13vw,68px)}
 }
