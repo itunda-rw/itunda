@@ -284,7 +284,7 @@ private struct ProductOptionsView: View {
                     Text("Real option groups -- e.g. \"Size\" with Small/Medium/Large. A buyer picks exactly one choice per group.")
                         .font(.caption).foregroundColor(.secondary)
                     if let error {
-                        Text(error).font(.caption).foregroundColor(.red)
+                        Text(error).font(.caption).foregroundColor(IDS.Colors.danger)
                     }
                     if let groups {
                         if groups.isEmpty {
@@ -409,7 +409,7 @@ private struct PriceTiersView: View {
                     Text("Real bulk discounts -- e.g. buy 10+, pay less per unit. Leave a row blank to skip it.")
                         .font(.caption).foregroundColor(.secondary)
                     if let error {
-                        Text(error).font(.caption).foregroundColor(.red)
+                        Text(error).font(.caption).foregroundColor(IDS.Colors.danger)
                     }
                     if loaded {
                         ForEach(tierRows.indices, id: \.self) { i in
