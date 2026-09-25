@@ -1,6 +1,6 @@
 {
   "$schema": "https://design-tokens.github.io/community-group/format/",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "purpose": "Cross-platform IDS semantic parity contract.",
   "brand": {
     "light": "#7472F4",
@@ -24,13 +24,64 @@
     "iconSecondary"
   ],
   "web": {
-    "source": "client/design-system/tokens.css"
+    "source": "client/design-system/tokens.css",
+    "tokens": {
+      "background": "--itunda-color-background",
+      "surface": "--itunda-color-surface",
+      "surfaceSoft": "--itunda-color-surface-soft",
+      "textPrimary": "--itunda-color-text-primary",
+      "textSecondary": "--itunda-color-text-secondary",
+      "textTertiary": "--itunda-color-text-tertiary",
+      "brand": "--itunda-color-brand",
+      "textBrand": "--itunda-color-text-brand",
+      "divider": "--itunda-color-divider",
+      "pressed": "--itunda-color-pressed",
+      "success": "--itunda-color-success",
+      "warning": "--itunda-color-warning",
+      "danger": "--itunda-color-error",
+      "iconPrimary": "--itunda-color-icon-primary",
+      "iconSecondary": "--itunda-color-icon-secondary"
+    }
   },
   "android": {
-    "source": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/theme/IdsSemanticColors.kt"
+    "source": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/theme/IdsSemanticColors.kt",
+    "tokens": {
+      "background": "background",
+      "surface": "surface",
+      "surfaceSoft": "surfaceSoft",
+      "textPrimary": "textPrimary",
+      "textSecondary": "textSecondary",
+      "textTertiary": "textTertiary",
+      "brand": "brand",
+      "textBrand": "textBrand",
+      "divider": "divider",
+      "pressed": "pressed",
+      "success": "success",
+      "warning": "warning",
+      "danger": "danger",
+      "iconPrimary": "iconPrimary",
+      "iconSecondary": "iconSecondary"
+    }
   },
   "ios": {
-    "source": "ios/Core/DesignSystem/Sources/IDS.swift"
+    "source": "ios/Core/DesignSystem/Sources/IDS.swift",
+    "tokens": {
+      "background": "backgroundPrimary",
+      "surface": "backgroundSecondary",
+      "surfaceSoft": "chipBackground",
+      "textPrimary": "textPrimary",
+      "textSecondary": "textSecondary",
+      "textTertiary": "textTertiary",
+      "brand": "brand",
+      "textBrand": "textBrand",
+      "divider": "divider",
+      "pressed": "pressed",
+      "success": "success",
+      "warning": "warningTint",
+      "danger": "danger",
+      "iconPrimary": "iconPrimary",
+      "iconSecondary": "iconSecondary"
+    }
   },
   "legacyCompatibility": {
     "source": "packages/design-tokens/tokens.json",
