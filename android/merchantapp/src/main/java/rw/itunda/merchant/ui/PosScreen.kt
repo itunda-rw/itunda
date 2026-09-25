@@ -1,6 +1,7 @@
 package rw.itunda.merchant.ui
 
 import androidx.compose.foundation.Image
+import rw.itunda.core.designsystem.theme.Ids
 import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -145,7 +146,7 @@ private fun ProductGrid(products: List<MerchantProductDto>, onAdd: (MerchantProd
                             else -> "${product.stockQuantity} in stock"
                         },
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (soldOut) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (soldOut) Ids.colors.danger else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -250,7 +251,7 @@ private fun ScanCustomerCheckout(amount: Double, onDone: () -> Unit) {
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
         Text(if (charging) "Charging ${String.format(Locale.US, "%,.0f", amount)} RWF…" else "Code scanned", fontWeight = FontWeight.Bold)
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        error?.let { Text(it, color = Ids.colors.danger, style = MaterialTheme.typography.bodySmall) }
     }
 }
 
@@ -284,7 +285,7 @@ private fun QrCheckout(amount: Double, description: String, onDone: () -> Unit) 
             Spacer(modifier = Modifier.padding(top = 12.dp))
             IdsButton(text = "Done — new sale", onClick = onDone)
         } else {
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            error?.let { Text(it, color = Ids.colors.danger) }
             TextButton(onClick = { generate() }) { Text("Retry") }
         }
     }
@@ -364,7 +365,7 @@ private fun CardCheckout(amount: Double, description: String, onDone: () -> Unit
             IdsTextField(value = expiryYear, onValueChange = { expiryYear = it }, label = "YYYY", keyboardType = KeyboardType.Number, modifier = Modifier.weight(1f))
             IdsTextField(value = cvc, onValueChange = { cvc = it }, label = "CVC", keyboardType = KeyboardType.Number, modifier = Modifier.weight(1f))
         }
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        error?.let { Text(it, color = Ids.colors.danger) }
         IdsButton(
             text = if (submitting) "Charging…" else "Charge ${String.format(Locale.US, "%,.0f", amount)} RWF",
             enabled = !submitting,
