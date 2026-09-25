@@ -239,6 +239,9 @@ public struct IdsTextField: View {
     @Binding var text: String
     var isSecure: Bool = false
     var keyboardType: UIKeyboardType = .default
+    var supportingText: String? = nil
+    var errorText: String? = nil
+    var successText: String? = nil
     // Real "No More Loading"/"Minimum Input" simplicity addition (Toss's own researched,
     // sourced pattern -- toss.tech/article/4-ways-for-minimum-input, rule #4: "Activate
     // focus state upon entering the page so the keyboard appears automatically" -- see
@@ -256,11 +259,14 @@ public struct IdsTextField: View {
     // meaningful when isSecure is true; ignored otherwise.
     @State private var passwordVisible = false
 
-    public init(_ label: String, text: Binding<String>, isSecure: Bool = false, keyboardType: UIKeyboardType = .default, autoFocus: Bool = false) {
+    public init(_ label: String, text: Binding<String>, isSecure: Bool = false, keyboardType: UIKeyboardType = .default, supportingText: String? = nil, errorText: String? = nil, successText: String? = nil, autoFocus: Bool = false) {
         self.label = label
         self._text = text
         self.isSecure = isSecure
         self.keyboardType = keyboardType
+        self.supportingText = supportingText
+        self.errorText = errorText
+        self.successText = successText
         self.autoFocus = autoFocus
     }
 
@@ -306,9 +312,25 @@ public struct IdsTextField: View {
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(isFocused ? IDS.Colors.brand : Color.clear, lineWidth: 1.5)
+                    .stroke(
+                        errorText != nil ? IDS.Colors.danger :
+                        successText != nil ? IDS.Colors.success :
+                        isFocused ? IDS.Colors.brand : Color.clear,
+                        lineWidth: 1.5
+                    )
             )
+            if let validation = errorText ?? successText ?? supportingText {
+                Text(validation)
+                    .font(IdsTypeScale.caption)
+                    .foregroundColor(
+                        errorText != nil ? IDS.Colors.danger :
+                        successText != nil ? IDS.Colors.success :
+                        IDS.Colors.textSecondary
+                    )
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
+        .accessibilityHint(errorText ?? successText ?? supportingText ?? "")
         .onAppear {
             if autoFocus { isFocused = true }
         }
