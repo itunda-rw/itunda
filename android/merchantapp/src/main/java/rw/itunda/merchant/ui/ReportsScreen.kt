@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -25,6 +24,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.util.Locale
 import rw.itunda.merchant.network.NetworkClient
+import rw.itunda.core.designsystem.components.IdsLoading
+import rw.itunda.core.designsystem.components.IdsErrorText
 import rw.itunda.merchant.network.ReportDayDto
 import rw.itunda.merchant.network.TopSellingProductDto
 import java.time.LocalDate
@@ -55,11 +56,11 @@ fun ReportsTab() {
         }
     }
 
-    error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp)) }
+    error?.let { IdsErrorText(it, modifier = Modifier.padding(16.dp)) }
 
     val list = days
     if (list == null) {
-        androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { IdsLoading() }
         return
     }
     LazyColumn(
@@ -127,7 +128,7 @@ fun ReportsTab() {
         val products = topProducts
         if (products == null) {
             item {
-                androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { IdsLoading() }
             }
         } else if (products.isEmpty()) {
             item {
