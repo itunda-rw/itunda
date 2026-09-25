@@ -144,4 +144,24 @@ document.getElementById('menu')?.addEventListener('click',()=>{const s=document.
 const cs=document.getElementById('componentSearch'),cf=document.getElementById('componentFilter');
 function filterComponents(){const q=(cs?.value||'').toLowerCase(),f=(cf?.value||'All').toLowerCase();document.querySelectorAll('.component-item').forEach(el=>{const text=(el.dataset.name||'')+' '+el.innerText.toLowerCase();el.style.display=(!q||text.includes(q))&& (f==='all'||text.includes(f))?'':'none';});}
 cs?.addEventListener('input',filterComponents);cf?.addEventListener('change',filterComponents);
-</script></body></html>
+</script><section id="quality" class="section">
+  <div class="section-kicker">IDS 3.0 · Quality contract</div>
+  <h2>From component library to system infrastructure</h2>
+  <p class="lede">A component is complete only when its behavior is predictable across content, states, themes, accessibility, and platforms.</p>
+  <div class="grid three">
+    <article class="card"><h3>Coverage</h3><p>Structure, variants, states, long content, large text, dark mode, loading and error behavior.</p></article>
+    <article class="card"><h3>Accessibility</h3><p>Keyboard focus, screen readers, semantic roles, reduced motion and minimum touch targets are part of the component contract.</p></article>
+    <article class="card"><h3>Parity</h3><p>Web, Android and iOS share semantic intent while respecting platform-native interaction conventions.</p></article>
+  </div>
+  <div class="component-guide">
+    <h3>Release gate</h3>
+    <table class="spec-table"><thead><tr><th>Gate</th><th>Required</th></tr></thead><tbody>
+      <tr><td>Tokens</td><td>Semantic tokens only in product-facing APIs</td></tr>
+      <tr><td>States</td><td>Default · pressed · focus · disabled · loading · error where applicable</td></tr>
+      <tr><td>Content</td><td>Long labels, localization and large text tested</td></tr>
+      <tr><td>Accessibility</td><td>Keyboard, screen reader, contrast and touch target behavior documented</td></tr>
+      <tr><td>Platforms</td><td>Web · Android · iOS behavior explicitly mapped</td></tr>
+    </tbody></table>
+  </div>
+</section>
+</body></html>
