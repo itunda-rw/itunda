@@ -311,14 +311,18 @@ const labMeta=document.createElement('p');labMeta.id='labContractMeta';labMeta.c
 const coverageMeta=document.createElement('div');coverageMeta.id='labCoverage';coverageMeta.className='panel';coverageMeta.setAttribute('aria-live','polite');labMeta.insertAdjacentElement('afterend',coverageMeta);
 function renderCoverage(kind){
   const contract=idsContractFor(kind);
-  const checks=[
-    ['States',contract.states.length>0],
-    ['Content',true],
-    ['Accessibility',true],
-    ['Motion',true],
-    ['Platforms',true]
-  ];
-  coverageMeta.innerHTML='<strong>Contract coverage</strong><div class="coverage-grid">'+checks.map(([label,ok])=>'<span class="coverage-item '+(ok?'coverage-ok':'coverage-missing')+'">'+(ok?'✓':'○')+' '+label+'</span>').join('')+'</div><p class="note">Coverage reflects the IDS contract dimensions represented by this laboratory.</p>';
+  const required=(contract.validation&&contract.validation.required)||['states','content','a11y','motion','platforms'];
+  const implemented={
+    states:Array.isArray(contract.states)&&contract.states.length>0,
+    content:Array.isArray(contract.content)||Array.isArray(contract.longContent),
+    a11y:Array.isArray(contract.a11y)&&contract.a11y.length>0,
+    motion:Array.isArray(contract.a11y)&&contract.a11y.includes('motion'),
+    platforms:Array.isArray(contract.platforms)&&['web','android','ios'].every(p=>contract.platforms.includes(p))
+  };
+  const labels={states:'States',content:'Content',a11y:'Accessibility',motion:'Motion',platforms:'Platforms'};
+  const checks=required.map(key=>[labels[key]||key,Boolean(implemented[key])]);
+  const passed=checks.filter(([,ok])=>ok).length;
+coverageMeta.innerHTML='<strong>Contract coverage · '+passed+'/'+checks.length+'</strong><div class="coverage-grid">'+checks.map(([label,ok])=>'<span class="coverage-item '+(ok?'coverage-ok':'coverage-missing')+'">'+(ok?'✓':'○')+' '+label+'</span>').join('')+'</div><p class="note">'+(passed===checks.length?'All required contract dimensions are represented.':'This component is not release-complete until every required dimension is represented.')+'</p>';
 }
 labSection?.querySelector('.lab-statebar')?.after(labMeta);
 labMeta.after(coverageMeta);
