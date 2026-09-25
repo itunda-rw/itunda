@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
+import rw.itunda.core.designsystem.components.IdsLoading
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -73,7 +73,7 @@ private fun MerchantApp() {
     LaunchedEffect(Unit) { resolveStartScreen() }
 
     when (val current = screen) {
-        is MerchantScreen.Loading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        is MerchantScreen.Loading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { IdsLoading() }
         is MerchantScreen.Login -> LoginScreen(onLoggedIn = { screen = MerchantScreen.BecomeMerchant })
         is MerchantScreen.BecomeMerchant -> {
             LaunchedEffect(current) {
