@@ -171,17 +171,16 @@ private fun CheckoutView(total: Double, description: String, onDone: () -> Unit,
         Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.padding(top = 16.dp))
 
-        Row {
-            listOf("SCAN" to "Scan customer", "QR" to "Show QR code", "CARD" to "Card").forEach { (v, label) ->
-                val selected = mode == v
-                Text(
-                    label,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(end = 16.dp).pressScaleClickable { mode = v },
-                )
-            }
-        }
+        rw.itunda.core.designsystem.components.IdsTabs(
+            labels = listOf("Scan customer", "Show QR code", "Card"),
+            selectedIndex = when (mode) {
+                "SCAN" -> 0
+                "QR" -> 1
+                else -> 2
+            },
+            onSelectedIndexChange = { mode = listOf("SCAN", "QR", "CARD")[it] },
+            modifier = Modifier.fillMaxWidth(),
+        )
         Spacer(modifier = Modifier.padding(top = 12.dp))
 
         when (mode) {
