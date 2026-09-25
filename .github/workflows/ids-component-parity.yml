@@ -1,0 +1,29 @@
+name: IDS component parity
+
+on:
+  push:
+    branches:
+      - agent/itunda-agent-network
+    paths:
+      - 'client/design-system/**'
+      - 'android/core/designsystem/**'
+      - 'ios/Core/DesignSystem/**'
+      - 'scripts/component-parity.mjs'
+      - '.github/workflows/ids-component-parity.yml'
+  pull_request:
+    paths:
+      - 'client/design-system/**'
+      - 'android/core/designsystem/**'
+      - 'ios/Core/DesignSystem/**'
+      - 'scripts/component-parity.mjs'
+      - '.github/workflows/ids-component-parity.yml'
+
+jobs:
+  parity:
+    name: Component contract parity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify component parity
+        run: node scripts/component-parity.mjs
