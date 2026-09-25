@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -60,6 +59,7 @@ import rw.itunda.core.network.AppLocalePreference
 import rw.itunda.core.network.AuthResult
 import rw.itunda.core.network.SessionManager
 import rw.itunda.core.designsystem.components.IdsKeyboardDockedButton
+import rw.itunda.core.designsystem.components.IdsLoading
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsIcons
@@ -483,13 +483,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                         .padding(vertical = if (isImeVisible) 0.dp else Ids.layout.screenVertical),
                 ) {
                     if (isSubmitting) {
-                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(28.dp).padding(vertical = 14.dp),
-                                color = Ids.colors.brand,
-                                strokeWidth = 3.dp,
-                            )
-                        }
+                        IdsLoading()
                     } else {
                         val buttonLabel = when (stage) {
                             AuthStage.PHONE, AuthStage.NAME, AuthStage.TERMS -> stringResource(R.string.login_button_next)
