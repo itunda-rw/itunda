@@ -188,6 +188,8 @@ public struct IDS {
         // this reason).
         public static let success = Color(light: 0x05804A, dark: 0x20D394)
         public static let successTint = Color(light: 0xF5FAFF, dark: 0x10321F)
+        // Shared semantic warning role; warningTint remains the supporting background wash.
+        public static let warning = Color(light: 0xFFA000, dark: 0xFFC24C)
         public static let warningTint = Color(light: 0xFFF4D6, dark: 0x3A2E10)
         public static let dangerTint = Color(light: 0xFFECEB, dark: 0x3A1418)
         // Real cross-platform parity fix (2026-08-04) -- iOS had no plain danger TEXT
