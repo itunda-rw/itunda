@@ -75,3 +75,23 @@ Rules: preserve active-tab visibility when scrolling; keyboard and screen-reader
 ## Promotion gate
 
 A primitive enters the public IDS catalog only when its anatomy, variants, states, accessibility, content behavior, dark mode, and platform mapping are documented and implemented.
+
+
+## Empty state
+
+**Flat API:** `EmptyState({ title, message?, actionText?, onAction? })`
+
+Variants: informational, actionable.
+
+States: default, with message, with action.
+
+Rules: the title is always meaningful; supporting copy wraps without truncation; actions use the shared Button contract; the component remains useful when the message is omitted. Empty states must not imply that an empty result is an error.
+
+### Platform implementations
+
+| Platform | Primitive |
+|---|---|
+| Web | `EmptyState` |
+| Android | `IdsEmptyState` |
+| iOS | `IdsEmptyState` |
+
