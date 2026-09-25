@@ -77,7 +77,7 @@
       "divider": "divider",
       "pressed": "pressed",
       "success": "success",
-      "warning": "warningTint",
+      "warning": "warning",
       "danger": "danger",
       "iconPrimary": "iconPrimary",
       "iconSecondary": "iconSecondary"
