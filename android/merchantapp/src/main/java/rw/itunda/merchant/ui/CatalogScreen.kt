@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,6 +11,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.components.IdsButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -72,12 +72,13 @@ fun CatalogTab() {
                 // it bookable (e.g. "Haircut", 30) via the new Availability tab.
                 IdsTextField(value = durationMinutes, onValueChange = { durationMinutes = it }, label = "Booking duration in minutes (optional -- makes this a bookable service)", modifier = Modifier.fillMaxWidth())
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                androidx.compose.material3.Button(
+                IdsButton(
+                    text = if (submitting) "Adding…" else "Add",
                     onClick = {
                         val amount = price.toDoubleOrNull()
                         if (name.isBlank() || amount == null || amount <= 0) {
                             error = "Enter a name and a real price."
-                            return@Button
+                            return@IdsButton
                         }
                         val duration = durationMinutes.trim().ifBlank { null }?.toIntOrNull()
                         val previousPrice = originalPrice.trim().ifBlank { null }?.toDoubleOrNull()
@@ -115,8 +116,9 @@ fun CatalogTab() {
                         }
                     },
                     enabled = !submitting,
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                ) { Text(if (submitting) "Adding…" else "Add") }
+                    loading = submitting,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
 
