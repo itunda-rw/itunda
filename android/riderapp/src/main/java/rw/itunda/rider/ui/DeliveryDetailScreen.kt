@@ -1,6 +1,7 @@
 package rw.itunda.rider.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import rw.itunda.core.designsystem.theme.Ids
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -127,7 +128,7 @@ fun DeliveryDetailScreen(orderId: String, onBack: () -> Unit) {
         if (!locationPermissionGranted) {
             Text(
                 "Location permission is needed so the buyer can see you're on the way.",
-                color = MaterialTheme.colorScheme.error,
+                color = Ids.colors.danger,
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
         }
