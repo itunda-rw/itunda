@@ -85,6 +85,18 @@
 
 <section class="section" id="states"><div class="section-head"><div class="eyebrow">11 · Components / States</div><h2>Design the worst case first.</h2><p>Every component must account for loading, empty, error and disabled states. A component is not complete when only the happy path looks good.</p></div><div class="states"><div class="state"><span class="dot"></span>Default</div><div class="state"><span class="dot"></span>Loading</div><div class="state"><span class="dot"></span>Empty</div><div class="state"><span class="dot"></span>Error</div></div></section>
 
+<section class="section" id="quality-gates">
+<div class="section-kicker">QUALITY GATES</div>
+<h2>Ship the edge cases, not just the happy path.</h2>
+<p class="lede">A component is ready when its behavior remains coherent under real product conditions.</p>
+<div class="grid three">
+<article class="card"><strong>Long content</strong><p>Wrap, truncate or scroll intentionally. Never let content silently collide.</p></article>
+<article class="card"><strong>Large text</strong><p>Layouts must survive accessibility text scaling without losing hierarchy.</p></article>
+<article class="card"><strong>Keyboard & screen reader</strong><p>Focus order, labels, roles and state announcements are part of the component.</p></article>
+<article class="card"><strong>Dark mode</strong><p>Semantic tokens change surfaces and emphasis without changing meaning.</p></article>
+<article class="card"><strong>Reduced motion</strong><p>Every non-essential transition has a reduced-motion behavior.</p></article>
+<article class="card"><strong>Touch targets</strong><p>Interactive controls maintain a practical minimum target size across platforms.</p></article>
+</div></section>
 <section class="section" id="accessibility"><div class="section-head"><div class="eyebrow">12 · Quality / Accessibility</div><h2>Accessibility is a component feature.</h2><p>IDS requires keyboard focus, larger text, screen-reader semantics, sufficient touch targets, reduced motion and useful labels. The same contract should hold across VoiceOver and TalkBack.</p></div><div class="grid"><div class="panel"><h3>Large text</h3><p>Content reflows instead of clipping or hiding actions when text grows.</p></div><div class="panel"><h3>Screen readers</h3><p>Interactive controls expose purpose, state and focus order instead of visual appearance alone.</p></div><div class="panel"><h3>Reduced motion</h3><p>Decorative movement disappears while functional state changes remain understandable.</p></div><div class="panel"><h3>Contrast & targets</h3><p>Text remains readable and interactive targets remain comfortable on small screens.</p></div></div></section>
 
 <section class="section" id="platforms"><div class="section-head"><div class="eyebrow">13 · Platforms</div><h2>One language.<br>Native implementation.</h2><p>Web CSS, Jetpack Compose and SwiftUI share the same design decisions. Platform conventions can change implementation, but not the intended experience.</p></div><div class="platform"><a href="https://github.com/itunda-rw/itunda-design-system"><strong>Web</strong><span>CSS tokens + components</span></a><a href="https://github.com/itunda-rw/itunda-design-system"><strong>Android</strong><span>Jetpack Compose theme + components</span></a><a href="https://github.com/itunda-rw/itunda-design-system"><strong>iOS</strong><span>SwiftUI theme + components</span></a></div></section>
