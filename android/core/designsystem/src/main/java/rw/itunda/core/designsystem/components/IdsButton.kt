@@ -505,3 +505,43 @@ fun IdsErrorText(
         color = Ids.colors.danger,
     )
 }
+
+
+/** IDS 3.0 canonical empty-state primitive shared by Android product surfaces. */
+@Composable
+fun IdsEmptyState(
+    title: String,
+    message: String? = null,
+    actionText: String? = null,
+    onAction: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = title,
+            style = IdsTypography.Title3,
+            color = Ids.colors.textPrimary,
+        )
+        message?.let {
+            Text(
+                text = it,
+                style = IdsTypography.Body2,
+                color = Ids.colors.textSecondary,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (actionText != null && onAction != null) {
+            IdsButton(
+                text = actionText,
+                onClick = onAction,
+                size = IdsButtonSize.Medium,
+            )
+        }
+    }
+}
