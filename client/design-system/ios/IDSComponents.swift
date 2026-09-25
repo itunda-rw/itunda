@@ -24,3 +24,75 @@ public struct IDSAlert: View {
     public init(title:String,message:String,dismiss:(() -> Void)?=nil){self.title=title;self.message=message;self.dismiss=dismiss}
     public var body: some View { VStack(alignment:.leading,spacing:6){Text(title).font(.headline);Text(message).font(.subheadline).foregroundStyle(.secondary);if let dismiss { Button("Dismiss",action:dismiss).font(.subheadline.weight(.semibold)) }}.padding(16).frame(maxWidth:.infinity,alignment:.leading).background(.thinMaterial,in:RoundedRectangle(cornerRadius:IDSRadii.md)) }
 }
+
+
+public struct IDSListRow<Content: View>: View {
+    let content: () -> Content
+    let action: (() -> Void)?
+    public init(action: (() -> Void)? = nil, @ViewBuilder content: @escaping () -> Content) {
+        self.action = action
+        self.content = content
+    }
+    public var body: some View {
+        Button(action: { action?() }) {
+            content().frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 14).padding(.horizontal, 16)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+public struct IDSTabs: View {
+    let labels: [String]
+    @Binding var selection: Int
+    public init(labels: [String], selection: Binding<Int>) {
+        self.labels = labels
+        self._selection = selection
+    }
+    public var body: some View {
+        Picker("", selection: $selection) {
+            ForEach(labels.indices, id: \.self) { index in Text(labels[index]).tag(index) }
+        }
+        .pickerStyle(.segmented)
+    }
+}
+
+public struct IDSBottomSheet<Content: View>: View {
+    @Binding var isPresented: Bool
+    let content: () -> Content
+    public init(isPresented: Binding<Bool>, @ViewBuilder content: @escaping () -> Content) {
+        self._isPresented = isPresented
+        self.content = content
+    }
+    public var body: some View {
+        Color.clear.sheet(isPresented: $isPresented) { content().presentationDetents([.medium, .large]) }
+    }
+}
+
+public struct IDSEmptyState: View {
+    let title: String; let message: String; let action: (() -> Void)?
+    public init(title: String, message: String, action: (() -> Void)? = nil) {
+        self.title = title; self.message = message; self.action = action
+    }
+    public var body: some View {
+        VStack(spacing: 8) {
+            Text(title).font(.headline)
+            Text(message).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            if let action { Button("Try again", action: action).buttonStyle(.borderedProminent) }
+        }.frame(maxWidth: .infinity).padding(32)
+    }
+}
+
+public struct IDSErrorState: View {
+    let title: String; let message: String; let retry: (() -> Void)?
+    public init(title: String = "Something went wrong", message: String, retry: (() -> Void)? = nil) {
+        self.title=title; self.message=message; self.retry=retry
+    }
+    public var body: some View {
+        IDSEmptyState(title: title, message: message, action: retry)
+    }
+}
+
+public struct IDSLoadingState: View {
+    public init() {}
+    public var body: some View { ProgressView().frame(maxWidth: .infinity).padding(32) }
+}
