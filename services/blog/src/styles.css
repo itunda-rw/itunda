@@ -10,13 +10,13 @@ a{color:inherit;text-decoration:none}
 button,input{font:inherit}
 .page{min-height:100vh;display:flex;flex-direction:column}
 .site-header{position:sticky;top:0;z-index:20;background:#ffffffdc;backdrop-filter:blur(20px);border-bottom:1px solid #eef0f2}
-.header-inner{height:72px;max-width:1280px;margin:auto;padding:0 32px;display:flex;align-items:center;gap:48px}
-.brand{font-size:24px;font-weight:800;letter-spacing:-1.4px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;line-height:1}
-.brand-mark{width:30px;height:30px;display:block;flex:none}
+.header-inner{height:64px;max-width:1200px;margin:auto;padding:0 24px;display:flex;align-items:center;gap:40px}
+.brand{font-size:20px;font-weight:800;letter-spacing:-1.1px;white-space:nowrap;display:inline-flex;align-items:center;gap:8px;line-height:1}
+.brand-mark{width:24px;height:24px;display:block;flex:none}
 .footer-brand{display:inline-flex;align-items:center;gap:8px;line-height:1}
 .footer-mark{width:20px;height:20px;display:block;flex:none}
 .brand-accent{color:var(--primary)}
-.site-nav{display:flex;gap:32px;flex:1;font-size:14px;font-weight:650;color:var(--muted)}
+.site-nav{display:flex;gap:24px;flex:1;font-size:14px;font-weight:650;color:var(--muted)}
 .site-nav a:hover,.site-nav .nav-active{color:var(--text)}
 .header-cta{padding:10px 16px;border-radius:999px;background:var(--primary);color:#fff;font-size:13px;font-weight:800}
 .wide-container{max-width:1120px;margin:auto;padding:0 28px}
