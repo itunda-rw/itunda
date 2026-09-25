@@ -56,7 +56,7 @@ struct PosTab: View {
                                 .padding(16)
                             }
                         } else {
-                            ProgressView().padding(16)
+                            SkeletonBlock(height: 64).padding(16)
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -172,7 +172,7 @@ private struct QrCheckoutView: View {
                 }
             } else {
                 if let error {
-                    Text(error).foregroundColor(.red).font(.footnote)
+                    Text(error).foregroundColor(IDS.Colors.danger).font(.footnote)
                 }
                 Button("Retry") { Task { await generate() } }
             }
@@ -242,7 +242,7 @@ private struct CardCheckoutView: View {
                     IdsTextField("CVC", text: $cvc, keyboardType: .numberPad)
                 }
                 if let error {
-                    Text(error).foregroundColor(.red).font(.footnote)
+                    Text(error).foregroundColor(IDS.Colors.danger).font(.footnote)
                 }
                 Button(action: { Task { await charge() } }) {
                     Text(submitting ? "Charging…" : "Charge \(formattedRWF(amount)) RWF")
