@@ -26,7 +26,7 @@ export default function HomePage() {
   }, [category, query]);
 
   const featured = posts[0];
-  const popular = posts.slice(0, 3);
+  const popular = posts.slice(1, 4);
   const series = [
     { name: 'Building Reliable Money Movement', description: 'Lessons from payments, idempotency, security, and failure recovery.', posts: posts.filter((post) => ['ledger', 'reliability', 'payments', 'security'].some((tag) => post.tags.includes(tag))).slice(0, 5) },
     { name: 'Systems That Fail in Production', description: 'The small assumptions that become real incidents.', posts: posts.filter((post) => ['infrastructure', 'reliability', 'operations'].some((tag) => post.tags.includes(tag))).slice(0, 5) },
