@@ -1,6 +1,7 @@
 package rw.itunda.feature.payments.impl
 
 import androidx.compose.foundation.background
+import rw.itunda.core.designsystem.components.IdsLoading
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
@@ -138,7 +139,7 @@ fun SavingsAmountScreen(
 
         if (isSubmitting) {
             Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
-                androidx.compose.material3.CircularProgressIndicator(color = Ids.colors.brand)
+                IdsLoading()
             }
         } else if (mode == SavingsAmountMode.claimInterest) {
             FlowNextBar(enabled = true, label = "OK") { onConfirm(0L) }
