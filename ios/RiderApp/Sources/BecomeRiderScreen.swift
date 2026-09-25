@@ -17,7 +17,7 @@ struct BecomeRiderScreen: View {
                 .font(.subheadline).foregroundColor(.secondary)
 
             if let error {
-                Text(error).foregroundColor(.red).font(.footnote)
+                Text(error).foregroundColor(IDS.Colors.danger).font(.footnote)
             }
 
             Button(action: { Task { await register() } }) {
