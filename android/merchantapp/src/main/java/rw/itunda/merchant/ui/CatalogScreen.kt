@@ -1,6 +1,7 @@
 package rw.itunda.merchant.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import rw.itunda.core.designsystem.theme.Ids
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -71,7 +72,7 @@ fun CatalogTab() {
                 // keeps the product a normal cataloged good; a real minute value marks
                 // it bookable (e.g. "Haircut", 30) via the new Availability tab.
                 IdsTextField(value = durationMinutes, onValueChange = { durationMinutes = it }, label = "Booking duration in minutes (optional -- makes this a bookable service)", modifier = Modifier.fillMaxWidth())
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                error?.let { Text(it, color = Ids.colors.danger) }
                 IdsButton(
                     text = if (submitting) "Adding…" else "Add",
                     onClick = {
