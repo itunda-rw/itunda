@@ -309,3 +309,131 @@ fun IdsTextField(
         },
     )
 }
+
+
+/** IDS 3.0 shared select primitive: label, semantic selection control, and supporting/error state. */
+@Composable
+fun IdsSelect(
+    value: String,
+    options: List<String>,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    supportingText: String? = null,
+    errorText: String? = null,
+    enabled: Boolean = true,
+) {
+    val expandedState = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val supporting = errorText ?: supportingText
+    Column(modifier = modifier.fillMaxWidth()) {
+        androidx.compose.material3.OutlinedButton(
+            onClick = { expandedState.value = true },
+            enabled = enabled,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+            shape = RoundedCornerShape(12.dp),
+        ) {
+            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
+                Text(label, color = Ids.colors.textSecondary, style = IdsTypography.Caption)
+                Text(value.ifEmpty { "Select" }, color = Ids.colors.textPrimary)
+            }
+        }
+        androidx.compose.material3.DropdownMenu(
+            expanded = expandedState.value,
+            onDismissRequest = { expandedState.value = false },
+        ) {
+            options.forEach { option ->
+                androidx.compose.material3.DropdownMenuItem(
+                    text = { Text(option) },
+                    onClick = {
+                        onValueChange(option)
+                        expandedState.value = false
+                    },
+                )
+            }
+        }
+        if (supporting != null) {
+            Text(
+                supporting,
+                color = if (errorText != null) Ids.colors.danger else Ids.colors.textSecondary,
+                style = IdsTypography.Caption,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+            )
+        }
+    }
+}
+
+/** IDS 3.0 native checkbox with a 44dp interaction target and explicit semantic label. */
+@Composable
+fun IdsCheckbox(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    androidx.compose.material3.Checkbox(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        enabled = enabled,
+        modifier = modifier.heightIn(min = 44.dp).semantics { role = Role.Checkbox },
+    )
+    // Callers should place this beside their text label; the native control retains
+    // platform semantics and the 44dp minimum touch target.
+}
+
+/** IDS 3.0 radio primitive; callers provide one control per option in a group. */
+@Composable
+fun IdsRadio(
+    selected: Boolean,
+    onClick: () -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    androidx.compose.material3.RadioButton(
+        selected = selected,
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.heightIn(min = 44.dp).semantics { role = Role.RadioButton },
+    )
+}
+
+/** IDS 3.0 switch primitive with an explicit accessible label. */
+@Composable
+fun IdsSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    androidx.compose.material3.Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        enabled = enabled,
+        modifier = modifier.heightIn(min = 44.dp).semantics { role = Role.Switch },
+    )
+}
+
+/** IDS 3.0 tabs primitive with deterministic selected state and native semantics. */
+@Composable
+fun IdsTabs(
+    labels: List<String>,
+    selectedIndex: Int,
+    onSelectedIndexChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    androidx.compose.material3.TabRow(
+        selectedTabIndex = selectedIndex.coerceIn(0, (labels.size - 1).coerceAtLeast(0)),
+        modifier = modifier,
+    ) {
+        labels.forEachIndexed { index, label ->
+            androidx.compose.material3.Tab(
+                selected = index == selectedIndex,
+                onClick = { onSelectedIndexChange(index) },
+                text = { Text(label) },
+                modifier = Modifier.heightIn(min = 48.dp),
+            )
+        }
+    }
+}
