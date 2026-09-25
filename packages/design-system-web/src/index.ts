@@ -216,7 +216,7 @@ export function EmptyState({ title, message, actionText, onAction }: EmptyStateP
       <h2 className="ids-empty-state__title">{title}</h2>
       {message ? <p className="ids-empty-state__message">{message}</p> : null}
       {actionText && onAction ? (
-        <Button text={actionText} onClick={onAction} variant="secondary" size="md" />
+        <Button onClick={onAction} variant="secondary" size="md">{actionText}</Button>
       ) : null}
     </section>
   );
