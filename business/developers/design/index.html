@@ -322,7 +322,10 @@ function renderCoverage(kind){
   const labels={states:'States',content:'Content',a11y:'Accessibility',motion:'Motion',platforms:'Platforms'};
   const checks=required.map(key=>[labels[key]||key,Boolean(implemented[key])]);
   const passed=checks.filter(([,ok])=>ok).length;
-coverageMeta.innerHTML='<strong>Contract coverage · '+passed+'/'+checks.length+'</strong><div class="coverage-grid">'+checks.map(([label,ok])=>'<span class="coverage-item '+(ok?'coverage-ok':'coverage-missing')+'">'+(ok?'✓':'○')+' '+label+'</span>').join('')+'</div><p class="note">'+(passed===checks.length?'All required contract dimensions are represented.':'This component is not release-complete until every required dimension is represented.')+'</p>';
+  const mapped=checks.every(([,ok])=>ok);
+  const contractChecked=mapped;
+  const buildVerified=false;
+  coverageMeta.innerHTML='<strong>Contract coverage · '+passed+'/'+checks.length+'</strong><div class="coverage-grid">'+checks.map(([label,ok])=>'<span class="coverage-item '+(ok?'coverage-ok':'coverage-missing')+'">'+(ok?'✓':'○')+' '+label+'</span>').join('')+'</div><div class="coverage-grid"><span class="coverage-item '+(mapped?'coverage-ok':'coverage-missing')+'">'+(mapped?'✓':'○')+' Mapped</span><span class="coverage-item '+(contractChecked?'coverage-ok':'coverage-missing')+'">'+(contractChecked?'✓':'○')+' Contract-checked</span><span class="coverage-item '+(buildVerified?'coverage-ok':'coverage-missing')+'">'+(buildVerified?'✓':'○')+' Build-verified</span></div><p class="note">'+(buildVerified?'All verification levels are complete.':'Build verification remains separate and is not claimed until an actual platform build succeeds.')+'</p>';
 }
 labSection?.querySelector('.lab-statebar')?.after(labMeta);
 labMeta.after(coverageMeta);
