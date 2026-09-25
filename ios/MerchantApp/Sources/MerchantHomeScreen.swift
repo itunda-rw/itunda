@@ -99,7 +99,7 @@ private struct OrdersTab: View {
     var body: some View {
         Group {
             if let error {
-                Text(error).foregroundColor(.red).padding(16)
+                Text(error).foregroundColor(IDS.Colors.danger).padding(16)
             }
             if let orders {
                 let active = orders.filter { ["PLACED", "ACCEPTED", "PREPARING", "READY_FOR_PICKUP"].contains($0.status) }
@@ -119,7 +119,7 @@ private struct OrdersTab: View {
                 }
             } else {
                 Spacer()
-                ProgressView()
+                SkeletonBlock(height: 96)
                 Spacer()
             }
         }
