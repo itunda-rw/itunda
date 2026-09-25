@@ -21,10 +21,12 @@ import androidx.compose.material.icons.outlined.RateReview
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsTabs
+import rw.itunda.core.designsystem.components.IdsLoading
+import rw.itunda.core.designsystem.components.IdsErrorText
 import rw.itunda.core.designsystem.components.StatusBadge
 import rw.itunda.core.designsystem.theme.Ids
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -75,36 +77,32 @@ fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
             }
         }
 
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
-            listOf(
-                MerchantTab.ORDERS to "Orders",
-                MerchantTab.DINE_IN to "Dine-in",
-                MerchantTab.BOOKINGS to "Bookings",
-                MerchantTab.CATALOG to "Catalog",
-                MerchantTab.REGISTER to "Register",
-                MerchantTab.BUSINESS_ACCOUNT to "Business",
-                MerchantTab.REPORTS to "Reports",
-                MerchantTab.REVIEWS to "Reviews",
-                MerchantTab.COUPONS to "Coupons",
-                MerchantTab.VISITORS to "Visitors",
-                MerchantTab.FOLLOWERS to "Followers",
-                MerchantTab.UPDATES to "Updates",
-                MerchantTab.PHOTOS to "Photos",
-                MerchantTab.PAYROLL to "Payroll",
-                MerchantTab.ADS to "Ads",
-                MerchantTab.BILLING to "Billing",
-                MerchantTab.CASH_ADVANCE to "Cash advance",
-                MerchantTab.VOUCHERS to "Vouchers",
-            ).forEach { (t, label) ->
-                val selected = t == tab
-                Text(
-                    label,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(end = 18.dp).pressScaleClickable { tab = t },
-                )
-            }
-        }
+        val tabs = listOf(
+            MerchantTab.ORDERS to "Orders",
+            MerchantTab.DINE_IN to "Dine-in",
+            MerchantTab.BOOKINGS to "Bookings",
+            MerchantTab.CATALOG to "Catalog",
+            MerchantTab.REGISTER to "Register",
+            MerchantTab.BUSINESS_ACCOUNT to "Business",
+            MerchantTab.REPORTS to "Reports",
+            MerchantTab.REVIEWS to "Reviews",
+            MerchantTab.COUPONS to "Coupons",
+            MerchantTab.VISITORS to "Visitors",
+            MerchantTab.FOLLOWERS to "Followers",
+            MerchantTab.UPDATES to "Updates",
+            MerchantTab.PHOTOS to "Photos",
+            MerchantTab.PAYROLL to "Payroll",
+            MerchantTab.ADS to "Ads",
+            MerchantTab.BILLING to "Billing",
+            MerchantTab.CASH_ADVANCE to "Cash advance",
+            MerchantTab.VOUCHERS to "Vouchers",
+        )
+        IdsTabs(
+            labels = tabs.map { it.second },
+            selectedIndex = tabs.indexOfFirst { it.first == tab }.coerceAtLeast(0),
+            onSelectedIndexChange = { tab = tabs[it].first },
+            modifier = Modifier.fillMaxWidth(),
+        )
 
         when (tab) {
             MerchantTab.ORDERS -> OrdersTab()
@@ -159,11 +157,11 @@ private fun OrdersTab() {
         }
     }
 
-    error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp)) }
+    error?.let { IdsErrorText(it, modifier = Modifier.padding(horizontal = 16.dp)) }
 
     val list = orders
     if (list == null) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { IdsLoading() }
         return
     }
     val active = list.filter { it.status in setOf("PLACED", "ACCEPTED", "PREPARING", "READY_FOR_PICKUP") }
