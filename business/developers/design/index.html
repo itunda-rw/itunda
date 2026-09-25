@@ -288,8 +288,27 @@ function idsContractFor(kind){return IDS_CONTRACTS[kind]||IDS_CONTRACTS.button}
 const labKinds=['button','field','select','checkbox','radio','switch','tabs','empty'];
 const labKindLabels={button:'Button',field:'Text field',select:'Select',checkbox:'Checkbox',radio:'Radio',switch:'Switch',tabs:'Tabs',empty:'Empty state'};
 const kindBar=document.createElement('div');kindBar.className='lab-statebar';kindBar.setAttribute('role','toolbar');kindBar.setAttribute('aria-label','Component type');kindBar.innerHTML=labKinds.map((k,i)=>'<button data-lab-kind="'+k+'" aria-pressed="'+(!i)+'">'+labKindLabels[k]+'</button>').join('');
+const stateBar=document.querySelector('#lab .lab-statebar:not(#labKindBar)');
+function syncLabContract(kind){
+  const contract=idsContractFor(kind);
+  if(!stateBar)return;
+  stateBar.querySelectorAll('[data-lab-state]').forEach(btn=>{
+    const state=btn.dataset.labState;
+    const allowed=contract.states.includes(state)|| (state==='default'&&contract.states.includes('default'));
+    btn.hidden=!allowed;
+    btn.setAttribute('aria-hidden',String(!allowed));
+    if(!allowed&&btn.getAttribute('aria-pressed')==='true')btn.setAttribute('aria-pressed','false');
+  });
+  const first=[...stateBar.querySelectorAll('[data-lab-state]')].find(btn=>!btn.hidden);
+  if(first&&!stateBar.querySelector('[data-lab-state][aria-pressed="true"]:not([hidden])'))first.setAttribute('aria-pressed','true');
+  const contractNode=document.getElementById('labContractMeta');
+  if(contractNode)contractNode.textContent=contract.label+' · '+contract.states.join(' · ');
+}
 const labSection=document.getElementById('lab');if(labSection&&!document.getElementById('labKindBar')){kindBar.id='labKindBar';labSection.querySelector('.lab-statebar')?.before(kindBar)}
 let labKind='button';
+const labMeta=document.createElement('p');labMeta.id='labContractMeta';labMeta.className='note';labMeta.setAttribute('aria-live','polite');labMeta.textContent=idsContractFor(labKind).label+' · '+idsContractFor(labKind).states.join(' · ');
+labSection?.querySelector('.lab-statebar')?.after(labMeta);
 function renderLabV3(){if(!labPreview)return;const s=document.querySelector('[data-lab-state][aria-pressed="true"]')?.dataset.labState||'default';let h='';if(labKind==='button')h='<div class="playground-card"><button class="btn primary" '+(s==='disabled'||s==='loading'?'disabled':'')+'>'+((s==='loading')?'Loading…':s==='error'?'Try again':'Continue')+'</button></div>';else if(labKind==='field')h='<div class="playground-card"><label class="demo-label">Phone number<input class="field" '+(s==='disabled'?'disabled':'')+' value="+250 788 123 456"><span class="help">'+(s==='error'?'Enter a valid phone number.':'Used for verification.')+'</span></label></div>';else if(labKind==='select')h='<div class="playground-card"><label class="demo-label">Payment method<select class="pg-select" '+(s==='disabled'?'disabled':'')+'><option>Mobile Money</option><option>Bank account</option></select></label></div>';else if(labKind==='checkbox')h='<div class="playground-card control-stack"><label class="control-option"><input type="checkbox" checked> Remember this device</label><span class="help">Native checkbox semantics remain authoritative.</span></div>';else if(labKind==='radio')h='<div class="playground-card control-stack"><label class="control-option"><input type="radio" name="pg-radio" checked> Kigali</label><label class="control-option"><input type="radio" name="pg-radio"> Other location</label></div>';else if(labKind==='switch')h='<div class="playground-card"><label class="control-option"><input type="checkbox" role="switch" checked> Notifications</label></div>';else if(labKind==='tabs')h='<div class="playground-card"><div class="pg-tabs"><button class="active">Overview</button><button>Activity</button><button>Settings</button></div></div>';else h='<div class="playground-card ids-empty-state"><div class="ids-empty-state__icon" aria-hidden="true">○</div><h2 class="ids-empty-state__title">No products yet</h2><p class="ids-empty-state__message">Add your first product to start building your catalog.</p><button class="btn">Add product</button></div>';labPreview.innerHTML=h}
-document.querySelectorAll('[data-lab-kind]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-lab-kind]').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');labKind=b.dataset.labKind;renderLabV3()}));document.querySelectorAll('[data-lab-state]').forEach(b=>b.addEventListener('click',()=>setTimeout(renderLabV3,0)));renderLabV3();
+document.querySelectorAll('[data-lab-kind]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-lab-kind]').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');labKind=b.dataset.labKind;syncLabContract(labKind);renderLabV3()}));
+syncLabContract(labKind);document.querySelectorAll('[data-lab-state]').forEach(b=>b.addEventListener('click',()=>setTimeout(renderLabV3,0)));renderLabV3();
 </script></body></html>
