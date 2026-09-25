@@ -15,8 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
@@ -389,7 +387,7 @@ fun SettingsScreen(
                             Text(stringResource(R.string.settings_unlock_biometrics), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                             Text(stringResource(R.string.settings_unlock_biometrics_body), color = Ids.colors.textTertiary, fontSize = 13.sp)
                         }
-                        Switch(
+                        rw.itunda.core.designsystem.components.IdsSwitch(
                             checked = appLockEnabled,
                             onCheckedChange = {
                                 appLockEnabled = it
