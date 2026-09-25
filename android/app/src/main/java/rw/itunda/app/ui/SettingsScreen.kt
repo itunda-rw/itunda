@@ -393,7 +393,6 @@ fun SettingsScreen(
                                 appLockEnabled = it
                                 tokenStore.setAppLockEnabled(it)
                             },
-                            colors = SwitchDefaults.colors(checkedTrackColor = Ids.colors.brand),
                         )
                     }
                     // Real PIN fallback (2026-08-13) -- see TokenStore.setPin's own
