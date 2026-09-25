@@ -21,3 +21,13 @@ import androidx.compose.ui.unit.dp
 @Composable fun IDSField(value:String, onValueChange:(String)->Unit, label:String, error:String?=null, enabled:Boolean=true) {
     OutlinedTextField(value=value,onValueChange=onValueChange,label={Text(label)},enabled=enabled,isError=error!=null,supportingText={error?.let{Text(it)}},modifier=Modifier.fillMaxWidth())
 }
+
+
+@Composable fun IDSAlert(title:String, message:String, onDismiss:(()->Unit)?=null) {
+    Card(shape=RoundedCornerShape(IDSRadii.md.dp), modifier=Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) { Text(title, style=MaterialTheme.typography.titleMedium); Text(message, style=MaterialTheme.typography.bodyMedium); onDismiss?.let { TextButton(onClick=it){Text("Dismiss")} } }
+    }
+}
+@Composable fun IDSCard(content:@Composable ColumnScope.()->Unit) {
+    Card(shape=RoundedCornerShape(IDSRadii.lg.dp), modifier=Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), content=content) }
+}
