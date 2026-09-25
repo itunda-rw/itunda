@@ -362,7 +362,7 @@ fun IdsSelect(
     }
 }
 
-/** IDS 3.0 native checkbox with a 44dp interaction target and explicit semantic label. */
+/** IDS 3.0 native checkbox with a 44dp interaction target and explicit accessible label. */
 @Composable
 fun IdsCheckbox(
     checked: Boolean,
@@ -371,17 +371,23 @@ fun IdsCheckbox(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    androidx.compose.material3.Checkbox(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        enabled = enabled,
-        modifier = modifier.heightIn(min = 44.dp).semantics { role = Role.Checkbox },
-    )
-    // Callers should place this beside their text label; the native control retains
-    // platform semantics and the 44dp minimum touch target.
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 44.dp)
+            .semantics { contentDescription = label },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        androidx.compose.material3.Checkbox(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            enabled = enabled,
+        )
+        Text(label, color = Ids.colors.textPrimary, modifier = Modifier.padding(start = 8.dp))
+    }
 }
 
-/** IDS 3.0 radio primitive; callers provide one control per option in a group. */
+/** IDS 3.0 radio primitive with a complete accessible label row. */
 @Composable
 fun IdsRadio(
     selected: Boolean,
@@ -390,15 +396,23 @@ fun IdsRadio(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    androidx.compose.material3.RadioButton(
-        selected = selected,
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.heightIn(min = 44.dp).semantics { role = Role.RadioButton },
-    )
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 44.dp)
+            .semantics { contentDescription = label },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        androidx.compose.material3.RadioButton(
+            selected = selected,
+            onClick = onClick,
+            enabled = enabled,
+        )
+        Text(label, color = Ids.colors.textPrimary, modifier = Modifier.padding(start = 8.dp))
+    }
 }
 
-/** IDS 3.0 switch primitive with an explicit accessible label. */
+/** IDS 3.0 switch primitive with a complete accessible label row. */
 @Composable
 fun IdsSwitch(
     checked: Boolean,
@@ -407,13 +421,23 @@ fun IdsSwitch(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    androidx.compose.material3.Switch(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        enabled = enabled,
-        modifier = modifier.heightIn(min = 44.dp).semantics { role = Role.Switch },
-    )
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 44.dp)
+            .semantics { contentDescription = label },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(label, color = Ids.colors.textPrimary, modifier = Modifier.weight(1f))
+        androidx.compose.material3.Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            enabled = enabled,
+        )
+    }
 }
+
 
 /** IDS 3.0 tabs primitive with deterministic selected state and native semantics. */
 @Composable
