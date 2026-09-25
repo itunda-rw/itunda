@@ -80,12 +80,13 @@ struct PosTab: View {
                             Spacer()
                             Text("\(formattedRWF(total)) RWF").bold()
                         }
-                        Button(action: { checkingOut = true }) {
-                            Text("Checkout").bold().foregroundColor(.white)
-                                .frame(maxWidth: .infinity).padding(.vertical, 10)
-                                .background(cart.isEmpty ? Color.gray : IDS.Colors.brand).cornerRadius(10)
-                        }
-                        .disabled(cart.isEmpty)
+                        IdsButton(
+                            text: "Checkout",
+                            isEnabled: !cart.isEmpty,
+                            variant: .filled,
+                            size: .medium,
+                            action: { checkingOut = true }
+                        )
                     }
                     .padding(16)
                     .frame(width: 220)
@@ -144,8 +145,12 @@ private struct CheckoutView: View {
                 CardCheckoutView(amount: total, description: description, onDone: onDone)
             }
 
-            Button("Back to cart", action: onCancel)
-                .frame(maxWidth: .infinity, alignment: .center)
+            IdsButton(
+                text: "Back to cart",
+                variant: .tinted,
+                size: .medium,
+                action: onCancel
+            )
 
             Spacer()
         }
@@ -170,7 +175,13 @@ private struct QrCheckoutView: View {
                 if let error {
                     IdsErrorText(error)
                 }
-                Button("Retry") { Task { await generate() } }
+                IdsButton(
+                        text: "Retry",
+                        variant: .tinted,
+                        size: .medium,
+                        fullWidth: false,
+                        action: { Task { await generate() } }
+                    )
             }
         }
         .frame(maxWidth: .infinity)
@@ -223,11 +234,7 @@ private struct CardCheckoutView: View {
         } else if let result {
             VStack(spacing: 12) {
                 Text("Card charged — •••• \(result)").bold()
-                Button(action: onDone) {
-                    Text("Done — new sale").bold().foregroundColor(.white)
-                        .frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(IDS.Colors.brand).cornerRadius(10)
-                }
+                IdsButton(text: "Done — new sale", size: .medium, action: onDone)
             }
         } else {
             VStack(spacing: 10) {
