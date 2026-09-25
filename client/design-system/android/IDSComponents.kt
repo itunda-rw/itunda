@@ -31,3 +31,78 @@ import androidx.compose.ui.unit.dp
 @Composable fun IDSCard(content:@Composable ColumnScope.()->Unit) {
     Card(shape=RoundedCornerShape(IDSRadii.lg.dp), modifier=Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), content=content) }
 }
+
+
+@Composable
+fun IDSList(items: List<Pair<String, String>>, onItemClick: (Int) -> Unit = {}) {
+    Card(shape = RoundedCornerShape(IDSRadii.lg.dp), modifier = Modifier.fillMaxWidth()) {
+        Column {
+            items.forEachIndexed { index, item ->
+                TextButton(
+                    onClick = { onItemClick(index) },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
+                ) {
+                    Column(Modifier.fillMaxWidth()) {
+                        Text(item.first, style = MaterialTheme.typography.titleSmall)
+                        Text(item.second, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                if (index < items.lastIndex) HorizontalDivider()
+            }
+        }
+    }
+}
+
+@Composable
+fun IDSTabs(labels: List<String>, selectedIndex: Int, onSelected: (Int) -> Unit) {
+    ScrollableTabRow(selectedTabIndex = selectedIndex, edgePadding = 0.dp) {
+        labels.forEachIndexed { index, label ->
+            Tab(
+                selected = selectedIndex == index,
+                onClick = { onSelected(index) },
+                text = { Text(label) }
+            )
+        }
+    }
+}
+
+@Composable
+fun IDSBottomSheet(
+    visible: Boolean,
+    onDismiss: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    if (visible) {
+        ModalBottomSheet(onDismissRequest = onDismiss) {
+            Column(Modifier.fillMaxWidth().padding(20.dp), content = content)
+        }
+    }
+}
+
+@Composable
+fun IDSEmptyState(title: String, message: String, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
+    Column(
+        Modifier.fillMaxWidth().padding(32.dp),
+        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+    ) {
+        Text(title, style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(6.dp))
+        Text(message, style = MaterialTheme.typography.bodyMedium)
+        if (actionLabel != null && onAction != null) {
+            Spacer(Modifier.height(16.dp))
+            IDSPrimaryButton(actionLabel, onClick = onAction)
+        }
+    }
+}
+
+@Composable
+fun IDSErrorState(title: String = "Something went wrong", message: String, onRetry: (() -> Unit)? = null) {
+    IDSAlert(title, message, onRetry)
+}
+
+@Composable
+fun IDSLoadingState() {
+    Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
+        CircularProgressIndicator()
+    }
+}
