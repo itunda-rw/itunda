@@ -128,12 +128,25 @@ struct TalkScreen: View {
                 .padding(.horizontal, IDS.Layout.screenHorizontal)
                 .padding(.top, IDS.Layout.screenTop)
 
-            Picker("", selection: $view) {
-                Text("Direct").tag(TalkView.direct)
-                Text("Groups").tag(TalkView.groups)
-                Text("Friends").tag(TalkView.friends)
-            }
-            .pickerStyle(.segmented)
+            IdsTabs(
+                ["Direct", "Groups", "Friends"],
+                selectedIndex: Binding(
+                    get: {
+                        switch view {
+                        case .direct: return 0
+                        case .groups: return 1
+                        case .friends: return 2
+                        }
+                    },
+                    set: {
+                        switch $0 {
+                        case 1: view = .groups
+                        case 2: view = .friends
+                        default: view = .direct
+                        }
+                    }
+                )
+            )
             .padding(.horizontal, IDS.Layout.screenHorizontal)
             .padding(.top, 8)
 
