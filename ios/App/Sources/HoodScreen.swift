@@ -166,7 +166,7 @@ struct NeighborhoodSetupPrompt: View {
             }
             .disabled(busy)
             if let error {
-                Text(error).font(.caption).foregroundColor(IDS.Colors.danger)
+                IdsErrorText(error)
             }
         }
         .frame(maxWidth: .infinity)
