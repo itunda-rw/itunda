@@ -1,0 +1,28 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "name":"Itunda Design System source map",
+  "version":"2.0.0",
+  "identity":{"brand":"#7472F4","principle":"Itunda identity; shared system rigor across platforms"},
+  "foundations":{
+    "color":{"web":"client/design-system/tokens.css","android":"android/core/designsystem/src/main/java/rw/itunda/core/designsystem/theme/IdsSemanticColors.kt","ios":"ios/Core/DesignSystem/Sources/IDS.swift"},
+    "primitiveColor":{"web":"packages/design-tokens/tokens.json","android":"android/core/designsystem/src/main/java/rw/itunda/core/designsystem/theme/IdsColors.kt","ios":"ios/Core/DesignSystem/Sources/Theme/IdsTheme.swift"},
+    "typography":{"web":"client/design-system/tokens.css","android":"android/core/designsystem/src/main/java/rw/itunda/core/designsystem/theme/IdsTypography.kt","ios":"ios/Core/DesignSystem/Sources/Theme/IdsTheme.swift"},
+    "layout":{"web":"client/design-system/tokens.css","android":"android/core/designsystem/src/main/java/rw/itunda/core/designsystem/theme/IdsLayout.kt","ios":"ios/Core/DesignSystem/Sources/IDS.swift"},
+    "motion":{"web":"packages/design-tokens/tokens.css","android":"android/core/designsystem/src/main/java/rw/itunda/core/designsystem/theme/IdsMotion.kt","ios":"ios/Core/DesignSystem/Sources/IDS.swift"}
+  },
+  "components":{
+    "button":{"web":"client/design-system/components.css","android":"android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt","ios":"ios/Core/DesignSystem/Sources/Components/Components.swift"},
+    "listRow":{"web":"client/design-system/components.css","android":"android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsListRow.kt","ios":"ios/Core/DesignSystem/Sources/Components/Components.swift"},
+    "forms":{"web":"client/design-system/components.css","android":"android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsTextField.kt","ios":"ios/Core/DesignSystem/Sources/Components/Components.swift"},
+    "states":{"web":"client/design-system/components.css","android":"android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components","ios":"ios/Core/DesignSystem/Sources/Components/Components.swift"},
+    "sdui":{"android":"android/core/designsystem/src/main/java/rw/itunda/core/designsystem/sdui/SduiRenderer.kt","ios":"ios/Core/SDUI/Sources/SduiModels.swift"}
+  },
+  "productPatterns":{
+    "authentication":["android/app/src/main/java/rw/itunda/app/ui/LoginScreen.kt"],
+    "moneyMovement":["android/features/payments/impl/src/main/java/rw/itunda/feature/payments/impl/TransferFlow.kt","ios/Features/Payments/Sources/TransferScreen.swift"],
+    "banking":["android/app/src/main/java/rw/itunda/app/ui/ItundaAppScreen.kt","ios/Features/Banking/Sources/BankView.swift"],
+    "payments":["ios/Features/Payments/Sources/TransferScreen.swift","ios/SDK/Pay/Sources/PaymentWidget.swift"],
+    "identity":["android/app/src/main/java/rw/itunda/app/ui/AppLockScreen.kt","ios/Core/Identity"],
+    "maps":["android/app/src/main/java/rw/itunda/app/ui/MapScreen.kt"]
+  }
+}
