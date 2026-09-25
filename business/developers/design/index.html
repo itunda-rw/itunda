@@ -1,1 +1,143 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#7472F4"><title>Design — Itunda Developers</title><meta name="description" content="Itunda Design System and ItundaFace developer resources."><link rel="stylesheet" href="../../../client/design-system/tokens.css"><link rel="stylesheet" href="../../../client/design-system/components.css"><style>body{margin:0;color:#191F28;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,system-ui,sans-serif}a{color:inherit;text-decoration:none}.nav{height:72px;border-bottom:1px solid #EEF0F2;display:flex;align-items:center;padding:0 28px;position:sticky;top:0;background:#ffffffdf;backdrop-filter:blur(20px);z-index:5}.navin{width:100%;max-width:1180px;margin:auto;display:flex;gap:28px;align-items:center}.brand{font-size:24px;font-weight:850;letter-spacing:-1.6px}.links{display:flex;gap:5px;flex:1}.links a{padding:10px 12px;border-radius:11px;font-size:14px;font-weight:700;color:#68717D}.links a:hover,.links .active{background:#F7F8FA;color:#191F28}.cta{padding:11px 17px;border-radius:999px;background:#7472F4;color:#fff;font-size:13px;font-weight:800}.hero{padding:120px 24px 100px;background:linear-gradient(180deg,#F4F3FF,#fff)}.inner{max-width:1180px;margin:auto}.ey{font-size:12px;font-weight:900;letter-spacing:.13em;color:#625FE0}.hero h1{font-size:clamp(58px,9vw,112px);line-height:.88;letter-spacing:-6px;margin:18px 0;max-width:850px}.lead{max-width:720px;color:#6B7684;font-size:19px;line-height:1.6}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:48px}.card{border:1px solid #EEF0F2;border-radius:28px;padding:30px;background:#F7F8FA;min-height:250px}.card h2{font-size:27px;letter-spacing:-1px;margin:48px 0 10px}.card p{color:#6B7684;line-height:1.6;font-size:14px}.num{font-size:12px;font-weight:900;color:#625FE0}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:28px}.pill{padding:13px 18px;border-radius:999px;font-weight:800;background:#F1F3F5}.primary{background:#7472F4;color:#fff}.section{padding:100px 24px;border-top:1px solid #EEF0F2}.resource{display:grid;grid-template-columns:1fr 1fr;gap:16px}.resource a{padding:25px;border:1px solid #EEF0F2;border-radius:22px}.resource strong{font-size:17px}.resource span{display:block;color:#6B7684;font-size:13px;line-height:1.5;margin-top:8px}.footer{padding:40px 28px;color:#8A949F;font-size:13px}@media(max-width:760px){.links{display:none}.nav{padding:0 20px}.hero{padding:90px 20px 76px}.section{padding:76px 20px}.grid,.resource{grid-template-columns:1fr}.hero h1{letter-spacing:-4px}}</style></head><body><nav class="nav"><div class="navin"><a class="brand" href="../">itunda.</a><div class="links"><a href="../">Developers</a><a class="active" href="./">Design</a><a href="./itundaface/">ItundaFace</a><a href="./sandbox/">Sandbox</a><a href="../api/">API</a><a href="../guides/">Guides</a></div><a class="cta" href="https://github.com/itunda-rw/itunda-design-system">GitHub</a></div></nav><main><section class="hero"><div class="inner"><div class="ey">ITUNDA · DESIGN</div><h1>The visual system<br>behind Itunda.</h1><p class="lead">Tokens, components, typography, motion, accessibility and expressive glyphs — made available to developers as a single place to explore and build from.</p><div class="actions"><a class="pill primary" href="#ids">Explore IDS</a><a class="pill" href="./itundaface/">Explore ItundaFace</a><a class="pill" href="./sandbox/">Open sandbox</a></div></div></section><section class="section" id="ids"><div class="inner"><div class="ey">01 · ITUNDA DESIGN SYSTEM</div><h2 style="font-size:clamp(42px,6vw,76px);letter-spacing:-4px;margin:14px 0 18px">One language.<br>Every platform.</h2><p class="lead">The standalone IDS repository contains cross-platform tokens, semantic light/dark colors, typography, spacing, shape, elevation and motion, plus Web CSS, Jetpack Compose and SwiftUI foundations.</p><div class="grid"><a class="card" href="https://github.com/itunda-rw/itunda-design-system"><span class="num">SOURCE</span><h2>GitHub</h2><p>Read the canonical tokens and platform implementations.</p></a><a class="card" href="https://github.com/itunda-rw/itunda-design-system/tree/main/showcase"><span class="num">SHOWCASE</span><h2>Showcase</h2><p>Explore the standalone visual showcase for tokens, components and accessibility.</p></a><a class="card" href="./sandbox/"><span class="num">PLAYGROUND</span><h2>Sandbox</h2><p>Try the system interactively before integrating it into a product.</p></a></div></div></section><section class="section"><div class="inner"><div class="ey">02 · DOCUMENTATION</div><h2 style="font-size:48px;letter-spacing:-3px">Design docs that<br>developers can use.</h2><div class="resource"><a href="https://github.com/itunda-rw/itunda-design-system/blob/main/design-system/README.md"><strong>Design System README</strong><span>Architecture, platform structure, licensing and design language.</span></a><a href="https://github.com/itunda-rw/itundaface#readme"><strong>ItundaFace README</strong><span>Families, React APIs, quality rules, motion and 3D/flat continuity.</span></a><a href="https://github.com/itunda-rw/itunda/tree/agent/itunda-agent-network/client/design-system"><strong>Source in Itunda</strong><span>The extracted design-system implementation used by the monorepo.</span></a><a href="https://github.com/itunda-rw/itundaface/tree/main/svg"><strong>ItundaFace SVG library</strong><span>Canonical flat and 3D assets across communication, identity, finance, culture and more.</span></a></div></div></section></main><footer class="footer"><div class="inner">© 2026 Itunda Developers · <a href="../">Developer platform</a></div></footer></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#7472F4">
+<title>Itunda Design System — Developers</title>
+<meta name="description" content="Explore the Itunda Design System: tokens, typography, color, spacing, components, interaction and ItundaFace.">
+<link rel="stylesheet" href="../../../client/design-system/tokens.css">
+<link rel="stylesheet" href="../../../client/design-system/components.css">
+<style>
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--itunda-color-bg);color:var(--itunda-color-text);font-family:var(--itunda-font-body);-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+.nav{height:var(--itunda-nav-height);border-bottom:1px solid var(--itunda-color-border);display:flex;align-items:center;padding:0 var(--itunda-gutter);position:sticky;top:0;background:rgba(255,255,255,.88);backdrop-filter:blur(20px);z-index:10}
+.navin{width:100%;max-width:var(--itunda-max);margin:auto;display:flex;gap:28px;align-items:center}
+.brand{font-size:24px;font-weight:850;letter-spacing:-1.6px;white-space:nowrap}
+.links{display:flex;gap:4px;flex:1;overflow:auto}
+.links a{padding:10px 12px;border-radius:12px;font-size:14px;font-weight:700;color:var(--itunda-muted);white-space:nowrap}
+.links a:hover,.links .active{background:var(--itunda-soft);color:var(--itunda-ink)}
+.cta{padding:11px 17px;border-radius:999px;background:var(--itunda-indigo);color:#fff;font-size:13px;font-weight:800;white-space:nowrap}
+.hero{padding:clamp(80px,12vw,150px) var(--itunda-gutter) 100px;background:linear-gradient(180deg,var(--itunda-indigo-soft),#fff 72%)}
+.inner{max-width:var(--itunda-max);margin:auto}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,.7fr);gap:70px;align-items:end}
+.hero h1{font-size:var(--itunda-text-display);line-height:.9;letter-spacing:-.065em;margin:16px 0 24px;font-weight:850;max-width:900px}
+.hero-copy{max-width:700px;color:var(--itunda-muted);font-size:20px;line-height:1.55}
+.ey{font-size:12px;font-weight:850;letter-spacing:.12em;color:var(--itunda-indigo-dark);text-transform:uppercase}
+.hero-card{background:#fff;border:1px solid rgba(116,114,244,.18);border-radius:32px;padding:24px;box-shadow:var(--itunda-shadow-lg);transform:rotate(1.2deg)}
+.mini-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+.mini-brand{font-weight:850;letter-spacing:-.04em}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--itunda-indigo)}
+.balance{font-size:36px;font-weight:850;letter-spacing:-.05em}
+.mini-muted{font-size:12px;color:var(--itunda-muted)}
+.mini-row{display:flex;gap:10px;margin-top:22px}
+.mini-btn{height:42px;flex:1;border-radius:999px;border:0;background:var(--itunda-indigo-soft);color:var(--itunda-indigo-dark);font-weight:800}
+.mini-btn.primary{background:var(--itunda-indigo);color:#fff}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:30px}
+.section{padding:clamp(72px,9vw,130px) var(--itunda-gutter);border-top:1px solid var(--itunda-color-border)}
+.section-head{max-width:760px;margin-bottom:48px}
+.section-head h2{font-size:clamp(42px,6vw,76px);line-height:.95;letter-spacing:-.06em;margin:12px 0 16px}
+.section-head p{color:var(--itunda-muted);font-size:18px;line-height:1.6}
+.show-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+.panel{border:1px solid var(--itunda-color-border);border-radius:var(--itunda-radius-lg);background:var(--itunda-surface-raised);padding:28px}
+.panel h3{font-size:22px;letter-spacing:-.04em;margin:0 0 8px}
+.panel p{color:var(--itunda-muted);font-size:13px;line-height:1.55;margin:0 0 22px}
+.span-4{grid-column:span 4}.span-5{grid-column:span 5}.span-7{grid-column:span 7}.span-8{grid-column:span 8}.span-12{grid-column:span 12}
+.swatches{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.swatch{height:92px;border-radius:16px;padding:10px;display:flex;align-items:flex-end;font-size:11px;font-weight:800}
+.swatch.brand{background:#7472F4;color:#fff}.swatch.dark{background:#625FE0;color:#fff}.swatch.soft{background:#F0EFFF;color:#625FE0}.swatch.ink{background:#191F28;color:#fff}.swatch.muted{background:#6B7684;color:#fff}
+.type-display{font-size:clamp(42px,6vw,76px);font-weight:850;letter-spacing:-.06em;line-height:.95}
+.type-row{display:flex;justify-content:space-between;gap:20px;align-items:baseline;padding:15px 0;border-bottom:1px solid var(--itunda-line)}
+.type-meta{font-size:12px;color:var(--itunda-muted);white-space:nowrap}
+.space-list{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.space-item{display:grid;gap:7px;justify-items:center;font-size:11px;color:var(--itunda-muted)}
+.space-bar{background:var(--itunda-indigo);border-radius:6px;width:var(--w);height:var(--w);min-width:4px;max-width:72px}
+.component-stage{background:var(--itunda-surface-sunken);border-radius:22px;padding:24px;display:grid;gap:20px}
+.button-row{display:flex;gap:10px;flex-wrap:wrap}
+.input-demo{display:grid;gap:8px;max-width:460px}
+.badges{display:flex;gap:8px;flex-wrap:wrap}
+.list-demo{border:1px solid var(--itunda-line);border-radius:18px;overflow:hidden;background:#fff}
+.status-dot{width:8px;height:8px;border-radius:50%;background:#16845F}
+.token-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--itunda-muted);background:var(--itunda-soft);padding:14px;border-radius:14px;overflow:auto}
+.resource-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.resource{padding:24px;border:1px solid var(--itunda-line);border-radius:22px;background:var(--itunda-surface-raised);transition:transform 220ms var(--itunda-ease),box-shadow 220ms var(--itunda-ease)}
+.resource:hover{transform:translateY(-4px);box-shadow:var(--itunda-shadow-md)}
+.resource strong{display:block;font-size:17px;margin-bottom:8px}.resource span{color:var(--itunda-muted);font-size:13px;line-height:1.5}
+.footer{padding:44px var(--itunda-gutter);color:#8A949F;font-size:13px}
+@media(max-width:900px){.hero-grid{grid-template-columns:1fr;gap:40px}.span-4,.span-5,.span-7,.span-8{grid-column:span 12}.resource-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.nav{padding:0 20px}.links{display:none}.hero{padding:80px 20px 72px}.section{padding:76px 20px}.swatches{grid-template-columns:repeat(2,1fr)}.resource-grid{grid-template-columns:1fr}.panel{padding:22px}}
+</style>
+</head>
+<body>
+<nav class="nav"><div class="navin">
+<a class="brand" href="../">itunda.</a>
+<div class="links">
+<a href="../">Developers</a><a class="active" href="./">Design</a><a href="./itundaface/">ItundaFace</a><a href="./sandbox/">Sandbox</a><a href="../api/">API</a><a href="../guides/">Guides</a>
+</div>
+<a class="cta" href="https://github.com/itunda-rw/itunda-design-system">Source</a>
+</div></nav>
+
+<main>
+<section class="hero"><div class="inner hero-grid">
+<div>
+<div class="ey">Itunda · Design System</div>
+<h1>One language.<br>Every surface.</h1>
+<p class="hero-copy">A living visual system for Itunda — shared tokens, typography, color, spacing, components, motion and accessibility across web, Android and iOS.</p>
+<div class="actions">
+<a class="tds-button tds-button-primary" href="#foundations">Explore foundations</a>
+<a class="tds-button tds-button-secondary" href="./sandbox/">Open sandbox</a>
+</div>
+</div>
+<div class="hero-card">
+<div class="mini-top"><span class="mini-brand">itunda</span><span class="dot"></span></div>
+<div class="mini-muted">Available balance</div>
+<div class="balance">RWF 248,000</div>
+<div class="mini-row"><button class="mini-btn primary">Send</button><button class="mini-btn">Request</button></div>
+</div>
+</div></section>
+
+<section class="section" id="foundations"><div class="inner">
+<div class="section-head"><div class="ey">01 · Foundations</div><h2>The primitives<br>everything shares.</h2><p>These are the actual values exposed by the Itunda Design System. Products consume semantic roles instead of inventing one-off styles.</p></div>
+<div class="show-grid">
+<div class="panel span-7"><h3>Color roles</h3><p>Itunda keeps its identity in indigo while semantic roles make the system reusable and accessible.</p>
+<div class="swatches"><div class="swatch brand">brand<br>#7472F4</div><div class="swatch dark">strong<br>#625FE0</div><div class="swatch soft">soft<br>#F0EFFF</div><div class="swatch ink">ink<br>#191F28</div><div class="swatch muted">muted<br>#6B7684</div></div></div>
+<div class="panel span-5"><h3>Token model</h3><p>Semantic tokens sit above raw identity values so components can stay consistent across surfaces.</p><div class="token-code">--itunda-color-brand<br>--itunda-color-text<br>--itunda-color-surface<br>--itunda-color-border<br>--itunda-motion-normal<br>--itunda-radius-lg</div></div>
+<div class="panel span-8"><h3>Typography</h3><p>Large, confident display type for product storytelling; compact body type for dense financial and service information.</p>
+<div class="type-display">Money, services<br>and everyday life.</div>
+<div class="type-row"><strong>Display</strong><span class="type-meta">clamp(56px, 7vw, 96px) · 850</span></div>
+<div class="type-row"><strong>Heading</strong><span class="type-meta">32–52px · 850</span></div>
+<div class="type-row"><strong>Body</strong><span class="type-meta">18px · 400 · 1.5</span></div>
+</div>
+<div class="panel span-4"><h3>Spacing</h3><p>A compact 4px-based rhythm scales from controls to large editorial sections.</p>
+<div class="space-list">
+<div class="space-item"><i class="space-bar" style="--w:4px"></i>4</div><div class="space-item"><i class="space-bar" style="--w:8px"></i>8</div><div class="space-item"><i class="space-bar" style="--w:16px"></i>16</div><div class="space-item"><i class="space-bar" style="--w:24px"></i>24</div><div class="space-item"><i class="space-bar" style="--w:40px"></i>40</div><div class="space-item"><i class="space-bar" style="--w:64px"></i>64</div></div></div>
+</div></div></section>
+
+<section class="section"><div class="inner">
+<div class="section-head"><div class="ey">02 · Components</div><h2>See the system<br>in motion.</h2><p>Real IDS classes are used below — buttons, inputs, tabs, lists, cards, states and status language.</p></div>
+<div class="show-grid">
+<div class="panel span-7"><h3>Actions</h3><p>Clear primary action, quiet secondary action, and deliberate press feedback.</p><div class="component-stage"><div class="button-row"><button class="tds-button tds-button-primary">Continue</button><button class="tds-button tds-button-secondary">Secondary</button><button class="tds-button tds-button-weak">Weak</button><button class="tds-icon-button" aria-label="More">•••</button></div><div class="badges"><span class="tds-chip">Verified</span><span class="tds-status tds-status-success">Completed</span><span class="tds-status tds-status-info">In progress</span></div></div></div>
+<div class="panel span-5"><h3>Form control</h3><p>Focused states use the same brand ring and surface language.</p><div class="component-stage"><div class="input-demo"><label class="tds-label" for="phone">Phone number</label><input id="phone" class="tds-input" placeholder="+250 7XX XXX XXX"><span class="tds-help">We'll use this to identify your Itunda account.</span></div></div></div>
+<div class="panel span-7"><h3>List & hierarchy</h3><p>Dense information stays calm through spacing, metadata and value alignment.</p><div class="list-demo"><div class="tds-list"><div class="tds-list-row"><div class="tds-list-icon">R</div><div class="tds-list-main"><div class="tds-list-title">Rwanda Utilities</div><div class="tds-list-meta">Today · 14:20</div></div><div class="tds-list-value">− RWF 8,500</div></div><div class="tds-list-row"><div class="tds-list-icon">M</div><div class="tds-list-main"><div class="tds-list-title">Marketplace</div><div class="tds-list-meta">Yesterday</div></div><div class="tds-list-value">RWF 42,000</div></div></div></div></div>
+<div class="panel span-5"><h3>Tabs & feedback</h3><p>System state is explicit without visual noise.</p><div class="component-stage"><div class="tds-tabs"><button class="tds-tab active" aria-selected="true">Overview</button><button class="tds-tab">Activity</button><button class="tds-tab">Settings</button></div><div class="tds-alert tds-alert-success"><span class="status-dot"></span><span>Identity verified. Your account is ready.</span></div></div></div>
+</div></div></section>
+
+<section class="section"><div class="inner">
+<div class="section-head"><div class="ey">03 · Platform</div><h2>Designed once.<br>Built everywhere.</h2><p>The standalone IDS is structured around shared tokens with platform implementations for Web CSS, Jetpack Compose and SwiftUI.</p></div>
+<div class="resource-grid">
+<a class="resource" href="https://github.com/itunda-rw/itunda-design-system"><strong>Design System</strong><span>Canonical tokens, themes and components.</span></a>
+<a class="resource" href="https://github.com/itunda-rw/itunda-design-system/tree/main/showcase"><strong>Showcase</strong><span>Standalone visual exploration.</span></a>
+<a class="resource" href="./itundaface/"><strong>ItundaFace</strong><span>The expressive icon and glyph language.</span></a>
+<a class="resource" href="./sandbox/"><strong>Sandbox</strong><span>Experiment with the system before shipping.</span></a>
+</div>
+</div></section>
+
+<section class="section"><div class="inner">
+<div class="section-head"><div class="ey">04 · Source</div><h2>A living system,<br>not a poster.</h2><p>Changes to the tokens and components can flow back into the products. The page is a visual reference for the code, not a separate design truth.</p></div>
+<div class="actions"><a class="tds-button tds-button-primary" href="https://github.com/itunda-rw/itunda-design-system">View GitHub</a><a class="tds-button tds-button-secondary" href="https://github.com/itunda-rw/itunda/tree/agent/itunda-agent-network/client/design-system">View monorepo source</a></div>
+</div></section>
+</main>
+<footer class="footer"><div class="inner">© 2026 Itunda Developers · Itunda Design System</div></footer>
+</body></html>
