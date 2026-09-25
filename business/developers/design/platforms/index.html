@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IDS — Platform implementations</title>
+<style>
+:root{color-scheme:dark;--bg:#0b0b10;--surface:#14141b;--line:#292934;--text:#f7f7fb;--muted:#a4a4b3;--brand:#7472f4;--soft:#202027}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 Inter,system-ui,sans-serif}main{max-width:1100px;margin:auto;padding:64px 24px 96px}a{color:inherit}.eyebrow{color:var(--brand);font-weight:700;letter-spacing:.08em;text-transform:uppercase}.hero{max-width:760px}.hero h1{font-size:clamp(42px,7vw,72px);line-height:1.02;letter-spacing:-.055em;margin:12px 0 20px}.hero p{font-size:20px;color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:48px}.card{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:24px}.card h2{margin:0 0 8px;font-size:22px}.card p{color:var(--muted);margin:0 0 18px}.path{display:block;padding:8px 10px;margin:7px 0;background:var(--soft);border-radius:10px;font:12px ui-monospace,monospace;color:#d9d9e5;overflow:auto}.section{margin-top:72px}.section h2{font-size:32px;letter-spacing:-.03em}.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{border:1px solid var(--line);border-radius:999px;padding:7px 12px;color:#ddddee;background:#111119}.note{margin-top:24px;border-left:3px solid var(--brand);padding:4px 0 4px 16px;color:var(--muted)}@media(max-width:720px){main{padding:40px 18px 72px}.grid{grid-template-columns:1fr}.hero h1{font-size:46px}}
+</style>
+</head>
+<body>
+<main>
+<section class="hero">
+<div class="eyebrow">Itunda Design System v2</div>
+<h1>One system.<br>Every platform.</h1>
+<p>IDS v2 is the semantic and documentation layer over Itunda's real Web, Android, iOS, SDUI and Saronite implementations. Existing product design is source material—not something to throw away.</p>
+</section>
+
+<section class="grid">
+<article class="card"><h2>Web</h2><p>Semantic tokens and reusable CSS primitives for client, business and developer-facing surfaces.</p><code class="path">client/design-system/tokens.css</code><code class="path">client/design-system/tokens.json</code><code class="path">client/design-system/components.css</code></article>
+<article class="card"><h2>Android</h2><p>Compose foundation, semantic theme, typography, layout, buttons, rows, SDUI and shared interaction patterns.</p><code class="path">android/core/designsystem/.../theme/</code><code class="path">android/core/designsystem/.../components/</code><code class="path">android/core/designsystem/.../sdui/</code></article>
+<article class="card"><h2>iOS</h2><p>SwiftUI semantic colors, Dynamic Type, motion, layout, shared components, states and tactile interaction.</p><code class="path">ios/Core/DesignSystem/Sources/IDS.swift</code><code class="path">ios/Core/DesignSystem/Sources/Theme/IdsTheme.swift</code><code class="path">ios/Core/DesignSystem/Sources/Components/Components.swift</code></article>
+<article class="card"><h2>SDUI + Saronite</h2><p>Shared server-driven models and React Native primitives let the same product semantics travel across mini apps.</p><code class="path">ios/Core/SDUI/Sources/SduiModels.swift</code><code class="path">android/core/designsystem/.../SduiRenderer.kt</code><code class="path">packages/saronite/packages/ids-react-native/</code></article>
+</section>
+
+<section class="section">
+<h2>Shared semantic contract</h2>
+<div class="chips">
+<span class="chip">brand · #7472F4</span><span class="chip">background</span><span class="chip">surface</span><span class="chip">surfaceSoft</span><span class="chip">textPrimary</span><span class="chip">textSecondary</span><span class="chip">textTertiary</span><span class="chip">divider</span><span class="chip">success</span><span class="chip">warning</span><span class="chip">danger</span><span class="chip">motion</span><span class="chip">focus</span>
+</div>
+<div class="note">The older blue primitive scale remains available for compatibility and generation. Current product-facing brand semantics use Itunda indigo; platform geometry and native accessibility behavior remain platform-specific.</div>
+</section>
+
+<section class="section">
+<h2>Real component inventory</h2>
+<div class="chips">
+<span class="chip">Button</span><span class="chip">Icon Button</span><span class="chip">List Row</span><span class="chip">Text Field</span><span class="chip">Fixed Bottom CTA</span><span class="chip">Empty State</span><span class="chip">Error State</span><span class="chip">Skeleton</span><span class="chip">Star Rating</span><span class="chip">Keyboard Docked CTA</span><span class="chip">Cards</span><span class="chip">SDUI Renderer</span>
+</div>
+</section>
+
+<section class="section">
+<h2>What “parity” means</h2>
+<p style="color:var(--muted);max-width:760px">Parity means the same semantic intent, states, accessibility contract, content behavior and interaction principles—not forcing Web, Android and iOS into identical pixels. The remaining work is automated token parity, extracted standalone platform packages and visual regression coverage.</p>
+</section>
+</main>
+</body>
+</html>
