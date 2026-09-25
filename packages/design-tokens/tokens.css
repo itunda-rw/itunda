@@ -158,6 +158,8 @@
   --itunda-control-radius: var(--itunda-radius-md);
   --itunda-control-padding-inline: 16px;
   --itunda-control-gap: 8px;
+  --itunda-touch-target-minimum: 44px;
+  --itunda-touch-target-recommended: 48px;
   --itunda-button-primary-fill: var(--itunda-brand);
   --itunda-button-primary-fill-pressed: var(--itunda-brand-strong);
   --itunda-button-secondary-fill: var(--itunda-surface-brand);
