@@ -164,4 +164,34 @@ cs?.addEventListener('input',filterComponents);cf?.addEventListener('change',fil
     </tbody></table>
   </div>
 </section>
+<section id="api" class="section">
+  <div class="section-kicker">IDS 3.0 · Component API</div>
+  <h2>One primitive, two consumption modes</h2>
+  <p class="lede">Simple components stay simple. Complex components expose controlled composition instead of accumulating endless props.</p>
+  <div class="grid two">
+    <article class="card"><h3>Flat API</h3><p>Preferred for stable, common cases: Button, Badge, Avatar, Switch and other low-variation primitives.</p><pre><code>&lt;Button variant="primary" size="large"&gt;Send&lt;/Button&gt;</code></pre></article>
+    <article class="card"><h3>Compound API</h3><p>Preferred where structure varies: Card, Sheet, Dialog, complex List and data-heavy surfaces.</p><pre><code>&lt;Card&gt;
+  &lt;Card.Header&gt;...&lt;/Card.Header&gt;
+  &lt;Card.Body&gt;...&lt;/Card.Body&gt;
+&lt;/Card&gt;</code></pre></article>
+  </div>
+  <div class="component-guide">
+    <h3>API rules</h3>
+    <ul>
+      <li>Use semantic intent names, not raw colors or arbitrary visual props.</li>
+      <li>Do not expose props that duplicate a foundation token without a behavioral reason.</li>
+      <li>Prefer composition when new requirements would otherwise create a growing prop matrix.</li>
+      <li>Keep platform-native behavior behind the same semantic contract.</li>
+    </ul>
+  </div>
+</section>
+<section id="migration" class="section">
+  <div class="section-kicker">IDS 3.0 · Migration</div>
+  <h2>Build the system without breaking the product</h2>
+  <div class="grid three">
+    <article class="card"><h3>1 · Token layer</h3><p>Introduce semantic aliases while preserving existing primitives and generated platform outputs.</p></article>
+    <article class="card"><h3>2 · Component layer</h3><p>Move components to semantic and component-level tokens before removing legacy references.</p></article>
+    <article class="card"><h3>3 · Product layer</h3><p>Migrate screens incrementally, measure coverage, then remove obsolete tokens and variants.</p></article>
+  </div>
+</section>
 </body></html>
