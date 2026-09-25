@@ -130,11 +130,13 @@ private struct CheckoutView: View {
             Text("\(formattedRWF(total)) RWF").font(.title2).bold()
             Text(description).font(.footnote).foregroundColor(.secondary)
 
-            Picker("", selection: $mode) {
-                Text("QR code").tag("QR")
-                Text("Card").tag("CARD")
-            }
-            .pickerStyle(.segmented)
+            IdsTabs(
+                ["QR code", "Card"],
+                selectedIndex: Binding(
+                    get: { mode == "CARD" ? 1 : 0 },
+                    set: { mode = $0 == 1 ? "CARD" : "QR" }
+                )
+            )
 
             if mode == "QR" {
                 QrCheckoutView(amount: total, description: description, onDone: onDone)
