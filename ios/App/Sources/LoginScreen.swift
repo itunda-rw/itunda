@@ -202,15 +202,17 @@ struct LoginScreen: View {
                         // a 3-way cycle (2026-08-15) when French joined as a real
                         // locale here too -- see this file's own top-of-file doc
                         // comment for the full context.
-                        Button(action: {
-                            let currentIndex = supportedLocales.firstIndex(of: locale) ?? 0
-                            locale = supportedLocales[(currentIndex + 1) % supportedLocales.count]
-                            UserDefaults.standard.set(locale.rawValue, forKey: localeStorageKey)
-                        }) {
-                            Text(locale.rawValue.uppercased())
-                                .font(IDS.Typography.bodyMedium)
-                                .foregroundColor(IDS.Colors.textSecondary)
-                        }
+                        IdsButton(
+                            text: locale.rawValue.uppercased(),
+                            variant: .tinted,
+                            size: .small,
+                            fullWidth: false,
+                            action: {
+                                let currentIndex = supportedLocales.firstIndex(of: locale) ?? 0
+                                locale = supportedLocales[(currentIndex + 1) % supportedLocales.count]
+                                UserDefaults.standard.set(locale.rawValue, forKey: localeStorageKey)
+                            }
+                        )
                         .accessibilityLabel(t("language"))
                     }
                     Text(isRegisterMode ? t("tagline_register") : t("tagline_login"))
@@ -228,10 +230,7 @@ struct LoginScreen: View {
                     // a biometric prompt.
                     if attemptingPasswordless {
                         VStack(spacing: 12) {
-                            ProgressView().tint(IDS.Colors.brand)
-                            Text(t("checkingDevice"))
-                                .font(IDS.Typography.bodyMedium)
-                                .foregroundColor(IDS.Colors.textSecondary)
+                            IdsLoading(label: t("checkingDevice"))
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 40)
@@ -332,20 +331,21 @@ struct LoginScreen: View {
 
                 Group {
                     if !attemptingPasswordless {
-                        Button(action: {
-                            withAnimation(.easeInOut(duration: 0.2)) { isRegisterMode.toggle() }
-                            errorMessage = nil
-                            pinFirstEntry = nil
-                            termsAccepted = false
-                            acceptedTermsIds = []
-                            if isRegisterMode && terms.isEmpty {
-                                Task { terms = await sessionManager.getTerms() }
+                        IdsButton(
+                            text: isRegisterMode ? t("switchToLogin") : t("switchToRegister"),
+                            variant: .tinted,
+                            size: .medium,
+                            action: {
+                                withAnimation(.easeInOut(duration: 0.2)) { isRegisterMode.toggle() }
+                                errorMessage = nil
+                                pinFirstEntry = nil
+                                termsAccepted = false
+                                acceptedTermsIds = []
+                                if isRegisterMode && terms.isEmpty {
+                                    Task { terms = await sessionManager.getTerms() }
+                                }
                             }
-                        }) {
-                            Text(isRegisterMode ? t("switchToLogin") : t("switchToRegister"))
-                                .font(IDS.Typography.bodyMedium)
-                                .foregroundColor(IDS.Colors.textBrand)
-                        }
+                        )
                         .padding(.top, 8)
                     }
 
