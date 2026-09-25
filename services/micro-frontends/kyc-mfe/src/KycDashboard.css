@@ -38,7 +38,7 @@
 .kyc-modal-backdrop {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: var(--itunda-overlay-scrim);
   display: flex;
   align-items: flex-end;
   z-index: 9999;
