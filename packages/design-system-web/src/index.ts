@@ -85,3 +85,100 @@ export function TextField({
     </div>
   );
 }
+
+
+export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
+  label: string;
+  options: Array<{ value: string; label: string }>;
+  helpText?: string;
+  error?: string;
+}
+
+export function Select({ id, label, options, helpText, error, className = '', ...props }: SelectProps) {
+  const reactId = React.useId();
+  const selectId = id ?? `ids-select-${reactId}`;
+  const helpId = helpText ? `${selectId}-help` : undefined;
+  const errorId = error ? `${selectId}-error` : undefined;
+  const describedBy = [helpId, errorId].filter(Boolean).join(' ') || undefined;
+  return (
+    <div className={`ids-field ${className}`.trim()}>
+      <label className="ids-field__label" htmlFor={selectId}>{label}</label>
+      <select {...props} id={selectId} className="ids-field__input" aria-invalid={error ? true : undefined} aria-describedby={describedBy}>
+        {options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </select>
+      {error ? <p id={errorId} className="ids-field__message ids-field__message--error" role="alert">{error}</p> : null}
+      {!error && helpText ? <p id={helpId} className="ids-field__message">{helpText}</p> : null}
+    </div>
+  );
+}
+
+export interface CheckControlProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label: React.ReactNode;
+}
+
+export function Checkbox({ label, id, className = '', ...props }: CheckControlProps) {
+  const reactId = React.useId();
+  const inputId = id ?? `ids-checkbox-${reactId}`;
+  return (
+    <label className={`ids-check ${className}`.trim()} htmlFor={inputId}>
+      <input {...props} id={inputId} type="checkbox" />
+      <span className="ids-check__box" aria-hidden="true" />
+      <span className="ids-check__label">{label}</span>
+    </label>
+  );
+}
+
+export function Radio({ label, id, className = '', ...props }: CheckControlProps) {
+  const reactId = React.useId();
+  const inputId = id ?? `ids-radio-${reactId}`;
+  return (
+    <label className={`ids-check ${className}`.trim()} htmlFor={inputId}>
+      <input {...props} id={inputId} type="radio" />
+      <span className="ids-check__radio" aria-hidden="true" />
+      <span className="ids-check__label">{label}</span>
+    </label>
+  );
+}
+
+export interface SwitchProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
+  label: React.ReactNode;
+}
+
+export function Switch({ label, id, className = '', ...props }: SwitchProps) {
+  const reactId = React.useId();
+  const inputId = id ?? `ids-switch-${reactId}`;
+  return (
+    <label className={`ids-switch ${className}`.trim()} htmlFor={inputId}>
+      <input {...props} id={inputId} type="checkbox" role="switch" />
+      <span className="ids-switch__track" aria-hidden="true"><span className="ids-switch__thumb" /></span>
+      <span className="ids-switch__label">{label}</span>
+    </label>
+  );
+}
+
+export interface TabsProps {
+  items: Array<{ id: string; label: string }>;
+  value: string;
+  onChange: (id: string) => void;
+  ariaLabel?: string;
+}
+
+export function Tabs({ items, value, onChange, ariaLabel = 'Tabs' }: TabsProps) {
+  return (
+    <div className="ids-tabs" role="tablist" aria-label={ariaLabel}>
+      {items.map(item => (
+        <button
+          key={item.id}
+          type="button"
+          role="tab"
+          aria-selected={value === item.id}
+          tabIndex={value === item.id ? 0 : -1}
+          className={`ids-tab ${value === item.id ? 'ids-tab--active' : ''}`}
+          onClick={() => onChange(item.id)}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  );
+}
