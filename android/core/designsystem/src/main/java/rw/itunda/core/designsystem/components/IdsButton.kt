@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -277,4 +278,34 @@ fun IdsIconButton(
             )
         }
     }
+}
+
+
+/** IDS 3.0 shared text-field primitive. */
+@Composable
+fun IdsTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    placeholder: String? = null,
+    supportingText: String? = null,
+    errorText: String? = null,
+    enabled: Boolean = true,
+    singleLine: Boolean = true,
+) {
+    val supporting = errorText ?: supportingText
+    androidx.compose.material3.OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        enabled = enabled,
+        singleLine = singleLine,
+        label = { Text(label) },
+        placeholder = placeholder?.let { { Text(it) } },
+        isError = errorText != null,
+        modifier = modifier.fillMaxWidth().heightIn(min = 56.dp),
+        supportingText = supporting?.let { message ->
+            { Text(message, color = if (errorText != null) Ids.colors.danger else Ids.colors.textSecondary) }
+        },
+    )
 }
