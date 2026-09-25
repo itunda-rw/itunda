@@ -158,13 +158,13 @@ struct NeighborhoodSetupPrompt: View {
             Text(isSecond ? "Add a second neighborhood" : "Set your neighborhood").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
             Text(isSecond ? "Share a second real place -- like work -- to see what's happening there too." : "Share your real location once to see what's happening near you.")
                 .font(.caption).foregroundColor(IDS.Colors.textSecondary).multilineTextAlignment(.center)
-            Button(action: { if !busy { locationFetcher.requestLocation() } }) {
-                Text(busy ? "Finding your neighborhood…" : "📍 Share my location")
-                    .font(.subheadline).bold().foregroundColor(.white)
-                    .padding(.horizontal, 20).padding(.vertical, 12)
-                    .background(IDS.Colors.brand).cornerRadius(12)
-            }
-            .disabled(busy)
+            IdsButton(
+                text: busy ? "Finding your neighborhood…" : "📍 Share my location",
+                isEnabled: !busy,
+                isLoading: busy,
+                size: .medium,
+                action: { locationFetcher.requestLocation() }
+            )
             if let error {
                 IdsErrorText(error)
             }
@@ -221,11 +221,21 @@ struct NeighborhoodSwitcherOverlay: View {
                         .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                     Spacer()
                     HStack(spacing: 12) {
-                        Button(secondNeighborhoodName != nil ? "Change" : "Add") { onAddSecondTapped() }
-                            .font(.caption).bold().foregroundColor(IDS.Colors.brand)
+                        IdsButton(
+                            text: secondNeighborhoodName != nil ? "Change" : "Add",
+                            variant: .tinted,
+                            size: .small,
+                            fullWidth: false,
+                            action: onAddSecondTapped
+                        )
                         if secondNeighborhoodName != nil {
-                            Button("Remove") { onRemoveSecond() }
-                                .font(.caption).bold().foregroundColor(.red)
+                            IdsButton(
+                                text: "Remove",
+                                variant: .tinted,
+                                size: .small,
+                                fullWidth: false,
+                                action: onRemoveSecond
+                            )
                         }
                     }
                 }
