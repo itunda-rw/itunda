@@ -67,6 +67,7 @@ fun BecomeMerchantScreen(onRegistered: (MerchantDto) -> Unit, onLogout: () -> Un
         IdsButton(
             text = if (busy) "Registering…" else "Register my business",
             enabled = !busy,
+            loading = busy,
             onClick = {
                 if (businessName.isBlank()) {
                     error = "Enter your business name."
