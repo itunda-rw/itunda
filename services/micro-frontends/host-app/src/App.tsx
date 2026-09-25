@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from 'react';
 import { useI18n } from './i18n/I18nContext';
+import { Button } from '@itunda/design-system-web';
 
 // Fixed (2026-07-11): this file used to render Toss Payments' real SDK/widget
 // (@tosspayments/payment-widget-sdk, a real public Toss test key) while the UI text
@@ -31,18 +32,24 @@ export default function App() {
   return (
     <div>
       <nav className="host-tabbar">
-        <button
+        <Button
+          variant="tertiary"
+          size="md"
           className={tab === 'bank' ? 'host-tab host-tab-active' : 'host-tab'}
+          aria-current={tab === 'bank' ? 'page' : undefined}
           onClick={() => setTab('bank')}
         >
           {t('tabs.home')}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="tertiary"
+          size="md"
           className={tab === 'kyc' ? 'host-tab host-tab-active' : 'host-tab'}
+          aria-current={tab === 'kyc' ? 'page' : undefined}
           onClick={() => setTab('kyc')}
         >
           {t('tabs.identity')}
-        </button>
+        </Button>
       </nav>
 
       <Suspense fallback={<div className="itunda-card skeleton" style={{ height: '300px', margin: '20px' }} />}>
