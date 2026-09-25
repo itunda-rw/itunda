@@ -61,7 +61,7 @@ struct DeliveryDetailScreen: View {
 
                     if !locationFetcher.isAuthorized {
                         Text("Location permission is needed so the buyer can see you're on the way.")
-                            .foregroundColor(.red).font(.footnote)
+                            .foregroundColor(IDS.Colors.danger).font(.footnote)
                             .padding(.horizontal, 16)
                     }
 
