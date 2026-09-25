@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="26 29 56 56" role="img" aria-labelledby="title desc">
 <title id="title">Itunda</title>
 <desc id="desc">Itunda petal mark</desc>
-<rect width="108" height="108" fill="#FFFFFF"/>
+<rect x="26" y="29" width="56" height="56" fill="#FFFFFF"/>
 <path fill="#7C7BFD" d="M48.6 34.8C67.8 30 79.8 51.6 57 78C53.4 64.8 47.4 49.2 48.6 34.8Z"/>
 <path fill="#5C55D8" d="M48.6 34.8C47.4 49.2 53.4 64.8 57 78C37.8 76.8 28.2 54 48.6 34.8Z"/>
 </svg>
