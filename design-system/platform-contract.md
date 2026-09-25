@@ -63,3 +63,15 @@ A component is not considered IDS-complete until all three platform mappings are
 ## Source of truth
 
 Primitive values live in `packages/design-tokens/tokens.json`. Semantic roles are mapped per platform without changing their meaning. Product code should never create a second brand palette.
+
+## Text field mapping
+
+| Semantic role | Web | Android | iOS |
+|---|---|---|---|
+| Text field | `TextField` | `IdsTextField` | `IdsTextField` |
+| Validation | `error` / `success` | `errorText` / `successText` | `errorText` / `successText` |
+| Supporting | `helpText` | `supportingText` | `supportingText` |
+| Focus | browser focus | Compose focus | SwiftUI FocusState |
+| Input semantics | native input and label association | keyboard type + visual transformation | keyboard type + secure field |
+
+The three implementations share the same semantic contract: visible label, associated supporting and validation text, explicit validation states, native disabled/input semantics, localization-safe wrapping, and 44px/44dp/44pt interaction targets. Platform-native input behavior remains authoritative.
