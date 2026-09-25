@@ -206,4 +206,23 @@ cs?.addEventListener('input',filterComponents);cf?.addEventListener('change',fil
     <article class="card"><h3>3 · Product layer</h3><p>Migrate screens incrementally, measure coverage, then remove obsolete tokens and variants.</p></article>
   </div>
 </section>
+<section id="core-matrix" class="section">
+  <div class="section-kicker">IDS 3.0 · Core primitives</div>
+  <h2>Production state matrix</h2>
+  <p class="lede">Every core primitive has a predictable contract before it reaches a product surface.</p>
+  <div class="spec-table">
+    <table>
+      <thead><tr><th>Component</th><th>Variants</th><th>States</th><th>Large text / long content</th><th>A11y</th><th>Platforms</th></tr></thead>
+      <tbody>
+        <tr><td>Button</td><td>Primary · Secondary · Tertiary · Destructive</td><td>Default · Pressed · Focus · Disabled · Loading</td><td>Wrap; no destructive truncation</td><td>Native button; accessible name; 44px+ target</td><td>Web · Android · iOS</td></tr>
+        <tr><td>Text field</td><td>Default · Filled · Search · Password</td><td>Empty · Filled · Focus · Disabled · Error · Success</td><td>Label/help text reflows</td><td>Label/error association; IME semantics</td><td>Web · Android · iOS</td></tr>
+        <tr><td>Select</td><td>Single · Multi</td><td>Closed · Open · Focus · Disabled · Error</td><td>Scrollable options; no clipped labels</td><td>Combobox/listbox semantics</td><td>Web · Android · iOS</td></tr>
+        <tr><td>Checkbox</td><td>Default · Indeterminate</td><td>Unchecked · Checked · Focus · Disabled · Error</td><td>Label wraps without separating control</td><td>Native semantics; group labeling</td><td>Web · Android · iOS</td></tr>
+        <tr><td>Radio</td><td>Single-choice group</td><td>Unselected · Selected · Focus · Disabled · Error</td><td>Long labels wrap naturally</td><td>Radiogroup + accessible labels</td><td>Web · Android · iOS</td></tr>
+        <tr><td>Switch</td><td>On · Off</td><td>On · Off · Focus · Disabled · Loading</td><td>Label stays readable at large text</td><td>Native switch semantics</td><td>Web · Android · iOS</td></tr>
+        <tr><td>Tabs</td><td>Equal · Scrollable</td><td>Default · Active · Focus · Disabled</td><td>Scrollable overflow; active state remains visible</td><td>Tablist/tab/tabpanel semantics</td><td>Web · Android · iOS</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
 </body></html>
