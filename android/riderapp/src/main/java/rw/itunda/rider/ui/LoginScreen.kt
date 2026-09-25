@@ -156,6 +156,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
         IdsButton(
             text = if (busy) t("loggingIn") else t("logIn"),
             enabled = !busy,
+            loading = busy,
             onClick = {
                 if (phoneNumber.isBlank() || password.isBlank()) {
                     error = t("emptyFields")
