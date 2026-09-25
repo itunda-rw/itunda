@@ -165,14 +165,10 @@ private struct QrCheckoutView: View {
         VStack(alignment: .center, spacing: 12) {
             if let qrContent, let image = generateQrImage(content: qrContent) {
                 image.interpolation(.none).resizable().frame(width: 220, height: 220)
-                Button(action: onDone) {
-                    Text("Done — new sale").bold().foregroundColor(.white)
-                        .frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(IDS.Colors.brand).cornerRadius(10)
-                }
+                IdsButton(text: "Done — new sale", size: .medium, action: onDone)
             } else {
                 if let error {
-                    Text(error).foregroundColor(IDS.Colors.danger).font(.footnote)
+                    IdsErrorText(error)
                 }
                 Button("Retry") { Task { await generate() } }
             }
@@ -244,13 +240,12 @@ private struct CardCheckoutView: View {
                 if let error {
                     Text(error).foregroundColor(IDS.Colors.danger).font(.footnote)
                 }
-                Button(action: { Task { await charge() } }) {
-                    Text(submitting ? "Charging…" : "Charge \(formattedRWF(amount)) RWF")
-                        .bold().foregroundColor(.white)
-                        .frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(IDS.Colors.brand).cornerRadius(10)
-                }
-                .disabled(submitting)
+                IdsButton(
+                    text: "Charge \(formattedRWF(amount)) RWF",
+                    isLoading: submitting,
+                    size: .medium,
+                    action: { Task { await charge() } }
+                )
             }
         }
     }
