@@ -389,7 +389,7 @@ private struct ReviewReplyCard: View {
                 }
             }
             if let error {
-                Text(error).foregroundColor(.red).font(.caption)
+                Text(error).foregroundColor(IDS.Colors.danger).font(.caption)
             }
         }
         .padding(16)
@@ -451,7 +451,7 @@ private struct ProductReviewReplyCard: View {
                 }
             }
             if let error {
-                Text(error).foregroundColor(.red).font(.caption)
+                Text(error).foregroundColor(IDS.Colors.danger).font(.caption)
             }
         }
         .padding(16)
@@ -512,7 +512,7 @@ private struct BookingReviewReplyCard: View {
                 }
             }
             if let error {
-                Text(error).foregroundColor(.red).font(.caption)
+                Text(error).foregroundColor(IDS.Colors.danger).font(.caption)
             }
         }
         .padding(16)
