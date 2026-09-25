@@ -465,3 +465,43 @@ fun IdsTabs(
         }
     }
 }
+
+
+/** IDS 3.0 shared progress primitive for screen-level loading states. */
+@Composable
+fun IdsLoading(
+    modifier: Modifier = Modifier,
+    label: String? = null,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(24.dp),
+            color = Ids.colors.brand,
+        )
+        label?.let {
+            Text(
+                text = it,
+                style = IdsTypography.bodySmall,
+                color = Ids.colors.textSecondary,
+            )
+        }
+    }
+}
+
+/** IDS 3.0 shared inline error primitive. */
+@Composable
+fun IdsErrorText(
+    message: String,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = message,
+        modifier = modifier,
+        style = IdsTypography.bodyMedium,
+        color = Ids.colors.danger,
+    )
+}
