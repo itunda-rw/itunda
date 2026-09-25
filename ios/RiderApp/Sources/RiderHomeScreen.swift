@@ -148,7 +148,7 @@ struct RiderHomeScreen: View {
                     Spacer()
                     // Real copy-voice fix (item 244, round 8), matching Android's
                     // same-day fix: available is genuinely passive, mine has a real fix.
-                    Text(tab == .available ? "No open deliveries right now — check back soon, new ones appear automatically." : "You haven't claimed any deliveries yet — switch to Available to claim your first one.")
+                    IdsEmptyState(title: tab == .available ? "No open deliveries right now — check back soon, new ones appear automatically." : "You haven't claimed any deliveries yet — switch to Available to claim your first one.")
                         .foregroundColor(.secondary)
                     Spacer()
                 } else {
