@@ -14,3 +14,6 @@ object IDSColors {
 
 object IDSSpacing { const val xs = 4; const val sm = 8; const val md = 16; const val lg = 24; const val xl = 32 }
 object IDSRadii { const val sm = 8; const val md = 12; const val lg = 16; const val xl = 20 }
+
+object IDSMotion { const val fast = 140; const val normal = 220; const val slow = 420 }
+object IDSTypography { const val bodySize = 18; const val captionSize = 14; const val headingMax = 48 }
