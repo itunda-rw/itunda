@@ -16,11 +16,11 @@ struct ReportsTab: View {
             .padding([.horizontal, .top], 16)
 
             if let error {
-                Text(error).foregroundColor(.red).padding(16)
+                Text(error).foregroundColor(IDS.Colors.danger).padding(16)
             } else if let days {
                 report(days)
             } else {
-                Spacer(); ProgressView(); Spacer()
+                Spacer(); SkeletonBlock(height: 96); Spacer()
             }
         }
         .navigationTitle("Reports")
@@ -84,7 +84,7 @@ struct ReportsTab: View {
                             }
                         }
                     } else {
-                        ProgressView().frame(maxWidth: .infinity).padding(16)
+                        SkeletonBlock(height: 96).frame(maxWidth: .infinity).padding(16)
                     }
                 }.padding(16)
             }
