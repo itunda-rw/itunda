@@ -8,9 +8,9 @@ const targets = [
 ];
 const extensions = new Set(['.ts', '.tsx', '.css']);
 const banned = [
-  /#[0-9a-fA-F]{3,8}\b/g,
-  /rgba?\(/g,
-  /hsla?\(/g,
+  /#[0-9a-fA-F]{3,8}\b/,
+  /rgba?\(/,
+  /hsla?\(/,
 ];
 const allow = new Set([
   'packages/design-system-web/src/styles.css',
@@ -34,7 +34,9 @@ for (const target of targets) {
   for (const file of await walk(join(root, target))) {
     const rel = relative(root, file).replaceAll('\\', '/');
     if ([...allow].some(prefix => rel === prefix || rel.startsWith(prefix + '/'))) continue;
-    const source = await readFile(file, 'utf8');
+    const source = (await readFile(file, 'utf8'))
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|\s)\/\/.*$/gm, '$1');
     for (const pattern of banned) {
       if (pattern.test(source)) {
         violations.push(rel);
