@@ -124,7 +124,7 @@ fun CatalogTab() {
 
         val list = products
         if (list == null) {
-            CircularProgressIndicator()
+            IdsLoading()
         } else if (list.isEmpty()) {
             EmptyState("No products yet — add your first one above.", icon = Icons.Outlined.Inventory2)
         } else {
