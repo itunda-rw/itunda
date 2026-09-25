@@ -66,7 +66,7 @@ struct DeliveryDetailScreen: View {
                     }
 
                     if let error {
-                        Text(error).foregroundColor(.red).font(.footnote).padding(.horizontal, 16)
+                        Text(error).foregroundColor(IDS.Colors.danger).font(.footnote).padding(.horizontal, 16)
                     }
 
                     if let (nextStatus, label) = nextAction(for: current.status) {
@@ -87,9 +87,9 @@ struct DeliveryDetailScreen: View {
             } else {
                 Spacer()
                 if let error {
-                    Text(error).foregroundColor(.red)
+                    Text(error).foregroundColor(IDS.Colors.danger)
                 } else {
-                    ProgressView()
+                    SkeletonBlock(height: 96)
                 }
                 Spacer()
             }
