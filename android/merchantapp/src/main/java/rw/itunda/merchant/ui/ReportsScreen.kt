@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,6 +25,7 @@ import java.util.Locale
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.core.designsystem.components.IdsLoading
 import rw.itunda.core.designsystem.components.IdsErrorText
+import rw.itunda.core.designsystem.components.IdsTabs
 import rw.itunda.merchant.network.ReportDayDto
 import rw.itunda.merchant.network.TopSellingProductDto
 import java.time.LocalDate
@@ -71,15 +71,12 @@ fun ReportsTab() {
         item {
             Text("Collections report", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text("Settled collections only", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
-                listOf(7, 30).forEach { period ->
-                    FilterChip(
-                        selected = rangeDays == period,
-                        onClick = { rangeDays = period },
-                        label = { Text("Last $period days") },
-                    )
-                }
-            }
+            IdsTabs(
+                labels = listOf("Last 7 days", "Last 30 days"),
+                selectedIndex = if (rangeDays == 7) 0 else 1,
+                onSelectedIndexChange = { rangeDays = if (it == 0) 7 else 30 },
+                modifier = Modifier.padding(top = 8.dp),
+            )
         }
         if (list.isEmpty()) {
             item {
