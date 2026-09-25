@@ -13,7 +13,7 @@ button,input{font:inherit}
 .header-inner{height:64px;max-width:1200px;margin:auto;padding:0 24px;display:flex;align-items:center;gap:40px}
 .brand{font-size:20px;font-weight:800;letter-spacing:-1.1px;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;line-height:1}
 .brand-mark{width:24px;height:24px;display:block;flex:none}
-.footer-brand{display:inline-flex;align-items:center;gap:8px;line-height:1}
+.footer-brand{display:inline-flex;align-items:center;gap:2px;line-height:1}
 .footer-mark{width:20px;height:20px;display:block;flex:none}
 .brand-accent{color:var(--primary)}
 .site-nav{display:flex;gap:24px;flex:1;font-size:14px;font-weight:650;color:var(--muted)}
