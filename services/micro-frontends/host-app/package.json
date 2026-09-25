@@ -12,7 +12,8 @@
   "dependencies": {
     "@itunda/design-tokens": "workspace:*",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "@itunda/design-system-web": "workspace:*"
   },
   "devDependencies": {
     "@originjs/vite-plugin-federation": "^1.4.1",
