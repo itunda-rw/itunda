@@ -30,6 +30,14 @@ Every public primitive must document:
 9. Light/dark semantic mapping
 10. Platform-specific rendering differences
 
+## Empty state mapping
+
+| Semantic role | Web | Android | iOS |
+|---|---|---|---|
+| Empty state | `EmptyState` | `IdsEmptyState` | `IdsEmptyState` |
+
+The three implementations share the same semantic contract: meaningful title, optional supporting message, optional action, localization-safe wrapping, and accessible action semantics. Platform-native layout and interaction details may differ.
+
 ## Platform rule
 
 The contract is shared; the implementation is native.
