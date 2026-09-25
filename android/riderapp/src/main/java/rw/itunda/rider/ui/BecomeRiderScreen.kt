@@ -1,6 +1,7 @@
 package rw.itunda.rider.ui
 
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import rw.itunda.core.designsystem.theme.Ids
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -59,7 +60,7 @@ fun BecomeRiderScreen(onRegistered: () -> Unit, onLogout: () -> Unit) {
         )
         error?.let {
             Spacer(modifier = Modifier.height(12.dp))
-            Text(it, color = MaterialTheme.colorScheme.error)
+            Text(it, color = Ids.colors.danger)
         }
         Spacer(modifier = Modifier.height(20.dp))
         IdsButton(
