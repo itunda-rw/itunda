@@ -291,12 +291,18 @@ fun IdsTextField(
     placeholder: String? = null,
     supportingText: String? = null,
     errorText: String? = null,
+    successText: String? = null,
     enabled: Boolean = true,
     singleLine: Boolean = true,
     keyboardType: androidx.compose.ui.text.input.KeyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
     visualTransformation: androidx.compose.ui.text.input.VisualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
 ) {
-    val supporting = errorText ?: supportingText
+    val supporting = errorText ?: successText ?: supportingText
+    val validationColor = when {
+        errorText != null -> Ids.colors.danger
+        successText != null -> Ids.colors.success
+        else -> Ids.colors.textSecondary
+    }
     androidx.compose.material3.OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -309,7 +315,7 @@ fun IdsTextField(
         isError = errorText != null,
         modifier = modifier.fillMaxWidth().heightIn(min = 56.dp),
         supportingText = supporting?.let { message ->
-            { Text(message, color = if (errorText != null) Ids.colors.danger else Ids.colors.textSecondary) }
+            { Text(message, color = validationColor) }
         },
     )
 }
