@@ -196,3 +196,24 @@ export function Tabs({ items, value, onChange, ariaLabel = 'Tabs' }: TabsProps) 
     </div>
   );
 }
+
+
+export interface EmptyStateProps {
+  title: string;
+  message?: string;
+  actionText?: string;
+  onAction?: () => void;
+}
+
+export function EmptyState({ title, message, actionText, onAction }: EmptyStateProps) {
+  return (
+    <section className="ids-empty-state" aria-label={title}>
+      <div className="ids-empty-state__icon" aria-hidden="true">○</div>
+      <h2 className="ids-empty-state__title">{title}</h2>
+      {message ? <p className="ids-empty-state__message">{message}</p> : null}
+      {actionText && onAction ? (
+        <Button text={actionText} onClick={onAction} variant="secondary" size="md" />
+      ) : null}
+    </section>
+  );
+}
