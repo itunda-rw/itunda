@@ -92,6 +92,12 @@ if (!Array.isArray(components) || components.length !== 8) failures.push(`${cont
 
 const ids = new Set();
 const required = ['states', 'content', 'a11y', 'motion', 'platforms'];
+const canonicalImplementationFiles = [
+  'packages/design-system-web/src/index.ts',
+  'packages/design-system-web/src/styles.css',
+  'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt',
+  'ios/Core/DesignSystem/Sources/Components/Components.swift',
+];
 for (const component of components || []) {
   const prefix = `${contractPath}:${component.id || '<missing-id>'}`;
   if (!component.id || ids.has(component.id)) failures.push(`${prefix}: ids must be present and unique`);
@@ -134,6 +140,23 @@ for (const [id, platforms] of Object.entries(implementationChecks)) {
     } catch {
       failures.push(`${id}:${platform}: implementation file missing: ${check.file}`);
     }
+  }
+}
+
+for (const file of canonicalImplementationFiles) {
+  try {
+    const source = (await readFile(join(root, file), 'utf8'))
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|\s)\/\/.*$/gm, '$1');
+    if (file.endsWith('.css')) {
+      if (/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/.test(source)) failures.push(file + ': canonical IDS CSS must use semantic tokens, not raw color values/functions');
+    } else if (file.endsWith('.kt')) {
+      if (/Color\(0x[0-9a-fA-F]{6,8}\)/.test(source)) failures.push(file + ': canonical Android components must consume IDS semantic colors, not raw Color literals');
+    } else if (file.endsWith('.swift')) {
+      if (/Color\(hex:|Color\(red:|Color\(white:/.test(source)) failures.push(file + ': canonical iOS components must consume IDS semantic colors, not raw color constructors');
+    }
+  } catch {
+    failures.push(file + ': canonical implementation file missing');
   }
 }
 
