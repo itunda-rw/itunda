@@ -680,3 +680,33 @@
   .ids-empty-state * { transition: none !important; }
   .ids-tab { transition: none; }
 }
+
+
+/* IDS high-contrast resilience: preserve semantic boundaries when forced colors are active. */
+@media (forced-colors: active) {
+  .ids-button,
+  .ids-field__input,
+  .ids-select__input,
+  .ids-tab,
+  .ids-field__clear,
+  .ids-field__button {
+    forced-color-adjust: auto;
+    border-color: ButtonText;
+  }
+  .ids-button:focus-visible,
+  .ids-field__input:focus-visible,
+  .ids-select__input:focus-visible,
+  .ids-tab:focus-visible,
+  .ids-field__clear:focus-visible,
+  .ids-field__button:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+  .ids-button:disabled,
+  .ids-field__input:disabled,
+  .ids-select__input:disabled,
+  .ids-tab:disabled {
+    color: GrayText;
+    border-color: GrayText;
+  }
+}
