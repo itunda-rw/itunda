@@ -2,13 +2,288 @@
   "version": "3.0.0",
   "principle": "One semantic contract, native implementation",
   "components": [
-    {"id":"button","api":"flat","states":["default","pressed","focus","disabled","loading"],"content":["long-label","localization","large-text"],"a11y":["name","keyboard","target","motion"],"platforms":["web","android","ios"],"validation":{"required":["states","content","a11y","motion","platforms"]}},
-    {"id":"text-field","api":"flat","states":["empty","filled","focus","disabled","error","success"],"content":["long-label","validation","localization","large-text"],"a11y":["label","description","invalid","input-method","target"],"platforms":["web","android","ios"]},
-    {"id":"select","api":"flat","states":["default","focus","disabled","error"],"content":["long-label","localization","large-text"],"a11y":["label","keyboard","expanded","target"],"platforms":["web","android","ios"]},
-    {"id":"checkbox","api":"flat","states":["unchecked","checked","focus","disabled","error"],"content":["long-label","localization","large-text"],"a11y":["name","keyboard","state","target"],"platforms":["web","android","ios"]},
-    {"id":"radio","api":"flat","states":["unchecked","checked","focus","disabled","error"],"content":["long-label","localization","large-text"],"a11y":["name","keyboard","group","target"],"platforms":["web","android","ios"]},
-    {"id":"switch","api":"flat","states":["off","on","focus","disabled"],"content":["long-label","localization","large-text"],"a11y":["name","keyboard","state","target"],"platforms":["web","android","ios"]},
-    {"id":"tabs","api":"compound","states":["default","selected","focus","disabled"],"content":["long-label","localization","large-text"],"a11y":["tablist","selection","keyboard","target"],"platforms":["web","android","ios"]},
-    {"id":"empty-state","api":"flat","states":["default"],"content":["long-title","localization","large-text"],"a11y":["name","action","target"],"platforms":["web","android","ios"]}
+    {
+      "id": "button",
+      "api": "flat",
+      "states": [
+        "default",
+        "pressed",
+        "focus",
+        "disabled",
+        "loading"
+      ],
+      "content": [
+        "long-label",
+        "localization",
+        "large-text"
+      ],
+      "a11y": [
+        "name",
+        "keyboard",
+        "target",
+        "motion"
+      ],
+      "platforms": [
+        "web",
+        "android",
+        "ios"
+      ],
+      "validation": {
+        "required": [
+          "states",
+          "content",
+          "a11y",
+          "motion",
+          "platforms"
+        ]
+      }
+    },
+    {
+      "id": "text-field",
+      "api": "flat",
+      "states": [
+        "empty",
+        "filled",
+        "focus",
+        "disabled",
+        "error",
+        "success"
+      ],
+      "content": [
+        "long-label",
+        "validation",
+        "localization",
+        "large-text"
+      ],
+      "a11y": [
+        "label",
+        "description",
+        "invalid",
+        "input-method",
+        "target"
+      ],
+      "platforms": [
+        "web",
+        "android",
+        "ios"
+      ],
+      "validation": {
+        "required": [
+          "states",
+          "content",
+          "a11y",
+          "motion",
+          "platforms"
+        ]
+      }
+    },
+    {
+      "id": "select",
+      "api": "flat",
+      "states": [
+        "default",
+        "focus",
+        "disabled",
+        "error"
+      ],
+      "content": [
+        "long-label",
+        "localization",
+        "large-text"
+      ],
+      "a11y": [
+        "label",
+        "keyboard",
+        "expanded",
+        "target"
+      ],
+      "platforms": [
+        "web",
+        "android",
+        "ios"
+      ],
+      "validation": {
+        "required": [
+          "states",
+          "content",
+          "a11y",
+          "motion",
+          "platforms"
+        ]
+      }
+    },
+    {
+      "id": "checkbox",
+      "api": "flat",
+      "states": [
+        "unchecked",
+        "checked",
+        "focus",
+        "disabled",
+        "error"
+      ],
+      "content": [
+        "long-label",
+        "localization",
+        "large-text"
+      ],
+      "a11y": [
+        "name",
+        "keyboard",
+        "state",
+        "target"
+      ],
+      "platforms": [
+        "web",
+        "android",
+        "ios"
+      ],
+      "validation": {
+        "required": [
+          "states",
+          "content",
+          "a11y",
+          "motion",
+          "platforms"
+        ]
+      }
+    },
+    {
+      "id": "radio",
+      "api": "flat",
+      "states": [
+        "unchecked",
+        "checked",
+        "focus",
+        "disabled",
+        "error"
+      ],
+      "content": [
+        "long-label",
+        "localization",
+        "large-text"
+      ],
+      "a11y": [
+        "name",
+        "keyboard",
+        "group",
+        "target"
+      ],
+      "platforms": [
+        "web",
+        "android",
+        "ios"
+      ],
+      "validation": {
+        "required": [
+          "states",
+          "content",
+          "a11y",
+          "motion",
+          "platforms"
+        ]
+      }
+    },
+    {
+      "id": "switch",
+      "api": "flat",
+      "states": [
+        "off",
+        "on",
+        "focus",
+        "disabled"
+      ],
+      "content": [
+        "long-label",
+        "localization",
+        "large-text"
+      ],
+      "a11y": [
+        "name",
+        "keyboard",
+        "state",
+        "target"
+      ],
+      "platforms": [
+        "web",
+        "android",
+        "ios"
+      ],
+      "validation": {
+        "required": [
+          "states",
+          "content",
+          "a11y",
+          "motion",
+          "platforms"
+        ]
+      }
+    },
+    {
+      "id": "tabs",
+      "api": "compound",
+      "states": [
+        "default",
+        "selected",
+        "focus",
+        "disabled"
+      ],
+      "content": [
+        "long-label",
+        "localization",
+        "large-text"
+      ],
+      "a11y": [
+        "tablist",
+        "selection",
+        "keyboard",
+        "target"
+      ],
+      "platforms": [
+        "web",
+        "android",
+        "ios"
+      ],
+      "validation": {
+        "required": [
+          "states",
+          "content",
+          "a11y",
+          "motion",
+          "platforms"
+        ]
+      }
+    },
+    {
+      "id": "empty-state",
+      "api": "flat",
+      "states": [
+        "default"
+      ],
+      "content": [
+        "long-title",
+        "localization",
+        "large-text"
+      ],
+      "a11y": [
+        "name",
+        "action",
+        "target"
+      ],
+      "platforms": [
+        "web",
+        "android",
+        "ios"
+      ],
+      "validation": {
+        "required": [
+          "states",
+          "content",
+          "a11y",
+          "motion",
+          "platforms"
+        ]
+      }
+    }
   ]
 }
