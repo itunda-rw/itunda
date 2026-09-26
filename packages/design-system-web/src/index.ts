@@ -234,31 +234,95 @@ export function Select({
   );
 }
 
-export interface CheckControlProps extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface CheckControlProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
   label: React.ReactNode;
+  description?: React.ReactNode;
+  error?: string;
 }
 
-export function Checkbox({ label, id, className = '', ...props }: CheckControlProps) {
+export function Checkbox({
+  label,
+  description,
+  error,
+  id,
+  className = '',
+  checked,
+  defaultChecked,
+  disabled,
+  ...props
+}: CheckControlProps) {
   const reactId = React.useId();
   const inputId = id ?? `ids-checkbox-${reactId}`;
+  const descriptionId = description ? `${inputId}-description` : undefined;
+  const errorId = error ? `${inputId}-error` : undefined;
+  const describedBy = [descriptionId, errorId].filter(Boolean).join(' ') || undefined;
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.indeterminate = false;
+    }
+  }, []);
+
   return (
-    <label className={`ids-check ${className}`.trim()} htmlFor={inputId}>
-      <input {...props} id={inputId} type="checkbox" />
-      <span className="ids-check__box" aria-hidden="true" />
-      <span className="ids-check__label">{label}</span>
-    </label>
+    <div className={`ids-check-field ${className}`.trim()}>
+      <label className="ids-check" htmlFor={inputId}>
+        <input
+          {...props}
+          ref={inputRef}
+          id={inputId}
+          type="checkbox"
+          checked={checked}
+          defaultChecked={defaultChecked}
+          disabled={disabled}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
+        />
+        <span className="ids-check__box" aria-hidden="true" />
+        <span className="ids-check__content">
+          <span className="ids-check__label">{label}</span>
+          {description ? <span id={descriptionId} className="ids-check__description">{description}</span> : null}
+        </span>
+      </label>
+      {error ? <p id={errorId} className="ids-check__error" role="alert">{error}</p> : null}
+    </div>
   );
 }
 
-export function Radio({ label, id, className = '', ...props }: CheckControlProps) {
+export function Radio({
+  label,
+  description,
+  error,
+  id,
+  className = '',
+  disabled,
+  ...props
+}: CheckControlProps) {
   const reactId = React.useId();
   const inputId = id ?? `ids-radio-${reactId}`;
+  const descriptionId = description ? `${inputId}-description` : undefined;
+  const errorId = error ? `${inputId}-error` : undefined;
+  const describedBy = [descriptionId, errorId].filter(Boolean).join(' ') || undefined;
+
   return (
-    <label className={`ids-check ${className}`.trim()} htmlFor={inputId}>
-      <input {...props} id={inputId} type="radio" />
-      <span className="ids-check__radio" aria-hidden="true" />
-      <span className="ids-check__label">{label}</span>
-    </label>
+    <div className={`ids-check-field ${className}`.trim()}>
+      <label className="ids-check" htmlFor={inputId}>
+        <input
+          {...props}
+          id={inputId}
+          type="radio"
+          disabled={disabled}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
+        />
+        <span className="ids-check__radio" aria-hidden="true" />
+        <span className="ids-check__content">
+          <span className="ids-check__label">{label}</span>
+          {description ? <span id={descriptionId} className="ids-check__description">{description}</span> : null}
+        </span>
+      </label>
+      {error ? <p id={errorId} className="ids-check__error" role="alert">{error}</p> : null}
+    </div>
   );
 }
 
