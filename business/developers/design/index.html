@@ -369,7 +369,41 @@ function renderCoverage(kind){
   coverageMeta.innerHTML='<strong>Contract coverage · '+passed+'/'+checks.length+'</strong><div class="coverage-grid">'+checks.map(([label,ok])=>badge(ok,label)).join('')+'</div><div class="coverage-grid">'+badge(mapped,'Mapped')+badge(contractChecked,'Contract-checked')+badge(buildVerified,'Build-verified')+'</div><p class="note">'+(buildVerified?'Build evidence verified.':'Build verification is intentionally separate and is not claimed by this showcase.')+'</p>';
 }labSection?.querySelector('.lab-statebar')?.after(labMeta);
 labMeta.after(coverageMeta);
-function renderLabV3(){if(!labPreview)return;const s=document.querySelector('[data-lab-state][aria-pressed="true"]')?.dataset.labState||'default';let h='';if(labKind==='button')h='<div class="playground-card"><button class="btn primary" '+(s==='disabled'||s==='loading'?'disabled':'')+'>'+((s==='loading')?'Loading…':s==='error'?'Try again':'Continue')+'</button></div>';else if(labKind==='field')h='<div class="playground-card"><label class="demo-label">Phone number<input class="field" '+(s==='disabled'?'disabled':'')+' value="+250 788 123 456"><span class="help">'+(s==='error'?'Enter a valid phone number.':'Used for verification.')+'</span></label></div>';else if(labKind==='select')h='<div class="playground-card"><label class="demo-label">Payment method<select class="pg-select" '+(s==='disabled'?'disabled':'')+'><option>Mobile Money</option><option>Bank account</option></select></label></div>';else if(labKind==='checkbox')h='<div class="playground-card control-stack"><label class="control-option"><input type="checkbox" checked> Remember this device</label><span class="help">Native checkbox semantics remain authoritative.</span></div>';else if(labKind==='radio')h='<div class="playground-card control-stack"><label class="control-option"><input type="radio" name="pg-radio" checked> Kigali</label><label class="control-option"><input type="radio" name="pg-radio"> Other location</label></div>';else if(labKind==='switch')h='<div class="playground-card"><label class="control-option"><input type="checkbox" role="switch" checked> Notifications</label></div>';else if(labKind==='tabs')h='<div class="playground-card"><div class="pg-tabs"><button class="active">Overview</button><button>Activity</button><button>Settings</button></div></div>';else h='<div class="playground-card ids-empty-state"><div class="ids-empty-state__icon" aria-hidden="true">○</div><h2 class="ids-empty-state__title">No products yet</h2><p class="ids-empty-state__message">Add your first product to start building your catalog.</p><button class="btn">Add product</button></div>';labPreview.dataset.labState=s;labPreview.innerHTML=h}
+function renderLabV3(){
+  if(!labPreview)return;
+  const s=document.querySelector('[data-lab-state][aria-pressed="true"]')?.dataset.labState||'default';
+  const disabled=s==='disabled';
+  const focus=s==='focus';
+  const error=s==='error';
+  const success=s==='success';
+  const loading=s==='loading';
+  const pressed=s==='pressed'||s==='selected'||s==='checked'||s==='on';
+  const longText=IDS_CONTRACTS[labKind]?.content?.some(x=>x.includes('long'));
+  const label=longText?'Continue to verify your phone number and finish setting up your Itunda account':'Continue';
+  const outline=focus?' style="outline:3px solid color-mix(in srgb,var(--focus) 32%,transparent);outline-offset:3px"':'';
+  let h='';
+  if(labKind==='button'){
+    h='<div class="playground-card"><button class="btn primary" data-rendered-state="'+s+'" '+(disabled||loading?'disabled':'')+outline+' '+(pressed?'aria-pressed="true"':'')+'>'+((loading)?'Loading…':label)+'</button><p class="note" style="margin-top:12px">'+(error?'Could not continue. Check the information and try again.':success?'Completed successfully.':pressed?'Action is visibly pressed.':disabled?'This action is currently unavailable.':'Primary action contract preview.')+'</p></div>';
+  }else if(labKind==='field'){
+    h='<div class="playground-card"><label class="demo-label">Phone number<input class="field" data-rendered-state="'+s+'" '+(disabled?'disabled':'')+(error?' aria-invalid="true"':'')+outline+' value="'+(longText?'+250 788 123 456 789 000':'+250 788 123 456')+'"><span class="help">'+(error?'Enter a valid phone number.':success?'Phone number verified.':disabled?'Phone number editing is unavailable.':'Used for verification.')+'</span></label></div>';
+  }else if(labKind==='select'){
+    h='<div class="playground-card"><label class="demo-label">Payment method<select class="pg-select" data-rendered-state="'+s+'" '+(disabled?'disabled':'')+(error?' aria-invalid="true"':'')+outline+'><option>'+((pressed||s==='default')?'Mobile Money':'Bank account')+'</option><option>Bank account</option></select></label></div>';
+  }else if(labKind==='checkbox'){
+    h='<div class="playground-card control-stack"><label class="control-option"><input type="checkbox" data-rendered-state="'+s+'" '+(pressed?'checked ':'')+(disabled?'disabled ':'')+outline+'> Remember this device</label><span class="help">'+(error?'This preference could not be saved.':'Native checkbox semantics remain authoritative.')+'</span></div>';
+  }else if(labKind==='radio'){
+    h='<div class="playground-card control-stack"><label class="control-option"><input type="radio" name="pg-radio" data-rendered-state="'+s+'" '+(pressed?'checked ':'')+(disabled?'disabled ':'')+outline+'> Kigali</label><label class="control-option"><input type="radio" name="pg-radio" '+(pressed?'':'checked ')+(disabled?'disabled ':'')+'> Other location</label></div>';
+  }else if(labKind==='switch'){
+    h='<div class="playground-card control-stack"><label class="control-option"><input type="checkbox" role="switch" data-rendered-state="'+s+'" aria-checked="'+(pressed?'true':'false')+'" '+(pressed?'checked ':'')+(disabled?'disabled ':'')+outline+'> Notifications</label></div>';
+  }else if(labKind==='tabs'){
+    h='<div class="playground-card"><div class="pg-tabs" role="tablist">'+['Overview','Activity','Settings'].map((x,i)=>'<button role="tab" class="'+((s==='selected'&&i===1)||(s!=='selected'&&i===0)?'active':'')+'" '+(disabled&&i>0?'disabled ':'')+'> '+(s==='selected'&&i===1?'Selected · ':'')+x+'</button>').join('')+'</div></div>';
+  }else{
+    h='<div class="playground-card ids-empty-state" data-rendered-state="'+s+'"><div class="ids-empty-state__icon" aria-hidden="true">○</div><h2 class="ids-empty-state__title">'+(longText?'No marketplace results found for this neighborhood yet':'No products yet')+'</h2><p class="ids-empty-state__message">Add your first product to start building your catalog.</p><button class="btn" '+(disabled?'disabled':'')+'>Add product</button></div>';
+  }
+  labPreview.dataset.labState=s;
+  labPreview.dataset.labKind=labKind;
+  labPreview.innerHTML=h;
+}
+
 document.querySelectorAll('[data-lab-kind]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-lab-kind]').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');labKind=b.dataset.labKind;syncLabContract(labKind);renderLabV3()}));
 syncLabContract(labKind);loadIdsContractManifest();stateBar?.addEventListener('click',e=>{const b=e.target.closest('[data-lab-state]');if(!b)return;stateBar.querySelectorAll('[data-lab-state]').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');renderLabV3()});renderLabV3();
 </script></body></html>
