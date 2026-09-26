@@ -58,3 +58,15 @@ Every promoted primitive should be reviewed for:
 A live mobile-web smoke pass has been executed against the deployed IDS showcase on both an Android Chrome emulator and an iOS Safari simulator. The page loaded successfully, exposed the IDS navigation/content landmarks, and the dark-mode control was exercised on both platforms. This verifies the **Web surface as rendered inside mobile browsers**.
 
 This evidence must not be counted as native Android/iOS component verification. Native verification still requires an installed Itunda Android build and iOS simulator build containing the canonical native IDS primitives. Until those builds are executed, native rendered parity remains explicitly unverified.
+
+## Native contract hardening
+
+The Android and iOS primitive APIs now explicitly cover the remaining contract-level edge cases that were previously only represented in the canonical manifest:
+
+- Select: disabled options
+- Checkbox: indeterminate/mixed state, descriptions, validation errors
+- Radio: selection state, descriptions, validation errors, group context
+- Switch: loading/updating state and validation errors
+- Tabs: explicit selected semantics on native tab controls
+
+These changes improve source-level parity with the IDS contract. They do **not** count as rendered verification; native builds and device/simulator evidence remain required before native parity can be marked verified.
