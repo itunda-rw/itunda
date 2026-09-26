@@ -601,7 +601,7 @@ function renderVisualQAMatrix(){
     ['web','android','ios'].forEach(platform=>{
       const el=status.querySelector('[data-qa-platform-status-'+platform+']');if(!el)return;
       const raw=localStorage.getItem('ids-qa-evidence-'+platform+'-'+id);let state='—';
-      try{const meta=raw?JSON.parse(raw):null;const at=Date.parse(meta?.verifiedAt||'');const sig=localStorage.getItem('ids-qa-contract-signature')||'';state=meta?.scenario===id&&meta?.platform===platform&&meta?.contractSignature===sig&&Number.isFinite(at)&&Date.now()-at<=QA_EVIDENCE_MAX_AGE_MS?'✓':'!';
+      try{const meta=raw?JSON.parse(raw):null;const at=Date.parse(meta?.verifiedAt||'');const sig=localStorage.getItem('ids-qa-contract-signature')||'';state=meta?.scenario===id&&meta?.platform===platform&&meta?.contractSignature===sig&&meta?.platformContractSignature===(localStorage.getItem('ids-qa-platform-contract-signature')||'')&&Number.isFinite(at)&&Date.now()-at<=QA_EVIDENCE_MAX_AGE_MS?'✓':'!';
       }catch{}
       el.textContent=platform.charAt(0).toUpperCase()+platform.slice(1)+' '+state;
       el.dataset.status=state==='✓'?'verified':state==='!'?'stale':'missing';
