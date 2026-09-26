@@ -96,6 +96,15 @@ for (const component of components || []) {
   if (!component.a11y.includes('motion')) {
     failures.push(`${prefix}: a11y must include motion for release-gate coverage`);
   }
+  if (!component.guide || typeof component.guide !== 'object') failures.push(`${prefix}: guide metadata is required`);
+  else {
+    for (const key of ['purpose', 'worstCase']) {
+      if (typeof component.guide[key] !== 'string' || !component.guide[key].trim()) failures.push(`${prefix}: guide.${key} must be a non-empty string`);
+    }
+    if (!Array.isArray(component.guide.tokens) || component.guide.tokens.length === 0) failures.push(`${prefix}: guide.tokens must be non-empty`);
+    if (!Array.isArray(component.guide.checklist) || component.guide.checklist.length < 2) failures.push(`${prefix}: guide.checklist must contain at least 2 checks`);
+  }
+
   if (!component.validation?.required || !required.every(key => component.validation.required.includes(key))) {
     failures.push(`${prefix}: validation.required must include ${required.join(', ')}`);
   }
