@@ -267,3 +267,15 @@
 @media (prefers-reduced-motion: reduce) {
   .ids-empty-state * { transition: none !important; animation: none !important; }
 }
+
+
+/* IDS interaction quality: semantic states stay legible without relying on color alone. */
+.ids-button:not(:disabled){will-change:transform}.ids-button:hover:not(:disabled){filter:none;transform:translateY(-1px)}
+.ids-button:active:not(:disabled){transform:scale(.985)}
+.ids-field__input:disabled{background:var(--itunda-surface-subtle);color:var(--itunda-text-tertiary);cursor:not-allowed}
+.ids-field__input[aria-invalid="true"]:focus-visible{outline-color:color-mix(in srgb,var(--itunda-red) 35%,transparent)}
+.ids-check,.ids-switch{position:relative}
+.ids-check__label,.ids-switch__label{overflow-wrap:anywhere}
+.ids-tabs{overflow-x:auto;scrollbar-width:none}.ids-tabs::-webkit-scrollbar{display:none}.ids-tab{white-space:nowrap;flex:0 0 auto}
+.ids-empty-state__message{overflow-wrap:anywhere}
+@media (prefers-reduced-motion: reduce){.ids-button:not(:disabled){will-change:auto}.ids-button:hover:not(:disabled){transform:none}.ids-button:active:not(:disabled){transform:none}.ids-switch__track,.ids-switch__thumb{transition:none}.ids-tab{scroll-behavior:auto}}
