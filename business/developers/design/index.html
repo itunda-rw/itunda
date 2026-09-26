@@ -64,6 +64,13 @@
 .spec-table{overflow-wrap:anywhere}
 .rowtitle,.rowmeta,.value,.token,.note,.lede,.section-head p{overflow-wrap:anywhere}
 </style>
+
+<style id="ids-a11y-qa-css">
+/* Showcase-level interaction contract: keyboard focus must remain visible in every theme. */
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:3px solid color-mix(in srgb,var(--focus) 42%,transparent);outline-offset:3px}
+button:disabled,[aria-disabled="true"]{cursor:not-allowed}
+@media (forced-colors:active){button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid Highlight;outline-offset:3px}}
+</style>
 </head>
 <body>
 <header class="top"><div class="topin">
