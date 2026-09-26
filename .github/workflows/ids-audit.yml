@@ -1,7 +1,7 @@
 name: IDS audit
 
 permissions:
-  contents: write
+  contents: read
 
 on:
   pull_request:
