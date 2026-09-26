@@ -335,9 +335,9 @@
  */
 @media (prefers-color-scheme: dark) {
   :root {
-    --itunda-indigo: #4593FC;
-    --itunda-indigo-active: #64A8FF;
-    --itunda-indigo-light: #10294A;
+    --itunda-indigo: #9B98FF;
+    --itunda-indigo-active: #B0AEFF;
+    --itunda-indigo-light: #27244A;
     --itunda-red: #ff6b7a;
     --itunda-red-light: #3a1418;
     --itunda-green: #20d394;
