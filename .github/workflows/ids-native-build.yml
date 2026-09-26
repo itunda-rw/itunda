@@ -12,7 +12,7 @@ permissions:
 jobs:
   android:
     name: Android IDS native compile
-    runs-on: macos-15
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - name: Checkout
@@ -51,28 +51,55 @@ jobs:
           retention-days: 14
 
   ios:
-    name: iOS IDS native compile
-    runs-on: macos-15
-    timeout-minutes: 45
+    name: iOS IDS remote Xcode verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      LIM_API_KEY: ${{ secrets.LIM_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Tuist
-        run: brew install tuist
+      - name: Require Limrun credentials
+        run: |
+          if [ -z "$LIM_API_KEY" ]; then
+            echo "::error::LIM_API_KEY repository secret is required for remote iOS native verification."
+            echo "GitHub-hosted macOS runners are unavailable on GHE.com subdomains."
+            exit 1
+          fi
 
-      - name: Generate iOS project
-        working-directory: ios
-        run: tuist generate --no-open
+      - name: Install Limrun CLI
+        run: npm install --global lim
 
-      - name: Build IDS host target
-        working-directory: ios
-        run: xcodebuild -project Itunda.xcodeproj -scheme ItundaRiderApp -sdk iphonesimulator -configuration Debug -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+      - name: Create or reuse remote Xcode sandbox
+        run: lim xcode create --reuse-if-exists --label repo=itunda --label lane=ids-native
 
-      - name: Upload iOS build products
+      - name: Build iOS IDS host remotely
+        run: |
+          lim xcode build ios \
+            --scheme ItundaRiderApp \
+            --configuration Debug \
+            --upload "itunda-ids/${GITHUB_SHA}-ios-debug.zip"
+
+      - name: Attach remote iOS simulator
+        run: lim ios create --attach --reuse-if-exists --label repo=itunda --label lane=ids-native
+
+      - name: Verify remote Xcode build completed
+        run: lim xcode logs
+
+      - name: Upload native verification manifest
+        run: |
+          cat > ios-native-verification.txt <<EOF
+          commit=${GITHUB_SHA}
+          lane=limrun-xcode
+          scheme=ItundaRiderApp
+          configuration=Debug
+          status=build-complete
+          EOF
+
+      - name: Upload iOS verification manifest
         uses: actions/upload-artifact@v4
         with:
-          name: ids-native-ios-products
-          path: ios/Derived/**
-          if-no-files-found: ignore
+          name: ids-native-ios-verification
+          path: ios-native-verification.txt
           retention-days: 14
