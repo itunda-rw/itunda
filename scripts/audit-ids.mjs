@@ -33,6 +33,16 @@ async function walk(dir) {
 const failures = [];
 const manifest = JSON.parse(await readFile(join(root, contractPath), 'utf8'));
 
+const webApiChecks = {
+  button: ['interface ButtonProps','function Button','loadingLabel'],
+  'text-field': ['interface TextFieldProps','function TextField','clearable','multiline'],
+  select: ['interface SelectProps','function Select','SelectOption'],
+  checkbox: ['interface CheckboxProps','function Checkbox','indeterminate'],
+  radio: ['interface RadioProps','function Radio'],
+  switch: ['interface SwitchProps','function Switch','role="switch"'],
+  tabs: ['interface TabsProps','function Tabs','role="tab"'],
+  'empty-state': ['interface EmptyStateProps','function EmptyState','EmptyStateAction'],
+};
 const implementationChecks = {
   button: {
     web: { file: 'packages/design-system-web/src/index.ts', symbols: ['Button'] },
@@ -137,6 +147,22 @@ for (const component of components || []) {
   }
 }
 
+for (const [id, requiredApi] of Object.entries(webApiChecks)) {
+  const webCheck = implementationChecks[id]?.web;
+  if (!webCheck) {
+    failures.push(`${id}:web: implementation mapping is missing`);
+    continue;
+  }
+  try {
+    const source = await readFile(join(root, webCheck.file), 'utf8');
+    for (const marker of requiredApi) {
+      if (!source.includes(marker)) failures.push(`${id}:web: API/implementation marker missing: ${marker}`);
+    }
+  } catch {
+    failures.push(`${id}:web: cannot validate API surface: ${webCheck.file}`);
+  }
+}
+
 for (const [id, platforms] of Object.entries(implementationChecks)) {
   for (const [platform, check] of Object.entries(platforms)) {
     try {
@@ -194,4 +220,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('IDS audit passed: tokens + contract manifest + platform implementation mapping + key Web accessibility contracts.');
+console.log('IDS audit passed: tokens + contract manifest + API surface + platform implementation mapping + key Web accessibility contracts.');
