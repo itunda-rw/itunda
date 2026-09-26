@@ -596,3 +596,53 @@
   outline: 3px solid color-mix(in srgb, var(--itunda-focus) 28%, transparent);
   outline-offset: 2px;
 }
+
+.ids-empty-state {
+  min-width: 0;
+  width: min(100%, 560px);
+  margin-inline: auto;
+  padding: clamp(24px, 6vw, 48px) 20px;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+}
+.ids-empty-state__icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  color: var(--itunda-brand);
+  font-size: 28px;
+}
+.ids-empty-state__title,
+.ids-empty-state__message {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.ids-empty-state__title {
+  margin: 0;
+}
+.ids-empty-state__message {
+  margin: 0;
+  color: var(--itunda-text-secondary);
+}
+.ids-empty-state__actions {
+  width: min(100%, 420px);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.ids-empty-state__actions > * {
+  min-width: 44px;
+}
+@media (max-width: 480px) {
+  .ids-empty-state__actions {
+    display: grid;
+    width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ids-empty-state * { transition: none !important; }
+}
