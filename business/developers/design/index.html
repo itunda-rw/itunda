@@ -509,10 +509,17 @@ function renderVisualQAMatrix(){
   let storedQaPlatformContractByComponent={};
   try{storedQaPlatformContractByComponent=JSON.parse(localStorage.getItem('ids-qa-platform-contract-components')||'{}')||{};}catch{}
   const qaPlatformContractChanges=components.filter(comp=>storedQaPlatformContractByComponent[comp.id]!==undefined&&storedQaPlatformContractByComponent[comp.id]!==qaPlatformContractByComponent[comp.id]).map(comp=>comp.id);
-    const qaPlatformContractChanged=qaPlatformContractChanges.length>0;
+    const storedQaScenarioPlatformContracts=(()=>{try{return JSON.parse(localStorage.getItem('ids-qa-scenario-platform-contracts')||'{}')||{};}catch{return {};}})();
+  const qaScenarioPlatformContractChanges=components.flatMap(comp=>{
+    const previous=storedQaScenarioPlatformContracts[comp.id]||{};
+    const current=qaScenarioPlatformContractByComponent[comp.id]||{};
+    return Object.keys(current).filter(id=>previous[id]!==undefined&&previous[id]!==current[id]).map(id=>({componentId:comp.id,scenario:id}));
+  });
+  const qaScenarioPlatformContractChanged=qaScenarioPlatformContractChanges.length>0;
   localStorage.setItem('ids-qa-contract-signature',qaContractSignature);
   localStorage.setItem('ids-qa-platform-contract-signature',qaPlatformContractSignature);
   localStorage.setItem('ids-qa-platform-contract-components',JSON.stringify(qaPlatformContractByComponent));
+  localStorage.setItem('ids-qa-scenario-platform-contracts',JSON.stringify(qaScenarioPlatformContractByComponent));
   const incompleteEvidenceCount=components.reduce((count,comp)=>count+qaScenarioList(comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id).filter(([id])=>localStorage.getItem('ids-qa-scenario-'+id)==='true'&&!validEvidenceForScenario(id)).length,0);
   const staleEvidenceCount=components.reduce((count,comp)=>{
     const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;
@@ -586,40 +593,48 @@ function renderVisualQAMatrix(){
       const meta=JSON.parse(localStorage.getItem('ids-qa-evidence-'+platform+'-'+id)||'');
       const verifiedAt=Date.parse(meta?.verifiedAt||'');
       const signature=localStorage.getItem('ids-qa-contract-signature')||'';
-      return meta?.scenario===id&&meta?.platform===platform&&meta?.contractSignature===signature&&meta?.platformContractSignature===(localStorage.getItem('ids-qa-platform-contract-signature')||'')&&meta?.componentId&&meta?.componentPlatformContractSignature===qaPlatformContractByComponent[meta.componentId]&&Number.isFinite(verifiedAt)&&Date.now()-verifiedAt<=QA_EVIDENCE_MAX_AGE_MS&&meta?.context&&typeof meta.context.viewport==='string';
+      return meta?.scenario===id&&meta?.platform===platform&&meta?.contractSignature===signature&&meta?.platformContractSignature===(localStorage.getItem('ids-qa-platform-contract-signature')||'')&&meta?.componentId&&meta?.componentPlatformContractSignature===qaPlatformContractByComponent[meta.componentId]&&meta?.scenarioPlatformContractSignature===qaScenarioPlatformContractByComponent[meta.componentId]?.[id]&&Number.isFinite(verifiedAt)&&Date.now()-verifiedAt<=QA_EVIDENCE_MAX_AGE_MS&&meta?.context&&typeof meta.context.viewport==='string';
     }catch{return false;}
   };
-  const validEvidenceForScenario=(id)=>platforms.some(platform=>validPlatformEvidence(id,platform));
+  const validEvidenceForScenario=(id)=>{
+    const requiredPlatforms=components.flatMap(comp=>{
+      const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;
+      return qaScenarioList(kind).some(([scenarioId])=>scenarioId===id)?(qaScenarioPlatformContractByComponent[comp.id]?.[id]||'').split(',').filter(Boolean):[];
+    });
+    return requiredPlatforms.length>0&&requiredPlatforms.every(platform=>validPlatformEvidence(id,platform));
+  };
   const renderQaReviewerMatrix=()=>{
     const host=root.querySelector('[data-qa-reviewer-matrix]');if(!host)return;
     const statusFor=(id,platform)=>{
       const raw=localStorage.getItem('ids-qa-evidence-'+platform+'-'+id);
       if(!raw)return 'missing';
       try{const m=JSON.parse(raw),at=Date.parse(m?.verifiedAt||''),sig=localStorage.getItem('ids-qa-contract-signature')||'';
-        return m?.scenario===id&&m?.platform===platform&&m?.contractSignature===sig&&m?.platformContractSignature===(localStorage.getItem('ids-qa-platform-contract-signature')||'')&&m?.componentId&&m?.componentPlatformContractSignature===qaPlatformContractByComponent[m.componentId]&&Number.isFinite(at)&&Date.now()-at<=30*24*60*60*1000?'verified':'stale';
+        return m?.scenario===id&&m?.platform===platform&&m?.contractSignature===sig&&m?.platformContractSignature===(localStorage.getItem('ids-qa-platform-contract-signature')||'')&&m?.componentId&&m?.componentPlatformContractSignature===qaPlatformContractByComponent[m.componentId]&&m?.scenarioPlatformContractSignature===qaScenarioPlatformContractByComponent[m.componentId]?.[id]&&Number.isFinite(at)&&Date.now()-at<=30*24*60*60*1000?'verified':'stale';
       }catch{return 'stale';}
     };
     host.innerHTML=components.map(comp=>{
       const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;
       const platforms=(comp.platforms||[]).map(String).filter(Boolean);
       const drift=qaPlatformContractChanges.includes(comp.id);
+      const scenarioDriftIds=new Set(qaScenarioPlatformContractChanges.filter(change=>change.componentId===comp.id).map(change=>change.scenario));
       const componentPlatformSignature=qaPlatformContractByComponent[comp.id]||'';
       const scenarioState=(id,platform)=>{
         const raw=localStorage.getItem('ids-qa-evidence-'+platform+'-'+id);
         if(!raw)return 'missing';
         try{
           const m=JSON.parse(raw),at=Date.parse(m?.verifiedAt||''),sig=localStorage.getItem('ids-qa-contract-signature')||'';
-          if(m?.scenario!==id||m?.platform!==platform||m?.contractSignature!==sig||m?.platformContractSignature!==(localStorage.getItem('ids-qa-platform-contract-signature')||'')||m?.componentId!==comp.id||m?.componentPlatformContractSignature!==componentPlatformSignature||!Number.isFinite(at)||Date.now()-at>30*24*60*60*1000)return 'stale';
+          if(m?.scenario!==id||m?.platform!==platform||m?.contractSignature!==sig||m?.platformContractSignature!==(localStorage.getItem('ids-qa-platform-contract-signature')||'')||m?.componentId!==comp.id||m?.componentPlatformContractSignature!==componentPlatformSignature||m?.scenarioPlatformContractSignature!==qaScenarioPlatformContractByComponent[comp.id]?.[id]||!Number.isFinite(at)||Date.now()-at>30*24*60*60*1000)return 'stale';
           return 'verified';
         }catch{return 'stale';}
       };
       const rows=qaScenarioList(kind).map(([id,title])=>{
-        const cells=platforms.map(p=>{const state=scenarioState(id,p);return '<span class="qa-matrix-'+state+'">'+p+' '+(state==='verified'?'✓':state==='stale'?'!':'—')+'</span>';}).join('');
+        const requiredPlatforms=(qaScenarioPlatformContractByComponent[comp.id]?.[id]||'').split(',').filter(Boolean);
+        const cells=['web','android','ios'].map(p=>requiredPlatforms.includes(p)?(()=>{const state=scenarioState(id,p);return '<span class="qa-matrix-'+state+'">'+p+' '+(state==='verified'?'✓':state==='stale'?'!':'—')+'</span>';})():'<span class="qa-matrix-na">'+p+' n/a</span>').join('');
         return '<div class="qa-matrix-row" data-qa-reviewer-scenario="'+id+'"><b>'+title+'</b><span>'+cells+'</span></div>';
       }).join('');
       const required=platforms.join(' · ')||'No declared platforms';
-      const contractState=drift?'changed':'stable';
-      const contractLabel=drift?'Platform contract changed — re-verify':'Platform contract stable';
+      const contractState=drift||scenarioDriftIds.size?'changed':'stable';
+      const contractLabel=drift||scenarioDriftIds.size?'Platform/scenario contract changed — re-verify':'Platform/scenario contract stable';
       return '<section class="qa-matrix-component" data-contract-drift="'+drift+'" aria-label="'+label(comp.id)+' reviewer coverage"><strong>'+label(comp.id)+'</strong><div class="qa-matrix-contract" role="'+(drift?'alert':'status')+'"><span data-contract-state="'+contractState+'">'+contractLabel+'</span><span>Required platforms: '+required+'</span></div>'+rows+'</section>';
     }).join('');
   };
