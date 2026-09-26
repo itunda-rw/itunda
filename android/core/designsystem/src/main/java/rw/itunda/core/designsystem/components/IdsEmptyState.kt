@@ -32,7 +32,7 @@ fun IdsEmptyState(
             IdsButton(text = primaryActionLabel, onClick = onPrimaryAction, modifier = Modifier.fillMaxWidth())
         }
         if (secondaryActionLabel != null && onSecondaryAction != null) {
-            IdsButton(text = secondaryActionLabel, onClick = onSecondaryAction, modifier = Modifier.fillMaxWidth(), variant = IdsButtonVariant.Secondary)
+            IdsButton(text = secondaryActionLabel, onClick = onSecondaryAction, modifier = Modifier.fillMaxWidth(), variant = IdsButtonVariant.Tinted)
         }
     }
 }
