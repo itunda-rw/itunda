@@ -1,22 +1,8 @@
 name: IDS component parity
 
 on:
-  push:
-    branches:
-      - agent/itunda-agent-network
-    paths:
-      - 'client/design-system/**'
-      - 'android/core/designsystem/**'
-      - 'ios/Core/DesignSystem/**'
-      - 'scripts/component-parity.mjs'
-      - '.github/workflows/ids-component-parity.yml'
-  pull_request:
-    paths:
-      - 'client/design-system/**'
-      - 'android/core/designsystem/**'
-      - 'ios/Core/DesignSystem/**'
-      - 'scripts/component-parity.mjs'
-      - '.github/workflows/ids-component-parity.yml'
+  # Hosted runners are unavailable for the current Enterprise trial; run manually until entitlement is restored.
+  workflow_dispatch:
 
 jobs:
   parity:
