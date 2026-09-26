@@ -600,6 +600,8 @@
 
 .ids-tabs {
   min-width: 0;
+  align-items: stretch;
+  overscroll-behavior-inline: contain;
 }
 .ids-tab {
   min-width: 44px;
@@ -608,6 +610,13 @@
   white-space: normal;
   overflow-wrap: anywhere;
   text-align: center;
+  transition: background-color var(--itunda-motion-fast) var(--itunda-ease-out),
+    color var(--itunda-motion-fast) var(--itunda-ease-out),
+    box-shadow var(--itunda-motion-fast) var(--itunda-ease-out);
+}
+.ids-tab + .ids-tab { margin-inline-start: 0; }
+@media (max-width: 560px) {
+  .ids-tab { padding-inline: 12px; }
 }
 .ids-tab:disabled {
   cursor: not-allowed;
@@ -625,7 +634,7 @@
   padding: clamp(24px, 6vw, 48px) 20px;
   display: grid;
   justify-items: center;
-  gap: 12px;
+  gap: 8px;
   text-align: center;
 }
 .ids-empty-state__icon {
@@ -649,6 +658,9 @@
   color: var(--itunda-text-secondary);
 }
 .ids-empty-state__actions {
+  margin-top: 8px;
+}
+.ids-empty-state__actions {
   width: min(100%, 420px);
   display: flex;
   flex-wrap: wrap;
@@ -666,4 +678,5 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .ids-empty-state * { transition: none !important; }
+  .ids-tab { transition: none; }
 }
