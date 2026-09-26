@@ -1,0 +1,32 @@
+{
+  "schema": "ids-qa-evidence/v6",
+  "evidenceRequired": [
+    "scenario",
+    "componentId",
+    "contractSignature",
+    "platformContractSignature",
+    "componentPlatformContractSignature",
+    "scenarioPlatformContractSignature",
+    "platform",
+    "verifiedAt",
+    "context"
+  ],
+  "contextRequired": [
+    "theme",
+    "scale",
+    "motion",
+    "viewport"
+  ],
+  "platforms": [
+    "web",
+    "android",
+    "ios"
+  ],
+  "coverageRequired": [
+    "scenario",
+    "componentId",
+    "requiredPlatforms",
+    "scenarioPlatformContractSignature",
+    "platforms"
+  ]
+}
