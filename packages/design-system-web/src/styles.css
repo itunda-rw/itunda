@@ -1,5 +1,27 @@
 @import "@itunda/design-tokens/tokens.css";
 
+/* IDS typography contract: one scale, explicit line-heights, and a stable Korean/Latin stack. */
+.ids-button,
+.ids-field__input,
+.ids-tab,
+.ids-check,
+.ids-switch,
+.ids-empty-state {
+  font-family: var(--itunda-font-family);
+}
+:root {
+  --itunda-type-body-size: 16px;
+  --itunda-type-body-line: 24px;
+  --itunda-type-label-size: 15px;
+  --itunda-type-label-line: 20px;
+  --itunda-type-caption-size: 13px;
+  --itunda-type-caption-line: 18px;
+  --itunda-type-title-size: 20px;
+  --itunda-type-title-line: 28px;
+  --itunda-type-display-size: 24px;
+  --itunda-type-display-line: 32px;
+}
+
 .ids-button,
 .ids-field__input {
   font: inherit;
@@ -17,8 +39,8 @@
   align-items: center;
   justify-content: center;
   gap: var(--itunda-control-gap);
-  font-weight: 600;
-  line-height: 1.25;
+  font-weight: var(--itunda-type-weight-semibold, 600);
+  line-height: var(--itunda-type-body-line);
   cursor: pointer;
   transition:
     background-color var(--itunda-motion-fast) var(--itunda-ease-out),
@@ -82,8 +104,8 @@
   gap: 3px;
   color: var(--itunda-text-primary);
   font-size: var(--itunda-type-scale-15-size);
-  font-weight: 600;
-  line-height: 1.35;
+  font-weight: var(--itunda-type-weight-semibold, 600);
+  line-height: var(--itunda-type-label-line);
 }
 .ids-field__required { color: var(--itunda-red); }
 .ids-field__input {
@@ -104,8 +126,8 @@
 .ids-field__message {
   margin: 0;
   color: var(--itunda-text-secondary);
-  font-size: var(--itunda-type-scale-13-size);
-  line-height: 1.45;
+  font-size: var(--itunda-type-caption-size);
+  line-height: var(--itunda-type-caption-line);
 }
 .ids-field__message--error { color: var(--itunda-field-border-error); }
 .ids-field__message--success { color: var(--itunda-green); }
@@ -248,21 +270,21 @@
   border-radius: 50%;
   background: var(--itunda-surface-subtle);
   color: var(--itunda-text-secondary);
-  font-size: var(--itunda-type-scale-24-size);
-  line-height: 1;
+  font-size: var(--itunda-type-display-size);
+  line-height: var(--itunda-type-display-line);
 }
 .ids-empty-state__title {
   margin: 0;
   color: var(--itunda-text-primary);
-  font-size: var(--itunda-type-scale-20-size);
-  line-height: 1.35;
+  font-size: var(--itunda-type-title-size);
+  line-height: var(--itunda-type-title-line);
 }
 .ids-empty-state__message {
   max-width: 520px;
   margin: 0;
   color: var(--itunda-text-secondary);
-  font-size: 16px;
-  line-height: 1.5;
+  font-size: var(--itunda-type-body-size);
+  line-height: var(--itunda-type-body-line);
 }
 @media (prefers-reduced-motion: reduce) {
   .ids-empty-state * { transition: none !important; animation: none !important; }
