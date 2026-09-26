@@ -91,9 +91,10 @@ public struct IDSSelect<Option: Hashable>: View {
     @Binding public var selection: Option?
     public let title: (Option) -> String
     public var disabled = false
+    public var disabledOptions: Set<Option> = []
 
-    public init(label: String, options: [Option], selection: Binding<Option?>, disabled: Bool = false, title: @escaping (Option) -> String) {
-        self.label = label; self.options = options; self._selection = selection; self.disabled = disabled; self.title = title
+    public init(label: String, options: [Option], selection: Binding<Option?>, disabled: Bool = false, disabledOptions: Set<Option> = [], title: @escaping (Option) -> String) {
+        self.label = label; self.options = options; self._selection = selection; self.disabled = disabled; self.disabledOptions = disabledOptions; self.title = title
     }
 
     public var body: some View {
@@ -101,7 +102,11 @@ public struct IDSSelect<Option: Hashable>: View {
             Text(label).font(IDS.Typography.label)
             Picker(label, selection: $selection) {
                 Text("Select").tag(Optional<Option>.none)
-                ForEach(options, id: \.self) { option in Text(title(option)).tag(Optional(option)) }
+                ForEach(options, id: \.self) { option in
+                    Text(title(option))
+                        .tag(Optional(option))
+                        .disabled(disabledOptions.contains(option))
+                }
             }
             .pickerStyle(.menu).frame(minHeight: 48).disabled(disabled)
         }
@@ -112,8 +117,21 @@ public struct IDSCheckbox: View {
     public let title: String
     @Binding public var isOn: Bool
     public var disabled = false
-    public init(title: String, isOn: Binding<Bool>, disabled: Bool = false) { self.title = title; self._isOn = isOn; self.disabled = disabled }
-    public var body: some View { Toggle(title, isOn: $isOn).frame(minHeight: 44).disabled(disabled) }
+    public var description: String? = nil
+    public var error: String? = nil
+
+    public init(title: String, isOn: Binding<Bool>, disabled: Bool = false, description: String? = nil, error: String? = nil) {
+        self.title = title; self._isOn = isOn; self.disabled = disabled; self.description = description; self.error = error
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Toggle(title, isOn: $isOn).frame(minHeight: 44).disabled(disabled)
+            if let description { Text(description).font(IDS.Typography.caption).foregroundStyle(IDS.Colors.textSecondary) }
+            if let error { Text(error).font(IDS.Typography.caption).foregroundStyle(IDS.Colors.error).accessibilityAddTraits(.isStaticText) }
+        }
+        .accessibilityElement(children: .contain)
+    }
 }
 
 public struct IDSRadio: View {
@@ -121,15 +139,33 @@ public struct IDSRadio: View {
     public let selected: Bool
     public let action: () -> Void
     public var disabled = false
-    public init(title: String, selected: Bool, disabled: Bool = false, action: @escaping () -> Void) { self.title = title; self.selected = selected; self.disabled = disabled; self.action = action }
+    public var description: String? = nil
+    public var error: String? = nil
+    public var groupLabel: String? = nil
+
+    public init(title: String, selected: Bool, disabled: Bool = false, description: String? = nil, error: String? = nil, groupLabel: String? = nil, action: @escaping () -> Void) {
+        self.title = title; self.selected = selected; self.disabled = disabled; self.description = description; self.error = error; self.groupLabel = groupLabel; self.action = action
+    }
+
     public var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: selected ? "largecircle.fill.circle" : "circle")
-                Text(title).multilineTextAlignment(.leading)
-                Spacer(minLength: 0)
-            }.frame(minWidth: 44, minHeight: 44)
-        }.buttonStyle(.plain).disabled(disabled).accessibilityAddTraits(selected ? .isSelected : [])
+        VStack(alignment: .leading, spacing: 4) {
+            Button(action: action) {
+                HStack(spacing: 12) {
+                    Image(systemName: selected ? "largecircle.fill.circle" : "circle")
+                    Text(title).multilineTextAlignment(.leading)
+                    Spacer(minLength: 0)
+                }.frame(minWidth: 44, minHeight: 44)
+            }
+            .buttonStyle(.plain)
+            .disabled(disabled)
+            .accessibilityAddTraits(selected ? .isSelected : [])
+            if let description { Text(description).font(IDS.Typography.caption).foregroundStyle(IDS.Colors.textSecondary) }
+            if let error { Text(error).font(IDS.Typography.caption).foregroundStyle(IDS.Colors.error) }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(groupLabel.map { "\($0): \(title)" } ?? title))
+        .accessibilityValue(Text(selected ? "Selected" : "Not selected"))
+        .accessibilityHint(Text(error ?? description ?? ""))
     }
 }
 
@@ -138,10 +174,16 @@ public struct IDSSwitch: View {
     @Binding public var isOn: Bool
     public var loading = false
     public var disabled = false
-    public init(title: String, isOn: Binding<Bool>, loading: Bool = false, disabled: Bool = false) { self.title = title; self._isOn = isOn; self.loading = loading; self.disabled = disabled }
+    public var error: String? = nil
+    public init(title: String, isOn: Binding<Bool>, loading: Bool = false, disabled: Bool = false, error: String? = nil) { self.title = title; self._isOn = isOn; self.loading = loading; self.disabled = disabled; self.error = error }
     public var body: some View {
-        Toggle(title, isOn: $isOn).frame(minHeight: 44).disabled(disabled || loading)
-            .accessibilityValue(loading ? Text("Updating") : Text(isOn ? "On" : "Off"))
+        VStack(alignment: .leading, spacing: 4) {
+            Toggle(title, isOn: $isOn).frame(minHeight: 44).disabled(disabled || loading)
+                .accessibilityValue(loading ? Text("Updating") : Text(isOn ? "On" : "Off"))
+            if let error { Text(error).font(IDS.Typography.caption).foregroundStyle(IDS.Colors.error) }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityHint(Text(error ?? ""))
     }
 }
 
