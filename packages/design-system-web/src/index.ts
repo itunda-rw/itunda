@@ -279,6 +279,8 @@ export function Checkbox({
           disabled={disabled}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
+          aria-checked={indeterminate ? 'mixed' : undefined}
+          aria-errormessage={error ? errorId : undefined}
         />
         <span className="ids-check__box" aria-hidden="true" />
         <span className="ids-check__content">
@@ -318,6 +320,7 @@ export function Radio({
           required={required}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
+          aria-errormessage={error ? errorId : undefined}
         />
         <span className="ids-check__radio" aria-hidden="true" />
         <span className="ids-check__content">
@@ -366,6 +369,7 @@ export function Switch({
           aria-busy={loading || undefined}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
+          aria-errormessage={error ? errorId : undefined}
         />
         <span className="ids-switch__track" aria-hidden="true"><span className="ids-switch__thumb" /></span>
         <span className="ids-switch__content">
