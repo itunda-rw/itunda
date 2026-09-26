@@ -1,9 +1,6 @@
 name: Itunda Android APK
 
 on:
-  push:
-    branches:
-      - agent/itunda-agent-network
   workflow_dispatch:
 
 permissions:
