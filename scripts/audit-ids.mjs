@@ -43,6 +43,16 @@ const webApiChecks = {
   tabs: ['interface TabsProps','function Tabs','role="tab"'],
   'empty-state': ['interface EmptyStateProps','function EmptyState','EmptyStateAction'],
 };
+const requiredQaScenarios = {
+  button: ['default','pressed','disabled','loading','long'],
+  field: ['default','focus','error','success','long'],
+  select: ['placeholder','focus','disabled','error','success','option-disabled'],
+  checkbox: ['checked','indeterminate','disabled','error'],
+  radio: ['checked','disabled','error','group'],
+  switch: ['on','off','loading','disabled','error'],
+  tabs: ['selected','disabled','controls','roving-focus'],
+  empty: ['default','error','success','long'],
+};
 const platformAccessibilityMarkers = {
   web: { keyboard:['keydown','onKeyDown','tabIndex','focus'], screenReader:['aria-','role='], largeText:['rem','font-size','line-height'], reducedMotion:['prefers-reduced-motion','motion'] },
   android: { keyboard:['onKeyEvent','focusable','focusRequester'], screenReader:['semantics','contentDescription'], largeText:['sp','fontSize'], reducedMotion:['animation','motion'] },
@@ -134,6 +144,26 @@ for (const role of ['body', 'label', 'caption', 'title', 'display']) {
 }
 
 const components = manifest.components;
+
+for (const [componentId, scenarioIds] of Object.entries(requiredQaScenarios)) {
+  const component = (components || []).find(item => item.id === componentId);
+  if (!component) {
+    failures.push(`\${contractPath}:\${componentId}: missing canonical component for QA scenario coverage`);
+    continue;
+  }
+  const declared = [
+    ...(component.states || []),
+    ...(component.content || []),
+    ...(component.a11y || []),
+  ].map(item => String(item).toLowerCase());
+  for (const scenarioId of scenarioIds) {
+    const normalized = scenarioId.replace(/-/g, ' ');
+    if (!declared.some(item => item.includes(normalized) || normalized.split(' ').every(token => item.includes(token)))) {
+      failures.push(`\${contractPath}:\${componentId}: QA scenario \${scenarioId} is not represented by the component contract`);
+    }
+  }
+}
+
 
 if (manifest.version !== '3.0.0') failures.push(`${contractPath}: expected version 3.0.0`);
 if (!Array.isArray(components) || components.length !== 8) failures.push(`${contractPath}: expected exactly 8 components`);
