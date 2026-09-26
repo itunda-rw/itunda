@@ -275,12 +275,31 @@ button:disabled,[aria-disabled="true"]{cursor:not-allowed}
 const IDS_CANONICAL_COMPONENTS=['button','field','select','checkbox','radio','switch','tabs','empty'];
 const IDS_SHOWCASE_COMPONENT_MAP={button:'Button',field:'TextField',select:'Select',checkbox:'Checkbox',radio:'Radio',switch:'Switch',tabs:'Tabs',empty:'EmptyState'};
 function assertIdsShowcaseGovernance(manifest){
-  const report={ok:true,version:manifest?.version||null,missing:[],extra:[]};
+  const report={ok:true,version:manifest?.version||null,missing:[],extra:[],invalid:[]};
   if(!manifest||manifest.version!=='3.0.0') report.ok=false;
-  const keys=Object.keys(manifest?.components||{});
+  const components=manifest?.components||{};
+  const keys=Object.keys(components);
   report.missing=IDS_CANONICAL_COMPONENTS.filter(k=>!keys.includes(k));
   report.extra=keys.filter(k=>!IDS_CANONICAL_COMPONENTS.includes(k));
-  if(report.missing.length) report.ok=false;
+  const required=['states','content','a11y','motion','platforms','guide','validation'];
+  for(const key of IDS_CANONICAL_COMPONENTS){
+    const component=components[key];
+    if(!component) continue;
+    for(const field of required){
+      if(component[field]===undefined||component[field]===null||component[field]===''){
+        report.invalid.push(`${key}.${field}`);
+      }
+    }
+    if(component.validation?.required){
+      for(const dimension of ['states','content','a11y','motion','platforms']){
+        if(component.validation.required[dimension]!==true) report.invalid.push(`${key}.validation.required.${dimension}`);
+      }
+    }else report.invalid.push(`${key}.validation.required`);
+    for(const guideField of ['name','purpose','worstCase','tokens','checklist']){
+      if(component.guide?.[guideField]===undefined) report.invalid.push(`${key}.guide.${guideField}`);
+    }
+  }
+  if(report.missing.length||report.invalid.length) report.ok=false;
   if(report.extra.length) console.warn('IDS contract contains non-canonical components:',report.extra);
   return report;
 }
@@ -288,7 +307,7 @@ function renderIdsGovernanceStatus(report){
   const el=document.querySelector('[data-ids-governance-status]');
   if(!el)return;
   el.dataset.status=report.ok?'pass':'fail';
-  el.textContent=report.ok?'Contract governance: PASS':`Contract governance: FAIL — ${report.missing.join(', ')||'manifest version drift'}`;
+  el.textContent=report.ok?'Contract governance: PASS':`Contract governance: FAIL — ${report.missing.join(', ')||report.invalid.slice(0,3).join(', ')||'manifest version drift'}`;
   el.setAttribute('role',report.ok?'status':'alert');
 }
 </script>
