@@ -4,6 +4,18 @@ permissions:
   contents: read
 
 on:
+  workflow_dispatch:
+    inputs:
+      update_visual_baseline:
+        description: "Accept the current rendered screenshots as the IDS visual baseline"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+on:
   pull_request:
     paths:
       - "services/micro-frontends/**"
