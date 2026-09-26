@@ -268,6 +268,20 @@ button:disabled,[aria-disabled="true"]{cursor:not-allowed}
 <footer class="footer">© 2026 Itunda Design System · IDS v3.0 · The code is the source of truth.</footer>
 </div></main></div>
 <script>
+
+// IDS governance guard: showcase must remain aligned with the canonical 8-component contract.
+const IDS_CANONICAL_COMPONENTS=['button','field','select','checkbox','radio','switch','tabs','empty'];
+const IDS_SHOWCASE_COMPONENT_MAP={button:'Button',field:'TextField',select:'Select',checkbox:'Checkbox',radio:'Radio',switch:'Switch',tabs:'Tabs',empty:'EmptyState'};
+function assertIdsShowcaseGovernance(manifest){
+  if(!manifest||manifest.version!=='3.0.0') throw new Error('IDS contract manifest version drift');
+  const keys=Object.keys(manifest.components||{});
+  const missing=IDS_CANONICAL_COMPONENTS.filter(k=>!keys.includes(k));
+  if(missing.length) throw new Error('IDS showcase contract missing: '+missing.join(', '));
+  const extra=keys.filter(k=>!IDS_CANONICAL_COMPONENTS.includes(k));
+  if(extra.length) console.warn('IDS contract contains non-canonical components:',extra);
+}
+</script>
+
 const root=document.documentElement,theme=document.getElementById('theme');
 root.style.colorScheme=root.getAttribute('data-theme')||'light dark';
 theme.addEventListener('click',()=>{const dark=root.getAttribute('data-theme')==='dark';root.setAttribute('data-theme',dark?'light':'dark');theme.textContent=dark?'☾':'☀';});
