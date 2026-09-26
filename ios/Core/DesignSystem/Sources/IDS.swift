@@ -122,8 +122,8 @@ public struct IDS {
         // backgroundSecondary/backgroundTertiary here). `pressed` and the tint colors
         // are left untouched since the real package doesn't expose which numbered
         // step its own semantic roles point to.
-        // IDS 3.0 canonical semantic brand: blue across Web, Android and iOS.
-        public static let brand = Color(light: 0x1F78FF, dark: 0x4593FC)
+        // IDS 3.0 canonical semantic brand: Itunda Indigo across Web, Android and iOS.
+        public static let brand = Color(light: 0x7472F4, dark: 0x9B98FF)
         // Real fix (2026-08-24, direct user directive, same pass as web's index.css
         // and Android's IdsSemanticColors.kt): was 0xF2F4F6 (the classic "grey canvas
         // + white cards" dashboard look). Real Toss screenshots (Finance catalog menu,
