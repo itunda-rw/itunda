@@ -75,6 +75,16 @@ const implementationChecks = {
     ios: { file: 'ios/Core/DesignSystem/Sources/Components/Components.swift', symbols: ['IdsEmptyState'] },
   },
 };
+const tokenCssPath = 'packages/design-tokens/tokens.css';
+const expectedBrand = '#7472F4';
+const tokenCss = await readFile(join(root, tokenCssPath), 'utf8');
+if (!new RegExp('\\\\b--itunda-indigo\\\\s*:\\s*' + expectedBrand + '\\s*;').test(tokenCss)) {
+  failures.push(`${tokenCssPath}: canonical Itunda brand must be ${expectedBrand}`);
+}
+if (!new RegExp('\\\\b--itunda-brand\\\\s*:\\s*var\\\\(--itunda-indigo\\\\)').test(tokenCss)) {
+  failures.push(`${tokenCssPath}: semantic brand must resolve from --itunda-indigo`);
+}
+
 const components = manifest.components;
 
 if (manifest.version !== '3.0.0') failures.push(`${contractPath}: expected version 3.0.0`);
