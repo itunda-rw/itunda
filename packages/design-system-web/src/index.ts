@@ -438,11 +438,48 @@ export function Tabs({ items, value, onChange, ariaLabel = 'Tabs', tabPanelId }:
   );
 }
 
+export interface EmptyStateAction {
+  label: string;
+  onClick: () => void;
+  variant?: 'primary' | 'secondary';
+}
+
 export interface EmptyStateProps {
-  title: string;
-  message?: string;
-  actionText?: string;
-  onAction?: () => void;
+  title: React.ReactNode;
+  message?: React.ReactNode;
+  icon?: React.ReactNode;
+  actions?: EmptyStateAction[];
+  ariaLabel?: string;
+}
+
+export function EmptyState({
+  title,
+  message,
+  icon,
+  actions = [],
+  ariaLabel,
+}: EmptyStateProps) {
+  return (
+    <section className="ids-empty-state" aria-label={ariaLabel}>
+      {icon ? <div className="ids-empty-state__icon" aria-hidden="true">{icon}</div> : null}
+      <h2 className="ids-empty-state__title">{title}</h2>
+      {message ? <p className="ids-empty-state__message">{message}</p> : null}
+      {actions.length ? (
+        <div className="ids-empty-state__actions">
+          {actions.slice(0, 2).map((action) => (
+            <Button
+              key={action.label}
+              onClick={action.onClick}
+              variant={action.variant === 'primary' ? 'primary' : 'secondary'}
+              size="md"
+            >
+              {action.label}
+            </Button>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
 }
 
 export function EmptyState({ title, message, actionText, onAction }: EmptyStateProps) {
