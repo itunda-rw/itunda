@@ -426,3 +426,37 @@
 @media (prefers-reduced-motion: reduce) {
   .ids-field__clear { transition: none; }
 }
+
+
+/* Select keeps the native platform picker/keyboard model while adding IDS visual affordance. */
+.ids-select__control {
+  position: relative;
+  min-width: 0;
+}
+.ids-select__input {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-inline-end: 48px;
+}
+.ids-select__chevron {
+  position: absolute;
+  inset-inline-end: 16px;
+  top: 50%;
+  transform: translateY(-58%);
+  color: var(--itunda-text-secondary);
+  pointer-events: none;
+  font-size: 20px;
+  line-height: 1;
+}
+.ids-select__input:disabled + .ids-select__chevron {
+  color: var(--itunda-text-tertiary);
+}
+.ids-select__input:focus-visible + .ids-select__chevron {
+  color: var(--itunda-brand-strong);
+}
+.ids-select__input[aria-invalid="true"] + .ids-select__chevron {
+  color: var(--itunda-field-border-error);
+}
+.ids-select__input option {
+  overflow-wrap: anywhere;
+}
