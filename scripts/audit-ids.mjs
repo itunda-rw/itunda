@@ -164,11 +164,20 @@ for (const [id, requiredApi] of Object.entries(webApiChecks)) {
 }
 
 for (const [id, platforms] of Object.entries(implementationChecks)) {
+  const contractComponent = (components || []).find(component => component.id === id || component.name === id);
   for (const [platform, check] of Object.entries(platforms)) {
     try {
       const source = await readFile(join(root, check.file), 'utf8');
       for (const symbol of check.symbols) {
         if (!source.includes(symbol)) failures.push(`${id}:${platform}: required symbol ${symbol} is not implemented`);
+      }
+      if (!contractComponent) {
+        failures.push(`${id}:${platform}: no matching contract component`);
+      } else {
+        for (const dimension of ['states','content','a11y','motion','platforms']) {
+          const value = contractComponent[dimension];
+          if (!Array.isArray(value) || value.length === 0) failures.push(`${id}:${platform}: contract dimension ${dimension} is empty`);
+        }
       }
       if (platform === 'web' && id === 'button' && !/aria-busy/.test(source)) failures.push('button:web: loading accessibility contract is not represented');
       if (platform === 'web' && id === 'text-field' && !/aria-invalid/.test(source)) failures.push('text-field:web: invalid-state accessibility contract is not represented');
@@ -220,4 +229,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('IDS audit passed: tokens + contract manifest + API surface + platform implementation mapping + key Web accessibility contracts.');
+console.log('IDS audit passed: tokens + contract manifest + API surface + platform implementation mapping + cross-platform contract dimensions + key Web accessibility contracts.');
