@@ -8,6 +8,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   size?: ButtonSize;
   loading?: boolean;
   fullWidth?: boolean;
+  loadingLabel?: string;
 }
 
 export function Button({
@@ -15,6 +16,7 @@ export function Button({
   size = 'md',
   loading = false,
   fullWidth = false,
+  loadingLabel = 'Loading',
   disabled,
   children,
   className = '',
@@ -37,9 +39,10 @@ export function Button({
       className={classes}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
+      aria-disabled={loading || disabled || undefined}
     >
       {loading ? <span className="ids-button__spinner" aria-hidden="true" /> : null}
-      <span className="ids-button__label">{children}</span>
+      <span className="ids-button__label">{loading ? loadingLabel : children}</span>
     </button>
   );
 }
@@ -50,6 +53,7 @@ export interface TextFieldProps extends Omit<React.InputHTMLAttributes<HTMLInput
   error?: string;
   success?: string;
   required?: boolean;
+  maxLength?: number;
 }
 
 export function TextField({
@@ -82,6 +86,7 @@ export function TextField({
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
         aria-required={required || undefined}
+        aria-errormessage={error ? errorId : undefined}
       />
       {error ? <p id={errorId} className="ids-field__message ids-field__message--error" role="alert">{error}</p> : null}
       {!error && success ? <p id={successId} className="ids-field__message ids-field__message--success">{success}</p> : null}
