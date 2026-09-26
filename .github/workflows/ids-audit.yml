@@ -170,6 +170,96 @@ jobs:
           await browser.close();
           EOF
 
+      - name: Run manifest-driven IDS visual evidence matrix
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --directory business/developers/design >/tmp/ids-server-visual-matrix.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID' EXIT
+          mkdir -p /tmp/ids-visual-matrix
+          node --input-type=module <<'EOF'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
+
+          const manifest=JSON.parse(fs.readFileSync('design-system/components/contract-manifest.json','utf8'));
+          const kindMap={'text-field':'field','empty-state':'empty'};
+          const labelMap={button:'Button',field:'Text field',select:'Select',checkbox:'Checkbox',radio:'Radio',switch:'Switch',tabs:'Tabs',empty:'Empty state'};
+          const cases=[];
+
+          for(const component of manifest.components||[]){
+            const kind=kindMap[component.id]||component.id;
+            for(const state of component.states||[]){
+              cases.push({
+                component:kind,
+                state,
+                theme:'light',
+                scale:100,
+                viewport:'mobile',
+                motion:'normal',
+                filename:'base-'+kind+'-'+state
+              });
+            }
+            const stressState=(component.states||[]).includes('focus')?'focus':component.states?.[0];
+            cases.push({component:kind,state:stressState,theme:'dark',scale:125,viewport:'mobile',motion:'reduced',filename:'stress-dark-'+kind});
+            cases.push({component:kind,state:stressState,theme:'light',scale:150,viewport:'desktop',motion:'normal',filename:'stress-large-'+kind});
+          }
+
+          fs.writeFileSync('/tmp/ids-visual-matrix.json',JSON.stringify({
+            version:'1.0.0',
+            source:'design-system/components/contract-manifest.json',
+            dimensions:['state','theme','scale','viewport','motion'],
+            cases
+          },null,2));
+
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
+          await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});
+
+          const failures=[];
+          const kindButtons=page.locator('[data-lab-kind]');
+          const applyDimensions=async(c)=>{
+            await page.setViewportSize(c.viewport==='desktop'?{width:1280,height:900}:{width:390,height:844});
+            await page.evaluate(({theme,scale})=>{
+              document.documentElement.dataset.theme=theme;
+              document.documentElement.style.fontSize=(16*scale/100)+'px';
+            },{theme:c.theme,scale:c.scale});
+            await page.emulateMedia({reducedMotion:c.motion==='reduced'?'reduce':'no-preference'});
+          };
+
+          for(const c of cases){
+            const label=labelMap[c.component];
+            const selector=kindButtons.filter({hasText:label});
+            if(await selector.count()!==1){failures.push(c.component+': component selector missing');continue;}
+            await selector.click();
+            await applyDimensions(c);
+            const stateControl=page.locator('[data-lab-state="'+c.state+'"]');
+            if(await stateControl.count()!==1){failures.push(c.component+': state missing: '+c.state);continue;}
+            await stateControl.click();
+            const preview=page.locator('#labPreview');
+            const renderedState=await preview.getAttribute('data-lab-state');
+            const renderedKind=await preview.getAttribute('data-lab-kind');
+            if(renderedState!==c.state) failures.push(c.component+'/'+c.state+': state mismatch '+renderedState);
+            if(renderedKind!==c.component) failures.push(c.component+'/'+c.state+': kind mismatch '+renderedKind);
+            if(!await preview.textContent()) failures.push(c.component+'/'+c.state+': empty preview');
+            await preview.screenshot({path:'/tmp/ids-visual-matrix/'+c.filename+'.png'});
+          }
+
+          await page.evaluate(()=>{document.documentElement.style.fontSize='16px';document.documentElement.dataset.theme='light';});
+          await page.emulateMedia({reducedMotion:'no-preference'});
+          await page.setViewportSize({width:390,height:844});
+          const summary={
+            manifestVersion:manifest.version,
+            components:(manifest.components||[]).length,
+            declaredStateCases:(manifest.components||[]).reduce((n,c)=>n+(c.states?.length||0),0),
+            visualCases:cases.length,
+            screenshots:fs.readdirSync('/tmp/ids-visual-matrix').filter(x=>x.endsWith('.png')).length
+          };
+          fs.writeFileSync('/tmp/ids-visual-matrix/README.json',JSON.stringify(summary,null,2));
+          if(failures.length) throw new Error('IDS visual matrix failed: '+failures.join(' | '));
+          console.log('IDS manifest-driven visual evidence passed',summary);
+          await browser.close();
+          EOF
+
       - name: Upload IDS visual evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -180,4 +270,7 @@ jobs:
             /tmp/ids-visual-qa.png
             /tmp/ids-stress.png
             /tmp/ids-contract-matrix.png
+            /tmp/ids-visual-matrix.json
+            /tmp/ids-visual-matrix/
           if-no-files-found: ignore
+
