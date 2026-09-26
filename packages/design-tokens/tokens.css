@@ -89,9 +89,9 @@
      brand 3.85:1 (was 3.71:1, both above the 3:1 AA-large/UI-component threshold this
      role is actually held to), brand-vs-dark-bg 4.82:1 (was 5.00:1, both comfortably
      clear 4.5:1 AA-normal-text). */
-  --itunda-indigo: #1F78FF;
-  --itunda-indigo-active: #1769E0;
-  --itunda-indigo-light: #EAF3FF;
+  --itunda-indigo: #7472F4;
+  --itunda-indigo-active: #625FE6;
+  --itunda-indigo-light: #F0EFFF;
   --itunda-red: #f04452;
   /* Real gap found 2026-08-08 (Toss Simplicity21 research pass, auditing the P2P
      transfer flow): bank-mfe's scam-warning tint box hardcoded #FDECEA directly (3
