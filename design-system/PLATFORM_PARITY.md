@@ -27,6 +27,13 @@ The IDS contract is the source of truth for Web, Android, and iOS primitive beha
 
 This mapping is **source-level parity**. It does not claim that the three implementations have been rendered and pixel/behavior compared on real devices.
 
+
+## Deterministic render matrix
+
+The required execution matrix is defined in `design-system/qa/render-matrix.json`. It covers all eight canonical primitives, every deterministic QA scenario, Web/Android/iOS, light/dark themes, three text/display scale levels, normal/reduced motion, and representative compact/expanded viewports.
+
+The matrix is a **verification contract**, not evidence. A scenario becomes verified only after real rendered evidence is captured with the current component, platform, scenario, theme, scale, motion, viewport, and contract signatures required by `design-system/qa/evidence-schema.json`.
+
 ## Release rule
 
 A component must not be described as build-verified or visual-verified merely because it is mapped or contract-checked.
