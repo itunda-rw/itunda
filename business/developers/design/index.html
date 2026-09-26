@@ -298,19 +298,28 @@ function renderLab(state){if(!labPreview)return;const labels={default:['Continue
 document.querySelectorAll('[data-lab-state]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-lab-state]').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');renderLab(b.dataset.labState)}));renderLab('default');
 </script>
 <script id="ids-contract-source">
-const IDS_CONTRACT_PATH='../../../../design-system/components/contract-manifest.json';
+const IDS_CONTRACT_MANIFEST_URL='./contract-manifest.json';
+let IDS_CONTRACT_MANIFEST=null;
+const IDS_CONTRACT_FALLBACK={version:'3.0.0',components:[]};
 const IDS_CONTRACT_SUMMARY={version:'3.0.0',components:8};
-const IDS_CONTRACTS={
-  button:{label:'Button',states:['default','pressed','focus','disabled','loading']},
-  field:{label:'Text field',states:['empty','filled','focus','disabled','error','success']},
-  select:{label:'Select',states:['default','focus','disabled','error']},
-  checkbox:{label:'Checkbox',states:['unchecked','checked','focus','disabled','error']},
-  radio:{label:'Radio',states:['unchecked','checked','focus','disabled','error']},
-  switch:{label:'Switch',states:['off','on','focus','disabled']},
-  tabs:{label:'Tabs',states:['default','selected','focus','disabled']},
-  empty:{label:'Empty state',states:['default']}
-};
-function idsContractFor(kind){return IDS_CONTRACTS[kind]||IDS_CONTRACTS.button}
+const IDS_CONTRACTS={};
+function idsContractFor(kind){return IDS_CONTRACTS[kind]||{label:labKindLabels?.[kind]||kind,states:['default'],content:[],a11y:[],platforms:[]}}
+async function loadIdsContractManifest(){
+  try{
+    const response=await fetch(IDS_CONTRACT_MANIFEST_URL,{cache:'no-store'});
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    IDS_CONTRACT_MANIFEST=await response.json();
+    for(const component of IDS_CONTRACT_MANIFEST.components||[]){
+      const kind=component.id==='text-field'?'field':component.id==='empty-state'?'empty':component.id;
+      IDS_CONTRACTS[kind]={...component,label:labKindLabels?.[kind]||component.id};
+    }
+  }catch(error){
+    console.warn('IDS contract manifest unavailable',error);
+    IDS_CONTRACT_MANIFEST=IDS_CONTRACT_FALLBACK;
+  }
+  syncLabContract?.(labKind||'button');
+  renderLabV3?.();
+}
 </script>
 <script id="ids-lab-v3-js">
 const labKinds=['button','field','select','checkbox','radio','switch','tabs','empty'];
