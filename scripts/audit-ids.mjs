@@ -18,7 +18,7 @@ const allow = new Set([
 ]);
 
 const contractPath = 'design-system/components/contract-manifest.json';
-const evidenceSchemaPath = 'design-system/qa/evidence-schema.json';
+const evidenceSchemaPath = 'design-system/qa/evidence-schema.json';\nconst renderMatrixPath = 'design-system/qa/render-matrix.json';
 async function walk(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
   const files = [];
@@ -33,7 +33,32 @@ async function walk(dir) {
 
 const failures = [];
 const manifest = JSON.parse(await readFile(join(root, contractPath), 'utf8'));
-const evidenceSchema = JSON.parse(await readFile(join(root, evidenceSchemaPath), 'utf8'));
+const evidenceSchema = JSON.parse(await readFile(join(root, evidenceSchemaPath), 'utf8'));\nconst renderMatrix = JSON.parse(await readFile(join(root, renderMatrixPath), 'utf8'));
+if (renderMatrix.schema !== 'ids-render-matrix/v1') failures.push('Render matrix must be ids-render-matrix/v1');
+for (const platform of ['web','android','ios']) {
+  if (!renderMatrix.platforms?.[platform]) failures.push('Render matrix missing platform: '+platform);
+  else {
+    for (const key of ['themes','scales','motion','viewports']) {
+      if (!Array.isArray(renderMatrix.platforms[platform][key]) || renderMatrix.platforms[platform][key].length === 0) {
+        failures.push('Render matrix '+platform+' missing '+key+' coverage');
+      }
+    }
+  }
+}
+const matrixPlatforms = ['web','android','ios'];
+for (const componentId of renderMatrix.requiredComponents || []) {
+  const scenarios = renderMatrix.scenarioSets?.[componentId] || [];
+  if (!scenarios.length) failures.push('Render matrix missing scenarios for '+componentId);
+  const component = (manifest.components || []).find(item => item.id === componentId);
+  if (!component) failures.push('Render matrix references unknown component: '+componentId);
+  for (const scenarioId of scenarios) {
+    const declared = component?.qa?.scenarios?.[scenarioId]?.platforms || [];
+    for (const platform of matrixPlatforms) {
+      if (!declared.includes(platform)) failures.push('Render matrix scenario '+scenarioId+' missing '+platform+' contract coverage');
+    }
+  }
+}
+
 if (evidenceSchema.schema !== 'ids-qa-evidence/v6') failures.push('QA evidence schema must be ids-qa-evidence/v6');
 for (const field of ['scenario','componentId','contractSignature','platformContractSignature','componentPlatformContractSignature','scenarioPlatformContractSignature','platform','verifiedAt','context']) {
   if (!evidenceSchema.evidenceRequired?.includes(field)) failures.push('QA evidence schema missing required evidence field: '+field);
