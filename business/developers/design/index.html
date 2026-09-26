@@ -595,9 +595,19 @@ function renderVisualQAMatrix(){
       const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;
       const platforms=(comp.platforms||[]).map(String).filter(Boolean);
       const drift=qaPlatformContractChanges.includes(comp.id);
+      const componentPlatformSignature=qaPlatformContractByComponent[comp.id]||'';
+      const scenarioState=(id,platform)=>{
+        const raw=localStorage.getItem('ids-qa-evidence-'+platform+'-'+id);
+        if(!raw)return 'missing';
+        try{
+          const m=JSON.parse(raw),at=Date.parse(m?.verifiedAt||''),sig=localStorage.getItem('ids-qa-contract-signature')||'';
+          if(m?.scenario!==id||m?.platform!==platform||m?.contractSignature!==sig||m?.platformContractSignature!==(localStorage.getItem('ids-qa-platform-contract-signature')||'')||m?.componentId!==comp.id||m?.componentPlatformContractSignature!==componentPlatformSignature||!Number.isFinite(at)||Date.now()-at>30*24*60*60*1000)return 'stale';
+          return 'verified';
+        }catch{return 'stale';}
+      };
       const rows=qaScenarioList(kind).map(([id,title])=>{
-        const cells=platforms.map(p=>{const state=statusFor(id,p);return '<span class="qa-matrix-'+state+'">'+p+' '+(state==='verified'?'✓':state==='stale'?'!':'—')+'</span>';}).join('');
-        return '<div class="qa-matrix-row"><b>'+title+'</b><span>'+cells+'</span></div>';
+        const cells=platforms.map(p=>{const state=scenarioState(id,p);return '<span class="qa-matrix-'+state+'">'+p+' '+(state==='verified'?'✓':state==='stale'?'!':'—')+'</span>';}).join('');
+        return '<div class="qa-matrix-row" data-qa-reviewer-scenario="'+id+'"><b>'+title+'</b><span>'+cells+'</span></div>';
       }).join('');
       const required=platforms.join(' · ')||'No declared platforms';
       const contractState=drift?'changed':'stable';
