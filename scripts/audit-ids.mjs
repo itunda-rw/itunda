@@ -99,42 +99,42 @@ const implementationChecks = {
   button: {
     web: { file: 'packages/design-system-web/src/index.ts', symbols: ['Button'] },
     android: { file: 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt', symbols: ['IdsButton'] },
-    ios: { file: 'ios/Core/DesignSystem/Sources/Components/Components.swift', symbols: ['IdsButton'] },
+    ios: { file: 'ios/Core/DesignSystem/Sources/Components/IDSCoreComponents.swift', symbols: ['IDSButton'] },
   },
   'text-field': {
     web: { file: 'packages/design-system-web/src/index.ts', symbols: ['TextField'] },
-    android: { file: 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt', symbols: ['IdsTextField'] },
-    ios: { file: 'ios/Core/DesignSystem/Sources/Components/Components.swift', symbols: ['IdsTextField'] },
+    android: { file: 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsTextField.kt', symbols: ['IdsTextField'] },
+    ios: { file: 'ios/Core/DesignSystem/Sources/Components/IDSCoreComponents.swift', symbols: ['IDSTextField'] },
   },
   select: {
     web: { file: 'packages/design-system-web/src/index.ts', symbols: ['Select'] },
-    android: { file: 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt', symbols: ['IdsSelect'] },
-    ios: { file: 'ios/Core/DesignSystem/Sources/Components/Components.swift', symbols: ['IdsSelect'] },
+    android: { file: 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsSelect.kt', symbols: ['IdsSelect'] },
+    ios: { file: 'ios/Core/DesignSystem/Sources/Components/IDSCoreComponents.swift', symbols: ['IDSSelect'] },
   },
   checkbox: {
     web: { file: 'packages/design-system-web/src/index.ts', symbols: ['Checkbox'] },
-    android: { file: 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt', symbols: ['IdsCheckbox'] },
-    ios: { file: 'ios/Core/DesignSystem/Sources/Components/Components.swift', symbols: ['IdsCheckbox'] },
+    android: { file: 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsSelectionControls.kt', symbols: ['IdsCheckbox'] },
+    ios: { file: 'ios/Core/DesignSystem/Sources/Components/IDSCoreComponents.swift', symbols: ['IDSCheckbox'] },
   },
   radio: {
     web: { file: 'packages/design-system-web/src/index.ts', symbols: ['Radio'] },
-    android: { file: 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt', symbols: ['IdsRadio'] },
-    ios: { file: 'ios/Core/DesignSystem/Sources/Components/Components.swift', symbols: ['IdsRadio'] },
+    android: { file: 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsSelectionControls.kt', symbols: ['IdsRadioButton'] },
+    ios: { file: 'ios/Core/DesignSystem/Sources/Components/IDSCoreComponents.swift', symbols: ['IDSRadio'] },
   },
   switch: {
     web: { file: 'packages/design-system-web/src/index.ts', symbols: ['Switch'] },
-    android: { file: 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt', symbols: ['IdsSwitch'] },
-    ios: { file: 'ios/Core/DesignSystem/Sources/Components/Components.swift', symbols: ['IdsSwitch'] },
+    android: { file: 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsSelectionControls.kt', symbols: ['IdsSwitch'] },
+    ios: { file: 'ios/Core/DesignSystem/Sources/Components/IDSCoreComponents.swift', symbols: ['IDSSwitch'] },
   },
   tabs: {
     web: { file: 'packages/design-system-web/src/index.ts', symbols: ['Tabs'] },
-    android: { file: 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt', symbols: ['IdsTabs'] },
-    ios: { file: 'ios/Core/DesignSystem/Sources/Components/Components.swift', symbols: ['IdsTabs'] },
+    android: { file: 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsTabs.kt', symbols: ['IdsTabs'] },
+    ios: { file: 'ios/Core/DesignSystem/Sources/Components/IDSCoreComponents.swift', symbols: ['IDSTabs'] },
   },
   'empty-state': {
     web: { file: 'packages/design-system-web/src/index.ts', symbols: ['EmptyState'] },
-    android: { file: 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt', symbols: ['IdsEmptyState'] },
-    ios: { file: 'ios/Core/DesignSystem/Sources/Components/Components.swift', symbols: ['IdsEmptyState'] },
+    android: { file: 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsEmptyState.kt', symbols: ['IdsEmptyState'] },
+    ios: { file: 'ios/Core/DesignSystem/Sources/Components/IDSCoreComponents.swift', symbols: ['IDSEmptyState'] },
   },
 };
 const tokenCssPath = 'packages/design-tokens/tokens.css';
