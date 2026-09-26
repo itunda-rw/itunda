@@ -155,7 +155,7 @@
   --itunda-control-height-sm: 40px;
   --itunda-control-height-md: 48px;
   --itunda-control-height-lg: 56px;
-  --itunda-control-radius: var(--itunda-radius-md);
+  --itunda-control-radius: 12px;
   --itunda-control-padding-inline: 16px;
   --itunda-control-gap: 8px;
   --itunda-touch-target-minimum: 44px;
@@ -204,7 +204,7 @@
   --itunda-ease-back: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   --itunda-radius-sm: 8px;
-  --itunda-radius-md: 16px;
+  --itunda-radius-md: 12px;
   --itunda-radius-lg: 24px;
   /* Real gap found 2026-08-11 (UI-consistency audit): pill-shaped chips/tags/segmented
      controls across BankDashboard.tsx already hardcode 999px inline at 12+ real call
@@ -334,7 +334,7 @@
  * neighbors (grey-100/200/500), not independently sourced, same as before.
  */
 @media (prefers-color-scheme: dark) {
-  :root {
+  html:not([data-theme]) {
     --itunda-indigo: #9B98FF;
     --itunda-indigo-active: #B0AEFF;
     --itunda-indigo-light: #27244A;
