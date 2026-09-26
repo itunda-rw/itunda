@@ -43,6 +43,11 @@ const webApiChecks = {
   tabs: ['interface TabsProps','function Tabs','role="tab"'],
   'empty-state': ['interface EmptyStateProps','function EmptyState','EmptyStateAction'],
 };
+const platformAccessibilityMarkers = {
+  web: { keyboard:['keydown','onKeyDown','tabIndex','focus'], screenReader:['aria-','role='], largeText:['rem','font-size','line-height'], reducedMotion:['prefers-reduced-motion','motion'] },
+  android: { keyboard:['onKeyEvent','focusable','focusRequester'], screenReader:['semantics','contentDescription'], largeText:['sp','fontSize'], reducedMotion:['animation','motion'] },
+  ios: { keyboard:['focus','keyboard'], screenReader:['accessibility','accessibilityLabel'], largeText:['dynamicTypeSize','font'], reducedMotion:['reduceMotion','accessibilityReduceMotion'] },
+};
 const platformContentMarkers = {
   web: ['overflow-wrap','word-break','white-space','min-width','max-width'],
   android: ['Text','maxLines','softWrap','wrap'],
@@ -223,6 +228,16 @@ for (const [id, platforms] of Object.entries(implementationChecks)) {
             }
             if (platform !== 'web' && !contentMarkers.some(marker => source.toLowerCase().includes(marker.toLowerCase()))) {
               failures.push(`${id}:${platform}: localization/content contract has no text-layout implementation marker`);
+            }
+          }
+          const accessibilityRequirements = (contractComponent.a11y || []).map(item => String(item).toLowerCase()).join(' ');
+          const accessibilityMarkers = platformAccessibilityMarkers[platform];
+          if (accessibilityMarkers) {
+            for (const [dimension, markers] of Object.entries(accessibilityMarkers)) {
+              const relevant = new RegExp(dimension === 'screenReader' ? 'screen|reader|aria|talkback|voiceover|accessib' : dimension === 'largeText' ? 'large|text|type|font|scale' : dimension === 'reducedMotion' ? 'motion|animation|reduce' : 'keyboard|focus').test(accessibilityRequirements);
+              if (relevant && !markers.some(marker => source.toLowerCase().includes(marker.toLowerCase()))) {
+                failures.push(`${id}:${platform}: ${dimension} contract has no implementation marker`);
+              }
             }
           }
         }
