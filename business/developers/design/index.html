@@ -522,7 +522,7 @@ function renderVisualQAMatrix(){
     input.addEventListener('change',()=>{
       localStorage.setItem(key,String(input.checked));
       if(input.checked){
-        const evidence={scenario:id,contractSignature:localStorage.getItem('ids-qa-contract-signature')||null,verifiedAt:new Date().toISOString(),context:{theme:document.documentElement.dataset.theme||'system',scale:document.documentElement.dataset.idsScale||'1',motion:document.documentElement.dataset.idsMotion||'normal',viewport:window.innerWidth+'x'+window.innerHeight}};
+        const evidence={scenario:id,contractSignature:localStorage.getItem('ids-qa-contract-signature')||null,platform:'web',verifiedAt:new Date().toISOString(),context:{theme:document.documentElement.dataset.theme||'system',scale:document.documentElement.dataset.idsScale||'1',motion:document.documentElement.dataset.idsMotion||'normal',viewport:window.innerWidth+'x'+window.innerHeight}};
         localStorage.setItem(metaKey,JSON.stringify(evidence));
       }else localStorage.removeItem(metaKey);
       updateQaProgress();
@@ -536,7 +536,7 @@ function renderVisualQAMatrix(){
       const raw=localStorage.getItem('ids-qa-evidence-'+id);
       if(raw){try{evidence.push(JSON.parse(raw));}catch{}}
     });
-    const payload={schema:'ids-qa-evidence/v1',generatedAt:new Date().toISOString(),contractSignature:localStorage.getItem('ids-qa-contract-signature')||null,evidence};
+    const payload={schema:'ids-qa-evidence/v2',generatedAt:new Date().toISOString(),contractSignature:localStorage.getItem('ids-qa-contract-signature')||null,evidence};
     const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
     const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='itunda-ids-qa-evidence.json';a.click();URL.revokeObjectURL(url);
   };
@@ -551,7 +551,7 @@ function renderVisualQAMatrix(){
       const meta=JSON.parse(localStorage.getItem('ids-qa-evidence-'+id)||'');
       const verifiedAt=Date.parse(meta?.verifiedAt||'');
       const currentSignature=localStorage.getItem('ids-qa-contract-signature')||'';
-      return meta?.scenario===id&&Boolean(meta?.contractSignature)&&meta.contractSignature===currentSignature&&Number.isFinite(verifiedAt)&&Date.now()-verifiedAt<=QA_EVIDENCE_MAX_AGE_MS&&meta?.context&&typeof meta.context.viewport==='string';
+      return meta?.scenario===id&&meta?.platform==='web'&&Boolean(meta?.contractSignature)&&meta.contractSignature===currentSignature&&Number.isFinite(verifiedAt)&&Date.now()-verifiedAt<=QA_EVIDENCE_MAX_AGE_MS&&meta?.context&&typeof meta.context.viewport==='string';
     }catch{return false;}
   };
   const verified=components.filter(comp=>localStorage.getItem('ids-qa-status-'+comp.id)==='verified').length;const complete=components.filter(comp=>{const checks=(comp.guide&&Array.isArray(comp.guide.checklist)?comp.guide.checklist:[]);const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;const scenarios=qaScenarioList(kind);return checks.length>0&&checks.every((_,i)=>localStorage.getItem('ids-qa-check-'+comp.id+'-'+i)==='true')&&scenarios.length>0&&scenarios.every(([id])=>localStorage.getItem('ids-qa-scenario-'+id)==='true')}).length;const v=root.querySelector('[data-qa-progress-verified]');const q=root.querySelector('[data-qa-progress-checks]');if(v)v.textContent=verified;if(q)q.textContent=complete;components.forEach(comp=>{const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;const total=qaScenarioList(kind).length;const done=qaScenarioList(kind).filter(([id])=>localStorage.getItem('ids-qa-scenario-'+id)==='true').length;const card=root.querySelector('[data-qa-component="'+comp.id+'"]')?.closest('.qa-card');const target=card?.querySelector('[data-qa-scenario-progress]');if(target)target.textContent=done+'/'+total+' scenarios evidenced';});}
