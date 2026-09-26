@@ -1,9 +1,10 @@
-name: IDS audit
-
 permissions:
   contents: read
 
 on:
+  # GitHub-hosted runner provisioning is currently unavailable for the Itunda Enterprise trial.
+  # Keep this workflow manually runnable; Cloudflare Pages also runs the lightweight IDS audit
+  # during the Tech build via services/blog/package.json.
   workflow_dispatch:
     inputs:
       update_visual_baseline:
@@ -11,52 +12,10 @@ on:
         required: false
         default: false
         type: boolean
-
-permissions:
-  contents: read
-
-on:
-  pull_request:
-    paths:
-      - "services/micro-frontends/**"
-      - "packages/design-system-web/**"
-      - "packages/design-tokens/**"
-      - "design-system/components/**"
-      - "design-system/accessibility/**"
-      - "design-system/platform-contract.md"
-      - "design-system/PLATFORM_PARITY.md"
-      - "business/developers/design/**"
-      - "scripts/audit-ids.mjs"
-      - "package.json"
-      - "yarn.lock"
-      - ".github/workflows/ids-audit.yml"
-  workflow_dispatch:
-    inputs:
-      update_visual_baseline:
-        description: "Accept the current rendered screenshots as the IDS visual baseline"
-        required: false
-        default: false
-        type: boolean
-  push:
-    branches:
-      - agent/itunda-agent-network
-    paths:
-      - "services/micro-frontends/**"
-      - "packages/design-system-web/**"
-      - "packages/design-tokens/**"
-      - "design-system/components/**"
-      - "design-system/accessibility/**"
-      - "design-system/platform-contract.md"
-      - "design-system/PLATFORM_PARITY.md"
-      - "business/developers/design/**"
-      - "scripts/audit-ids.mjs"
-      - "package.json"
-      - "yarn.lock"
-      - ".github/workflows/ids-audit.yml"
 
 jobs:
   audit:
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
