@@ -62,3 +62,37 @@ jobs:
           await browser.close();
           console.log('IDS rendered smoke test passed', checks);
           EOF
+
+      - name: Run IDS accessibility and stress smoke test
+        shell: bash
+        run: |
+          node --input-type=module <<'EOF'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({headless:true});
+          const page = await browser.newPage({viewport:{width:375,height:812},deviceScaleFactor:1});
+          await page.goto('http://127.0.0.1:4173/', {waitUntil:'networkidle'});
+          const failures=[];
+          const visible=(sel)=>page.locator(sel).filter({visible:true}).count();
+          if (!(await page.locator('#visual-qa').count())) failures.push('visual QA matrix missing');
+          if (!(await page.locator('#lab').count())) failures.push('component lab missing');
+          const kinds=await page.locator('[data-lab-kind]').count();
+          if (kinds < 8) failures.push('core component coverage incomplete: '+kinds);
+          const states=await page.locator('[data-lab-state]').count();
+          if (states < 5) failures.push('state controls incomplete: '+states);
+          const buttons=await page.locator('button').count();
+          if (!buttons) failures.push('interactive controls missing');
+          const badButtons=await page.locator('button').evaluateAll(xs=>xs.filter(x=>!x.textContent?.trim() && !x.getAttribute('aria-label')).length);
+          if (badButtons) failures.push('unnamed buttons: '+badButtons);
+          await page.evaluate(()=>document.documentElement.style.fontSize='20px');
+          const width=await page.evaluate(()=>document.documentElement.scrollWidth);
+          const viewport=await page.evaluate(()=>window.innerWidth);
+          if (width > viewport + 24) failures.push('large-text overflow: '+width+' > '+viewport);
+          await page.emulateMedia({reducedMotion:'reduce'});
+          const motion=await page.evaluate(()=>[...document.querySelectorAll('*')].filter(x=>{const s=getComputedStyle(x);return s.animationName!=='none'||s.transitionDuration!=='0s'}).length);
+          if (motion > 0) console.log('note: non-zero computed motion remains; component-specific transitions may be intentional');
+          const roles=await page.locator('[role="tab"], [role="switch"], input, select').count();
+          if (!roles) failures.push('native/semantic form controls missing');
+          if (failures.length) throw new Error(failures.join(' | '));
+          console.log('IDS accessibility/stress smoke test passed');
+          await browser.close();
+          EOF
