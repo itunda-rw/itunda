@@ -460,3 +460,68 @@
 .ids-select__input option {
   overflow-wrap: anywhere;
 }
+
+
+/* Checkbox/Radio: native input owns state; IDS visuals mirror it without hiding semantics. */
+.ids-check-field {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.ids-check {
+  min-width: 0;
+  align-items: flex-start;
+}
+.ids-check input {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  opacity: 0;
+}
+.ids-check__content {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  overflow-wrap: anywhere;
+}
+.ids-check__description {
+  color: var(--itunda-text-secondary);
+  font-size: var(--itunda-type-caption-size);
+  line-height: var(--itunda-type-caption-line);
+}
+.ids-check__error {
+  margin: 0 0 0 32px;
+  color: var(--itunda-field-border-error);
+  font-size: var(--itunda-type-caption-size);
+  line-height: var(--itunda-type-caption-line);
+  overflow-wrap: anywhere;
+}
+.ids-check input:focus-visible + .ids-check__box,
+.ids-check input:focus-visible + .ids-check__radio {
+  outline: 3px solid color-mix(in srgb, var(--itunda-focus) 28%, transparent);
+  outline-offset: 2px;
+}
+.ids-check input:disabled + .ids-check__box,
+.ids-check input:disabled + .ids-check__radio {
+  opacity: 0.48;
+}
+.ids-check input:disabled ~ .ids-check__content {
+  color: var(--itunda-text-tertiary);
+}
+.ids-check input:indeterminate + .ids-check__box {
+  background: var(--itunda-brand);
+  border-color: var(--itunda-brand);
+}
+.ids-check input:indeterminate + .ids-check__box::after {
+  content: "";
+  width: 10px;
+  height: 2px;
+  background: var(--itunda-text-inverse);
+}
+.ids-check input[aria-invalid="true"] + .ids-check__box,
+.ids-check input[aria-invalid="true"] + .ids-check__radio {
+  border-color: var(--itunda-field-border-error);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ids-check * { transition: none !important; }
+}
