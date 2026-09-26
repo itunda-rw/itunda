@@ -135,7 +135,6 @@ export function TextField({
       <div className={`ids-field__control ${multiline ? 'ids-field__control--multiline' : ''}`.trim()}>
         {prefix ? <span className="ids-field__prefix">{prefix}</span> : null}
         {control}
-        {suffix ? <span className="ids-field__suffix">{suffix}</span> : null}
         {canClear ? (
           <button
             type="button"
@@ -146,6 +145,7 @@ export function TextField({
             <span aria-hidden="true">×</span>
           </button>
         ) : null}
+        {suffix ? <span className="ids-field__suffix">{suffix}</span> : null}
       </div>
 
       <div className="ids-field__meta">
@@ -460,10 +460,16 @@ export function EmptyState({
   actions = [],
   ariaLabel,
 }: EmptyStateProps) {
+  const reactId = React.useId();
+  const titleId = `ids-empty-state-${reactId}`;
   return (
-    <section className="ids-empty-state" aria-label={ariaLabel}>
+    <section
+      className="ids-empty-state"
+      aria-label={ariaLabel || undefined}
+      aria-labelledby={ariaLabel ? undefined : titleId}
+    >
       {icon ? <div className="ids-empty-state__icon" aria-hidden="true">{icon}</div> : null}
-      <h2 className="ids-empty-state__title">{title}</h2>
+      <h2 id={titleId} className="ids-empty-state__title">{title}</h2>
       {message ? <p className="ids-empty-state__message">{message}</p> : null}
       {actions.length ? (
         <div className="ids-empty-state__actions">
