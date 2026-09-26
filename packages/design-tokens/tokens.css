@@ -365,3 +365,35 @@
     --itunda-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.35);
   }
 }
+
+/* Explicit app-controlled dark theme mirrors the OS dark semantic palette. */
+html[data-theme="dark"] {
+    --itunda-indigo: #9B98FF;
+    --itunda-indigo-active: #B0AEFF;
+    --itunda-indigo-light: #27244A;
+    --itunda-red: #ff6b7a;
+    --itunda-red-light: #3a1418;
+    --itunda-green: #20d394;
+
+    --itunda-grey-100: #17171c;
+    --itunda-grey-200: #3c3c47;
+    --itunda-grey-300: #454751;
+    --itunda-grey-400: #4e515c;
+    /* Real WCAG AA contrast fix (item 241, docs/ACCESSIBILITY.md finding #1), computed
+       against the REAL current dark tokens above (grey-100 #17171c, white #202027) --
+       the accessibility audit's own dark-theme numbers predate the 2026-07-21 true-dark
+       correction and are stale. Original #575c66 measured 2.66:1 against grey-100 and
+       2.41:1 against card, both far below 4.5:1 AA-normal-text. Lightened to #848a96
+       (5.15:1 / 4.67:1), the minimal step toward --itunda-grey-700 that clears 4.5:1 on
+       both real backgrounds. Matches the same-day fix on Android/iOS. */
+    --itunda-grey-500: #848a96;
+    --itunda-grey-600: #787d88;
+    --itunda-grey-700: #989eaa;
+    --itunda-grey-800: #c4c9d1;
+    --itunda-grey-900: #ffffff;
+
+    --itunda-white: #202027;
+
+    --itunda-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    --itunda-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
