@@ -2,6 +2,9 @@ name: IDS Native Build Verification
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - agent/itunda-agent-network
 
 permissions:
   contents: read
