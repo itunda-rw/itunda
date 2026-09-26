@@ -17,32 +17,26 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
           cache: npm
           cache-dependency-path: packages/saronite/package-lock.json
-
       - name: Install Saronite dependencies
         working-directory: packages/saronite
         run: npm ci
-
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
           cache: gradle
-
       - name: Build Itunda Android app
         working-directory: android
         run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
-
       - name: Verify APK exists
         run: test -s android/app/build/outputs/apk/debug/app-debug.apk
-
       - name: Upload Android build
         uses: actions/upload-artifact@v4
         with:
@@ -59,7 +53,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Require Limrun credentials
         run: |
           if [ -z "$LIM_API_KEY" ]; then
@@ -67,26 +60,17 @@ jobs:
             echo "GitHub-hosted macOS runners are unavailable on GHE.com subdomains."
             exit 1
           fi
-
       - name: Install Limrun CLI
         run: npm install --global lim
-
-      - name: Create or reuse remote Xcode sandbox
-        run: lim xcode create --reuse-if-exists --label repo=itunda --label lane=ids-native
-
       - name: Build iOS IDS host remotely
         run: |
-          lim xcode build ios \
+          lim xcode build . \
             --scheme ItundaRiderApp \
-            --configuration Debug \
-            --upload "itunda-ids/${GITHUB_SHA}-ios-debug.zip"
-
+            --configuration Debug
       - name: Attach remote iOS simulator
-        run: lim ios create --attach --reuse-if-exists --label repo=itunda --label lane=ids-native
-
+        run: lim ios create --attach --no-open
       - name: Verify remote Xcode build completed
         run: lim xcode logs
-
       - name: Upload native verification manifest
         run: |
           cat > ios-native-verification.txt <<EOF
@@ -96,7 +80,6 @@ jobs:
           configuration=Debug
           status=build-complete
           EOF
-
       - name: Upload iOS verification manifest
         uses: actions/upload-artifact@v4
         with:
