@@ -9,8 +9,9 @@ This package is the Web implementation layer for IDS 3.0.
 - Select: label, options, help/error messaging.
 - Checkbox: native checkbox semantics with a custom visual treatment.
 - Radio: native radio semantics with a custom visual treatment.
-- Switch: native checkbox plus role=switch semantics.
-- Tabs: tablist/tab semantics with a single active value.
+- Switch: native checkbox plus role=switch semantics; busy/error states.
+- Tabs: tablist/tab semantics with a single active value and roving keyboard focus.
+- EmptyState: semantic heading, recovery message, optional primary/secondary actions.
 
 ## Contract
 
@@ -21,10 +22,12 @@ Every interactive primitive must preserve:
 1. keyboard operation;
 2. visible focus;
 3. minimum 44px interaction target;
-4. long-label wrapping instead of clipping;
+4. long-label wrapping instead of clipping, including localized Korean/English content;
 5. reduced-motion behavior;
 6. light/dark semantic token behavior;
 7. accessible names and descriptions;
-8. stable APIs that prefer semantic intent over arbitrary styling props.
+8. stable APIs that prefer semantic intent over arbitrary styling props;
+9. forced-colors/high-contrast resilience and semantic error/busy announcements where applicable;
+10. deterministic QA scenarios defined by the canonical IDS contract.
 
 The Web layer is one implementation of the IDS contract; Android and iOS may use native controls while preserving the same semantic behavior.
