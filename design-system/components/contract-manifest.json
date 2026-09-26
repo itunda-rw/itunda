@@ -51,6 +51,45 @@
           "visible focus",
           "44px+ target"
         ]
+      },
+      "qa": {
+        "scenarios": {
+          "button.default": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "button.pressed": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "button.disabled": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "button.loading": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "button.long": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          }
+        }
       }
     },
     {
@@ -106,6 +145,45 @@
           "invalid is semantic",
           "message remains associated"
         ]
+      },
+      "qa": {
+        "scenarios": {
+          "textfield.default": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "textfield.focus": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "textfield.error": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "textfield.success": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "textfield.long": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          }
+        }
       }
     },
     {
@@ -165,6 +243,52 @@
           "validation remains associated",
           "44px+ target"
         ]
+      },
+      "qa": {
+        "scenarios": {
+          "select.placeholder": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "select.focus": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "select.disabled": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "select.error": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "select.success": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "select.option-disabled": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          }
+        }
       }
     },
     {
@@ -222,6 +346,38 @@
           "description/error remains associated",
           "44px+ target"
         ]
+      },
+      "qa": {
+        "scenarios": {
+          "checkbox.checked": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "checkbox.indeterminate": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "checkbox.disabled": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "checkbox.error": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          }
+        }
       }
     },
     {
@@ -280,6 +436,38 @@
           "validation remains associated",
           "44px+ target"
         ]
+      },
+      "qa": {
+        "scenarios": {
+          "radio.checked": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "radio.disabled": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "radio.error": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "radio.group": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          }
+        }
       }
     },
     {
@@ -339,6 +527,45 @@
           "track/thumb remain legible",
           "44px+ target"
         ]
+      },
+      "qa": {
+        "scenarios": {
+          "switch.on": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "switch.off": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "switch.loading": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "switch.disabled": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "switch.error": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          }
+        }
       }
     },
     {
@@ -394,6 +621,38 @@
           "roving keyboard focus",
           "44px+ target"
         ]
+      },
+      "qa": {
+        "scenarios": {
+          "tabs.selected": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "tabs.disabled": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "tabs.controls": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "tabs.roving-focus": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          }
+        }
       }
     },
     {
@@ -444,6 +703,38 @@
           "no clipped content",
           "44px+ targets"
         ]
+      },
+      "qa": {
+        "scenarios": {
+          "empty.default": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "empty.error": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "empty.success": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          },
+          "empty.long": {
+            "platforms": [
+              "web",
+              "android",
+              "ios"
+            ]
+          }
+        }
       }
     }
   ]
