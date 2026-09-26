@@ -467,6 +467,7 @@ export function EmptyState({
 }: EmptyStateProps) {
   const reactId = React.useId();
   const titleId = `ids-empty-state-${reactId}`;
+  const actionId = `ids-empty-state-${reactId}-actions`;
   return (
     <section
       className="ids-empty-state"
@@ -477,7 +478,7 @@ export function EmptyState({
       <h2 id={titleId} className="ids-empty-state__title">{title}</h2>
       {message ? <p className="ids-empty-state__message">{message}</p> : null}
       {actions.length ? (
-        <div className="ids-empty-state__actions">
+        <div id={actionId} className="ids-empty-state__actions" aria-label="Available actions">
           {actions.slice(0, 2).map((action) => (
             <Button
               key={action.label}
