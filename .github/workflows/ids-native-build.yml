@@ -9,43 +9,12 @@ on:
 permissions:
   contents: read
 
+# This workflow intentionally uses Limrun for both native platforms.
+# Expo Go, Expo Snack and EAS are not part of the IDS verification path.
+
 jobs:
   android:
-    name: Android IDS native compile
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20.x
-          cache: npm
-          cache-dependency-path: packages/saronite/package-lock.json
-      - name: Install Saronite dependencies
-        working-directory: packages/saronite
-        run: npm ci
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-          cache: gradle
-      - name: Build Itunda Android app
-        working-directory: android
-        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
-      - name: Verify APK exists
-        run: test -s android/app/build/outputs/apk/debug/app-debug.apk
-      - name: Upload Android build
-        uses: actions/upload-artifact@v4
-        with:
-          name: ids-native-android-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 14
-
-  ios:
-    name: iOS IDS remote Xcode verification
+    name: Android IDS native build + install
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -53,33 +22,84 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Require Limrun credentials
         run: |
           if [ -z "$LIM_API_KEY" ]; then
-            echo "::error::LIM_API_KEY repository secret is required for remote iOS native verification."
-            echo "GitHub-hosted macOS runners are unavailable on GHE.com subdomains."
+            echo "::error::LIM_API_KEY repository secret is required for native Android verification."
             exit 1
           fi
+
       - name: Install Limrun CLI
         run: npm install --global lim
-      - name: Build iOS IDS host remotely
+
+      - name: Build native Android app on Limrun
         run: |
-          lim xcode build . \
-            --scheme ItundaRiderApp \
-            --configuration Debug
-      - name: Attach remote iOS simulator
+          lim gradle build .             --project-path android             --upload itunda-native-android.apk
+
+      - name: Install native Android artifact on Limrun emulator
+        run: |
+          lim android create --install-asset=itunda-native-android.apk
+
+      - name: Capture native Android verification manifest
+        run: |
+          cat > android-native-verification.txt <<EOF
+          commit=${GITHUB_SHA}
+          lane=limrun-gradle
+          project=android
+          artifact=itunda-native-android.apk
+          status=build-and-install-complete
+          expo_evidence=false
+          EOF
+
+      - name: Upload Android verification manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: ids-native-android-verification
+          path: android-native-verification.txt
+          retention-days: 14
+
+  ios:
+    name: iOS IDS native Xcode build + install
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      LIM_API_KEY: ${{ secrets.LIM_API_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Require Limrun credentials
+        run: |
+          if [ -z "$LIM_API_KEY" ]; then
+            echo "::error::LIM_API_KEY repository secret is required for native iOS verification."
+            exit 1
+          fi
+
+      - name: Install Limrun CLI
+        run: npm install --global lim
+
+      - name: Create and attach native iOS simulator
         run: lim ios create --attach --no-open
-      - name: Verify remote Xcode build completed
+
+      - name: Build and install native iOS IDS host on Limrun
+        run: |
+          lim xcode build .             --scheme ItundaRiderApp             --configuration Debug
+
+      - name: Verify native iOS build logs
         run: lim xcode logs
-      - name: Upload native verification manifest
+
+      - name: Capture native iOS verification manifest
         run: |
           cat > ios-native-verification.txt <<EOF
           commit=${GITHUB_SHA}
           lane=limrun-xcode
           scheme=ItundaRiderApp
           configuration=Debug
-          status=build-complete
+          status=build-and-install-complete
+          expo_evidence=false
           EOF
+
       - name: Upload iOS verification manifest
         uses: actions/upload-artifact@v4
         with:
