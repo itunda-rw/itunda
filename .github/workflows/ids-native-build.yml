@@ -23,6 +23,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Verify native production boundary
+        run: bash ./scripts/verify-native-boundary.sh
+
       - name: Require Limrun credentials
         run: |
           if [ -z "$LIM_API_KEY" ]; then
@@ -68,6 +71,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Verify native production boundary
+        run: bash ./scripts/verify-native-boundary.sh
 
       - name: Require Limrun credentials
         run: |
