@@ -43,6 +43,23 @@ const webApiChecks = {
   tabs: ['interface TabsProps','function Tabs','role="tab"'],
   'empty-state': ['interface EmptyStateProps','function EmptyState','EmptyStateAction'],
 };
+const platformSemanticMarkers = {
+  web: {
+    states: { disabled:['disabled'], loading:['aria-busy'], error:['aria-invalid','role="alert"'], success:['success'] },
+    a11y: ['aria-', 'focus'],
+    motion: ['motion','transition'],
+  },
+  android: {
+    states: { disabled:['enabled = false','enabled=false','disabled'], loading:['loading','progress'], error:['error'], success:['success'] },
+    a11y: ['semantics','contentDescription'],
+    motion: ['animate','animation','motion'],
+  },
+  ios: {
+    states: { disabled:['disabled'], loading:['loading','ProgressView'], error:['error'], success:['success'] },
+    a11y: ['accessibility','accessibilityLabel','accessibilityHint'],
+    motion: ['animation','withAnimation','transition'],
+  },
+};
 const implementationChecks = {
   button: {
     web: { file: 'packages/design-system-web/src/index.ts', symbols: ['Button'] },
@@ -177,6 +194,21 @@ for (const [id, platforms] of Object.entries(implementationChecks)) {
         for (const dimension of ['states','content','a11y','motion','platforms']) {
           const value = contractComponent[dimension];
           if (!Array.isArray(value) || value.length === 0) failures.push(`${id}:${platform}: contract dimension ${dimension} is empty`);
+        }
+        const markers = platformSemanticMarkers[platform];
+        if (markers) {
+          for (const [state, requiredMarkers] of Object.entries(markers.states || {})) {
+            if ((contractComponent.states || []).some(item => String(item).toLowerCase().includes(state))) {
+              const missingMarkers = requiredMarkers.filter(marker => !source.includes(marker));
+              if (missingMarkers.length) failures.push(`${id}:${platform}: state ${state} missing semantic marker(s): ${missingMarkers.join(', ')}`);
+            }
+          }
+          for (const marker of markers.a11y || []) {
+            if (marker === 'aria-' ? !/aria-[a-z-]+/.test(source) : !source.toLowerCase().includes(marker.toLowerCase())) failures.push(`${id}:${platform}: accessibility marker missing: ${marker}`);
+          }
+          for (const marker of markers.motion || []) {
+            if (!source.toLowerCase().includes(marker.toLowerCase())) failures.push(`${id}:${platform}: motion marker missing: ${marker}`);
+          }
         }
       }
       if (platform === 'web' && id === 'button' && !/aria-busy/.test(source)) failures.push('button:web: loading accessibility contract is not represented');
