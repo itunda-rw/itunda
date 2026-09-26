@@ -111,6 +111,45 @@ jobs:
           await browser.close();
           EOF
 
+      - name: Run IDS contract state matrix
+        shell: bash
+        run: |
+          node --input-type=module <<'EOF'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({headless:true});
+          const page = await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
+          await page.goto('http://127.0.0.1:4173/', {waitUntil:'networkidle'});
+          const expected={
+            button:['default','pressed','focus','disabled','loading'],
+            field:['empty','filled','focus','disabled','error','success'],
+            select:['default','focus','disabled','error'],
+            checkbox:['unchecked','checked','focus','disabled','error'],
+            radio:['unchecked','checked','focus','disabled','error'],
+            switch:['off','on','focus','disabled'],
+            tabs:['default','selected','focus','disabled'],
+            empty:['default']
+          };
+          const failures=[];
+          const kindButtons=page.locator('[data-lab-kind]');
+          for(const [kind,states] of Object.entries(expected)){
+            const kindButton=kindButtons.filter({hasText:kind==='field'?'Text field':kind==='empty'?'Empty state':kind[0].toUpperCase()+kind.slice(1)});
+            if(await kindButton.count()!==1){failures.push(kind+': component selector missing');continue;}
+            await kindButton.click();
+            for(const state of states){
+              const control=page.locator('[data-lab-state="'+state+'"]');
+              if(await control.count()!==1){failures.push(kind+': declared state missing: '+state);continue;}
+              if(await control.isHidden()){failures.push(kind+': declared state hidden: '+state);continue;}
+              await control.click();
+              const rendered=await page.locator('#labPreview').textContent();
+              if(!rendered?.trim()) failures.push(kind+': '+state+' rendered empty');
+            }
+          }
+          if(failures.length) throw new Error('IDS contract state matrix failed: '+failures.join(' | '));
+          await page.screenshot({path:'/tmp/ids-contract-matrix.png',fullPage:true});
+          console.log('IDS contract state matrix passed: '+Object.values(expected).flat().length+' state cases');
+          await browser.close();
+          EOF
+
       - name: Upload IDS visual evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -120,4 +159,5 @@ jobs:
             /tmp/ids-mobile.png
             /tmp/ids-visual-qa.png
             /tmp/ids-stress.png
+            /tmp/ids-contract-matrix.png
           if-no-files-found: ignore
