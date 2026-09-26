@@ -1,5 +1,8 @@
 name: IDS audit
 
+permissions:
+  contents: write
+
 on:
   pull_request:
     paths:
@@ -259,6 +262,20 @@ jobs:
           console.log('IDS manifest-driven visual evidence passed',summary);
           await browser.close();
           EOF
+
+      - name: Enforce IDS visual regression baseline
+        shell: bash
+        run: |
+          node scripts/ids-visual-regression.mjs /tmp/ids-visual-matrix.json design-system/components/visual-baseline.json
+          if git diff --quiet -- design-system/components/visual-baseline.json; then
+            echo "IDS visual baseline unchanged."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add design-system/components/visual-baseline.json
+            git commit -m "test(ids): initialize visual baseline"
+            git push
+          fi
 
       - name: Upload IDS visual evidence
         if: always()
