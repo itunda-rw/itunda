@@ -18,49 +18,6 @@ const allow = new Set([
 ]);
 
 const contractPath = 'design-system/components/contract-manifest.json';
-const platformImplementations = {
-  button: [
-    ['web', 'packages/design-system-web/src/index.ts', 'Button'],
-    ['android', 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt', 'IdsButton'],
-    ['ios', 'ios/Core/DesignSystem/Sources/Components/Components.swift', 'IdsButton'],
-  ],
-  'text-field': [
-    ['web', 'packages/design-system-web/src/index.ts', 'TextField'],
-    ['android', 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt', 'IdsTextField'],
-    ['ios', 'ios/Core/DesignSystem/Sources/Components/Components.swift', 'IdsTextField'],
-  ],
-  select: [
-    ['web', 'packages/design-system-web/src/index.ts', 'Select'],
-    ['android', 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt', 'IdsSelect'],
-    ['ios', 'ios/Core/DesignSystem/Sources/Components/Components.swift', 'IdsSelect'],
-  ],
-  checkbox: [
-    ['web', 'packages/design-system-web/src/index.ts', 'Checkbox'],
-    ['android', 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt', 'IdsCheckbox'],
-    ['ios', 'ios/Core/DesignSystem/Sources/Components/Components.swift', 'IdsCheckbox'],
-  ],
-  radio: [
-    ['web', 'packages/design-system-web/src/index.ts', 'Radio'],
-    ['android', 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt', 'IdsRadio'],
-    ['ios', 'ios/Core/DesignSystem/Sources/Components/Components.swift', 'IdsRadio'],
-  ],
-  switch: [
-    ['web', 'packages/design-system-web/src/index.ts', 'Switch'],
-    ['android', 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt', 'IdsSwitch'],
-    ['ios', 'ios/Core/DesignSystem/Sources/Components/Components.swift', 'IdsSwitch'],
-  ],
-  tabs: [
-    ['web', 'packages/design-system-web/src/index.ts', 'Tabs'],
-    ['android', 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt', 'IdsTabs'],
-    ['ios', 'ios/Core/DesignSystem/Sources/Components/Components.swift', 'IdsTabs'],
-  ],
-  'empty-state': [
-    ['web', 'packages/design-system-web/src/index.ts', 'EmptyState'],
-    ['android', 'android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt', 'IdsEmptyState'],
-    ['ios', 'ios/Core/DesignSystem/Sources/Components/Components.swift', 'IdsEmptyState'],
-  ],
-};
-
 async function walk(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
   const files = [];
@@ -74,7 +31,6 @@ async function walk(dir) {
 }
 
 const failures = [];
-const warnings = [];
 const manifest = JSON.parse(await readFile(join(root, contractPath), 'utf8'));
 
 const implementationChecks = {
@@ -142,17 +98,6 @@ for (const component of components || []) {
   }
   if (!component.validation?.required || !required.every(key => component.validation.required.includes(key))) {
     failures.push(`${prefix}: validation.required must include ${required.join(', ')}`);
-  }
-}
-
-for (const [id, entries] of Object.entries(platformImplementations)) {
-  for (const [platform, file, symbol] of entries) {
-    try {
-      const source = await readFile(join(root, file), 'utf8');
-      if (!source.includes(symbol)) failures.push(`${id}:${platform}: missing implementation symbol ${symbol} in ${file}`);
-    } catch {
-      failures.push(`${id}:${platform}: missing implementation file ${file}`);
-    }
   }
 }
 
