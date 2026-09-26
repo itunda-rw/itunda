@@ -43,6 +43,11 @@ const webApiChecks = {
   tabs: ['interface TabsProps','function Tabs','role="tab"'],
   'empty-state': ['interface EmptyStateProps','function EmptyState','EmptyStateAction'],
 };
+const platformContentMarkers = {
+  web: ['overflow-wrap','word-break','white-space','min-width','max-width'],
+  android: ['Text','maxLines','softWrap','wrap'],
+  ios: ['Text','lineLimit','fixedSize','multilineTextAlignment'],
+};
 const platformSemanticMarkers = {
   web: {
     states: { disabled:['disabled'], loading:['aria-busy'], error:['aria-invalid','role="alert"'], success:['success'] },
@@ -208,6 +213,17 @@ for (const [id, platforms] of Object.entries(implementationChecks)) {
           }
           for (const marker of markers.motion || []) {
             if (!source.toLowerCase().includes(marker.toLowerCase())) failures.push(`${id}:${platform}: motion marker missing: ${marker}`);
+          }
+          const contentRequirements = (contractComponent.content || []).map(item => String(item).toLowerCase()).join(' ');
+          const localizationRequired = /long|local|korean|english|wrap|multiline|overflow|content/.test(contentRequirements);
+          if (localizationRequired) {
+            const contentMarkers = platformContentMarkers[platform] || [];
+            if (platform === 'web' && !contentMarkers.some(marker => source.toLowerCase().includes(marker.toLowerCase()))) {
+              failures.push(`${id}:${platform}: localization/content contract has no wrapping or sizing implementation marker`);
+            }
+            if (platform !== 'web' && !contentMarkers.some(marker => source.toLowerCase().includes(marker.toLowerCase()))) {
+              failures.push(`${id}:${platform}: localization/content contract has no text-layout implementation marker`);
+            }
           }
         }
       }
