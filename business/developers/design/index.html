@@ -47,7 +47,16 @@
 </style>
 <style id="ids-lab-v3-css">
 .lab-inspector{margin-top:18px;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--soft)}.lab-inspector-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.lab-inspector code{display:block;padding:9px;border:1px solid var(--line);border-radius:9px;background:var(--surface);font:11px ui-monospace,monospace;color:var(--muted)}.control-stack{display:grid;gap:12px}.control-option{display:flex;align-items:center;gap:9px;min-height:44px;font-size:13px;font-weight:650}.control-option input{width:20px;height:20px;accent-color:var(--brand)}.pg-select{height:48px;width:100%;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);padding:0 12px}.pg-tabs{display:flex;gap:3px;padding:3px;border-radius:12px;background:var(--soft)}.pg-tabs button{flex:1;min-height:44px;border:0;border-radius:9px;background:transparent;color:var(--muted);font-weight:750}.pg-tabs button.active{background:var(--surface);color:var(--ink);box-shadow:0 2px 8px #10131810}@media(max-width:700px){.lab-inspector-grid{grid-template-columns:1fr 1fr}}
-</style></head>
+</style>
+<style id="ids-guide-maturity-css">
+.component-item{position:relative;overflow:hidden}
+.ids-guide-contract{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:12px;margin-top:16px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--soft)}
+.ids-guide-contract strong{font-size:12px}.ids-guide-contract p{margin:5px 0 0;color:var(--muted);font-size:12px;line-height:1.5}.ids-guide-contract__side{display:grid;gap:6px}.ids-guide-contract__side span{font-size:11px;color:var(--muted)}.ids-guide-contract__side code{font:11px ui-monospace,monospace;color:var(--brand-strong)}
+.ids-guide-checklist{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}.ids-guide-checklist span{padding:4px 7px;border-radius:7px;background:var(--surface);border:1px solid var(--line);font-size:10px;font-weight:700;color:var(--muted)}
+.ids-guide-status{display:inline-flex;align-items:center;gap:6px;margin:0 0 8px;padding:5px 8px;border-radius:999px;background:var(--brand-subtle);color:var(--brand-strong);font-size:10px;font-weight:800}
+@media(max-width:700px){.ids-guide-contract{grid-template-columns:1fr}}
+</style>
+</head>
 <body>
 <header class="top"><div class="topin">
 <button class="menu" id="menu" aria-label="Open navigation" aria-expanded="false">☰</button>
@@ -410,4 +419,34 @@ function renderLabV3(){
 
 document.querySelectorAll('[data-lab-kind]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-lab-kind]').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');labKind=b.dataset.labKind;syncLabContract(labKind);renderLabV3()}));
 syncLabContract(labKind);loadIdsContractManifest();stateBar?.addEventListener('click',e=>{const b=e.target.closest('[data-lab-state]');if(!b)return;stateBar.querySelectorAll('[data-lab-state]').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');renderLabV3()});renderLabV3();
-</script></body></html>
+</script>
+<script id="ids-guide-manifest">
+(function(){
+ const labels={button:'button','text-field':'text field',select:'select',checkbox:'checkbox',radio:'radio',switch:'switch',tabs:'tabs','empty-state':'empty state'};
+ const normalize=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+ const inject=()=>{
+  const components=IDS_CONTRACT_MANIFEST?.components||[];
+  const byId=new Map(components.map(c=>[c.id,c]));
+  document.querySelectorAll('.component-item').forEach(card=>{
+   if(card.querySelector('.ids-guide-contract'))return;
+   const hay=normalize(card.dataset.name+' '+(card.querySelector('h3')?.textContent||''));
+   const id=[...byId.keys()].find(k=>hay.includes(labels[k]));
+   const c=id&&byId.get(id); if(!c?.guide)return;
+   const g=c.guide;
+   const node=document.createElement('div'); node.className='ids-guide-contract';
+   node.innerHTML='<div><div class="ids-guide-status">✓ Manifest-backed guide</div><strong>Purpose</strong><p>'+g.purpose+'</p><div class="ids-guide-checklist">'+g.checklist.map(x=>'<span>'+x+'</span>').join('')+'</div></div><div class="ids-guide-contract__side"><strong>Worst case</strong><p>'+g.worstCase+'</p><span>Semantic tokens</span><code>'+g.tokens.map(x=>'--itunda-'+x).join(' · ')+'</code></div>';
+   card.querySelector('.component-guide')?.appendChild(node);
+  });
+  const catalog=document.getElementById('componentCatalog');
+  if(catalog){
+   const status=document.getElementById('idsCatalogStatus')||document.createElement('div');
+   status.id='idsCatalogStatus';status.className='note';status.style.margin='0 0 12px';
+   status.textContent=components.length+' canonical primitives · '+document.querySelectorAll('.component-item').length+' documented guides · generated from IDS contract manifest';
+   catalog.insertBefore(status,catalog.firstElementChild);
+  }
+ };
+ const boot=()=>{if(typeof IDS_CONTRACT_MANIFEST!=='undefined'&&IDS_CONTRACT_MANIFEST)inject();else setTimeout(boot,50)};
+ boot();
+})();
+</script>
+</body></html>
