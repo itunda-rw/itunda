@@ -85,6 +85,17 @@ if (!new RegExp('\\b--itunda-brand\\s*:\s*var\\(--itunda-indigo\\)').test(tokenC
   failures.push(`${tokenCssPath}: semantic brand must resolve from --itunda-indigo`);
 }
 
+const typographyFoundation = tokens.foundations?.typography;
+if (!typographyFoundation || typographyFoundation.minimumScale !== 1 || typographyFoundation.largeTextScale !== 1.5) {
+  failures.push(`${tokensPath}: typography foundation must define 100% baseline and 150% large-text scale`);
+}
+for (const role of ['body', 'label', 'caption', 'title', 'display']) {
+  const spec = typographyFoundation?.[role];
+  if (!spec || !Number.isFinite(spec.size) || !Number.isFinite(spec.lineHeight) || spec.lineHeight < spec.size) {
+    failures.push(`${tokensPath}: typography.${role} must define size and lineHeight with lineHeight >= size`);
+  }
+}
+
 const components = manifest.components;
 
 if (manifest.version !== '3.0.0') failures.push(`${contractPath}: expected version 3.0.0`);
