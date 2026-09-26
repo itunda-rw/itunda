@@ -21,15 +21,15 @@
   line-height: 1.25;
   cursor: pointer;
   transition:
-    background-color 140ms var(--itunda-ease-out),
-    color 140ms var(--itunda-ease-out),
-    transform 140ms var(--itunda-ease-out),
-    opacity 140ms var(--itunda-ease-out);
+    background-color var(--itunda-motion-fast) var(--itunda-ease-out),
+    color var(--itunda-motion-fast) var(--itunda-ease-out),
+    transform var(--itunda-motion-fast) var(--itunda-ease-out),
+    opacity var(--itunda-motion-fast) var(--itunda-ease-out);
 }
 
-.ids-button--sm { min-height: var(--itunda-control-height-sm); font-size: 14px; }
-.ids-button--md { min-height: var(--itunda-control-height-md); font-size: 16px; }
-.ids-button--lg { min-height: var(--itunda-control-height-lg); font-size: 17px; }
+.ids-button--sm { min-height: var(--itunda-control-height-sm); font-size: var(--itunda-type-scale-14-size); }
+.ids-button--md { min-height: var(--itunda-control-height-md); font-size: var(--itunda-type-scale-16-size); }
+.ids-button--lg { min-height: var(--itunda-control-height-lg); font-size: var(--itunda-type-scale-17-size); }
 .ids-button--full { width: 100%; }
 
 .ids-button--primary {
@@ -67,7 +67,7 @@
   border: 2px solid currentColor;
   border-right-color: transparent;
   border-radius: 50%;
-  animation: ids-spin 700ms linear infinite;
+  animation: ids-spin var(--itunda-motion-spinner) linear infinite;
 }
 @keyframes ids-spin { to { transform: rotate(360deg); } }
 
@@ -81,7 +81,7 @@
   align-items: baseline;
   gap: 3px;
   color: var(--itunda-text-primary);
-  font-size: 15px;
+  font-size: var(--itunda-type-scale-15-size);
   font-weight: 600;
   line-height: 1.35;
 }
@@ -104,7 +104,7 @@
 .ids-field__message {
   margin: 0;
   color: var(--itunda-text-secondary);
-  font-size: 13px;
+  font-size: var(--itunda-type-scale-13-size);
   line-height: 1.45;
 }
 .ids-field__message--error { color: var(--itunda-field-border-error); }
@@ -173,7 +173,7 @@
   box-sizing: border-box;
   border-radius: var(--itunda-radius-pill);
   background: var(--itunda-grey-300);
-  transition: background-color 140ms var(--itunda-ease-out);
+  transition: background-color var(--itunda-motion-fast) var(--itunda-ease-out);
 }
 .ids-switch__thumb {
   display: block;
@@ -181,8 +181,8 @@
   height: 24px;
   border-radius: 50%;
   background: var(--itunda-surface-default);
-  box-shadow: 0 1px 3px rgba(0,0,0,.18);
-  transition: transform 140ms var(--itunda-ease-out);
+  box-shadow: var(--itunda-shadow-control);
+  transition: transform var(--itunda-motion-fast) var(--itunda-ease-out);
 }
 .ids-switch input:checked + .ids-switch__track { background: var(--itunda-brand); }
 .ids-switch input:checked + .ids-switch__track .ids-switch__thumb { transform: translateX(20px); }
@@ -217,7 +217,7 @@
 .ids-tab--active {
   background: var(--itunda-surface-default);
   color: var(--itunda-text-primary);
-  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  box-shadow: var(--itunda-shadow-sm);
 }
 .ids-tab:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--itunda-focus) 28%, transparent);
@@ -248,13 +248,13 @@
   border-radius: 50%;
   background: var(--itunda-surface-subtle);
   color: var(--itunda-text-secondary);
-  font-size: 24px;
+  font-size: var(--itunda-type-scale-24-size);
   line-height: 1;
 }
 .ids-empty-state__title {
   margin: 0;
   color: var(--itunda-text-primary);
-  font-size: 20px;
+  font-size: var(--itunda-type-scale-20-size);
   line-height: 1.35;
 }
 .ids-empty-state__message {
