@@ -282,7 +282,7 @@ function assertIdsShowcaseGovernance(manifest){
   const keys=Object.keys(components);
   report.missing=IDS_CANONICAL_COMPONENTS.filter(k=>!keys.includes(k));
   report.extra=keys.filter(k=>!IDS_CANONICAL_COMPONENTS.includes(k));
-  const required=['states','content','a11y','motion','platforms','guide','validation'];
+  const required=['states','content','a11y','motion','platforms','guide','validation','qa'];
   for(const key of IDS_CANONICAL_COMPONENTS){
     const component=components[key];
     if(!component) continue;
@@ -291,6 +291,7 @@ function assertIdsShowcaseGovernance(manifest){
         report.invalid.push(`${key}.${field}`);
       }
     }
+    if(!component.qa?.scenarios||typeof component.qa.scenarios!=='object') report.invalid.push(key+'.qa.scenarios');
     if(component.validation?.required){
       for(const dimension of ['states','content','a11y','motion','platforms']){
         if(component.validation.required[dimension]!==true) report.invalid.push(`${key}.validation.required.${dimension}`);
@@ -497,9 +498,8 @@ function renderVisualQAMatrix(){
   const qaPlatformContractByComponent=Object.fromEntries(components.map(comp=>[comp.id,[...(comp.platforms||[])].map(String).sort().join(',')]));
   const qaScenarioPlatformContractByComponent=Object.fromEntries(components.map(comp=>{
     const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;
-    const declaredPlatforms=[...(comp.platforms||[])].map(String).sort();
     const scenarios=qaScenarioList(kind);
-    return [comp.id,Object.fromEntries(scenarios.map(([id])=>[id,declaredPlatforms.join(',')]))];
+    return [comp.id,Object.fromEntries(scenarios.map(([id])=>[id,[...(comp.qa?.scenarios?.[id]?.platforms||[])].map(String).sort().join(',')]))];
   }));
   const qaScenarioPlatformContractSignature=components.map(comp=>comp.id+':'+Object.entries(qaScenarioPlatformContractByComponent[comp.id]||{}).map(([id,platforms])=>id+'='+platforms).join('|')).join('||');
   const qaPlatformContractSignature=components.map(comp=>comp.id+':'+qaPlatformContractByComponent[comp.id]).join('|');
