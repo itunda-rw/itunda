@@ -593,7 +593,11 @@ function renderVisualQAMatrix(){
       const meta=JSON.parse(localStorage.getItem('ids-qa-evidence-'+platform+'-'+id)||'');
       const verifiedAt=Date.parse(meta?.verifiedAt||'');
       const signature=localStorage.getItem('ids-qa-contract-signature')||'';
-      return meta?.scenario===id&&meta?.platform===platform&&meta?.contractSignature===signature&&meta?.platformContractSignature===(localStorage.getItem('ids-qa-platform-contract-signature')||'')&&meta?.componentId&&meta?.componentPlatformContractSignature===qaPlatformContractByComponent[meta.componentId]&&meta?.scenarioPlatformContractSignature===qaScenarioPlatformContractByComponent[meta.componentId]?.[id]&&Number.isFinite(verifiedAt)&&Date.now()-verifiedAt<=QA_EVIDENCE_MAX_AGE_MS&&meta?.context&&typeof meta.context.viewport==='string';
+      const context=meta?.context;
+      const required=['scenario','componentId','contractSignature','platformContractSignature','componentPlatformContractSignature','scenarioPlatformContractSignature','platform','verifiedAt','context'];
+      const contextRequired=['theme','scale','motion','viewport'];
+      const schemaValid=meta&&required.every(k=>Object.prototype.hasOwnProperty.call(meta,k))&&context&&contextRequired.every(k=>typeof context[k]==='string'&&context[k].length>0)&&['web','android','ios'].includes(meta.platform)&&meta.componentId&&typeof meta.scenarioPlatformContractSignature==='string';
+      return schemaValid&&meta.scenario===id&&meta.platform===platform&&meta.contractSignature===signature&&meta.platformContractSignature===(localStorage.getItem('ids-qa-platform-contract-signature')||'')&&meta.componentId&&meta.componentPlatformContractSignature===qaPlatformContractByComponent[meta.componentId]&&meta.scenarioPlatformContractSignature===qaScenarioPlatformContractByComponent[meta.componentId]?.[id]&&Number.isFinite(verifiedAt)&&Date.now()-verifiedAt<=QA_EVIDENCE_MAX_AGE_MS;
     }catch{return false;}
   };
   const validEvidenceForScenario=(id)=>{
@@ -609,7 +613,7 @@ function renderVisualQAMatrix(){
       const raw=localStorage.getItem('ids-qa-evidence-'+platform+'-'+id);
       if(!raw)return 'missing';
       try{const m=JSON.parse(raw),at=Date.parse(m?.verifiedAt||''),sig=localStorage.getItem('ids-qa-contract-signature')||'';
-        return m?.scenario===id&&m?.platform===platform&&m?.contractSignature===sig&&m?.platformContractSignature===(localStorage.getItem('ids-qa-platform-contract-signature')||'')&&m?.componentId&&m?.componentPlatformContractSignature===qaPlatformContractByComponent[m.componentId]&&m?.scenarioPlatformContractSignature===qaScenarioPlatformContractByComponent[m.componentId]?.[id]&&Number.isFinite(at)&&Date.now()-at<=30*24*60*60*1000?'verified':'stale';
+        const context=m?.context; const schemaValid=m&&['scenario','componentId','contractSignature','platformContractSignature','componentPlatformContractSignature','scenarioPlatformContractSignature','platform','verifiedAt','context'].every(k=>Object.prototype.hasOwnProperty.call(m,k))&&context&&['theme','scale','motion','viewport'].every(k=>typeof context[k]==='string'&&context[k].length>0); return schemaValid&&m?.scenario===id&&m?.platform===platform&&m?.contractSignature===sig&&m?.platformContractSignature===(localStorage.getItem('ids-qa-platform-contract-signature')||'')&&m?.componentId&&m?.componentPlatformContractSignature===qaPlatformContractByComponent[m.componentId]&&m?.scenarioPlatformContractSignature===qaScenarioPlatformContractByComponent[m.componentId]?.[id]&&Number.isFinite(at)&&Date.now()-at<=30*24*60*60*1000?'verified':'stale';
       }catch{return 'stale';}
     };
     host.innerHTML=components.map(comp=>{
