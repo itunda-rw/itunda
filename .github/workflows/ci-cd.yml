@@ -1,8 +1,10 @@
 name: CI
 
 on:
-  push:
-    branches: [ main, develop ]
+  # GitHub-hosted runner provisioning is currently unavailable for the Itunda Enterprise trial.
+  # Keep full CI manually runnable; Cloudflare builds remain the lightweight deployment gate.
+  workflow_dispatch:
+
   pull_request:
     branches: [ main, develop ]
 
