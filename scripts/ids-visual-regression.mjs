@@ -3,6 +3,7 @@ import { inflateSync, deflateSync } from 'node:zlib';
 
 const input=process.argv[2]||'/tmp/ids-visual-matrix.json';
 const baselinePath=process.argv[3]||'design-system/components/visual-baseline.json';
+const update=process.argv.includes('--update');
 const matrix=JSON.parse(readFileSync(input,'utf8'));
 const cases=matrix.cases||[];
 const diffDir='/tmp/ids-visual-diff';
@@ -39,11 +40,11 @@ const diff=(a,b,threshold=8)=>{
 const key=c=>[c.component,c.state,c.theme,c.scale,c.viewport,c.motion].join('|');
 const current=Object.fromEntries(cases.map(c=>[key(c),readFileSync('/tmp/ids-visual-matrix/'+c.filename+'.png')]));
 
-if(!existsSync(baselinePath)){
+if(!existsSync(baselinePath)||update){
   const payload={version:'2.0.0',generatedFrom:matrix.source,pixelThreshold:{channel:8,allowedChangedRatio:0.001},cases:{}};
   for(const[k,png]of Object.entries(current))payload.cases[k]={pngBase64:png.toString('base64')};
   writeFileSync(baselinePath,JSON.stringify(payload,null,2)+'\n');
-  console.log('IDS pixel baseline initialized:',Object.keys(current).length,'cases');
+  console.log(update?'IDS pixel baseline updated intentionally:':'IDS pixel baseline initialized:',Object.keys(current).length,'cases');
   process.exit(0);
 }
 
