@@ -391,6 +391,7 @@ export function Tabs({ items, value, onChange, ariaLabel = 'Tabs', tabPanelId }:
   const refs = React.useRef<Array<HTMLButtonElement | null>>([]);
   const enabledItems = items.filter(item => !item.disabled);
   const activeIndex = Math.max(0, enabledItems.findIndex(item => item.id === value));
+  const rovingId = enabledItems[activeIndex]?.id;
   const move = (index: number) => {
     if (!enabledItems.length) return;
     const next = (index + enabledItems.length) % enabledItems.length;
@@ -426,7 +427,7 @@ export function Tabs({ items, value, onChange, ariaLabel = 'Tabs', tabPanelId }:
             aria-controls={panelId}
             aria-disabled={item.disabled || undefined}
             disabled={item.disabled}
-            tabIndex={selected && !item.disabled ? 0 : -1}
+            tabIndex={item.id === rovingId && !item.disabled ? 0 : -1}
             className={`ids-tab ${selected ? 'ids-tab--active' : ''}`}
             onClick={() => { if (!item.disabled) onChange(item.id); }}
           >
