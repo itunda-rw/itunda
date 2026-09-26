@@ -145,6 +145,38 @@ for (const role of ['body', 'label', 'caption', 'title', 'display']) {
 
 const components = manifest.components;
 
+const validScenarioPlatforms = new Set(['web','android','ios']);
+for (const component of components || []) {
+  const prefix = contractPath + ':' + (component?.id || '<missing-id>');
+  const scenarios = component?.qa?.scenarios;
+  if (!scenarios || typeof scenarios !== 'object' || Array.isArray(scenarios)) {
+    failures.push(prefix + ': qa.scenarios must be an object');
+    continue;
+  }
+  const kind = component.id === 'text-field' ? 'field' : component.id === 'empty-state' ? 'empty' : component.id;
+  const expected = requiredQaScenarios[kind] || [];
+  const declaredIds = Object.keys(scenarios);
+  for (const scenarioId of expected) {
+    const scenario = scenarios[scenarioId];
+    if (!scenario || typeof scenario !== 'object' || Array.isArray(scenario)) {
+      failures.push(prefix + ': qa.scenarios.' + scenarioId + ' must be an object');
+      continue;
+    }
+    if (!Array.isArray(scenario.platforms) || scenario.platforms.length === 0) {
+      failures.push(prefix + ': qa.scenarios.' + scenarioId + '.platforms must be a non-empty array');
+      continue;
+    }
+    const invalidPlatforms = scenario.platforms.filter(platform => !validScenarioPlatforms.has(String(platform)));
+    if (invalidPlatforms.length) failures.push(prefix + ': qa.scenarios.' + scenarioId + '.platforms contains invalid platform(s): ' + invalidPlatforms.join(', '));
+    const unsupportedPlatforms = scenario.platforms.filter(platform => !(component.platforms || []).includes(platform));
+    if (unsupportedPlatforms.length) failures.push(prefix + ': qa.scenarios.' + scenarioId + '.platforms must be a subset of component platforms: ' + unsupportedPlatforms.join(', '));
+    if (new Set(scenario.platforms).size !== scenario.platforms.length) failures.push(prefix + ': qa.scenarios.' + scenarioId + '.platforms must not contain duplicates');
+  }
+  for (const scenarioId of declaredIds) {
+    if (!expected.includes(scenarioId)) failures.push(prefix + ': qa.scenarios contains non-canonical scenario ' + scenarioId);
+  }
+}
+
 for (const [componentId, scenarioIds] of Object.entries(requiredQaScenarios)) {
   const component = (components || []).find(item => item.id === componentId);
   if (!component) {
