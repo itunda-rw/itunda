@@ -71,8 +71,8 @@
   color: var(--itunda-text-inverse);
 }
 
-.ids-button:hover:not(:disabled) { filter: brightness(0.98); }
-.ids-button:active:not(:disabled) { transform: scale(0.98); }
+.ids-button:hover:not(:disabled) { transform: translateY(-1px); }
+.ids-button:active:not(:disabled) { transform: scale(0.985); }
 .ids-button:focus-visible,
 .ids-field__input:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--itunda-focus) 28%, transparent);
@@ -246,11 +246,6 @@
   outline-offset: -1px;
 }
 
-@media (prefers-color-scheme: dark) {
-  .ids-button--secondary { background: var(--itunda-surface-brand); }
-  .ids-field__input { background: var(--itunda-surface-default); }
-}
-
 
 .ids-empty-state {
   width: 100%;
@@ -292,8 +287,7 @@
 
 
 /* IDS interaction quality: semantic states stay legible without relying on color alone. */
-.ids-button:not(:disabled){will-change:transform}.ids-button:hover:not(:disabled){filter:none;transform:translateY(-1px)}
-.ids-button:active:not(:disabled){transform:scale(.985)}
+
 .ids-field__input:disabled{background:var(--itunda-surface-subtle);color:var(--itunda-text-tertiary);cursor:not-allowed}
 .ids-field__input[aria-invalid="true"]:focus-visible{outline-color:color-mix(in srgb,var(--itunda-red) 35%,transparent)}
 .ids-check,.ids-switch{position:relative}
@@ -529,7 +523,7 @@
 .ids-check input:checked + .ids-check__radio {
   background: var(--itunda-brand);
   border-color: var(--itunda-brand);
-  box-shadow: inset 0 0 0 5px var(--itunda-surface-primary);
+  box-shadow: inset 0 0 0 5px var(--itunda-surface-default);
 }
 .ids-check input:checked:disabled + .ids-check__radio {
   background: var(--itunda-text-tertiary);
