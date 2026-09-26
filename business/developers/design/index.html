@@ -259,6 +259,34 @@ cs?.addEventListener('input',filterComponents);cf?.addEventListener('change',fil
   <div class="panel" style="margin-top:16px"><strong>Parity rule</strong><p class="note">The matrix is an audit contract, not a visual suggestion. A primitive is complete only when its documented states, content behavior, accessibility semantics, motion behavior and platform mapping are implemented consistently.</p></div>
 </section>
 
+<section id="visual-qa" class="section">
+  <div class="eyebrow">10 · Visual QA matrix</div>
+  <h2>Render the edge cases before calling a component complete.</h2>
+  <p class="lede">The laboratory separates source coverage from rendered verification. Each primitive should be reviewed across state, content, theme, scale, motion, and platform dimensions.</p>
+  <div class="panel">
+    <div class="qa-grid">
+      <div><strong>State</strong><span>Default · Pressed · Focus · Disabled · Loading · Error · Success</span></div>
+      <div><strong>Content</strong><span>Short · Long localization · Kinyarwanda · Korean · English</span></div>
+      <div><strong>Scale</strong><span>100% · 125% · 150% text</span></div>
+      <div><strong>Theme</strong><span>Light · Dark · system transition</span></div>
+      <div><strong>Motion</strong><span>Normal motion · Reduced motion</span></div>
+      <div><strong>Viewport</strong><span>Compact mobile · standard mobile · desktop</span></div>
+      <div><strong>A11y</strong><span>Keyboard · screen reader · focus · target size</span></div>
+      <div><strong>Platform</strong><span>Web · Android · iOS</span></div>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:16px">
+    <strong>Verification rule</strong>
+    <p class="note">A source-level mapping is not visual evidence. Mark a state visual-verified only after the rendered result has been inspected at the required dimensions. Build-verified and visual-verified remain separate gates.</p>
+  </div>
+</section>
+
+<style id="ids-visual-qa-css">
+.qa-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
+.qa-grid>div{padding:16px;border:1px solid var(--border);border-radius:16px;background:var(--surface)}
+.qa-grid strong,.qa-grid span{display:block}.qa-grid span{margin-top:6px;color:var(--muted);line-height:1.5}
+@media(max-width:720px){.qa-grid{grid-template-columns:1fr}}
+</style>
 <script id="ids-playground-js">
 const pg={component:document.getElementById('pgComponent'),state:document.getElementById('pgState'),content:document.getElementById('pgContent'),scale:document.getElementById('pgScale'),theme:document.getElementById('pgTheme'),preview:document.getElementById('pgPreview'),contract:document.getElementById('pgContract')};
 function renderPlayground(){if(!pg.preview)return;const s=pg.state.value,c=pg.content.value,scale=Number(pg.scale.value);pg.preview.style.fontSize=(16*scale)+'px';const long=c==='long';let html='';if(pg.component.value==='button'){const label=long?'Continue to verify your phone number and finish setting up your Itunda account':'Continue';html='<div class="playground-card"><button class="btn primary" '+(s==='Disabled'?'disabled':'')+'>'+((s==='Loading')?'Loading…':label)+'</button><p class="note" style="margin-top:12px">'+(s==='Error'?'Could not continue. Check the information and try again.':s==='Success'?'Completed successfully.':'Primary action contract preview.')+'</p></div>'}else if(pg.component.value==='field'){html='<div class="playground-card"><label class="demo-label">Phone number<input class="field" '+(s==='Disabled'?'disabled':'')+' value="'+(long?'+250 788 123 456 789 000':' +250 788 123 456').trim()+'"><span class="help">'+(s==='Error'?'Enter a valid Rwandan phone number.':s==='Success'?'Phone number verified.':'Used for account verification.')+'</span></label></div>'}else if(pg.component.value==='tabs'){html='<div class="playground-card"><div class="tabs"><button class="tab active">Overview</button><button class="tab">Activity</button><button class="tab">Settings</button></div><p class="note" style="margin-top:14px">'+(long?'Long localized labels should scroll or wrap without hiding the active state.':'Keyboard navigation and selected state are part of the contract.')+'</p></div>'}else{html='<div class="playground-card ids-empty-state"><div class="ids-empty-state__icon" aria-hidden="true">○</div><h2 class="ids-empty-state__title">'+(long?'No marketplace results found for this neighborhood yet':'No products yet')+'</h2><p class="ids-empty-state__message">'+(s==='Error'?'Something went wrong while loading this list.':'Add your first product to start building your catalog.')+'</p><button class="btn">Add product</button></div>'}pg.preview.innerHTML=html;pg.contract.textContent=s==='Error'?'Validation and recovery must be explicit.':s==='Loading'?'Loading preserves layout and prevents duplicate actions.':'Semantic intent · native behavior · accessible state';}
