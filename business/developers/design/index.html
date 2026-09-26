@@ -512,7 +512,7 @@ function renderVisualQAMatrix(){
   root.querySelectorAll('[data-qa-scale]').forEach(button=>button.addEventListener('click',()=>{const scale=Number(button.dataset.qaScale);document.body.style.zoom=String(scale);document.documentElement.dataset.idsScale=button.dataset.qaScale;root.querySelectorAll('[data-qa-scale]').forEach(x=>x.setAttribute('aria-pressed',String(x===button)));}));
   root.querySelectorAll('[data-qa-motion]').forEach(button=>button.addEventListener('click',()=>{const reduced=button.dataset.qaMotion==='reduced';document.documentElement.dataset.idsMotion=reduced?'reduced':'normal';root.querySelectorAll('[data-qa-motion]').forEach(x=>x.setAttribute('aria-pressed',String(x===button)));}));
   root.querySelectorAll('[data-qa-component-check]').forEach(input=>{const key='ids-qa-check-'+input.dataset.qaComponentCheck+'-'+input.dataset.qaCheckIndex;input.checked=localStorage.getItem(key)==='true';input.addEventListener('change',()=>{localStorage.setItem(key,String(input.checked));updateQaProgress();});});
-  root.querySelectorAll('[data-qa-platform]').forEach(select=>{select.addEventListener('change',()=>{const id=select.dataset.qaPlatform;localStorage.setItem('ids-qa-platform-'+id,select.value);});});
+  root.querySelectorAll('[data-qa-platform]').forEach(select=>{select.addEventListener('change',()=>{const id=select.dataset.qaPlatform;localStorage.setItem('ids-qa-platform-'+id,select.value);});select.value=localStorage.getItem('ids-qa-platform-'+select.dataset.qaPlatform)||'web';});
   root.querySelectorAll('[data-qa-scenario-check]').forEach(input=>{
     const id=input.dataset.qaScenarioCheck;
     const key='ids-qa-scenario-'+id;
@@ -527,7 +527,8 @@ function renderVisualQAMatrix(){
         const platform=platformSelect?.value||'web';
         const evidence={scenario:id,contractSignature:localStorage.getItem('ids-qa-contract-signature')||null,platform,verifiedAt:new Date().toISOString(),context:{theme:document.documentElement.dataset.theme||'system',scale:document.documentElement.dataset.idsScale||'1',motion:document.documentElement.dataset.idsMotion||'normal',viewport:window.innerWidth+'x'+window.innerHeight}};
         localStorage.setItem(metaKey,JSON.stringify(evidence));
-      }else localStorage.removeItem(metaKey);
+        localStorage.setItem('ids-qa-evidence-'+platform+'-'+id,JSON.stringify(evidence));
+      }else{localStorage.removeItem(metaKey);const platform=localStorage.getItem('ids-qa-platform-'+id)||'web';localStorage.removeItem('ids-qa-evidence-'+platform+'-'+id);}
       updateQaProgress();
     });
   });
@@ -547,16 +548,23 @@ function renderVisualQAMatrix(){
   root.querySelectorAll('[data-qa-check]').forEach(input=>{const key='ids-qa-worksheet-'+input.dataset.qaCheck;input.checked=localStorage.getItem(key)==='true';input.addEventListener('change',()=>localStorage.setItem(key,String(input.checked)));});
   root.querySelectorAll('[data-qa-status-component]').forEach(button=>{const component=button.dataset.qaStatusComponent;button.setAttribute('aria-pressed',String(qaStatus(component)===button.dataset.qaStatus));button.addEventListener('click',()=>{const status=button.dataset.qaStatus;const checks=[...root.querySelectorAll('[data-qa-component-check="'+component+'"]')];const kind=component==='text-field'?'field':component==='empty-state'?'empty':component;const scenarios=qaScenarioList(kind);const scenarioInputs=scenarios.map(([id])=>root.querySelector('[data-qa-scenario-check="'+id+'"]')).filter(Boolean);const complete=checks.length>0&&checks.every(x=>x.checked)&&scenarioInputs.length===scenarios.length&&scenarioInputs.every(x=>validEvidenceForScenario(x.dataset.qaScenarioCheck));if(status==='verified'&&!complete){const card=button.closest('.qa-card');const note=card?.querySelector('.qa-status-note');if(note){note.textContent='Complete the component checklist and every deterministic scenario before marking it visually verified.';}else{const n=document.createElement('span');n.className='qa-status-note';n.textContent='Complete this component checklist before marking it visually verified.';button.parentElement?.insertAdjacentElement('afterend',n);}return;}localStorage.setItem('ids-qa-status-'+component,status);const badge=root.querySelector('[data-qa-status-for="'+component+'"]');if(badge){badge.dataset.status=status;badge.textContent=statusLabel(status);}root.querySelectorAll('[data-qa-status-component="'+component+'"]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.qaStatus===status)));updateQaProgress();});});
   function updateQaProgress(){const QA_EVIDENCE_MAX_AGE_MS=30*24*60*60*1000;
-  const validEvidenceForScenario=(id)=>{
+  const platforms=['web','android','ios'];
+  const validPlatformEvidence=(id,platform)=>{
     const checked=localStorage.getItem('ids-qa-scenario-'+id)==='true';
     if(!checked)return false;
     try{
-      const meta=JSON.parse(localStorage.getItem('ids-qa-evidence-'+id)||'');
+      const meta=JSON.parse(localStorage.getItem('ids-qa-evidence-'+platform+'-'+id)||'');
       const verifiedAt=Date.parse(meta?.verifiedAt||'');
-      const currentSignature=localStorage.getItem('ids-qa-contract-signature')||'';
-      return meta?.scenario===id&&Boolean(meta?.platform)&&Boolean(meta?.contractSignature)&&meta.contractSignature===currentSignature&&Number.isFinite(verifiedAt)&&Date.now()-verifiedAt<=QA_EVIDENCE_MAX_AGE_MS&&meta?.context&&typeof meta.context.viewport==='string';
+      const signature=localStorage.getItem('ids-qa-contract-signature')||'';
+      return meta?.scenario===id&&meta?.platform===platform&&meta?.contractSignature===signature&&Number.isFinite(verifiedAt)&&Date.now()-verifiedAt<=QA_EVIDENCE_MAX_AGE_MS&&meta?.context&&typeof meta.context.viewport==='string';
     }catch{return false;}
   };
+  const validEvidenceForScenario=(id)=>platforms.some(platform=>validPlatformEvidence(id,platform));
+  const complete=components.filter(comp=>{const checks=(comp.guide&&Array.isArray(comp.guide.checklist)?comp.guide.checklist:[]);const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;const scenarios=qaScenarioList(kind);return checks.length>0&&checks.every((_,i)=>localStorage.getItem('ids-qa-check-'+comp.id+'-'+i)==='true')&&scenarios.length>0&&scenarios.every(([id])=>platforms.every(platform=>validPlatformEvidence(id,platform)))}).length;
+  const verified=components.filter(comp=>{const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;return qaScenarioList(kind).length>0&&qaScenarioList(kind).every(([id])=>platforms.every(platform=>validPlatformEvidence(id,platform)));}).length;
+  const v=root.querySelector('[data-qa-progress-verified]');const q=root.querySelector('[data-qa-progress-checks]');if(v)v.textContent=verified;if(q)q.textContent=complete;
+  components.forEach(comp=>{const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;const scenarios=qaScenarioList(kind);const done=scenarios.filter(([id])=>platforms.every(platform=>validPlatformEvidence(id,platform))).length;const card=root.querySelector('[data-qa-component="'+comp.id+'"]');const progress=card?.querySelector('[data-qa-scenario-progress]');if(progress)progress.textContent=done+'/'+scenarios.length+' scenarios evidenced across '+platforms.length+' platforms';});
+};
   const verified=components.filter(comp=>localStorage.getItem('ids-qa-status-'+comp.id)==='verified').length;const complete=components.filter(comp=>{const checks=(comp.guide&&Array.isArray(comp.guide.checklist)?comp.guide.checklist:[]);const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;const scenarios=qaScenarioList(kind);return checks.length>0&&checks.every((_,i)=>localStorage.getItem('ids-qa-check-'+comp.id+'-'+i)==='true')&&scenarios.length>0&&scenarios.every(([id])=>localStorage.getItem('ids-qa-scenario-'+id)==='true')}).length;const v=root.querySelector('[data-qa-progress-verified]');const q=root.querySelector('[data-qa-progress-checks]');if(v)v.textContent=verified;if(q)q.textContent=complete;components.forEach(comp=>{const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;const total=qaScenarioList(kind).length;const done=qaScenarioList(kind).filter(([id])=>localStorage.getItem('ids-qa-scenario-'+id)==='true').length;const card=root.querySelector('[data-qa-component="'+comp.id+'"]')?.closest('.qa-card');const target=card?.querySelector('[data-qa-scenario-progress]');if(target)target.textContent=done+'/'+total+' scenarios evidenced';});}
 }updateQaProgress();
 }labSection?.querySelector('.lab-statebar')?.after(labMeta);
