@@ -18,6 +18,7 @@ const allow = new Set([
 ]);
 
 const contractPath = 'design-system/components/contract-manifest.json';
+const evidenceSchemaPath = 'design-system/qa/evidence-schema.json';
 async function walk(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
   const files = [];
@@ -32,6 +33,20 @@ async function walk(dir) {
 
 const failures = [];
 const manifest = JSON.parse(await readFile(join(root, contractPath), 'utf8'));
+const evidenceSchema = JSON.parse(await readFile(join(root, evidenceSchemaPath), 'utf8'));
+if (evidenceSchema.schema !== 'ids-qa-evidence/v6') failures.push('QA evidence schema must be ids-qa-evidence/v6');
+for (const field of ['scenario','componentId','contractSignature','platformContractSignature','componentPlatformContractSignature','scenarioPlatformContractSignature','platform','verifiedAt','context']) {
+  if (!evidenceSchema.evidenceRequired?.includes(field)) failures.push('QA evidence schema missing required evidence field: '+field);
+}
+for (const field of ['theme','scale','motion','viewport']) {
+  if (!evidenceSchema.contextRequired?.includes(field)) failures.push('QA evidence schema missing required context field: '+field);
+}
+for (const platform of ['web','android','ios']) {
+  if (!evidenceSchema.platforms?.includes(platform)) failures.push('QA evidence schema missing platform: '+platform);
+}
+for (const field of ['scenario','componentId','requiredPlatforms','scenarioPlatformContractSignature','platforms']) {
+  if (!evidenceSchema.coverageRequired?.includes(field)) failures.push('QA evidence schema missing coverage field: '+field);
+}
 
 const webApiChecks = {
   button: ['interface ButtonProps','function Button','loadingLabel'],
