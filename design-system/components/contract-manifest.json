@@ -36,6 +36,21 @@
           "motion",
           "platforms"
         ]
+      },
+      "guide": {
+        "name": "Button",
+        "purpose": "Commit an action with clear hierarchy and immediate feedback.",
+        "worstCase": "Long localized action label + loading + large text + reduced motion.",
+        "tokens": [
+          "brand",
+          "control-height",
+          "focus"
+        ],
+        "checklist": [
+          "stable loading footprint",
+          "visible focus",
+          "44px+ target"
+        ]
       }
     },
     {
@@ -76,6 +91,21 @@
           "motion",
           "platforms"
         ]
+      },
+      "guide": {
+        "name": "Text field",
+        "purpose": "Collect one value with persistent context, validation, and recovery.",
+        "worstCase": "Long localized label + validation copy + 150% text + error.",
+        "tokens": [
+          "field-border",
+          "field-fill",
+          "focus"
+        ],
+        "checklist": [
+          "label stays visible",
+          "invalid is semantic",
+          "message remains associated"
+        ]
       }
     },
     {
@@ -111,6 +141,21 @@
           "a11y",
           "motion",
           "platforms"
+        ]
+      },
+      "guide": {
+        "name": "Select",
+        "purpose": "Choose from a constrained set without hiding the current value.",
+        "worstCase": "Long localized options + keyboard navigation + disabled/error.",
+        "tokens": [
+          "surface",
+          "border",
+          "focus"
+        ],
+        "checklist": [
+          "current value readable",
+          "keyboard model",
+          "expanded state"
         ]
       }
     },
@@ -149,6 +194,21 @@
           "motion",
           "platforms"
         ]
+      },
+      "guide": {
+        "name": "Checkbox",
+        "purpose": "Choose one or more independent options.",
+        "worstCase": "Long label + error + large text + disabled.",
+        "tokens": [
+          "brand",
+          "border-strong",
+          "focus"
+        ],
+        "checklist": [
+          "native state",
+          "label remains grouped",
+          "error is explicit"
+        ]
       }
     },
     {
@@ -186,6 +246,21 @@
           "motion",
           "platforms"
         ]
+      },
+      "guide": {
+        "name": "Radio",
+        "purpose": "Choose exactly one option from a labelled group.",
+        "worstCase": "Long labels + many options + large text + keyboard.",
+        "tokens": [
+          "brand",
+          "border-strong",
+          "focus"
+        ],
+        "checklist": [
+          "group labelled",
+          "selection announced",
+          "targets remain usable"
+        ]
       }
     },
     {
@@ -221,6 +296,21 @@
           "a11y",
           "motion",
           "platforms"
+        ]
+      },
+      "guide": {
+        "name": "Switch",
+        "purpose": "Change an immediate on/off setting.",
+        "worstCase": "Long localized label + large text + disabled + reduced motion.",
+        "tokens": [
+          "brand",
+          "radius-pill",
+          "focus"
+        ],
+        "checklist": [
+          "state is explicit",
+          "track/thumb remain legible",
+          "motion can stop"
         ]
       }
     },
@@ -258,6 +348,21 @@
           "motion",
           "platforms"
         ]
+      },
+      "guide": {
+        "name": "Tabs",
+        "purpose": "Move between peer views while preserving context.",
+        "worstCase": "Many long localized labels + large text + keyboard navigation.",
+        "tokens": [
+          "surface-subtle",
+          "radius-pill",
+          "focus"
+        ],
+        "checklist": [
+          "active tab visible",
+          "overflow handled",
+          "roving keyboard focus"
+        ]
       }
     },
     {
@@ -289,6 +394,21 @@
           "a11y",
           "motion",
           "platforms"
+        ]
+      },
+      "guide": {
+        "name": "Empty state",
+        "purpose": "Explain why content is absent and offer a useful next action when appropriate.",
+        "worstCase": "Long localized title/message + 150% text + actionable recovery.",
+        "tokens": [
+          "surface-subtle",
+          "text-secondary",
+          "control-height"
+        ],
+        "checklist": [
+          "message remains readable",
+          "action is optional and clear",
+          "no clipped content"
         ]
       }
     }
