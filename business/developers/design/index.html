@@ -494,14 +494,19 @@ function renderVisualQAMatrix(){
  return '<div class="qa-card"><strong>'+label(comp.id)+'</strong><span class="qa-scenario-progress" data-qa-scenario-progress>0/'+scenarios.length+' scenarios evidenced</span><span class="qa-status" data-qa-status-for="'+comp.id+'" data-status="'+qaStatus(comp)+'">'+statusLabel(qaStatus(comp))+'</span><span class="qa-contract-id">'+comp.id+' · '+comp.api+' API</span><div class="qa-row"><b>States</b><span>'+chips(comp.states||[])+'</span></div><div class="qa-row"><b>Content</b><span>'+chips(comp.content||[])+'</span></div><div class="qa-row"><b>A11y</b><span>'+chips(comp.a11y||[])+'</span></div><div class="qa-row"><b>Motion</b><span>'+chips((comp.a11y||[]).filter(x=>x==='motion'))+'</span></div><div class="qa-row"><b>Platforms</b><span>'+chips(comp.platforms||[])+'</span></div><details class="qa-component-review"><summary>Manual verification checklist</summary><div class="qa-status-controls" role="group" aria-label="Verification status"><button type="button" data-qa-status="not-inspected" data-qa-status-component="'+comp.id+'">Not inspected</button><button type="button" data-qa-status="in-review" data-qa-status-component="'+comp.id+'">In review</button><button type="button" data-qa-status="verified" data-qa-status-component="'+comp.id+'">Visually verified</button></div><div class="qa-component-checks">'+checkMarkup+'</div><div class="qa-scenario-checks"><strong>Deterministic scenario evidence</strong>'+scenarioMarkup+'</div></details><button type="button" class="qa-review" data-qa-component="'+comp.id+'">Open in lab</button></div>';
 }).join('');
   const qaScenarioContractSignature=components.map(comp=>comp.id+':'+qaScenarioList(comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id).map(([id])=>id).join(',')).join('|');
-  const qaPlatformContractSignature=components.map(comp=>comp.id+':'+[...(comp.platforms||[])].map(String).sort().join(',')).join('|');
+  const qaPlatformContractByComponent=Object.fromEntries(components.map(comp=>[comp.id,[...(comp.platforms||[])].map(String).sort().join(',')]));
+  const qaPlatformContractSignature=components.map(comp=>comp.id+':'+qaPlatformContractByComponent[comp.id]).join('|');
   const qaContractSignature=qaScenarioContractSignature+'||platforms:'+qaPlatformContractSignature;
   const storedQaContractSignature=localStorage.getItem('ids-qa-contract-signature');
   const storedQaPlatformContractSignature=localStorage.getItem('ids-qa-platform-contract-signature');
-  const qaEvidenceDrift=storedQaContractSignature!==qaContractSignature;
+  let storedQaPlatformContractByComponent={};
+  try{storedQaPlatformContractByComponent=JSON.parse(localStorage.getItem('ids-qa-platform-contract-components')||'{}')||{};}catch{}
+  const qaPlatformContractChanges=components.filter(comp=>storedQaPlatformContractByComponent[comp.id]!==undefined&&storedQaPlatformContractByComponent[comp.id]!==qaPlatformContractByComponent[comp.id]).map(comp=>comp.id);
   const qaPlatformContractDrift=storedQaPlatformContractSignature!==qaPlatformContractSignature;
+  const qaPlatformContractChanged=qaPlatformContractChanges.length>0;
   localStorage.setItem('ids-qa-contract-signature',qaContractSignature);
   localStorage.setItem('ids-qa-platform-contract-signature',qaPlatformContractSignature);
+  localStorage.setItem('ids-qa-platform-contract-components',JSON.stringify(qaPlatformContractByComponent));
   const incompleteEvidenceCount=components.reduce((count,comp)=>count+qaScenarioList(comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id).filter(([id])=>localStorage.getItem('ids-qa-scenario-'+id)==='true'&&!validEvidenceForScenario(id)).length,0);
   const staleEvidenceCount=components.reduce((count,comp)=>{
     const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;
@@ -511,7 +516,7 @@ function renderVisualQAMatrix(){
   const verifiedCount=components.filter(comp=>localStorage.getItem('ids-qa-status-'+comp.id)==='verified').length;
   const checklistComplete=components.filter(comp=>{const checks=(comp.guide&&Array.isArray(comp.guide.checklist)?comp.guide.checklist:[]);const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;const scenarios=qaScenarioList(kind);return checks.length>0&&checks.every((_,i)=>localStorage.getItem('ids-qa-check-'+comp.id+'-'+i)==='true')&&scenarios.length>0&&scenarios.every(([id])=>validEvidenceForScenario(id))}).length;
   root.innerHTML='<div class="qa-progress" role="status"><strong>Manual QA progress</strong><span><b data-qa-progress-verified>'+verifiedCount+'</b>/'+components.length+' components visually verified · <b data-qa-progress-checks>'+checklistComplete+'</b>/'+components.length+' checklists complete</span><small class="qa-contract-evidence" data-qa-contract-evidence data-drift="'+qaEvidenceDrift+'">'+
-    (qaPlatformContractDrift?'QA platform contract changed — re-verify affected platform evidence.':(qaEvidenceDrift?'QA evidence contract changed — review scenario evidence against the current contract.':(incompleteEvidenceCount?'Incomplete or stale evidence records: '+incompleteEvidenceCount:(staleEvidenceCount?'Stale scenario evidence keys detected: '+staleEvidenceCount:'QA evidence matches current scenario matrix.')))))+
+    (qaPlatformContractChanged?'QA platform contract changed for: '+qaPlatformContractChanges.join(', ')+' — re-verify affected platform evidence.':(qaEvidenceDrift?'QA evidence contract changed — review scenario evidence against the current contract.':(incompleteEvidenceCount?'Incomplete or stale evidence records: '+incompleteEvidenceCount:(staleEvidenceCount?'Stale scenario evidence keys detected: '+staleEvidenceCount:'QA evidence matches current scenario matrix.')))))+
     ' · '+qaEvidenceSummary.filter(item=>item.status==='verified').length+'/'+components.length+' components with fresh evidence · '+
     qaEvidenceSummary.reduce((sum,item)=>sum+item.verified,0)+'/'+qaEvidenceSummary.reduce((sum,item)=>sum+item.total,0)+' scenarios verified · '+qaEvidenceSummary.reduce((sum,item)=>sum+(item.platforms||[]).reduce((n,p)=>n+p.verified,0),0)+' platform evidences</small></div>'+cards+'<div class="qa-global"><button type="button" class="qa-review" data-qa-export>Export QA evidence</button><div class="qa-reviewer-matrix" data-qa-reviewer-matrix><strong>Reviewer coverage matrix</strong></div><strong>Global render dimensions</strong><span>Theme: <button type="button" data-qa-theme="light">Light</button> <button type="button" data-qa-theme="dark">Dark</button> <button type="button" data-qa-theme="system">System</button></span><span>Scale: <button type="button" data-qa-scale="1">100%</button> <button type="button" data-qa-scale="1.25">125%</button> <button type="button" data-qa-scale="1.5">150%</button></span><span>Motion: <button type="button" data-qa-motion="normal" aria-pressed="true">Normal</button> <button type="button" data-qa-motion="reduced" aria-pressed="false">Reduced</button></span><span>Viewport: compact mobile · standard mobile · desktop</span><small>These controls simulate inspection dimensions. They are not visual-verification evidence until the rendered result is inspected.</small><div class="qa-review-grid"><strong>Manual verification worksheet</strong><span>Record only what you personally inspected in the rendered lab. This worksheet does not claim automated verification.</span><label><input type="checkbox" data-qa-check="theme"> Theme inspected</label><label><input type="checkbox" data-qa-check="scale"> 100 / 125 / 150% inspected</label><label><input type="checkbox" data-qa-check="motion"> Normal / reduced motion inspected</label><label><input type="checkbox" data-qa-check="content"> Long/localized content inspected</label><label><input type="checkbox" data-qa-check="keyboard"> Keyboard/focus behavior inspected</label></div></div>';
   const openQaScenario=(component,id)=>{const kind=component==='text-field'?'field':component==='empty-state'?'empty':component;const target=document.querySelector('[data-lab-kind="'+kind+'"]');if(!target)return;target.click();const stateId=id.split('.').slice(1).join('.');const stateButton=[...document.querySelectorAll('[data-lab-state]')].find(x=>x.dataset.labState===stateId)||document.querySelector('[data-lab-state]');stateButton?.click();if(labPreview)labPreview.dataset.qaScenario=id;document.getElementById('lab')?.scrollIntoView({behavior:'smooth',block:'start'});};root.querySelectorAll('[data-qa-component]').forEach(button=>button.addEventListener('click',()=>{const kind=button.dataset.qaComponent==='text-field'?'field':button.dataset.qaComponent==='empty-state'?'empty':button.dataset.qaComponent;const target=document.querySelector('[data-lab-kind="'+kind+'"]');target?.click();document.getElementById('lab')?.scrollIntoView({behavior:'smooth',block:'start'});}));root.querySelectorAll('[data-qa-scenario-open]').forEach(button=>button.addEventListener('click',()=>openQaScenario(button.dataset.qaScenarioComponent,button.dataset.qaScenarioOpen)));
@@ -535,7 +540,9 @@ function renderVisualQAMatrix(){
       if(input.checked){
         const platformSelect=input.closest('[data-qa-scenario]')?.querySelector('[data-qa-platform]');
         const platform=platformSelect?.value||'web';
-        const evidence={scenario:id,contractSignature:localStorage.getItem('ids-qa-contract-signature')||null,platformContractSignature:localStorage.getItem('ids-qa-platform-contract-signature')||null,platform,verifiedAt:new Date().toISOString(),context:{theme:document.documentElement.dataset.theme||'system',scale:document.documentElement.dataset.idsScale||'1',motion:document.documentElement.dataset.idsMotion||'normal',viewport:window.innerWidth+'x'+window.innerHeight}};
+        const componentId=input.closest('[data-qa-scenario]')?.dataset.qaScenarioComponent||null;
+        const componentPlatformContractSignature=componentId?qaPlatformContractByComponent[componentId]||'':null;
+        const evidence={scenario:id,componentId,contractSignature:localStorage.getItem('ids-qa-contract-signature')||null,platformContractSignature:localStorage.getItem('ids-qa-platform-contract-signature')||null,componentPlatformContractSignature,platform,verifiedAt:new Date().toISOString(),context:{theme:document.documentElement.dataset.theme||'system',scale:document.documentElement.dataset.idsScale||'1',motion:document.documentElement.dataset.idsMotion||'normal',viewport:window.innerWidth+'x'+window.innerHeight}};
         localStorage.setItem(metaKey,JSON.stringify(evidence));
         localStorage.setItem('ids-qa-evidence-'+platform+'-'+id,JSON.stringify(evidence));
       }else{localStorage.removeItem(metaKey);const platform=localStorage.getItem('ids-qa-platform-'+id)||'web';localStorage.removeItem('ids-qa-evidence-'+platform+'-'+id);}
@@ -556,7 +563,7 @@ function renderVisualQAMatrix(){
       });
       coverage.push({scenario:id,platforms:Object.fromEntries(platforms.map(platform=>[platform,Boolean(records[platform])]))});
     });
-    const payload={schema:'ids-qa-evidence/v4',generatedAt:new Date().toISOString(),contractSignature:localStorage.getItem('ids-qa-contract-signature')||null,platformContractSignature:localStorage.getItem('ids-qa-platform-contract-signature')||null,coverage,evidence};
+    const payload={schema:'ids-qa-evidence/v5',generatedAt:new Date().toISOString(),contractSignature:localStorage.getItem('ids-qa-contract-signature')||null,platformContractSignature:localStorage.getItem('ids-qa-platform-contract-signature')||null,platformContractComponents:qaPlatformContractByComponent,coverage,evidence};
     const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
     const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='itunda-ids-qa-evidence.json';a.click();URL.revokeObjectURL(url);
   };
@@ -572,7 +579,7 @@ function renderVisualQAMatrix(){
       const meta=JSON.parse(localStorage.getItem('ids-qa-evidence-'+platform+'-'+id)||'');
       const verifiedAt=Date.parse(meta?.verifiedAt||'');
       const signature=localStorage.getItem('ids-qa-contract-signature')||'';
-      return meta?.scenario===id&&meta?.platform===platform&&meta?.contractSignature===signature&&meta?.platformContractSignature===(localStorage.getItem('ids-qa-platform-contract-signature')||'')&&Number.isFinite(verifiedAt)&&Date.now()-verifiedAt<=QA_EVIDENCE_MAX_AGE_MS&&meta?.context&&typeof meta.context.viewport==='string';
+      return meta?.scenario===id&&meta?.platform===platform&&meta?.contractSignature===signature&&meta?.platformContractSignature===(localStorage.getItem('ids-qa-platform-contract-signature')||'')&&meta?.componentId&&meta?.componentPlatformContractSignature===qaPlatformContractByComponent[meta.componentId]&&Number.isFinite(verifiedAt)&&Date.now()-verifiedAt<=QA_EVIDENCE_MAX_AGE_MS&&meta?.context&&typeof meta.context.viewport==='string';
     }catch{return false;}
   };
   const validEvidenceForScenario=(id)=>platforms.some(platform=>validPlatformEvidence(id,platform));
@@ -582,7 +589,7 @@ function renderVisualQAMatrix(){
       const raw=localStorage.getItem('ids-qa-evidence-'+platform+'-'+id);
       if(!raw)return 'missing';
       try{const m=JSON.parse(raw),at=Date.parse(m?.verifiedAt||''),sig=localStorage.getItem('ids-qa-contract-signature')||'';
-        return m?.scenario===id&&m?.platform===platform&&m?.contractSignature===sig&&m?.platformContractSignature===(localStorage.getItem('ids-qa-platform-contract-signature')||'')&&Number.isFinite(at)&&Date.now()-at<=30*24*60*60*1000?'verified':'stale';
+        return m?.scenario===id&&m?.platform===platform&&m?.contractSignature===sig&&m?.platformContractSignature===(localStorage.getItem('ids-qa-platform-contract-signature')||'')&&m?.componentId&&m?.componentPlatformContractSignature===qaPlatformContractByComponent[m.componentId]&&Number.isFinite(at)&&Date.now()-at<=30*24*60*60*1000?'verified':'stale';
       }catch{return 'stale';}
     };
     host.innerHTML=components.map(comp=>{
@@ -601,7 +608,7 @@ function renderVisualQAMatrix(){
     ['web','android','ios'].forEach(platform=>{
       const el=status.querySelector('[data-qa-platform-status-'+platform+']');if(!el)return;
       const raw=localStorage.getItem('ids-qa-evidence-'+platform+'-'+id);let state='—';
-      try{const meta=raw?JSON.parse(raw):null;const at=Date.parse(meta?.verifiedAt||'');const sig=localStorage.getItem('ids-qa-contract-signature')||'';state=meta?.scenario===id&&meta?.platform===platform&&meta?.contractSignature===sig&&meta?.platformContractSignature===(localStorage.getItem('ids-qa-platform-contract-signature')||'')&&Number.isFinite(at)&&Date.now()-at<=QA_EVIDENCE_MAX_AGE_MS?'✓':'!';
+      try{const meta=raw?JSON.parse(raw):null;const at=Date.parse(meta?.verifiedAt||'');const sig=localStorage.getItem('ids-qa-contract-signature')||'';state=meta?.scenario===id&&meta?.platform===platform&&meta?.contractSignature===sig&&meta?.platformContractSignature===(localStorage.getItem('ids-qa-platform-contract-signature')||'')&&meta?.componentId&&meta?.componentPlatformContractSignature===qaPlatformContractByComponent[meta.componentId]&&Number.isFinite(at)&&Date.now()-at<=QA_EVIDENCE_MAX_AGE_MS?'✓':'!';
       }catch{}
       el.textContent=platform.charAt(0).toUpperCase()+platform.slice(1)+' '+state;
       el.dataset.status=state==='✓'?'verified':state==='!'?'stale':'missing';
