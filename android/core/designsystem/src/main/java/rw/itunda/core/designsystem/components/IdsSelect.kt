@@ -1,5 +1,6 @@
 package rw.itunda.core.designsystem.components
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.DropdownMenu
@@ -18,9 +19,10 @@ fun IdsSelect(
     onSelected: (String) -> Unit,
     enabled: Boolean = true,
     modifier: Modifier = Modifier,
+    disabledOptions: Set<String> = emptySet(),
 ) {
     var expanded by remember { mutableStateOf(false) }
-    androidx.compose.foundation.layout.Box(modifier = modifier.fillMaxWidth()) {
+    Box(modifier = modifier.fillMaxWidth()) {
         OutlinedButton(
             onClick = { expanded = true },
             enabled = enabled,
@@ -28,7 +30,17 @@ fun IdsSelect(
         ) { Text(selected ?: label) }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             options.forEach { option ->
-                DropdownMenuItem(text = { Text(option) }, onClick = { expanded = false; onSelected(option) })
+                val optionEnabled = option !in disabledOptions
+                DropdownMenuItem(
+                    text = { Text(option) },
+                    enabled = optionEnabled,
+                    onClick = {
+                        if (optionEnabled) {
+                            expanded = false
+                            onSelected(option)
+                        }
+                    },
+                )
             }
         }
     }
