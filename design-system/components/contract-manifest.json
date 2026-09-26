@@ -60,7 +60,8 @@
         "description",
         "invalid",
         "input-method",
-        "target"
+        "target",
+        "motion"
       ],
       "platforms": [
         "web",
@@ -95,7 +96,8 @@
         "label",
         "keyboard",
         "expanded",
-        "target"
+        "target",
+        "motion"
       ],
       "platforms": [
         "web",
@@ -131,7 +133,8 @@
         "name",
         "keyboard",
         "state",
-        "target"
+        "target",
+        "motion"
       ],
       "platforms": [
         "web",
@@ -167,7 +170,8 @@
         "name",
         "keyboard",
         "group",
-        "target"
+        "target",
+        "motion"
       ],
       "platforms": [
         "web",
@@ -202,7 +206,8 @@
         "name",
         "keyboard",
         "state",
-        "target"
+        "target",
+        "motion"
       ],
       "platforms": [
         "web",
@@ -237,7 +242,8 @@
         "tablist",
         "selection",
         "keyboard",
-        "target"
+        "target",
+        "motion"
       ],
       "platforms": [
         "web",
@@ -268,7 +274,8 @@
       "a11y": [
         "name",
         "action",
-        "target"
+        "target",
+        "motion"
       ],
       "platforms": [
         "web",
