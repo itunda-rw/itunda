@@ -80,6 +80,7 @@ button[disabled],input[disabled],select[disabled],textarea[disabled]{cursor:not-
 @media (forced-colors:active){
   button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid CanvasText;outline-offset:2px;box-shadow:none}
 }
+.ids-governance-status{position:fixed;right:16px;bottom:16px;z-index:100;min-height:44px;display:flex;align-items:center;padding:10px 14px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);color:var(--muted);font-size:12px;line-height:18px;font-weight:650;box-shadow:var(--elevation-2)}.ids-governance-status[data-status="pass"]{color:var(--success-strong);border-color:color-mix(in srgb,var(--success) 32%,var(--line));background:var(--success-surface)}.ids-governance-status[data-status="fail"]{color:var(--error-strong);border-color:color-mix(in srgb,var(--error) 32%,var(--line));background:var(--error-surface)}@media(max-width:640px){.ids-governance-status{left:16px;right:16px;bottom:12px;justify-content:center}}
 </style>
 <style id="ids3-layer">
 .catalog-toolbar{display:flex;gap:10px;align-items:center;margin:0 0 20px;position:sticky;top:64px;z-index:15;padding:12px 0;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(12px)}
@@ -133,6 +134,7 @@ button:disabled,[aria-disabled="true"]{cursor:not-allowed}
 <style id="ids-qa-component-css">.qa-component-review{margin-top:4px;border-top:1px solid var(--line);padding-top:10px}.qa-component-review summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:700}.qa-component-checks{display:grid;gap:2px;padding:4px 0 8px}.qa-component-checks label{display:flex;align-items:flex-start;gap:8px;min-height:44px;padding:8px 0;line-height:1.4}.qa-component-checks input{width:20px;height:20px;flex:0 0 auto;margin-top:2px;accent-color:var(--brand)}</style><style id="ids-qa-worksheet-css">.qa-review-grid{display:grid;gap:8px;margin-top:8px;padding-top:12px;border-top:1px solid var(--line)}.qa-review-grid>span{color:var(--muted);font-size:12px;line-height:1.5}.qa-review-grid label{display:flex;align-items:flex-start;gap:8px;min-height:44px;padding:8px 0;line-height:1.4}.qa-review-grid input{width:20px;height:20px;flex:0 0 auto;margin-top:2px;accent-color:var(--brand)}
 </style>
 <style id="ids-qa-status-css">.qa-status{display:inline-flex!important;width:max-content;margin-top:6px;padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:var(--soft);font-size:11px!important;font-weight:700}.qa-status[data-status="in-review"]{border-color:var(--brand);color:var(--brand-strong)}.qa-status[data-status="verified"]{border-color:var(--success);color:var(--success-strong)}.qa-status-controls{display:flex;flex-wrap:wrap;gap:6px;padding:6px 0 10px}.qa-status-controls button{min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font-weight:700;cursor:pointer}.qa-status-controls button[aria-pressed="true"]{background:var(--brand-subtle);border-color:var(--brand);color:var(--brand-strong)}</style><style id="ids-qa-status-guard-css">.qa-status-note{display:block;margin:4px 0 8px;padding:8px 10px;border:1px solid var(--danger);border-radius:9px;color:var(--danger-strong);background:var(--danger-subtle);font-size:12px;line-height:1.45}</style><style id="ids-qa-scenario-css">.qa-scenarios{display:grid;gap:8px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--soft)}.qa-scenario{padding:9px;border:1px solid var(--line);border-radius:9px;background:var(--surface)}.qa-scenario code{display:block;margin-top:3px;color:var(--brand-strong);font:10px ui-monospace,monospace}.qa-scenario p{margin:5px 0;color:var(--muted);font-size:11px;line-height:1.45}.qa-scenario-checks{display:grid;gap:2px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}.qa-scenario-checks label{display:flex;gap:8px;align-items:flex-start;min-height:44px;padding:8px 0;font-size:12px;line-height:1.4}</style></head>
+<div data-ids-governance-status class="ids-governance-status" aria-live="polite"></div>
 <body>
 <header class="top"><div class="topin">
 <button class="menu" id="menu" aria-label="Open navigation" aria-expanded="false">☰</button>
@@ -273,12 +275,21 @@ button:disabled,[aria-disabled="true"]{cursor:not-allowed}
 const IDS_CANONICAL_COMPONENTS=['button','field','select','checkbox','radio','switch','tabs','empty'];
 const IDS_SHOWCASE_COMPONENT_MAP={button:'Button',field:'TextField',select:'Select',checkbox:'Checkbox',radio:'Radio',switch:'Switch',tabs:'Tabs',empty:'EmptyState'};
 function assertIdsShowcaseGovernance(manifest){
-  if(!manifest||manifest.version!=='3.0.0') throw new Error('IDS contract manifest version drift');
-  const keys=Object.keys(manifest.components||{});
-  const missing=IDS_CANONICAL_COMPONENTS.filter(k=>!keys.includes(k));
-  if(missing.length) throw new Error('IDS showcase contract missing: '+missing.join(', '));
-  const extra=keys.filter(k=>!IDS_CANONICAL_COMPONENTS.includes(k));
-  if(extra.length) console.warn('IDS contract contains non-canonical components:',extra);
+  const report={ok:true,version:manifest?.version||null,missing:[],extra:[]};
+  if(!manifest||manifest.version!=='3.0.0') report.ok=false;
+  const keys=Object.keys(manifest?.components||{});
+  report.missing=IDS_CANONICAL_COMPONENTS.filter(k=>!keys.includes(k));
+  report.extra=keys.filter(k=>!IDS_CANONICAL_COMPONENTS.includes(k));
+  if(report.missing.length) report.ok=false;
+  if(report.extra.length) console.warn('IDS contract contains non-canonical components:',report.extra);
+  return report;
+}
+function renderIdsGovernanceStatus(report){
+  const el=document.querySelector('[data-ids-governance-status]');
+  if(!el)return;
+  el.dataset.status=report.ok?'pass':'fail';
+  el.textContent=report.ok?'Contract governance: PASS':`Contract governance: FAIL — ${report.missing.join(', ')||'manifest version drift'}`;
+  el.setAttribute('role',report.ok?'status':'alert');
 }
 </script>
 
