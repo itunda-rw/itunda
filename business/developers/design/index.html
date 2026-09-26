@@ -597,7 +597,7 @@ function renderVisualQAMatrix(){
       const records={};
       platforms.forEach(platform=>{
         const raw=localStorage.getItem('ids-qa-evidence-'+platform+'-'+id)||((platform===(localStorage.getItem('ids-qa-platform-'+id)||'web'))?localStorage.getItem('ids-qa-evidence-'+id):null);
-        if(raw){try{const record=JSON.parse(raw);records[platform]=record;evidence.push(record);}catch{}}
+        if(raw){try{const record=JSON.parse(raw);if(validateIdsQaEvidenceRecord(record).length===0){records[platform]=record;evidence.push(record);}}catch{}}
       });
       const componentId=input.closest('[data-qa-scenario]')?.dataset.qaScenarioComponent||null; const requiredPlatforms=componentId?((qaScenarioPlatformContractByComponent[componentId]?.[id]||'').split(',').filter(Boolean)):[]; const scenarioPlatformContractSignature=componentId?qaScenarioPlatformContractByComponent[componentId]?.[id]||'':null; coverage.push({scenario:id,componentId,requiredPlatforms,scenarioPlatformContractSignature,platforms:Object.fromEntries(platforms.map(platform=>[platform,Boolean(records[platform])]))});
     });
