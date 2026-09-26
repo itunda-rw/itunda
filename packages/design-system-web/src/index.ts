@@ -413,7 +413,7 @@ export function Tabs({ items, value, onChange, ariaLabel = 'Tabs', tabPanelId }:
     >
       {items.map((item, index) => {
         const selected = value === item.id;
-        const panelId = tabPanelId ? `${tabPanelId}-panel` : undefined;
+        const panelId = tabPanelId ? `${tabPanelId}-panel-${item.id}` : undefined;
         const tabId = `${tabPanelId ? `${tabPanelId}-` : ''}tab-${item.id}`;
         return (
           <button
@@ -477,19 +477,6 @@ export function EmptyState({
             </Button>
           ))}
         </div>
-      ) : null}
-    </section>
-  );
-}
-
-export function EmptyState({ title, message, actionText, onAction }: EmptyStateProps) {
-  return (
-    <section className="ids-empty-state" aria-label={title}>
-      <div className="ids-empty-state__icon" aria-hidden="true">○</div>
-      <h2 className="ids-empty-state__title">{title}</h2>
-      {message ? <p className="ids-empty-state__message">{message}</p> : null}
-      {actionText && onAction ? (
-        <Button onClick={onAction} variant="secondary" size="md">{actionText}</Button>
       ) : null}
     </section>
   );
