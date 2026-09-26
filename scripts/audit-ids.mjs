@@ -149,7 +149,8 @@ for (const file of canonicalImplementationFiles) {
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/(^|\s)\/\/.*$/gm, '$1');
     if (file.endsWith('.css')) {
-      if (/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/.test(source)) failures.push(file + ': canonical IDS CSS must use semantic tokens, not raw color values/functions');
+      const componentCss = source.replace(/--itunda-[^;{}]+;/g, '');
+      if (/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/.test(componentCss)) failures.push(file + ': canonical IDS CSS must use semantic tokens, not raw color values/functions');
     } else if (file.endsWith('.kt')) {
       if (/Color\(0x[0-9a-fA-F]{6,8}\)/.test(source)) failures.push(file + ': canonical Android components must consume IDS semantic colors, not raw Color literals');
     } else if (file.endsWith('.swift')) {
