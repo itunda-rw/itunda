@@ -17,6 +17,13 @@ on:
       - "scripts/audit-ids.mjs"
       - "package.json"
       - "yarn.lock"
+  workflow_dispatch:
+    inputs:
+      update_visual_baseline:
+        description: "Accept the current rendered screenshots as the IDS visual baseline"
+        required: false
+        default: false
+        type: boolean
   push:
     branches:
       - agent/itunda-agent-network
@@ -266,7 +273,7 @@ jobs:
       - name: Enforce IDS visual regression baseline
         shell: bash
         run: |
-          node scripts/ids-visual-regression.mjs /tmp/ids-visual-matrix.json design-system/components/visual-baseline.json
+          node scripts/ids-visual-regression.mjs /tmp/ids-visual-matrix.json design-system/components/visual-baseline.json ${{ inputs.update_visual_baseline && '--update' || '' }}
           if git diff --quiet -- design-system/components/visual-baseline.json; then
             echo "IDS visual baseline unchanged."
           else
@@ -289,5 +296,6 @@ jobs:
             /tmp/ids-contract-matrix.png
             /tmp/ids-visual-matrix.json
             /tmp/ids-visual-matrix/
+            /tmp/ids-visual-diff/
           if-no-files-found: ignore
 
