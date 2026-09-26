@@ -31,6 +31,16 @@
 
 
 
+
+/* IDS QA evidence UX */
+.qa-scenario-checks{display:grid;gap:var(--space-2)}
+.qa-scenario-checks label{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:var(--space-3);min-height:52px;padding:var(--space-2) var(--space-3);border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface)}
+.qa-scenario-checks label:has(input:checked){background:var(--state-success-bg);border-color:color-mix(in srgb,var(--success) 32%,var(--line))}
+.qa-scenario-checks input{width:20px;height:20px}
+.qa-scenario-checks .qa-scenario-status{font-size:12px;line-height:18px;font-weight:650;color:var(--muted)}
+.qa-scenario-checks textarea{grid-column:2/-1;width:100%;min-height:72px;resize:vertical;border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px;background:var(--surface);color:var(--ink);font:13px/20px inherit}
+.qa-scenario-checks textarea:focus-visible{outline:0;box-shadow:var(--focus-ring)}
+@media(max-width:640px){.qa-scenario-checks label{grid-template-columns:44px minmax(0,1fr);align-items:start}.qa-scenario-checks .qa-scenario-status{grid-column:2}.qa-scenario-checks textarea{grid-column:2}}
 /* IDS visual QA matrix */
 .qa-matrix{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-3)}
 .qa-matrix>div{min-width:0}
