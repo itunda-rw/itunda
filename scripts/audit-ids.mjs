@@ -137,6 +137,11 @@ const implementationChecks = {
     ios: { file: 'ios/Core/DesignSystem/Sources/Components/IDSCoreComponents.swift', symbols: ['IDSEmptyState'] },
   },
 };
+const platformContractPath = 'design-system/platform-contract.md';
+const platformContract = await readFile(join(root, platformContractPath), 'utf8');
+for (const platform of ['Web', 'Android', 'iOS']) {
+  if (!new RegExp('\\b' + platform + '\\b', 'i').test(platformContract)) failures.push('Platform contract missing '+platform+' coverage');
+}
 const tokenCssPath = 'packages/design-tokens/tokens.css';
 const expectedBrand = '#7472F4';
 const tokenCss = await readFile(join(root, tokenCssPath), 'utf8');
