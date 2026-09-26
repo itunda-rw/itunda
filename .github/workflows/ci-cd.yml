@@ -2,11 +2,8 @@ name: CI
 
 on:
   # GitHub-hosted runner provisioning is currently unavailable for the Itunda Enterprise trial.
-  # Keep full CI manually runnable; Cloudflare builds remain the lightweight deployment gate.
+  # Keep full CI manually runnable until hosted Actions entitlement is restored.
   workflow_dispatch:
-
-  pull_request:
-    branches: [ main, develop ]
 
 jobs:
   # Root Yarn workspace: packages/shared-utils, services/micro-frontends/*, services/api-gateway
