@@ -495,8 +495,15 @@ function renderVisualQAMatrix(){
 }).join('');
   const qaScenarioContractSignature=components.map(comp=>comp.id+':'+qaScenarioList(comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id).map(([id])=>id).join(',')).join('|');
   const qaPlatformContractByComponent=Object.fromEntries(components.map(comp=>[comp.id,[...(comp.platforms||[])].map(String).sort().join(',')]));
+  const qaScenarioPlatformContractByComponent=Object.fromEntries(components.map(comp=>{
+    const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;
+    const declaredPlatforms=[...(comp.platforms||[])].map(String).sort();
+    const scenarios=qaScenarioList(kind);
+    return [comp.id,Object.fromEntries(scenarios.map(([id])=>[id,declaredPlatforms.join(',')]))];
+  }));
+  const qaScenarioPlatformContractSignature=components.map(comp=>comp.id+':'+Object.entries(qaScenarioPlatformContractByComponent[comp.id]||{}).map(([id,platforms])=>id+'='+platforms).join('|')).join('||');
   const qaPlatformContractSignature=components.map(comp=>comp.id+':'+qaPlatformContractByComponent[comp.id]).join('|');
-  const qaContractSignature=qaScenarioContractSignature+'||platforms:'+qaPlatformContractSignature;
+  const qaContractSignature=qaScenarioContractSignature+'||platforms:'+qaPlatformContractSignature+'||scenarioPlatforms:'+qaScenarioPlatformContractSignature;
   const storedQaContractSignature=localStorage.getItem('ids-qa-contract-signature');
   const storedQaPlatformContractSignature=localStorage.getItem('ids-qa-platform-contract-signature');
   let storedQaPlatformContractByComponent={};
@@ -562,7 +569,7 @@ function renderVisualQAMatrix(){
       });
       coverage.push({scenario:id,platforms:Object.fromEntries(platforms.map(platform=>[platform,Boolean(records[platform])]))});
     });
-    const payload={schema:'ids-qa-evidence/v5',generatedAt:new Date().toISOString(),contractSignature:localStorage.getItem('ids-qa-contract-signature')||null,platformContractSignature:localStorage.getItem('ids-qa-platform-contract-signature')||null,platformContractComponents:qaPlatformContractByComponent,coverage,evidence};
+    const payload={schema:'ids-qa-evidence/v5',generatedAt:new Date().toISOString(),contractSignature:localStorage.getItem('ids-qa-contract-signature')||null,platformContractSignature:localStorage.getItem('ids-qa-platform-contract-signature')||null,platformContractComponents:qaPlatformContractByComponent,scenarioPlatformContracts:qaScenarioPlatformContractByComponent,coverage,evidence};
     const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
     const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='itunda-ids-qa-evidence.json';a.click();URL.revokeObjectURL(url);
   };
