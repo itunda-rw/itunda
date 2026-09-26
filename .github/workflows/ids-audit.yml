@@ -17,6 +17,7 @@ on:
       - "scripts/audit-ids.mjs"
       - "package.json"
       - "yarn.lock"
+      - ".github/workflows/ids-audit.yml"
   workflow_dispatch:
     inputs:
       update_visual_baseline:
