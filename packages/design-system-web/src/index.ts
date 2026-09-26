@@ -380,46 +380,63 @@ export function Switch({
 }
 
 export interface TabsProps {
-  items: Array<{ id: string; label: string }>;
+  items: Array<{ id: string; label: string; disabled?: boolean }>;
   value: string;
   onChange: (id: string) => void;
   ariaLabel?: string;
+  tabPanelId?: string;
 }
 
-export function Tabs({ items, value, onChange, ariaLabel = 'Tabs' }: TabsProps) {
+export function Tabs({ items, value, onChange, ariaLabel = 'Tabs', tabPanelId }: TabsProps) {
   const refs = React.useRef<Array<HTMLButtonElement | null>>([]);
+  const enabledItems = items.filter(item => !item.disabled);
+  const activeIndex = Math.max(0, enabledItems.findIndex(item => item.id === value));
   const move = (index: number) => {
-    const next = (index + items.length) % items.length;
-    onChange(items[next].id);
-    requestAnimationFrame(() => refs.current[next]?.focus());
+    if (!enabledItems.length) return;
+    const next = (index + enabledItems.length) % enabledItems.length;
+    onChange(enabledItems[next].id);
+    requestAnimationFrame(() => refs.current[items.indexOf(enabledItems[next])]?.focus());
   };
+
   return (
-    <div className="ids-tabs" role="tablist" aria-label={ariaLabel} onKeyDown={(event) => {
-      if (!items.length) return;
-      const index = items.findIndex(item => item.id === value);
-      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); move(index + 1); }
-      if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { event.preventDefault(); move(index - 1); }
-      if (event.key === 'Home') { event.preventDefault(); move(0); }
-      if (event.key === 'End') { event.preventDefault(); move(items.length - 1); }
-    }}>
-      {items.map((item, index) => (
-        <button
-          key={item.id}
-          ref={node => { refs.current[index] = node; }}
-          type="button"
-          role="tab"
-          aria-selected={value === item.id}
-          tabIndex={value === item.id ? 0 : -1}
-          className={`ids-tab ${value === item.id ? 'ids-tab--active' : ''}`}
-          onClick={() => onChange(item.id)}
-        >
-          {item.label}
-        </button>
-      ))}
+    <div
+      className="ids-tabs"
+      role="tablist"
+      aria-label={ariaLabel}
+      onKeyDown={(event) => {
+        if (!enabledItems.length) return;
+        if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); move(activeIndex + 1); }
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { event.preventDefault(); move(activeIndex - 1); }
+        if (event.key === 'Home') { event.preventDefault(); move(0); }
+        if (event.key === 'End') { event.preventDefault(); move(enabledItems.length - 1); }
+      }}
+    >
+      {items.map((item, index) => {
+        const selected = value === item.id;
+        const panelId = tabPanelId ? `${tabPanelId}-panel` : undefined;
+        const tabId = `${tabPanelId ? `${tabPanelId}-` : ''}tab-${item.id}`;
+        return (
+          <button
+            key={item.id}
+            id={tabId}
+            ref={node => { refs.current[index] = node; }}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            aria-controls={panelId}
+            aria-disabled={item.disabled || undefined}
+            disabled={item.disabled}
+            tabIndex={selected && !item.disabled ? 0 : -1}
+            className={`ids-tab ${selected ? 'ids-tab--active' : ''}`}
+            onClick={() => { if (!item.disabled) onChange(item.id); }}
+          >
+            {item.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
-
 
 export interface EmptyStateProps {
   title: string;
