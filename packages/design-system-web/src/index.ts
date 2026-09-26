@@ -238,12 +238,14 @@ export interface CheckControlProps extends Omit<React.InputHTMLAttributes<HTMLIn
   label: React.ReactNode;
   description?: React.ReactNode;
   error?: string;
+  indeterminate?: boolean;
 }
 
 export function Checkbox({
   label,
   description,
   error,
+  indeterminate = false,
   id,
   className = '',
   checked,
@@ -260,9 +262,9 @@ export function Checkbox({
 
   React.useEffect(() => {
     if (inputRef.current) {
-      inputRef.current.indeterminate = false;
+      inputRef.current.indeterminate = indeterminate;
     }
-  }, []);
+  }, [indeterminate]);
 
   return (
     <div className={`ids-check-field ${className}`.trim()}>
