@@ -57,6 +57,7 @@ jobs:
           for (const [name,value] of Object.entries(checks)) if (!value) throw new Error('IDS visual smoke check failed: '+name);
           await page.screenshot({path:'/tmp/ids-mobile.png',fullPage:true});
           await page.locator('#visual-qa').scrollIntoViewIfNeeded();
+          await page.screenshot({path:'/tmp/ids-visual-qa.png',fullPage:true});
           const bodyWidth=await page.evaluate(()=>document.documentElement.scrollWidth);
           if (bodyWidth > 430) throw new Error('IDS mobile visual overflow detected: '+bodyWidth+'px');
           await browser.close();
@@ -88,11 +89,32 @@ jobs:
           const viewport=await page.evaluate(()=>window.innerWidth);
           if (width > viewport + 24) failures.push('large-text overflow: '+width+' > '+viewport);
           await page.emulateMedia({reducedMotion:'reduce'});
-          const motion=await page.evaluate(()=>[...document.querySelectorAll('*')].filter(x=>{const s=getComputedStyle(x);return s.animationName!=='none'||s.transitionDuration!=='0s'}).length);
-          if (motion > 0) console.log('note: non-zero computed motion remains; component-specific transitions may be intentional');
+          const motion=await page.evaluate(()=>{
+            const selectors=['.pg-switch i','.btn','.tab','.lab-statebar button','html'];
+            return selectors.flatMap(sel=>[...document.querySelectorAll(sel)]).filter(x=>{
+              const s=getComputedStyle(x);
+              const hasAnimation=s.animationName!=='none' && s.animationDuration!=='0s';
+              const hasTransition=s.transitionProperty!=='all' && s.transitionDuration!=='0s';
+              return hasAnimation||hasTransition;
+            }).map(x=>({tag:x.tagName,classes:x.className,animation:getComputedStyle(x).animationName,transition:getComputedStyle(x).transitionDuration}));
+          });
+          if (motion.length) throw new Error('Reduced-motion contract failed: '+JSON.stringify(motion.slice(0,10)));
           const roles=await page.locator('[role="tab"], [role="switch"], input, select').count();
           if (!roles) failures.push('native/semantic form controls missing');
           if (failures.length) throw new Error(failures.join(' | '));
+          await page.locator('#lab').scrollIntoViewIfNeeded();
+          await page.screenshot({path:'/tmp/ids-stress.png',fullPage:true});
           console.log('IDS accessibility/stress smoke test passed');
           await browser.close();
           EOF
+
+      - name: Upload IDS visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ids-visual-evidence
+          path: |
+            /tmp/ids-mobile.png
+            /tmp/ids-visual-qa.png
+            /tmp/ids-stress.png
+          if-no-files-found: ignore
