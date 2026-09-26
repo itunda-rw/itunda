@@ -404,6 +404,7 @@ export function Tabs({ items, value, onChange, ariaLabel = 'Tabs', tabPanelId }:
       className="ids-tabs"
       role="tablist"
       aria-label={ariaLabel}
+      aria-orientation="horizontal"
       onKeyDown={(event) => {
         if (!enabledItems.length) return;
         if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); move(activeIndex + 1); }
