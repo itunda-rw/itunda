@@ -1,0 +1,78 @@
+name: IDS Native Build Verification
+
+on:
+  push:
+    branches:
+      - agent/itunda-agent-network
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Android IDS native compile
+    runs-on: macos-15-intel
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+          cache-dependency-path: packages/saronite/package-lock.json
+
+      - name: Install Saronite dependencies
+        working-directory: packages/saronite
+        run: npm ci
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Build Itunda Android app
+        working-directory: android
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Verify APK exists
+        run: test -s android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload Android build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ids-native-android-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+
+  ios:
+    name: iOS IDS native compile
+    runs-on: macos-15-intel
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Tuist
+        run: brew install tuist
+
+      - name: Generate iOS project
+        working-directory: ios
+        run: tuist generate --no-open
+
+      - name: Build IDS host target
+        working-directory: ios
+        run: xcodebuild -project Itunda.xcodeproj -scheme ItundaRiderApp -sdk iphonesimulator -configuration Debug -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+
+      - name: Upload iOS build products
+        uses: actions/upload-artifact@v4
+        with:
+          name: ids-native-ios-products
+          path: ios/Derived/**
+          if-no-files-found: ignore
+          retention-days: 14
