@@ -618,6 +618,10 @@ function renderVisualQAMatrix(){
       records.forEach(record=>{
         const failures=validateIdsQaEvidenceRecord(record);
         const platform=String(record?.platform||'');
+        const currentContract=localStorage.getItem('ids-qa-contract-signature')||'';
+        const currentPlatformContract=localStorage.getItem('ids-qa-platform-contract-signature')||'';
+        if(currentContract && String(record.contractSignature||'')!==currentContract) failures.push('contract signature mismatch');
+        if(currentPlatformContract && String(record.platformContractSignature||'')!==currentPlatformContract) failures.push('platform contract signature mismatch');
         if(failures.length||!['android','ios'].includes(platform)) { rejected.push({platform,failures:failures.length?failures:['only android/ios external evidence may be imported']}); return; }
         const scenario=String(record.scenario||'');
         const componentId=String(record.componentId||'');
