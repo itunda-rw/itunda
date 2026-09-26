@@ -576,3 +576,23 @@
 @media (prefers-reduced-motion: reduce) {
   .ids-switch * { transition: none !important; }
 }
+
+.ids-tabs {
+  min-width: 0;
+}
+.ids-tab {
+  min-width: 44px;
+  min-height: 44px;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+.ids-tab:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+.ids-tab:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--itunda-focus) 28%, transparent);
+  outline-offset: 2px;
+}
