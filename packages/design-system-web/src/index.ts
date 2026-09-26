@@ -298,6 +298,7 @@ export function Radio({
   id,
   className = '',
   disabled,
+  required,
   ...props
 }: CheckControlProps) {
   const reactId = React.useId();
@@ -314,6 +315,7 @@ export function Radio({
           id={inputId}
           type="radio"
           disabled={disabled}
+          required={required}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
         />
