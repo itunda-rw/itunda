@@ -153,7 +153,14 @@ jobs:
               if(await control.isHidden()){failures.push(kind+': declared state hidden: '+state);continue;}
               await control.click();
               const rendered=await page.locator('#labPreview').textContent();
+              const renderedState=await page.locator('#labPreview').getAttribute('data-lab-state');
+              const renderedKind=await page.locator('#labPreview').getAttribute('data-lab-kind');
+              if(renderedState!==state) failures.push(kind+': '+state+' rendered state mismatch: '+renderedState);
+              if(renderedKind!==kind) failures.push(kind+': rendered kind mismatch: '+renderedKind);
               if(!rendered?.trim()) failures.push(kind+': '+state+' rendered empty');
+              if(state==='disabled' && await page.locator('#labPreview :disabled').count()===0) failures.push(kind+': disabled state has no disabled control');
+              if(state==='loading' && await page.locator('#labPreview :disabled').count()===0) failures.push(kind+': loading state does not lock the primary control');
+              if(state==='error' && (await page.locator('#labPreview [aria-invalid="true"]').count()===0) && kind==='field') failures.push(kind+': error state missing aria-invalid');
             }
           }
           const generatedCases=(manifest.components||[]).reduce((n,c)=>n+(c.states?.length||0),0);
