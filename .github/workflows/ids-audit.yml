@@ -277,12 +277,11 @@ jobs:
           node scripts/ids-visual-regression.mjs /tmp/ids-visual-matrix.json design-system/components/visual-baseline.json ${{ inputs.update_visual_baseline && '--update' || '' }}
           if git diff --quiet -- design-system/components/visual-baseline.json; then
             echo "IDS visual baseline unchanged."
+          elif [[ "${{ inputs.update_visual_baseline }}" == "true" ]]; then
+            echo "IDS visual baseline generated for explicit workflow_dispatch; publishing it as an artifact."
           else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add design-system/components/visual-baseline.json
-            git commit -m "test(ids): initialize visual baseline"
-            git push
+            echo "IDS visual baseline is missing. Re-run this workflow with update_visual_baseline=true to bootstrap it."
+            exit 1
           fi
 
       - name: Upload IDS visual evidence
@@ -298,5 +297,6 @@ jobs:
             /tmp/ids-visual-matrix.json
             /tmp/ids-visual-matrix/
             /tmp/ids-visual-diff/
+            design-system/components/visual-baseline.json
           if-no-files-found: ignore
 
