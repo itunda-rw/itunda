@@ -2,12 +2,7 @@ name: Deploy Itunda Pages
 # Static site deployment via GitHub Pages Actions.
 
 on:
-  push:
-    branches:
-      - agent/itunda-agent-network
-    paths:
-      - 'site/**'
-      - '.github/workflows/pages.yml'
+  # GitHub Pages deployment remains available manually when hosted runners are restored.
   workflow_dispatch:
 
 permissions:
@@ -28,15 +23,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Pages
         uses: actions/configure-pages@v5
-
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./site
-
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
