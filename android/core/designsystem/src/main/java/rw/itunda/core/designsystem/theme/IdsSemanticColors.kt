@@ -91,8 +91,8 @@ val IdsLightSemanticColors = IdsSemanticColors(
     // hold L/C of the old 0xFF3182F6, rotate hue to 280deg, clamp chroma to gamut.
     // WCAG-verified: white-on-brand 3.85:1 (was 3.71:1, both clear the real 3:1
     // AA-large/UI-component bar this role is held to).
-    brand = Color(0xFF1F78FF),
-    textBrand = Color(0xFF1F78FF),
+    brand = Color(0xFF7472F4),
+    textBrand = Color(0xFF7472F4),
     divider = Color(0xFFE5E8EB),
     chip = Color(0xFFF2F4F6),
     pressed = Color(0xFFEEF0FF),
@@ -130,8 +130,8 @@ val IdsDarkSemanticColors = IdsSemanticColors(
     // fix on web/iOS.
     textTertiary = Color(0xFF848A96),
     // Dark-mode semantic brand token: the accessible blue counterpart used by the cross-platform contract.
-    brand = Color(0xFF4593FC),
-    textBrand = Color(0xFF4593FC),
+    brand = Color(0xFF9B98FF),
+    textBrand = Color(0xFF9B98FF),
     divider = Color(0xFF3C3C47),
     chip = Color(0xFF2C2C35),
     pressed = Color(0xFF2B2C52),
