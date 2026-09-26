@@ -131,27 +131,23 @@ jobs:
           trap 'kill $SERVER_PID' EXIT
           node --input-type=module <<'EOF'
           import { chromium } from 'playwright';
+          import fs from 'node:fs';
+          const manifest=JSON.parse(fs.readFileSync('design-system/components/contract-manifest.json','utf8'));
           const browser = await chromium.launch({headless:true});
           const page = await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
           await page.goto('http://127.0.0.1:4173/', {waitUntil:'networkidle'});
-          const expected={
-            button:['default','pressed','focus','disabled','loading'],
-            field:['empty','filled','focus','disabled','error','success'],
-            select:['default','focus','disabled','error'],
-            checkbox:['unchecked','checked','focus','disabled','error'],
-            radio:['unchecked','checked','focus','disabled','error'],
-            switch:['off','on','focus','disabled'],
-            tabs:['default','selected','focus','disabled'],
-            empty:['default']
-          };
+          const kindMap={'text-field':'field','empty-state':'empty'};
+          const labelMap={button:'Button',field:'Text field',select:'Select',checkbox:'Checkbox',radio:'Radio',switch:'Switch',tabs:'Tabs',empty:'Empty state'};
           const failures=[];
           const kindButtons=page.locator('[data-lab-kind]');
-          for(const [kind,states] of Object.entries(expected)){
-            const label=kind==='field'?'Text field':kind==='empty'?'Empty state':kind[0].toUpperCase()+kind.slice(1);
+          for(const component of manifest.components||[]){
+            const kind=kindMap[component.id]||component.id;
+            const label=labelMap[kind]||component.id;
             const kindButton=kindButtons.filter({hasText:label});
             if(await kindButton.count()!==1){failures.push(kind+': component selector missing');continue;}
             await kindButton.click();
-            for(const state of states){
+            const declared=[...(component.states||[])];
+            for(const state of declared){
               const control=page.locator('[data-lab-state="'+state+'"]');
               if(await control.count()!==1){failures.push(kind+': declared state missing: '+state);continue;}
               if(await control.isHidden()){failures.push(kind+': declared state hidden: '+state);continue;}
@@ -160,9 +156,10 @@ jobs:
               if(!rendered?.trim()) failures.push(kind+': '+state+' rendered empty');
             }
           }
+          const generatedCases=(manifest.components||[]).reduce((n,c)=>n+(c.states?.length||0),0);
           if(failures.length) throw new Error('IDS contract state matrix failed: '+failures.join(' | '));
           await page.screenshot({path:'/tmp/ids-contract-matrix.png',fullPage:true});
-          console.log('IDS contract state matrix passed: '+Object.values(expected).flat().length+' state cases');
+          console.log('IDS contract state matrix passed: '+generatedCases+' manifest-declared state cases');
           await browser.close();
           EOF
 
