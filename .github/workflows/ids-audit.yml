@@ -41,6 +41,10 @@ jobs:
           cache: yarn
       - run: corepack enable
       - run: yarn install --immutable
+      - name: Verify generated IDS showcase manifest is synchronized
+        run: |
+          node scripts/sync-ids-contract.mjs
+          git diff --exit-code -- business/developers/design/contract-manifest.json
       - run: yarn audit:ids
 
       - name: Install Chromium for IDS visual smoke test
