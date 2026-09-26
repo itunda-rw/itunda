@@ -43,8 +43,10 @@ jobs:
           python3 -m http.server 4173 --directory business/developers/design >/tmp/ids-server.log 2>&1 &
           SERVER_PID=$!
           trap 'kill $SERVER_PID' EXIT
+          python3 -m http.server 4173 --directory business/developers/design >/tmp/ids-server-stress.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID' EXIT
           node --input-type=module <<'EOF'
-          import { chromium } from 'playwright';
           const browser = await chromium.launch({headless:true});
           const page = await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
           await page.goto('http://127.0.0.1:4173/', {waitUntil:'networkidle'});
@@ -94,7 +96,7 @@ jobs:
             return selectors.flatMap(sel=>[...document.querySelectorAll(sel)]).filter(x=>{
               const s=getComputedStyle(x);
               const hasAnimation=s.animationName!=='none' && s.animationDuration!=='0s';
-              const hasTransition=s.transitionProperty!=='all' && s.transitionDuration!=='0s';
+              const hasTransition=s.transitionDuration!=='0s' && s.transitionDuration!=='0ms';
               return hasAnimation||hasTransition;
             }).map(x=>({tag:x.tagName,classes:x.className,animation:getComputedStyle(x).animationName,transition:getComputedStyle(x).transitionDuration}));
           });
