@@ -34,3 +34,31 @@ jobs:
       - run: corepack enable
       - run: yarn install --immutable
       - run: yarn audit:ids
+
+      - name: Install Chromium for IDS visual smoke test
+        run: npx --yes playwright@1.55.0 install --with-deps chromium
+      - name: Run IDS rendered smoke test
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --directory business/developers/design >/tmp/ids-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID' EXIT
+          node --input-type=module <<'EOF'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({headless:true});
+          const page = await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
+          await page.goto('http://127.0.0.1:4173/', {waitUntil:'networkidle'});
+          const checks = {
+            visualQa: await page.locator('#visual-qa').count(),
+            lab: await page.locator('#lab').count(),
+            darkTheme: await page.locator('[data-theme]').count(),
+            coreComponents: await page.locator('[data-lab-kind]').count(),
+          };
+          for (const [name,value] of Object.entries(checks)) if (!value) throw new Error('IDS visual smoke check failed: '+name);
+          await page.screenshot({path:'/tmp/ids-mobile.png',fullPage:true});
+          await page.locator('#visual-qa').scrollIntoViewIfNeeded();
+          const bodyWidth=await page.evaluate(()=>document.documentElement.scrollWidth);
+          if (bodyWidth > 430) throw new Error('IDS mobile visual overflow detected: '+bodyWidth+'px');
+          await browser.close();
+          console.log('IDS rendered smoke test passed', checks);
+          EOF
