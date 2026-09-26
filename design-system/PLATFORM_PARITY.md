@@ -52,3 +52,9 @@ Every promoted primitive should be reviewed for:
 - keyboard and screen-reader behavior
 - minimum 44px / 44dp / 44pt interaction targets
 - Web / Android / iOS platform-specific implementation behavior
+
+## Live render verification status
+
+A live mobile-web smoke pass has been executed against the deployed IDS showcase on both an Android Chrome emulator and an iOS Safari simulator. The page loaded successfully, exposed the IDS navigation/content landmarks, and the dark-mode control was exercised on both platforms. This verifies the **Web surface as rendered inside mobile browsers**.
+
+This evidence must not be counted as native Android/iOS component verification. Native verification still requires an installed Itunda Android build and iOS simulator build containing the canonical native IDS primitives. Until those builds are executed, native rendered parity remains explicitly unverified.
