@@ -379,7 +379,7 @@ public struct BankView: View {
 
     public var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(spacing: IDS.Layout.cardGap) {
+            VStack(alignment: .leading, spacing: IDS.Layout.sectionSpacing) {
                 HomeTopBar(locale: locale, onOpenNotifications: onOpenNotifications, onOpenProfile: onOpenProfile, unreadNotificationCount: unreadNotificationCount)
                 // Real Toss Bank reference (20 screenshots, 2026-08-21): the account
                 // ledger was first built inline right here, flat, directly below the
