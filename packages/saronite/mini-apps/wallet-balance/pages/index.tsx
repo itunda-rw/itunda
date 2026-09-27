@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { colors } from '../../../../packages/ids-react-native/src/colors';
 import { Button, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { createRoute } from '@granite-js/react-native';
 import { closeView, getWalletBalance, useVisibility } from '@itunda/saronite-react-native';
@@ -72,10 +73,10 @@ export const Route = createRoute('/', {
 });
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: '#F2F4F6' },
-  title: { fontSize: 20, fontWeight: '800', marginBottom: 16, color: '#191F28' },
-  balance: { fontSize: 32, fontWeight: '900', marginBottom: 12, color: '#191F28' },
-  body: { fontSize: 15, color: '#4E5968', marginBottom: 4 },
-  error: { color: '#F04452' },
+  container: { flex: 1, padding: 24, backgroundColor: 'colors.background' },
+  title: { fontSize: 20, fontWeight: '800', marginBottom: 16, color: 'colors.textPrimary' },
+  balance: { fontSize: 32, fontWeight: '900', marginBottom: 12, color: 'colors.textPrimary' },
+  body: { fontSize: 15, color: 'colors.textSecondary', marginBottom: 4 },
+  error: { color: 'colors.error' },
   spacer: { flex: 1 },
 });
