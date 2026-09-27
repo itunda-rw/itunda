@@ -20,7 +20,7 @@ body {
 #root {
   width: 100%;
   min-height: 100svh;
-  background-color: var(--itunda-surface-subtle);
+  background-color: var(--itunda-surface-default);
 }
 
 h1, h2, h3, h4, p {
