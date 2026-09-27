@@ -5,7 +5,7 @@ import federation from '@originjs/vite-plugin-federation'
 const production = process.env.NODE_ENV === 'production'
 
 export default defineConfig({
-  base: production ? '/app/remotes/maps/' : '/',
+  base: production ? '/remotes/maps/' : '/',
   plugins: [
     react(),
     // @ts-ignore
