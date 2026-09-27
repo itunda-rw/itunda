@@ -9,10 +9,10 @@ export default function App() {
         <div className="header-inner">
           <Link to="/" className="brand" aria-label="Itunda Tech home"><img src="/brand/itunda-icon.svg" alt="" className="brand-mark" /><span>itunda <span className="brand-accent">tech</span></span></Link>
           <nav className="site-nav" aria-label="Primary">
-            <Link to="/" className="nav-active">Articles</Link>
-            <a href="/itunda/">Itunda</a>
-            <a href="/itunda-business/">Business</a>
-            <a href="/itunda-developers/">Developers</a>
+            <Link to="/" className="nav-active" aria-current="page">Articles</Link>
+            <a href="/itunda/" aria-label="Open Itunda">Itunda</a>
+            <a href="/itunda-business/" aria-label="Open Itunda Business">Business</a>
+            <a href="/itunda-developers/" aria-label="Open Itunda Developers">Developers</a>
           </nav>
           <a className="header-cta" href="https://github.com/itunda-rw/itunda">GitHub</a>
         </div>
