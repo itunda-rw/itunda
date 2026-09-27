@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Briefcase, CalendarClock, CircleDollarSign, CreditCard, HandCoins, Images, LogOut, Megaphone, Newspaper, Package, QrCode, Settings, ShoppingCart, Star, Store, Tag, Users2, Utensils, UtensilsCrossed, Users } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
 import { getMyMerchant, type Merchant } from './lib/merchant';
@@ -83,6 +83,7 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
   const [loadError, setLoadError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('collect');
   const user = getStoredUser();
+  const navRefs = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({});
 
   const load = () => {
     setLoadError(null);
@@ -155,11 +156,22 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
           ))}
         </select>
         <div className="merchant-nav-items" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          {TABS.map(({ id, labelKey, icon: Icon }) => (
+          {TABS.map(({ id, labelKey, icon: Icon }, index) => (
             <button
               key={id}
               type="button"
               onClick={() => setTab(id)}
+              onKeyDown={(event) => {
+                if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+                event.preventDefault();
+                const nextIndex = event.key === 'ArrowDown'
+                  ? (index + 1) % TABS.length
+                  : (index - 1 + TABS.length) % TABS.length;
+                const nextTab = TABS[nextIndex].id;
+                setTab(nextTab);
+                navRefs.current[nextTab]?.focus();
+              }}
+              ref={(node) => { navRefs.current[id] = node; }}
               aria-label={t(labelKey)}
               aria-current={tab === id ? 'page' : undefined}
               style={{
