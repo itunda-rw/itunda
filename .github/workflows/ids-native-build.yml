@@ -11,98 +11,134 @@ permissions:
 
 # Production IDS verification is native-first:
 # Android -> Kotlin/Compose via Gradle
-# iOS -> Swift/SwiftUI via Tuist -> Xcode -> Limrun simulator
+# iOS -> Swift/SwiftUI via Tuist -> Xcode
 # Expo Go, Expo Snack and EAS are not verification evidence.
+#
+# This workflow intentionally uses the same deterministic native build lanes
+# as the repository's main CI instead of depending on an external simulator
+# service or LIM_API_KEY.
 
 jobs:
   android:
-    name: Android IDS native build + install
+    name: Android IDS native build
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    env:
-      LIM_API_KEY: ${{ secrets.LIM_API_KEY }}
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Verify native production boundary
         run: bash ./scripts/verify-native-boundary.sh
-      - name: Require Limrun credentials
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+          cache-dependency-path: packages/saronite/package-lock.json
+
+      - name: Install Saronite JS dependencies
+        working-directory: packages/saronite
+        run: npm ci
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Cap Gradle/Kotlin daemon heap
         run: |
-          if [ -z "$LIM_API_KEY" ]; then
-            echo "::error::LIM_API_KEY repository secret is required for native Android verification."
-            exit 1
-          fi
-      - name: Install Limrun CLI
-        run: npm install --global lim
-      - name: Build native Android app on Limrun
-        run: lim gradle build . --project-path android --upload itunda-native-android.apk
-      - name: Install native Android artifact on Limrun emulator
-        run: lim android create --install-asset=itunda-native-android.apk
-      - name: Capture native Android verification manifest
+          mkdir -p ~/.gradle
+          echo "org.gradle.jvmargs=-Xmx3072m -Dfile.encoding=UTF-8" >> ~/.gradle/gradle.properties
+          echo "kotlin.daemon.jvmargs=-Xmx2048m" >> ~/.gradle/gradle.properties
+
+      - name: Silo boundary check
+        working-directory: android
+        run: ./gradlew :architecture-test:test --no-daemon
+
+      - name: Assemble native debug APK
+        working-directory: android
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Capture Android verification manifest
         run: |
           cat > android-native-verification.txt <<EOF
           commit=${GITHUB_SHA}
-          lane=limrun-gradle
+          lane=github-actions-gradle
           project=android
-          artifact=itunda-native-android.apk
-          status=build-and-install-complete
+          artifact=android/app/build/outputs/apk/debug/app-debug.apk
+          status=build-complete
           expo_evidence=false
           EOF
-      - name: Upload Android verification manifest
+
+      - name: Upload Android verification
         uses: actions/upload-artifact@v4
         with:
           name: ids-native-android-verification
-          path: android-native-verification.txt
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android-native-verification.txt
           retention-days: 14
 
   ios:
-    name: iOS IDS native Xcode build + install
-    # Tuist requires macOS/Xcode to turn Project.swift into the native project.
-    runs-on: macos-latest
-    timeout-minutes: 60
-    env:
-      LIM_API_KEY: ${{ secrets.LIM_API_KEY }}
+    name: iOS IDS native Xcode build
+    runs-on: macos-15
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Verify native production boundary
         run: bash ./scripts/verify-native-boundary.sh
-      - name: Require Limrun credentials
-        run: |
-          if [ -z "$LIM_API_KEY" ]; then
-            echo "::error::LIM_API_KEY repository secret is required for native iOS verification."
-            exit 1
-          fi
-      - name: Install Tuist
-        uses: jdx/mise-action@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          install: true
-      - name: Generate native Xcode project from Tuist manifest
+          node-version: 20.x
+          cache: npm
+          cache-dependency-path: packages/saronite/package-lock.json
+
+      - name: Install Saronite JS dependencies
+        working-directory: packages/saronite
+        run: npm ci
+
+      - name: Generate BrickCodegen iOS bridge
+        working-directory: packages/saronite/host-app
+        run: node ../node_modules/.bin/brick-codegen --platform ios --output-ios ../../../ios/.brick --projectRoot .
+
+      - name: Install Tuist
+        run: brew install --cask tuist
+
+      - name: Generate native Xcode project
+        working-directory: ios
+        run: tuist generate --no-open
+
+      - name: Install CocoaPods dependencies
+        working-directory: ios
+        run: pod install
+
+      - name: Build native ItundaApp
         working-directory: ios
         run: |
-          mise install tuist@3.42.3
-          mise use --pin tuist@3.42.3
-          mise exec tuist@3.42.3 -- tuist generate --no-open
-      - name: Install Limrun CLI
-        run: npm install --global lim
-      - name: Create and attach native iOS simulator
-        run: lim ios create --attach --no-open
-      - name: Build and install native iOS IDS host on Limrun
-        run: lim xcode build . --scheme ItundaRiderApp --configuration Debug --include '^ios/.*\.xcodeproj/'
-      - name: Verify native iOS build logs
-        run: lim xcode logs
-      - name: Capture native iOS verification manifest
+          xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp \
+            -destination 'generic/platform=iOS Simulator' build \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Capture iOS verification manifest
         run: |
           cat > ios-native-verification.txt <<EOF
           commit=${GITHUB_SHA}
-          lane=limrun-xcode
-          scheme=ItundaRiderApp
+          lane=github-actions-xcode
+          scheme=ItundaApp
           configuration=Debug
           project_generation=tuist
-          status=build-and-install-complete
+          status=build-complete
           expo_evidence=false
           EOF
-      - name: Upload iOS verification manifest
+
+      - name: Upload iOS verification
         uses: actions/upload-artifact@v4
         with:
           name: ids-native-ios-verification
