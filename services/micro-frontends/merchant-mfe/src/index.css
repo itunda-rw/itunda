@@ -64,17 +64,16 @@ input, textarea {
 }
 
 .itunda-card {
-  background: var(--itunda-surface-default);
-  border-radius: var(--itunda-radius-md);
-  padding: var(--itunda-content-gap);
-  /* Real fix (2026-09-04, matching bank-mfe's own 2026-08-24 fix -- this file's
-     copy of the shared itunda-card/itunda-flat-section pattern had drifted): on a
-     white page background, the shadow alone isn't always enough to separate a card
-     -- added the same hairline border bank-mfe/src/index.css already carries. */
-  border: 1px solid var(--itunda-border-default);
-  box-shadow: var(--itunda-shadow);
-  margin-bottom: 16px;
-  transition: var(--itunda-transition);
+  /* IDS flat composition: grouping comes from spacing and a quiet divider,
+     not floating white cards and shadows. */
+  background: transparent;
+  border-radius: 0;
+  padding: var(--itunda-content-gap, 16px) 0;
+  border: 0;
+  border-bottom: 1px solid var(--itunda-border-default);
+  box-shadow: none;
+  margin-bottom: 0;
+  transition: background-color var(--itunda-motion-fast) var(--itunda-ease-out);
 }
 
 /* Real Toss reference (ported from bank-mfe/src/index.css's own 2026-08-21/22 fix,
