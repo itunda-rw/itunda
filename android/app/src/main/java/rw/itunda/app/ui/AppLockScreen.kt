@@ -122,7 +122,7 @@ fun AppLockScreen(
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Box(
                 modifier = Modifier
-                    .background(if (unlocked) Ids.colors.success else Ids.colors.chip, shape = RoundedCornerShape(28.dp))
+                    .background(if (unlocked) Ids.colors.success else Ids.colors.chip, shape = RoundedCornerShape(Ids.layout.iconCornerRadius))
                     .scale(iconScale.value)
                     .padding(20.dp),
             ) {
