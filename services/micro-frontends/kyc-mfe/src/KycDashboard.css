@@ -8,28 +8,29 @@
  */
 
 .kyc-card {
-  padding: 20px;
-  background-color: var(--itunda-grey-100);
+  padding: var(--itunda-content-gap);
+  background-color: var(--itunda-surface-subtle);
   border-radius: var(--itunda-radius-md);
 }
 
 .kyc-card__title {
-  color: var(--itunda-indigo);
+  color: var(--itunda-brand);
   margin: 0 0 8px 0;
 }
 
 .kyc-card__subtitle {
-  color: var(--itunda-grey-800);
+  color: var(--itunda-text-secondary);
   font-size: 14px;
   margin-bottom: 16px;
 }
 
 .kyc-card__cta {
-  background-color: var(--itunda-indigo);
-  color: var(--itunda-white);
-  padding: 14px 24px;
+  background-color: var(--itunda-brand);
+  color: var(--itunda-surface-default);
+  min-height: 48px;
+  padding: 12px 20px;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--itunda-control-radius, 12px);
   font-weight: 600;
   cursor: pointer;
   width: 100%;
@@ -45,7 +46,7 @@
 }
 
 .kyc-modal-sheet {
-  background-color: var(--itunda-white);
+  background-color: var(--itunda-surface-default);
   width: 100%;
   min-height: 400px;
   border-top-left-radius: var(--itunda-radius-lg);
@@ -68,24 +69,24 @@
 
 .kyc-step__title {
   margin: 0 0 16px 0;
-  color: var(--itunda-grey-900);
+  color: var(--itunda-text-primary);
 }
 
 .kyc-step__subtitle {
-  color: var(--itunda-grey-500);
+  color: var(--itunda-text-tertiary);
   margin: 0 0 24px 0;
 }
 
 .kyc-step__input {
   font-size: 24px;
   padding: 16px;
-  border-radius: 12px;
-  border: 1px solid var(--itunda-grey-200);
+  border-radius: var(--itunda-control-radius, 12px);
+  border: 1px solid var(--itunda-border-default);
   width: 100%;
   box-sizing: border-box;
   margin-bottom: auto;
-  background-color: var(--itunda-white);
-  color: var(--itunda-grey-900);
+  background-color: var(--itunda-surface-default);
+  color: var(--itunda-text-primary);
 }
 
 .kyc-step__input--otp {
@@ -95,7 +96,8 @@
 }
 
 .kyc-step__next {
-  padding: 18px;
+  min-height: 48px;
+  padding: 12px 20px;
   border-radius: var(--itunda-radius-md);
   border: none;
   font-weight: bold;
@@ -104,14 +106,14 @@
 }
 
 .kyc-step__next--enabled {
-  background-color: var(--itunda-indigo);
-  color: var(--itunda-white);
+  background-color: var(--itunda-brand);
+  color: var(--itunda-surface-default);
   cursor: pointer;
 }
 
 .kyc-step__next--disabled {
-  background-color: var(--itunda-grey-200);
-  color: var(--itunda-grey-500);
+  background-color: var(--itunda-border-default);
+  color: var(--itunda-text-tertiary);
   cursor: default;
 }
 
@@ -127,7 +129,7 @@
 .kyc-success__badge {
   width: 64px;
   height: 64px;
-  background-color: var(--itunda-indigo);
+  background-color: var(--itunda-brand);
   border-radius: 32px;
   display: flex;
   align-items: center;
@@ -136,20 +138,21 @@
 }
 
 .kyc-success__check {
-  color: var(--itunda-white);
+  color: var(--itunda-surface-default);
   font-size: 32px;
 }
 
 .kyc-success__body {
-  color: var(--itunda-grey-500);
+  color: var(--itunda-text-tertiary);
   margin: 0 0 40px 0;
   text-align: center;
 }
 
 .kyc-success__done {
-  background-color: var(--itunda-indigo);
-  color: var(--itunda-white);
-  padding: 18px;
+  background-color: var(--itunda-brand);
+  color: var(--itunda-surface-default);
+  min-height: 48px;
+  padding: 12px 20px;
   border-radius: var(--itunda-radius-md);
   border: none;
   font-weight: bold;
@@ -162,7 +165,7 @@
 
 .kyc-error {
   font-size: 13px;
-  color: var(--itunda-red);
+  color: var(--itunda-field-border-error);
   margin: 0 0 12px 0;
 }
 
@@ -183,28 +186,28 @@
 }
 
 .kyc-status-badge--pending {
-  background-color: var(--itunda-grey-200);
-  color: var(--itunda-grey-800);
+  background-color: var(--itunda-border-default);
+  color: var(--itunda-text-secondary);
 }
 
 .kyc-status-badge--verified {
-  background-color: #E3F5E9;
-  color: #1E8E4F;
+  background-color: var(--itunda-positive-background, #F8F9FF);
+  color: var(--itunda-positive, #05804A);
 }
 
 .kyc-status-badge--rejected {
-  background-color: #FCE8E8;
-  color: #C0392B;
+  background-color: var(--itunda-error-background, #FFECEB);
+  color: var(--itunda-field-border-error);
 }
 
 .kyc-status-detail {
   font-size: 13px;
-  color: var(--itunda-grey-500);
+  color: var(--itunda-text-tertiary);
 }
 
 .kyc-status-reason {
   font-size: 12px;
-  color: var(--itunda-grey-500);
+  color: var(--itunda-text-tertiary);
   margin-top: -4px;
 }
 
@@ -216,18 +219,19 @@
 
 .kyc-doctype-btn {
   flex: 1;
-  padding: 10px;
+  min-height: 48px;
+  padding: 12px;
   border-radius: 10px;
-  border: 1px solid var(--itunda-grey-200);
-  background-color: var(--itunda-white);
-  color: var(--itunda-grey-800);
+  border: 1px solid var(--itunda-border-default);
+  background-color: var(--itunda-surface-default);
+  color: var(--itunda-text-secondary);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .kyc-doctype-btn--active {
-  background-color: var(--itunda-indigo);
-  border-color: var(--itunda-indigo);
-  color: var(--itunda-white);
+  background-color: var(--itunda-brand);
+  border-color: var(--itunda-brand);
+  color: var(--itunda-surface-default);
 }
