@@ -373,14 +373,14 @@ export const Route = createRoute('/', {
 });
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: 'colors.background' },
-  title: { fontSize: 20, fontWeight: '700', color: 'colors.textPrimary' },
-  total: { fontSize: 28, fontWeight: '700', color: 'colors.primaryIndigo', marginTop: 4, marginBottom: 16 },
-  body: { fontSize: 15, color: 'colors.textSecondary' },
-  error: { color: 'colors.error' },
+  container: { flex: 1, padding: 24, backgroundColor: colors.background },
+  title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
+  total: { fontSize: 28, fontWeight: '700', color: colors.primaryIndigo, marginTop: 4, marginBottom: 16 },
+  body: { fontSize: 15, color: colors.textSecondary },
+  error: { color: colors.error },
   spacer: { flex: 1 },
   row: {
-    backgroundColor: 'colors.surface',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 10,
@@ -391,9 +391,9 @@ const styles = StyleSheet.create({
   },
   rowLeft: { flex: 1 },
   stepsPanel: { marginBottom: 16 },
-  stepsCount: { fontSize: 26, fontWeight: '700', color: 'colors.textPrimary', marginTop: 4 },
-  taskTitle: { fontSize: 15, fontWeight: '700', color: 'colors.textPrimary' },
-  subtitle: { fontSize: 12, color: 'colors.textTertiary', marginTop: 2 },
+  stepsCount: { fontSize: 26, fontWeight: '700', color: colors.textPrimary, marginTop: 4 },
+  taskTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
+  subtitle: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
   // Real fix (2026-07-13): #31CE66 was a one-off green that didn't match itunda's
   // own already-established Toss green500 (#04C065 -- android/.../IdsColors.kt,
   // ios/.../IdsTheme.swift, packages/design-tokens/tokens.css all agree), the exact
@@ -404,22 +404,22 @@ const styles = StyleSheet.create({
   // AA-large/UI threshold for this text. Darkened to colors.positive (5.01:1), matching
   // the same fix applied to packages/design-tokens/tokens.css --itunda-green and
   // the Android/iOS semantic `success` token.
-  rewardAmount: { fontSize: 14, fontWeight: '700', color: 'colors.positive', marginRight: 12 },
-  claimButton: { backgroundColor: 'colors.primaryIndigo', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
-  claimButtonDone: { backgroundColor: 'colors.divider' },
-  claimButtonText: { color: 'colors.surface', fontWeight: '700', fontSize: 13 },
+  rewardAmount: { fontSize: 14, fontWeight: '700', color: colors.positive, marginRight: 12 },
+  claimButton: { backgroundColor: colors.primaryIndigo, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
+  claimButtonDone: { backgroundColor: colors.divider },
+  claimButtonText: { color: colors.surface, fontWeight: '700', fontSize: 13 },
   closeButton: { alignItems: 'center', paddingVertical: 14 },
-  closeButtonText: { color: 'colors.textTertiary', fontWeight: '600' },
+  closeButtonText: { color: colors.textTertiary, fontWeight: '600' },
   panel: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'colors.divider',
+    borderTopColor: colors.divider,
   },
-  panelLabel: { fontSize: 12, fontWeight: '700', color: 'colors.textSecondary' },
+  panelLabel: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
   panelLabelSpaced: { marginTop: 12 },
-  panelHint: { fontSize: 12, color: 'colors.textTertiary', marginTop: 4 },
-  referralCode: { fontSize: 20, fontWeight: '700', color: 'colors.textPrimary', marginTop: 4, letterSpacing: 1 },
+  panelHint: { fontSize: 12, color: colors.textTertiary, marginTop: 4 },
+  referralCode: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, marginTop: 4, letterSpacing: 1 },
   panelButton: {
     marginTop: 8,
     alignSelf: 'flex-start',
@@ -428,15 +428,15 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
   },
-  panelButtonText: { color: 'colors.primaryIndigo', fontWeight: '700', fontSize: 13 },
+  panelButtonText: { color: colors.primaryIndigo, fontWeight: '700', fontSize: 13 },
   inlineRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   input: {
     flex: 1,
-    backgroundColor: 'colors.background',
+    backgroundColor: colors.background,
     borderRadius: 8,
     paddingVertical: 8,
     paddingHorizontal: 10,
     fontSize: 13,
-    color: 'colors.textPrimary',
+    color: colors.textPrimary,
   },
 });
