@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, Text, StyleSheet, ViewStyle } from 'react
 import { colors } from './colors';
 import { layout } from './layout';
 
-type ButtonType = 'primary' | 'secondary' | 'tertiary' | 'destructive';
+export type ButtonType = 'primary' | 'secondary' | 'tertiary' | 'destructive';
 
 interface ButtonProps {
   title: string;
@@ -13,6 +13,7 @@ interface ButtonProps {
   loading?: boolean;
   style?: ViewStyle;
   accessibilityHint?: string;
+  accessibilityValue?: { text?: string; now?: number; min?: number; max?: number };
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -23,6 +24,7 @@ export const Button: React.FC<ButtonProps> = ({
   loading = false,
   style,
   accessibilityHint,
+  accessibilityValue,
 }) => {
   const unavailable = disabled || loading;
   const isPrimary = type === 'primary';
@@ -46,7 +48,8 @@ export const Button: React.FC<ButtonProps> = ({
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityHint={accessibilityHint}
-      accessibilityState={{ disabled, busy: loading }}
+      accessibilityState={{ disabled: unavailable, busy: loading }}
+      accessibilityValue={accessibilityValue}
     >
       {loading ? (
         <ActivityIndicator
