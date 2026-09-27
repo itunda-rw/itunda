@@ -15,6 +15,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import rw.itunda.core.designsystem.theme.Ids
@@ -49,6 +51,13 @@ fun IdsListRow(
             .semantics {
                 role = Role.Button
                 this.selected = selected
+                if (!interactive) disabled()
+                contentDescription = buildString {
+                    append(title)
+                    if (subtitle != null) append(". $subtitle")
+                    if (rightText != null) append(". $rightText")
+                    if (loading) append(". Loading")
+                }
             }
             .padding(horizontal = Ids.layout.screenHorizontal, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -64,7 +73,7 @@ fun IdsListRow(
                 Text(
                     text = subtitle,
                     style = IdsTypography.Body2,
-                    color = Ids.colors.textSecondary,
+                    color = if (enabled) Ids.colors.textSecondary else Ids.colors.textTertiary,
                 )
             }
         }
