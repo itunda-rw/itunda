@@ -44,10 +44,10 @@ function PartnerMiniAppCard({ submission, onDecided }: { submission: PartnerMini
   return (
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <div>
-        <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{submission.name}</p>
-        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Partner {submission.partnerId} · {submission.category}</p>
-        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)', marginTop: '4px' }}>{submission.description}</p>
-        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
+        <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-text-primary)' }}>{submission.name}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)' }}>Partner {submission.partnerId} · {submission.category}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-text-secondary)', marginTop: '4px' }}>{submission.description}</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-text-tertiary)', marginTop: '4px' }}>
           Bundle: <span style={{ fontFamily: 'monospace' }}>{submission.bundleUrl}</span>
         </p>
         {submission.permissions && (
@@ -57,7 +57,7 @@ function PartnerMiniAppCard({ submission, onDecided }: { submission: PartnerMini
                 key={scope}
                 style={{
                   fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '8px',
-                  backgroundColor: 'var(--itunda-indigo-light)', color: 'var(--itunda-indigo)',
+                  backgroundColor: 'var(--itunda-surface-brand)', color: 'var(--itunda-brand)',
                 }}
               >
                 {scope}
@@ -65,7 +65,7 @@ function PartnerMiniAppCard({ submission, onDecided }: { submission: PartnerMini
             ))}
           </div>
         )}
-        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '8px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-text-tertiary)', marginTop: '8px' }}>
           Submitted {new Date(submission.createdAt).toLocaleString()}
         </p>
       </div>
@@ -77,11 +77,11 @@ function PartnerMiniAppCard({ submission, onDecided }: { submission: PartnerMini
           placeholder="Reason (optional)"
           maxLength={255}
           rows={2}
-          style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', resize: 'vertical' }}
+          style={{ padding: '10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '14px', resize: 'vertical' }}
         />
       )}
 
-      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-field-border-error)' }} role="alert">{error}</p>}
 
       <div style={{ display: 'flex', gap: '8px' }}>
         {!rejecting ? (
@@ -114,7 +114,7 @@ export default function PartnersQueue() {
   return (
     <div>
       <QueueHeader title="Partner mini-apps" count={totalElements} onReload={reload} refreshing={refreshing} />
-      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)', marginBottom: '12px' }}>
         Third-party mini-app submissions built on itunda's Saronite SDK, pending review before appearing in the
         real published catalog.
       </p>
