@@ -60,7 +60,7 @@ import rw.itunda.core.designsystem.theme.IdsComponentTokens
  * not slots, unlike Card) that covers every real shape found in this codebase
  * through `variant`/`size` instead of a new one-off composable per screen.
  */
-enum class IdsButtonVariant { Filled, Tinted }
+enum class IdsButtonVariant { Filled, Tinted, Tertiary, Destructive }
 enum class IdsButtonSize { Large, Medium, Small }
 
 @Composable
@@ -98,6 +98,8 @@ fun IdsButton(
     val (containerColor, contentColor) = when (variant) {
         IdsButtonVariant.Filled -> Ids.colors.brand to IdsColors.White
         IdsButtonVariant.Tinted -> Ids.colors.pressed to Ids.colors.textBrand
+        IdsButtonVariant.Tertiary -> Color.Transparent to Ids.colors.textBrand
+        IdsButtonVariant.Destructive -> Ids.colors.danger to IdsColors.White
     }
     // Real Toss disabled-CTA reference (2026-08-12, direct user screenshot: a bottom
     // "Confirm" bar that's a dim TINT of the same brand blue while its required input
@@ -109,6 +111,8 @@ fun IdsButton(
     val (disabledContainerColor, disabledContentColor) = when (variant) {
         IdsButtonVariant.Filled -> Ids.colors.brand.copy(alpha = 0.35f) to IdsColors.White
         IdsButtonVariant.Tinted -> Ids.colors.divider to Ids.colors.textTertiary
+        IdsButtonVariant.Tertiary -> Color.Transparent to Ids.colors.textTertiary
+        IdsButtonVariant.Destructive -> Ids.colors.danger.copy(alpha = 0.35f) to IdsColors.White
     }
     // Real Toss micro-interaction reference (2026-08-11) -- "시각적 신호가 탭이 발생하는
     //정확한 순간에 햅틱/사용자 액션과 동기화되어야 한다" (visual cues synchronized
