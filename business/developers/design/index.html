@@ -4,787 +4,153 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#7472F4">
-<meta name="description" content="Itunda Design System — foundations, components, patterns and accessibility.">
-<title>Itunda Design System</title>
+<meta name="description" content="Itunda Design System — the current Web IDS visual showcase and component contract.">
+<title>Itunda Design System · Showcase</title>
 <style>
-:root{--brand:#7472F4;--brand-strong:#625FE6;--brand-subtle:#F0EFFF;--ink:#191F28;--muted:#6B7684;--line:#E5E8EB;--soft:#F7F8FA;--bg:#fff;--surface:#fff;--surface-raised:#fff;--success:#12B76A;--warning:#F79009;--error:#F04438;--focus:#7472F4;--success-surface:#EFFBF5;--error-surface:#FFF3F2;--success-strong:#087443;--error-strong:#B42318;--radius-sm:8px;--radius-md:12px;--radius-lg:16px;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-7:32px;--space-8:40px;--space-9:48px;--space-10:64px;--control-height:48px;--elevation-0:none;--elevation-1:0 1px 3px rgba(25,31,40,.06);--elevation-2:0 4px 16px rgba(25,31,40,.08);--elevation-3:0 8px 24px rgba(25,31,40,.12);--motion-fast:140ms;--motion-normal:200ms;--motion-slow:280ms;--motion-ease:cubic-bezier(.2,.8,.2,1);--state-disabled-opacity:.42;--state-loading-opacity:.72;--state-selected-bg:var(--brand-subtle);--state-error-bg:var(--error-surface);--state-success-bg:var(--success-surface);--focus-ring:0 0 0 4px color-mix(in srgb,var(--focus) 18%,transparent);--motion-fast:140ms;--sidebar:248px;--max:1080px}
-[data-theme=dark]{--ink:#F7F8FA;--muted:#AEB5BD;--line:#2A3038;--soft:#15191F;--bg:#090B0F;--surface:#11151A;--surface-raised:#171C22;--brand:#9B98FF;--brand-strong:#B0AEFF;--brand-subtle:#27244A;--focus:#B0AEFF;--success-surface:#10271D;--error-surface:#301917;--success-strong:#5BE39B;--error-strong:#FF9B91;--danger:#FF7A70}@media (prefers-color-scheme:dark){html:not([data-theme="light"]):not([data-theme="dark"]){--ink:#F7F8FA;--muted:#AEB5BD;--line:#2A3038;--soft:#15191F;--bg:#090B0F;--surface:#11151A;--surface-raised:#171C22;--brand:#9B98FF;--brand-strong:#B0AEFF;--brand-subtle:#27244A;--focus:#B0AEFF}}
-*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:84px}body{margin:0;background:var(--bg);color:var(--ink);font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}a{color:inherit;text-decoration:none}button{font:inherit}
-.top{position:sticky;top:0;z-index:50;height:64px;background:color-mix(in srgb,var(--bg) 92%,transparent);border-bottom:1px solid var(--line);backdrop-filter:blur(18px)}.topin{height:100%;max-width:1400px;margin:auto;padding:0 24px;display:flex;align-items:center;gap:24px}.brand{display:flex;align-items:center;gap:8px;font-size:21px;font-weight:850;letter-spacing:-1.2px}.mark{width:25px;height:25px}.toplabel{color:var(--muted);font-size:13px;font-weight:650}.topspace{flex:1}.theme{width:44px;height:44px;border:1px solid var(--line);background:var(--surface);border-radius:50%;cursor:pointer;color:var(--ink)}.menu{display:none;min-width:44px;min-height:44px}
-.layout{display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr);max-width:1400px;margin:auto}.side{position:sticky;top:64px;height:calc(100vh - 64px);overflow:auto;border-right:1px solid var(--line);padding:28px 18px;background:var(--bg)}.side-group{margin:0 0 26px}.side-title{padding:0 10px 8px;font-size:11px;font-weight:850;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.side a{display:block;padding:9px 10px;border-radius:9px;font-size:13px;font-weight:650;color:var(--muted)}.side a:hover,.side a.active{background:var(--soft);color:var(--ink)}.main{min-width:0}.wrap{max-width:var(--max);margin:auto;padding:0 48px}.hero{padding:64px 0 56px;border-bottom:1px solid var(--line)}.kicker{font-size:12px;font-weight:800;letter-spacing:.02em;color:var(--brand-strong)}.hero h1{font-size:clamp(40px,5vw,60px);line-height:1.05;letter-spacing:-.055em;margin:12px 0 16px;max-width:760px}.hero p{max-width:650px;color:var(--muted);font-size:17px;line-height:1.58;margin:0}.hero-actions{display:flex;gap:var(--space-2);flex-wrap:wrap;margin-top:24px}.hero-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:20px}.chip{padding:6px 9px;border-radius:var(--radius-sm);background:var(--soft);border:1px solid var(--line);font-size:12px;font-weight:700;color:var(--muted)}
-.section{padding:64px 0;border-bottom:1px solid var(--line)}.section-head{max-width:680px;margin-bottom:28px}.eyebrow,.section-kicker{font-size:12px;font-weight:800;letter-spacing:.01em;color:var(--brand-strong)}h2{font-size:32px;line-height:1.15;letter-spacing:-.04em;margin:8px 0 10px}h3{font-size:17px;letter-spacing:-.02em;margin:0 0 7px}.section-head p,.note,.lede{margin:0;color:var(--muted);font-size:15px;line-height:1.58}
-.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:var(--space-4)}.panel{grid-column:span 6;border:1px solid var(--line);background:var(--surface);border-radius:var(--radius-lg);padding:var(--space-6);box-shadow:var(--elevation-1)}[data-theme=dark] .panel,[data-theme=dark] .card{box-shadow:0 2px 8px rgba(0,0,0,.28)}.card{padding:var(--space-5);border:1px solid var(--line);background:var(--surface);border-radius:var(--radius-md);box-shadow:var(--elevation-0)}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.card p{margin:8px 0 0;color:var(--muted);font-size:13px;line-height:1.55}.panel.wide{grid-column:span 8}.panel.narrow{grid-column:span 4}.panel.full{grid-column:1/-1}.panel p{color:var(--muted);font-size:13px;line-height:1.6;margin:0 0 18px}.stage{padding:var(--space-5);border:1px solid var(--line);border-radius:var(--radius-md);background:var(--soft);box-shadow:var(--elevation-0)}
-.swatches{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}.swatch{min-height:104px;border-radius:12px;padding:10px;font-size:11px;font-weight:750;display:flex;align-items:flex-end}.s1{background:#7472F4;color:#fff}.s2{background:#625FE6;color:#fff}.s3{background:var(--brand-subtle);color:var(--brand-strong)}.s4{background:#191F28;color:#fff}.s5{background:#F7F8FA;color:#6B7684;border:1px solid #EEF0F2}
-.token{font:12px/1.8 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted)}.token b{color:var(--ink)}.type-xl{font-size:44px;line-height:1;letter-spacing:-.05em;font-weight:850;margin:8px 0 18px}.type-line{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding:12px 0;font-size:13px}.type-line span{color:var(--muted);font-family:ui-monospace,monospace;font-size:11px}.scale{display:grid;gap:8px}.scale-row{display:flex;align-items:center;gap:var(--space-3);font-size:11px;color:var(--muted)}.bar{height:8px;border-radius:99px;background:var(--brand);min-width:4px}
-.button-row{display:flex;gap:var(--space-2);flex-wrap:wrap}.btn{min-height:var(--control-height);padding:10px 18px;border-radius:var(--radius-md);border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:750;letter-spacing:-.01em;cursor:pointer;transition:transform var(--motion-fast) var(--motion-ease),background-color var(--motion-fast) var(--motion-ease),border-color var(--motion-fast) var(--motion-ease),box-shadow var(--motion-fast) var(--motion-ease);white-space:normal;overflow-wrap:anywhere}.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 2px 6px rgba(116,114,244,.18)}.btn.primary:hover:not(:disabled){background:var(--brand-strong);border-color:var(--brand-strong);box-shadow:0 3px 10px rgba(116,114,244,.22)}.btn:focus-visible{outline:0;box-shadow:var(--focus-ring)}.btn.weak{background:var(--soft)}.btn:hover:not(:disabled){border-color:color-mix(in srgb,var(--ink) 18%,var(--line));}.btn:active:not(:disabled){transform:scale(.985)}.btn:disabled{opacity:.42;cursor:not-allowed}.btn[aria-busy="true"]{cursor:progress}.btn:focus-visible,.field:focus-visible,.tab:focus-visible{outline:3px solid color-mix(in srgb,var(--focus) 32%,transparent);outline-offset:2px}.field{width:100%;min-height:52px;border:1px solid var(--line);border-radius:var(--radius-md);padding:0 14px;background:var(--surface);color:var(--ink);font:inherit;line-height:24px;letter-spacing:-.01em;box-sizing:border-box;transition:border-color var(--motion-fast) var(--motion-ease),box-shadow var(--motion-fast) var(--motion-ease)}.field::placeholder{color:color-mix(in srgb,var(--ink) 48%,transparent)}.field:hover:not(:disabled):not(:focus){border-color:color-mix(in srgb,var(--ink) 18%,var(--line))}.field:focus{border-color:var(--brand);box-shadow:var(--focus-ring)}.field[aria-invalid="true"]{border-color:var(--danger);box-shadow:0 0 0 3px color-mix(in srgb,var(--danger) 12%,transparent)}.field:disabled{opacity:.5;cursor:not-allowed}.field:read-only{background:var(--soft)}.demo-label{display:grid;gap:7px;font-size:13px;line-height:20px;font-weight:650;letter-spacing:-.01em}.help{font-size:13px;line-height:18px;color:var(--muted);letter-spacing:-.005em}
-.list{overflow:hidden;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);box-shadow:var(--elevation-1)}.row{display:flex;align-items:center;gap:var(--space-3);padding:12px;border-bottom:1px solid var(--line)}.row:last-child{border:0}.avatar{width:40px;height:40px;border-radius:12px;background:var(--brand-subtle);color:var(--brand-strong);display:grid;place-items:center;font-weight:850}.rowmain{flex:1;min-width:0}.rowtitle{font-size:13px;font-weight:750}.rowmeta{font-size:11px;color:var(--muted);margin-top:2px}.value{font-size:12px;font-weight:750}.alert{padding:13px 14px;border-radius:12px;background:var(--success-surface);color:var(--success-strong);font-size:12px;font-weight:650}.tabs{display:flex;padding:3px;background:var(--soft);border-radius:var(--radius-md);gap:2px;overflow:auto}.tab{flex:1;border:0;background:transparent;padding:10px;border-radius:var(--radius-sm);color:var(--muted);font-size:12px;font-weight:750}.tab.active{background:var(--surface);color:var(--ink);box-shadow:0 2px 8px #10131810}
-.states{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.state{padding:14px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);font-size:11px}.dot{width:7px;height:7px;border-radius:50%;background:var(--brand);display:inline-block;margin-right:5px}.code{padding:18px;border-radius:14px;background:#101318;color:#DDE2E7;overflow:auto;font:11px/1.7 ui-monospace,monospace}.code .accent{color:#8DBBFF}
-.platform{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.platform a{padding:18px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}.platform strong{display:block;margin-bottom:5px}.platform span{font-size:12px;color:var(--muted)}
-.footer{padding:38px 0;color:var(--muted);font-size:12px}
-@media(max-width:900px){.side{padding:12px 18px}.side a{min-height:44px}.wrap{padding:0 24px}.panel.wide,.panel.narrow,.panel{grid-column:1/-1}}
-@media(max-width:640px){.topin{padding:0 16px}.toplabel{display:none}.wrap{padding:0 16px}.hero h1{font-size:40px;line-height:44px}.hero p{font-size:16px;line-height:24px}.section{padding:48px 0}.grid,.grid.three{grid-template-columns:1fr}.panel{padding:20px}.stage{padding:var(--space-4)}.button-row{display:grid;grid-template-columns:1fr}.button-row .btn{width:100%}.swatches{grid-template-columns:repeat(2,1fr)}.states{grid-template-columns:1fr 1fr}.pg-tabs{overflow-x:auto}.pg-tabs button{flex:0 0 120px}}
-@media(max-width:900px){.layout{grid-template-columns:1fr}.side{display:none;position:fixed;left:0;right:0;top:64px;z-index:40;height:calc(100vh - 64px);border-right:0;border-bottom:1px solid var(--line)}.menu{display:inline-flex;width:36px;height:36px;border:1px solid var(--line);background:var(--surface);border-radius:10px;align-items:center;justify-content:center;color:var(--ink)}.wrap{padding:0 22px}.grid,.grid.three{grid-template-columns:1fr}.panel,.panel.wide,.panel.narrow{grid-column:1/-1}.swatches{grid-template-columns:repeat(3,1fr)}.platform{grid-template-columns:1fr}.topin{padding:0 16px}.toplabel{display:none}}
-@media(max-width:520px){.hero{padding-top:48px}.hero h1{font-size:clamp(36px,11vw,48px);line-height:1.08;overflow-wrap:anywhere}.hero p{font-size:16px}.section{padding:48px 0}.wrap{padding:0 16px}.panel,.card{padding:18px}.swatches{grid-template-columns:repeat(2,1fr)}.states{grid-template-columns:1fr 1fr}.do-dont{grid-template-columns:1fr}.button-row{gap:8px}.btn{min-width:0;max-width:100%;overflow-wrap:anywhere}.topin{gap:var(--space-3)}.brand{font-size:19px}.platform{gap:8px}}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn,.field{transition:none!important}.btn:active:not(:disabled){transform:none}}
-.qa-reviewer-matrix{display:grid;gap:12px;margin-top:16px}.qa-matrix-component{display:grid;gap:6px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}.qa-matrix-component[data-contract-drift="true"]{border-color:color-mix(in srgb,var(--warning) 44%,var(--line));background:color-mix(in srgb,var(--warning) 5%,var(--surface))}.qa-matrix-contract{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted)}.qa-matrix-contract span{padding:3px 7px;border-radius:999px;background:var(--soft)}.qa-matrix-contract [data-contract-state="changed"]{color:var(--error-strong);background:var(--error-surface);font-weight:700}.qa-matrix-contract [data-contract-state="stable"]{color:var(--success-strong);background:var(--success-surface);font-weight:650}.qa-matrix-row{display:grid;grid-template-columns:minmax(120px,1fr) auto;gap:10px;align-items:center;font-size:13px}.qa-matrix-row>span{display:flex;gap:5px;flex-wrap:wrap}.qa-matrix-row span span{padding:3px 6px;border-radius:999px;background:var(--soft);color:var(--muted)}.qa-matrix-verified{color:var(--success-strong)!important;background:var(--success-surface)!important}.qa-matrix-stale{color:var(--error-strong)!important;background:var(--error-surface)!important}.qa-platform-status{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0;font-size:12px}.qa-platform-status span{padding:3px 7px;border-radius:999px;background:var(--soft);color:var(--muted)}.qa-platform-status span[data-status="verified"]{color:var(--success-strong);background:var(--success-surface)}.qa-platform-status span[data-status="stale"]{color:var(--error-strong);background:var(--error-surface)}
-.qa-scenario{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;padding:12px 0;border-top:1px solid var(--line)}.qa-scenario label{min-width:0;display:flex;gap:8px;align-items:flex-start}.qa-scenario label input{margin-top:3px}.qa-scenario-open{min-width:64px;min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font-weight:700;cursor:pointer}.qa-scenario-notes{grid-column:1/-1;width:100%;min-height:44px;box-sizing:border-box;resize:vertical;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface);color:var(--ink);font:13px/1.45 inherit}.qa-scenario-notes:focus-visible,.qa-scenario-open:focus-visible{outline:3px solid color-mix(in srgb,var(--focus) 32%,transparent);outline-offset:2px}.qa-scenario-progress{font-size:12px;color:var(--muted);margin-left:auto}.qa-status-note{display:block;margin-top:8px;font-size:13px;color:var(--muted)}
-
-
-
-
-
-/* IDS QA evidence UX */
-.qa-scenario-checks{display:grid;gap:var(--space-2)}
-.qa-scenario-checks label{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:var(--space-3);min-height:52px;padding:var(--space-2) var(--space-3);border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface)}
-.qa-scenario-checks label:has(input:checked){background:var(--state-success-bg);border-color:color-mix(in srgb,var(--success) 32%,var(--line))}
-.qa-scenario-checks input{width:20px;height:20px}
-.qa-scenario-checks .qa-scenario-status{font-size:12px;line-height:18px;font-weight:650;color:var(--muted)}
-.qa-scenario-checks textarea{grid-column:2/-1;width:100%;min-height:72px;resize:vertical;border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px;background:var(--surface);color:var(--ink);font:13px/20px inherit}
-.qa-scenario-checks textarea:focus-visible{outline:0;box-shadow:var(--focus-ring)}
-@media(max-width:640px){.qa-scenario-checks label{grid-template-columns:44px minmax(0,1fr);align-items:start}.qa-scenario-checks .qa-scenario-status{grid-column:2}.qa-scenario-checks textarea{grid-column:2}}
-/* IDS visual QA matrix */
-.qa-matrix{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-3)}
-.qa-matrix>div{min-width:0}
-.qa-matrix label{display:grid;gap:var(--space-1);font-size:13px;line-height:18px;font-weight:650;color:var(--ink)}
-.qa-matrix select,.qa-matrix button{min-height:44px}
-.qa-matrix .qa-note{grid-column:1/-1;font-size:13px;line-height:20px;color:var(--muted)}
-@media(max-width:700px){.qa-matrix{grid-template-columns:1fr 1fr}}
-@media(max-width:480px){.qa-matrix{grid-template-columns:1fr}}
-/* IDS documentation contract language */
-.api-card,.spec-flow,.ids-guide-contract{min-width:0}
-.api-card code,.spec-flow code,.ids-guide-contract code{overflow-wrap:anywhere;word-break:break-word}
-.api-card h3,.spec-flow h3,.ids-guide-contract h3{font-size:17px;line-height:24px;letter-spacing:-.02em}
-.api-card p,.spec-flow p,.ids-guide-contract p{font-size:13px;line-height:20px}
-/* IDS content resilience */
-.btn{max-width:100%;overflow-wrap:anywhere;word-break:normal;text-align:center}
-.field,.pg-select{min-width:0}
-.field{padding-top:12px;padding-bottom:12px}
-.demo-label,.help,.control-option,.switch-state,.pg-tabs button{overflow-wrap:anywhere;word-break:normal}
-.help{max-width:65ch}
-.pg-tabs button{white-space:normal;text-align:center}
-.ids-empty-state h3,.ids-empty-state p{overflow-wrap:anywhere;word-break:normal}
-/* IDS shared state language */
-.btn:disabled{opacity:var(--state-disabled-opacity)}
-.field:disabled,.pg-select:disabled{opacity:var(--state-disabled-opacity)}
-.pg-tabs button[aria-selected="true"]{background:var(--state-selected-bg);color:var(--ink)}
-.pg-tabs button[disabled]{opacity:var(--state-disabled-opacity)}
-.control-option input:disabled{opacity:var(--state-disabled-opacity)}
-.btn[aria-busy="true"]{opacity:var(--state-loading-opacity)}
-.switch-state[aria-busy="true"]{color:var(--brand-strong)}
-/* IDS accessibility interaction foundation */
-button,a,input,select,textarea{touch-action:manipulation}
-button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:0;box-shadow:var(--focus-ring)}
-button[disabled],input[disabled],select[disabled],textarea[disabled]{cursor:not-allowed}
-@media (pointer:coarse){
-  button,a,input,select,textarea{min-height:44px}
+:root{
+  --brand:#7472F4;--brand-strong:#625FE6;--brand-soft:#F0EFFF;
+  --bg:#fff;--surface:#fff;--surface-subtle:#F7F8FA;--surface-raised:#fff;
+  --ink:#191F28;--secondary:#4E5968;--tertiary:#6B7684;--disabled:#B0B8C1;
+  --line:#E5E8EB;--line-strong:#D1D6DB;--success:#04C065;--error:#F04452;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.08);--shadow-md:0 4px 16px rgba(0,0,0,.04);
+  --radius-sm:8px;--radius-md:12px;--radius-lg:16px;--radius-xl:20px;--pill:999px;
+  --focus:0 0 0 3px rgba(116,114,244,.28);--sidebar:248px;--max:1180px;
 }
-@media (forced-colors:active){
-  button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid CanvasText;outline-offset:2px;box-shadow:none}
+[data-theme="dark"]{
+  --bg:#090B0F;--surface:#11151A;--surface-subtle:#15191F;--surface-raised:#171C22;
+  --ink:#F7F8FA;--secondary:#D1D6DB;--tertiary:#AEB5BD;--disabled:#6B7684;
+  --line:#2A3038;--line-strong:#3A424D;--brand:#9B98FF;--brand-strong:#B0AEFF;
+  --brand-soft:#27244A;--focus:0 0 0 3px rgba(176,174,255,.3);
 }
-.ids-governance-status{position:fixed;right:16px;bottom:16px;z-index:100;min-height:44px;display:flex;align-items:center;padding:10px 14px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);color:var(--muted);font-size:12px;line-height:18px;font-weight:650;box-shadow:var(--elevation-2)}.ids-governance-status[data-status="pass"]{color:var(--success-strong);border-color:color-mix(in srgb,var(--success) 32%,var(--line));background:var(--success-surface)}.ids-governance-status[data-status="fail"]{color:var(--error-strong);border-color:color-mix(in srgb,var(--error) 32%,var(--line));background:var(--error-surface)}@media(max-width:640px){.ids-governance-status{left:16px;right:16px;bottom:12px;justify-content:center}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:76px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}
+.top{position:sticky;top:0;z-index:50;height:64px;background:color-mix(in srgb,var(--bg) 92%,transparent);border-bottom:1px solid var(--line);backdrop-filter:blur(18px)}
+.topin{height:100%;max-width:1400px;margin:auto;padding:0 24px;display:flex;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:9px;font-size:20px;font-weight:750;letter-spacing:-.8px}
+.mark{width:26px;height:26px}.crumb{font-size:13px;color:var(--tertiary)}
+.spacer{flex:1}.theme{width:40px;height:40px;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--ink);cursor:pointer}
+.layout{display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr);max-width:1400px;margin:auto}
+.side{position:sticky;top:64px;height:calc(100vh - 64px);overflow:auto;border-right:1px solid var(--line);padding:24px 14px;background:var(--bg)}
+.side-group{margin-bottom:24px}.side-title{padding:0 10px 7px;color:var(--tertiary);font-size:10px;font-weight:750;letter-spacing:.09em;text-transform:uppercase}
+.side a{display:block;padding:9px 10px;border-radius:10px;color:var(--secondary);font-size:13px;font-weight:600}
+.side a:hover,.side a.active{background:var(--surface-subtle);color:var(--ink)}
+.main{min-width:0}.wrap{max-width:var(--max);margin:auto;padding:0 34px}
+.hero{padding:78px 0 70px;border-bottom:1px solid var(--line)}
+.kicker,.eyebrow{color:var(--brand-strong);font-size:11px;font-weight:750;letter-spacing:.1em;text-transform:uppercase}
+.hero h1{max-width:820px;margin:14px 0 18px;font-size:clamp(48px,7vw,76px);line-height:.98;letter-spacing:-.055em}
+.hero p{max-width:680px;margin:0;color:var(--secondary);font-size:18px;line-height:1.6}
+.hero-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:26px}
+.chip{display:inline-flex;align-items:center;min-height:30px;padding:0 10px;border:1px solid var(--line);border-radius:var(--pill);background:var(--surface-subtle);color:var(--secondary);font-size:12px;font-weight:650}
+.section{padding:64px 0;border-bottom:1px solid var(--line)}.head{max-width:720px;margin-bottom:28px}
+.head h2{margin:8px 0 10px;font-size:36px;line-height:1.08;letter-spacing:-.045em}.head p{margin:0;color:var(--secondary);font-size:15px;line-height:1.65}
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px}.card{grid-column:span 6;min-width:0;border:1px solid var(--line);border-radius:var(--radius-xl);padding:22px;background:var(--surface)}
+.card.wide{grid-column:span 8}.card.third{grid-column:span 4}.card.full{grid-column:1/-1}
+.card h3{margin:0 0 7px;font-size:17px;letter-spacing:-.02em}.card>p{margin:0 0 16px;color:var(--secondary);font-size:13px;line-height:1.6}
+.stage{padding:22px;border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--surface-subtle)}
+.token{font:12px/1.8 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--secondary)}.token b{color:var(--ink)}
+.swatches{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.swatch{min-height:112px;padding:11px;border-radius:var(--radius-md);display:flex;align-items:flex-end;font:11px/1.35 ui-monospace,monospace;font-weight:700}
+.swatch.brand{background:#7472F4;color:#fff}.swatch.strong{background:#625FE6;color:#fff}.swatch.soft{background:#F0EFFF;color:#625FE6}.swatch.ink{background:#191F28;color:#fff}.swatch.surface{background:#F7F8FA;color:#4E5968;border:1px solid #E5E8EB}
+.type-display{font-size:46px;line-height:1;letter-spacing:-.05em;font-weight:700;margin:4px 0 20px}.type-row{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line);font-size:13px}.type-row span{color:var(--tertiary);font:11px ui-monospace,monospace}
+.scale{display:grid;gap:9px}.scale-row{display:flex;align-items:center;gap:12px;color:var(--secondary);font-size:12px}.bar{height:8px;border-radius:var(--pill);background:var(--brand);display:block}
+.button-row{display:flex;gap:8px;flex-wrap:wrap}
+.ids-btn{position:relative;min-height:44px;min-width:44px;padding:0 16px;border:0;border-radius:var(--radius-md);background:var(--brand);color:#fff;font-weight:650;cursor:pointer;transition:background 140ms ease,transform 140ms ease,opacity 140ms ease}
+.ids-btn.secondary{background:var(--surface);color:var(--ink);border:1px solid var(--line-strong)}.ids-btn.tertiary{background:transparent;color:var(--brand-strong)}.ids-btn.danger{background:var(--error)}
+.ids-btn.sm{min-height:40px;font-size:14px}.ids-btn.lg{min-height:52px;font-size:17px}.ids-btn:active{transform:scale(.985)}.ids-btn:hover:not(:disabled){filter:brightness(.98)}.ids-btn:focus-visible{outline:0;box-shadow:var(--focus)}.ids-btn:disabled{opacity:.48;cursor:not-allowed}.ids-btn.loading{opacity:.78}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;vertical-align:-3px;margin-right:7px;animation:spin 700ms linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.field{display:grid;gap:7px}.field label{font-size:13px;font-weight:650}.input,.select{width:100%;min-height:48px;border:1px solid var(--line-strong);border-radius:var(--radius-md);padding:0 14px;background:var(--surface);color:var(--ink);outline:0}.input:focus,.select:focus{box-shadow:var(--focus);border-color:var(--brand)}.help{color:var(--tertiary);font-size:12px;line-height:18px}.error{color:var(--error);font-size:12px}.input.invalid{border-color:var(--error)}
+.control-list{display:grid;gap:12px}.check,.switch{position:relative;display:flex;align-items:center;gap:11px;min-height:48px;color:var(--ink);cursor:pointer}.check input,.switch input{position:absolute;opacity:0}.box,.radio{width:22px;height:22px;flex:0 0 22px;border:2px solid var(--line-strong);display:grid;place-items:center}.box{border-radius:6px}.radio{border-radius:50%}.check input:checked+.box{background:var(--brand);border-color:var(--brand)}.check input:checked+.box:after{content:"";width:9px;height:5px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg) translateY(-1px)}.check input:indeterminate+.box{background:var(--brand);border-color:var(--brand)}
+.switch-track{width:50px;height:30px;padding:3px;border-radius:var(--pill);background:#D1D6DB;transition:background 140ms ease}.switch-thumb{display:block;width:24px;height:24px;border-radius:50%;background:var(--surface);box-shadow:var(--shadow-sm);transition:transform 140ms ease}.switch input:checked+.switch-track{background:var(--brand)}.switch input:checked+.switch-track .switch-thumb{transform:translateX(20px)}
+.control-copy{display:grid;gap:2px}.control-copy small{color:var(--tertiary);font-size:12px}
+.tabs{display:flex;gap:4px;padding:4px;background:var(--surface-subtle);border-radius:var(--pill);overflow:auto}.tab{min-height:44px;flex:1;min-width:96px;padding:0 15px;border:0;border-radius:var(--pill);background:transparent;color:var(--secondary);font-weight:650;cursor:pointer}.tab[aria-selected=true]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm)}.tab:focus-visible{outline:0;box-shadow:var(--focus)}
+.list{overflow:hidden;border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--surface)}.row{display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid var(--line)}.row:last-child{border:0}.avatar{width:40px;height:40px;border-radius:12px;background:var(--brand-soft);color:var(--brand-strong);display:grid;place-items:center;font-weight:750}.grow{flex:1;min-width:0}.title{font-size:13px;font-weight:650}.meta{margin-top:2px;color:var(--tertiary);font-size:11px}.amount{font-size:13px;font-weight:650}
+.alert{padding:14px;border-radius:var(--radius-md);background:color-mix(in srgb,var(--success) 10%,var(--surface));color:var(--success);font-size:13px;font-weight:650}.alert.error{background:color-mix(in srgb,var(--error) 9%,var(--surface));color:var(--error)}
+.state-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.state{padding:16px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-subtle);font-size:12px}.state b{display:block;margin-bottom:4px}.state span{color:var(--tertiary)}
+.platform{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.platform div{padding:18px;border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--surface)}.platform strong{display:block;margin-bottom:5px}.platform span{color:var(--tertiary);font-size:12px;line-height:1.5}
+.footer{padding:38px 0;color:var(--tertiary);font-size:12px}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.side{display:none}.wrap{padding:0 20px}.card,.card.wide,.card.third{grid-column:1/-1}.swatches{grid-template-columns:repeat(3,1fr)}.platform{grid-template-columns:1fr}}
+@media(max-width:560px){.hero{padding-top:56px}.hero h1{font-size:48px}.section{padding:52px 0}.swatches{grid-template-columns:repeat(2,1fr)}.state-grid{grid-template-columns:1fr 1fr}.head h2{font-size:30px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 </style>
-<style id="ids3-layer">
-.catalog-toolbar{display:flex;gap:10px;align-items:center;margin:0 0 20px;position:sticky;top:64px;z-index:15;padding:12px 0;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(12px)}
-.catalog-search{height:44px;flex:1;min-width:220px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:0 14px;color:var(--ink);font:inherit}
-.catalog-filter{height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:0 12px;color:var(--ink);font:inherit}
-.component-guide{border-top:1px solid var(--line);padding-top:24px;margin-top:28px}
-.spec-map{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:18px 0 26px}
-.spec-step{padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--soft);font-size:12px;font-weight:750}
-.spec-step span{display:block;color:var(--muted);font-weight:500;margin-top:3px}
-.example-frame{border:1px solid var(--line);border-radius:14px;background:var(--soft);padding:28px;margin:18px 0}
-.spec-table{width:100%;border-collapse:collapse;font-size:13px}.spec-table th,.spec-table td{padding:11px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}.spec-table th{color:var(--muted);font-weight:700;width:28%}
-.do-dont{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-top:18px}.do,.dont{padding:var(--space-4);border-radius:12px;border:1px solid var(--line)}.do{background:var(--success-surface)}.dont{background:var(--error-surface)}.do strong{color:var(--success-strong)}.dont strong{color:var(--error-strong)}
-@media(max-width:700px){.catalog-toolbar{top:64px;flex-direction:column;align-items:stretch}.catalog-search{min-width:0;width:100%}.catalog-filter{width:100%;min-height:44px}.spec-map{grid-template-columns:1fr 1fr}.do-dont{grid-template-columns:1fr}}
-</style><style>.spec-flow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:24px 0}.spec-flow span{padding:10px 14px;border:1px solid var(--line,#e9ebef);border-radius:999px;background:var(--surface,#fff);font-weight:700}.spec-flow i{font-style:normal;color:var(--muted,#6b7280)}@media(max-width:700px){.spec-flow i{display:none}.spec-flow{gap:8px}}</style>
-<style id="ids-playground-css">
-.playground-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}.playground-toolbar label{display:grid;gap:5px;font-size:11px;font-weight:750;color:var(--muted)}.playground-toolbar select,.playground-toolbar input{height:42px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);padding:0 11px}.playground-stage{display:grid;grid-template-columns:1.3fr .7fr;gap:var(--space-4)}.playground-preview{min-height:330px;padding:28px;border:1px solid var(--line);border-radius:16px;background:var(--surface);display:grid;place-items:center}.playground-card{width:min(100%,440px)}.playground-meta{display:grid;gap:8px}.playground-meta .token{padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--soft)}.playground-toggle{display:flex;align-items:center;gap:8px;min-height:44px}.pg-switch{width:46px;height:26px;border-radius:99px;border:0;background:var(--line);padding:3px;cursor:pointer}.pg-switch i{display:block;width:20px;height:20px;border-radius:50%;background:var(--surface);transition:transform 140ms ease}.pg-switch.on{background:var(--brand)}.pg-switch.on i{transform:translateX(20px)}@media(max-width:760px){.playground-stage{grid-template-columns:1fr}}
-@media(prefers-reduced-motion:reduce){.pg-switch i{transition:none}}
-</style>
-<style id="ids-lab-v2-css">
-.lab-statebar{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0}.lab-statebar button{min-height:40px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font-weight:700;cursor:pointer}.lab-statebar button[aria-pressed="true"]{background:var(--brand-subtle);border-color:var(--brand);color:var(--brand-strong)}.lab-a11y{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}.lab-check{padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}.lab-check strong{display:block;font-size:12px}.lab-check span{display:block;margin-top:5px;color:var(--muted);font-size:11px}.lab-check.pass strong{color:#087443}.lab-check.warn strong{color:#b54708}@media(max-width:700px){.lab-a11y{grid-template-columns:1fr}}
-</style>
-<style id="ids-lab-v3-css">
-.lab-inspector{margin-top:18px;padding:var(--space-4);border:1px solid var(--line);border-radius:14px;background:var(--soft)}.lab-inspector-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.lab-inspector code{display:block;padding:9px;border:1px solid var(--line);border-radius:9px;background:var(--surface);font:11px ui-monospace,monospace;color:var(--muted)}.control-stack{display:grid;gap:var(--space-3)}.control-option{display:flex;align-items:center;gap:var(--space-3);min-height:44px;padding:2px 0;font-size:15px;line-height:20px;font-weight:650;letter-spacing:-.01em;cursor:pointer}.control-option input{width:20px;height:20px;min-width:20px;margin:0;accent-color:var(--brand)}.control-option input:focus-visible{outline:3px solid color-mix(in srgb,var(--focus) 32%,transparent);outline-offset:3px}.control-option input:disabled{opacity:.5;cursor:not-allowed}.control-option:has(input:disabled){cursor:not-allowed}.control-option:has(input[aria-invalid="true"]){color:var(--danger-strong)}.control-option input[type="radio"]{border-radius:50%}.switch-state{margin-left:auto;min-width:44px;text-align:right;color:var(--muted);font-size:13px;line-height:18px;font-weight:650}.control-option:has(input[role="switch"][aria-invalid="true"]){color:var(--danger-strong)}.control-option:has(input[role="switch"][aria-busy="true"]){cursor:progress}.pg-select{min-height:var(--control-height);height:auto;width:100%;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);color:var(--ink);padding:11px 38px 11px 14px;font:inherit;line-height:24px;box-sizing:border-box;outline:none;transition:border-color var(--motion-fast) var(--motion-ease),box-shadow var(--motion-fast) var(--motion-ease)}.pg-select:hover:not(:disabled){border-color:color-mix(in srgb,var(--ink) 18%,var(--line))}.pg-select:focus-visible{border-color:var(--brand);box-shadow:var(--focus-ring);outline:0}.pg-select:disabled{opacity:.5;cursor:not-allowed}.pg-select[aria-invalid="true"]{border-color:var(--danger)}.pg-tabs{display:flex;gap:3px;padding:3px;border-radius:12px;background:var(--soft);overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin}.pg-tabs button{flex:1 0 120px;min-height:44px;border:0;border-radius:9px;background:transparent;color:var(--muted);font-size:15px;line-height:20px;font-weight:650;letter-spacing:-.01em;white-space:nowrap;cursor:pointer;transition:background-color 140ms ease,color 140ms ease,box-shadow 140ms ease}.pg-tabs button:hover:not(:disabled){color:var(--ink)}.pg-tabs button:focus-visible{outline:0;box-shadow:var(--focus-ring)}.pg-tabs button.active{background:var(--surface);color:var(--ink);box-shadow:0 2px 8px #10131810}.pg-tabs button:disabled{opacity:.42;cursor:not-allowed}@media(max-width:700px){.lab-inspector-grid{grid-template-columns:1fr 1fr}}
-
-.ids-empty-state{display:grid;justify-items:center;text-align:center;gap:var(--space-3);padding:32px 20px;min-height:220px;align-content:center}.ids-empty-state__icon{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;background:var(--brand-subtle);color:var(--brand-strong);font-size:24px;font-weight:700}.ids-empty-state__title{margin:0;max-width:560px;font-size:20px;line-height:28px;letter-spacing:-.02em}.ids-empty-state__message{margin:0;max-width:560px;color:var(--muted);font-size:14px;line-height:22px;overflow-wrap:anywhere}.ids-empty-state .btn{margin-top:4px;min-width:120px}@media(max-width:700px){.ids-empty-state{padding:28px 16px;min-height:200px}.ids-empty-state__title{font-size:18px;line-height:26px}}
-</style>
-<style id="ids-guide-maturity-css">
-.component-item{position:relative;overflow:hidden}
-.ids-guide-contract{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:var(--space-3);margin-top:16px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--soft)}
-.ids-guide-contract strong{font-size:12px}.ids-guide-contract p{margin:5px 0 0;color:var(--muted);font-size:12px;line-height:1.5}.ids-guide-contract__side{display:grid;gap:6px}.ids-guide-contract__side span{font-size:11px;color:var(--muted)}.ids-guide-contract__side code{font:11px ui-monospace,monospace;color:var(--brand-strong)}
-.ids-guide-checklist{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}.ids-guide-checklist span{padding:4px 7px;border-radius:7px;background:var(--surface);border:1px solid var(--line);font-size:10px;font-weight:700;color:var(--muted)}
-.ids-guide-status{display:inline-flex;align-items:center;gap:6px;margin:0 0 8px;padding:5px 8px;border-radius:999px;background:var(--brand-subtle);color:var(--brand-strong);font-size:10px;font-weight:800}
-@media(max-width:700px){.ids-guide-contract{grid-template-columns:1fr}}
-</style>
-
-<style id="ids-content-stress-css">
-/* Long-content QA: examples must remain usable with localization and worst-case copy. */
-.button-row .btn{white-space:normal;text-align:center;overflow-wrap:anywhere;min-width:0}
-.field{min-width:0}
-.spec-table{overflow-wrap:anywhere}
-.rowtitle,.rowmeta,.value,.token,.note,.lede,.section-head p{overflow-wrap:anywhere}
-</style>
-
-<style id="ids-a11y-qa-css">
-/* Showcase-level interaction contract: keyboard focus must remain visible in every theme. */
-button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:3px solid color-mix(in srgb,var(--focus) 42%,transparent);outline-offset:3px}
-button:disabled,[aria-disabled="true"]{cursor:not-allowed}
-@media (forced-colors:active){button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid Highlight;outline-offset:3px}}
-</style>
-
-<style id="ids-qa-component-css">.qa-component-review{margin-top:4px;border-top:1px solid var(--line);padding-top:10px}.qa-component-review summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:700}.qa-component-checks{display:grid;gap:2px;padding:4px 0 8px}.qa-component-checks label{display:flex;align-items:flex-start;gap:8px;min-height:44px;padding:8px 0;line-height:1.4}.qa-component-checks input{width:20px;height:20px;flex:0 0 auto;margin-top:2px;accent-color:var(--brand)}</style><style id="ids-qa-worksheet-css">.qa-review-grid{display:grid;gap:8px;margin-top:8px;padding-top:12px;border-top:1px solid var(--line)}.qa-review-grid>span{color:var(--muted);font-size:12px;line-height:1.5}.qa-review-grid label{display:flex;align-items:flex-start;gap:8px;min-height:44px;padding:8px 0;line-height:1.4}.qa-review-grid input{width:20px;height:20px;flex:0 0 auto;margin-top:2px;accent-color:var(--brand)}
-</style>
-<style id="ids-qa-status-css">.qa-status{display:inline-flex!important;width:max-content;margin-top:6px;padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:var(--soft);font-size:11px!important;font-weight:700}.qa-status[data-status="in-review"]{border-color:var(--brand);color:var(--brand-strong)}.qa-status[data-status="verified"]{border-color:var(--success);color:var(--success-strong)}.qa-status-controls{display:flex;flex-wrap:wrap;gap:6px;padding:6px 0 10px}.qa-status-controls button{min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font-weight:700;cursor:pointer}.qa-status-controls button[aria-pressed="true"]{background:var(--brand-subtle);border-color:var(--brand);color:var(--brand-strong)}</style><style id="ids-qa-status-guard-css">.qa-status-note{display:block;margin:4px 0 8px;padding:8px 10px;border:1px solid var(--danger);border-radius:9px;color:var(--danger-strong);background:var(--danger-subtle);font-size:12px;line-height:1.45}</style><style id="ids-qa-scenario-css">.qa-scenarios{display:grid;gap:8px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--soft)}.qa-scenario{padding:9px;border:1px solid var(--line);border-radius:9px;background:var(--surface)}.qa-scenario code{display:block;margin-top:3px;color:var(--brand-strong);font:10px ui-monospace,monospace}.qa-scenario p{margin:5px 0;color:var(--muted);font-size:11px;line-height:1.45}.qa-scenario-checks{display:grid;gap:2px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}.qa-scenario-checks label{display:flex;gap:8px;align-items:flex-start;min-height:44px;padding:8px 0;font-size:12px;line-height:1.4}</style></head>
-<div data-ids-governance-status class="ids-governance-status" aria-live="polite"></div>
+</head>
 <body>
 <header class="top"><div class="topin">
-<button class="menu" id="menu" aria-label="Open navigation" aria-expanded="false">☰</button>
-<a class="brand" href="../"><img class="mark" src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Cpath fill=%27%237472F4%27 d=%27M32 4c8 0 13 8 12 16 8-1 16 4 16 12s-8 13-16 12c1 8-4 16-12 16s-13-8-12-16C12 45 4 40 4 32s8-13 16-12C19 12 24 4 32 4Z%27/%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%279%27 fill=%27white%27/%3E%3C/svg%3E" alt="">itunda.</a>
-<span class="toplabel">Design System</span><span class="topspace"></span>
-<button class="theme" id="theme" aria-label="Toggle dark mode">☾</button>
+<a class="brand" href="./"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><path fill="var(--brand)" d="M32 4c8 0 13 8 12 16 8-1 16 4 16 12s-8 13-16 12c1 8-4 16-12 16s-13-8-12-16C12 45 4 40 4 32s8-13 16-12C19 12 24 4 32 4Z"/><circle cx="32" cy="32" r="9" fill="white"/></svg>itunda.</a>
+<span class="crumb">/ Design System / Showcase</span><span class="spacer"></span><button class="theme" id="theme" aria-label="Toggle dark mode">☾</button>
 </div></header>
 <div class="layout">
-<aside class="side" id="side">
-<div class="side-group"><div class="side-title">Overview</div><a href="#overview" class="active">Introduction</a><a href="#principles">Principles</a><a href="./components/">Component catalog</a><a href="./patterns/">Product patterns</a><a href="#existing">Existing implementations</a></div>
-<div class="side-group"><div class="side-title">Foundations</div><a href="#color">Color</a><a href="#type">Typography</a><a href="#spacing">Spacing</a><a href="#shape">Shape & elevation</a><a href="#motion">Motion</a><a href="#tokens">Semantic tokens</a><a href="#catalog">Component catalog</a></div>
-<div class="side-group"><div class="side-title">Components</div><a href="#actions">Actions</a><a href="#forms">Forms</a><a href="#lists">Lists & tabs</a><a href="#feedback">Feedback</a><a href="#states">States</a></div>
-<div class="side-group"><div class="side-title">Quality</div><a href="#accessibility">Accessibility</a><a href="#platforms">Platforms</a><a href="./itundaface/">ItundaFace</a><a href="./sandbox/">Sandbox</a></div>
+<aside class="side">
+<div class="side-group"><div class="side-title">Overview</div><a class="active" href="#overview">Introduction</a><a href="#foundations">Foundations</a><a href="#components">Components</a></div>
+<div class="side-group"><div class="side-title">Foundations</div><a href="#color">Color</a><a href="#type">Typography</a><a href="#spacing">Spacing</a><a href="#motion">Motion</a></div>
+<div class="side-group"><div class="side-title">Components</div><a href="#actions">Actions</a><a href="#forms">Forms</a><a href="#selection">Selection</a><a href="#navigation">Navigation</a><a href="#feedback">Feedback</a><a href="#states">States</a></div>
+<div class="side-group"><div class="side-title">Quality</div><a href="#accessibility">Accessibility</a><a href="#platforms">Platforms</a><a href="../components/">Component catalog →</a><a href="../patterns/">Patterns →</a><a href="https://itunda-rw.github.io/itundaface/">ItundaFace →</a></div>
 </aside>
-<main class="main">
-<div class="wrap">
+<main class="main"><div class="wrap">
 <section class="hero" id="overview">
-<div class="kicker">Itunda · IDS v3.0</div>
-<h1>One system.<br>Every Itunda surface.</h1>
-<p>A shared language for product teams—not a gallery. IDS defines tokens, anatomy, states, content behavior and platform rules so the same decision can be implemented consistently across Itunda.</p>
-<div class="hero-actions"><a class="btn primary" href="#actions">Explore components</a><a class="btn" href="#color">Read the tokens</a></div>
-<div class="hero-meta"><span class="chip">Semantic tokens</span><span class="chip">Components + states</span><span class="chip">Dark mode</span><span class="chip">Accessibility</span><span class="chip">Web · Android · iOS</span></div>
+<div class="kicker">Itunda · IDS 3.0</div>
+<h1>The current Itunda visual language.</h1>
+<p>This showcase is rendered around the same updated semantic design direction used by the Web IDS: Itunda Indigo, restrained surfaces, native-feeling controls, explicit states, accessible defaults and responsive content.</p>
+<div class="hero-meta"><span class="chip">Itunda Indigo #7472F4</span><span class="chip">Semantic tokens</span><span class="chip">Native state model</span><span class="chip">Dark mode</span><span class="chip">Accessibility</span><span class="chip">Web · Android · iOS</span></div>
 </section>
 
-<section class="section" id="existing"><div class="section-head"><div class="eyebrow">00 · Existing Itunda implementations</div><h2>We keep the designs already built.</h2><p>IDS v3.0 is an extraction and normalization layer over the real Itunda repository—not a replacement for the Android, iOS and Web work already shipped in the codebase.</p></div><div class="grid"><div class="panel"><h3>Android</h3><p>IdsColors, semantic colors, layout, typography, theme, IdsButton, IdsListRow, SDUI and product screens are part of the source inventory.</p><a class="chip" href="./components/">View component contract →</a></div><div class="panel"><h3>iOS</h3><p>IDS.swift, IdsPalette, IdsTypeScale, shared Components, EmptyState, ErrorCard, FixedBottomCTA and payment/banking surfaces remain first-class sources.</p><a class="chip" href="./patterns/">View product patterns →</a></div><div class="panel wide"><h3>Cross-platform rule</h3><p>Shared semantics and behavior are the contract. Platform-specific layout and interaction details stay native to Compose, SwiftUI and Web.</p></div></div></section>
-<section class="section" id="principles"><div class="section-head"><div class="eyebrow">01 · Principles</div><h2>Quiet by default.<br>Precise when it matters.</h2><p>The system is built around a small set of decisions that should survive every product surface: clear hierarchy, restrained decoration, tactile feedback, accessible defaults and predictable behavior.</p></div><div class="grid"><div class="panel"><h3>Clarity</h3><p>One dominant action, readable hierarchy and no decoration that competes with the task.</p></div><div class="panel"><h3>Consistency</h3><p>Shared tokens and components prevent every product team from inventing its own version of the same interaction.</p></div><div class="panel"><h3>Care</h3><p>Long text, larger text, dark mode, reduced motion and screen readers are component requirements, not cleanup work.</p></div><div class="panel"><h3>Product first</h3><p>IDS provides the hard decisions so product teams can spend their time solving Rwanda's real customer problems.</p></div></div></section>
-
-<section class="section" id="color"><div class="section-head"><div class="eyebrow">02 · Foundations / Color</div><h2>Identity outside.<br>Semantics inside.</h2><p>Itunda Indigo is the product identity. Products consume semantic roles so the same component can adapt to light, dark and contextual surfaces without rewriting its design.</p></div><div class="grid"><div class="panel wide"><h3>Brand palette</h3><div class="swatches"><div class="swatch s1">500<br>#7472F4</div><div class="swatch s2">600<br>#625FE6</div><div class="swatch s3">100<br>#F0EFFF</div><div class="swatch s4">Ink<br>#191F28</div><div class="swatch s5">Soft<br>#F7F8FA</div></div></div><div class="panel narrow"><h3>Semantic roles</h3><div class="token"><b>color.brand</b><br>color.text<br>color.text-muted<br>color.surface<br>color.border<br>color.success<br>color.error</div></div></div></section>
-
-<section class="section" id="type"><div class="section-head"><div class="eyebrow">03 · Foundations / Typography</div><h2>Strong hierarchy.<br>Compact information.</h2><p>Display typography creates confidence; body typography keeps financial and service information dense without becoming noisy.</p></div><div class="grid"><div class="panel wide"><div class="type-xl">RWF 248,000</div><div class="type-line"><b>Display</b><span>48–88px · 850 · -4%</span></div><div class="type-line"><b>Heading</b><span>30–48px · 850 · 1.12</span></div><div class="type-line"><b>Body</b><span>18px · 400 · 1.5</span></div><div class="type-line"><b>Caption</b><span>14px · 500 · 1.45</span></div></div><div class="panel narrow"><h3>Writing rhythm</h3><p>Keep sentences short. Put the important noun or amount first. Explain the consequence before the implementation detail.</p><div class="chip">Readable at large text</div></div></div></section>
-
-<section class="section" id="spacing"><div class="section-head"><div class="eyebrow">04 · Foundations / Spacing</div><h2>A measurable rhythm.</h2><p>Every gap comes from the same 4px base. Component density is intentional instead of arbitrary.</p></div><div class="panel full"><div class="scale"><div class="scale-row"><i class="bar" style="width:4px"></i>4 · micro</div><div class="scale-row"><i class="bar" style="width:8px"></i>8 · control</div><div class="scale-row"><i class="bar" style="width:16px"></i>16 · content</div><div class="scale-row"><i class="bar" style="width:24px"></i>24 · group</div><div class="scale-row"><i class="bar" style="width:40px"></i>40 · section</div><div class="scale-row"><i class="bar" style="width:64px"></i>64 · major</div></div></div></section>
-
-<section class="section" id="shape"><div class="section-head"><div class="eyebrow">05 · Foundations / Shape</div><h2>Soft, not bubbly.</h2><p>Rounded surfaces communicate touchability without turning every object into a floating card. Elevation is reserved for things that actually sit above the page.</p></div><div class="grid"><div class="panel"><h3>Shape</h3><div class="token">8px · micro<br>12px · control<br>16px · compact surface<br>20px · content surface<br>28px · large surface<br>999px · pill</div></div><div class="panel"><h3>Elevation</h3><div class="token">shadow-sm · separation<br>shadow-md · raised content<br>shadow-lg · modal / sheet<br>no shadow · default content</div></div></div></section>
-
-<section class="section" id="motion"><div class="section-head"><div class="eyebrow">06 · Foundations / Motion</div><h2>Immediate, then settled.</h2><p>Motion should communicate cause and effect. Fast feedback is immediate; larger surfaces settle with a softer easing curve. Reduced motion removes decorative animation.</p></div><div class="grid"><div class="panel"><h3>140ms · Fast</h3><p>Press, focus, color and micro-feedback.</p></div><div class="panel"><h3>220ms · Normal</h3><p>Surface transitions and component state changes.</p></div><div class="panel"><h3>420ms · Slow</h3><p>Large surface movement where spatial context matters.</p></div><div class="panel"><h3>Reduced motion</h3><p>Transitions and loading animations are disabled when the OS asks for less motion.</p></div></div></section>
-
-<section id="component-contract" class="section">
-  <div class="section-kicker">07 · Component contract</div>
-  <h2>Every component has a contract.</h2>
-  <p class="lede">Structure first, then variants, anatomy, states, content behavior, accessibility, responsive rules, and platform notes.</p>
-  <div class="grid three">
-    <article class="card"><strong>01 · Structure</strong><p>Define anatomy and hierarchy before styling details.</p></article>
-    <article class="card"><strong>02 · Variants & states</strong><p>Default, hover, pressed, focused, disabled, loading, error and empty cases.</p></article>
-    <article class="card"><strong>03 · Edge cases</strong><p>Long text, large text, dark mode, narrow screens, localization and worst-case content.</p></article>
-    <article class="card"><strong>04 · Accessibility</strong><p>Keyboard, screen reader, focus, semantics, contrast and reduced motion belong to the component.</p></article>
-    <article class="card"><strong>05 · Interaction</strong><p>Shared motion, touch targets and feedback replace one-off screen behavior.</p></article>
-    <article class="card"><strong>06 · Platforms</strong><p>Web, Android and iOS share intent while respecting platform conventions.</p></article>
-  </div>
-</section>
-<section class="section" id="tokens">
-<div class="section-head"><div class="eyebrow">07 · Semantic tokens</div><h2>Design with roles, not hex values.</h2><p>Components consume semantic roles. Palette values are implementation details; product meaning stays stable across themes and platforms.</p></div>
+<section class="section" id="foundations">
+<div class="head"><div class="eyebrow">01 · Foundations</div><h2>Small decisions, repeated consistently.</h2><p>The showcase uses the current IDS token language rather than the older standalone blue palette. Brand color is an identity role; components consume semantic roles.</p></div>
 <div class="grid">
-<div class="panel"><h3>Content</h3><div class="token"><b>text.primary</b> · highest emphasis<br><b>text.secondary</b> · supporting content<br><b>text.tertiary</b> · metadata<br><b>text.disabled</b> · unavailable content</div></div>
-<div class="panel"><h3>Surface</h3><div class="token"><b>surface.default</b> · page/content<br><b>surface.subtle</b> · grouping<br><b>surface.raised</b> · elevated content<br><b>border.default</b> · separation</div></div>
-<div class="panel"><h3>Intent</h3><div class="token"><b>brand.default</b> · primary action<br><b>success</b> · completed state<br><b>warning</b> · attention<br><b>error</b> · recovery required</div></div>
-<div class="panel"><h3>Interaction</h3><div class="token"><b>focus</b> · keyboard visibility<br><b>pressed</b> · immediate feedback<br><b>disabled</b> · unavailable action</div></div>
-</div></section>
-
-<section class="section" id="catalog">
-<div class="section-head"><div class="eyebrow">09 · Component catalog</div><h2>Components are documented as systems.</h2><p>Start with the largest structural choice, then move through anatomy, variants, states, content constraints and accessibility. This mirrors the progressive reading model used by mature design systems.</p></div>
-<div class="catalog-toolbar"><input class="catalog-search" id="componentSearch" type="search" placeholder="Search components… e.g. button, sheet, field" aria-label="Search components"><select class="catalog-filter" id="componentFilter" aria-label="Filter components"><option>All</option><option>Actions</option><option>Forms</option><option>Navigation</option><option>Feedback</option><option>Layout</option></select></div>
-<p class="lede">Interaction contract: shared intent, native implementation. Press, focus, disabled and loading states must be consistent across Web, Android and iOS.</p><div class="grid" id="componentGrid">
-<div class="panel component-item" data-name="button actions"><h3>Button</h3><p class="note">Primary actions, secondary actions, destructive actions and loading.</p><div class="component-guide"><div class="spec-map"><div class="spec-step">01 Structure<span>label + optional icon</span></div><div class="spec-step">02 Variants<span>primary / secondary / danger</span></div><div class="spec-step">03 States<span>default / pressed / disabled / loading</span></div><div class="spec-step">04 Quality<span>focus / contrast / motion</span></div></div><div class="example-frame"><div class="button-row"><button class="btn primary">Continue</button><button class="btn">Secondary</button><button class="btn" disabled>Disabled</button><button class="btn primary">계속 진행하기 / Continue with Itunda</button></div></div><table class="spec-table"><tr><th>Use</th><td>One clear action per decision point. Prefer a single primary action.</td></tr><tr><th>Content</th><td>Use concise verbs. Keep labels stable while loading; provide progress separately.</td></tr><tr><th>Accessibility</th><td>Keyboard focus must remain visible; icon-only actions require an accessible name.</td></tr></table><div class="do-dont"><div class="do"><strong>✓ Do</strong><p>Use hierarchy to make the next action obvious.</p></div><div class="dont"><strong>× Don't</strong><p>Use several competing primary buttons.</p></div></div></div></div>
-<div class="panel component-item" data-name="field forms"><h3>Text field</h3><p class="note">Input with label, value, supporting text, validation and recovery.</p><div class="component-guide"><div class="spec-map"><div class="spec-step">01 Structure<span>label / field / help</span></div><div class="spec-step">02 Variants<span>text / password / search</span></div><div class="spec-step">03 States<span>empty / filled / focus / disabled / error / success</span></div><div class="spec-step">04 Quality<span>long text / large text / screen reader / IME</span></div></div><div class="example-frame"><label style="display:block;font-size:12px;font-weight:750;margin-bottom:7px">Phone number</label><input class="field" value="+250 78 000 0000" aria-describedby="field-help"><p id="field-help" class="note" style="margin-top:7px">We'll use this for verification.</p></div><table class="spec-table"><tr><th>Use</th><td>Keep labels visible for fields where the value alone is ambiguous.</td></tr><tr><th>Validation</th><td>Explain what went wrong and how to recover; don't rely on color alone.</td></tr><tr><th>Accessibility</th><td>Associate the label and supporting/error text programmatically.</td></tr></table></div></div>
-<div class="panel component-item" data-name="bottom sheet navigation"><h3>Bottom sheet</h3><p class="note">Contextual choices that temporarily sit above the current task.</p><div class="component-guide"><div class="spec-map"><div class="spec-step">01 Position<span>anchored to viewport bottom</span></div><div class="spec-step">02 Structure<span>handle / title / content</span></div><div class="spec-step">03 States<span>open / closing / blocked</span></div><div class="spec-step">04 Quality<span>focus trap / escape / motion</span></div></div><div class="example-frame"><div style="max-width:420px;margin:auto;background:var(--surface);border:1px solid var(--line);border-radius:18px 18px 10px 10px;padding:18px"><div style="width:36px;height:4px;border-radius:99px;background:var(--line);margin:0 auto 18px"></div><h3>Choose a payment method</h3><p class="note">Select where you want to pay from.</p></div></div><table class="spec-table"><tr><th>Use</th><td>Use when the current context should remain visible while choosing.</td></tr><tr><th>Position</th><td>Bottom-aligned on mobile; responsive behavior is defined by platform.</td></tr><tr><th>Accessibility</th><td>Move focus into the sheet, provide a clear close action, and restore focus afterward.</td></tr></table></div></div>
-<div class="panel component-item" data-name="toast feedback"><h3>Toast</h3><p class="note">Short-lived feedback for actions that don't require a decision.</p><div class="component-guide"><div class="spec-map"><div class="spec-step">01 Structure<span>message / optional action</span></div><div class="spec-step">02 Variants<span>informational / success / error</span></div><div class="spec-step">03 States<span>enter / visible / exit</span></div><div class="spec-step">04 Quality<span>long text / reduced motion</span></div></div><div class="example-frame"><div class="alert">Saved successfully · <b>View</b></div></div><table class="spec-table"><tr><th>Use</th><td>Confirm completion without interrupting the user's next action.</td></tr><tr><th>Content</th><td>State the result first. Optional action should be concise and reversible.</td></tr><tr><th>Motion</th><td>Respect reduced-motion preferences and never communicate meaning through animation alone.</td></tr></table></div></div>
-</div><div class="panel component-item" data-name="empty state feedback"><h3>Empty state</h3><p class="note">A calm, informative response when a collection has no content yet.</p><div class="component-guide"><div class="spec-map"><div class="spec-step">01 Structure<span>icon / title / message / action</span></div><div class="spec-step">02 Variants<span>informational / actionable</span></div><div class="spec-step">03 States<span>default / message / action</span></div><div class="spec-step">04 Quality<span>localization / large text / a11y</span></div></div><div class="example-frame"><div class="ids-empty-state"><div class="ids-empty-state__icon" aria-hidden="true">○</div><h2 class="ids-empty-state__title">No products yet</h2><p class="ids-empty-state__message">Add your first product to start building your catalog.</p><button class="btn">Add product</button></div></div><table class="spec-table"><tr><th>Use</th><td>Explain what is missing and, when useful, provide the next action.</td></tr><tr><th>Content</th><td>Keep the title meaningful. Supporting copy may wrap across multiple lines and locales.</td></tr><tr><th>Accessibility</th><td>Use meaningful text, accessible action names, and a 44px+ action target.</td></tr></table><div class="do-dont"><div class="do"><strong>✓ Do</strong><p>Tell the user what is empty and what they can do next.</p></div><div class="dont"><strong>× Don't</strong><p>Present a normal empty result as an error.</p></div></div><div class="panel component-item" data-name="select forms"><h3>Select</h3><p class="note">Choose one value from a constrained set with clear open, focus and error behavior.</p><div class="component-guide"><div class="spec-map"><div class="spec-step">01 Structure<span>label + value + indicator</span></div><div class="spec-step">02 States<span>default / focus / disabled / error</span></div><div class="spec-step">03 Content<span>long labels / localization</span></div><div class="spec-step">04 Quality<span>keyboard / expanded / target</span></div></div><div class="example-frame"><button class="btn" aria-haspopup="listbox">Choose a payment method⌄</button></div><table class="spec-table"><tr><th>Use</th><td>Use when the available choices are known and bounded.</td></tr><tr><th>Content</th><td>Preserve the full selected value when possible; never rely on color alone.</td></tr><tr><th>Accessibility</th><td>Expose label, expanded state and keyboard navigation.</td></tr></table></div></div>
-<div class="panel component-item" data-name="checkbox forms"><h3>Checkbox</h3><p class="note">Independent binary or multi-select choice with explicit checked state.</p><div class="component-guide"><div class="spec-map"><div class="spec-step">01 Structure<span>control + label</span></div><div class="spec-step">02 States<span>unchecked / checked / focus / error</span></div><div class="spec-step">03 Content<span>long labels / localization</span></div><div class="spec-step">04 Quality<span>state semantics / target</span></div></div><div class="example-frame"><label><input type="checkbox" checked> Remember this choice</label></div><table class="spec-table"><tr><th>Use</th><td>Use for independent choices where multiple options may be selected.</td></tr><tr><th>Content</th><td>Write labels that remain understandable without surrounding visual context.</td></tr><tr><th>Accessibility</th><td>Expose checked, disabled and error states programmatically.</td></tr></table></div></div>
-<div class="panel component-item" data-name="radio forms"><h3>Radio</h3><p class="note">Mutually exclusive choice within a clearly labelled group.</p><div class="component-guide"><div class="spec-map"><div class="spec-step">01 Structure<span>group + options</span></div><div class="spec-step">02 States<span>unchecked / checked / focus / error</span></div><div class="spec-step">03 Content<span>long labels / localization</span></div><div class="spec-step">04 Quality<span>group semantics / keyboard</span></div></div><div class="example-frame"><label><input type="radio" name="demo" checked> Standard delivery</label></div><table class="spec-table"><tr><th>Use</th><td>Use when exactly one option should be selected from a small set.</td></tr><tr><th>Content</th><td>Keep options parallel and make the group question explicit.</td></tr><tr><th>Accessibility</th><td>Expose group context and selected state to assistive technology.</td></tr></table></div></div>
-<div class="panel component-item" data-name="switch forms"><h3>Switch</h3><p class="note">Immediate on/off setting where changing the value takes effect directly.</p><div class="component-guide"><div class="spec-map"><div class="spec-step">01 Structure<span>track + thumb + label</span></div><div class="spec-step">02 States<span>off / on / focus / disabled</span></div><div class="spec-step">03 Content<span>long labels / localization</span></div><div class="spec-step">04 Quality<span>state semantics / target</span></div></div><div class="example-frame"><label><input type="checkbox" role="switch" checked> Notifications</label></div><table class="spec-table"><tr><th>Use</th><td>Use for settings that take effect immediately rather than requiring submission.</td></tr><tr><th>Content</th><td>Label the setting by its resulting behavior, not the visual position of the control.</td></tr><tr><th>Accessibility</th><td>Expose on/off state and keep the target comfortably tappable.</td></tr></table></div></div>
-<div class="panel component-item" data-name="tabs navigation"><h3>Tabs</h3><p class="note">Switch between related views while preserving the user's place in the current context.</p><div class="component-guide"><div class="spec-map"><div class="spec-step">01 Structure<span>tablist + tabs + panel</span></div><div class="spec-step">02 States<span>selected / focus / disabled</span></div><div class="spec-step">03 Content<span>short labels / localization</span></div><div class="spec-step">04 Quality<span>arrow keys / selection / target</span></div></div><div class="example-frame"><div class="tabs"><button class="tab active" role="tab" aria-selected="true">Overview</button><button class="tab" role="tab" aria-selected="false">Activity</button><button class="tab" role="tab" aria-selected="false">Settings</button></div></div><table class="spec-table"><tr><th>Use</th><td>Use for peer views with a shared context, not as primary navigation.</td></tr><tr><th>Content</th><td>Keep labels concise enough to remain scannable at larger text sizes.</td></tr><tr><th>Accessibility</th><td>Use tablist/tab semantics and predictable keyboard navigation.</td></tr></table></div></div></div></div></section><section class="section" id="spec-reading">
-<div class="section-kicker">SPEC READING ORDER</div>
-<h2>Read every component from structure to edge cases.</h2>
-<p class="lede">The IDS guide now follows a fixed reading order so designers and developers can find the same decisions in the same place.</p>
-<div class="spec-flow">
-<span>Structure</span><i>→</i><span>Variants</span><i>→</i><span>Anatomy</span><i>→</i><span>States</span><i>→</i><span>Content</span><i>→</i><span>Accessibility</span>
-</div>
-<div class="grid two">
-<article class="card"><strong>Worst-case first</strong><p>Start with the most information-rich state to expose the complete component map before studying individual variants.</p></article>
-<article class="card"><strong>One source of truth</strong><p>Token values, component behavior and platform guidance should describe the same contract rather than diverging per screen.</p></article>
+<article class="card wide" id="color"><h3>Color roles</h3><p>Indigo is the current Itunda brand role. Neutrals carry most of the interface; semantic colors communicate intent.</p><div class="swatches"><div class="swatch brand">brand<br>#7472F4</div><div class="swatch strong">strong<br>#625FE6</div><div class="swatch soft">brand soft<br>#F0EFFF</div><div class="swatch ink">text<br>#191F28</div><div class="swatch surface">surface<br>#F7F8FA</div></div></article>
+<article class="card" id="type"><h3>Typography</h3><p>Pretendard-first typography with explicit scale and line-height.</p><div class="type-display">RWF 248,000</div><div class="type-row"><b>Display</b><span>24 / 32 · 700</span></div><div class="type-row"><b>Body</b><span>16 / 24 · 400</span></div><div class="type-row"><b>Label</b><span>15 / 20 · 600</span></div><div class="type-row"><b>Caption</b><span>13 / 18 · 400</span></div></article>
+<article class="card" id="spacing"><h3>Spacing</h3><p>4px base rhythm, from micro gaps to major sections.</p><div class="scale"><div class="scale-row"><i class="bar" style="width:4px"></i>4 · micro</div><div class="scale-row"><i class="bar" style="width:8px"></i>8 · control</div><div class="scale-row"><i class="bar" style="width:16px"></i>16 · content</div><div class="scale-row"><i class="bar" style="width:24px"></i>24 · group</div><div class="scale-row"><i class="bar" style="width:40px"></i>40 · section</div><div class="scale-row"><i class="bar" style="width:64px"></i>64 · major</div></div></article>
+<article class="card" id="motion"><h3>Motion</h3><p>Motion communicates cause and effect and respects reduced-motion preferences.</p><div class="token"><b>fast</b> 140ms<br><b>normal</b> 220ms<br><b>slow</b> 420ms<br><b>reduced</b> 0ms</div></article>
 </div>
 </section>
-<section class="section" id="actions"><div class="section-head"><div class="eyebrow">10 · Components / Actions</div><h2>Action hierarchy you can feel.</h2><p>Primary, secondary and weak actions have distinct jobs. Pressed and focus states belong to the component contract.</p></div><div class="panel full"><div class="stage"><div class="button-row"><button class="btn primary">Continue</button><button class="btn">Secondary</button><button class="btn weak">Weak</button><button class="btn" disabled>Disabled</button></div></div><div style="height:14px"></div><div class="code"><span class="accent">button</span> · primary / secondary / weak / disabled / loading<br><span class="accent">focus-visible</span> · 3px focus ring + offset<br><span class="accent">press</span> · scale(.985) + immediate feedback</div></div></section>
 
-<section class="section" id="forms"><div class="section-head"><div class="eyebrow">11 · Components / Forms</div><h2>Inputs that explain themselves.</h2><p>Labels, help, errors and focus behavior are part of the field. Never rely on placeholder text as the label.</p></div><div class="grid"><div class="panel"><label class="demo-label">Phone number<input class="field" value="+250 788 123 456"><span class="help">Used to identify your Itunda account.</span></label></div><div class="panel"><label class="demo-label">Amount<input class="field" placeholder="RWF 0"><span class="help">Enter the amount in Rwandan francs.</span></label></div></div></section>
-
-<section class="section" id="lists"><div class="section-head"><div class="eyebrow">12 · Components / Lists</div><h2>Dense information,<br>without dense feeling.</h2><p>Lists align identity, primary content, metadata and value so scanning remains fast.</p></div><div class="grid"><div class="panel wide"><div class="list"><div class="row"><div class="avatar">R</div><div class="rowmain"><div class="rowtitle">Rwanda Utilities</div><div class="rowmeta">Today · 14:20</div></div><div class="value">− RWF 8,500</div></div><div class="row"><div class="avatar">M</div><div class="rowmain"><div class="rowtitle">Marketplace</div><div class="rowmeta">Yesterday</div></div><div class="value">RWF 42,000</div></div></div></div><div class="panel narrow"><div class="tabs"><button class="tab active">Overview</button><button class="tab">Activity</button><button class="tab">Settings</button></div><p style="margin-top:14px">Tabs preserve the same hierarchy on web and native surfaces.</p></div></div></section>
-
-<section class="section" id="feedback"><div class="section-head"><div class="eyebrow">13 · Components / Feedback</div><h2>State without noise.</h2><p>Success, warning, error and informational feedback share a common anatomy and semantic color language.</p></div><div class="grid"><div class="panel"><div class="alert">Identity verified. Your account is ready.</div></div><div class="panel"><span class="chip">Verified</span> <span style="font-size:12px;font-weight:750;color:#16845F">● Completed</span></div></div></section>
-
-<section class="section" id="states"><div class="section-head"><div class="eyebrow">14 · Components / States</div><h2>Design the worst case first.</h2><p>Every component must account for loading, empty, error and disabled states. A component is not complete when only the happy path looks good.</p></div><div class="states"><div class="state"><span class="dot"></span>Default</div><div class="state"><span class="dot"></span>Loading</div><div class="state"><span class="dot"></span>Empty</div><div class="state"><span class="dot"></span>Error</div></div></section>
-
-<section class="section" id="quality-gates">
-<div class="section-kicker">15 · Quality gates</div>
-<h2>Ship the edge cases, not just the happy path.</h2>
-<p class="lede">A component is ready when its behavior remains coherent under real product conditions.</p>
-<div class="grid three">
-<article class="card"><strong>Long content</strong><p>Wrap, truncate or scroll intentionally. Never let content silently collide.</p></article>
-<article class="card"><strong>Large text</strong><p>Layouts must survive accessibility text scaling without losing hierarchy.</p></article>
-<article class="card"><strong>Keyboard & screen reader</strong><p>Focus order, labels, roles and state announcements are part of the component.</p></article>
-<article class="card"><strong>Dark mode</strong><p>Semantic tokens change surfaces and emphasis without changing meaning.</p></article>
-<article class="card"><strong>Reduced motion</strong><p>Every non-essential transition has a reduced-motion behavior.</p></article>
-<article class="card"><strong>Touch targets</strong><p>Interactive controls maintain a practical minimum target size across platforms.</p></article>
-</div></section>
-<section class="section" id="accessibility"><div class="section-head"><div class="eyebrow">16 · Quality / Accessibility</div><h2>Accessibility is a component feature.</h2><p>IDS requires keyboard focus, larger text, screen-reader semantics, sufficient touch targets, reduced motion and useful labels. The same contract should hold across VoiceOver and TalkBack.</p></div><div class="grid"><div class="panel"><h3>Large text</h3><p>Content reflows instead of clipping or hiding actions when text grows.</p></div><div class="panel"><h3>Screen readers</h3><p>Interactive controls expose purpose, state and focus order instead of visual appearance alone.</p></div><div class="panel"><h3>Reduced motion</h3><p>Decorative movement disappears while functional state changes remain understandable.</p></div><div class="panel"><h3>Contrast & targets</h3><p>Text remains readable and interactive targets remain comfortable on small screens.</p></div></div></section>
-
-<section class="section" id="platforms"><div class="section-head"><div class="eyebrow">17 · Platforms</div><h2>One language.<br>Native implementation.</h2><p>Web CSS, Jetpack Compose and SwiftUI share the same design decisions. Platform conventions can change implementation, but not the intended experience.</p></div><div class="platform"><a href="https://github.com/itunda-rw/itunda-design-system"><strong>Web</strong><span>CSS tokens + components</span></a><a href="https://github.com/itunda-rw/itunda-design-system"><strong>Android</strong><span>Jetpack Compose theme + components</span></a><a href="https://github.com/itunda-rw/itunda-design-system"><strong>iOS</strong><span>SwiftUI theme + components</span></a></div></section>
-
-<section class="section"><div class="section-head"><div class="eyebrow">18 · Visual language</div><h2>ItundaFace belongs here.</h2><p>Icons, expressive glyphs, illustrations and product states should share the same visual grammar as the UI components.</p></div><div class="platform"><a href="./itundaface/"><strong>ItundaFace</strong><span>2D + 3D expressive language</span></a><a href="./sandbox/"><strong>Sandbox</strong><span>Interactive component experiments</span></a><a href="https://github.com/itunda-rw/itunda-design-system"><strong>Source</strong><span>Canonical design-system repository</span></a></div></section>
-
-
-<section class="section" id="lab">
-<div class="section-head"><div class="eyebrow">IDS 3.0 · Component laboratory</div><h2>Make edge cases first-class.</h2><p>The playground now behaves like a small component lab: choose a component, inspect its states, stress its content, and check the contract before implementation.</p></div>
-<div class="lab-statebar" id="labStateBar" role="toolbar" aria-label="Component state" aria-live="polite"></div>
-<div class="playground-stage"><div class="playground-preview" id="labPreview"><div class="playground-card"><button class="btn primary">Continue</button><p class="note" style="margin-top:12px">Default component state.</p></div></div><div class="playground-meta"><div class="token"><b>Edge-case order</b><br>Structure → variants → states → content → accessibility</div><div class="token"><b>Native rule</b><br>Shared semantics; native Web, Compose and SwiftUI interaction.</div><div class="token"><b>Stress inputs</b><br>Long localization · large text · dark mode · reduced motion</div></div></div>
-<div class="lab-a11y"><div class="lab-check pass"><strong>✓ Target size</strong><span>Minimum 44px / 44dp / 44pt</span></div><div class="lab-check pass"><strong>✓ Semantic state</strong><span>State is represented beyond color alone</span></div><div class="lab-check pass"><strong>✓ Motion fallback</strong><span>Reduced-motion behavior is defined</span></div></div>
-</section>
-<section class="section" id="playground">
-<div class="section-head"><div class="eyebrow">IDS 3.0 · Playground</div><h2>Test the system, not a screenshot.</h2><p>Change the component, state, theme, content length and text scale. The playground makes edge cases visible before they reach a product screen.</p></div>
-<div class="playground-toolbar">
-<label>Component<select id="pgComponent"><option value="button">Button</option><option value="field">Text field</option><option value="empty">Empty state</option><option value="tabs">Tabs</option></select></label>
-<label>State<select id="pgState"><option>Default</option><option>Loading</option><option>Disabled</option><option>Error</option><option>Success</option></select></label>
-<label>Content<select id="pgContent"><option value="short">Short</option><option value="long">Long / localized</option></select></label>
-<label>Text scale<select id="pgScale"><option value="1">100%</option><option value="1.25">125%</option><option value="1.5">150%</option></select></label>
-<button class="btn" id="pgTheme" type="button">Toggle theme</button>
-</div>
-<div class="playground-stage">
-<div class="playground-preview" id="pgPreview"></div>
-<div class="playground-meta"><div class="token"><b>Contract</b><br><span id="pgContract">Semantic intent · native behavior · accessible state</span></div><div class="token"><b>Quality checks</b><br>44px+ target · wrapping · focus · reduced motion</div><div class="token"><b>Platform</b><br>Web · Android · iOS share the semantic contract.</div></div>
+<section class="section" id="components">
+<div class="head"><div class="eyebrow">02 · Components</div><h2>Real component states, not static mockups.</h2><p>These examples intentionally show the updated component contract: hierarchy, state, validation, selection and accessibility behavior.</p></div>
+<div class="grid">
+<article class="card wide" id="actions"><h3>Buttons</h3><p>Primary, secondary, tertiary and destructive actions with consistent 44px+ touch targets.</p><div class="stage"><div class="button-row"><button class="ids-btn">Continue</button><button class="ids-btn secondary">Secondary</button><button class="ids-btn tertiary">Tertiary</button><button class="ids-btn danger">Delete</button><button class="ids-btn" disabled>Disabled</button><button class="ids-btn loading"><span class="spinner" aria-hidden="true"></span>Updating</button></div></div></article>
+<article class="card" id="forms"><h3>Text fields</h3><p>Labels remain visible; help and error content are part of the field anatomy.</p><div class="field"><label for="phone">Phone number</label><input id="phone" class="input" value="+250 788 123 456"><span class="help">Used to identify your Itunda account.</span></div><div style="height:14px"></div><div class="field"><label for="amount">Amount</label><input id="amount" class="input invalid" value="RWF -500" aria-invalid="true"><span class="error">Enter an amount greater than zero.</span></div></article>
+<article class="card" id="selection"><h3>Selection controls</h3><p>Checkbox, radio and switch expose state without depending on color alone.</p><div class="control-list">
+<label class="check"><input type="checkbox" checked><span class="box" aria-hidden="true"></span><span class="control-copy"><b>Remember this device</b><small>Stay signed in on this phone.</small></span></label>
+<label class="check"><input type="checkbox"><span class="box" aria-hidden="true"></span><span class="control-copy"><b>Send notifications</b><small>Receive account activity alerts.</small></span></label>
+<label class="switch"><input id="demo-switch" type="checkbox" checked><span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span><span class="control-copy"><b>Biometric unlock</b><small>Use device security to unlock Itunda.</small></span></label>
+</div></article>
+<article class="card" id="navigation"><h3>Tabs</h3><p>Selected state is explicit and keyboard-friendly.</p><div class="tabs" role="tablist" aria-label="Account views"><button class="tab" role="tab" aria-selected="true">Overview</button><button class="tab" role="tab" aria-selected="false">Activity</button><button class="tab" role="tab" aria-selected="false">Settings</button></div><div class="stage" style="margin-top:14px"><b>Overview</b><p style="margin:6px 0 0;color:var(--secondary);font-size:13px">Your current balance and account summary.</p></div></article>
+<article class="card wide" id="feedback"><h3>Feedback</h3><p>Feedback is actionable and semantically distinct.</p><div class="grid" style="gap:10px"><div class="card" style="grid-column:span 6;padding:16px"><div class="alert">Identity verified. Your account is ready.</div></div><div class="card" style="grid-column:span 6;padding:16px"><div class="alert error">We couldn't verify the phone number. Try again.</div></div></div></article>
+<article class="card full" id="states"><h3>State matrix</h3><p>Component completeness includes the non-happy paths.</p><div class="state-grid"><div class="state"><b>Default</b><span>Ready for interaction</span></div><div class="state"><b>Loading</b><span>Progress without layout jump</span></div><div class="state"><b>Disabled</b><span>Unavailable but understandable</span></div><div class="state"><b>Error</b><span>Recovery is explained</span></div></div></article>
+<article class="card full">
+<h3>List rows and financial information</h3><p>Primary content, metadata and values align for quick scanning.</p>
+<div class="list"><div class="row"><div class="avatar">M</div><div class="grow"><div class="title">Mobile money</div><div class="meta">Today · 14:20</div></div><div class="amount">− RWF 8,500</div></div><div class="row"><div class="avatar">C</div><div class="grow"><div class="title">Card payment</div><div class="meta">Yesterday · 09:10</div></div><div class="amount">RWF 42,000</div></div><div class="row"><div class="avatar">R</div><div class="grow"><div class="title">Rwanda Utilities</div><div class="meta">Sep 25 · Electricity</div></div><div class="amount">− RWF 18,300</div></div></div>
+</article>
 </div>
 </section>
-<footer class="footer">© 2026 Itunda Design System · IDS v3.0 · The code is the source of truth.</footer>
+
+<section class="section" id="accessibility">
+<div class="head"><div class="eyebrow">03 · Quality</div><h2>Visual quality includes behavior.</h2><p>The current showcase makes the same requirements visible to designers and developers: semantics, focus, content resilience, reduced motion and platform parity.</p></div>
+<div class="grid">
+<article class="card"><h3>Accessibility</h3><div class="token">native semantics<br>accessible names<br>descriptions + errors<br>44px minimum target<br>keyboard focus<br>screen-reader state<br>large-text resilience</div></article>
+<article class="card"><h3>Content resilience</h3><div class="token">long labels wrap<br>localized strings expand<br>amounts remain readable<br>validation stays visible<br>large text preserves hierarchy</div></article>
+<article class="card full" id="platforms"><h3>One contract, native implementations</h3><p>The visual language is shared, while platform behavior stays native.</p><div class="platform"><div><strong>Web</strong><span>React + Web IDS<br>semantic HTML · keyboard · responsive layout</span></div><div><strong>Android</strong><span>Kotlin + Jetpack Compose<br>TalkBack · font scaling · native motion</span></div><div><strong>iOS</strong><span>Swift + SwiftUI<br>VoiceOver · Dynamic Type · native controls</span></div></div></article>
+</div>
+</section>
+
+<section class="section">
+<div class="head"><div class="eyebrow">04 · Product language</div><h2>Quiet surfaces. Clear actions.</h2><p>IDS should disappear into the product: the customer notices what they need to do, not the design system underneath it.</p></div>
+<div class="stage"><div style="max-width:560px"><div class="chip">Neighborhood Marketplace</div><h3 style="font-size:28px;letter-spacing:-.04em;margin:14px 0 8px">Find what you need nearby.</h3><p style="color:var(--secondary);line-height:1.6;margin:0 0 18px">Simple hierarchy, familiar controls and clear next actions — with Itunda Indigo reserved for moments that need attention.</p><div class="button-row"><button class="ids-btn">Explore marketplace</button><button class="ids-btn secondary">View saved items</button></div></div></div>
+</section>
+
+<div class="footer">Itunda Design System · IDS 3.0 · current Web showcase · semantic brand role #7472F4</div>
 </div></main></div>
 <script>
-
-// IDS governance guard: showcase must remain aligned with the canonical 8-component contract.
-const IDS_CANONICAL_COMPONENTS=['button','field','select','checkbox','radio','switch','tabs','empty'];
-const IDS_SHOWCASE_COMPONENT_MAP={button:'Button',field:'TextField',select:'Select',checkbox:'Checkbox',radio:'Radio',switch:'Switch',tabs:'Tabs',empty:'EmptyState'};
-function assertIdsShowcaseGovernance(manifest){
-  const report={ok:true,version:manifest?.version||null,missing:[],extra:[],invalid:[]};
-  if(!manifest||manifest.version!=='3.0.0') report.ok=false;
-  const components=manifest?.components||{};
-  const keys=Object.keys(components);
-  report.missing=IDS_CANONICAL_COMPONENTS.filter(k=>!keys.includes(k));
-  report.extra=keys.filter(k=>!IDS_CANONICAL_COMPONENTS.includes(k));
-  const required=['states','content','a11y','motion','platforms','guide','validation','qa'];
-  for(const key of IDS_CANONICAL_COMPONENTS){
-    const component=components[key];
-    if(!component) continue;
-    for(const field of required){
-      if(component[field]===undefined||component[field]===null||component[field]===''){
-        report.invalid.push(`${key}.${field}`);
-      }
-    }
-    if(!component.qa?.scenarios||typeof component.qa.scenarios!=='object') report.invalid.push(key+'.qa.scenarios');
-    if(component.validation?.required){
-      for(const dimension of ['states','content','a11y','motion','platforms']){
-        if(component.validation.required[dimension]!==true) report.invalid.push(`${key}.validation.required.${dimension}`);
-      }
-    }else report.invalid.push(`${key}.validation.required`);
-    for(const guideField of ['name','purpose','worstCase','tokens','checklist']){
-      if(component.guide?.[guideField]===undefined) report.invalid.push(`${key}.guide.${guideField}`);
-    }
-  }
-  if(report.missing.length||report.invalid.length) report.ok=false;
-  if(report.extra.length) console.warn('IDS contract contains non-canonical components:',report.extra);
-  return report;
-}
-function renderIdsGovernanceStatus(report){
-  const el=document.querySelector('[data-ids-governance-status]');
-  if(!el)return;
-  el.dataset.status=report.ok?'pass':'fail';
-  el.textContent=report.ok?'Contract governance: PASS':`Contract governance: FAIL — ${report.missing.join(', ')||report.invalid.slice(0,3).join(', ')||'manifest version drift'}`;
-  el.setAttribute('role',report.ok?'status':'alert');
-}
+const root=document.documentElement;
+const saved=localStorage.getItem('itunda-ids-theme');
+if(saved==='dark')root.dataset.theme='dark';
+document.getElementById('theme').addEventListener('click',()=>{
+  root.dataset.theme=root.dataset.theme==='dark'?'light':'dark';
+  localStorage.setItem('itunda-ids-theme',root.dataset.theme);
+});
+document.querySelectorAll('.side a[href^="#"]').forEach(a=>a.addEventListener('click',()=>{
+  document.querySelectorAll('.side a').forEach(x=>x.classList.remove('active'));a.classList.add('active');
+}));
 </script>
-
-const root=document.documentElement,theme=document.getElementById('theme');
-root.style.colorScheme=root.getAttribute('data-theme')||'light dark';
-theme.addEventListener('click',()=>{const dark=root.getAttribute('data-theme')==='dark';root.setAttribute('data-theme',dark?'light':'dark');theme.textContent=dark?'☾':'☀';});
-document.querySelectorAll('.side a').forEach(a=>a.addEventListener('click',()=>document.querySelectorAll('.side a').forEach(x=>x.classList.toggle('active',x===a))));
-document.getElementById('menu')?.addEventListener('click',()=>{const s=document.getElementById('side'),m=document.getElementById('menu');const open=s.style.display==='block';s.style.display=open?'none':'block';m.setAttribute('aria-expanded',String(!open));});
-</script>
-<script id="ids3-catalog">
-const cs=document.getElementById('componentSearch'),cf=document.getElementById('componentFilter');
-function filterComponents(){const q=(cs?.value||'').toLowerCase(),f=(cf?.value||'All').toLowerCase();document.querySelectorAll('.component-item').forEach(el=>{const text=(el.dataset.name||'')+' '+el.innerText.toLowerCase();el.style.display=(!q||text.includes(q))&& (f==='all'||text.includes(f))?'':'none';});}
-cs?.addEventListener('input',filterComponents);cf?.addEventListener('change',filterComponents);
-</script><section id="quality" class="section">
-  <div class="section-kicker">IDS 3.0 · Quality contract</div>
-  <h2>From component library to system infrastructure</h2>
-  <p class="lede">A component is complete only when its behavior is predictable across content, states, themes, accessibility, and platforms.</p>
-  <div class="grid three">
-    <article class="card"><h3>Coverage</h3><p>Structure, variants, states, long content, large text, dark mode, loading and error behavior.</p></article>
-    <article class="card"><h3>Accessibility</h3><p>Keyboard focus, screen readers, semantic roles, reduced motion and minimum touch targets are part of the component contract.</p></article>
-    <article class="card"><h3>Parity</h3><p>Web, Android and iOS share semantic intent while respecting platform-native interaction conventions.</p></article>
-  </div>
-  <div class="component-guide">
-    <h3>Release gate</h3>
-    <table class="spec-table"><thead><tr><th>Gate</th><th>Required</th></tr></thead><tbody>
-      <tr><td>Tokens</td><td>Semantic tokens only in product-facing APIs</td></tr>
-      <tr><td>States</td><td>Default · pressed · focus · disabled · loading · error where applicable</td></tr>
-      <tr><td>Content</td><td>Long labels, localization and large text tested</td></tr>
-      <tr><td>Accessibility</td><td>Keyboard, screen reader, contrast and touch target behavior documented</td></tr>
-      <tr><td>Platforms</td><td>Web · Android · iOS behavior explicitly mapped</td></tr>
-    </tbody></table>
-  </div>
-</section>
-<section id="api" class="section">
-  <div class="section-kicker">IDS 3.0 · Component API</div>
-  <h2>One primitive, two consumption modes</h2>
-  <p class="lede">Simple components stay simple. Complex components expose controlled composition instead of accumulating endless props.</p>
-  <div class="grid two">
-    <article class="card"><h3>Flat API</h3><p>Preferred for stable, common cases: Button, Badge, Avatar, Switch and other low-variation primitives.</p><pre><code>&lt;Button variant="primary" size="large"&gt;Send&lt;/Button&gt;</code></pre></article>
-    <article class="card"><h3>Compound API</h3><p>Preferred where structure varies: Card, Sheet, Dialog, complex List and data-heavy surfaces.</p><pre><code>&lt;Card&gt;
-  &lt;Card.Header&gt;...&lt;/Card.Header&gt;
-  &lt;Card.Body&gt;...&lt;/Card.Body&gt;
-&lt;/Card&gt;</code></pre></article>
-  </div>
-  <div class="component-guide">
-    <h3>API rules</h3>
-    <ul>
-      <li>Use semantic intent names, not raw colors or arbitrary visual props.</li>
-      <li>Do not expose props that duplicate a foundation token without a behavioral reason.</li>
-      <li>Prefer composition when new requirements would otherwise create a growing prop matrix.</li>
-      <li>Keep platform-native behavior behind the same semantic contract.</li>
-    </ul>
-  </div>
-</section>
-<section id="migration" class="section">
-  <div class="section-kicker">IDS 3.0 · Migration</div>
-  <h2>Build the system without breaking the product</h2>
-  <div class="grid three">
-    <article class="card"><h3>1 · Token layer</h3><p>Introduce semantic aliases while preserving existing primitives and generated platform outputs.</p></article>
-    <article class="card"><h3>2 · Component layer</h3><p>Move components to semantic and component-level tokens before removing legacy references.</p></article>
-    <article class="card"><h3>3 · Product layer</h3><p>Migrate screens incrementally, measure coverage, then remove obsolete tokens and variants.</p></article>
-  </div>
-</section>
-<section id="core-matrix" class="section">
-  <div class="section-kicker">IDS 3.0 · Core primitives</div>
-  <h2>Production state matrix</h2>
-  <p class="lede">Every core primitive has a predictable contract before it reaches a product surface.</p>
-  <div class="spec-table">
-    <table>
-      <thead><tr><th>Component</th><th>Variants</th><th>States</th><th>Large text / long content</th><th>A11y</th><th>Platforms</th></tr></thead>
-      <tbody>
-        <tr><td>Button</td><td>Primary · Secondary · Tertiary · Destructive</td><td>Default · Pressed · Focus · Disabled · Loading</td><td>Wrap; action label remains stable while loading</td><td>Native semantics; visible focus; 44px+ target</td><td>Web · Android · iOS</td></tr>
-        <tr><td>Text field</td><td>Default · Filled · Search · Password</td><td>Empty · Filled · Focus · Disabled · Error · Success</td><td>Label/help/validation copy wraps; localization-safe</td><td>Label + validation association; IME/input semantics; no color-only meaning</td><td>Web · Android · iOS</td></tr>
-        <tr><td>Select</td><td>Single · Multi</td><td>Closed · Open · Focus · Disabled · Error</td><td>Scrollable options; no clipped labels</td><td>Combobox/listbox semantics</td><td>Web · Android · iOS</td></tr>
-        <tr><td>Checkbox</td><td>Default · Indeterminate</td><td>Unchecked · Checked · Focus · Disabled · Error</td><td>Label wraps without separating control</td><td>Native semantics; group labeling</td><td>Web · Android · iOS</td></tr>
-        <tr><td>Radio</td><td>Single-choice group</td><td>Unselected · Selected · Focus · Disabled · Error</td><td>Long labels wrap naturally</td><td>Radiogroup + accessible labels</td><td>Web · Android · iOS</td></tr>
-        <tr><td>Switch</td><td>On · Off</td><td>On · Off · Focus · Disabled · Loading</td><td>Label stays readable at large text</td><td>Native switch semantics</td><td>Web · Android · iOS</td></tr>
-        <tr><td>Tabs</td><td>Equal · Scrollable</td><td>Default · Active · Focus · Disabled</td><td>Scrollable overflow; active state remains visible</td><td>Tablist/tab/tabpanel semantics</td><td>Web · Android · iOS</td></tr>\n        <tr><td>Empty state</td><td>Informational · Actionable</td><td>Default · With message · With action</td><td>Title/message wrap; localization-safe; no clipped copy</td><td>Meaningful heading/label; action has accessible name; 44px+ target</td><td>Web · Android · iOS</td></tr>
-      </tbody>
-    </table>
-  </div>
-  <div class="panel" style="margin-top:16px"><strong>Parity rule</strong><p class="note">The matrix is an audit contract, not a visual suggestion. A primitive is complete only when its documented states, content behavior, accessibility semantics, motion behavior and platform mapping are implemented consistently.</p></div>
-</section>
-
-<section id="visual-qa" class="section">
-  <div class="eyebrow">10 · Visual QA matrix</div>
-  <h2>Render the edge cases before calling a component complete.</h2>
-  <p class="lede">The laboratory separates source coverage from rendered verification. Each primitive should be reviewed across state, content, theme, scale, motion, and platform dimensions.</p>
-  <div class="panel">
-    <div class="qa-grid" id="visualQaMatrix" aria-live="polite">
-      <div><strong>Contract matrix</strong><span>Loading canonical IDS component coverage…</span></div>
-    </div>
-  </div>
-  <div class="panel" style="margin-top:16px">
-    <strong>Verification rule</strong>
-    <p class="note">A source-level mapping is not visual evidence. Mark a state visual-verified only after the rendered result has been inspected at the required dimensions. Build-verified and visual-verified remain separate gates.</p>
-  </div>
-</section>
-
-<style id="ids-visual-qa-css">
-.qa-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-3);margin-top:16px}.qa-global{display:grid;gap:10px;margin-top:12px;padding:var(--space-4);border:1px solid var(--line);border-radius:16px;background:var(--soft)}.qa-global>span{display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:var(--muted);font-size:12px}.qa-global button{min-height:44px;min-width:44px;padding:0 11px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font-weight:700;cursor:pointer}.qa-global button[aria-pressed="true"]{background:var(--brand-subtle);border-color:var(--brand);color:var(--brand-strong)}.qa-global small{color:var(--muted);line-height:1.5}html[data-ids-motion="reduced"] *{scroll-behavior:auto!important;transition-duration:0ms!important;animation-duration:1ms!important;animation-iteration-count:1!important}
-.qa-progress{grid-column:1/-1;display:flex;justify-content:space-between;gap:var(--space-3);align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--soft);flex-wrap:wrap}.qa-progress span{margin:0;color:var(--muted)}.qa-progress b{color:var(--ink)}
-.qa-grid>div{padding:var(--space-4);border:1px solid var(--line);border-radius:16px;background:var(--surface)}
-.qa-grid strong,.qa-grid span{display:block}.qa-grid span{margin-top:6px;color:var(--muted);line-height:1.5}
-.qa-card{display:grid;gap:9px}.qa-contract-id{font:11px ui-monospace,monospace}.qa-row{display:grid;grid-template-columns:72px 1fr;gap:8px;padding-top:8px;border-top:1px solid var(--line)}.qa-row>b{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}.qa-row>span{display:flex;gap:5px;flex-wrap:wrap;margin:0}.qa-chip{display:inline-flex!important;padding:4px 7px;border-radius:7px;background:var(--soft);font-size:11px}.qa-global{grid-column:1/-1;display:grid;gap:5px;border-top:1px solid var(--line);padding-top:16px}.qa-global span{margin:0}
-@media(max-width:720px){.qa-grid{grid-template-columns:1fr}}
-</style>
-<script id="ids-playground-js">
-const pg={component:document.getElementById('pgComponent'),state:document.getElementById('pgState'),content:document.getElementById('pgContent'),scale:document.getElementById('pgScale'),theme:document.getElementById('pgTheme'),preview:document.getElementById('pgPreview'),contract:document.getElementById('pgContract')};
-function renderPlayground(){if(!pg.preview)return;const s=pg.state.value,c=pg.content.value,scale=Number(pg.scale.value);pg.preview.style.fontSize=(16*scale)+'px';const long=c==='long';let html='';if(pg.component.value==='button'){const label=long?'Continue to verify your phone number and finish setting up your Itunda account':'Continue';html='<div class="playground-card"><button class="btn primary" '+(s==='Disabled'?'disabled':'')+'>'+((s==='Loading')?'Loading…':label)+'</button><p class="note" style="margin-top:12px">'+(s==='Error'?'Could not continue. Check the information and try again.':s==='Success'?'Completed successfully.':'Primary action contract preview.')+'</p></div>'}else if(pg.component.value==='field'){html='<div class="playground-card"><label class="demo-label">Phone number<input class="field" '+(s==='Disabled'?'disabled':'')+' value="'+(long?'+250 788 123 456 789 000':' +250 788 123 456').trim()+'"><span class="help">'+(s==='Error'?'Enter a valid Rwandan phone number.':s==='Success'?'Phone number verified.':'Used for account verification.')+'</span></label></div>'}else if(pg.component.value==='tabs'){html='<div class="playground-card"><div class="tabs"><button class="tab active">Overview</button><button class="tab">Activity</button><button class="tab">Settings</button></div><p class="note" style="margin-top:14px">'+(long?'Long localized labels should scroll or wrap without hiding the active state.':'Keyboard navigation and selected state are part of the contract.')+'</p></div>'}else{html='<div class="playground-card ids-empty-state"><div class="ids-empty-state__icon" aria-hidden="true">○</div><h2 class="ids-empty-state__title">'+(long?'No marketplace results found for this neighborhood yet':'No products yet')+'</h2><p class="ids-empty-state__message">'+(s==='Error'?'Something went wrong while loading this list.':'Add your first product to start building your catalog.')+'</p><button class="btn">Add product</button></div>'}pg.preview.innerHTML=html;pg.contract.textContent=s==='Error'?'Validation and recovery must be explicit.':s==='Loading'?'Loading preserves layout and prevents duplicate actions.':'Semantic intent · native behavior · accessible state';}
-[pg.component,pg.state,pg.content,pg.scale].forEach(x=>x?.addEventListener('change',renderPlayground));pg.theme?.addEventListener('click',()=>{const dark=root.getAttribute('data-theme')==='dark';root.setAttribute('data-theme',dark?'light':'dark');renderPlayground()});renderPlayground();
-</script>
-<script id="ids-lab-v2-js">
-const labPreview=document.getElementById('labPreview');
-function renderLab(state){if(!labPreview)return;const labels={default:['Continue','Default component state.'],pressed:['Continue','Pressed state provides immediate feedback.'],focus:['Continue','Focus remains visible for keyboard and assistive technology users.'],disabled:['Continue','Unavailable actions remain understandable.'],loading:['Loading…','Loading preserves the action footprint and prevents duplicate submission.'],error:['Try again','Recovery explains what happened and what to do next.']};const x=labels[state]||labels.default;labPreview.innerHTML='<div class="playground-card"><button class="btn primary" '+(state==='disabled'||state==='loading'?'disabled':'')+' '+(state==='focus'?'style="outline:3px solid color-mix(in srgb,var(--focus) 32%,transparent);outline-offset:3px"':'')+'>'+x[0]+'</button><p class="note" style="margin-top:12px">'+x[1]+'</p></div>'}
-document.querySelectorAll('[data-lab-state]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-lab-state]').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');renderLab(b.dataset.labState)}));renderLab('default');
-</script>
-<script id="ids-contract-source">
-const IDS_CONTRACT_MANIFEST_URL='./contract-manifest.json';
-let IDS_CONTRACT_MANIFEST=null;
-const IDS_CONTRACT_FALLBACK={version:'3.0.0',components:[]};
-const IDS_CONTRACT_SUMMARY={version:'3.0.0',components:8};
-const IDS_CONTRACTS={};
-function idsContractFor(kind){return IDS_CONTRACTS[kind]||{label:labKindLabels?.[kind]||kind,states:['default'],content:[],a11y:[],platforms:[]}}
-async function loadIdsContractManifest(){
-  try{
-    const response=await fetch(IDS_CONTRACT_MANIFEST_URL,{cache:'no-store'});
-    if(!response.ok)throw new Error('HTTP '+response.status);
-    IDS_CONTRACT_MANIFEST=await response.json();
-    for(const component of IDS_CONTRACT_MANIFEST.components||[]){
-      const kind=component.id==='text-field'?'field':component.id==='empty-state'?'empty':component.id;
-      IDS_CONTRACTS[kind]={...component,label:labKindLabels?.[kind]||component.id};
-    }
-  }catch(error){
-    console.warn('IDS contract manifest unavailable',error);
-    IDS_CONTRACT_MANIFEST=IDS_CONTRACT_FALLBACK;
-  }
-  syncLabContract?.(labKind||'button');
-  renderVisualQAMatrix?.();
-  renderLabV3?.();
-}
-</script>
-<script id="ids-lab-v3-js">
-const labKinds=['button','field','select','checkbox','radio','switch','tabs','empty'];
-const labKindLabels={button:'Button',field:'Text field',select:'Select',checkbox:'Checkbox',radio:'Radio',switch:'Switch',tabs:'Tabs',empty:'Empty state'};
-const kindBar=document.createElement('div');kindBar.className='lab-statebar';kindBar.setAttribute('role','toolbar');kindBar.setAttribute('aria-label','Component type');kindBar.innerHTML=labKinds.map((k,i)=>'<button data-lab-kind="'+k+'" aria-pressed="'+(!i)+'">'+labKindLabels[k]+'</button>').join('');
-const stateBar=document.getElementById('labStateBar');
-function syncLabContract(kind){
-  const contract=idsContractFor(kind);
-  renderCoverage(kind);
-  if(!stateBar)return;
-  stateBar.innerHTML=contract.states.map((state,i)=>{
-    const label=state.replace(/-/g,' ').replace(/\\b\\w/g,m=>m.toUpperCase());
-    return '<button data-lab-state="'+state+'" aria-pressed="'+(!i)+'">'+label+'</button>';
-  }).join('');
-  const contractNode=document.getElementById('labContractMeta');
-  if(contractNode)contractNode.textContent=contract.label+' · '+contract.states.join(' · ');
-}
-const labSection=document.getElementById('lab');if(labSection&&!document.getElementById('labKindBar')){kindBar.id='labKindBar';labSection.querySelector('.lab-statebar')?.before(kindBar)}
-let labKind='button';
-const labMeta=document.createElement('p');labMeta.id='labContractMeta';labMeta.className='note';labMeta.setAttribute('aria-live','polite');labMeta.textContent=idsContractFor(labKind).label+' · '+idsContractFor(labKind).states.join(' · ');
-const coverageMeta=document.createElement('div');coverageMeta.id='labCoverage';coverageMeta.className='panel';coverageMeta.setAttribute('aria-live','polite');labMeta.insertAdjacentElement('afterend',coverageMeta);
-const IDS_QA_EVIDENCE_SCHEMA={schema:'ids-qa-evidence/v6',evidenceRequired:['scenario','componentId','contractSignature','platformContractSignature','componentPlatformContractSignature','scenarioPlatformContractSignature','platform','verifiedAt','context'],contextRequired:['theme','scale','motion','viewport'],platforms:['web','android','ios']};
-const validateIdsQaEvidenceRecord=(record)=>{
-  const failures=[];
-  if(!record||typeof record!=='object'||Array.isArray(record))return ['evidence must be an object'];
-  IDS_QA_EVIDENCE_SCHEMA.evidenceRequired.forEach(key=>{
-    if(record[key]===undefined||record[key]===null||record[key]==='')failures.push('missing '+key);
-  });
-  if(!IDS_QA_EVIDENCE_SCHEMA.platforms.includes(String(record.platform)))failures.push('invalid platform');
-  if(!record.context||typeof record.context!=='object'||Array.isArray(record.context))failures.push('invalid context');
-  else IDS_QA_EVIDENCE_SCHEMA.contextRequired.forEach(key=>{
-    if(record.context[key]===undefined||record.context[key]===null||record.context[key]==='')failures.push('missing context.'+key);
-  });
-  const timestamp=Date.parse(String(record.verifiedAt));
-  if(!Number.isFinite(timestamp))failures.push('invalid verifiedAt');
-  return failures;
-};
-function renderVisualQAMatrix(){
-  const root=document.getElementById('visualQaMatrix');
-  if(!root)return;
-  const components=IDS_CONTRACT_MANIFEST?.components||[];
-  if(!components.length){
-    root.innerHTML='<div><strong>Contract matrix</strong><span>Canonical manifest unavailable.</span></div>';
-    return;
-  }
-  const label=(id)=>({button:'Button','text-field':'Text field',select:'Select',checkbox:'Checkbox',radio:'Radio',switch:'Switch',tabs:'Tabs','empty-state':'Empty state'}[id]||id);
-  const chips=(items)=>items.map(x=>'<span class="qa-chip">'+x.replace(/-/g,' ')+'</span>').join('');
-  const qaStatus=(comp)=>{const key='ids-qa-status-'+comp.id;return localStorage.getItem(key)||'not-inspected';};
-  const statusLabel=(s)=>({ 'not-inspected':'Not inspected','in-review':'In review','verified':'Visually verified'}[s]||'Not inspected');
-  const cards=components.map(comp=>{
- const checks=(comp.guide&&Array.isArray(comp.guide.checklist)?comp.guide.checklist:[]);
- const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;
- const scenarios=qaScenarioList(kind);
- const checkMarkup=checks.length?checks.map((item,i)=>'<label><input type="checkbox" data-qa-component-check="'+comp.id+'" data-qa-check-index="'+i+'"> '+item+'</label>').join(''):'<span>No component-specific checklist is defined yet.</span>';
- const scenarioPlatforms=(comp.platforms||[]).map(String).filter(Boolean);
- const scenarioMarkup=scenarios.map(([id,title,expected])=>{const requiredPlatforms=(qaScenarioPlatformContractByComponent[comp.id]?.[id]||'').split(',').filter(Boolean);return '<div class="qa-scenario" data-qa-scenario="'+id+'"><label><select data-qa-platform="'+id+'" aria-label="Verification platform">'+['web','android','ios'].map(platform=>'<option value="'+platform+'"'+(platform==='web'&&requiredPlatforms.includes(platform)?'':' disabled')+'>'+platform.charAt(0).toUpperCase()+platform.slice(1)+(platform==='web'&&requiredPlatforms.includes(platform)?'':' (import required)')+'</option>').join('')+'</select><input type="checkbox" data-qa-scenario-check="'+id+'"> <span><strong>'+title+'</strong><br>'+expected+'</span></label><div class="qa-platform-status" data-qa-platform-status="'+id+'" aria-label="Platform evidence status"><span data-qa-platform-status-web>Web —</span><span data-qa-platform-status-android>Android —</span><span data-qa-platform-status-ios>iOS —</span></div><button type="button" class="qa-scenario-open" data-qa-scenario-open="'+id+'" data-qa-scenario-component="'+comp.id+'">Open</button><textarea class="qa-scenario-notes" data-qa-scenario-notes="'+id+'" rows="2" placeholder="Observed result / failure notes"></textarea></div>').join('');
- return '<div class="qa-card"><strong>'+label(comp.id)+'</strong><span class="qa-scenario-progress" data-qa-scenario-progress>0/'+scenarios.length+' scenarios evidenced</span><span class="qa-status" data-qa-status-for="'+comp.id+'" data-status="'+qaStatus(comp)+'">'+statusLabel(qaStatus(comp))+'</span><span class="qa-contract-id">'+comp.id+' · '+comp.api+' API</span><div class="qa-row"><b>States</b><span>'+chips(comp.states||[])+'</span></div><div class="qa-row"><b>Content</b><span>'+chips(comp.content||[])+'</span></div><div class="qa-row"><b>A11y</b><span>'+chips(comp.a11y||[])+'</span></div><div class="qa-row"><b>Motion</b><span>'+chips((comp.a11y||[]).filter(x=>x==='motion'))+'</span></div><div class="qa-row"><b>Platforms</b><span>'+chips(comp.platforms||[])+'</span></div><details class="qa-component-review"><summary>Manual verification checklist</summary><div class="qa-status-controls" role="group" aria-label="Verification status"><button type="button" data-qa-status="not-inspected" data-qa-status-component="'+comp.id+'">Not inspected</button><button type="button" data-qa-status="in-review" data-qa-status-component="'+comp.id+'">In review</button><button type="button" data-qa-status="verified" data-qa-status-component="'+comp.id+'">Visually verified</button></div><div class="qa-component-checks">'+checkMarkup+'</div><div class="qa-scenario-checks"><strong>Deterministic scenario evidence</strong>'+scenarioMarkup+'</div></details><button type="button" class="qa-review" data-qa-component="'+comp.id+'">Open in lab</button></div>';
-}).join('');
-  const qaScenarioContractSignature=components.map(comp=>comp.id+':'+qaScenarioList(comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id).map(([id])=>id).join(',')).join('|');
-  const qaPlatformContractByComponent=Object.fromEntries(components.map(comp=>[comp.id,[...(comp.platforms||[])].map(String).sort().join(',')]));
-  const qaScenarioPlatformContractByComponent=Object.fromEntries(components.map(comp=>{
-    const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;
-    const scenarios=qaScenarioList(kind);
-    return [comp.id,Object.fromEntries(scenarios.map(([id])=>[id,[...(comp.qa?.scenarios?.[id]?.platforms||[])].map(String).sort().join(',')]))];
-  }));
-  const qaScenarioPlatformContractSignature=components.map(comp=>comp.id+':'+Object.entries(qaScenarioPlatformContractByComponent[comp.id]||{}).map(([id,platforms])=>id+'='+platforms).join('|')).join('||');
-  const qaPlatformContractSignature=components.map(comp=>comp.id+':'+qaPlatformContractByComponent[comp.id]).join('|');
-  const qaContractSignature=qaScenarioContractSignature+'||platforms:'+qaPlatformContractSignature+'||scenarioPlatforms:'+qaScenarioPlatformContractSignature;
-  const storedQaContractSignature=localStorage.getItem('ids-qa-contract-signature');
-  const storedQaPlatformContractSignature=localStorage.getItem('ids-qa-platform-contract-signature');
-  let storedQaPlatformContractByComponent={};
-  try{storedQaPlatformContractByComponent=JSON.parse(localStorage.getItem('ids-qa-platform-contract-components')||'{}')||{};}catch{}
-  const qaPlatformContractChanges=components.filter(comp=>storedQaPlatformContractByComponent[comp.id]!==undefined&&storedQaPlatformContractByComponent[comp.id]!==qaPlatformContractByComponent[comp.id]).map(comp=>comp.id);
-    const storedQaScenarioPlatformContracts=(()=>{try{return JSON.parse(localStorage.getItem('ids-qa-scenario-platform-contracts')||'{}')||{};}catch{return {};}})();
-  const qaScenarioPlatformContractChanges=components.flatMap(comp=>{
-    const previous=storedQaScenarioPlatformContracts[comp.id]||{};
-    const current=qaScenarioPlatformContractByComponent[comp.id]||{};
-    return Object.keys(current).filter(id=>previous[id]!==undefined&&previous[id]!==current[id]).map(id=>({componentId:comp.id,scenario:id}));
-  });
-  const qaScenarioPlatformContractChanged=qaScenarioPlatformContractChanges.length>0;
-  localStorage.setItem('ids-qa-contract-signature',qaContractSignature);
-  localStorage.setItem('ids-qa-platform-contract-signature',qaPlatformContractSignature);
-  localStorage.setItem('ids-qa-platform-contract-components',JSON.stringify(qaPlatformContractByComponent));
-  localStorage.setItem('ids-qa-scenario-platform-contracts',JSON.stringify(qaScenarioPlatformContractByComponent));
-  const incompleteEvidenceCount=components.reduce((count,comp)=>count+qaScenarioList(comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id).filter(([id])=>localStorage.getItem('ids-qa-scenario-'+id)==='true'&&!validEvidenceForScenario(id)).length,0);
-  const staleEvidenceCount=components.reduce((count,comp)=>{
-    const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;
-    const valid=new Set(qaScenarioList(kind).map(([id])=>id));
-    return count+[...Object.keys(localStorage)].filter(key=>key.startsWith('ids-qa-scenario-')&&!key.startsWith('ids-qa-scenario-notes-')).filter(key=>!valid.has(key.slice('ids-qa-scenario-'.length))).length;
-  },0);
-  const verifiedCount=components.filter(comp=>localStorage.getItem('ids-qa-status-'+comp.id)==='verified').length;
-  const checklistComplete=components.filter(comp=>{const checks=(comp.guide&&Array.isArray(comp.guide.checklist)?comp.guide.checklist:[]);const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;const scenarios=qaScenarioList(kind);return checks.length>0&&checks.every((_,i)=>localStorage.getItem('ids-qa-check-'+comp.id+'-'+i)==='true')&&scenarios.length>0&&scenarios.every(([id])=>validEvidenceForScenario(id))}).length;
-  root.innerHTML='<div class="qa-progress" role="status"><strong>Manual QA progress</strong><span><b data-qa-progress-verified>'+verifiedCount+'</b>/'+components.length+' components visually verified · <b data-qa-progress-checks>'+checklistComplete+'</b>/'+components.length+' checklists complete</span><small class="qa-contract-evidence" data-qa-contract-evidence data-drift="'+qaEvidenceDrift+'">'+
-    (qaPlatformContractChanged?'QA platform contract changed for: '+qaPlatformContractChanges.join(', ')+' — re-verify affected platform evidence.':(qaEvidenceDrift?'QA evidence contract changed — review scenario evidence against the current contract.':(incompleteEvidenceCount?'Incomplete or stale evidence records: '+incompleteEvidenceCount:(staleEvidenceCount?'Stale scenario evidence keys detected: '+staleEvidenceCount:'QA evidence matches current scenario matrix.')))))+
-    ' · '+qaEvidenceSummary.filter(item=>item.status==='verified').length+'/'+components.length+' components with fresh evidence · '+
-    qaEvidenceSummary.reduce((sum,item)=>sum+item.verified,0)+'/'+qaEvidenceSummary.reduce((sum,item)=>sum+item.total,0)+' scenarios verified · '+qaEvidenceSummary.reduce((sum,item)=>sum+(item.platforms||[]).reduce((n,p)=>n+p.verified,0),0)+' platform evidences</small></div>'+cards+'<div class="qa-global"><button type="button" class="qa-review" data-qa-export>Export QA evidence</button><button type="button" class="qa-review" data-qa-import>Import platform evidence</button><input type="file" accept="application/json" data-qa-import-input hidden><small class="qa-import-status" data-qa-import-status aria-live="polite">Web evidence is captured here; Android/iOS evidence must be imported from a real platform run.</small><div class="qa-reviewer-matrix" data-qa-reviewer-matrix><strong>Reviewer coverage matrix</strong></div><strong>Global render dimensions</strong><span>Theme: <button type="button" data-qa-theme="light">Light</button> <button type="button" data-qa-theme="dark">Dark</button> <button type="button" data-qa-theme="system">System</button></span><span>Scale: <button type="button" data-qa-scale="1">100%</button> <button type="button" data-qa-scale="1.25">125%</button> <button type="button" data-qa-scale="1.5">150%</button></span><span>Motion: <button type="button" data-qa-motion="normal" aria-pressed="true">Normal</button> <button type="button" data-qa-motion="reduced" aria-pressed="false">Reduced</button></span><span>Viewport: compact mobile · standard mobile · desktop</span><small>These controls simulate inspection dimensions. They are not visual-verification evidence until the rendered result is inspected.</small><div class="qa-review-grid"><strong>Manual verification worksheet</strong><span>Record only what you personally inspected in the rendered lab. This worksheet does not claim automated verification.</span><label><input type="checkbox" data-qa-check="theme"> Theme inspected</label><label><input type="checkbox" data-qa-check="scale"> 100 / 125 / 150% inspected</label><label><input type="checkbox" data-qa-check="motion"> Normal / reduced motion inspected</label><label><input type="checkbox" data-qa-check="content"> Long/localized content inspected</label><label><input type="checkbox" data-qa-check="keyboard"> Keyboard/focus behavior inspected</label></div></div>';
-  const openQaScenario=(component,id)=>{const kind=component==='text-field'?'field':component==='empty-state'?'empty':component;const target=document.querySelector('[data-lab-kind="'+kind+'"]');if(!target)return;target.click();const stateId=id.split('.').slice(1).join('.');const stateButton=[...document.querySelectorAll('[data-lab-state]')].find(x=>x.dataset.labState===stateId)||document.querySelector('[data-lab-state]');stateButton?.click();if(labPreview)labPreview.dataset.qaScenario=id;document.getElementById('lab')?.scrollIntoView({behavior:'smooth',block:'start'});};root.querySelectorAll('[data-qa-component]').forEach(button=>button.addEventListener('click',()=>{const kind=button.dataset.qaComponent==='text-field'?'field':button.dataset.qaComponent==='empty-state'?'empty':button.dataset.qaComponent;const target=document.querySelector('[data-lab-kind="'+kind+'"]');target?.click();document.getElementById('lab')?.scrollIntoView({behavior:'smooth',block:'start'});}));root.querySelectorAll('[data-qa-scenario-open]').forEach(button=>button.addEventListener('click',()=>openQaScenario(button.dataset.qaScenarioComponent,button.dataset.qaScenarioOpen)));
-  root.querySelectorAll('[data-qa-theme]').forEach(button=>button.addEventListener('click',()=>{const theme=button.dataset.qaTheme;if(theme==='system')document.documentElement.removeAttribute('data-theme');else document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme==='system'?'light dark':theme;root.querySelectorAll('[data-qa-theme]').forEach(x=>x.setAttribute('aria-pressed',String(x===button)));}));
-  root.querySelectorAll('[data-qa-scale]').forEach(button=>button.addEventListener('click',()=>{const scale=Number(button.dataset.qaScale);document.body.style.zoom=String(scale);document.documentElement.dataset.idsScale=button.dataset.qaScale;root.querySelectorAll('[data-qa-scale]').forEach(x=>x.setAttribute('aria-pressed',String(x===button)));}));
-  root.querySelectorAll('[data-qa-motion]').forEach(button=>button.addEventListener('click',()=>{const reduced=button.dataset.qaMotion==='reduced';document.documentElement.dataset.idsMotion=reduced?'reduced':'normal';root.querySelectorAll('[data-qa-motion]').forEach(x=>x.setAttribute('aria-pressed',String(x===button)));}));
-  root.querySelectorAll('[data-qa-component-check]').forEach(input=>{const key='ids-qa-check-'+input.dataset.qaComponentCheck+'-'+input.dataset.qaCheckIndex;input.checked=localStorage.getItem(key)==='true';input.addEventListener('change',()=>{localStorage.setItem(key,String(input.checked));updateQaProgress();});});
-  root.querySelectorAll('[data-qa-platform]').forEach(select=>{select.addEventListener('change',()=>{const id=select.dataset.qaPlatform;localStorage.setItem('ids-qa-platform-'+id,select.value);});
-    const savedPlatform=localStorage.getItem('ids-qa-platform-'+select.dataset.qaPlatform);
-    if(savedPlatform&&[...select.options].some(option=>option.value===savedPlatform&&!option.disabled))select.value=savedPlatform;
-    else{const first=[...select.options].find(option=>!option.disabled);if(first){select.value=first.value;localStorage.setItem('ids-qa-platform-'+select.dataset.qaPlatform,first.value);}}});
-  root.querySelectorAll('[data-qa-scenario-check]').forEach(input=>{
-    const id=input.dataset.qaScenarioCheck;
-    const key='ids-qa-scenario-'+id;
-    const metaKey='ids-qa-evidence-'+id;
-    const stored=localStorage.getItem(metaKey);
-    input.checked=localStorage.getItem(key)==='true';
-    if(stored){try{const meta=JSON.parse(stored);input.closest('[data-qa-scenario]')?.setAttribute('data-verified-at',meta.verifiedAt||'');}catch{}}
-    input.addEventListener('change',()=>{
-      if(input.checked){
-        const platformSelect=input.closest('[data-qa-scenario]')?.querySelector('[data-qa-platform]');
-        const platform=platformSelect?.value||'web';
-        const componentId=input.closest('[data-qa-scenario]')?.dataset.qaScenarioComponent||null;
-        const componentPlatformContractSignature=componentId?qaPlatformContractByComponent[componentId]||'':null;
-        const scenarioPlatformContractSignature=componentId?qaScenarioPlatformContractByComponent[componentId]?.[id]||'':null;
-        const evidence={scenario:id,componentId,contractSignature:localStorage.getItem('ids-qa-contract-signature')||null,platformContractSignature:localStorage.getItem('ids-qa-platform-contract-signature')||null,componentPlatformContractSignature,scenarioPlatformContractSignature,platform,verifiedAt:new Date().toISOString(),context:{theme:document.documentElement.dataset.theme||'system',scale:document.documentElement.dataset.idsScale||'1',motion:document.documentElement.dataset.idsMotion||'normal',viewport:window.innerWidth+'x'+window.innerHeight}};
-        const failures=validateIdsQaEvidenceRecord(evidence);
-        if(failures.length){
-          input.checked=false;
-          console.error('IDS QA evidence write blocked by schema validation:',failures);
-          alert('QA evidence was not saved because the record failed the IDS v6 evidence schema: '+failures.join(', '));
-          updateQaProgress();
-          return;
-        }
-        localStorage.setItem(key,'true');
-        localStorage.setItem(metaKey,JSON.stringify(evidence));
-        localStorage.setItem('ids-qa-evidence-'+platform+'-'+id,JSON.stringify(evidence));
-      }else{localStorage.setItem(key,'false');localStorage.removeItem(metaKey);const platform=localStorage.getItem('ids-qa-platform-'+id)||'web';localStorage.removeItem('ids-qa-evidence-'+platform+'-'+id);}
-      updateQaProgress();
-    });
-  });
-  root.querySelectorAll('[data-qa-scenario-notes]').forEach(input=>{const key='ids-qa-scenario-notes-'+input.dataset.qaScenarioNotes;input.value=localStorage.getItem(key)||'';input.addEventListener('input',()=>localStorage.setItem(key,input.value));});
-  const qaEvidenceExport=()=>{
-    const evidence=[];
-    const coverage=[];
-    root.querySelectorAll('[data-qa-scenario-check]').forEach(input=>{
-      const id=input.dataset.qaScenarioCheck;
-      const platforms=['web','android','ios'];
-      const records={};
-      platforms.forEach(platform=>{
-        const raw=localStorage.getItem('ids-qa-evidence-'+platform+'-'+id)||((platform===(localStorage.getItem('ids-qa-platform-'+id)||'web'))?localStorage.getItem('ids-qa-evidence-'+id):null);
-        if(raw){try{const record=JSON.parse(raw);if(validateIdsQaEvidenceRecord(record).length===0){records[platform]=record;evidence.push(record);}}catch{}}
-      });
-      const componentId=input.closest('[data-qa-scenario]')?.dataset.qaScenarioComponent||null; const requiredPlatforms=componentId?((qaScenarioPlatformContractByComponent[componentId]?.[id]||'').split(',').filter(Boolean)):[]; const scenarioPlatformContractSignature=componentId?qaScenarioPlatformContractByComponent[componentId]?.[id]||'':null; coverage.push({scenario:id,componentId,requiredPlatforms,scenarioPlatformContractSignature,platforms:Object.fromEntries(platforms.map(platform=>[platform,Boolean(records[platform])]))});
-    });
-    const payload={schema:'ids-qa-evidence/v6',generatedAt:new Date().toISOString(),contractSignature:localStorage.getItem('ids-qa-contract-signature')||null,platformContractSignature:localStorage.getItem('ids-qa-platform-contract-signature')||null,platformContractComponents:qaPlatformContractByComponent,scenarioPlatformContracts:qaScenarioPlatformContractByComponent,coverage,evidence};
-    const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-    const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='itunda-ids-qa-evidence.json';a.click();URL.revokeObjectURL(url);
-  };
-  document.querySelector('[data-qa-export]')?.addEventListener('click',qaEvidenceExport);
-  document.querySelector('[data-qa-import]')?.addEventListener('click',()=>document.querySelector('[data-qa-import-input]')?.click());
-  document.querySelector('[data-qa-import-input]')?.addEventListener('change',async event=>{
-    const file=event.target.files?.[0]; if(!file)return;
-    const status=document.querySelector('[data-qa-import-status]');
-    try{
-      const payload=JSON.parse(await file.text());
-      const records=Array.isArray(payload?.evidence)?payload.evidence:(Array.isArray(payload)?payload:[]);
-      const imported=[];
-      const rejected=[];
-      records.forEach(record=>{
-        const failures=validateIdsQaEvidenceRecord(record);
-        const platform=String(record?.platform||'');
-        const currentContract=localStorage.getItem('ids-qa-contract-signature')||'';
-        const currentPlatformContract=localStorage.getItem('ids-qa-platform-contract-signature')||'';
-        if(currentContract && String(record.contractSignature||'')!==currentContract) failures.push('contract signature mismatch');
-        if(currentPlatformContract && String(record.platformContractSignature||'')!==currentPlatformContract) failures.push('platform contract signature mismatch');
-        if(failures.length||!['android','ios'].includes(platform)) { rejected.push({platform,failures:failures.length?failures:['only android/ios external evidence may be imported']}); return; }
-        const scenario=String(record.scenario||'');
-        const componentId=String(record.componentId||'');
-        const expectedScenarioPlatform=qaScenarioPlatformContractByComponent[componentId]?.[scenario]||'';
-        if(expectedScenarioPlatform!==String(record.scenarioPlatformContractSignature||'')){ rejected.push({platform,failures:['scenario platform contract signature mismatch']}); return; }
-        localStorage.setItem('ids-qa-evidence-'+platform+'-'+scenario,JSON.stringify(record));
-        localStorage.setItem('ids-qa-scenario-'+scenario,'true');
-        imported.push(platform+' '+scenario);
-      });
-      status.textContent='Imported '+imported.length+' platform evidence record(s)'+(rejected.length?' · rejected '+rejected.length+' invalid/stale record(s).':' · all records passed schema and contract checks.');
-      updateQaProgress();
-    }catch(error){ status.textContent='Import failed: '+(error?.message||'invalid JSON'); }
-    event.target.value='';
-  });
-
-  root.querySelectorAll('[data-qa-check]').forEach(input=>{const key='ids-qa-worksheet-'+input.dataset.qaCheck;input.checked=localStorage.getItem(key)==='true';input.addEventListener('change',()=>localStorage.setItem(key,String(input.checked)));});
-  root.querySelectorAll('[data-qa-status-component]').forEach(button=>{const component=button.dataset.qaStatusComponent;button.setAttribute('aria-pressed',String(qaStatus(component)===button.dataset.qaStatus));button.addEventListener('click',()=>{const status=button.dataset.qaStatus;const checks=[...root.querySelectorAll('[data-qa-component-check="'+component+'"]')];const kind=component==='text-field'?'field':component==='empty-state'?'empty':component;const scenarios=qaScenarioList(kind);const scenarioInputs=scenarios.map(([id])=>root.querySelector('[data-qa-scenario-check="'+id+'"]')).filter(Boolean);const complete=checks.length>0&&checks.every(x=>x.checked)&&scenarioInputs.length===scenarios.length&&scenarioInputs.every(x=>validEvidenceForScenario(x.dataset.qaScenarioCheck));if(status==='verified'&&!complete){const card=button.closest('.qa-card');const note=card?.querySelector('.qa-status-note');if(note){note.textContent='Complete the component checklist and every deterministic scenario before marking it visually verified.';}else{const n=document.createElement('span');n.className='qa-status-note';n.textContent='Complete this component checklist before marking it visually verified.';button.parentElement?.insertAdjacentElement('afterend',n);}return;}localStorage.setItem('ids-qa-status-'+component,status);const badge=root.querySelector('[data-qa-status-for="'+component+'"]');if(badge){badge.dataset.status=status;badge.textContent=statusLabel(status);}root.querySelectorAll('[data-qa-status-component="'+component+'"]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.qaStatus===status)));updateQaProgress();});});
-  function updateQaProgress(){const QA_EVIDENCE_MAX_AGE_MS=30*24*60*60*1000;
-  const platforms=['web','android','ios'];
-  const validPlatformEvidence=(id,platform)=>{
-    const checked=localStorage.getItem('ids-qa-scenario-'+id)==='true';
-    if(!checked)return false;
-    try{
-      const meta=JSON.parse(localStorage.getItem('ids-qa-evidence-'+platform+'-'+id)||'');
-      const verifiedAt=Date.parse(meta?.verifiedAt||'');
-      const signature=localStorage.getItem('ids-qa-contract-signature')||'';
-      const context=meta?.context;
-      const required=['scenario','componentId','contractSignature','platformContractSignature','componentPlatformContractSignature','scenarioPlatformContractSignature','platform','verifiedAt','context'];
-      const contextRequired=['theme','scale','motion','viewport'];
-      const schemaValid=meta&&required.every(k=>Object.prototype.hasOwnProperty.call(meta,k))&&context&&contextRequired.every(k=>typeof context[k]==='string'&&context[k].length>0)&&['web','android','ios'].includes(meta.platform)&&meta.componentId&&typeof meta.scenarioPlatformContractSignature==='string';
-      return schemaValid&&meta.scenario===id&&meta.platform===platform&&meta.contractSignature===signature&&meta.platformContractSignature===(localStorage.getItem('ids-qa-platform-contract-signature')||'')&&meta.componentId&&meta.componentPlatformContractSignature===qaPlatformContractByComponent[meta.componentId]&&meta.scenarioPlatformContractSignature===qaScenarioPlatformContractByComponent[meta.componentId]?.[id]&&Number.isFinite(verifiedAt)&&Date.now()-verifiedAt<=QA_EVIDENCE_MAX_AGE_MS;
-    }catch{return false;}
-  };
-  const validEvidenceForScenario=(id)=>{
-    const requiredPlatforms=components.flatMap(comp=>{
-      const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;
-      return qaScenarioList(kind).some(([scenarioId])=>scenarioId===id)?(qaScenarioPlatformContractByComponent[comp.id]?.[id]||'').split(',').filter(Boolean):[];
-    });
-    return requiredPlatforms.length>0&&requiredPlatforms.every(platform=>validPlatformEvidence(id,platform));
-  };
-  const renderQaReviewerMatrix=()=>{
-    const host=root.querySelector('[data-qa-reviewer-matrix]');if(!host)return;
-    const statusFor=(id,platform)=>{
-      const raw=localStorage.getItem('ids-qa-evidence-'+platform+'-'+id);
-      if(!raw)return 'missing';
-      try{const m=JSON.parse(raw),at=Date.parse(m?.verifiedAt||''),sig=localStorage.getItem('ids-qa-contract-signature')||'';
-        const context=m?.context; const schemaValid=m&&['scenario','componentId','contractSignature','platformContractSignature','componentPlatformContractSignature','scenarioPlatformContractSignature','platform','verifiedAt','context'].every(k=>Object.prototype.hasOwnProperty.call(m,k))&&context&&['theme','scale','motion','viewport'].every(k=>typeof context[k]==='string'&&context[k].length>0); return schemaValid&&m?.scenario===id&&m?.platform===platform&&m?.contractSignature===sig&&m?.platformContractSignature===(localStorage.getItem('ids-qa-platform-contract-signature')||'')&&m?.componentId&&m?.componentPlatformContractSignature===qaPlatformContractByComponent[m.componentId]&&m?.scenarioPlatformContractSignature===qaScenarioPlatformContractByComponent[m.componentId]?.[id]&&Number.isFinite(at)&&Date.now()-at<=30*24*60*60*1000?'verified':'stale';
-      }catch{return 'stale';}
-    };
-    host.innerHTML=components.map(comp=>{
-      const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;
-      const platforms=(comp.platforms||[]).map(String).filter(Boolean);
-      const drift=qaPlatformContractChanges.includes(comp.id);
-      const scenarioDriftIds=new Set(qaScenarioPlatformContractChanges.filter(change=>change.componentId===comp.id).map(change=>change.scenario));
-      const componentPlatformSignature=qaPlatformContractByComponent[comp.id]||'';
-      const scenarioState=(id,platform)=>{
-        const raw=localStorage.getItem('ids-qa-evidence-'+platform+'-'+id);
-        if(!raw)return 'missing';
-        try{
-          const m=JSON.parse(raw),at=Date.parse(m?.verifiedAt||''),sig=localStorage.getItem('ids-qa-contract-signature')||'';
-          if(m?.scenario!==id||m?.platform!==platform||m?.contractSignature!==sig||m?.platformContractSignature!==(localStorage.getItem('ids-qa-platform-contract-signature')||'')||m?.componentId!==comp.id||m?.componentPlatformContractSignature!==componentPlatformSignature||m?.scenarioPlatformContractSignature!==qaScenarioPlatformContractByComponent[comp.id]?.[id]||!Number.isFinite(at)||Date.now()-at>30*24*60*60*1000)return 'stale';
-          return 'verified';
-        }catch{return 'stale';}
-      };
-      const rows=qaScenarioList(kind).map(([id,title])=>{
-        const requiredPlatforms=(qaScenarioPlatformContractByComponent[comp.id]?.[id]||'').split(',').filter(Boolean);
-        const cells=['web','android','ios'].map(p=>requiredPlatforms.includes(p)?(()=>{const state=scenarioState(id,p);return '<span class="qa-matrix-'+state+'">'+p+' '+(state==='verified'?'✓':state==='stale'?'!':'—')+'</span>';})():'<span class="qa-matrix-na">'+p+' n/a</span>').join('');
-        return '<div class="qa-matrix-row" data-qa-reviewer-scenario="'+id+'"><b>'+title+'</b><span>'+cells+'</span></div>';
-      }).join('');
-      const required=platforms.join(' · ')||'No declared platforms';
-      const contractState=drift||scenarioDriftIds.size?'changed':'stable';
-      const contractLabel=drift||scenarioDriftIds.size?'Platform/scenario contract changed — re-verify':'Platform/scenario contract stable';
-      return '<section class="qa-matrix-component" data-contract-drift="'+drift+'" aria-label="'+label(comp.id)+' reviewer coverage"><strong>'+label(comp.id)+'</strong><div class="qa-matrix-contract" role="'+(drift?'alert':'status')+'"><span data-contract-state="'+contractState+'">'+contractLabel+'</span><span>Required platforms: '+required+'</span></div>'+rows+'</section>';
-    }).join('');
-  };
-  const renderPlatformEvidenceStatus=(id)=>{
-    const status=root.querySelector('[data-qa-platform-status="'+id+'"]');if(!status)return;
-    ['web','android','ios'].forEach(platform=>{
-      const el=status.querySelector('[data-qa-platform-status-'+platform+']');if(!el)return;
-      const raw=localStorage.getItem('ids-qa-evidence-'+platform+'-'+id);let state='—';
-      try{const meta=raw?JSON.parse(raw):null;const at=Date.parse(meta?.verifiedAt||'');const sig=localStorage.getItem('ids-qa-contract-signature')||'';state=meta?.scenario===id&&meta?.platform===platform&&meta?.contractSignature===sig&&meta?.platformContractSignature===(localStorage.getItem('ids-qa-platform-contract-signature')||'')&&meta?.componentId&&meta?.componentPlatformContractSignature===qaPlatformContractByComponent[meta.componentId]&&Number.isFinite(at)&&Date.now()-at<=QA_EVIDENCE_MAX_AGE_MS?'✓':'!';
-      }catch{}
-      el.textContent=platform.charAt(0).toUpperCase()+platform.slice(1)+' '+state;
-      el.dataset.status=state==='✓'?'verified':state==='!'?'stale':'missing';
-    });
-  };
-  root.querySelectorAll('[data-qa-platform-status]').forEach(el=>renderPlatformEvidenceStatus(el.dataset.qaPlatformStatus));renderQaReviewerMatrix();
-  const complete=components.filter(comp=>{const checks=(comp.guide&&Array.isArray(comp.guide.checklist)?comp.guide.checklist:[]);const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;const scenarios=qaScenarioList(kind);const requiredPlatforms=(comp.platforms||[]).map(String);return checks.length>0&&checks.every((_,i)=>localStorage.getItem('ids-qa-check-'+comp.id+'-'+i)==='true')&&scenarios.length>0&&requiredPlatforms.length>0&&scenarios.every(([id])=>requiredPlatforms.every(platform=>validPlatformEvidence(id,platform)))}).length;
-  const verified=components.filter(comp=>{const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;const requiredPlatforms=(comp.platforms||[]).map(String);return qaScenarioList(kind).length>0&&requiredPlatforms.length>0&&qaScenarioList(kind).every(([id])=>requiredPlatforms.every(platform=>validPlatformEvidence(id,platform)));}).length;
-  const v=root.querySelector('[data-qa-progress-verified]');const q=root.querySelector('[data-qa-progress-checks]');if(v)v.textContent=verified;if(q)q.textContent=complete;
-  components.forEach(comp=>{const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;const scenarios=qaScenarioList(kind);const done=scenarios.filter(([id])=>platforms.every(platform=>validPlatformEvidence(id,platform))).length;const card=root.querySelector('[data-qa-component="'+comp.id+'"]');const progress=card?.querySelector('[data-qa-scenario-progress]');if(progress)progress.textContent=done+'/'+scenarios.length+' scenarios evidenced across '+platforms.length+' platforms';scenarios.forEach(([id])=>renderPlatformEvidenceStatus(id));renderQaReviewerMatrix();});
-};
-  const verified=components.filter(comp=>localStorage.getItem('ids-qa-status-'+comp.id)==='verified').length;const complete=components.filter(comp=>{const checks=(comp.guide&&Array.isArray(comp.guide.checklist)?comp.guide.checklist:[]);const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;const scenarios=qaScenarioList(kind);return checks.length>0&&checks.every((_,i)=>localStorage.getItem('ids-qa-check-'+comp.id+'-'+i)==='true')&&scenarios.length>0&&scenarios.every(([id])=>localStorage.getItem('ids-qa-scenario-'+id)==='true')}).length;const v=root.querySelector('[data-qa-progress-verified]');const q=root.querySelector('[data-qa-progress-checks]');if(v)v.textContent=verified;if(q)q.textContent=complete;components.forEach(comp=>{const kind=comp.id==='text-field'?'field':comp.id==='empty-state'?'empty':comp.id;const total=qaScenarioList(kind).length;const done=qaScenarioList(kind).filter(([id])=>localStorage.getItem('ids-qa-scenario-'+id)==='true').length;const card=root.querySelector('[data-qa-component="'+comp.id+'"]')?.closest('.qa-card');const target=card?.querySelector('[data-qa-scenario-progress]');if(target)target.textContent=done+'/'+total+' scenarios evidenced';});}
-}updateQaProgress();
-}labSection?.querySelector('.lab-statebar')?.after(labMeta);
-labMeta.after(coverageMeta);
-function renderLabV3(){
-  if(!labPreview)return;
-  const s=document.querySelector('[data-lab-state][aria-pressed="true"]')?.dataset.labState||'default';
-  const disabled=s==='disabled';
-  const focus=s==='focus';
-  const error=s==='error';
-  const success=s==='success';
-  const loading=s==='loading';
-  const pressed=s==='pressed'||s==='selected'||s==='checked'||s==='on';
-  const longText=IDS_CONTRACTS[labKind]?.content?.some(x=>x.includes('long'));
-  const label=longText?'Continue to verify your phone number and finish setting up your Itunda account':'Continue';
-  const outline=focus?' style="outline:3px solid color-mix(in srgb,var(--focus) 32%,transparent);outline-offset:3px"':'';
-  let h='';
-  if(labKind==='button'){
-    h='<div class="playground-card"><div class="button-row"><button class="btn primary" data-rendered-state="'+s+'" '+(disabled||loading?'disabled':'')+(loading?' aria-busy="true" aria-disabled="true"':'')+outline+' '+(pressed?'aria-pressed="true"':'')+'>'+((loading)?'Loading…':label)+'</button><button class="btn weak" type="button">Secondary</button></div><p class="note" style="margin-top:12px">'+(loading?'Please wait while we complete the action.':error?'Could not continue. Check the information and try again.':success?'Completed successfully.':pressed?'Action is visibly pressed.':disabled?'This action is currently unavailable.':'Primary and secondary action hierarchy preview.')+'</p></div>';
-  }else if(labKind==='field'){
-    h='<div class="playground-card"><label class="demo-label">Phone number<input class="field" data-rendered-state="'+s+'" aria-describedby="pg-field-help" '+(disabled?'disabled':'')+(error?' aria-invalid="true"':'')+outline+' value="'+(longText?'+250 788 123 456 789 000':'+250 788 123 456')+'"><span id="pg-field-help" class="help">'+(error?'Enter a valid phone number.':success?'Phone number verified.':disabled?'Phone number editing is unavailable.':'Used for verification.')+'</span></label></div>';
-  }else if(labKind==='select'){
-    h='<div class="playground-card"><label class="demo-label">Payment method<select class="pg-select" data-rendered-state="'+s+'" aria-describedby="pg-select-help" '+(disabled?'disabled':'')+(error?' aria-invalid="true"':'')+outline+'><option value="" '+(s==='placeholder'?'selected':'')+' '+(s==='placeholder'?'disabled':'')+'>Choose a payment method</option><option '+(pressed?'selected':'')+'>Mobile Money</option><option '+(s==='option-disabled'?'disabled':'')+'>Bank account</option></select><span id="pg-select-help" class="help">'+(error?'Choose a valid payment method.':success?'Payment method accepted.':s==='option-disabled'?'Bank account is unavailable for this scenario.':'Native select remains the interaction source of truth.')+'</span></label></div>';
-  }else if(labKind==='checkbox'){
-    h='<div class="playground-card control-stack"><label class="control-option"><input type="checkbox" data-rendered-state="'+s+'" aria-describedby="pg-checkbox-help" '+(pressed?'checked ':'')+(disabled?'disabled ':'')+(error?'aria-invalid="true" ':'')+(s==='indeterminate'?'data-indeterminate="true" ':'')+outline+'> Remember this device</label><span id="pg-checkbox-help" class="help">'+(error?'This preference could not be saved.':s==='indeterminate'?'Mixed selection state.':disabled?'This preference is unavailable.':'Native checkbox semantics remain authoritative.')+'</span></div>';
-  }else if(labKind==='radio'){
-    h='<div class="playground-card control-stack" role="radiogroup" aria-labelledby="pg-radio-label" aria-describedby="pg-radio-help"><strong id="pg-radio-label" class="demo-label">Delivery location</strong><label class="control-option"><input type="radio" name="pg-radio" data-rendered-state="'+s+'" aria-describedby="pg-radio-help" '+(pressed?'checked ':'')+(disabled?'disabled ':'')+(error?'aria-invalid="true" ':'')+outline+'> Kigali</label><label class="control-option"><input type="radio" name="pg-radio" '+(pressed?'':'checked ')+(disabled?'disabled ':'')+'> Other location</label><span id="pg-radio-help" class="help">'+(error?'Select one available delivery location.':disabled?'Delivery location selection is unavailable.':'Radio group semantics and native keyboard behavior remain authoritative.')+'</span></div>';
-  }else if(labKind==='switch'){
-    h='<div class="playground-card control-stack"><label class="control-option"><input type="checkbox" role="switch" data-rendered-state="'+s+'" aria-checked="'+(pressed?'true':'false')+'" aria-describedby="pg-switch-help" '+(pressed?'checked ':'')+(disabled||loading?'disabled ':'')+(loading?'aria-busy="true" ':'')+(error?'aria-invalid="true" ':'')+outline+'> Notifications <span class="switch-state" aria-hidden="true">'+(loading?'Updating…':pressed?'On':'Off')+'</span></label><span id="pg-switch-help" class="help">'+(loading?'Updating your notification preference.':error?'Could not update this setting.':disabled?'This preference is unavailable.':pressed?'Notifications are on.':'Notifications are off.')+'</span></div>';
-  }else if(labKind==='tabs'){
-    const active=s==='selected'?1:0;
-    h='<div class="playground-card"><div class="pg-tabs" role="tablist" aria-label="Account sections" aria-orientation="horizontal">'+['Overview','Activity','Settings'].map((x,i)=>'<button type="button" role="tab" id="pg-tab-'+i+'" aria-selected="'+(i===active)+'" aria-controls="pg-panel-'+i+'" tabindex="'+(i===active?'0':'-1')+'" class="'+(i===active?'active':'')+'" '+(disabled&&i>0?'disabled aria-disabled="true" ':'')+'>'+((i===active)?'Selected · ':'')+x+'</button>').join('')+'</div><div id="pg-panel-'+active+'" role="tabpanel" tabindex="0" aria-labelledby="pg-tab-'+active+'" class="note" style="margin-top:12px">Panel content for '+['Overview','Activity','Settings'][active]+'.</div></div>';
-  }else{
-    h='<div class="playground-card ids-empty-state" data-rendered-state="'+s+'" role="status" aria-labelledby="pg-empty-title" aria-describedby="pg-empty-message"><div class="ids-empty-state__icon" aria-hidden="true">○</div><h2 id="pg-empty-title" class="ids-empty-state__title">'+(longText?'No marketplace results found for this neighborhood yet':'No products yet')+'</h2><p id="pg-empty-message" class="ids-empty-state__message">'+(error?'We could not load your products. Try again.':success?'Your catalog is ready.':longText?'There are no results yet. Try changing the neighborhood or search terms.':'Add your first product to start building your catalog.')+'</p><button class="btn" '+(disabled?'disabled':'')+'>'+(error?'Try again':'Add product')+'</button></div>';
-  }
-  labPreview.dataset.labState=s;
-  labPreview.dataset.labKind=labKind;
-  labPreview.dataset.qaScenario=(labKind==='field'?'textfield':labKind==='empty'?'empty':labKind)+'.'+s;
-  labPreview.innerHTML=h;
-  if(labKind==='checkbox'&&s==='indeterminate'){const input=labPreview.querySelector('input');if(input)input.indeterminate=true;}
-}
-document.querySelectorAll('[data-lab-kind]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-lab-kind]').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');labKind=b.dataset.labKind;syncLabContract(labKind);renderLabV3()}));
-syncLabContract(labKind);loadIdsContractManifest();stateBar?.addEventListener('click',e=>{const b=e.target.closest('[data-lab-state]');if(!b)return;stateBar.querySelectorAll('[data-lab-state]').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');renderLabV3()});renderLabV3();
-</script>
-<script id="ids-guide-manifest">
-(function(){
- const labels={button:'button','text-field':'text field',select:'select',checkbox:'checkbox',radio:'radio',switch:'switch',tabs:'tabs','empty-state':'empty state'};
- const normalize=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
- const inject=()=>{
-  const components=IDS_CONTRACT_MANIFEST?.components||[];
-  const byId=new Map(components.map(c=>[c.id,c]));
-  document.querySelectorAll('.component-item').forEach(card=>{
-   if(card.querySelector('.ids-guide-contract'))return;
-   const hay=normalize(card.dataset.name+' '+(card.querySelector('h3')?.textContent||''));
-   const id=[...byId.keys()].find(k=>hay.includes(labels[k]));
-   const c=id&&byId.get(id); if(!c?.guide)return;
-   const g=c.guide;
-   const node=document.createElement('div'); node.className='ids-guide-contract';
-   node.innerHTML='<div><div class="ids-guide-status">✓ Manifest-backed guide</div><strong>Purpose</strong><p>'+g.purpose+'</p><div class="ids-guide-checklist">'+g.checklist.map(x=>'<span>'+x+'</span>').join('')+'</div></div><div class="ids-guide-contract__side"><strong>Worst case</strong><p>'+g.worstCase+'</p><span>Semantic tokens</span><code>'+g.tokens.map(x=>'--itunda-'+x).join(' · ')+'</code></div>';
-   card.querySelector('.component-guide')?.appendChild(node);
-  });
-  const catalog=document.getElementById('componentCatalog');
-  if(catalog){
-   const status=document.getElementById('idsCatalogStatus')||document.createElement('div');
-   status.id='idsCatalogStatus';status.className='note';status.style.margin='0 0 12px';
-   status.textContent=components.length+' canonical primitives · '+document.querySelectorAll('.component-item').length+' documented guides · generated from IDS contract manifest';
-   catalog.insertBefore(status,catalog.firstElementChild);
-  }
- };
- const boot=()=>{if(typeof IDS_CONTRACT_MANIFEST!=='undefined'&&IDS_CONTRACT_MANIFEST)inject();else setTimeout(boot,50)};
- boot();
-})();
-</script>
-</body></html>
+</body>
+</html>
