@@ -6,9 +6,9 @@ The developer showcase at `/design/` is the public documentation surface. The st
 
 ## Identity
 
-- Primary brand: `#1F78FF`
-- Accent: `#1769E0`
-- Surface tint: `#EAF3FF`
+- Primary brand: `#7472F4`
+- Accent: `#625FE6`
+- Surface tint: `#F0EFFF`
 
 ## IDS 3.0 contract
 
