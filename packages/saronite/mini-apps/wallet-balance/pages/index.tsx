@@ -73,10 +73,10 @@ export const Route = createRoute('/', {
 });
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: 'colors.background' },
-  title: { fontSize: 20, fontWeight: '700', marginBottom: 16, color: 'colors.textPrimary' },
-  balance: { fontSize: 32, fontWeight: '700', marginBottom: 12, color: 'colors.textPrimary' },
-  body: { fontSize: 15, color: 'colors.textSecondary', marginBottom: 4 },
-  error: { color: 'colors.error' },
+  container: { flex: 1, padding: 24, backgroundColor: colors.background },
+  title: { fontSize: 20, fontWeight: '700', marginBottom: 16, color: colors.textPrimary },
+  balance: { fontSize: 32, fontWeight: '700', marginBottom: 12, color: colors.textPrimary },
+  body: { fontSize: 15, color: colors.textSecondary, marginBottom: 4 },
+  error: { color: colors.error },
   spacer: { flex: 1 },
 });
