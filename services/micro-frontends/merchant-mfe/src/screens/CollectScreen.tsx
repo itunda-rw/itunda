@@ -22,11 +22,11 @@ export default function CollectScreen() {
             style={{
               flex: 1,
               padding: '10px',
-              borderRadius: '10px',
+              borderRadius: 'var(--itunda-control-radius, 12px)',
               fontSize: '13px',
               fontWeight: 700,
-              color: mode === m ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: mode === m ? 'var(--itunda-indigo)' : 'transparent',
+              color: mode === m ? 'var(--itunda-surface-default)' : 'var(--itunda-text-secondary)',
+              backgroundColor: mode === m ? 'var(--itunda-brand)' : 'transparent',
             }}
           >
             {m === 'QR' ? t('collect.modeQr') : m === 'STATIC' ? t('collect.modeStatic') : m === 'CARD' ? t('collect.modeCard') : t('collect.modeVoucher')}
@@ -63,7 +63,7 @@ function StaticQrCollect() {
   if (error) {
     return (
       <div className="itunda-card">
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert" aria-live="polite">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)' }} role="alert" aria-live="polite">{error}</p>
       </div>
     );
   }
@@ -75,11 +75,11 @@ function StaticQrCollect() {
   return (
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px', textAlign: 'center' }}>
       <h2 style={{ fontSize: '18px', fontWeight: 700 }}>{t('collect.staticTitle')}</h2>
-      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-text-tertiary)' }}>
         {t('collect.staticBody')}
       </p>
       <img src={qrDataUrl} alt="Static merchant QR code" width={240} height={240} style={{ borderRadius: '16px' }} />
-      <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)', fontFamily: 'monospace' }}>{merchantId}</p>
+      <p style={{ fontSize: '11px', color: 'var(--itunda-text-tertiary)', fontFamily: 'monospace' }}>{merchantId}</p>
     </div>
   );
 }
@@ -124,9 +124,9 @@ function VoucherRedeem() {
   if (result) {
     return (
       <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px', textAlign: 'center' }}>
-        <Ticket size={40} color="var(--itunda-indigo)" />
+        <Ticket size={40} color="var(--itunda-brand)" />
         <h2 style={{ fontSize: '18px', fontWeight: 700 }}>{t('collect.voucherRedeemedTitle')}</h2>
-        <p style={{ fontSize: '18px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
+        <p style={{ fontSize: '18px', fontWeight: 700, color: 'var(--itunda-text-primary)' }}>
           {result.productNameSnapshot ?? `${result.amount.toLocaleString('en-US')} RWF`}
         </p>
         <button className="itunda-btn itunda-btn-secondary" style={{ gap: '6px', padding: '10px 20px' }} onClick={reset}>
@@ -143,23 +143,23 @@ function VoucherRedeem() {
       ) : (
         <>
           <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>{t('collect.voucherTitle')}</h2>
-          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-text-tertiary)', marginBottom: '16px' }}>
             {t('collect.voucherBody')}
           </p>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('collect.voucherIdLabel')}</span>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('collect.voucherIdLabel')}</span>
               <input
                 type="text"
                 value={voucherId}
                 onChange={(e) => setVoucherId(e.target.value)}
                 placeholder="giftvoucher_..."
                 required
-                style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+                style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
               />
             </label>
             {error && (
-              <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert" aria-live="polite">
+              <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: 0 }} role="alert" aria-live="polite">
                 {error}
               </p>
             )}
@@ -212,11 +212,11 @@ function QrCollect() {
       <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px', textAlign: 'center' }}>
         <h2 style={{ fontSize: '18px', fontWeight: 700 }}>{t('collect.qrShowTitle')}</h2>
         <img src={qrDataUrl} alt="Payment QR code" width={240} height={240} style={{ borderRadius: '16px' }} />
-        <p style={{ fontSize: '24px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
+        <p style={{ fontSize: '24px', fontWeight: 700, color: 'var(--itunda-text-primary)' }}>
           {intent.amount.toLocaleString('en-US')} RWF
         </p>
-        <p style={{ fontSize: '14px', color: 'var(--itunda-grey-500)' }}>{intent.description}</p>
-        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
+        <p style={{ fontSize: '14px', color: 'var(--itunda-text-tertiary)' }}>{intent.description}</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-text-tertiary)' }}>
           {t('collect.qrExpiresPrefix')} {new Date(intent.expiresAt).toLocaleTimeString()}
         </p>
         <button className="itunda-btn itunda-btn-secondary" style={{ gap: '6px', padding: '10px 20px' }} onClick={reset}>
@@ -231,7 +231,7 @@ function QrCollect() {
       <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>{t('collect.qrTitle')}</h2>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('collect.amount')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('collect.amount')}</span>
           <input
             type="number"
             min="1"
@@ -240,22 +240,22 @@ function QrCollect() {
             onChange={(e) => setAmount(e.target.value)}
             placeholder="8000"
             required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('collect.description')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('collect.description')}</span>
           <input
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="2x Coffee"
             required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
           />
         </label>
         {error && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert" aria-live="polite">
+          <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: 0 }} role="alert" aria-live="polite">
             {error}
           </p>
         )}
@@ -321,12 +321,12 @@ function CardCollect() {
   if (result) {
     return (
       <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px', textAlign: 'center' }}>
-        <CreditCard size={40} color="var(--itunda-indigo)" />
+        <CreditCard size={40} color="var(--itunda-brand)" />
         <h2 style={{ fontSize: '18px', fontWeight: 700 }}>{t('collect.cardChargedTitle')}</h2>
-        <p style={{ fontSize: '24px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
+        <p style={{ fontSize: '24px', fontWeight: 700, color: 'var(--itunda-text-primary)' }}>
           {result.amount.toLocaleString('en-US')} RWF
         </p>
-        <p style={{ fontSize: '14px', color: 'var(--itunda-grey-500)' }}>
+        <p style={{ fontSize: '14px', color: 'var(--itunda-text-tertiary)' }}>
           •••• {result.cardLast4} · fee {result.fee.toLocaleString('en-US')} RWF
         </p>
         <button className="itunda-btn itunda-btn-secondary" style={{ gap: '6px', padding: '10px 20px' }} onClick={reset}>
@@ -339,12 +339,12 @@ function CardCollect() {
   return (
     <div className="itunda-card">
       <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>{t('collect.cardTitle')}</h2>
-      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-text-tertiary)', marginBottom: '16px' }}>
         {t('collect.cardDemoNote')}
       </p>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('collect.amount')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('collect.amount')}</span>
           <input
             type="number"
             min="1"
@@ -353,22 +353,22 @@ function CardCollect() {
             onChange={(e) => setAmount(e.target.value)}
             placeholder="8000"
             required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('collect.description')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('collect.description')}</span>
           <input
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="2x Coffee"
             required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('collect.cardNumberLabel')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('collect.cardNumberLabel')}</span>
           <input
             type="text"
             inputMode="numeric"
@@ -376,37 +376,37 @@ function CardCollect() {
             onChange={(e) => setCardNumber(e.target.value)}
             placeholder="4242 4242 4242 4242"
             required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
           />
         </label>
         <div style={{ display: 'flex', gap: '12px' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('collect.cardExpiryMonth')}</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('collect.cardExpiryMonth')}</span>
             <input
               type="number" min="1" max="12" value={expiryMonth} onChange={(e) => setExpiryMonth(e.target.value)}
               placeholder="12" required
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+              style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('collect.cardExpiryYear')}</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('collect.cardExpiryYear')}</span>
             <input
               type="number" min="2026" value={expiryYear} onChange={(e) => setExpiryYear(e.target.value)}
               placeholder="2030" required
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+              style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('collect.cardCvc')}</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('collect.cardCvc')}</span>
             <input
               type="text" inputMode="numeric" value={cvc} onChange={(e) => setCvc(e.target.value)}
               placeholder="123" required
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+              style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
             />
           </label>
         </div>
         {error && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert" aria-live="polite">
+          <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: 0 }} role="alert" aria-live="polite">
             {error}
           </p>
         )}
