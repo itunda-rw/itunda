@@ -279,7 +279,7 @@ import rw.itunda.core.designsystem.itundaface.TravelHouse
 // (2026-09-02, Menu Feature-module decomposition) -- MenuScreen was its only real
 // caller.
 internal val AccentRed = Color(0xFFFF5B5B)
-private val AccentPink = Color(0xFFEC5F8C)
+private val AccentPink = Ids.colors.brand
 
 // Real super-app bottom nav: Home/Pay/Explore/Messages/You (2026-08-10), replacing
 // the previous Home/Shop/Hood/Talk/All layout -- an explicit product decision after
