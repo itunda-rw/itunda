@@ -125,14 +125,14 @@ function KycSubmitModal({ isOpen, close, onSubmitted }: { isOpen: boolean; close
   };
 
   return (
-    <div className="kyc-modal-backdrop">
+    <div className="kyc-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="kyc-modal-title">
       <div className="kyc-modal-sheet">
         {submitted ? (
           <div className="kyc-success">
             <div className="kyc-success__badge">
               <span className="kyc-success__check">✓</span>
             </div>
-            <h2 className="kyc-step__title">{t('kyc.submittedTitle')}</h2>
+            <h2 id="kyc-modal-title" className="kyc-step__title">{t('kyc.submittedTitle')}</h2>
             <p className="kyc-success__body">
               {t('kyc.submittedBodyPrefix')} {submitted.documentType.replace('_', ' ').toLowerCase()} {t('kyc.submittedBodySuffix')}
             </p>
@@ -140,7 +140,7 @@ function KycSubmitModal({ isOpen, close, onSubmitted }: { isOpen: boolean; close
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="kyc-step">
-            <h2 className="kyc-step__title">{t('kyc.verifyIdentity')}</h2>
+            <h2 id="kyc-modal-title" className="kyc-step__title">{t('kyc.verifyIdentity')}</h2>
             <p className="kyc-step__subtitle">{t('kyc.chooseDocType')}</p>
 
             <div className="kyc-doctype-row">
