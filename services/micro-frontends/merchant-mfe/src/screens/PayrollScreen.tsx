@@ -74,13 +74,13 @@ function PayrollHistorySection() {
     <div className="itunda-card" style={{ padding: 0, overflow: 'hidden' }}>
       <h2 style={{ fontSize: '16px', fontWeight: 700, padding: '16px 20px 0' }}>{t('payroll.historyTitle')}</h2>
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '12px 20px' }} role="alert" aria-live="polite">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: '12px 20px' }} role="alert" aria-live="polite">
           {error}
         </p>
       )}
-      {!error && runs === null && <p style={{ padding: '12px 20px 20px', fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{t('payroll.loading')}</p>}
+      {!error && runs === null && <p style={{ padding: '12px 20px 20px', fontSize: '13px', color: 'var(--itunda-text-tertiary)' }}>{t('payroll.loading')}</p>}
       {!error && runs !== null && runs.length === 0 && (
-        <p style={{ padding: '12px 20px 20px', fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{t('payroll.historyEmpty')}</p>
+        <p style={{ padding: '12px 20px 20px', fontSize: '13px', color: 'var(--itunda-text-tertiary)' }}>{t('payroll.historyEmpty')}</p>
       )}
       {!error && runs !== null && runs.length > 0 && (
         <div style={{ padding: '12px 20px 20px' }}>
@@ -111,29 +111,29 @@ function PayrollRunRow({ run, expanded, onToggle }: { run: PayrollRun; expanded:
   }, [expanded]);
 
   return (
-    <div style={{ borderTop: '1px solid var(--itunda-grey-200)', padding: '12px 0' }}>
+    <div style={{ borderTop: '1px solid var(--itunda-border-default)', padding: '12px 0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{new Date(run.createdAt).toLocaleDateString()}</p>
-          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
+          <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--itunda-text-primary)' }}>{new Date(run.createdAt).toLocaleDateString()}</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-text-tertiary)' }}>
             {t('payroll.employeesPaidCount', { count: run.employeeCount })} · {run.totalAmount.toLocaleString('en-US')} RWF
           </p>
         </div>
-        <button onClick={onToggle} style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-indigo)' }}>
+        <button onClick={onToggle} style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-brand)' }}>
           {expanded ? t('payroll.hidePayslips') : t('payroll.viewPayslips')}
         </button>
       </div>
       {expanded && (
         <div style={{ marginTop: '10px' }}>
           {error && (
-            <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert" aria-live="polite">
+            <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)' }} role="alert" aria-live="polite">
               {error}
             </p>
           )}
-          {!error && payslips === null && <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{t('payroll.loading')}</p>}
+          {!error && payslips === null && <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)' }}>{t('payroll.loading')}</p>}
           {!error && payslips?.map((p) => (
             <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '13px' }}>
-              <span style={{ color: 'var(--itunda-grey-700)' }}>{p.employeeName}</span>
+              <span style={{ color: 'var(--itunda-text-secondary)' }}>{p.employeeName}</span>
               <span style={{ fontWeight: 600 }}>{p.amount.toLocaleString('en-US')} RWF</span>
             </div>
           ))}
@@ -169,23 +169,23 @@ function AddEmployeeForm({ onAdded }: { onAdded: () => void }) {
   return (
     <div className="itunda-card">
       <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>{t('payroll.addEmployeeTitle')}</h2>
-      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-text-tertiary)', marginBottom: '16px' }}>
         {t('payroll.addEmployeeBody')}
       </p>
       <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 2, minWidth: '180px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('payroll.phoneNumberLabel')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('payroll.phoneNumberLabel')}</span>
           <input
             type="tel"
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
             placeholder="+250788123456"
             required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '140px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('payroll.monthlySalaryLabel')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('payroll.monthlySalaryLabel')}</span>
           <input
             type="number"
             min="1"
@@ -194,7 +194,7 @@ function AddEmployeeForm({ onAdded }: { onAdded: () => void }) {
             onChange={(e) => setSalaryAmount(e.target.value)}
             placeholder="150000"
             required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
           />
         </label>
         <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting} style={{ height: '46px' }}>
@@ -202,7 +202,7 @@ function AddEmployeeForm({ onAdded }: { onAdded: () => void }) {
         </button>
       </form>
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '12px 0 0' }} role="alert" aria-live="polite">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: '12px 0 0' }} role="alert" aria-live="polite">
           {error}
         </p>
       )}
@@ -250,7 +250,7 @@ function RosterTable({
   if (error) {
     return (
       <div className="itunda-card">
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert" aria-live="polite">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)' }} role="alert" aria-live="polite">
           {error}
         </p>
         <button className="itunda-btn itunda-btn-secondary" onClick={onReload} style={{ marginTop: '12px' }}>
@@ -270,7 +270,7 @@ function RosterTable({
     <div className="itunda-card" style={{ padding: 0, overflow: 'hidden' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Users size={18} color="var(--itunda-indigo)" />
+          <Users size={18} color="var(--itunda-brand)" />
           <h2 style={{ fontSize: '16px', fontWeight: 700 }}>{t('payroll.rosterTitle', { count: roster.length })}</h2>
         </div>
         <button
@@ -282,7 +282,7 @@ function RosterTable({
         </button>
       </div>
       {runError && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '0 20px 16px' }} role="alert" aria-live="polite">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: '0 20px 16px' }} role="alert" aria-live="polite">
           {runError}
         </p>
       )}
@@ -292,7 +292,7 @@ function RosterTable({
         </div>
       )}
       {roster.length === 0 ? (
-        <p style={{ padding: '0 20px 20px', fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
+        <p style={{ padding: '0 20px 20px', fontSize: '13px', color: 'var(--itunda-text-tertiary)' }}>
           {t('payroll.rosterEmpty')}
         </p>
       ) : (
@@ -300,7 +300,7 @@ function RosterTable({
           <thead>
             <tr style={{ backgroundColor: 'var(--itunda-grey-100)', textAlign: 'left' }}>
               {[t('payroll.columnEmployee'), t('payroll.columnMonthlySalary'), ''].map((h, i) => (
-                <th key={i === 2 ? 'actions' : h} style={{ padding: '10px 20px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>
+                <th key={i === 2 ? 'actions' : h} style={{ padding: '10px 20px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>
                   {h}
                 </th>
               ))}
@@ -308,13 +308,13 @@ function RosterTable({
           </thead>
           <tbody>
             {roster.map((employee) => (
-              <tr key={employee.id} style={{ borderTop: '1px solid var(--itunda-grey-200)' }}>
-                <td style={{ padding: '10px 20px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{employee.employeeName}</td>
+              <tr key={employee.id} style={{ borderTop: '1px solid var(--itunda-border-default)' }}>
+                <td style={{ padding: '10px 20px', fontWeight: 600, color: 'var(--itunda-text-primary)' }}>{employee.employeeName}</td>
                 <td style={{ padding: '10px 20px' }}>{employee.salaryAmount.toLocaleString('en-US')} RWF</td>
                 <td style={{ padding: '10px 20px', textAlign: 'right' }}>
                   <button
                     onClick={() => onRemove(employee.id)}
-                    style={{ color: 'var(--itunda-grey-500)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}
+                    style={{ color: 'var(--itunda-text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}
                   >
                     <Trash2 size={14} /> {t('payroll.removeButton')}
                   </button>
@@ -334,17 +334,17 @@ function PayrollRunConfirmation({ result, onDone }: { result: PayrollRunResult; 
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px', textAlign: 'center', maxWidth: '480px' }}>
       <CircleCheck size={40} color="var(--itunda-green)" />
       <h2 style={{ fontSize: '18px', fontWeight: 700 }}>{t('payroll.paidTitle')}</h2>
-      <p style={{ fontSize: '24px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
+      <p style={{ fontSize: '24px', fontWeight: 700, color: 'var(--itunda-text-primary)' }}>
         {result.totalAmount.toLocaleString('en-US')} RWF
       </p>
-      <p style={{ fontSize: '14px', color: 'var(--itunda-grey-500)' }}>{t('payroll.employeesPaidCount', { count: result.employeeCount })}</p>
+      <p style={{ fontSize: '14px', color: 'var(--itunda-text-tertiary)' }}>{t('payroll.employeesPaidCount', { count: result.employeeCount })}</p>
       <div style={{ width: '100%', textAlign: 'left' }}>
         {result.payslips.map((p) => (
           <div
             key={p.transactionId}
-            style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
+            style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid var(--itunda-border-default)', fontSize: '13px' }}
           >
-            <span style={{ color: 'var(--itunda-grey-700)' }}>{p.employeeName}</span>
+            <span style={{ color: 'var(--itunda-text-secondary)' }}>{p.employeeName}</span>
             <span style={{ fontWeight: 600 }}>{p.amount.toLocaleString('en-US')} RWF</span>
           </div>
         ))}
