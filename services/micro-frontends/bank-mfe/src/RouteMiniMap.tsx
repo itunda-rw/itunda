@@ -100,7 +100,7 @@ export default function RouteMiniMap({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
       <div ref={containerRef} style={{ width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden' }} />
       {loading && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Finding the real road route…</p>}
-      {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert" aria-live="polite">{error}</p>}
       {route && (
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-700)' }}>
           🚗 {route.distanceKm.toFixed(1)} km · {Math.round(route.durationMinutes)} min by real road, via itunda's own self-hosted OSRM
