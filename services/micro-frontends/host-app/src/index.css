@@ -43,6 +43,17 @@ button:active {
   transform: scale(0.96);
 }
 
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--itunda-brand);
+  outline-offset: 2px;
+}
+
+.itunda-btn {
+  min-height: var(--itunda-touch-target-recommended, 48px);
+}
+
 /* Shared card/button primitives BankDashboard already relies on (bank-mfe's own
    copy of these classes, since Module Federation doesn't share CSS across remotes
    automatically). */
@@ -113,4 +124,17 @@ button:active {
 .host-tab-active {
   color: var(--itunda-brand);
   border-bottom-color: var(--itunda-brand);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button,
+  .itunda-card,
+  .skeleton {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  button:active {
+    transform: none;
+  }
 }
