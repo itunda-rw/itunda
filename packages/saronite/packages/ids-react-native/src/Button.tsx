@@ -1,21 +1,68 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, Text, StyleSheet, ViewStyle } from 'react-native';
 import { colors } from './colors';
 import { layout } from './layout';
 
-interface ButtonProps { title: string; onPress: () => void; type?: 'primary' | 'secondary'; style?: ViewStyle; }
+type ButtonType = 'primary' | 'secondary' | 'tertiary' | 'destructive';
 
-export const Button: React.FC<ButtonProps> = ({ title, onPress, type = 'primary', style }) => {
+interface ButtonProps {
+  title: string;
+  onPress: () => void;
+  type?: ButtonType;
+  disabled?: boolean;
+  loading?: boolean;
+  style?: ViewStyle;
+  accessibilityHint?: string;
+}
+
+export const Button: React.FC<ButtonProps> = ({
+  title,
+  onPress,
+  type = 'primary',
+  disabled = false,
+  loading = false,
+  style,
+  accessibilityHint,
+}) => {
+  const unavailable = disabled || loading;
   const isPrimary = type === 'primary';
+  const isDestructive = type === 'destructive';
+  const isTertiary = type === 'tertiary';
+
   return (
-    <TouchableOpacity
-      style={[styles.button, isPrimary ? styles.primary : styles.secondary, style]}
+    <Pressable
+      style={({ pressed }) => [
+        styles.button,
+        isPrimary && styles.primary,
+        type === 'secondary' && styles.secondary,
+        isTertiary && styles.tertiary,
+        isDestructive && styles.destructive,
+        pressed && !unavailable && styles.pressed,
+        unavailable && styles.disabled,
+        style,
+      ]}
       onPress={onPress}
+      disabled={unavailable}
       accessibilityRole="button"
       accessibilityLabel={title}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled, busy: loading }}
     >
-      <Text style={[styles.text, isPrimary ? styles.primaryText : styles.secondaryText]}>{title}</Text>
-    </TouchableOpacity>
+      {loading ? (
+        <ActivityIndicator
+          accessibilityLabel="Loading"
+          color={isPrimary || isDestructive ? colors.card : colors.primaryIndigo}
+        />
+      ) : (
+        <Text style={[
+          styles.text,
+          isPrimary && styles.primaryText,
+          type === 'secondary' && styles.secondaryText,
+          isTertiary && styles.tertiaryText,
+          isDestructive && styles.destructiveText,
+        ]}>{title}</Text>
+      )}
+    </Pressable>
   );
 };
 
@@ -30,8 +77,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primary: { backgroundColor: colors.primaryIndigo },
-  secondary: { backgroundColor: colors.background },
+  secondary: { backgroundColor: colors.card },
+  tertiary: { backgroundColor: 'transparent' },
+  destructive: { backgroundColor: colors.error },
+  pressed: { opacity: 0.86 },
+  disabled: { opacity: 0.45 },
   text: { fontSize: 16, fontWeight: '600' },
   primaryText: { color: colors.card },
   secondaryText: { color: colors.textPrimary },
+  tertiaryText: { color: colors.primaryIndigo },
+  destructiveText: { color: colors.card },
 });
