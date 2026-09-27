@@ -16,7 +16,7 @@ body {
 #root {
   width: 100%;
   min-height: 100svh;
-  background-color: var(--itunda-grey-100);
+  background-color: var(--itunda-surface-subtle);
 }
 
 h1, h2, h3, h4, p {
@@ -47,7 +47,7 @@ input, textarea {
 .itunda-card {
   background: var(--itunda-surface-default);
   border-radius: var(--itunda-radius-md);
-  padding: 24px;
+  padding: var(--itunda-content-gap);
   box-shadow: var(--itunda-shadow);
   margin-bottom: 16px;
   transition: var(--itunda-transition);
@@ -70,8 +70,8 @@ input, textarea {
 }
 
 .itunda-btn-secondary {
-  background-color: var(--itunda-grey-100);
-  color: var(--itunda-grey-800);
+  background-color: var(--itunda-surface-subtle);
+  color: var(--itunda-text-secondary);
 }
 
 .itunda-btn-danger {
