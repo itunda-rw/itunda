@@ -5,7 +5,7 @@ import federation from '@originjs/vite-plugin-federation'
 const production = process.env.NODE_ENV === 'production'
 
 export default defineConfig({
-  base: production ? '/app/remotes/kyc/' : '/',
+  base: production ? '/remotes/kyc/' : '/',
   plugins: [
     react(),
     // @ts-ignore -- vite-plugin-federation's CJS/ESM type interop is runtime-safe.
