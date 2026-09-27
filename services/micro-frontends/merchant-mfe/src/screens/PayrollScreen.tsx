@@ -74,7 +74,7 @@ function PayrollHistorySection() {
     <div className="itunda-card" style={{ padding: 0, overflow: 'hidden' }}>
       <h2 style={{ fontSize: '16px', fontWeight: 700, padding: '16px 20px 0' }}>{t('payroll.historyTitle')}</h2>
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '12px 20px' }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '12px 20px' }} role="alert" aria-live="polite">
           {error}
         </p>
       )}
@@ -126,7 +126,7 @@ function PayrollRunRow({ run, expanded, onToggle }: { run: PayrollRun; expanded:
       {expanded && (
         <div style={{ marginTop: '10px' }}>
           {error && (
-            <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">
+            <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert" aria-live="polite">
               {error}
             </p>
           )}
@@ -202,7 +202,7 @@ function AddEmployeeForm({ onAdded }: { onAdded: () => void }) {
         </button>
       </form>
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '12px 0 0' }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '12px 0 0' }} role="alert" aria-live="polite">
           {error}
         </p>
       )}
@@ -250,7 +250,7 @@ function RosterTable({
   if (error) {
     return (
       <div className="itunda-card">
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert" aria-live="polite">
           {error}
         </p>
         <button className="itunda-btn itunda-btn-secondary" onClick={onReload} style={{ marginTop: '12px' }}>
@@ -282,7 +282,7 @@ function RosterTable({
         </button>
       </div>
       {runError && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '0 20px 16px' }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '0 20px 16px' }} role="alert" aria-live="polite">
           {runError}
         </p>
       )}
