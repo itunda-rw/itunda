@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, View, StyleSheet } from 'react-native';
+import { Pressable, View, StyleSheet } from 'react-native';
 import { BodyBold, BodyMedium } from './Typography';
 import { colors } from './colors';
 import { layout } from './layout';
@@ -10,15 +10,21 @@ interface ListRowProps {
   rightElement?: React.ReactNode;
   onPress?: () => void;
   icon?: React.ReactNode;
+  disabled?: boolean;
+  accessibilityHint?: string;
 }
 
-export const ListRow: React.FC<ListRowProps> = ({ title, subTitle, rightElement, onPress, icon }) => (
-  <TouchableOpacity
+export const ListRow: React.FC<ListRowProps> = ({
+  title, subTitle, rightElement, onPress, icon, disabled = false, accessibilityHint,
+}) => (
+  <Pressable
     onPress={onPress}
-    disabled={!onPress}
-    style={styles.container}
+    disabled={!onPress || disabled}
+    style={({ pressed }) => [styles.container, pressed && onPress && !disabled && styles.pressed, disabled && styles.disabled]}
     accessibilityRole={onPress ? 'button' : 'text'}
     accessibilityLabel={title}
+    accessibilityHint={accessibilityHint}
+    accessibilityState={{ disabled }}
   >
     <View style={styles.leftContent}>
       {icon && <View style={styles.iconContainer}>{icon}</View>}
@@ -28,7 +34,7 @@ export const ListRow: React.FC<ListRowProps> = ({ title, subTitle, rightElement,
       </View>
     </View>
     {rightElement && <View style={styles.rightContent}>{rightElement}</View>}
-  </TouchableOpacity>
+  </Pressable>
 );
 
 const styles = StyleSheet.create({
@@ -54,4 +60,6 @@ const styles = StyleSheet.create({
   textContainer: { flex: 1, justifyContent: 'center' },
   subTitle: { marginTop: layout.tightGap / 2 },
   rightContent: { marginLeft: layout.inlineGap },
+  pressed: { opacity: 0.82 },
+  disabled: { opacity: 0.45 },
 });
