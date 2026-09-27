@@ -3003,7 +3003,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         </div>
       </motion.div>
 
-      <div style={{ display: 'flex', gap: '2px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '2px', padding: '4px', marginBottom: '16px', backgroundColor: 'transparent', borderBottom: '1px solid var(--itunda-grey-200)' }}>
         {PRIMARY_TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
