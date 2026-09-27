@@ -113,6 +113,8 @@ public struct ErrorCardView: View {
 public enum IdsButtonVariant {
     case filled
     case tinted
+    case tertiary
+    case destructive
 }
 
 public enum IdsButtonSize {
@@ -170,17 +172,25 @@ public struct IdsButton: View {
             .frame(maxWidth: fullWidth ? .infinity : nil)
             .frame(minWidth: fullWidth ? nil : 44, minHeight: size.height)
         }
-        .foregroundColor(variant == .filled ? IDS.Colors.textBrand : IDS.Colors.brand)
+        .foregroundColor(
+            !isEnabled ? IDS.Colors.textTertiary :
+            variant == .filled ? IDS.Colors.textBrand :
+            variant == .destructive ? IDS.Colors.danger :
+            IDS.Colors.brand
+        )
         .background(
-            (isEnabled
-                ? (variant == .filled ? IDS.Colors.brand : IDS.Colors.chipBackground)
-                : IDS.Colors.divider)
+            !isEnabled ? IDS.Colors.divider :
+            variant == .filled ? IDS.Colors.brand :
+            variant == .destructive ? IDS.Colors.dangerTint :
+            variant == .tinted ? IDS.Colors.chipBackground :
+            Color.clear
         )
         .cornerRadius(size == .small ? 10 : 12)
         .buttonStyle(PressScaleButtonStyle(enabled: isEnabled && !isLoading))
         .disabled(!isEnabled || isLoading)
         .accessibilityAddTraits(.isButton)
         .accessibilityValue(isLoading ? "Loading" : "")
+        .accessibilityHint(variant == .destructive ? "Destructive action" : "")
     }
 }
 
