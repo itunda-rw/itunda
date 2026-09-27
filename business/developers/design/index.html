@@ -32,7 +32,7 @@ a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}
 .mark{width:26px;height:26px}.crumb{font-size:13px;color:var(--tertiary)}
 .spacer{flex:1}.theme{width:40px;height:40px;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--ink);cursor:pointer}
 .layout{display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr);max-width:1400px;margin:auto}
-.side{position:sticky;top:88px;max-height:calc(100vh - 104px);overflow:auto;position:sticky;top:64px;height:calc(100vh - 64px);overflow:auto;border-right:1px solid var(--line);padding:24px 14px;background:var(--bg)}
+.side{position:sticky;top:64px;height:calc(100vh - 64px);overflow:auto;border-right:1px solid var(--line);padding:24px 14px;background:var(--bg)}
 .side-group{margin-bottom:24px}.side-title{padding:0 10px 7px;color:var(--tertiary);font-size:10px;font-weight:750;letter-spacing:.09em;text-transform:uppercase}
 .side a{display:block;padding:9px 10px;border-radius:10px;color:var(--secondary);font-size:13px;font-weight:600}
 .side a:hover,.side a.active{background:var(--surface-subtle);color:var(--ink)}.mobile-nav{display:none}
@@ -103,6 +103,8 @@ a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}
 <article class="card third"><h3>One decision at a time</h3><p>Each surface gets a clear primary action. Secondary choices stay quiet until they are needed.</p><div class="token"><b>primary → secondary → tertiary</b></div></article>
 <article class="card third"><h3>Context before controls</h3><p>Explain what is happening before asking for a choice. Controls should answer a known question, not create one.</p><div class="token"><b>context → choice → confirmation</b></div></article>
 <article class="card third"><h3>Itunda signature</h3><p>Indigo remains the brand anchor. Reference-inspired neutrals never replace the Itunda identity.</p><div class="token"><b>#7472F4 · #625FE6</b></div></article>
+<article class="card third"><h3>Value before action</h3><p>Show why a task matters before presenting the control. The user should understand the benefit before committing attention.</p><div class="token"><b>value → context → action</b></div></article>
+<article class="card third"><h3>Explain why</h3><p>When a request needs trust, give the reason close to the decision. Explanation should reduce uncertainty, not add another step.</p><div class="token"><b>reason → choice → recovery</b></div></article>
 </div>
 </section>
 
@@ -168,7 +170,24 @@ a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}
   syncTheme();
   const menu=document.getElementById('menu');
   const mobileNav=document.getElementById('mobile-nav');
-  if(menu){menu.addEventListener('click',function(){const open=mobileNav.classList.toggle('open');menu.setAttribute('aria-expanded',String(open));menu.textContent=open?'×':'☰';});mobileNav.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{mobileNav.classList.remove('open');menu.setAttribute('aria-expanded','false');menu.textContent='☰';}));}
+  if(menu&&mobileNav){
+    menu.addEventListener('click',function(){
+      const open=menu.getAttribute('aria-expanded')==='true';
+      menu.setAttribute('aria-expanded',String(!open));
+      menu.setAttribute('aria-label',open?'Open design system navigation':'Close design system navigation');
+      menu.textContent=open?'☰':'×';
+      mobileNav.hidden=open;
+      mobileNav.classList.toggle('open',!open);
+      if(!open) mobileNav.querySelector('a')?.focus();
+    });
+    mobileNav.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{
+      mobileNav.hidden=true;
+      mobileNav.classList.remove('open');
+      menu.setAttribute('aria-expanded','false');
+      menu.setAttribute('aria-label','Open design system navigation');
+      menu.textContent='☰';
+    }));
+  }
   button.addEventListener('click',function(){
     root.dataset.theme=root.dataset.theme==='dark'?'light':'dark';
     if(status)status.textContent=root.dataset.theme==='dark'?'Dark mode enabled':'Light mode enabled';
@@ -177,7 +196,14 @@ a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}
   });
 
   const status=document.getElementById('ids-status');const selectTab=(tab,focus=true)=>{const tabs=[...document.querySelectorAll('.tab')];tabs.forEach(t=>{const selected=t===tab;t.setAttribute('aria-selected',String(selected));t.tabIndex=selected?0:-1;const panel=document.getElementById(t.getAttribute('aria-controls'));if(panel)panel.hidden=!selected;});if(focus)tab.focus();if(status)status.textContent=tab.textContent+' tab selected';};document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=>selectTab(tab,false));tab.addEventListener('keydown',e=>{const tabs=[...document.querySelectorAll('.tab')];const i=tabs.indexOf(tab);let next=null;if(e.key==='ArrowRight')next=tabs[(i+1)%tabs.length];if(e.key==='ArrowLeft')next=tabs[(i-1+tabs.length)%tabs.length];if(e.key==='Home')next=tabs[0];if(e.key==='End')next=tabs[tabs.length-1];if(next){e.preventDefault();selectTab(next);}});});
-  document.querySelectorAll('.motion-dot').forEach(dot=>dot.addEventListener('click',()=>{dot.style.transform='translateY(-8px)';window.setTimeout(()=>dot.style.transform='',dot.classList.contains('fast')?140:dot.classList.contains('normal')?220:420);}));
+  document.querySelectorAll('.motion-dot').forEach(button=>button.addEventListener('click',()=>{
+    document.querySelectorAll('.motion-dot').forEach(b=>b.setAttribute('aria-pressed','false'));
+    button.setAttribute('aria-pressed','true');
+    const ms=button.classList.contains('fast')?140:button.classList.contains('normal')?220:button.classList.contains('slow')?420:0;
+    const demo=document.querySelector('.motion-demo');
+    if(ms>0) demo?.animate([{transform:'translateY(0)'},{transform:'translateY(-3px)'},{transform:'translateY(0)'}],{duration:ms,iterations:1,easing:'ease-out'});
+    if(status) status.textContent=button.textContent.trim()+' motion preview';
+  }));
   document.querySelectorAll('.swatch').forEach(swatch=>{swatch.tabIndex=0;swatch.setAttribute('role','button');const copy=async()=>{const match=swatch.textContent.match(/#[0-9A-Fa-f]{6}/);if(match&&navigator.clipboard){try{await navigator.clipboard.writeText(match[0]);swatch.dataset.copied='true';if(status)status.textContent=match[0]+' copied';setTimeout(()=>delete swatch.dataset.copied,1000);}catch(_){}}};swatch.addEventListener('click',copy);swatch.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();copy();}});});
   const links=[...document.querySelectorAll('.side a[href^="#"]')];
   const sections=links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
@@ -192,34 +218,6 @@ a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}
   }
 })();
 
-const menu=document.querySelector('.menu'),mobileNav=document.querySelector('.mobile-nav');if(menu&&mobileNav){menu.addEventListener('click',()=>{const open=mobileNav.classList.toggle('open');menu.setAttribute('aria-expanded',String(open));});mobileNav.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{mobileNav.classList.remove('open');menu.setAttribute('aria-expanded','false')}));}
-document.querySelectorAll('.motion-btn').forEach(btn=>btn.addEventListener('click',()=>{const ms=btn.dataset.motion==='fast'?140:btn.dataset.motion==='normal'?220:btn.dataset.motion==='slow'?420:0;document.documentElement.style.setProperty('--demo-motion',ms+'ms');if(status)status.textContent=btn.textContent.trim()+' motion preview';}));
-<script>
-const menu=document.getElementById('menu'), mobileNav=document.getElementById('mobile-nav');
-menu?.addEventListener('click',()=>{
-  const open=menu.getAttribute('aria-expanded')==='true';
-  menu.setAttribute('aria-expanded',String(!open));
-  menu.setAttribute('aria-label',open?'Open design system navigation':'Close design system navigation');
-  mobileNav.hidden=open;
-  mobileNav.classList.toggle('open',!open);
-  if(!open) mobileNav.querySelector('a')?.focus();
-});
-mobileNav?.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{
-  menu.setAttribute('aria-expanded','false');
-  menu.setAttribute('aria-label','Open design system navigation');
-  mobileNav.hidden=true;
-  mobileNav.classList.remove('open');
-}));
-document.querySelectorAll('.motion-dot').forEach((button)=>{
-  button.addEventListener('click',()=>{
-    document.querySelectorAll('.motion-dot').forEach(b=>b.setAttribute('aria-pressed','false'));
-    button.setAttribute('aria-pressed','true');
-    const ms=button.classList.contains('fast')?140:button.classList.contains('normal')?220:button.classList.contains('slow')?420:0;
-    const demo=document.querySelector('.motion-demo');
-    demo.style.setProperty('--preview-duration',ms+'ms');
-    demo.animate([{transform:'translateY(0)'},{transform:'translateY(-3px)'},{transform:'translateY(0)'}],{duration:ms||1,iterations:1,easing:'ease-out'});
-  });
-});
-</script></script>
+</script>
 </body>
 </html>
