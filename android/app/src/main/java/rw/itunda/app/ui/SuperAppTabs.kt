@@ -439,7 +439,7 @@ internal fun HoodSectionScreen(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(20.dp)
-                    .clip(RoundedCornerShape(28.dp))
+                    .clip(RoundedCornerShape(Ids.layout.pillCornerRadius))
                     .background(Ids.colors.brand)
                     .pressScaleClickable { requestNewListingSignal++ }
                     .padding(horizontal = 20.dp, vertical = 14.dp),
