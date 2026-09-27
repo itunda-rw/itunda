@@ -3,8 +3,8 @@
 body {
   margin: 0;
   font-family: var(--itunda-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
-  background-color: var(--itunda-grey-100);
-  color: var(--itunda-grey-900);
+  background-color: var(--itunda-surface-default);
+  color: var(--itunda-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
