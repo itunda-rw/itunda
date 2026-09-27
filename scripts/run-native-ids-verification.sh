@@ -31,11 +31,14 @@ echo "== iOS: native Tuist/Xcode build =="
 # The Xcode sandbox is remote; the local machine does not need Xcode.
 # The generated Xcode project is included explicitly because Tuist artifacts
 # are intentionally gitignored in this repository.
-if command -v tuist >/dev/null 2>&1; then
+if command -v mise >/dev/null 2>&1; then
+  (cd ios && mise install tuist@3.42.3 && mise exec tuist@3.42.3 -- tuist generate --no-open)
+elif command -v tuist >/dev/null 2>&1; then
+  echo "WARNING: using the installed Tuist; this repository's verified iOS generation line is 3.42.3."
   (cd ios && tuist generate --no-open)
 else
-  echo "INFO: local Tuist not found; use a macOS/Tuist environment for project generation,"
-  echo "      then rerun this script so the generated ios/Itunda.xcodeproj is available."
+  echo "INFO: Tuist 3.42.3 is required for native iOS project generation."
+  echo "      Install mise or Tuist 3.42.3, then rerun this script."
   exit 2
 fi
 
