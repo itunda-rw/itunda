@@ -52,8 +52,8 @@ function SupportCard({ ticket, onResolved }: { ticket: SupportTicket; onResolved
               style={{
                 fontSize: '12px',
                 fontWeight: 700,
-                color: 'var(--itunda-indigo)',
-                backgroundColor: 'var(--itunda-indigo-light)',
+                color: 'var(--itunda-brand)',
+                backgroundColor: 'var(--itunda-surface-brand)',
                 padding: '2px 8px',
                 borderRadius: '6px',
               }}
@@ -61,19 +61,19 @@ function SupportCard({ ticket, onResolved }: { ticket: SupportTicket; onResolved
               {CATEGORY_LABEL[ticket.category]}
             </span>
             {ticket.category === 'ACCOUNT_TAKEOVER' && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 700, color: 'var(--itunda-red)' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 700, color: 'var(--itunda-field-border-error)' }}>
                 <AlertOctagon size={13} /> Wallet frozen
               </span>
             )}
           </div>
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{ticket.description}</p>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-text-primary)' }}>{ticket.description}</p>
         </div>
       </div>
-      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)' }}>
         User {ticket.userId}
         {ticket.transactionId && ` · Transaction ${ticket.transactionId}`}
       </p>
-      <p style={{ fontSize: '13px', fontWeight: 600, color: overdue ? 'var(--itunda-red)' : 'var(--itunda-grey-500)' }}>
+      <p style={{ fontSize: '13px', fontWeight: 600, color: overdue ? 'var(--itunda-field-border-error)' : 'var(--itunda-text-tertiary)' }}>
         Due {new Date(ticket.dueBy).toLocaleString()}{overdue && ' · Overdue'}
       </p>
 
@@ -83,12 +83,12 @@ function SupportCard({ ticket, onResolved }: { ticket: SupportTicket; onResolved
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Resolution notes (optional)"
           rows={2}
-          style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', resize: 'vertical' }}
+          style={{ padding: '10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '14px', resize: 'vertical' }}
         />
       )}
 
       {actionError && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert" aria-live="polite">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: 0 }} role="alert" aria-live="polite">
           {actionError}
         </p>
       )}
