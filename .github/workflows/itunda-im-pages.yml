@@ -1,11 +1,9 @@
 name: Deploy itunda.im
 
 on:
-  push:
-    branches: [landing/itunda-im]
-    paths:
-      - 'site/**'
-      - '.github/workflows/itunda-im-pages.yml'
+  # GitHub-hosted runner provisioning is currently unavailable for the Itunda
+  # Enterprise trial. Keep deployment manual until hosted Actions entitlement
+  # is restored.
   workflow_dispatch:
 
 permissions:
