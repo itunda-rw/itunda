@@ -518,6 +518,8 @@ public struct IdsListRow: View {
             .overlay(Rectangle().fill(IDS.Colors.divider).frame(height: 1), alignment: .bottom)
         }
         .buttonStyle(PressScaleButtonStyle())
+        .accessibilityLabel(Text(title))
+        .accessibilityValue(Text([subtitle, rightText].compactMap { $0 }.joined(separator: ". ")))
     }
 }
 
