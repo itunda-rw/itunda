@@ -20,8 +20,8 @@ body {
   max-width: 480px;
   margin: 0 auto;
   min-height: 100svh;
-  background-color: var(--itunda-grey-100);
-  box-shadow: var(--itunda-shadow-shell);
+  background-color: var(--itunda-surface-default);
+  box-shadow: none;
   position: relative;
   overflow-x: hidden;
 }
