@@ -243,10 +243,10 @@ function ReportScamLink({ identifier }: { identifier: string }) {
     }
   };
 
-  if (done) return <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{t('scamReport.thanks')}</p>;
+  if (done) return <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>{t('scamReport.thanks')}</p>;
 
   return (
-    <button type="button" onClick={handleReport} disabled={reporting} style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', textAlign: 'left' }}>
+    <button type="button" onClick={handleReport} disabled={reporting} style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)', textAlign: 'left' }}>
       {reporting ? t('scamReport.reporting') : t('scamReport.reportLink')}
     </button>
   );
@@ -290,7 +290,7 @@ export function ProgressStepper({ activeStepIndex, steps }: { activeStepIndex: n
             <span
               style={{
                 fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: i === activeStepIndex ? 700 : 500, whiteSpace: 'nowrap',
-                color: i === activeStepIndex ? 'var(--itunda-indigo)' : i < activeStepIndex ? 'var(--itunda-grey-700)' : 'var(--itunda-grey-400)',
+                color: i === activeStepIndex ? 'var(--itunda-indigo)' : i < activeStepIndex ? 'var(--itunda-text-secondary)' : 'var(--itunda-text-disabled)',
               }}
             >
               {label}
@@ -300,7 +300,7 @@ export function ProgressStepper({ activeStepIndex, steps }: { activeStepIndex: n
             <div
               style={{
                 flex: 1, height: '1px', marginBottom: '17px', marginLeft: '4px', marginRight: '4px',
-                backgroundColor: i < activeStepIndex ? 'var(--itunda-indigo)' : 'var(--itunda-grey-200)',
+                backgroundColor: i < activeStepIndex ? 'var(--itunda-indigo)' : 'var(--itunda-border-default)',
               }}
             />
           )}
@@ -462,7 +462,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
           <div style={{ textAlign: 'center', padding: '32px 0' }}>
             <span style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}><GiftGlyph theme={giftResult.theme} size={40} /></span>
             <h3 style={{ fontSize: 'var(--itunda-type-scale-19-size)', fontWeight: 800, marginBottom: '6px' }}>Gift sent!</h3>
-            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-tertiary)' }}>
               {giftResult.amount.toLocaleString('en-US')} RWF is held until {recipient.trim()} claims it -- auto-refunded to you after 7 days if unclaimed.
             </p>
           </div>
@@ -489,7 +489,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
                 covered reassurance sits on its own line BELOW the buttons, not crammed
                 into the same line as other info -- moved here from the content area to
                 match. */}
-            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', textAlign: 'center', marginTop: '10px' }}>
+            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)', textAlign: 'center', marginTop: '10px' }}>
               {t('transfer.feeCovered')}
             </p>
           </div>
@@ -518,11 +518,11 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
             <Check size={38} color="#ffffff" />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12, duration: 0.3, ease: 'easeOut' }}>
-            <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, color: 'var(--itunda-grey-500)', marginBottom: '8px' }}>{t('transfer.sentHeadline')}</h3>
+            <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, color: 'var(--itunda-text-tertiary)', marginBottom: '8px' }}>{t('transfer.sentHeadline')}</h3>
             <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, marginBottom: '4px' }}>{Number(amount).toLocaleString('en-US')} RWF</p>
-            <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: 'var(--itunda-grey-700)' }}>{t('transfer.toLabel')} {recipientName}</p>
-            {memo.trim() && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginTop: '10px' }}>&ldquo;{memo.trim()}&rdquo;</p>}
-            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-400)', marginTop: '14px' }}>
+            <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: 'var(--itunda-text-secondary)' }}>{t('transfer.toLabel')} {recipientName}</p>
+            {memo.trim() && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-tertiary)', marginTop: '10px' }}>&ldquo;{memo.trim()}&rdquo;</p>}
+            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-disabled)', marginTop: '14px' }}>
               {t('transfer.newBalance', { amount: result.newBalance.toLocaleString('en-US') })}
             </p>
             {/* Real Toss "Fraud Suspicion Siren" (사기의심 사이렌) parity -- see
@@ -559,7 +559,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
             transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
             style={{ width: '40px', height: '40px', margin: '0 auto 16px', border: '3px solid var(--itunda-indigo-light)', borderTopColor: 'var(--itunda-indigo)', borderRadius: '50%' }}
           />
-          <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: 'var(--itunda-grey-700)' }}>{t('transfer.sending')}</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: 'var(--itunda-text-secondary)' }}>{t('transfer.sending')}</p>
         </div>
       </FullScreenFlow>
     );
@@ -602,7 +602,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
         <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 800 }}>
           {t('transfer.confirmSendNow', { amount: Number(amount).toLocaleString('en-US'), recipient: recipientName })}
         </h3>
-        <div style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-700)', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
+        <div style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
           <span>{recipient.trim()}</span>
           {memo.trim() && <span>&ldquo;{memo.trim()}&rdquo;</span>}
         </div>
@@ -650,13 +650,13 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
         <ProgressStepper activeStepIndex={1} steps={TRANSFER_STEP_LABELS} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button type="button" aria-label={t('transfer.cancel')} onClick={() => setStep('recipient')} style={{ background: 'none', border: 'none', padding: '4px', display: 'flex' }}>
-            <IconBack size={22} color="var(--itunda-grey-700)" />
+            <IconBack size={22} color="var(--itunda-text-secondary)" />
           </button>
-          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{t('transfer.toLabel')}</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-tertiary)' }}>{t('transfer.toLabel')}</span>
           <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{recipientName}</span>
           {recipientPreview && <IconShieldCheck size={15} color="var(--itunda-indigo)" />}
           <button type="button" aria-label={t('transfer.cancel')} onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', padding: '4px', display: 'flex' }}>
-            <IconClose size={20} color="var(--itunda-grey-500)" />
+            <IconClose size={20} color="var(--itunda-text-tertiary)" />
           </button>
         </div>
 
@@ -667,7 +667,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
               app's single largest, most prominent number on screen but used an
               invented 38px/800 pair matching no real Toss/itunda token. */}
           <span style={{ fontSize: 'var(--itunda-type-large-amount-size)', lineHeight: 'var(--itunda-type-large-amount-line-height)', fontWeight: 'var(--itunda-type-large-amount-weight)' }}>
-            {amount === '' ? '0' : Number(amount).toLocaleString('en-US')} <span style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>RWF</span>
+            {amount === '' ? '0' : Number(amount).toLocaleString('en-US')} <span style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: 'var(--itunda-text-tertiary)' }}>RWF</span>
           </span>
           <div>
             {/* Real gap found live (2026-08-31, direct user reference of their own
@@ -678,11 +678,11 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
                 on this screen that it, not the sender's MAIN account, is what's about
                 to be debited. */}
             {fromAccountName && (
-              <p style={{ margin: '0 0 2px', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
+              <p style={{ margin: '0 0 2px', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>
                 From {fromAccountName}
               </p>
             )}
-            <button type="button" onClick={() => setAmount(String(accountBalance))} style={{ marginTop: '6px', background: 'none', border: 'none', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>
+            <button type="button" onClick={() => setAmount(String(accountBalance))} style={{ marginTop: '6px', background: 'none', border: 'none', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-text-tertiary)' }}>
               {t('transfer.balanceLabel', { amount: accountBalance.toLocaleString('en-US') })}
             </button>
           </div>
@@ -697,11 +697,11 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <input
               type="text" value={giftNote} onChange={(e) => setGiftNote(e.target.value)} placeholder="Add a note (optional)" maxLength={200}
-              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', textAlign: 'center' }}
+              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-14-size)', textAlign: 'center' }}
             />
             <select
               value={giftTheme} onChange={(e) => setGiftTheme(e.target.value as GiftTheme | '')}
-              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
+              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-14-size)' }}
             >
               <option value="">No theme (plain gift)</option>
               {(Object.keys(GIFT_THEME_LABELS) as GiftTheme[]).map((theme) => (
@@ -712,7 +712,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
         ) : (
           <input
             type="text" value={memo} onChange={(e) => setMemo(e.target.value)} placeholder={t('transfer.memoPlaceholder')} maxLength={200}
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)', textAlign: 'center', width: '100%', boxSizing: 'border-box' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)', textAlign: 'center', width: '100%', boxSizing: 'border-box' }}
           />
         )}
 
@@ -722,7 +722,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
               key={k} type="button"
               onClick={() => (k === '⌫' ? backspace() : appendDigit(k))}
               aria-label={k === '⌫' ? 'Backspace' : `Enter ${k}`}
-              style={{ padding: '16px 0', background: 'none', border: 'none', fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 600, color: 'var(--itunda-grey-900)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ padding: '16px 0', background: 'none', border: 'none', fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 600, color: 'var(--itunda-text-primary)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               {/* Real gap found live (2026-08-31, direct user correction: "backspace
                   button of keyboard should be horizontal arrow (toss style) instead
@@ -730,7 +730,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
                   inconsistently across fonts/platforms; reuses the same real,
                   already-cross-platform-shared IconBack chevron the app's own back
                   buttons use, instead of a second, different icon concept. */}
-              {k === '⌫' ? <IconBack size={20} color="var(--itunda-grey-900)" /> : k}
+              {k === '⌫' ? <IconBack size={20} color="var(--itunda-text-primary)" /> : k}
             </button>
           ))}
         </div>
@@ -750,16 +750,16 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 800 }}>{t('transfer.recipientStepTitle')}</h3>
         <button type="button" aria-label={t('transfer.cancel')} onClick={onClose} style={{ background: 'none', border: 'none', padding: '4px', display: 'flex' }}>
-          <IconClose size={20} color="var(--itunda-grey-500)" />
+          <IconClose size={20} color="var(--itunda-text-tertiary)" />
         </button>
       </div>
       <form onSubmit={(e) => { e.preventDefault(); selectRecipient(recipient); }} style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
         <div style={{ position: 'relative', flex: 1 }}>
-          <IconSearch size={16} color="var(--itunda-grey-400)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+          <IconSearch size={16} color="var(--itunda-text-disabled)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
           <input
             type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)}
             placeholder={t('transfer.recipientPlaceholder')} required
-            style={{ width: '100%', padding: '12px 14px 12px 36px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', boxSizing: 'border-box' }}
+            style={{ width: '100%', padding: '12px 14px 12px 36px', borderRadius: '10px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-14-size)', boxSizing: 'border-box' }}
           />
         </div>
         {/* Real fix (2026-08-18, direct live-testing catch): IdsButton's own Large-size
@@ -777,14 +777,14 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><GiftGlyph theme={null} size={16} /> Send as a gift instead</span>
       </label>
       {isGift && (
-        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
+        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>
           Held until they claim it -- auto-refunded to you after 7 days if unclaimed. Enter their
           phone number above -- gifts can't be sent to an account number.
         </p>
       )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
-        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>{t('transfer.recentLabel')}</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-text-tertiary)' }}>{t('transfer.recentLabel')}</p>
         <button type="button" onClick={() => setShowAddContact((v) => !v)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)', fontWeight: 700, background: 'none', border: 'none' }}>
           {showAddContact ? t('transfer.cancel') : t('transfer.addContact')}
         </button>
@@ -793,11 +793,11 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <input
             type="text" value={newContactName} onChange={(e) => setNewContactName(e.target.value)} placeholder={t('transfer.namePlaceholder')}
-            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
           />
           <input
             type="text" value={newContactPhone} onChange={(e) => setNewContactPhone(e.target.value)} placeholder={t('transfer.phonePlaceholder')}
-            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
           />
           <button type="button" className="itunda-btn itunda-btn-secondary" disabled={!newContactName || !newContactPhone} onClick={handleAddContact}>
             {t('transfer.saveContact')}
@@ -818,7 +818,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{c.name}</span>
-            <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{c.bank} · {c.phoneNumber}</span>
+            <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>{c.bank} · {c.phoneNumber}</span>
           </div>
         </button>
       ))}
@@ -842,8 +842,8 @@ export function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode,
 
   return (
     <div className="itunda-flat-section">
-      <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700, margin: 0, color: 'var(--itunda-grey-900)' }}>{t('coopRail.title')}</h3>
-      <p style={{ fontSize: '12.5px', color: 'var(--itunda-grey-500)', marginTop: '2px', marginBottom: '16px' }}>{t('coopRail.subtitle')}</p>
+      <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700, margin: 0, color: 'var(--itunda-text-primary)' }}>{t('coopRail.title')}</h3>
+      <p style={{ fontSize: '12.5px', color: 'var(--itunda-text-tertiary)', marginTop: '2px', marginBottom: '16px' }}>{t('coopRail.subtitle')}</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         {items.map((item) => (
           <button
@@ -864,8 +864,8 @@ export function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode,
               {item.icon}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '14.5px', fontWeight: 650, color: 'var(--itunda-grey-900)' }}>{item.title}</div>
-              <div style={{ fontSize: '12.5px', color: 'var(--itunda-grey-500)' }}>{item.subtitle}</div>
+              <div style={{ fontSize: '14.5px', fontWeight: 650, color: 'var(--itunda-text-primary)' }}>{item.title}</div>
+              <div style={{ fontSize: '12.5px', color: 'var(--itunda-text-tertiary)' }}>{item.subtitle}</div>
             </div>
           </button>
         ))}
@@ -910,8 +910,8 @@ function HomeView() {
 export function ProductPageHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div style={{ margin: '4px 0 16px' }}>
-      <h1 style={{ margin: 0, color: 'var(--itunda-grey-900)', fontSize: 'var(--itunda-type-scale-24-size)', letterSpacing: '-0.5px' }}>{title}</h1>
-      <p style={{ margin: '5px 0 0', color: 'var(--itunda-grey-500)', fontSize: 'var(--itunda-type-scale-13-size)', lineHeight: 1.45 }}>{subtitle}</p>
+      <h1 style={{ margin: 0, color: 'var(--itunda-text-primary)', fontSize: 'var(--itunda-type-scale-24-size)', letterSpacing: '-0.5px' }}>{title}</h1>
+      <p style={{ margin: '5px 0 0', color: 'var(--itunda-text-tertiary)', fontSize: 'var(--itunda-type-scale-13-size)', lineHeight: 1.45 }}>{subtitle}</p>
     </div>
   );
 }
@@ -960,7 +960,7 @@ function ExploreHub({ groups, tabLabel, tabIcon, recentTabs, onSelect, autoFocus
     <div>
       <ProductPageHeader title="Explore" subtitle="Everything beyond your everyday money tasks, in one searchable place." />
       <div style={{ position: 'relative', marginBottom: '14px' }}>
-        <IconSearch size={15} color="var(--itunda-grey-500)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+        <IconSearch size={15} color="var(--itunda-text-tertiary)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
         <input
           ref={searchInputRef}
           type="text"
@@ -968,10 +968,10 @@ function ExploreHub({ groups, tabLabel, tabIcon, recentTabs, onSelect, autoFocus
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search all services"
           aria-label="Search all services"
-          style={{ width: '100%', padding: '10px 32px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)', background: 'var(--itunda-white)', color: 'var(--itunda-grey-900)' }}
+          style={{ width: '100%', padding: '10px 32px', borderRadius: '10px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)', background: 'var(--itunda-surface-default)', color: 'var(--itunda-text-primary)' }}
         />
         {search && (
-          <button onClick={() => setSearch('')} aria-label="Clear search" style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--itunda-grey-500)', display: 'flex' }}>
+          <button onClick={() => setSearch('')} aria-label="Clear search" style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--itunda-text-tertiary)', display: 'flex' }}>
             <IconClose size={15} />
           </button>
         )}
@@ -985,13 +985,13 @@ function ExploreHub({ groups, tabLabel, tabIcon, recentTabs, onSelect, autoFocus
             ))}
           </div>
         ) : (
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', padding: '4px 0' }}>No match for "{search.trim()}".</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-tertiary)', padding: '4px 0' }}>No match for "{search.trim()}".</p>
         )
       ) : (
         <>
           {recentTabs.length > 0 && (
             <section className="itunda-flat-section">
-              <h2 style={{ margin: '0 0 10px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-grey-500)', textTransform: 'uppercase', letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <h2 style={{ margin: '0 0 10px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <Clock size={12} /> Recently used
               </h2>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -1010,8 +1010,8 @@ function ExploreHub({ groups, tabLabel, tabIcon, recentTabs, onSelect, autoFocus
               same correction until now. */}
           {groups.map((group) => (
             <section key={group.title} className="itunda-flat-section">
-              <h2 style={{ margin: '0 0 12px', fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
-                {group.title} <span style={{ color: 'var(--itunda-grey-400)', fontWeight: 500, fontSize: 'var(--itunda-type-scale-12-size)' }}>· {group.ids.length}</span>
+              <h2 style={{ margin: '0 0 12px', fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: 'var(--itunda-text-primary)' }}>
+                {group.title} <span style={{ color: 'var(--itunda-text-disabled)', fontWeight: 500, fontSize: 'var(--itunda-type-scale-12-size)' }}>· {group.ids.length}</span>
               </h2>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {group.ids.map((id) => (
@@ -1099,7 +1099,7 @@ function DiscoverSection() {
             key={item.id}
             style={{
               display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0',
-              borderBottom: i < items.length - 1 ? '1px solid var(--itunda-grey-200)' : 'none',
+              borderBottom: i < items.length - 1 ? '1px solid var(--itunda-border-default)' : 'none',
             }}
           >
             <div style={{ width: '8px', height: '8px', borderRadius: '4px', backgroundColor: item.color, flexShrink: 0 }} />
@@ -1108,7 +1108,7 @@ function DiscoverSection() {
                 <span style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 600 }}>{item.title}</span>
                 {item.isNew && <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: item.color }}>{t('discover.new')}</span>}
               </div>
-              <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-500)' }}>{item.subtitle}</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-text-tertiary)' }}>{item.subtitle}</p>
             </div>
             {item.badge && <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: item.color }}>{item.badge}</span>}
           </div>
@@ -1212,7 +1212,7 @@ export function YouthAccountCard() {
 
       {!youthAccount && !needsBirthDate && (
         <div>
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-tertiary)', marginBottom: '10px' }}>
             {t('youthAccount.description')}
           </p>
           <button className="itunda-btn itunda-btn-primary" onClick={handleOpen} disabled={busy}>{busy ? t('youthAccount.opening') : t('youthAccount.open')}</button>
@@ -1221,10 +1221,10 @@ export function YouthAccountCard() {
 
       {!youthAccount && needsBirthDate && (
         <form onSubmit={handleSetBirthDateAndOpen} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{t('youthAccount.birthDatePrompt')}</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-tertiary)' }}>{t('youthAccount.birthDatePrompt')}</p>
           <input
             type="date" value={birthDate} onChange={(e) => setBirthDateInput(e.target.value)} required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
           />
           {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): "Continue"
               doesn't say what happens next -- the paragraph above already names the real
@@ -1246,13 +1246,13 @@ export function YouthAccountCard() {
         <div>
           <button onClick={() => setShowDetail(true)} style={{ textAlign: 'left', display: 'block' }}>
             <p style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700 }}>{animatedBalance.toLocaleString('en-US')} RWF</p>
-            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: showDeposit ? '10px' : 0 }}>{youthAccount.accountNumber}</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)', marginBottom: showDeposit ? '10px' : 0 }}>{youthAccount.accountNumber}</p>
           </button>
           {showDeposit && (
             <form onSubmit={handleDeposit} style={{ display: 'flex', gap: '8px' }}>
               <input
                 type="number" placeholder={t('youthAccount.amountPlaceholder')} value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
-                style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+                style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
               />
               <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('youthAccount.adding') : t('youthAccount.add')}</button>
             </form>
@@ -1361,15 +1361,15 @@ export function AutoTransfersCard() {
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
           <input
             type="text" placeholder={t('autoTransfers.recipientPlaceholder')} value={recipient} onChange={(e) => setRecipient(e.target.value)} required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
           />
           <input
             type="number" placeholder={t('autoTransfers.amountPlaceholder')} value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
           />
           <select
             value={frequency} onChange={(e) => setFrequency(e.target.value as AutoTransferFrequency)}
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
           >
             <option value="WEEKLY">{t('autoTransfers.weekly')}</option>
             <option value="MONTHLY">{t('autoTransfers.monthly')}</option>
@@ -1377,21 +1377,21 @@ export function AutoTransfersCard() {
           {frequency === 'WEEKLY' ? (
             <select
               value={dayOfWeek} onChange={(e) => setDayOfWeek(e.target.value)}
-              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
             >
               {WEEKDAY_NAMES.map((name, i) => <option key={name} value={i + 1}>{t(WEEKDAY_KEYS[i])}</option>)}
             </select>
           ) : (
             <select
               value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)}
-              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
             >
               {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{t('autoTransfers.dayOfMonth', { day: d })}</option>)}
             </select>
           )}
           <input
             type="text" placeholder={t('autoTransfers.descriptionPlaceholder')} value={description} onChange={(e) => setDescription(e.target.value)}
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
           />
           <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('autoTransfers.settingUp') : t('autoTransfers.setUpButton')}</button>
         </form>
@@ -1404,10 +1404,10 @@ export function AutoTransfersCard() {
       )}
 
       {[...active, ...cancelled.slice(0, 2)].map((at) => (
-        <div key={at.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
+        <div key={at.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--itunda-surface-subtle)' }}>
           <div>
             <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{at.recipientName} · {at.amount.toLocaleString('en-US')} RWF</p>
-            <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
+            <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-text-tertiary)' }}>
               {at.frequency === 'WEEKLY' ? t('autoTransfers.weeklyLabel', { day: t(WEEKDAY_KEYS[(at.dayOfWeek ?? 1) - 1]) }) : t('autoTransfers.monthlyLabel', { day: at.dayOfMonth ?? 1 })} · {t(AUTO_TRANSFER_STATUS_KEY[at.status])}
               {at.lastFailureReason && ` · ${at.lastFailureReason}`}
             </p>
@@ -1552,7 +1552,7 @@ export function NeighborhoodSetupPrompt({ isSecond = false, onDone }: { isSecond
   return (
     <div className="itunda-flat-section" style={{ textAlign: 'center' }}>
       <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '8px' }}>{isSecond ? 'Add a second neighborhood' : 'Set your neighborhood'}</p>
-      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
+      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-tertiary)', marginBottom: '16px' }}>
         {isSecond ? "Share a second real place -- like work -- to see what's happening there too." : "Share your real location once to see what's happening near you."}
       </p>
       <button className="itunda-btn itunda-btn-primary" onClick={handleShare} disabled={busy}>
@@ -1615,7 +1615,7 @@ export function StarRatingInput({ value, onChange }: { value: number; onChange: 
     <div style={{ display: 'flex', gap: '4px' }}>
       {[1, 2, 3, 4, 5].map((n) => (
         <button key={n} type="button" onClick={() => onChange(n)} style={{ display: 'flex', padding: 0 }} aria-label={`${n} star${n === 1 ? '' : 's'}`}>
-          <IconStar size={22} color={n <= value ? '#F5A623' : 'var(--itunda-grey-200)'} fill={n <= value ? '#F5A623' : 'none'} />
+          <IconStar size={22} color={n <= value ? '#F5A623' : 'var(--itunda-border-default)'} fill={n <= value ? '#F5A623' : 'none'} />
         </button>
       ))}
     </div>
@@ -1685,17 +1685,17 @@ export function AddressAutocomplete({
         onFocus={() => { setFocused(true); setOpen(suggestions.length > 0); }}
         onBlur={() => setTimeout(() => { setFocused(false); setOpen(false); }, 150)}
         placeholder={placeholder} required autoComplete="off"
-        style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
+        style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-14-size)' }}
       />
       {searching && (
-        <span style={{ position: 'absolute', right: '12px', top: '12px', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>…</span>
+        <span style={{ position: 'absolute', right: '12px', top: '12px', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>…</span>
       )}
       {!open && focused && !value.trim() && bookmarks.length > 0 && (
         <div
           className="itunda-card"
           style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', padding: '6px', zIndex: 10, maxHeight: '220px', overflowY: 'auto' }}
         >
-          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', fontWeight: 700, padding: '4px 6px 2px' }}>Saved places</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-text-tertiary)', fontWeight: 700, padding: '4px 6px 2px' }}>Saved places</p>
           {bookmarks.map((b) => (
             <button
               key={b.id}
@@ -1798,8 +1798,8 @@ export function SearchAndCategoryChips({
             onClick={() => onSelectCategory(null)}
             style={{
               flexShrink: 0, padding: '6px 14px', borderRadius: '16px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
-              color: selectedCategory === null ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: selectedCategory === null ? 'var(--itunda-indigo)' : 'var(--itunda-grey-100)',
+              color: selectedCategory === null ? 'var(--itunda-surface-default)' : 'var(--itunda-text-secondary)',
+              backgroundColor: selectedCategory === null ? 'var(--itunda-indigo)' : 'var(--itunda-surface-subtle)',
             }}
           >
             All
@@ -1810,8 +1810,8 @@ export function SearchAndCategoryChips({
               onClick={() => onSelectCategory(c === selectedCategory ? null : c)}
               style={{
                 flexShrink: 0, padding: '6px 14px', borderRadius: '16px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
-                color: selectedCategory === c ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-                backgroundColor: selectedCategory === c ? 'var(--itunda-indigo)' : 'var(--itunda-grey-100)',
+                color: selectedCategory === c ? 'var(--itunda-surface-default)' : 'var(--itunda-text-secondary)',
+                backgroundColor: selectedCategory === c ? 'var(--itunda-indigo)' : 'var(--itunda-surface-subtle)',
               }}
             >
               {c}
@@ -1923,14 +1923,14 @@ export function PlaceSearchInput({ label, placeholder, value, onSelect }: {
 
   return (
     <div style={{ position: 'relative', marginBottom: '12px' }}>
-      <label htmlFor={inputId} style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', fontWeight: 700, display: 'block', marginBottom: '4px' }}>{label}</label>
+      <label htmlFor={inputId} style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)', fontWeight: 700, display: 'block', marginBottom: '4px' }}>{label}</label>
       <input
         id={inputId}
         type="text" value={query} placeholder={placeholder}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => setFocused(true)}
         onBlur={() => setTimeout(() => setFocused(false), 150)}
-        style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
+        style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-14-size)' }}
       />
       {results && results.length > 0 && (
         <div className="itunda-card" style={{ position: 'absolute', zIndex: 10, width: '100%', marginTop: '4px', padding: '4px', maxHeight: '220px', overflowY: 'auto' }}>
@@ -1947,7 +1947,7 @@ export function PlaceSearchInput({ label, placeholder, value, onSelect }: {
       )}
       {!query && focused && bookmarks.length > 0 && (
         <div className="itunda-card" style={{ position: 'absolute', zIndex: 10, width: '100%', marginTop: '4px', padding: '4px', maxHeight: '220px', overflowY: 'auto' }}>
-          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', fontWeight: 700, padding: '6px 10px 2px' }}>Saved places</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-text-tertiary)', fontWeight: 700, padding: '6px 10px 2px' }}>Saved places</p>
           {bookmarks.map((b) => (
             <button
               key={b.id} type="button"
@@ -1957,7 +1957,7 @@ export function PlaceSearchInput({ label, placeholder, value, onSelect }: {
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: b.color, flexShrink: 0 }} />
               <span>
                 <span style={{ display: 'block', fontWeight: 700 }}>{b.displayName}</span>
-                <span style={{ display: 'block', fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{b.folderName}</span>
+                <span style={{ display: 'block', fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-text-tertiary)' }}>{b.folderName}</span>
               </span>
             </button>
           ))}
@@ -1997,7 +1997,7 @@ export function TrustBadge({ score }: { score: number }) {
     <span
       style={{
         fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-grey-600)',
-        backgroundColor: 'var(--itunda-grey-100)', padding: '2px 6px', borderRadius: '6px',
+        backgroundColor: 'var(--itunda-surface-subtle)', padding: '2px 6px', borderRadius: '6px',
       }}
     >
       Trust {score}
@@ -2037,10 +2037,10 @@ export function HoodReportButton({ targetType, targetId }: { targetType: HoodRep
           <button className="itunda-btn itunda-btn-secondary" style={{ fontSize: 'var(--itunda-type-scale-11-size)', padding: '4px 10px' }} onClick={() => send('Unsafe payment, contact request, or scam')}>Unsafe or scam</button>
           <button className="itunda-btn itunda-btn-secondary" style={{ fontSize: 'var(--itunda-type-scale-11-size)', padding: '4px 10px' }} onClick={() => send('Misleading, unavailable, or spam content')}>Misleading or spam</button>
           <button className="itunda-btn itunda-btn-secondary" style={{ fontSize: 'var(--itunda-type-scale-11-size)', padding: '4px 10px' }} onClick={() => send('Harassment, hateful, illegal, or prohibited content')}>Abusive or illegal</button>
-          <button style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }} onClick={() => setShowChoices(false)}>Cancel</button>
+          <button style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-text-tertiary)' }} onClick={() => setShowChoices(false)}>Cancel</button>
         </div>
       ) : (
-        <button style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }} disabled={sending} onClick={() => setShowChoices(true)}>
+        <button style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-text-tertiary)' }} disabled={sending} onClick={() => setShowChoices(true)}>
           {sending ? 'Reporting…' : 'Report'}
         </button>
       )}
@@ -2075,7 +2075,7 @@ export function HoodReviewForm({
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>What went well? (shown publicly)</p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-text-primary)' }}>What went well? (shown publicly)</p>
       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
         {HOOD_GOOD_POINT_LABELS.map(([id, label]) => {
           const selected = selectedGoodPoints.has(id);
@@ -2085,8 +2085,8 @@ export function HoodReviewForm({
               onClick={() => onToggleGoodPoint(id)}
               style={{
                 fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, padding: '6px 12px', borderRadius: '999px',
-                color: selected ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
-                backgroundColor: selected ? 'var(--itunda-indigo)' : 'var(--itunda-grey-100)',
+                color: selected ? 'var(--itunda-surface-default)' : 'var(--itunda-text-primary)',
+                backgroundColor: selected ? 'var(--itunda-indigo)' : 'var(--itunda-surface-subtle)',
               }}
             >
               {label}
@@ -2094,7 +2094,7 @@ export function HoodReviewForm({
           );
         })}
       </div>
-      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Anything uncomfortable? (private -- only you two see this)</p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-text-primary)' }}>Anything uncomfortable? (private -- only you two see this)</p>
       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
         {HOOD_UNCOMFORTABLE_POINT_LABELS.map(([id, label]) => {
           const selected = selectedUncomfortablePoints.has(id);
@@ -2104,8 +2104,8 @@ export function HoodReviewForm({
               onClick={() => onToggleUncomfortablePoint(id)}
               style={{
                 fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, padding: '6px 12px', borderRadius: '999px',
-                color: selected ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
-                backgroundColor: selected ? 'var(--itunda-red)' : 'var(--itunda-grey-100)',
+                color: selected ? 'var(--itunda-surface-default)' : 'var(--itunda-text-primary)',
+                backgroundColor: selected ? 'var(--itunda-red)' : 'var(--itunda-surface-subtle)',
               }}
             >
               {label}
@@ -2136,10 +2136,10 @@ export function HoodReviewResultView({ reviews, myUserId }: { reviews: HoodRevie
   const theirs = reviews.find((r) => r.reviewerId !== myUserId);
   if (!mine && !theirs) return null;
   const block = (title: string, review: HoodReview) => (
-    <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'var(--itunda-grey-100)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{title}</p>
+    <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'var(--itunda-surface-subtle)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-text-primary)' }}>{title}</p>
       {review.goodPoints.length > 0 && (
-        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-700)' }}>👍 {review.goodPoints.map(hoodGoodPointLabel).join(', ')}</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-secondary)' }}>👍 {review.goodPoints.map(hoodGoodPointLabel).join(', ')}</p>
       )}
       {review.uncomfortablePoints.length > 0 && (
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }}>⚠️ {review.uncomfortablePoints.map(hoodUncomfortablePointLabel).join(', ')}</p>
@@ -2193,7 +2193,7 @@ function DevicesView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', padding: '0 4px' }}>
+      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)', padding: '0 4px' }}>
         Devices that have signed in to your account. A device must be verified before it can send money.
       </p>
       {devices.length === 0 ? (
@@ -2202,13 +2202,13 @@ function DevicesView() {
         devices.map((d) => (
           <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
             <div>
-              <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
+              <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-text-primary)' }}>
                 {d.deviceName ?? 'Unknown device'} {d.deviceId === myDeviceId && <span style={{ color: 'var(--itunda-indigo)' }}>(this device)</span>}
               </p>
               <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: d.trusted ? 'var(--itunda-green)' : 'var(--itunda-red)' }}>
                 {d.trusted ? '✓ Verified — can send money' : '⚠ Not verified — sign-in only'}
               </p>
-              <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Last seen {new Date(d.lastSeenAt).toLocaleString()}</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-text-tertiary)' }}>Last seen {new Date(d.lastSeenAt).toLocaleString()}</p>
             </div>
             <button
               className="itunda-btn itunda-btn-danger"
@@ -2482,13 +2482,13 @@ function CardView() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
         <div>
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{t('card.thisMonth')}</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-tertiary)' }}>{t('card.thisMonth')}</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '4px 0 0' }}>{card.spentThisMonth.toLocaleString('en-US')} RWF</p>
         </div>
         <div
           style={{
             width: '72px', height: '46px', borderRadius: '8px', flexShrink: 0, position: 'relative', overflow: 'hidden',
-            background: card.frozen ? 'var(--itunda-grey-500)' : cardDesign(card.design).front,
+            background: card.frozen ? 'var(--itunda-text-tertiary)' : cardDesign(card.design).front,
             border: !card.frozen && cardDesign(card.design).frontLight ? '1px solid #e2e2de' : 'none',
             display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '6px',
           }}
@@ -2502,7 +2502,7 @@ function CardView() {
           )}
         </div>
       </div>
-      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
+      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)', marginBottom: '16px' }}>
         •••• {card.last4} ·{' '}
         {card.closedAt ? t('card.statusClosed') : card.lost ? t('card.statusLost') : card.frozen ? t('card.statusFrozen') : t('card.statusActive')}
       </p>
@@ -2528,7 +2528,7 @@ function CardView() {
             <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
               <div>
                 <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t.merchantName}</p>
-                <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{new Date(t.createdAt).toLocaleString()}</p>
+                <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-text-tertiary)' }}>{new Date(t.createdAt).toLocaleString()}</p>
               </div>
               <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{t.amount.toLocaleString('en-US')} RWF</span>
             </div>
@@ -2541,13 +2541,13 @@ function CardView() {
           <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>{t('card.benefitsTitle')}</h3>
           {cardUsageFactor && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{cardUsageFactor.description}</span>
+              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>{cardUsageFactor.description}</span>
               <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-green)' }}>{t('card.creditScorePoints', { points: cardUsageFactor.points })}</span>
             </div>
           )}
           {cardSuggestion && (
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{cardSuggestion.description}</span>
+              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>{cardSuggestion.description}</span>
               <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{t('card.morePoints', { points: cardSuggestion.pointsGain })}</span>
             </div>
           )}
@@ -2561,7 +2561,7 @@ function CardView() {
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left' }}
         >
           <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>{t('card.spendLimits')}</span>
-          <IconChevronRight size={18} color="var(--itunda-grey-400)" />
+          <IconChevronRight size={18} color="var(--itunda-text-disabled)" />
         </button>
         <button
           onClick={() => setShowPinForm((v) => !v)}
@@ -2569,7 +2569,7 @@ function CardView() {
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left', opacity: card.closedAt ? 0.5 : 1 }}
         >
           <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>{card.pinSet ? t('card.changePin') : t('card.setPin')}</span>
-          <IconChevronRight size={18} color="var(--itunda-grey-400)" />
+          <IconChevronRight size={18} color="var(--itunda-text-disabled)" />
         </button>
         <button
           onClick={handleReportLost}
@@ -2577,22 +2577,22 @@ function CardView() {
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left', opacity: card.lost || card.closedAt ? 0.5 : 1 }}
         >
           <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>{card.lost ? t('card.statusLost') : t('card.reportLostOrStolen')}</span>
-          <IconChevronRight size={18} color="var(--itunda-grey-400)" />
+          <IconChevronRight size={18} color="var(--itunda-text-disabled)" />
         </button>
         <button
           onClick={handleCloseCard}
           disabled={busy || !!card.closedAt}
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left', opacity: card.closedAt ? 0.5 : 1 }}
         >
-          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: card.closedAt ? 'var(--itunda-grey-500)' : 'var(--itunda-red)' }}>{card.closedAt ? t('card.cardClosed') : t('card.closeCard')}</span>
-          <IconChevronRight size={18} color="var(--itunda-grey-400)" />
+          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: card.closedAt ? 'var(--itunda-text-tertiary)' : 'var(--itunda-red)' }}>{card.closedAt ? t('card.cardClosed') : t('card.closeCard')}</span>
+          <IconChevronRight size={18} color="var(--itunda-text-disabled)" />
         </button>
       </div>
 
       {showPinForm && (
         <div className="itunda-flat-section">
           <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>{card.pinSet ? t('card.changePin') : t('card.setPin')}</h3>
-          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
+          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-text-tertiary)', marginBottom: '10px' }}>
             {t('card.pinFormSubtitle')}
           </p>
           <form onSubmit={handleSetPin} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -2600,12 +2600,12 @@ function CardView() {
             <input
               type="password" inputMode="numeric" placeholder={t('card.newPinPlaceholder')} value={newPinInput}
               onChange={(e) => setNewPinInput(e.target.value)} required maxLength={4} pattern="\d{4}"
-              style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
+              style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)' }}
             />
             <input
               type="password" placeholder={t('card.currentPasswordPlaceholder')} value={pinPasswordInput}
               onChange={(e) => setPinPasswordInput(e.target.value)} required
-              style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
+              style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)' }}
             />
             <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>
               {busy ? '…' : t('card.savePin')}
@@ -2618,21 +2618,21 @@ function CardView() {
       <div id="card-spend-limits-section" className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>{t('card.spendLimits')}</h3>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-          <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{t('card.today')}</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>{t('card.today')}</span>
           <span style={{ fontSize: 'var(--itunda-type-scale-12-size)' }}>{card.spentToday.toLocaleString('en-US')} / {card.dailyLimit.toLocaleString('en-US')} RWF</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-          <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{t('card.thisMonth')}</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>{t('card.thisMonth')}</span>
           <span style={{ fontSize: 'var(--itunda-type-scale-12-size)' }}>{card.spentThisMonth.toLocaleString('en-US')} / {card.monthlyLimit.toLocaleString('en-US')} RWF</span>
         </div>
         <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
           <input
             type="number" placeholder={t('card.dailyLimitPlaceholder')} value={dailyLimitInput} onChange={(e) => setDailyLimitInput(e.target.value)}
-            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
+            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)' }}
           />
           <input
             type="number" placeholder={t('card.monthlyLimitPlaceholder')} value={monthlyLimitInput} onChange={(e) => setMonthlyLimitInput(e.target.value)}
-            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
+            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)' }}
           />
         </div>
         <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={handleSaveLimits} style={{ width: '100%' }}>
@@ -2642,7 +2642,7 @@ function CardView() {
 
       <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>{t('card.payWithCard')}</h3>
-        <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
+        <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-text-tertiary)', marginBottom: '10px' }}>
           {t('card.payDisclaimer')}
         </p>
         <form onSubmit={handleCharge} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -2650,18 +2650,18 @@ function CardView() {
           {chargeSuccess && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-green)' }}>{chargeSuccess}</p>}
           <input
             placeholder={t('card.merchantNamePlaceholder')} value={merchantName} onChange={(e) => setMerchantName(e.target.value)} required
-            style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
+            style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)' }}
           />
           <input
             type="number" placeholder={t('card.amountPlaceholder')} value={chargeAmount} onChange={(e) => setChargeAmount(e.target.value)} required min="1"
-            style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
+            style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)' }}
           />
-          <label style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
+          <label style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>
             {t('card.fundingAccountLabel')}
             <select
               value={fundingAccountType}
               onChange={(e) => setFundingAccountType(e.target.value as CardFundingAccountType)}
-              style={{ display: 'block', width: '100%', marginTop: '4px', padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
+              style={{ display: 'block', width: '100%', marginTop: '4px', padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)' }}
             >
               <option value="MAIN">{t('card.fundingAccountMain')}</option>
               <option value="PAY">{t('card.fundingAccountPay')}</option>
@@ -2977,12 +2977,12 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         animate={{ opacity: 1 }}
         style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', padding: '0 8px' }}
       >
-        <h2 style={{ color: 'var(--itunda-grey-900)', margin: 0, fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: '700', letterSpacing: '-0.5px' }}>Itunda</h2>
+        <h2 style={{ color: 'var(--itunda-text-primary)', margin: 0, fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: '700', letterSpacing: '-0.5px' }}>Itunda</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {user && <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{user.firstName}</span>}
+          {user && <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-tertiary)' }}>{user.firstName}</span>}
           <button
             onClick={() => { setFocusExploreSearch(true); setTab('EXPLORE'); }}
-            style={{ color: 'var(--itunda-grey-500)', display: 'flex', padding: '4px' }}
+            style={{ color: 'var(--itunda-text-tertiary)', display: 'flex', padding: '4px' }}
             aria-label="Search all services"
           >
             <IconSearch size={18} />
@@ -2991,19 +2991,19 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
             value={locale}
             onChange={(e) => setLocale(e.target.value as 'en' | 'rw' | 'fr')}
             aria-label="Language"
-            style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--itunda-grey-200)', color: 'var(--itunda-grey-700)', background: 'var(--itunda-white)' }}
+            style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--itunda-border-default)', color: 'var(--itunda-text-secondary)', background: 'var(--itunda-surface-default)' }}
           >
             {LOCALES.map((l) => (
               <option key={l.code} value={l.code}>{l.label}</option>
             ))}
           </select>
-          <button onClick={handleLogout} style={{ color: 'var(--itunda-grey-500)', display: 'flex', padding: '4px' }} aria-label="Sign out">
+          <button onClick={handleLogout} style={{ color: 'var(--itunda-text-tertiary)', display: 'flex', padding: '4px' }} aria-label="Sign out">
             <LogOut size={18} />
           </button>
         </div>
       </motion.div>
 
-      <div style={{ display: 'flex', gap: '2px', padding: '4px', marginBottom: '16px', backgroundColor: 'transparent', borderBottom: '1px solid var(--itunda-grey-200)' }}>
+      <div style={{ display: 'flex', gap: '2px', padding: '4px', marginBottom: '16px', backgroundColor: 'transparent', borderBottom: '1px solid var(--itunda-border-default)' }}>
         {PRIMARY_TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -3011,7 +3011,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
             aria-current={tab === id ? 'page' : undefined}
             style={{
               flex: 1, padding: '7px 2px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700,
-              color: tab === id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              color: tab === id ? 'var(--itunda-surface-default)' : 'var(--itunda-text-secondary)',
               backgroundColor: tab === id ? 'var(--itunda-indigo)' : 'transparent',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px',
             }}
@@ -3022,7 +3022,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
                 <span
                   style={{
                     position: 'absolute', top: '-6px', right: '-10px', minWidth: '16px', height: '16px', padding: '0 3px',
-                    borderRadius: '999px', backgroundColor: 'var(--itunda-red)', color: 'var(--itunda-white)',
+                    borderRadius: '999px', backgroundColor: 'var(--itunda-red)', color: 'var(--itunda-surface-default)',
                     fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
                     lineHeight: 1,
                   }}
@@ -3035,7 +3035,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
                   style={{
                     position: 'absolute', top: '-2px', right: '-4px', width: '9px', height: '9px',
                     borderRadius: '999px', backgroundColor: 'var(--itunda-red)',
-                    border: '1.5px solid var(--itunda-grey-100)',
+                    border: '1.5px solid var(--itunda-surface-subtle)',
                   }}
                   aria-label="Unread notifications"
                 />
