@@ -374,8 +374,8 @@ export const Route = createRoute('/', {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, backgroundColor: 'colors.background' },
-  title: { fontSize: 20, fontWeight: '800', color: 'colors.textPrimary' },
-  total: { fontSize: 28, fontWeight: '900', color: 'colors.primaryIndigo', marginTop: 4, marginBottom: 16 },
+  title: { fontSize: 20, fontWeight: '700', color: 'colors.textPrimary' },
+  total: { fontSize: 28, fontWeight: '700', color: 'colors.primaryIndigo', marginTop: 4, marginBottom: 16 },
   body: { fontSize: 15, color: 'colors.textSecondary' },
   error: { color: 'colors.error' },
   spacer: { flex: 1 },
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   },
   rowLeft: { flex: 1 },
   stepsPanel: { marginBottom: 16 },
-  stepsCount: { fontSize: 26, fontWeight: '900', color: 'colors.textPrimary', marginTop: 4 },
+  stepsCount: { fontSize: 26, fontWeight: '700', color: 'colors.textPrimary', marginTop: 4 },
   taskTitle: { fontSize: 15, fontWeight: '700', color: 'colors.textPrimary' },
   subtitle: { fontSize: 12, color: 'colors.textTertiary', marginTop: 2 },
   // Real fix (2026-07-13): #31CE66 was a one-off green that didn't match itunda's
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
   panelLabel: { fontSize: 12, fontWeight: '700', color: 'colors.textSecondary' },
   panelLabelSpaced: { marginTop: 12 },
   panelHint: { fontSize: 12, color: 'colors.textTertiary', marginTop: 4 },
-  referralCode: { fontSize: 20, fontWeight: '900', color: 'colors.textPrimary', marginTop: 4, letterSpacing: 1 },
+  referralCode: { fontSize: 20, fontWeight: '700', color: 'colors.textPrimary', marginTop: 4, letterSpacing: 1 },
   panelButton: {
     marginTop: 8,
     alignSelf: 'flex-start',
