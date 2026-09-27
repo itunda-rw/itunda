@@ -167,6 +167,16 @@
   --itunda-screen-padding-inline: 20px;
   --itunda-screen-padding-block: 16px;
   --itunda-section-gap: 24px;
+  /* Product composition primitives: keep the web surfaces content-first and aligned with native IDS. */
+  --itunda-content-measure: 680px;
+  --itunda-hero-measure: 760px;
+  --itunda-decision-gap: 24px;
+  --itunda-touch-target-min: 44px;
+  --itunda-touch-target-recommended: 48px;
+  --itunda-motion-fast: 140ms;
+  --itunda-motion-normal: 220ms;
+  --itunda-motion-slow: 420ms;
+  --itunda-motion-reduced: 0ms;
   --itunda-content-gap: 16px;
   --itunda-row-gap: 14px;
   --itunda-inline-gap: 12px;
