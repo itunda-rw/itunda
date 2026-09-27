@@ -183,7 +183,7 @@ private fun StockRow(stock: StockDto, isWatched: Boolean, onClick: () -> Unit) {
             Text(stock.name, color = Ids.colors.textSecondary, fontSize = 12.sp)
         }
         if (isWatched) {
-            Icon(Icons.Filled.Star, contentDescription = null, tint = Color(0xFFFFC107), modifier = Modifier.size(16.dp))
+            Icon(Icons.Filled.Star, contentDescription = null, tint = Ids.colors.warning, modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(8.dp))
         }
         Column(horizontalAlignment = Alignment.End) {
@@ -349,7 +349,7 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
             Icon(
                 if (watching) Icons.Filled.Star else Icons.Outlined.Star,
                 contentDescription = "Toggle watch",
-                tint = if (watching) Color(0xFFFFC107) else Ids.colors.textSecondary,
+                tint = if (watching) Ids.colors.warning else Ids.colors.textSecondary,
                 modifier = Modifier.size(24.dp).clickable { toggleWatch() },
             )
         }
