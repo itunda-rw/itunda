@@ -221,7 +221,7 @@
   flex: 1;
   min-height: 48px;
   padding: 12px;
-  border-radius: 10px;
+  border-radius: var(--itunda-control-radius, 12px);
   border: 1px solid var(--itunda-border-default);
   background-color: var(--itunda-surface-default);
   color: var(--itunda-text-secondary);
@@ -234,4 +234,24 @@
   background-color: var(--itunda-brand);
   border-color: var(--itunda-brand);
   color: var(--itunda-surface-default);
+}
+
+
+.kyc-doctype-btn:focus-visible,
+.kyc-step__input:focus-visible,
+.kyc-step__next:focus-visible,
+.kyc-card__cta:focus-visible,
+.kyc-success__done:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--itunda-brand) 28%, transparent);
+  outline-offset: 2px;
+}
+
+.kyc-doctype-btn:disabled,
+.kyc-step__next--disabled {
+  cursor: not-allowed;
+  opacity: 0.64;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kyc-modal-sheet { animation: none; }
 }
