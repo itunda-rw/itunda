@@ -58,12 +58,16 @@ a:focus-visible,
    copy of these classes, since Module Federation doesn't share CSS across remotes
    automatically). */
 .itunda-card {
-  background: var(--itunda-white);
-  border-radius: var(--itunda-radius-md);
-  padding: 24px;
-  box-shadow: var(--itunda-shadow);
-  margin-bottom: 16px;
-  transition: var(--itunda-transition);
+  /* IDS flat composition: grouping comes from spacing and a quiet divider,
+     not floating white cards and shadows. */
+  background: transparent;
+  border-radius: 0;
+  padding: var(--itunda-content-gap, 16px) 0;
+  border: 0;
+  border-bottom: 1px solid var(--itunda-border-default);
+  box-shadow: none;
+  margin-bottom: 0;
+  transition: background-color var(--itunda-motion-fast) var(--itunda-ease-out);
 }
 
 .itunda-btn {
