@@ -28,7 +28,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:Pretendard,-appl
 a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}
 .top{position:sticky;top:0;z-index:50;height:64px;background:color-mix(in srgb,var(--bg) 92%,transparent);border-bottom:1px solid var(--line);backdrop-filter:blur(18px)}
 .topin{height:100%;max-width:1400px;margin:auto;padding:0 24px;display:flex;align-items:center;gap:12px}
-.brand{display:flex;align-items:center;gap:9px;font-size:20px;font-weight:750;letter-spacing:-.8px}
+.top .brand{display:flex;align-items:center;gap:9px;font-size:20px;font-weight:750;letter-spacing:-.8px}
 .mark{width:26px;height:26px}.crumb{font-size:13px;color:var(--tertiary)}
 .spacer{flex:1}.theme{width:40px;height:40px;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--ink);cursor:pointer}
 .layout{display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr);max-width:1400px;margin:auto}
@@ -51,7 +51,7 @@ a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}
 .stage{padding:22px;border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--surface-subtle)}
 .token{font:12px/1.8 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--secondary)}.token b{color:var(--ink)}
 .swatches{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.swatch{min-height:112px;padding:11px;border-radius:var(--radius-md);display:flex;align-items:flex-end;font:11px/1.35 ui-monospace,monospace;font-weight:700}
-.swatch.brand{background:#7472F4;color:#fff}.swatch.strong{background:#625FE6;color:#fff}.swatch.soft{background:#F0EFFF;color:#625FE6}.swatch.ink{background:#191F28;color:#fff}.swatch.surface{background:#F7F8FA;color:#4E5968;border:1px solid #E5E8EB}
+.swatch.itunda-brand{background:#7472F4;color:#fff}.swatch.strong{background:#625FE6;color:#fff}.swatch.soft{background:#F0EFFF;color:#625FE6}.swatch.ink{background:#191F28;color:#fff}.swatch.surface{background:#F7F8FA;color:#4E5968;border:1px solid #E5E8EB}\n[data-theme="dark"] .swatch.soft{background:#27244A;color:#B0AEFF}.swatch.surface{color:#4E5968}
 .type-display{font-size:46px;line-height:1;letter-spacing:-.05em;font-weight:700;margin:4px 0 20px}.type-row{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line);font-size:13px}.type-row span{color:var(--tertiary);font:11px ui-monospace,monospace}
 .scale{display:grid;gap:9px}.scale-row{display:flex;align-items:center;gap:12px;color:var(--secondary);font-size:12px}.bar{height:8px;border-radius:var(--pill);background:var(--brand);display:block}
 .button-row{display:flex;gap:8px;flex-wrap:wrap}
@@ -77,7 +77,7 @@ a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}
 <body>
 <header class="top"><div class="topin">
 <a class="brand" href="./"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><path fill="var(--brand)" d="M32 4c8 0 13 8 12 16 8-1 16 4 16 12s-8 13-16 12c1 8-4 16-12 16s-13-8-12-16C12 45 4 40 4 32s8-13 16-12C19 12 24 4 32 4Z"/><circle cx="32" cy="32" r="9" fill="white"/></svg>itunda.</a>
-<span class="crumb">/ Design System / Showcase</span><span class="spacer"></span><button class="theme" id="theme" aria-label="Toggle dark mode">☾</button>
+<span class="crumb">/ Design System / Showcase</span><span class="spacer"></span><button class="theme" id="theme" type="button" aria-label="Switch to dark mode" aria-pressed="false">☾</button>
 </div></header>
 <div class="layout">
 <aside class="side">
@@ -86,7 +86,7 @@ a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}
 <div class="side-group"><div class="side-title">Components</div><a href="#actions">Actions</a><a href="#forms">Forms</a><a href="#selection">Selection</a><a href="#navigation">Navigation</a><a href="#feedback">Feedback</a><a href="#states">States</a></div>
 <div class="side-group"><div class="side-title">Quality</div><a href="#accessibility">Accessibility</a><a href="#platforms">Platforms</a><a href="../components/">Component catalog →</a><a href="../patterns/">Patterns →</a><a href="https://itunda-rw.github.io/itundaface/">ItundaFace →</a></div>
 </aside>
-<main class="main"><div class="wrap">
+<main class="main" id="main-content"><div class="wrap">
 <section class="hero" id="overview">
 <div class="kicker">Itunda · IDS 3.0</div>
 <h1>The current Itunda visual language.</h1>
@@ -97,7 +97,7 @@ a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}
 <section class="section" id="foundations">
 <div class="head"><div class="eyebrow">01 · Foundations</div><h2>Small decisions, repeated consistently.</h2><p>The showcase uses the current IDS token language rather than the older standalone blue palette. Brand color is an identity role; components consume semantic roles.</p></div>
 <div class="grid">
-<article class="card wide" id="color"><h3>Color roles</h3><p>Indigo is the current Itunda brand role. Neutrals carry most of the interface; semantic colors communicate intent.</p><div class="swatches"><div class="swatch brand">brand<br>#7472F4</div><div class="swatch strong">strong<br>#625FE6</div><div class="swatch soft">brand soft<br>#F0EFFF</div><div class="swatch ink">text<br>#191F28</div><div class="swatch surface">surface<br>#F7F8FA</div></div></article>
+<article class="card wide" id="color"><h3>Color roles</h3><p>Indigo is the current Itunda brand role. Neutrals carry most of the interface; semantic colors communicate intent.</p><div class="swatches"><div class="swatch itunda-brand">brand<br>#7472F4</div><div class="swatch strong">strong<br>#625FE6</div><div class="swatch soft">brand soft<br>#F0EFFF</div><div class="swatch ink">text<br>#191F28</div><div class="swatch surface">surface<br>#F7F8FA</div></div></article>
 <article class="card" id="type"><h3>Typography</h3><p>Pretendard-first typography with explicit scale and line-height.</p><div class="type-display">RWF 248,000</div><div class="type-row"><b>Display</b><span>24 / 32 · 700</span></div><div class="type-row"><b>Body</b><span>16 / 24 · 400</span></div><div class="type-row"><b>Label</b><span>15 / 20 · 600</span></div><div class="type-row"><b>Caption</b><span>13 / 18 · 400</span></div></article>
 <article class="card" id="spacing"><h3>Spacing</h3><p>4px base rhythm, from micro gaps to major sections.</p><div class="scale"><div class="scale-row"><i class="bar" style="width:4px"></i>4 · micro</div><div class="scale-row"><i class="bar" style="width:8px"></i>8 · control</div><div class="scale-row"><i class="bar" style="width:16px"></i>16 · content</div><div class="scale-row"><i class="bar" style="width:24px"></i>24 · group</div><div class="scale-row"><i class="bar" style="width:40px"></i>40 · section</div><div class="scale-row"><i class="bar" style="width:64px"></i>64 · major</div></div></article>
 <article class="card" id="motion"><h3>Motion</h3><p>Motion communicates cause and effect and respects reduced-motion preferences.</p><div class="token"><b>fast</b> 140ms<br><b>normal</b> 220ms<br><b>slow</b> 420ms<br><b>reduced</b> 0ms</div></article>
