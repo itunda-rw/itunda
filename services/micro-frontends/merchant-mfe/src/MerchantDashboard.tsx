@@ -129,8 +129,8 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
         style={{
           width: '220px',
           flexShrink: 0,
-          backgroundColor: 'var(--itunda-white)',
-          borderRight: '1px solid var(--itunda-grey-200)',
+          backgroundColor: 'var(--itunda-surface-default)',
+          borderRight: '1px solid var(--itunda-border-default)',
           padding: '24px 16px',
           display: 'flex',
           flexDirection: 'column',
@@ -138,8 +138,8 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
         }}
       >
         <div className="merchant-nav-header" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 8px', marginBottom: '20px' }}>
-          <Store size={20} color="var(--itunda-indigo)" />
-          <h1 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Itunda Business</h1>
+          <Store size={20} color="var(--itunda-brand)" />
+          <h1 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-text-primary)' }}>Itunda Business</h1>
         </div>
         {/* Real language switcher (2026-08-15), same placement/pattern as LoginPage's
             own -- the nav shell is visible on every session regardless of tab, so this
@@ -148,7 +148,7 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
           value={locale}
           onChange={(e) => setLocale(e.target.value as 'en' | 'rw' | 'fr')}
           aria-label="Language"
-          style={{ fontSize: '12px', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--itunda-grey-200)', color: 'var(--itunda-grey-700)', background: 'var(--itunda-white)', marginBottom: '16px' }}
+          style={{ fontSize: '12px', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--itunda-border-default)', color: 'var(--itunda-text-secondary)', background: 'var(--itunda-surface-default)', marginBottom: '16px' }}
         >
           {LOCALES.map((l) => (
             <option key={l.code} value={l.code}>{l.label}</option>
@@ -165,12 +165,12 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
                 alignItems: 'center',
                 gap: '10px',
                 padding: '10px 12px',
-                borderRadius: '10px',
+                borderRadius: 'var(--itunda-control-radius, 12px)',
                 fontSize: '14px',
                 fontWeight: 600,
                 textAlign: 'left',
-                color: tab === id ? 'var(--itunda-indigo)' : 'var(--itunda-grey-700)',
-                backgroundColor: tab === id ? 'var(--itunda-indigo-light)' : 'transparent',
+                color: tab === id ? 'var(--itunda-brand)' : 'var(--itunda-text-secondary)',
+                backgroundColor: tab === id ? 'var(--itunda-surface-brand)' : 'transparent',
               }}
             >
               <Icon size={18} />
@@ -179,13 +179,13 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
           ))}
         </div>
 
-        <div className="merchant-nav-footer" style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--itunda-grey-200)' }}>
+        <div className="merchant-nav-footer" style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--itunda-border-default)' }}>
           <div className="merchant-nav-footer-details">
-            <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-900)', padding: '0 8px', marginBottom: '2px' }}>
+            <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-primary)', padding: '0 8px', marginBottom: '2px' }}>
               {merchant.businessName}
             </p>
             {user && (
-              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', padding: '0 8px', marginBottom: '8px' }}>
+              <p style={{ fontSize: '12px', color: 'var(--itunda-text-tertiary)', padding: '0 8px', marginBottom: '8px' }}>
                 {user.firstName} {user.lastName}
               </p>
             )}
@@ -193,7 +193,7 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
           <button
             onClick={handleLogout}
             aria-label={t('dashboard.signOut')}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', fontSize: '14px', fontWeight: 600, color: 'var(--itunda-grey-500)' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', fontSize: '14px', fontWeight: 600, color: 'var(--itunda-text-tertiary)' }}
           >
             <LogOut size={16} /> <span>{t('dashboard.signOut')}</span>
           </button>
