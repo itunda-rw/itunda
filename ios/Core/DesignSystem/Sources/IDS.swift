@@ -234,18 +234,18 @@ public struct IDS {
 
     public struct Layout {
         public static let screenHorizontal: CGFloat = 20
-        public static let screenTop: CGFloat = 18
+        public static let screenTop: CGFloat = 16
         public static let sectionSpacing: CGFloat = 24
         public static let cardPadding: CGFloat = 24
         public static let cardGap: CGFloat = 16
         public static let rowGap: CGFloat = 14
         public static let inlineGap: CGFloat = 12
         public static let tightGap: CGFloat = 8
-        public static let cardCornerRadius: CGFloat = 28
-        public static let sectionCornerRadius: CGFloat = 26
-        public static let buttonCornerRadius: CGFloat = 18
+        public static let cardCornerRadius: CGFloat = 24
+        public static let sectionCornerRadius: CGFloat = 16
+        public static let buttonCornerRadius: CGFloat = 16
         public static let pillCornerRadius: CGFloat = 999
-        public static let iconCornerRadius: CGFloat = 18
+        public static let iconCornerRadius: CGFloat = 12
         public static let tabBarCornerRadius: CGFloat = 28
         public static let topBarActionSize: CGFloat = 44
         public static let quickActionIconSize: CGFloat = 48
