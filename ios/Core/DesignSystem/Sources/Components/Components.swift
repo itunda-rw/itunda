@@ -578,7 +578,7 @@ public struct IdsSelect: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label)
-                .font(IdsTypeScale.body2)
+                .font(IdsTypeScale.label)
                 .foregroundColor(errorText == nil ? IDS.Colors.textSecondary : IDS.Colors.danger)
             Picker(label, selection: $selection) {
                 ForEach(options, id: \.self) { option in
@@ -591,8 +591,9 @@ public struct IdsSelect: View {
             .background(IDS.Colors.card)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(errorText == nil ? IDS.Colors.divider : IDS.Colors.danger, lineWidth: 1)
+                    .stroke(errorText == nil ? IDS.Colors.divider : IDS.Colors.danger, lineWidth: errorText == nil ? 1 : 1.5)
             )
+            .contentShape(RoundedRectangle(cornerRadius: 12))
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .disabled(!isEnabled)
             if let message = errorText ?? supportingText {
