@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useI18n } from './i18n/I18nContext';
 import { Button } from '@itunda/design-system-web';
 
@@ -28,11 +28,28 @@ type Tab = 'bank' | 'kyc';
 export default function App() {
   const [tab, setTab] = useState<Tab>('bank');
   const { t } = useI18n();
+  const bankTabRef = useRef<HTMLButtonElement>(null);
+  const kycTabRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      const target = event.target as HTMLElement | null;
+      if (!target?.closest('.host-tabbar')) return;
+      event.preventDefault();
+      const nextTab = event.key === 'ArrowRight' ? 'kyc' : 'bank';
+      setTab(nextTab);
+      (nextTab === 'bank' ? bankTabRef.current : kycTabRef.current)?.focus();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   return (
     <div>
       <nav className="host-tabbar" aria-label={t('tabs.navigation')}>
         <Button
+          ref={bankTabRef}
           variant="tertiary"
           size="md"
           className={tab === 'bank' ? 'host-tab host-tab-active' : 'host-tab'}
@@ -42,6 +59,7 @@ export default function App() {
           {t('tabs.home')}
         </Button>
         <Button
+          ref={kycTabRef}
           variant="tertiary"
           size="md"
           className={tab === 'kyc' ? 'host-tab host-tab-active' : 'host-tab'}
