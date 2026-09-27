@@ -88,7 +88,7 @@ function SupportCard({ ticket, onResolved }: { ticket: SupportTicket; onResolved
       )}
 
       {actionError && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert" aria-live="polite">
           {actionError}
         </p>
       )}
