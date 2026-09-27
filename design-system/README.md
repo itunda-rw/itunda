@@ -32,12 +32,15 @@ The interactive IDS showcase is deployed independently from the Itunda Developer
 
 ## Principles
 
-- Itunda Indigo is the canonical Itunda brand role: `#7472F4`.
-- Semantic roles are preferred over raw color values.
-- Native platform behavior is preferred over simulated behavior.
-- Worst-case content is part of component design, not an afterthought.
-- Accessibility and reduced motion belong in the component contract.
-- Mapped, contract-checked, visual-verified, and build-verified are distinct claims.
+- **Reference the discipline, not the identity.** IDS can learn from mature Korean fintech systems such as Toss—clear hierarchy, restrained surfaces, compact type scales, predictable spacing, and direct actions—without reproducing their brand assets or visual identity.
+- **Itunda Indigo is the canonical Itunda brand role:** `#7472F4`, with `#625FE6` as the stronger interaction role.
+- **Typography is structural.** Use the Pretendard stack and the shared semantic scale before introducing one-off font sizes.
+- **Spacing creates hierarchy.** The 4px base rhythm and named spacing steps should determine layout before decorative containers do.
+- **Quiet surfaces, strong content.** Prefer whitespace, typography, alignment, and semantic color over unnecessary cards, borders, gradients, or shadows.
+- **Native behavior over imitation.** Web, Android, and iOS share the same product contract while respecting platform conventions.
+- **Worst-case content is part of component design,** including localization, long labels, large text, validation, and financial values.
+- **Accessibility and reduced motion belong in the component contract.**
+- **Mapped, contract-checked, visual-verified, and build-verified are distinct claims.**
 
 ## Open source boundary
 
