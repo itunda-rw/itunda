@@ -28,11 +28,11 @@ export default function PosScreen() {
             style={{
               flex: 1,
               padding: '10px',
-              borderRadius: '10px',
+              borderRadius: 'var(--itunda-control-radius, 12px)',
               fontSize: '14px',
               fontWeight: 700,
-              color: mode === m ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: mode === m ? 'var(--itunda-indigo)' : 'transparent',
+              color: mode === m ? 'var(--itunda-surface-default)' : 'var(--itunda-text-secondary)',
+              backgroundColor: mode === m ? 'var(--itunda-brand)' : 'transparent',
             }}
           >
             {m === 'REGISTER' ? t('pos.modeRegister') : t('pos.modeCatalog')}
