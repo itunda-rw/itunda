@@ -42,8 +42,8 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Store size={24} color="var(--itunda-indigo)" />
-            <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Itunda Business</h1>
+            <Store size={24} color="var(--itunda-brand)" />
+            <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--itunda-text-primary)' }}>Itunda Business</h1>
           </div>
           {/* Real first language switcher for merchant-mfe (2026-08-15) -- see
               src/i18n's own doc comment: itunda's merchant/agent network is arguably
@@ -54,19 +54,19 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
             value={locale}
             onChange={(e) => setLocale(e.target.value as 'en' | 'rw' | 'fr')}
             aria-label="Language"
-            style={{ fontSize: '12px', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--itunda-grey-200)', color: 'var(--itunda-grey-700)', background: '#fff' }}
+            style={{ fontSize: '12px', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--itunda-border-default)', color: 'var(--itunda-text-secondary)', background: 'var(--itunda-surface-default)' }}
           >
             {LOCALES.map((l) => (
               <option key={l.code} value={l.code}>{l.label}</option>
             ))}
           </select>
         </div>
-        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginTop: '-8px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)', marginTop: '-8px' }}>
           {t('login.tagline')}
         </p>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('login.phoneNumber')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('login.phoneNumber')}</span>
           {/* Real "Minimum Input" simplicity fix (item 244, docs/DESIGN_REFERENCES.md §11,
               rule #4), matching the identical same-day fix on bank-mfe's LoginPage.tsx. */}
           <input
@@ -77,16 +77,17 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
             placeholder="+250788123456"
             required
             style={{
+              minHeight: '48px',
               padding: '12px 14px',
-              borderRadius: '10px',
-              border: '1px solid var(--itunda-grey-200)',
+              borderRadius: 'var(--itunda-control-radius, 12px)',
+              border: '1px solid var(--itunda-border-default)',
               fontSize: '15px',
             }}
           />
         </label>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('login.password')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('login.password')}</span>
           <div style={{ position: 'relative' }}>
           <input
             type={showPassword ? 'text' : 'password'}
@@ -96,9 +97,10 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
             style={{
               width: '100%',
               boxSizing: 'border-box',
+              minHeight: '48px',
               padding: '12px 40px 12px 14px',
-              borderRadius: '10px',
-              border: '1px solid var(--itunda-grey-200)',
+              borderRadius: 'var(--itunda-control-radius, 12px)',
+              border: '1px solid var(--itunda-border-default)',
               fontSize: '15px',
             }}
           />
@@ -106,7 +108,7 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
             type="button"
             onClick={() => setShowPassword((v) => !v)}
             aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
-            style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '4px', display: 'flex', color: 'var(--itunda-grey-500)' }}
+            style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '8px', minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--itunda-text-tertiary)' }}
           >
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
@@ -114,7 +116,7 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
         </label>
 
         {error && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert" aria-live="polite">
+          <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: 0 }} role="alert" aria-live="polite">
             {error}
           </p>
         )}
