@@ -21,7 +21,7 @@ body {
 #root {
   width: 100%;
   min-height: 100svh;
-  background-color: var(--itunda-grey-100);
+  background-color: var(--itunda-surface-subtle);
 }
 
 h1, h2, h3, h4, p {
@@ -54,7 +54,7 @@ input, textarea {
 .itunda-card {
   background: var(--itunda-surface-default);
   border-radius: var(--itunda-radius-md);
-  padding: 24px;
+  padding: var(--itunda-content-gap);
   /* Real fix (2026-09-04, matching bank-mfe's own 2026-08-24 fix -- this file's
      copy of the shared itunda-card/itunda-flat-section pattern had drifted): on a
      white page background, the shadow alone isn't always enough to separate a card
@@ -74,7 +74,7 @@ input, textarea {
    EatsReviews.tsx) already has. */
 .itunda-flat-section {
   padding: 16px 0;
-  border-bottom: 1px solid var(--itunda-grey-100);
+  border-bottom: 1px solid var(--itunda-border-default);
 }
 
 .itunda-flat-section:last-child {
@@ -98,8 +98,8 @@ input, textarea {
 }
 
 .itunda-btn-secondary {
-  background-color: var(--itunda-grey-100);
-  color: var(--itunda-grey-800);
+  background-color: var(--itunda-surface-subtle);
+  color: var(--itunda-text-secondary);
 }
 
 .itunda-btn-danger {
