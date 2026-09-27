@@ -13,7 +13,7 @@ body {
   margin: 0;
   font-family: var(--itunda-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
   background-color: var(--itunda-grey-100);
-  color: var(--itunda-grey-900);
+  color: var(--itunda-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -52,14 +52,14 @@ input, textarea {
 }
 
 .itunda-card {
-  background: var(--itunda-white);
+  background: var(--itunda-surface-default);
   border-radius: var(--itunda-radius-md);
   padding: 24px;
   /* Real fix (2026-09-04, matching bank-mfe's own 2026-08-24 fix -- this file's
      copy of the shared itunda-card/itunda-flat-section pattern had drifted): on a
      white page background, the shadow alone isn't always enough to separate a card
      -- added the same hairline border bank-mfe/src/index.css already carries. */
-  border: 1px solid var(--itunda-grey-200);
+  border: 1px solid var(--itunda-border-default);
   box-shadow: var(--itunda-shadow);
   margin-bottom: 16px;
   transition: var(--itunda-transition);
@@ -92,8 +92,8 @@ input, textarea {
 }
 
 .itunda-btn-primary {
-  background-color: var(--itunda-indigo);
-  color: var(--itunda-white);
+  background-color: var(--itunda-brand);
+  color: var(--itunda-surface-default);
 }
 
 .itunda-btn-secondary {
@@ -102,8 +102,8 @@ input, textarea {
 }
 
 .itunda-btn-danger {
-  background-color: var(--itunda-red);
-  color: var(--itunda-white);
+  background-color: var(--itunda-field-border-error);
+  color: var(--itunda-surface-default);
 }
 
 .itunda-btn:disabled {
@@ -154,7 +154,7 @@ input, textarea {
     flex-wrap: nowrap;
     overflow-x: auto;
     border-right: none !important;
-    border-bottom: 1px solid var(--itunda-grey-200);
+    border-bottom: 1px solid var(--itunda-border-default);
     padding: 8px !important;
     align-items: center;
     gap: 8px !important;
