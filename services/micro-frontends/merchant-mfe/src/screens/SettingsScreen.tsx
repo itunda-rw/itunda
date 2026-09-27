@@ -55,7 +55,7 @@ export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merc
           </label>
 
           {error && (
-            <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">
+            <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert" aria-live="polite">
               {error}
             </p>
           )}
@@ -158,7 +158,7 @@ function FollowersCard() {
           <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', margin: 0 }}>{t('settings.broadcastNeedsFollower')}</p>
         )}
         {error && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert" aria-live="polite">{error}</p>
         )}
         {sentCount !== null && !error && (
           <p style={{ fontSize: '13px', color: 'var(--itunda-indigo)', margin: 0 }}>{t(sentCount === 1 ? 'settings.broadcastSentSingular' : 'settings.broadcastSentPlural', { count: sentCount })}</p>
@@ -259,7 +259,7 @@ function ApiIntegrationCard() {
           </p>
         )}
         {generateError && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{generateError}</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert" aria-live="polite">{generateError}</p>
         )}
       </div>
 
@@ -283,13 +283,13 @@ function ApiIntegrationCard() {
           </p>
         )}
         {generateSecretError && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{generateSecretError}</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert" aria-live="polite">{generateSecretError}</p>
         )}
       </div>
 
       <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>{t('settings.recentDeliveriesTitle')}</h3>
       {deliveriesError && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '10px' }} role="alert">{deliveriesError}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '10px' }} role="alert" aria-live="polite">{deliveriesError}</p>
       )}
       {deliveries === null ? (
         <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{t('settings.loading')}</p>
@@ -363,7 +363,7 @@ function DevicesCard() {
         {t('settings.devicesBody')}
       </p>
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '12px' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '12px' }} role="alert" aria-live="polite">{error}</p>
       )}
       {devices === null ? (
         <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{t('settings.loading')}</p>
@@ -447,7 +447,7 @@ function CategoryCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated: 
         </button>
       </form>
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert" aria-live="polite">
           {error}
         </p>
       )}
@@ -639,7 +639,7 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
           />
         </label>
         {error && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert" aria-live="polite">{error}</p>
         )}
         {saved && !error && (
           <p style={{ fontSize: '13px', color: 'var(--itunda-indigo)', margin: 0 }}>{t('settings.saved')}</p>
@@ -658,7 +658,7 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
         </button>
       </div>
       {scheduledError && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert">{scheduledError}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert" aria-live="polite">{scheduledError}</p>
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--itunda-grey-200)' }}>
         <div>
@@ -670,7 +670,7 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
         </button>
       </div>
       {acceptingError && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert">{acceptingError}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert" aria-live="polite">{acceptingError}</p>
       )}
       <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--itunda-grey-200)' }}>
         <p style={{ fontSize: '14px', fontWeight: 600 }}>{t('settings.closedWeekdaysTitle')}</p>
@@ -694,7 +694,7 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
         </div>
       </div>
       {closedWeekdaysError && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert">{closedWeekdaysError}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert" aria-live="polite">{closedWeekdaysError}</p>
       )}
     </div>
   );
@@ -742,7 +742,7 @@ function EatsMembershipParticipationCard({ merchant, onUpdated }: { merchant: Me
         </button>
       </div>
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert" aria-live="polite">
           {error}
         </p>
       )}
@@ -792,7 +792,7 @@ function FeeWaiverCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated:
         )}
       </div>
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert" aria-live="polite">
           {error}
         </p>
       )}
@@ -889,7 +889,7 @@ function KybCard({ merchant }: { merchant: Merchant }) {
         </p>
       )}
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert" aria-live="polite">
           {error}
         </p>
       )}
