@@ -284,7 +284,7 @@ export function ProgressStepper({ activeStepIndex, steps }: { activeStepIndex: n
             <div
               style={{
                 width: '8px', height: '8px', borderRadius: '50%',
-                backgroundColor: i <= activeStepIndex ? 'var(--itunda-indigo)' : 'var(--itunda-grey-300)',
+                backgroundColor: i <= activeStepIndex ? 'var(--itunda-indigo)' : 'var(--itunda-border-strong)',
               }}
             />
             <span
