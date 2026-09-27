@@ -47,13 +47,15 @@ export default function App() {
 
   return (
     <div>
-      <nav className="host-tabbar" aria-label={t('tabs.navigation')}>
+      <nav className="host-tabbar" aria-label={t('tabs.navigation')} role="tablist">
         <Button
           ref={bankTabRef}
           variant="tertiary"
           size="md"
           className={tab === 'bank' ? 'host-tab host-tab-active' : 'host-tab'}
-          aria-current={tab === 'bank' ? 'page' : undefined}
+          role="tab"
+          aria-selected={tab === 'bank'}
+          tabIndex={tab === 'bank' ? 0 : -1}
           onClick={() => setTab('bank')}
         >
           {t('tabs.home')}
@@ -63,7 +65,9 @@ export default function App() {
           variant="tertiary"
           size="md"
           className={tab === 'kyc' ? 'host-tab host-tab-active' : 'host-tab'}
-          aria-current={tab === 'kyc' ? 'page' : undefined}
+          role="tab"
+          aria-selected={tab === 'kyc'}
+          tabIndex={tab === 'kyc' ? 0 : -1}
           onClick={() => setTab('kyc')}
         >
           {t('tabs.identity')}
