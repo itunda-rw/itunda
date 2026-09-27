@@ -68,7 +68,7 @@ fun IdsTextField(
             value = value,
             onValueChange = onValueChange,
             enabled = fieldEnabled,
-            label = { Text(label, style = IdsTypography.Body2) },
+            label = { Text(label, style = IdsTypography.Label) },
             placeholder = placeholder?.let {
                 { Text(it, style = IdsTypography.Body1, color = Ids.colors.textTertiary) }
             },
@@ -154,7 +154,7 @@ fun IdsTextField(
             resolvedError && errorText != null -> {
                 Text(
                     text = errorText,
-                    style = IdsTypography.Typography7,
+                    style = IdsTypography.Caption,
                     color = Ids.colors.danger,
                     modifier = Modifier.padding(
                         start = IdsComponentTokens.TextField.supportingTextStart,
@@ -165,7 +165,7 @@ fun IdsTextField(
             resolvedSuccess && successText != null -> {
                 Text(
                     text = successText,
-                    style = IdsTypography.Typography7,
+                    style = IdsTypography.Caption,
                     color = Ids.colors.success,
                     modifier = Modifier.padding(
                         start = IdsComponentTokens.TextField.supportingTextStart,
@@ -176,7 +176,7 @@ fun IdsTextField(
             supportingText != null -> {
                 Text(
                     text = supportingText,
-                    style = IdsTypography.Typography7,
+                    style = IdsTypography.Caption,
                     color = Ids.colors.textTertiary,
                     modifier = Modifier.padding(
                         start = IdsComponentTokens.TextField.supportingTextStart,
