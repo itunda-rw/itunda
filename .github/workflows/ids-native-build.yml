@@ -80,8 +80,9 @@ jobs:
       - name: Generate native Xcode project from Tuist manifest
         working-directory: ios
         run: |
-          mise use --pin tuist@latest
-          tuist generate --no-open
+          mise install tuist@3.42.3
+          mise use --pin tuist@3.42.3
+          mise exec tuist@3.42.3 -- tuist generate --no-open
       - name: Install Limrun CLI
         run: npm install --global lim
       - name: Create and attach native iOS simulator
