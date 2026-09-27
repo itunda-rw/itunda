@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { overlay } from 'overlay-kit';
 import './KycDashboard.css';
 import { getToken, ApiError } from './lib/api';
@@ -106,6 +106,11 @@ function KycSubmitModal({ isOpen, close, onSubmitted }: { isOpen: boolean; close
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState<KycSubmission | null>(null);
+  const firstFieldRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen && !submitted) firstFieldRef.current?.focus();
+  }, [isOpen, submitted]);
 
   if (!isOpen) return null;
 
@@ -168,7 +173,7 @@ function KycSubmitModal({ isOpen, close, onSubmitted }: { isOpen: boolean; close
                 no room shown for a persistent visible caption above each field) so
                 the field's name survives even after typing starts. */}
             <input
-              autoFocus
+              ref={firstFieldRef}
               aria-label={documentType === 'NATIONAL_ID' ? t('kyc.nationalIdNumberLabel') : t('kyc.passportNumberLabel')}
               value={documentNumber}
               onChange={(e) => setDocumentNumber(e.target.value)}
