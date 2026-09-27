@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import retrofit2.HttpException
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import rw.itunda.core.designsystem.theme.IdsTheme
@@ -29,6 +30,7 @@ private sealed class RiderScreen {
     object Loading : RiderScreen()
     object Login : RiderScreen()
     object BecomeRider : RiderScreen()
+    object Error : RiderScreen()
     object Home : RiderScreen()
     data class Delivery(val orderId: String) : RiderScreen()
     // Real Commerce/Shop package delivery -- see CommerceDeliveryDetailScreen's own
@@ -76,8 +78,10 @@ private fun RiderApp() {
         screen = try {
             NetworkClient.apiService.getMyRiderProfile()
             RiderScreen.Home
+        } catch (e: HttpException) {
+            if (e.code() == 404) RiderScreen.BecomeRider else RiderScreen.Error
         } catch (e: Exception) {
-            RiderScreen.BecomeRider
+            RiderScreen.Error
         }
     }
 
@@ -99,12 +103,25 @@ private fun RiderApp() {
                 try {
                     NetworkClient.apiService.getMyRiderProfile()
                     screen = RiderScreen.Home
-                } catch (e: Exception) { /* genuinely not registered yet -- show the real screen */ }
+                } catch (e: HttpException) {
+                    if (e.code() != 404) screen = RiderScreen.Error
+                } catch (e: Exception) {
+                    screen = RiderScreen.Error
+                }
             }
             BecomeRiderScreen(
                 onRegistered = { screen = RiderScreen.Home },
                 onLogout = { NetworkClient.currentTokenStore().clearSession(); screen = RiderScreen.Login },
             )
+        }
+        is RiderScreen.Error -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                androidx.compose.material3.Text(text = "Couldn't check your rider status", style = MaterialTheme.typography.titleMedium)
+                androidx.compose.material3.Text(text = "Check your connection and try again.", style = MaterialTheme.typography.bodyMedium)
+                androidx.compose.material3.Button(onClick = { screen = RiderScreen.Loading }) {
+                    androidx.compose.material3.Text("Retry")
+                }
+            }
         }
         is RiderScreen.Home -> RiderHomeScreen(
             onOpenDelivery = { orderId -> screen = RiderScreen.Delivery(orderId) },
