@@ -100,12 +100,12 @@ fun InvestScreen(onBack: () -> Unit) {
 
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp)
-                .clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(4.dp),
+                .clip(RoundedCornerShape(Ids.layout.controlRadius)).background(Ids.colors.surfaceSoft).padding(4.dp),
         ) {
             listOf(InvestMode.MARKET to "Market", InvestMode.PORTFOLIO to "Portfolio", InvestMode.WATCHLIST to "Watchlist").forEach { (m, label) ->
                 val selected = mode == m
                 Box(
-                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(Ids.layout.tightCornerRadius))
                         .background(if (selected) Ids.colors.brand else Color.Transparent)
                         .clickable { mode = m }.padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
@@ -368,7 +368,7 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
         Spacer(modifier = Modifier.height(12.dp))
 
         if (history == null) {
-            Card(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth().height(48.dp)) {}
+            Card(shape = RoundedCornerShape(Ids.layout.tightCornerRadius), modifier = Modifier.fillMaxWidth().height(48.dp)) {}
         } else if (history!!.isNotEmpty()) {
             Sparkline(history!!.map { it.price }, positive = positive)
             Text("Last 14 days -- real deterministic simulation, not live RSE data", color = Ids.colors.textSecondary, fontSize = 11.sp)
@@ -376,12 +376,12 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(4.dp),
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.controlRadius)).background(Ids.colors.surfaceSoft).padding(4.dp),
         ) {
             listOf(true to "Buy", false to "Sell").forEach { (isBuy, label) ->
                 val selected = buyMode == isBuy
                 Box(
-                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(Ids.layout.tightCornerRadius))
                         .background(if (selected) (if (isBuy) Ids.colors.brand else Ids.colors.danger) else Color.Transparent)
                         .clickable { buyMode = isBuy }.padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
@@ -398,7 +398,7 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
             )
             Spacer(modifier = Modifier.width(10.dp))
             Box(
-                modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                modifier = Modifier.clip(RoundedCornerShape(Ids.layout.controlRadius))
                     .background(if (buyMode) Ids.colors.brand else Ids.colors.danger)
                     .clickable(enabled = !submitting) { trade() }
                     .padding(horizontal = 20.dp, vertical = 14.dp),
