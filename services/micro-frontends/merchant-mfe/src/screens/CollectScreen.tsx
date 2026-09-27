@@ -63,7 +63,7 @@ function StaticQrCollect() {
   if (error) {
     return (
       <div className="itunda-card">
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert" aria-live="polite">{error}</p>
       </div>
     );
   }
@@ -159,7 +159,7 @@ function VoucherRedeem() {
               />
             </label>
             {error && (
-              <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">
+              <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert" aria-live="polite">
                 {error}
               </p>
             )}
@@ -255,7 +255,7 @@ function QrCollect() {
           />
         </label>
         {error && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert" aria-live="polite">
             {error}
           </p>
         )}
@@ -406,7 +406,7 @@ function CardCollect() {
           </label>
         </div>
         {error && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert" aria-live="polite">
             {error}
           </p>
         )}
