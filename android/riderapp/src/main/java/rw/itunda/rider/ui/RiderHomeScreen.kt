@@ -310,11 +310,13 @@ fun RiderHomeScreen(
                 }
             } else {
                 if (tab == HomeTab.MINE) {
-                    val deliveredEatsFees = eatsList.orEmpty().filter { it.status == "DELIVERED" }.sumOf { it.deliveryFee }
-                    val deliveredCount = eatsList.orEmpty().count { it.status == "DELIVERED" } + commerceList.orEmpty().count { it.status == "DELIVERED" }
-                    if (deliveredCount > 0) {
+                    // Commerce orders do not expose a rider payout field, so never
+                    // combine their order totals with real Eats delivery fees.
+                    val deliveredEats = eatsList.orEmpty().filter { it.status == "DELIVERED" }
+                    val deliveredEatsFees = deliveredEats.sumOf { it.deliveryFee }
+                    if (deliveredEats.isNotEmpty()) {
                         Text(
-                            "Recent earnings: ${String.format(Locale.US, "%,.0f", deliveredEatsFees)} RWF (${deliveredCount} deliveries)",
+                            "Food delivery earnings: ${String.format(Locale.US, "%,.0f", deliveredEatsFees)} RWF (${deliveredEats.size} deliveries)",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
