@@ -73,13 +73,13 @@ export const Route = createRoute('/', {
 });
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: 'colors.background' },
-  title: { fontSize: 20, fontWeight: '700', marginBottom: 12, color: 'colors.textPrimary' },
-  body: { fontSize: 14, color: 'colors.textSecondary' },
+  container: { flex: 1, padding: 24, backgroundColor: colors.background },
+  title: { fontSize: 20, fontWeight: '700', marginBottom: 12, color: colors.textPrimary },
+  body: { fontSize: 14, color: colors.textSecondary },
   spacer: { height: 16 },
-  actionButton: { backgroundColor: 'colors.primaryIndigo', paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
-  actionButtonText: { color: 'colors.surface', fontWeight: '700' },
-  result: { marginTop: 8, fontSize: 13, color: 'colors.textPrimary' },
+  actionButton: { backgroundColor: colors.primaryIndigo, paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
+  actionButtonText: { color: colors.surface, fontWeight: '700' },
+  result: { marginTop: 8, fontSize: 13, color: colors.textPrimary },
   closeButton: { paddingVertical: 14, alignItems: 'center' },
-  closeButtonText: { color: 'colors.textTertiary', fontWeight: '600' },
+  closeButtonText: { color: colors.textTertiary, fontWeight: '600' },
 });
