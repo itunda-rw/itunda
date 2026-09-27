@@ -31,6 +31,7 @@ object IdsLayout {
     val chipCornerRadius = 999.dp
     val iconCornerRadius = 12.dp
 
-    val cardElevation = 2.dp
+    /** IDS prefers separation through whitespace; elevation is reserved for transient layers. */
+    val cardElevation = 0.dp
     val minTouchTarget = 48.dp
 }
