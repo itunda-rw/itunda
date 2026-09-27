@@ -916,7 +916,7 @@ fun ItundaAppScreen(
                             onValueChange = { reportReason = it },
                             textStyle = androidx.compose.ui.text.TextStyle(color = Ids.colors.textPrimary, fontSize = 15.sp),
                             modifier = Modifier.fillMaxWidth()
-                                .background(Ids.colors.surfaceSoft, androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                                .background(Ids.colors.surfaceSoft, androidx.compose.foundation.shape.RoundedCornerShape(Ids.layout.controlRadius))
                                 .padding(12.dp),
                             decorationBox = { inner -> if (reportReason.isEmpty()) Text(stringResource(R.string.scam_report_reason_placeholder), color = Ids.colors.textTertiary, fontSize = 15.sp); inner() },
                         )
