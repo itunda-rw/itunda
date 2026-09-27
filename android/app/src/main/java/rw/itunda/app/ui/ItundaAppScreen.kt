@@ -2182,7 +2182,7 @@ private fun AccountDetailScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(Ids.layout.sectionCornerRadius))
                             .background(Ids.colors.chip)
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
