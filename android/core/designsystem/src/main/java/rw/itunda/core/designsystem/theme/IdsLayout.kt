@@ -14,6 +14,12 @@ object IdsLayout {
     val rowGap = 14.dp
     val inlineGap = 12.dp
     val tightGap = 8.dp
+    /** Maximum readable content width for decision-focused screens. */
+    val contentMeasure = 680.dp
+    /** Maximum hero width before copy begins to feel visually heavy. */
+    val heroMeasure = 760.dp
+    /** Default separation before a primary decision/action group. */
+    val decisionGap = 24.dp
 
     val controlHeightSm = 40.dp
     val controlHeightMd = 48.dp
