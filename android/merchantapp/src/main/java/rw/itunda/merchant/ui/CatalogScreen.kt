@@ -29,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Inventory2
 import rw.itunda.core.designsystem.components.IdsEmptyState
 import rw.itunda.core.designsystem.components.IdsLoading
+import rw.itunda.core.designsystem.components.IdsErrorText
 import rw.itunda.merchant.network.MerchantProductDto
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.network.TimeDealViewDto
@@ -46,13 +47,24 @@ fun CatalogTab() {
     var description by remember { mutableStateOf("") }
     var stockQuantity by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    var catalogError by remember { mutableStateOf<String?>(null) }
     var submitting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     fun load() {
         scope.launch {
-            products = try { NetworkClient.apiService.getProductCatalog().products } catch (e: Exception) { emptyList() }
-            timeDeals = try { NetworkClient.apiService.getMyTimeDeals().deals } catch (e: Exception) { emptyList() }
+            catalogError = null
+            try {
+                products = NetworkClient.apiService.getProductCatalog().products
+            } catch (e: Exception) {
+                products = null
+                catalogError = "Couldn't load your catalog. Check your connection and try again."
+            }
+            try {
+                timeDeals = NetworkClient.apiService.getMyTimeDeals().deals
+            } catch (e: Exception) {
+                timeDeals = emptyList()
+            }
         }
     }
 
@@ -124,7 +136,12 @@ fun CatalogTab() {
         }
 
         val list = products
-        if (list == null) {
+        if (list == null && catalogError != null) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                IdsErrorText(catalogError!!)
+                IdsButton(text = "Retry", variant = rw.itunda.core.designsystem.components.IdsButtonVariant.Tinted, onClick = ::load)
+            }
+        } else if (list == null) {
             IdsLoading()
         } else if (list.isEmpty()) {
             IdsEmptyState(title = "No products yet — add your first one above.")
