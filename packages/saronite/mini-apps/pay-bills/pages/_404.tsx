@@ -30,8 +30,8 @@ export const Route = createRoute('/_404', {
 });
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: 'colors.background' },
-  title: { fontSize: 17, fontWeight: '700', color: 'colors.textPrimary', marginBottom: 16 },
+  container: { flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
+  title: { fontSize: 17, fontWeight: '700', color: colors.textPrimary, marginBottom: 16 },
   closeButton: { paddingVertical: 14, paddingHorizontal: 20 },
-  closeButtonText: { color: 'colors.textTertiary', fontWeight: '600' },
+  closeButtonText: { color: colors.textTertiary, fontWeight: '600' },
 });
