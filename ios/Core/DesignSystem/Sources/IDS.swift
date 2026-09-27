@@ -56,6 +56,11 @@ private extension UIColor {
 }
 
 public struct IDS {
+    /// Shared decision-focused content measures. Layout remains native to iOS.
+    static let contentMeasure: CGFloat = 680
+    static let heroMeasure: CGFloat = 760
+    static let decisionGap: CGFloat = 24
+
     // Fixed (2026-07-11): every font constant below Typography (and IdsTypeScale in
     // Theme/IdsTheme.swift, and every consumer that had its own inline
     // Font.system(size:weight:) call, e.g. FeatureBanking's BankView.swift) used to be
