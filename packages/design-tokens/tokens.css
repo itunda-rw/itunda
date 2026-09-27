@@ -70,6 +70,7 @@
 }
 
 :root {
+  color-scheme: light dark;
   /* Single source of truth for the real font stack every consuming app's own body
      rule should reference -- Pretendard first, falling back to the same real system
      stack each app already had if it somehow fails to load. */
@@ -399,8 +400,32 @@
   }
 }
 
+/* Explicit app-controlled light theme mirrors the canonical light semantic palette. */
+html[data-theme="light"] {
+    color-scheme: light;
+    --itunda-indigo: #7472F4;
+    --itunda-indigo-active: #625FE6;
+    --itunda-indigo-light: #F0EFFF;
+    --itunda-red: #f04452;
+    --itunda-red-light: #ffeceb;
+    --itunda-green: #05804a;
+    --itunda-grey-100: #f2f4f6;
+    --itunda-grey-200: #e5e8eb;
+    --itunda-grey-300: #d1d6db;
+    --itunda-grey-400: #b0b8c1;
+    --itunda-grey-500: #636e7c;
+    --itunda-grey-600: #6b7684;
+    --itunda-grey-700: #4e5968;
+    --itunda-grey-800: #333d4b;
+    --itunda-grey-900: #191f28;
+    --itunda-white: #ffffff;
+    --itunda-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+    --itunda-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
 /* Explicit app-controlled dark theme mirrors the OS dark semantic palette. */
 html[data-theme="dark"] {
+    color-scheme: dark;
     --itunda-indigo: #9B98FF;
     --itunda-indigo-active: #B0AEFF;
     --itunda-indigo-light: #27244A;
