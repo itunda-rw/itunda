@@ -113,7 +113,7 @@ a:focus-visible,
   display: flex;
   border-bottom: 1px solid var(--itunda-grey-200);
   padding: 0 20px;
-  background: var(--itunda-white);
+  background: var(--itunda-surface-default);
 }
 
 .host-tab {
