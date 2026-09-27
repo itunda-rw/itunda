@@ -341,7 +341,7 @@ export const Route = createRoute('/', {
 });
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: colors.background },
+  container: { flex: 1, paddingHorizontal: 20, paddingVertical: 16, backgroundColor: colors.background },
   title: { fontSize: 20, fontWeight: '700', marginBottom: 16, color: colors.textPrimary },
   body: { fontSize: 15, color: colors.textSecondary },
   error: { color: colors.error },
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 24,
     padding: 16,
     marginBottom: 10,
   },
@@ -358,13 +358,13 @@ const styles = StyleSheet.create({
   provider: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
   due: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
   amount: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginRight: 12 },
-  payButton: { backgroundColor: colors.primaryIndigo, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
+  payButton: { backgroundColor: colors.primaryIndigo, borderRadius: 16, minHeight: 48, paddingVertical: 12, paddingHorizontal: 16 },
   payButtonText: { color: colors.surface, fontWeight: '700', fontSize: 13 },
   closeButton: { alignItems: 'center', paddingVertical: 14 },
   closeButtonText: { color: colors.textTertiary, fontWeight: '600' },
   autoPayCard: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 24,
     padding: 16,
     marginTop: 4,
   },
@@ -374,11 +374,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: colors.background,
   },
-  offButton: { backgroundColor: colors.background, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
+  offButton: { backgroundColor: colors.background, borderRadius: 16, minHeight: 48, paddingVertical: 12, paddingHorizontal: 16 },
   offButtonText: { color: colors.textPrimary, fontWeight: '700', fontSize: 13 },
   providerPicker: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   providerChip: {
@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderColor: colors.divider,
-    borderRadius: 8,
+    borderRadius: 16,
     padding: 10,
     marginTop: 8,
     fontSize: 14,
