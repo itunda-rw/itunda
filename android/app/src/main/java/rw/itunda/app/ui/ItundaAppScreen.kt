@@ -263,7 +263,7 @@ import rw.itunda.core.designsystem.itundaface.TravelHouse
 
 // Real gap found live (2026-08-10), user-flagged: this file used to alias the real
 // theme-reactive design-system tokens (core/designsystem/theme/IdsSemanticColors.kt)
-// under Toss-branded names (TossBlue, TossCard, ...) -- itunda's own screens naming
+// under legacy reference names -- Itunda screens use canonical IDS tokens
 // their own colors after a different company's product read exactly like an
 // unfinished fork, not a real product with its own identity. Every call site across
 // this module now references Ids.colors.* directly; no alias layer left to name.
