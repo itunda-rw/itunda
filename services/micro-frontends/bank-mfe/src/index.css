@@ -109,19 +109,16 @@ input, textarea, select {
 
 
 .itunda-card {
-  background: var(--itunda-surface-default);
-  border-radius: var(--itunda-radius-md);
-  padding: var(--itunda-content-gap);
-  /* Real fix (2026-08-24, same page-background pass as body/#root above): with the
-     page canvas now white too, the shadow alone was the only thing separating a card
-     from its background -- at --itunda-shadow's real Toss-subtle 4% opacity that's not
-     always enough on its own. Added a hairline border (matches real Toss's own
-     white-card-on-white-page treatment) so cards stay visually distinct without
-     needing a grey page underneath them. */
-  border: 1px solid var(--itunda-border-default);
-  box-shadow: var(--itunda-shadow);
-  margin-bottom: 16px;
-  transition: var(--itunda-transition);
+  /* IDS flat composition: grouping comes from spacing and a quiet divider,
+     not floating white cards and shadows. */
+  background: transparent;
+  border-radius: 0;
+  padding: var(--itunda-content-gap, 16px) 0;
+  border: 0;
+  border-bottom: 1px solid var(--itunda-border-default);
+  box-shadow: none;
+  margin-bottom: 0;
+  transition: background-color var(--itunda-motion-fast) var(--itunda-ease-out);
 }
 
 /* Real Toss Bank home reference (2026-08-21/22, direct user directive: "our bank
