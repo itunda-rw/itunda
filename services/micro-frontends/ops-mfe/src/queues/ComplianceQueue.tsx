@@ -76,11 +76,11 @@ function ComplianceCard({ submission, onDecided }: { submission: KycSubmission; 
   return (
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <div>
-        <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{submission.documentType}</p>
-        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
+        <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-text-primary)' }}>{submission.documentType}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)' }}>
           User {submission.userId} · Document {submission.documentReference || submission.documentNumber}
         </p>
-        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-text-tertiary)' }}>
           Submitted {new Date(submission.submittedAt).toLocaleString()}
         </p>
         <AutoVerificationBadge submission={submission} />
@@ -93,11 +93,11 @@ function ComplianceCard({ submission, onDecided }: { submission: KycSubmission; 
           placeholder="Reason (optional)"
           maxLength={255}
           rows={2}
-          style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', resize: 'vertical' }}
+          style={{ padding: '10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '14px', resize: 'vertical' }}
         />
       )}
 
-      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-field-border-error)' }} role="alert">{error}</p>}
 
       <div style={{ display: 'flex', gap: '8px' }}>
         {!rejecting ? (
