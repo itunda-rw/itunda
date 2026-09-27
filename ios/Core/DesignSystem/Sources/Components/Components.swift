@@ -283,8 +283,12 @@ public struct IdsTextField: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label)
-                .font(IdsTypeScale.body2)
-                .foregroundColor(isFocused ? IDS.Colors.brand : IDS.Colors.textSecondary)
+                .font(IdsTypeScale.label)
+                .foregroundColor(
+                    errorText != nil ? IDS.Colors.danger :
+                    successText != nil ? IDS.Colors.success :
+                    isFocused ? IDS.Colors.brand : IDS.Colors.textSecondary
+                )
             HStack(spacing: 8) {
                 Group {
                     if isSecure && !passwordVisible {
