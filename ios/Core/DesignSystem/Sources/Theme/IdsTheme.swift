@@ -112,4 +112,10 @@ public struct IdsTypeScale {
     public static let body1 = IDS.scaledFont(size: 15, weight: .regular, relativeTo: .subheadline)
     public static let body2 = IDS.scaledFont(size: 13, weight: .regular, relativeTo: .caption1)
     public static let button = IDS.scaledFont(size: 16, weight: .semibold, relativeTo: .body)
+    // Canonical IDS semantic scale: shared naming across native and Saronite surfaces.
+    public static let display = IDS.scaledFont(size: 24, weight: .bold, relativeTo: .title1)
+    public static let title = IDS.scaledFont(size: 20, weight: .bold, relativeTo: .title2)
+    public static let body = IDS.scaledFont(size: 16, weight: .regular, relativeTo: .body)
+    public static let label = IDS.scaledFont(size: 15, weight: .medium, relativeTo: .subheadline)
+    public static let caption = IDS.scaledFont(size: 13, weight: .regular, relativeTo: .caption1)
 }
