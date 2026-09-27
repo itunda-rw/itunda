@@ -30,15 +30,15 @@ export default function RegisterScreen({ onRegistered }: { onRegistered: (mercha
         style={{ width: '400px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '16px' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-          <Store size={24} color="var(--itunda-indigo)" />
-          <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Register your business</h1>
+          <Store size={24} color="var(--itunda-brand)" />
+          <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--itunda-text-primary)' }}>Register your business</h1>
         </div>
-        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginTop: '-8px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)', marginTop: '-8px' }}>
           This account isn't a merchant yet. Register your business to start collecting payments.
         </p>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Business name</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>Business name</span>
           {/* Real "Minimum Input" simplicity fix (item 244, docs/DESIGN_REFERENCES.md §11,
               rule #4), matching the identical same-day fix on bank-mfe's LoginPage.tsx. */}
           <input
@@ -49,16 +49,17 @@ export default function RegisterScreen({ onRegistered }: { onRegistered: (mercha
             placeholder="Amina's Boutique"
             required
             style={{
+              minHeight: '48px',
               padding: '12px 14px',
-              borderRadius: '10px',
-              border: '1px solid var(--itunda-grey-200)',
+              borderRadius: 'var(--itunda-control-radius, 12px)',
+              border: '1px solid var(--itunda-border-default)',
               fontSize: '15px',
             }}
           />
         </label>
 
         {error && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert" aria-live="polite">
+          <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: 0 }} role="alert" aria-live="polite">
             {error}
           </p>
         )}
