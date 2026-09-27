@@ -189,3 +189,14 @@ input, textarea {
     max-width: 100% !important;
   }
 }
+
+/* IDS form anatomy: business entry points use the same 48px field rhythm and semantic focus treatment. */
+.itunda-auth-shell { width: 100%; max-width: 360px; padding: 16px 20px; display: flex; flex-direction: column; gap: var(--itunda-content-gap, 16px); }
+.itunda-auth-card { width: 100%; padding: 32px; display: flex; flex-direction: column; gap: var(--itunda-content-gap, 16px); }
+.itunda-field { display: flex; flex-direction: column; gap: 6px; }
+.itunda-field__label { font-size: 13px; line-height: 18px; font-weight: 600; color: var(--itunda-text-secondary); }
+.itunda-field__control { min-height: 48px; width: 100%; padding: 12px 14px; border: 1px solid var(--itunda-border-default); border-radius: var(--itunda-control-radius, 12px); background: var(--itunda-surface-default); color: var(--itunda-text-primary); font: inherit; font-size: 15px; outline: none; }
+.itunda-field__control:focus-visible, .itunda-field__select:focus-visible { border-color: var(--itunda-brand); box-shadow: 0 0 0 3px var(--itunda-focus-ring, rgba(116,114,244,.18)); }
+.itunda-field__select { min-height: 44px; padding: 8px 10px; border: 1px solid var(--itunda-border-default); border-radius: var(--itunda-control-radius, 12px); background: var(--itunda-surface-default); color: var(--itunda-text-secondary); font: inherit; outline: none; }
+.itunda-auth-error { margin: 0; color: var(--itunda-field-border-error); font-size: 13px; line-height: 18px; }
+@media (prefers-reduced-motion: reduce) { button { transition: none; } .skeleton { animation: none; } }
