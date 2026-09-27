@@ -4,10 +4,10 @@ import federation from '@originjs/vite-plugin-federation'
 
 const production = process.env.NODE_ENV === 'production'
 const mapsMfeUrl = process.env.VITE_MAPS_MFE_URL ??
-  (production ? '/app/remotes/maps/assets/remoteEntry.js' : 'http://localhost:5006/assets/remoteEntry.js')
+  (production ? '/remotes/maps/assets/remoteEntry.js' : 'http://localhost:5006/assets/remoteEntry.js')
 
 export default defineConfig({
-  base: production ? '/app/remotes/bank/' : '/',
+  base: production ? '/remotes/bank/' : '/',
   plugins: [
     react(),
     // @ts-ignore
