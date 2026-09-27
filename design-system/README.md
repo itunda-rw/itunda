@@ -32,7 +32,7 @@ The interactive IDS showcase is deployed independently from the Itunda Developer
 
 ## Principles
 
-- Blue is the canonical Itunda brand role: `#1F78FF`.
+- Itunda Indigo is the canonical Itunda brand role: `#7472F4`.
 - Semantic roles are preferred over raw color values.
 - Native platform behavior is preferred over simulated behavior.
 - Worst-case content is part of component design, not an afterthought.
