@@ -35,32 +35,32 @@ export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merc
     <div style={{ maxWidth: '480px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div className="itunda-card">
         <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>{merchant.businessName}</h2>
-        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '20px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)', marginBottom: '20px' }}>
           {t('settings.merchantIdPrefix')} {merchant.id}
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.webhookUrlLabel')}</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('settings.webhookUrlLabel')}</span>
             <input
               type="url"
               value={webhookUrl}
               onChange={(e) => setWebhookUrlInput(e.target.value)}
               placeholder="https://your-server.example.com/webhooks/itunda"
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+              style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
             />
-            <span style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
+            <span style={{ fontSize: '12px', color: 'var(--itunda-text-tertiary)' }}>
               {t('settings.webhookUrlBody')}
             </span>
           </label>
 
           {error && (
-            <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert" aria-live="polite">
+            <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: 0 }} role="alert" aria-live="polite">
               {error}
             </p>
           )}
           {saved && !error && (
-            <p style={{ fontSize: '13px', color: 'var(--itunda-indigo)', margin: 0 }}>{t('settings.saved')}</p>
+            <p style={{ fontSize: '13px', color: 'var(--itunda-brand)', margin: 0 }}>{t('settings.saved')}</p>
           )}
 
           <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
@@ -123,12 +123,12 @@ function FollowersCard() {
   return (
     <div className="itunda-card">
       <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>{t('settings.followersTitle')}</h2>
-      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)', marginBottom: '16px' }}>
         {count === null ? t('settings.loading') : t(count === 1 ? 'settings.followersCountSingular' : 'settings.followersCountPlural', { count })}
       </p>
       <form onSubmit={handleSend} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.broadcastTitleLabel')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('settings.broadcastTitleLabel')}</span>
           <input
             type="text"
             value={title}
@@ -136,11 +136,11 @@ function FollowersCard() {
             placeholder={t('settings.broadcastTitlePlaceholder')}
             maxLength={100}
             required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.broadcastMessageLabel')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('settings.broadcastMessageLabel')}</span>
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
@@ -148,20 +148,20 @@ function FollowersCard() {
             maxLength={500}
             required
             rows={3}
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px', resize: 'vertical' }}
+            style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px', resize: 'vertical' }}
           />
         </label>
         <button type="submit" className="itunda-btn itunda-btn-primary" disabled={sending || count === 0}>
           {sending ? t('settings.sending') : t('settings.broadcastButton')}
         </button>
         {count === 0 && !error && (
-          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', margin: 0 }}>{t('settings.broadcastNeedsFollower')}</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-text-tertiary)', margin: 0 }}>{t('settings.broadcastNeedsFollower')}</p>
         )}
         {error && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert" aria-live="polite">{error}</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: 0 }} role="alert" aria-live="polite">{error}</p>
         )}
         {sentCount !== null && !error && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-indigo)', margin: 0 }}>{t(sentCount === 1 ? 'settings.broadcastSentSingular' : 'settings.broadcastSentPlural', { count: sentCount })}</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-brand)', margin: 0 }}>{t(sentCount === 1 ? 'settings.broadcastSentSingular' : 'settings.broadcastSentPlural', { count: sentCount })}</p>
         )}
       </form>
     </div>
@@ -233,8 +233,8 @@ function ApiIntegrationCard() {
 
   const statusColor: Record<WebhookDelivery['status'], string> = {
     DELIVERED: 'var(--itunda-green)',
-    PENDING: 'var(--itunda-grey-500)',
-    EXHAUSTED: 'var(--itunda-red)',
+    PENDING: 'var(--itunda-text-tertiary)',
+    EXHAUSTED: 'var(--itunda-field-border-error)',
   };
   const statusLabelKey: Record<WebhookDelivery['status'], TranslationKey> = {
     DELIVERED: 'settings.statusDelivered',
@@ -245,7 +245,7 @@ function ApiIntegrationCard() {
   return (
     <div className="itunda-card">
       <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>{t('settings.apiIntegrationTitle')}</h2>
-      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)', marginBottom: '16px' }}>
         {t('settings.apiIntegrationBody')}
       </p>
 
@@ -259,7 +259,7 @@ function ApiIntegrationCard() {
           </p>
         )}
         {generateError && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert" aria-live="polite">{generateError}</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', marginTop: '8px' }} role="alert" aria-live="polite">{generateError}</p>
         )}
       </div>
 
@@ -268,10 +268,10 @@ function ApiIntegrationCard() {
           genuinely came from itunda (HMAC-SHA256 over the raw body, X-Itunda-Signature
           header) rather than a forged request to a guessed/leaked webhook URL. */}
       <div style={{ marginBottom: '20px' }}>
-        <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)', marginBottom: '6px' }}>
+        <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)', marginBottom: '6px' }}>
           {t('settings.webhookSecretLabel')}
         </p>
-        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-text-tertiary)', marginBottom: '10px' }}>
           {t('settings.webhookSecretBody')}
         </p>
         <button type="button" className="itunda-btn itunda-btn-secondary" disabled={generatingSecret} onClick={handleGenerateSecret}>
@@ -283,16 +283,16 @@ function ApiIntegrationCard() {
           </p>
         )}
         {generateSecretError && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert" aria-live="polite">{generateSecretError}</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', marginTop: '8px' }} role="alert" aria-live="polite">{generateSecretError}</p>
         )}
       </div>
 
       <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>{t('settings.recentDeliveriesTitle')}</h3>
       {deliveriesError && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '10px' }} role="alert" aria-live="polite">{deliveriesError}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', marginBottom: '10px' }} role="alert" aria-live="polite">{deliveriesError}</p>
       )}
       {deliveries === null ? (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{t('settings.loading')}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)' }}>{t('settings.loading')}</p>
       ) : // Real copy-voice fix (item 244, round 6 of the empty-state pass): honest
       // that this is event-driven, not something to set up further here.
       deliveries.length === 0 ? (
@@ -300,13 +300,13 @@ function ApiIntegrationCard() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {deliveries.slice(0, 20).map((d) => (
-            <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
+            <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--itunda-grey-100)', borderRadius: 'var(--itunda-control-radius, 12px)' }}>
               <div>
                 <p style={{ fontSize: '13px', fontWeight: 700 }}>{d.eventType}</p>
                 <p style={{ fontSize: '12px', color: statusColor[d.status] }}>
                   {t(statusLabelKey[d.status])} · {t(d.attemptCount === 1 ? 'settings.attemptSingular' : 'settings.attemptPlural', { count: d.attemptCount })}
                 </p>
-                {d.lastError && <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{d.lastError}</p>}
+                {d.lastError && <p style={{ fontSize: '11px', color: 'var(--itunda-text-tertiary)' }}>{d.lastError}</p>}
               </div>
               {d.status === 'EXHAUSTED' && (
                 <button
@@ -359,14 +359,14 @@ function DevicesCard() {
   return (
     <div className="itunda-card">
       <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>{t('settings.devicesTitle')}</h2>
-      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-text-tertiary)', marginBottom: '16px' }}>
         {t('settings.devicesBody')}
       </p>
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '12px' }} role="alert" aria-live="polite">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', marginBottom: '12px' }} role="alert" aria-live="polite">{error}</p>
       )}
       {devices === null ? (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{t('settings.loading')}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)' }}>{t('settings.loading')}</p>
       ) : // Real copy-voice fix (item 244, round 6 of the empty-state pass): honest
       // that this is auto-recorded on sign-in, not a setup step to take here.
       devices.length === 0 ? (
@@ -374,15 +374,15 @@ function DevicesCard() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {devices.map((d) => (
-            <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
+            <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--itunda-grey-100)', borderRadius: 'var(--itunda-control-radius, 12px)' }}>
               <div>
-                <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
-                  {d.deviceName ?? t('settings.unknownDevice')} {d.deviceId === myDeviceId && <span style={{ color: 'var(--itunda-indigo)' }}>{t('settings.thisDeviceSuffix')}</span>}
+                <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--itunda-text-primary)' }}>
+                  {d.deviceName ?? t('settings.unknownDevice')} {d.deviceId === myDeviceId && <span style={{ color: 'var(--itunda-brand)' }}>{t('settings.thisDeviceSuffix')}</span>}
                 </p>
-                <p style={{ fontSize: '12px', color: d.trusted ? 'var(--itunda-green)' : 'var(--itunda-red)' }}>
+                <p style={{ fontSize: '12px', color: d.trusted ? 'var(--itunda-green)' : 'var(--itunda-field-border-error)' }}>
                   {d.trusted ? t('settings.deviceVerified') : t('settings.deviceNotVerified')}
                 </p>
-                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{t('settings.lastSeenPrefix')} {new Date(d.lastSeenAt).toLocaleString()}</p>
+                <p style={{ fontSize: '11px', color: 'var(--itunda-text-tertiary)' }}>{t('settings.lastSeenPrefix')} {new Date(d.lastSeenAt).toLocaleString()}</p>
               </div>
               <button
                 className="itunda-btn itunda-btn-danger"
@@ -431,7 +431,7 @@ function CategoryCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated: 
       <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>{t('settings.categoryTitle')}</h2>
       <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.categoryExamplesLabel')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('settings.categoryExamplesLabel')}</span>
           <input
             type="text"
             value={category}
@@ -439,7 +439,7 @@ function CategoryCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated: 
             placeholder={t('settings.categoryPlaceholder')}
             required
             maxLength={64}
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
           />
         </label>
         <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting} style={{ height: '46px' }}>
@@ -447,12 +447,12 @@ function CategoryCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated: 
         </button>
       </form>
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert" aria-live="polite">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: '8px 0 0' }} role="alert" aria-live="polite">
           {error}
         </p>
       )}
       {saved && !error && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-indigo)', margin: '8px 0 0' }}>{t('settings.saved')}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-brand)', margin: '8px 0 0' }}>{t('settings.saved')}</p>
       )}
     </div>
   );
@@ -561,28 +561,28 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
       <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>{t('settings.storeSettingsTitle')}</h2>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.storePhotoUrlLabel')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('settings.storePhotoUrlLabel')}</span>
           <input
             type="url"
             value={photoUrl}
             onChange={(e) => setPhotoUrlInput(e.target.value)}
             placeholder="https://example.com/photo.jpg"
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.minOrderAmountLabel')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('settings.minOrderAmountLabel')}</span>
           <input
             type="number"
             min="0"
             value={minOrderAmount}
             onChange={(e) => setMinOrderAmountInput(e.target.value)}
             placeholder="0"
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.cashbackRateLabel')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('settings.cashbackRateLabel')}</span>
           <input
             type="number"
             min="0"
@@ -591,31 +591,31 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
             value={cashbackPercent}
             onChange={(e) => setCashbackPercentInput(e.target.value)}
             placeholder="0"
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.phoneNumberLabel')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('settings.phoneNumberLabel')}</span>
           <input
             type="tel"
             value={phoneNumber}
             onChange={(e) => setPhoneNumberInput(e.target.value)}
             placeholder="+250 788 123 456"
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.openingHoursLabel')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('settings.openingHoursLabel')}</span>
           <input
             type="text"
             value={openingHours}
             onChange={(e) => setOpeningHoursInput(e.target.value)}
             placeholder="Mon-Sat 8:00-20:00"
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.avgPrepTimeMinutesLabel')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('settings.avgPrepTimeMinutesLabel')}</span>
           <input
             type="number"
             min="0"
@@ -623,11 +623,11 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
             value={avgPrepTimeMinutes}
             onChange={(e) => setAvgPrepTimeMinutesInput(e.target.value)}
             placeholder="15"
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.pickupDiscountPercentLabel')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('settings.pickupDiscountPercentLabel')}</span>
           <input
             type="number"
             min="1"
@@ -635,46 +635,46 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
             value={pickupDiscountPercent}
             onChange={(e) => setPickupDiscountPercentInput(e.target.value)}
             placeholder="10"
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
           />
         </label>
         {error && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert" aria-live="polite">{error}</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: 0 }} role="alert" aria-live="polite">{error}</p>
         )}
         {saved && !error && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-indigo)', margin: 0 }}>{t('settings.saved')}</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-brand)', margin: 0 }}>{t('settings.saved')}</p>
         )}
         <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
           {submitting ? t('settings.saving') : t('settings.saveButton')}
         </button>
       </form>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--itunda-grey-200)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--itunda-border-default)' }}>
         <div>
           <p style={{ fontSize: '14px', fontWeight: 600 }}>{t('settings.acceptScheduledOrdersTitle')}</p>
-          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('settings.acceptScheduledOrdersBody')}</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-text-tertiary)' }}>{t('settings.acceptScheduledOrdersBody')}</p>
         </div>
         <button className="itunda-btn itunda-btn-secondary" disabled={scheduledBusy} onClick={handleToggleScheduledOrders}>
           {scheduledBusy ? '…' : merchant.acceptsScheduledOrders ? t('settings.on') : t('settings.off')}
         </button>
       </div>
       {scheduledError && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert" aria-live="polite">{scheduledError}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: '8px 0 0' }} role="alert" aria-live="polite">{scheduledError}</p>
       )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--itunda-grey-200)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--itunda-border-default)' }}>
         <div>
           <p style={{ fontSize: '14px', fontWeight: 600 }}>{t('settings.acceptingOrdersTitle')}</p>
-          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('settings.acceptingOrdersBody')}</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-text-tertiary)' }}>{t('settings.acceptingOrdersBody')}</p>
         </div>
         <button className="itunda-btn itunda-btn-secondary" disabled={acceptingBusy} onClick={handleToggleAcceptingOrders}>
           {acceptingBusy ? '…' : merchant.isAcceptingOrders ? t('settings.on') : t('settings.paused')}
         </button>
       </div>
       {acceptingError && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert" aria-live="polite">{acceptingError}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: '8px 0 0' }} role="alert" aria-live="polite">{acceptingError}</p>
       )}
-      <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--itunda-grey-200)' }}>
+      <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--itunda-border-default)' }}>
         <p style={{ fontSize: '14px', fontWeight: 600 }}>{t('settings.closedWeekdaysTitle')}</p>
-        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>{t('settings.closedWeekdaysBody')}</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-text-tertiary)', marginBottom: '10px' }}>{t('settings.closedWeekdaysBody')}</p>
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
           {weekdayLabels.map(({ day, key }) => {
             const active = closedWeekdaySet.has(day);
@@ -694,7 +694,7 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
         </div>
       </div>
       {closedWeekdaysError && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert" aria-live="polite">{closedWeekdaysError}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: '8px 0 0' }} role="alert" aria-live="polite">{closedWeekdaysError}</p>
       )}
     </div>
   );
@@ -727,7 +727,7 @@ function EatsMembershipParticipationCard({ merchant, onUpdated }: { merchant: Me
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>{t('settings.eatsClubTitle')}</h2>
-          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)' }}>
             {t('settings.eatsClubBody')}
           </p>
         </div>
@@ -742,7 +742,7 @@ function EatsMembershipParticipationCard({ merchant, onUpdated }: { merchant: Me
         </button>
       </div>
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert" aria-live="polite">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: '8px 0 0' }} role="alert" aria-live="polite">
           {error}
         </p>
       )}
@@ -778,7 +778,7 @@ function FeeWaiverCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated:
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>{t('settings.feeWaiverTitle')}</h2>
-          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)' }}>
             {waived ? t('settings.feeWaiverActiveBody') : t('settings.feeWaiverEligibleBody')}
           </p>
         </div>
@@ -792,7 +792,7 @@ function FeeWaiverCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated:
         )}
       </div>
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert" aria-live="polite">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: '8px 0 0' }} role="alert" aria-live="polite">
           {error}
         </p>
       )}
@@ -846,7 +846,7 @@ function KybCard({ merchant }: { merchant: Merchant }) {
   return (
     <div className="itunda-card">
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-        <ShieldCheck size={18} color={merchant.kybVerified ? 'var(--itunda-green)' : 'var(--itunda-grey-500)'} />
+        <ShieldCheck size={18} color={merchant.kybVerified ? 'var(--itunda-green)' : 'var(--itunda-text-tertiary)'} />
         <h2 style={{ fontSize: '16px', fontWeight: 700 }}>{t('settings.kybTitle')}</h2>
       </div>
 
@@ -854,9 +854,9 @@ function KybCard({ merchant }: { merchant: Merchant }) {
         <Badge text={t('settings.kybVerifiedBadge')} tint="var(--itunda-green)" />
       ) : pending ? (
         <div>
-          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)', marginBottom: '4px' }}>{t('settings.kybReviewingBody')}</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-text-secondary)', marginBottom: '4px' }}>{t('settings.kybReviewingBody')}</p>
           {latestKyb?.autoVerificationStatus && (
-            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-text-tertiary)' }}>
               {t(autoCheckLabelKey[latestKyb.autoVerificationStatus] ?? 'settings.kybAutoDefault')}
             </p>
           )}
@@ -864,7 +864,7 @@ function KybCard({ merchant }: { merchant: Merchant }) {
       ) : (
         <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', marginTop: '12px' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.kybTinLabel')}</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('settings.kybTinLabel')}</span>
             <input
               type="text"
               inputMode="numeric"
@@ -872,7 +872,7 @@ function KybCard({ merchant }: { merchant: Merchant }) {
               onChange={(e) => setTin(e.target.value)}
               placeholder="123456789"
               required
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+              style={{ padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '15px' }}
             />
           </label>
           {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): "Submit"
@@ -884,12 +884,12 @@ function KybCard({ merchant }: { merchant: Merchant }) {
         </form>
       )}
       {latestKyb?.status === 'REJECTED' && (
-        <p style={{ fontSize: '12px', color: 'var(--itunda-red)', marginTop: '8px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-field-border-error)', marginTop: '8px' }}>
           {latestKyb.autoVerificationDetail ? t('settings.kybRejectedWithDetail', { detail: latestKyb.autoVerificationDetail }) : t('settings.kybRejectedPlain')}
         </p>
       )}
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert" aria-live="polite">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: '8px 0 0' }} role="alert" aria-live="polite">
           {error}
         </p>
       )}
