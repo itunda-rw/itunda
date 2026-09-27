@@ -94,7 +94,7 @@ fun CatalogTab() {
                         }
                         if (stockQuantity.isNotBlank() && (stock == null || stock < 0)) {
                             error = "Stock must be a whole number of zero or more."
-                            return@Button
+                            return@IdsButton
                         }
                         submitting = true
                         error = null
