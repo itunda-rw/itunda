@@ -38,15 +38,15 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
         style={{ width: '360px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '16px' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-          <ShieldCheck size={24} color="var(--itunda-indigo)" />
-          <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Itunda Ops</h1>
+          <ShieldCheck size={24} color="var(--itunda-brand)" />
+          <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--itunda-text-primary)' }}>Itunda Ops</h1>
         </div>
-        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginTop: '-8px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)', marginTop: '-8px' }}>
           You'll need an admin account to sign in.
         </p>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Phone number</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>Phone number</span>
           {/* Real "Minimum Input" simplicity fix (item 244, docs/DESIGN_REFERENCES.md §11,
               rule #4), matching the identical same-day fix on bank-mfe's LoginPage.tsx. */}
           <input
@@ -57,16 +57,17 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
             placeholder="+250788999000"
             required
             style={{
+              minHeight: '48px',
               padding: '12px 14px',
-              borderRadius: '10px',
-              border: '1px solid var(--itunda-grey-200)',
+              borderRadius: 'var(--itunda-control-radius, 12px)',
+              border: '1px solid var(--itunda-border-default)',
               fontSize: '15px',
             }}
           />
         </label>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Password</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>Password</span>
           <div style={{ position: 'relative' }}>
             <input
               type={showPassword ? 'text' : 'password'}
@@ -76,9 +77,10 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
               style={{
                 width: '100%',
                 boxSizing: 'border-box',
+                minHeight: '48px',
                 padding: '12px 40px 12px 14px',
-                borderRadius: '10px',
-                border: '1px solid var(--itunda-grey-200)',
+                borderRadius: 'var(--itunda-control-radius, 12px)',
+                border: '1px solid var(--itunda-border-default)',
                 fontSize: '15px',
               }}
             />
@@ -86,7 +88,7 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
               type="button"
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? 'Hide password' : 'Show password'}
-              style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '4px', display: 'flex', color: 'var(--itunda-grey-500)' }}
+              style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '8px', minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--itunda-text-tertiary)' }}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -94,7 +96,7 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
         </label>
 
         {error && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert" aria-live="polite">
+          <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: 0 }} role="alert" aria-live="polite">
             {error}
           </p>
         )}
