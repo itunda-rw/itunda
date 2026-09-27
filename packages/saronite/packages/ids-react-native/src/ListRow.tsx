@@ -8,6 +8,7 @@ interface ListRowProps {
   title: string;
   subTitle?: string;
   rightElement?: React.ReactNode;
+  accessibilityValue?: string;
   onPress?: () => void;
   icon?: React.ReactNode;
   disabled?: boolean;
@@ -24,6 +25,7 @@ export const ListRow: React.FC<ListRowProps> = ({
     accessibilityRole={onPress ? 'button' : 'text'}
     accessibilityLabel={title}
     accessibilityHint={accessibilityHint}
+    accessibilityValue={accessibilityValue ? { text: accessibilityValue } : undefined}
     accessibilityState={{ disabled }}
   >
     <View style={styles.leftContent}>
