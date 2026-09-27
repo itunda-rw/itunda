@@ -74,7 +74,7 @@ export const Route = createRoute('/', {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, backgroundColor: 'colors.background' },
-  title: { fontSize: 20, fontWeight: '800', marginBottom: 12, color: 'colors.textPrimary' },
+  title: { fontSize: 20, fontWeight: '700', marginBottom: 12, color: 'colors.textPrimary' },
   body: { fontSize: 14, color: 'colors.textSecondary' },
   spacer: { height: 16 },
   actionButton: { backgroundColor: 'colors.primaryIndigo', paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
