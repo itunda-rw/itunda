@@ -67,7 +67,7 @@ body {
   margin: 0 auto;
   min-height: 100svh;
   background-color: var(--itunda-surface-default);
-  box-shadow: var(--itunda-shadow-shell);
+  box-shadow: none;
   position: relative;
   overflow-x: hidden;
 }
