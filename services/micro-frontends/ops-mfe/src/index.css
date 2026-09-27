@@ -136,3 +136,10 @@ input, textarea {
   button:active { transform: none; }
   .skeleton { animation: none; }
 }
+
+
+/* Interactive controls follow the canonical IDS touch-target contract. */
+button,
+[role="button"] {
+  min-height: var(--itunda-touch-target-recommended, 48px);
+}
