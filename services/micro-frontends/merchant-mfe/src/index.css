@@ -50,9 +50,11 @@ button:active {
 /* Every interactive control keeps a visible keyboard focus treatment while
    preserving the quiet IDS surface. */
 button:focus-visible,
+a:focus-visible,
 select:focus-visible,
 input:focus-visible,
-textarea:focus-visible {
+textarea:focus-visible,
+[role="button"]:focus-visible {
   outline: 2px solid var(--itunda-brand);
   outline-offset: 2px;
 }
@@ -120,6 +122,10 @@ input, textarea {
 .itunda-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.itunda-btn:disabled:active {
+  transform: none;
 }
 
 @keyframes spin {
