@@ -97,7 +97,7 @@ button:active {
 .itunda-card {
   background: var(--itunda-surface-default);
   border-radius: var(--itunda-radius-md);
-  padding: 24px;
+  padding: var(--itunda-content-gap);
   /* Real fix (2026-08-24, same page-background pass as body/#root above): with the
      page canvas now white too, the shadow alone was the only thing separating a card
      from its background -- at --itunda-shadow's real Toss-subtle 4% opacity that's not
@@ -131,7 +131,8 @@ button:active {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px 20px;
+  min-height: 48px;
+  padding: 12px 20px;
   /* Real fix (2026-08-11, UI-consistency audit): was a hardcoded 14px matching no
      token at all -- itunda-card two rules above uses the real --itunda-radius-md
      (16px) token, so a card and the button sitting inside it had two subtly
