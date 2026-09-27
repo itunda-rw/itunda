@@ -248,6 +248,20 @@ public struct IDS {
         public static let tabBarIconSize: CGFloat = 26
         public static let floatingTabShadowRadius: CGFloat = 14
 
+        // Canonical component anatomy from packages/design-tokens/tokens.json.
+        public static let screenVertical: CGFloat = 16
+        public static let contentGap: CGFloat = 16
+        public static let controlHeightSm: CGFloat = 40
+        public static let controlHeightMd: CGFloat = 48
+        public static let controlHeightLg: CGFloat = 56
+        public static let controlRadius: CGFloat = 12
+        public static let buttonRadius: CGFloat = 16
+        public static let cardRadius: CGFloat = 24
+        public static let sectionRadius: CGFloat = 16
+        public static let iconRadius: CGFloat = 12
+        public static let minTouchTarget: CGFloat = 44
+        public static let recommendedTouchTarget: CGFloat = 48
+
         public static let standardPadding: CGFloat = cardPadding
     }
 
