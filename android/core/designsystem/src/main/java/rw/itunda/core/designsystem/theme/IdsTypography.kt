@@ -5,7 +5,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 /**
- * Toss-Style Typography
+ * Itunda IDS Typography
  * Real Pretendard typeface (see Pretendard.kt) -- the plain platform Sans-Serif fallback
  * this comment used to describe as the "ideally" state is now actually replaced.
  */
@@ -111,13 +111,13 @@ object IdsTypography {
      * Stable semantic roles. Prefer these names in product code over raw scale steps.
      * The underlying scale can evolve without forcing every screen to understand it.
      */
-    val Display = Typography1
+    val Display = TextStyle(fontFamily = defaultFontFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 32.sp)
     val Headline = Typography3
     val Title = Title1
     val SectionTitle = Title2
-    val Body = Body1
-    val SecondaryBody = Body2
-    val Label = Button
+    val Body = TextStyle(fontFamily = defaultFontFamily, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 24.sp)
+    val SecondaryBody = Body1
+    val Label = TextStyle(fontFamily = defaultFontFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp, lineHeight = 20.sp)
     val Caption = Typography7
     val Amount = LargeAmount
 
