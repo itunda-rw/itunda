@@ -77,8 +77,8 @@ a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}
 <body><a class="skip" href="#main-content">Skip to content</a>
 <header class="top"><div class="topin">
 <a class="brand" href="./"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><path fill="var(--brand)" d="M32 4c8 0 13 8 12 16 8-1 16 4 16 12s-8 13-16 12c1 8-4 16-12 16s-13-8-12-16C12 45 4 40 4 32s8-13 16-12C19 12 24 4 32 4Z"/><circle cx="32" cy="32" r="9" fill="white"/></svg>itunda.</a>
-<span class="crumb">/ Design System / Showcase</span><span class="spacer"></span><button class="menu" id="menu" type="button" aria-label="Open design system navigation" aria-expanded="false" aria-controls="mobile-nav">☰</button><button class="theme" id="theme" type="button" aria-label="Switch to dark mode" aria-pressed="false">☾</button>
-</div></header><nav class="mobile-nav" id="mobile-nav" aria-label="Mobile design system navigation"><a href="#overview">Introduction</a><a href="#principles">Principles</a><a href="#foundations">Foundations</a><a href="#components">Components</a><a href="#accessibility">Accessibility</a><a href="#platforms">Platforms</a></nav>
+<span class="crumb">/ Design System / Showcase</span><span class="spacer"></span><button class="menu" aria-expanded="false" aria-controls="mobile-nav" id="menu" type="button" aria-label="Open design system navigation" aria-expanded="false" aria-controls="mobile-nav">☰</button><button class="theme" id="theme" type="button" aria-label="Switch to dark mode" aria-pressed="false">☾</button>
+</div></header><nav id="mobile-nav" class="mobile-nav" id="mobile-nav" aria-label="Mobile design system navigation"><a href="#overview">Introduction</a><a href="#principles">Principles</a><a href="#foundations">Foundations</a><a href="#components">Components</a><a href="#accessibility">Accessibility</a><a href="#platforms">Platforms</a></nav>
 <div class="layout">
 <aside class="side">
 <div class="side-group"><div class="side-title">Overview</div><a class="active" href="#overview">Introduction</a><a href="#principles">Principles</a><a href="#foundations">Foundations</a><a href="#components">Components</a></div>
@@ -191,6 +191,9 @@ a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}
     sections.forEach(section=>observer.observe(section));
   }
 })();
+
+const menu=document.querySelector('.menu'),mobileNav=document.querySelector('.mobile-nav');if(menu&&mobileNav){menu.addEventListener('click',()=>{const open=mobileNav.classList.toggle('open');menu.setAttribute('aria-expanded',String(open));});mobileNav.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{mobileNav.classList.remove('open');menu.setAttribute('aria-expanded','false')}));}
+document.querySelectorAll('.motion-btn').forEach(btn=>btn.addEventListener('click',()=>{const ms=btn.dataset.motion==='fast'?140:btn.dataset.motion==='normal'?220:btn.dataset.motion==='slow'?420:0;document.documentElement.style.setProperty('--demo-motion',ms+'ms');if(status)status.textContent=btn.textContent.trim()+' motion preview';}));
 </script>
 </body>
 </html>
