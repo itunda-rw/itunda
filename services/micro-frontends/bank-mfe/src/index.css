@@ -38,8 +38,8 @@ body {
      (see .itunda-card's own header below) means most screens no longer have that
      grey-vs-white contrast to justify -- see .itunda-card's new border for how cards
      stay visually distinct now that the page under them is white too. */
-  background-color: var(--itunda-white);
-  color: var(--itunda-grey-900);
+  background-color: var(--itunda-surface-default);
+  color: var(--itunda-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -66,7 +66,7 @@ body {
   max-width: 480px;
   margin: 0 auto;
   min-height: 100svh;
-  background-color: var(--itunda-white);
+  background-color: var(--itunda-surface-default);
   box-shadow: var(--itunda-shadow-shell);
   position: relative;
   overflow-x: hidden;
@@ -95,7 +95,7 @@ button:active {
 }
 
 .itunda-card {
-  background: var(--itunda-white);
+  background: var(--itunda-surface-default);
   border-radius: var(--itunda-radius-md);
   padding: 24px;
   /* Real fix (2026-08-24, same page-background pass as body/#root above): with the
@@ -104,7 +104,7 @@ button:active {
      always enough on its own. Added a hairline border (matches real Toss's own
      white-card-on-white-page treatment) so cards stay visually distinct without
      needing a grey page underneath them. */
-  border: 1px solid var(--itunda-grey-200);
+  border: 1px solid var(--itunda-border-default);
   box-shadow: var(--itunda-shadow);
   margin-bottom: 16px;
   transition: var(--itunda-transition);
@@ -145,7 +145,7 @@ button:active {
 
 .itunda-btn-primary {
   background-color: var(--itunda-brand);
-  color: var(--itunda-white);
+  color: var(--itunda-surface-default);
 }
 
 .itunda-btn-secondary {
@@ -166,8 +166,8 @@ button:active {
    silently falling back to unstyled default button chrome (no color rule ever
    existed for this class, even though it was already in use). */
 .itunda-btn-danger {
-  background-color: var(--itunda-red);
-  color: var(--itunda-white);
+  background-color: var(--itunda-field-border-error);
+  color: var(--itunda-surface-default);
 }
 
 /* Animations */
