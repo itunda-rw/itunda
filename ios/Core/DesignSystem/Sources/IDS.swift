@@ -223,8 +223,8 @@ public struct IDS {
         // Explicitly qualified with `IDS.` -- a nested type's static members can't
         // reliably rely on unqualified lookup to reach the enclosing type's members.
         public static let header = IDS.scaledFont(size: 30, weight: .bold, relativeTo: .largeTitle)
-        public static let title = IDS.scaledFont(size: 22, weight: .bold, relativeTo: .title1)
-        public static let sectionLabel = IDS.scaledFont(size: 15, weight: .semibold, relativeTo: .subheadline)
+        public static let title = IDS.scaledFont(size: 20, weight: .bold, relativeTo: .title1)
+        public static let sectionLabel = IDS.scaledFont(size: 15, weight: .medium, relativeTo: .subheadline)
         public static let bodyBold = IDS.scaledFont(size: 16, weight: .bold, relativeTo: .body)
         public static let bodyMedium = IDS.scaledFont(size: 16, weight: .medium, relativeTo: .body)
         public static let caption = IDS.scaledFont(size: 13, weight: .regular, relativeTo: .caption1)
