@@ -158,8 +158,10 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
           {TABS.map(({ id, labelKey, icon: Icon }) => (
             <button
               key={id}
+              type="button"
               onClick={() => setTab(id)}
               aria-label={t(labelKey)}
+              aria-current={tab === id ? 'page' : undefined}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -191,6 +193,7 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
             )}
           </div>
           <button
+            type="button"
             onClick={handleLogout}
             aria-label={t('dashboard.signOut')}
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', fontSize: '14px', fontWeight: 600, color: 'var(--itunda-text-tertiary)' }}
