@@ -152,6 +152,29 @@
   --itunda-focus: var(--itunda-brand);
   --itunda-pressed: var(--itunda-brand-strong);
 
+  /* Canonical component anatomy from tokens.json. These roles are shared across web/native products. */
+  --itunda-space-1: 4px;
+  --itunda-space-2: 8px;
+  --itunda-space-3: 12px;
+  --itunda-space-4: 16px;
+  --itunda-space-5: 20px;
+  --itunda-space-6: 24px;
+  --itunda-space-7: 32px;
+  --itunda-space-8: 40px;
+  --itunda-space-9: 48px;
+  --itunda-space-10: 64px;
+  --itunda-space-11: 80px;
+  --itunda-screen-padding-inline: 20px;
+  --itunda-screen-padding-block: 16px;
+  --itunda-section-gap: 24px;
+  --itunda-content-gap: 16px;
+  --itunda-row-gap: 14px;
+  --itunda-inline-gap: 12px;
+  --itunda-tight-gap: 8px;
+  --itunda-button-radius: 16px;
+  --itunda-card-radius: 24px;
+  --itunda-section-radius: 16px;
+  --itunda-icon-radius: 12px;
   --itunda-control-height-sm: 40px;
   --itunda-control-height-md: 48px;
   --itunda-control-height-lg: 56px;
