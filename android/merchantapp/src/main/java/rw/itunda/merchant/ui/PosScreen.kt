@@ -173,7 +173,7 @@ private fun CheckoutView(total: Double, description: String, onDone: () -> Unit,
         Spacer(modifier = Modifier.padding(top = 16.dp))
 
         rw.itunda.core.designsystem.components.IdsTabs(
-            labels = listOf("Scan customer", "Show QR code", "Card"),
+            labels = listOf("Scan customer", "Show QR code", "Demo card"),
             selectedIndex = when (mode) {
                 "SCAN" -> 0
                 "QR" -> 1
