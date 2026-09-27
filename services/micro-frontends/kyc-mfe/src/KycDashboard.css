@@ -8,9 +8,10 @@
  */
 
 .kyc-card {
-  padding: var(--itunda-content-gap);
-  background-color: var(--itunda-surface-subtle);
-  border-radius: var(--itunda-radius-md);
+  padding: var(--itunda-content-gap) 0;
+  background-color: transparent;
+  border-radius: 0;
+  border-bottom: 1px solid var(--itunda-border-default);
 }
 
 .kyc-card__title {
