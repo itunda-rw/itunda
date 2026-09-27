@@ -465,7 +465,7 @@ internal fun HoodSectionScreen(
                         .align(Alignment.TopEnd)
                         .padding(top = 64.dp, end = Ids.layout.screenHorizontal)
                         .width(220.dp)
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(Ids.layout.sectionCornerRadius))
                         .background(Ids.colors.surface)
                         .padding(vertical = 8.dp),
                 ) {
