@@ -71,6 +71,19 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@itunda/design-system-web@workspace:*, @itunda/design-system-web@workspace:packages/design-system-web":
+  version: 0.0.0-use.local
+  resolution: "@itunda/design-system-web@workspace:packages/design-system-web"
+  dependencies:
+    "@itunda/design-tokens": "workspace:*"
+    "@types/react": "npm:^19.2.17"
+    "@types/react-dom": "npm:^19.2.3"
+    react: "npm:^19.2.7"
+    react-dom: "npm:^19.2.7"
+    typescript: "npm:~6.0.2"
+  languageName: unknown
+  linkType: soft
+
 "@itunda/design-tokens@workspace:*, @itunda/design-tokens@workspace:packages/design-tokens":
   version: 0.0.0-use.local
   resolution: "@itunda/design-tokens@workspace:packages/design-tokens"
@@ -1418,6 +1431,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "host-app@workspace:services/micro-frontends/host-app"
   dependencies:
+    "@itunda/design-system-web": "workspace:*"
     "@itunda/design-tokens": "workspace:*"
     "@originjs/vite-plugin-federation": "npm:^1.4.1"
     "@types/node": "npm:^24.13.2"
