@@ -373,7 +373,7 @@ export const Route = createRoute('/', {
 });
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: colors.background },
+  container: { flex: 1, paddingHorizontal: 20, paddingVertical: 16, backgroundColor: colors.background },
   title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
   total: { fontSize: 28, fontWeight: '700', color: colors.primaryIndigo, marginTop: 4, marginBottom: 16 },
   body: { fontSize: 15, color: colors.textSecondary },
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
   spacer: { flex: 1 },
   row: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 24,
     padding: 16,
     marginBottom: 10,
   },
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
   // the same fix applied to packages/design-tokens/tokens.css --itunda-green and
   // the Android/iOS semantic `success` token.
   rewardAmount: { fontSize: 14, fontWeight: '700', color: colors.positive, marginRight: 12 },
-  claimButton: { backgroundColor: colors.primaryIndigo, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
+  claimButton: { backgroundColor: colors.primaryIndigo, borderRadius: 16, minHeight: 48, paddingVertical: 12, paddingHorizontal: 16 },
   claimButtonDone: { backgroundColor: colors.divider },
   claimButtonText: { color: colors.surface, fontWeight: '700', fontSize: 13 },
   closeButton: { alignItems: 'center', paddingVertical: 14 },
@@ -424,8 +424,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
     alignSelf: 'flex-start',
     backgroundColor: '#F5FAFF',
-    borderRadius: 8,
-    paddingVertical: 8,
+    borderRadius: 16,
+    paddingVertical: 12,
     paddingHorizontal: 14,
   },
   panelButtonText: { color: colors.primaryIndigo, fontWeight: '700', fontSize: 13 },
@@ -433,9 +433,9 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     backgroundColor: colors.background,
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     fontSize: 13,
     color: colors.textPrimary,
   },
