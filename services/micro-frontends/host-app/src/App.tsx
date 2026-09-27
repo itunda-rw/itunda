@@ -49,24 +49,28 @@ export default function App() {
     <div>
       <nav className="host-tabbar" aria-label={t('tabs.navigation')} role="tablist">
         <Button
+          id="consumer-bank-tab"
           ref={bankTabRef}
           variant="tertiary"
           size="md"
           className={tab === 'bank' ? 'host-tab host-tab-active' : 'host-tab'}
           role="tab"
           aria-selected={tab === 'bank'}
+          aria-controls="consumer-bank-panel"
           tabIndex={tab === 'bank' ? 0 : -1}
           onClick={() => setTab('bank')}
         >
           {t('tabs.home')}
         </Button>
         <Button
+          id="consumer-kyc-tab"
           ref={kycTabRef}
           variant="tertiary"
           size="md"
           className={tab === 'kyc' ? 'host-tab host-tab-active' : 'host-tab'}
           role="tab"
           aria-selected={tab === 'kyc'}
+          aria-controls="consumer-kyc-panel"
           tabIndex={tab === 'kyc' ? 0 : -1}
           onClick={() => setTab('kyc')}
         >
@@ -76,14 +80,12 @@ export default function App() {
 
       <Suspense fallback={<div className="itunda-card skeleton" style={{ height: '300px', margin: '20px' }} role="status" aria-live="polite" aria-label={t('common.loading')} />}>
         {tab === 'bank' ? (
-          <BankI18nProvider>
+          <section id="consumer-bank-panel" role="tabpanel" aria-labelledby="consumer-bank-tab">\n          <BankI18nProvider>
             <BankDashboard />
-          </BankI18nProvider>
-        ) : (
-          <KycI18nProvider>
+          </BankI18nProvider>\n          </section>\n        ) : (
+          <section id="consumer-kyc-panel" role="tabpanel" aria-labelledby="consumer-kyc-tab">\n          <KycI18nProvider>
             <div style={{ padding: '20px' }}><KycDashboard /></div>
-          </KycI18nProvider>
-        )}
+          </KycI18nProvider>\n          </section>\n        )}
       </Suspense>
     </div>
   );
