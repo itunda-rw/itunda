@@ -47,6 +47,16 @@ button:active {
   transform: scale(0.96);
 }
 
+/* Every interactive control keeps a visible keyboard focus treatment while
+   preserving the quiet IDS surface. */
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--itunda-brand);
+  outline-offset: 2px;
+}
+
 input, textarea {
   font-family: inherit;
 }
@@ -199,4 +209,8 @@ input, textarea {
 .itunda-field__control:focus-visible, .itunda-field__select:focus-visible { border-color: var(--itunda-brand); box-shadow: 0 0 0 3px var(--itunda-focus-ring, rgba(116,114,244,.18)); }
 .itunda-field__select { min-height: 44px; padding: 8px 10px; border: 1px solid var(--itunda-border-default); border-radius: var(--itunda-control-radius, 12px); background: var(--itunda-surface-default); color: var(--itunda-text-secondary); font: inherit; outline: none; }
 .itunda-auth-error { margin: 0; color: var(--itunda-field-border-error); font-size: 13px; line-height: 18px; }
-@media (prefers-reduced-motion: reduce) { button { transition: none; } .skeleton { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  button { transition: none; }
+  button:active { transform: none; }
+  .skeleton { animation: none; }
+}
