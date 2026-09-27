@@ -31,7 +31,7 @@ export default function App() {
 
   return (
     <div>
-      <nav className="host-tabbar">
+      <nav className="host-tabbar" aria-label={t('tabs.navigation')}>
         <Button
           variant="tertiary"
           size="md"
@@ -52,7 +52,7 @@ export default function App() {
         </Button>
       </nav>
 
-      <Suspense fallback={<div className="itunda-card skeleton" style={{ height: '300px', margin: '20px' }} />}>
+      <Suspense fallback={<div className="itunda-card skeleton" style={{ height: '300px', margin: '20px' }} role="status" aria-live="polite" aria-label={t('common.loading')} />}>
         {tab === 'bank' ? (
           <BankI18nProvider>
             <BankDashboard />
