@@ -181,7 +181,7 @@
   font-weight: 700;
   letter-spacing: 0.02em;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: var(--itunda-radius-pill, 999px);
   text-transform: uppercase;
 }
 
@@ -191,12 +191,12 @@
 }
 
 .kyc-status-badge--verified {
-  background-color: var(--itunda-positive-background, #F8F9FF);
-  color: var(--itunda-positive, #05804A);
+  background-color: var(--itunda-success-soft);
+  color: var(--itunda-success);
 }
 
 .kyc-status-badge--rejected {
-  background-color: var(--itunda-error-background, #FFECEB);
+  background-color: var(--itunda-danger-soft);
   color: var(--itunda-field-border-error);
 }
 
