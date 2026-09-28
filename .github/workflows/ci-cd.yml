@@ -21,6 +21,7 @@ jobs:
   # Root Yarn workspace: packages/shared-utils, services/micro-frontends/*, services/api-gateway
   lint-and-typecheck:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -159,6 +160,7 @@ jobs:
 
   progressive-manifest-verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -170,6 +172,7 @@ jobs:
 
   backend-migration-verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
