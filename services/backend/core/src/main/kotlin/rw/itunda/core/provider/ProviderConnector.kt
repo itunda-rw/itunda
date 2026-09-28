@@ -1,5 +1,6 @@
 package rw.itunda.core.provider
 
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import rw.itunda.core.health.ProviderHealthTracker
 import rw.itunda.core.incident.IncidentDetector
@@ -108,8 +109,15 @@ class SimulatedProviderConnector(
     private val incidentDetector: IncidentDetector,
     private val providerHealthTracker: ProviderHealthTracker,
     private val reconciliationService: ReconciliationService,
+    @Value("\${itunda.providers.simulation-enabled:true}") private val simulationEnabled: Boolean,
 ) : ProviderConnector {
     override fun attempt(rail: RailProfile, description: String) {
+        if (!simulationEnabled) {
+            throw ProviderDeclinedException(
+                rail.displayName + " is unavailable: no real production provider is configured",
+            )
+        }
+
         if (rail.offline) {
             incidentDetector.recordFailure(rail)
             providerHealthTracker.recordAttempt(rail.id, rail.displayName, success = false, latencyMs = 0)
