@@ -1,3 +1,9 @@
+name: IDS Audit
+
+concurrency:
+  group: ids-audit-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
