@@ -43,7 +43,7 @@ button,input{font:inherit}
 .tech-hero h1{font-size:clamp(62px,9vw,118px);line-height:.88;letter-spacing:-7px;margin:0;max-width:900px}
 .tech-hero h1 span{color:var(--itunda-brand)}
 .hero-copy{max-width:650px;margin:30px 0 0;color:var(--itunda-muted);font-size:20px;line-height:1.55}
-.category-nav{position:sticky;top:72px;z-index:10;display:flex;gap:8px;overflow:auto;padding:26px 0 14px;border-bottom:1px solid var(--itunda-border);scrollbar-width:none}
+.category-nav{position:sticky;top:64px;z-index:10;display:flex;gap:8px;overflow:auto;padding:26px 0 14px;border-bottom:1px solid var(--itunda-border);scrollbar-width:none}
 .category-nav::-webkit-scrollbar{display:none}
 .category{border:0;background:transparent;color:var(--itunda-muted);padding:9px 13px;border-radius:var(--itunda-control-radius);white-space:nowrap;cursor:pointer;font-size:13px;font-weight:750}
 .category:hover,.category.active{background:var(--itunda-surface-strong);color:var(--itunda-text)}
@@ -124,8 +124,8 @@ button,input{font:inherit}
 .post-card-image{display:block;width:min(280px,100%);aspect-ratio:16/9;object-fit:cover;border-radius:var(--itunda-control-radius);margin:0 0 16px;background:var(--itunda-surface-strong)}
 .post-body img{display:block;width:100%;max-height:620px;object-fit:contain;border-radius:var(--itunda-surface-radius);margin:30px 0;background:var(--itunda-surface)}
 .post-body figure{margin:32px 0}.post-body figcaption{text-align:center;color:var(--itunda-subtle);font-size:12px;margin-top:-20px}
-.featured-image{border-radius:var(--itunda-surface-radius)}.article-image{border-radius:18px;margin-bottom:24px}.popular-image{border-radius:var(--itunda-control-radius)}.post-card-image{width:100%;max-width:420px}.post-body img{border-radius:var(--itunda-control-radius)}}
+.featured-image{border-radius:var(--itunda-surface-radius)}.article-image{border-radius:var(--itunda-surface-radius);margin-bottom:24px}.popular-image{border-radius:var(--itunda-control-radius)}.post-card-image{width:100%;max-width:420px}.post-body img{border-radius:var(--itunda-control-radius)}}
 @media(max-width:760px){.category-nav{top:64px;padding-top:14px;background:color-mix(in srgb, var(--itunda-bg) 94%, transparent);backdrop-filter:blur(16px)}}
 @media(prefers-reduced-motion:reduce){.category-nav{scroll-behavior:auto}.popular-card,.post-card>a{transition:none}}
 
-@media (prefers-color-scheme:dark){.post-body{color:#d7dae0}.author-profile{background:var(--itunda-surface)}.category-nav{background:color-mix(in srgb,var(--itunda-bg) 94%,transparent)}}
+
