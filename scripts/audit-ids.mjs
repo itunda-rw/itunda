@@ -307,7 +307,7 @@ for (const [id, platforms] of Object.entries(implementationChecks)) {
         if (markers) {
           for (const [state, requiredMarkers] of Object.entries(markers.states || {})) {
             if ((contractComponent.states || []).some(item => String(item).toLowerCase().includes(state))) {
-              const missingMarkers = requiredMarkers.length && !requiredMarkers.some(marker => source.includes(marker)) ? requiredMarkers : [];
+              const missingMarkers = requiredMarkers.length && !requiredMarkers.some(marker => implementationSource.includes(marker)) ? requiredMarkers : [];
               if (missingMarkers.length) failures.push(`${id}:${platform}: state ${state} missing semantic marker(s): ${missingMarkers.join(', ')}`);
             }
           }
