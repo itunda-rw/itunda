@@ -776,7 +776,7 @@ public struct IdsEmptyState: View {
             }
 
             if let actionTitle, let action {
-                IdsButton(actionTitle, action: action, variant: .tinted, size: .medium, fullWidth: false)
+                IdsButton(text: actionTitle, variant: .tinted, size: .medium, fullWidth: false, action: action)
             }
         }
         .frame(maxWidth: .infinity)
