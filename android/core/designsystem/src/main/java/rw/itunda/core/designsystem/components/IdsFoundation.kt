@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsComponentTokens
 import rw.itunda.core.designsystem.theme.IdsTypography
@@ -21,8 +22,8 @@ import rw.itunda.core.designsystem.theme.IdsTypography
 fun IdsSurface(
     modifier: Modifier = Modifier,
     color: Color = Ids.colors.surface,
-    shape: Shape = androidx.compose.foundation.shape.RectangleShape,
-    content: @Composable ColumnScope.() -> Unit,
+    shape: Shape = androidx.compose.foundation.shape.RoundedCornerShape(0.dp),
+    content: @Composable () -> Unit,
 ) {
     androidx.compose.material3.Surface(
         modifier = modifier,
