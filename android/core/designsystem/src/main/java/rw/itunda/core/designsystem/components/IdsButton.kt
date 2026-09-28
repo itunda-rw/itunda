@@ -263,10 +263,11 @@ fun IdsSelect(
     modifier: Modifier = Modifier,
     supportingText: String? = null,
     errorText: String? = null,
+    successText: String? = null,
     enabled: Boolean = true,
 ) {
     val expandedState = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    val supporting = errorText ?: supportingText
+    val supporting = errorText ?: successText ?: supportingText
     Column(modifier = modifier.fillMaxWidth()) {
         androidx.compose.material3.OutlinedButton(
             onClick = { expandedState.value = true },
@@ -296,7 +297,11 @@ fun IdsSelect(
         if (supporting != null) {
             Text(
                 supporting,
-                color = if (errorText != null) Ids.colors.danger else Ids.colors.textSecondary,
+                color = when {
+                    errorText != null -> Ids.colors.danger
+                    successText != null -> Ids.colors.success
+                    else -> Ids.colors.textSecondary
+                },
                 style = IdsTypography.Caption,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
             )
