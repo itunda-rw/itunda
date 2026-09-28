@@ -67,14 +67,6 @@ jobs:
         if: matrix.app == 'business' && (github.event_name == 'workflow_run' || inputs.app == 'business')
         run: bash scripts/cloudflare-build-web-app.sh business
 
-      - name: Smoke test customer production
-        if: matrix.app == 'customer' && (github.event_name == 'workflow_run' || inputs.app == 'customer')
-        run: |
-          curl --fail --silent --show-error --location --max-time 30 https://itunda-app.pages.dev/ > /tmp/customer.html
-          test -s /tmp/customer.html
-          grep -Eiq '<(html|body|div|main|script)[ >]' /tmp/customer.html
-          echo "Customer production smoke test passed"
-
       - name: Ensure customer Pages project
         if: matrix.app == 'customer' && (github.event_name == 'workflow_run' || inputs.app == 'customer')
         run: npx wrangler pages project create itunda-app --production-branch agent/itunda-agent-network || true
@@ -87,13 +79,13 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy services/micro-frontends/host-app/dist --project-name=itunda-app --branch=agent/itunda-agent-network --commit-message="Deploy customer web app"
 
-      - name: Smoke test business production
-        if: matrix.app == 'business' && (github.event_name == 'workflow_run' || inputs.app == 'business')
+      - name: Smoke test customer production
+        if: matrix.app == 'customer' && (github.event_name == 'workflow_run' || inputs.app == 'customer')
         run: |
-          curl --fail --silent --show-error --location --max-time 30 https://itunda-business-app.pages.dev/ > /tmp/business.html
-          test -s /tmp/business.html
-          grep -Eiq '<(html|body|div|main|script)[ >]' /tmp/business.html
-          echo "Business production smoke test passed"
+          curl --fail --silent --show-error --location --max-time 30 https://itunda-app.pages.dev/ > /tmp/customer.html
+          test -s /tmp/customer.html
+          grep -Eiq '<(html|body|div|main|script)[ >]' /tmp/customer.html
+          echo "Customer production smoke test passed"
 
       - name: Ensure business Pages project
         if: matrix.app == 'business' && (github.event_name == 'workflow_run' || inputs.app == 'business')
@@ -106,3 +98,11 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy services/micro-frontends/merchant-mfe/dist --project-name=itunda-business-app --branch=agent/itunda-agent-network --commit-message="Deploy business web app"
+
+      - name: Smoke test business production
+        if: matrix.app == 'business' && (github.event_name == 'workflow_run' || inputs.app == 'business')
+        run: |
+          curl --fail --silent --show-error --location --max-time 30 https://itunda-business-app.pages.dev/ > /tmp/business.html
+          test -s /tmp/business.html
+          grep -Eiq '<(html|body|div|main|script)[ >]' /tmp/business.html
+          echo "Business production smoke test passed"
