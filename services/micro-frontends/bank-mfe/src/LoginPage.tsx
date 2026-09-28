@@ -131,7 +131,7 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
                 required
                 style={{
                   padding: '12px 14px',
-                  borderRadius: '10px',
+                  borderRadius: 'var(--itunda-control-radius, 12px)',
                   border: '1px solid var(--itunda-grey-200)',
                   fontSize: 'var(--itunda-type-scale-15-size)',
                 }}
