@@ -18,7 +18,7 @@ function SideToggle({ side, onChange }: { side: Side; onChange: (s: Side) => voi
           onClick={() => onChange(s)}
           style={{
             padding: '6px 12px',
-            borderRadius: '8px',
+            borderRadius: 'var(--itunda-control-radius, 12px)',
             border: 'none',
             fontSize: '13px',
             fontWeight: 600,
