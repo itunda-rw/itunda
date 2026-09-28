@@ -70,6 +70,9 @@ jobs:
       - name: Map category parity (backend MapPlaceCategory vs. bank-mfe/Android/iOS's hand-maintained copies)
         run: python3 scripts/verify-map-category-parity.py
 
+
+      - name: Production backend security profile
+        run: bash scripts/verify-production-backend-security.sh
   root-workspace-build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
