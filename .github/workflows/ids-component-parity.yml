@@ -1,7 +1,13 @@
 name: IDS component parity
 
 on:
-  # Hosted runners are unavailable for the current Enterprise trial; run manually until entitlement is restored.
+  push:
+    branches:
+      - agent/itunda-agent-network
+    paths:
+      - "business/developers/design/**"
+      - "scripts/component-parity.mjs"
+      - ".github/workflows/ids-component-parity.yml"
   workflow_dispatch:
 
 jobs:
