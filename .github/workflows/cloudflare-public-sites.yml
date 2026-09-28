@@ -6,9 +6,9 @@ on:
     paths:
       - "sites/public/**"
       - "sites/itunda/**"
-      - "sites/tech/**"
       - "sites/developers/**"
       - "sites/business/**"
+      - "services/blog/**"
       - ".github/workflows/cloudflare-public-sites.yml"
   workflow_dispatch:
 
