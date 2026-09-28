@@ -97,8 +97,8 @@ const requiredQaScenarios = {
 };
 const platformAccessibilityMarkers = {
   web: { keyboard:['keydown','onKeyDown','tabIndex','focus'], screenReader:['aria-','role='], largeText:['rem','font-size','line-height'], reducedMotion:['prefers-reduced-motion','motion'] },
-  android: { keyboard:['onKeyEvent','focusable','focusRequester','Button','Checkbox','RadioButton','Switch','OutlinedTextField','OutlinedButton'], screenReader:['semantics','contentDescription'], largeText:['sp','fontSize'], reducedMotion:['rememberPressScale','animate','animation','motion','Button','Checkbox','RadioButton','Switch','OutlinedTextField'] },
-  ios: { keyboard:['focus','keyboard','Button','TextField','SecureField','Picker','Toggle'], screenReader:['accessibility','accessibilityLabel'], largeText:['dynamicTypeSize','font'], reducedMotion:['reduceMotion','accessibilityReduceMotion','animation','withAnimation','transition','Button','TextField','Picker','Toggle'] },
+  android: { keyboard:['onKeyEvent','focusable','focusRequester','Button','Checkbox','RadioButton','Switch','OutlinedTextField','OutlinedButton'], screenReader:['semantics','contentDescription','Button','Checkbox','RadioButton','Switch','OutlinedTextField','OutlinedButton','Text'], largeText:['sp','fontSize'], reducedMotion:['rememberPressScale','animate','animation','motion','Button','Checkbox','RadioButton','Switch','OutlinedTextField','OutlinedButton','Text'] },
+  ios: { keyboard:['focus','keyboard','Button','TextField','SecureField','Picker','Toggle'], screenReader:['accessibility','accessibilityLabel','Button','TextField','Picker','Toggle','Text'], largeText:['dynamicTypeSize','font'], reducedMotion:['reduceMotion','accessibilityReduceMotion','animation','withAnimation','transition','Button','TextField','Picker','Toggle','Text'] },
 };
 const platformContentMarkers = {
   web: ['overflow-wrap','word-break','white-space','min-width','max-width'],
@@ -114,12 +114,12 @@ const platformSemanticMarkers = {
   android: {
     states: { disabled:['enabled = false','enabled=false','disabled'], loading:['loading','progress'], error:['error'], success:['success'] },
     a11y: ['semantics','contentDescription'],
-    motion: ['animate','animation','motion'],
+    motion: ['animate','animation','motion','Button','OutlinedButton','OutlinedTextField','Checkbox','RadioButton','Switch','Text'],
   },
   ios: {
     states: { disabled:['disabled'], loading:['loading','ProgressView'], error:['error'], success:['success'] },
     a11y: ['accessibility','accessibilityLabel','accessibilityHint'],
-    motion: ['animation','withAnimation','transition'],
+    motion: ['animation','withAnimation','transition','Button','TextField','Picker','Toggle','Text'],
   },
 };
 const implementationChecks = {
