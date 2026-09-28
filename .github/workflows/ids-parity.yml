@@ -1,7 +1,13 @@
 name: IDS semantic parity
 
 on:
-  # Hosted runners are unavailable for the current Enterprise trial; run manually until entitlement is restored.
+  push:
+    branches:
+      - agent/itunda-agent-network
+    paths:
+      - "client/design-system/**"
+      - "scripts/design-system-parity.mjs"
+      - ".github/workflows/ids-parity.yml"
   workflow_dispatch:
 
 permissions:
