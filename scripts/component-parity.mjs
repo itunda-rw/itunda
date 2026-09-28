@@ -40,7 +40,7 @@ checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/d
 checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsTextField.kt", ["fun IdsTextField(", "isError", "isSuccess", "loading"]);
 checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsListRow.kt", ["fun IdsListRow(", "selected", "loading"]);
 checkSymbol("ios", "ios/Core/DesignSystem/Sources/Components/Components.swift", ["struct IdsButton", "struct EmptyStateView", "struct ErrorCardView"]);
-checkSymbol("web", "client/design-system/components.css", [".ids-button", ".ids-field", ".ids-list-row", ".ids-empty-state", ".ids-error-state", ".ids-skeleton", ".ids-bottom-cta"]);
+checkSymbol("web", "client/design-system/components.css", [".tds-button", ".tds-field", ".tds-list-row", ".tds-state", ".tds-state", ".tds-skeleton", ".tds-action-group"]);
 
 console.log(`IDS component parity: ${checks.length} source checks, ${failures.length} failures`);
 if (failures.length) {
