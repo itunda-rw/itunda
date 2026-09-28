@@ -2,9 +2,14 @@ permissions:
   contents: read
 
 on:
-  # GitHub-hosted runner provisioning is currently unavailable for the Itunda Enterprise trial.
-  # Keep this workflow manually runnable; Cloudflare Pages also runs the lightweight IDS audit
-  # during the Tech build via services/blog/package.json.
+  push:
+    branches:
+      - agent/itunda-agent-network
+    paths:
+      - "business/developers/design/**"
+      - "scripts/ids-*.mjs"
+      - "scripts/accessibility-lint.py"
+      - ".github/workflows/ids-audit.yml"
   workflow_dispatch:
     inputs:
       update_visual_baseline:
