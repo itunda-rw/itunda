@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsTypography
 
 @Composable
 fun IdsSelect(
@@ -27,13 +28,14 @@ fun IdsSelect(
     supportingText: String? = null,
     errorText: String? = null,
 ) {
+    var expanded by remember { mutableStateOf(false) }
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
             text = label,
-            style = Ids.typography.Label,
+            style = IdsTypography.Label,
             color = if (errorText == null) Ids.colors.textSecondary else Ids.colors.danger,
         )
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -61,7 +63,7 @@ fun IdsSelect(
         (errorText ?: supportingText)?.let { message ->
             Text(
                 text = message,
-                style = Ids.typography.Caption,
+                style = IdsTypography.Caption,
                 color = if (errorText == null) Ids.colors.textSecondary else Ids.colors.danger,
                 modifier = Modifier.padding(horizontal = 4.dp),
             )
