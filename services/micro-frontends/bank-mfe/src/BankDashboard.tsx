@@ -3010,7 +3010,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
             onClick={() => setTab(id)}
             aria-current={tab === id ? 'page' : undefined}
             style={{
-              flex: 1, padding: '7px 2px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700,
+              flex: 1, padding: '7px 2px', borderRadius: 'var(--itunda-control-radius, 12px)', fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700,
               color: tab === id ? 'var(--itunda-surface-default)' : 'var(--itunda-text-secondary)',
               backgroundColor: tab === id ? 'var(--itunda-indigo)' : 'transparent',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px',
