@@ -68,11 +68,11 @@ jobs:
         run: bash scripts/cloudflare-build-web-app.sh business
 
       - name: Ensure customer Pages project
-        if: matrix.app == 'customer' && (github.event_name == 'push' || inputs.app == 'customer')
+        if: matrix.app == 'customer' && (github.event_name == 'workflow_run' || inputs.app == 'customer')
         run: npx wrangler pages project create itunda-app --production-branch agent/itunda-agent-network || true
 
       - name: Deploy customer web app
-        if: matrix.app == 'customer' && (github.event_name == 'push' || inputs.app == 'customer')
+        if: matrix.app == 'customer' && (github.event_name == 'workflow_run' || inputs.app == 'customer')
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -80,11 +80,11 @@ jobs:
           command: pages deploy services/micro-frontends/host-app/dist --project-name=itunda-app --branch=agent/itunda-agent-network --commit-message="Deploy customer web app"
 
       - name: Ensure business Pages project
-        if: matrix.app == 'business' && (github.event_name == 'push' || inputs.app == 'business')
+        if: matrix.app == 'business' && (github.event_name == 'workflow_run' || inputs.app == 'business')
         run: npx wrangler pages project create itunda-business-app --production-branch agent/itunda-agent-network || true
 
       - name: Deploy business web app
-        if: matrix.app == 'business' && (github.event_name == 'push' || inputs.app == 'business')
+        if: matrix.app == 'business' && (github.event_name == 'workflow_run' || inputs.app == 'business')
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
