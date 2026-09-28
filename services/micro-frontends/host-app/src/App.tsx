@@ -80,12 +80,18 @@ export default function App() {
 
       <Suspense fallback={<div className="itunda-card skeleton" style={{ height: '300px', margin: '20px' }} role="status" aria-live="polite" aria-label={t('common.loading')} />}>
         {tab === 'bank' ? (
-          <section id="consumer-bank-panel" role="tabpanel" aria-labelledby="consumer-bank-tab">\n          <BankI18nProvider>
+          <section id="consumer-bank-panel" role="tabpanel" aria-labelledby="consumer-bank-tab">
+          <BankI18nProvider>
             <BankDashboard />
-          </BankI18nProvider>\n          </section>\n        ) : (
-          <section id="consumer-kyc-panel" role="tabpanel" aria-labelledby="consumer-kyc-tab">\n          <KycI18nProvider>
+          </BankI18nProvider>
+          </section>
+        ) : (
+          <section id="consumer-kyc-panel" role="tabpanel" aria-labelledby="consumer-kyc-tab">
+          <KycI18nProvider>
             <div style={{ padding: '20px' }}><KycDashboard /></div>
-          </KycI18nProvider>\n          </section>\n        )}
+          </KycI18nProvider>
+          </section>
+        )}
       </Suspense>
     </div>
   );
