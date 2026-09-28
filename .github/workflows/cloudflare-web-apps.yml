@@ -86,7 +86,10 @@ jobs:
           node --input-type=module <<'EOF'
           import { chromium } from 'playwright';
           const browser = await chromium.launch({headless:true});
+          const pageErrors=[]; const consoleErrors=[];
           const page = await browser.newPage({viewport:{width:390,height:844}});
+          page.on('pageerror', e => pageErrors.push(String(e)));
+          page.on('console', m => { if (m.type() === 'error') consoleErrors.push(m.text()); });
           await page.goto('https://itunda-app.pages.dev/', {waitUntil:'networkidle', timeout:60000});
           const tab = page.getByRole('tab', {name:/home/i});
           if (!(await tab.count())) throw new Error('Customer Home tab not rendered');
@@ -94,6 +97,7 @@ jobs:
           await tab.click();
           if (!(await page.getByRole('tabpanel').count())) throw new Error('Customer tab panel missing');
           await page.screenshot({path:'/tmp/customer-production.png',fullPage:true});
+          if (pageErrors.length || consoleErrors.length) throw new Error('Customer browser errors: '+JSON.stringify({pageErrors,consoleErrors}));
           await browser.close();
           EOF
 
@@ -138,6 +142,7 @@ jobs:
           const interactive = await page.locator('button, a, input, select, textarea').count();
           if (!interactive) throw new Error('Business production has no interactive controls');
           await page.screenshot({path:'/tmp/business-production.png',fullPage:true});
+          if (pageErrors.length || consoleErrors.length) throw new Error('Business browser errors: '+JSON.stringify({pageErrors,consoleErrors}));
           await browser.close();
           EOF
 
