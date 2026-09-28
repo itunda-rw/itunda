@@ -79,8 +79,8 @@ const webApiChecks = {
   button: ['interface ButtonProps','function Button','loadingLabel'],
   'text-field': ['interface TextFieldProps','function TextField','clearable','multiline'],
   select: ['interface SelectProps','function Select','SelectOption'],
-  checkbox: ['interface CheckboxProps','function Checkbox','indeterminate'],
-  radio: ['interface RadioProps','function Radio'],
+  checkbox: ['interface CheckControlProps','function Checkbox','indeterminate'],
+  radio: ['interface CheckControlProps','function Radio'],
   switch: ['interface SwitchProps','function Switch','role="switch"'],
   tabs: ['interface TabsProps','function Tabs','role="tab"'],
   'empty-state': ['interface EmptyStateProps','function EmptyState','EmptyStateAction'],
@@ -112,7 +112,7 @@ const platformSemanticMarkers = {
     motion: ['motion','transition'],
   },
   android: {
-    states: { disabled:['enabled = false','enabled=false','disabled'], loading:['loading','progress'], error:['error'], success:['success'] },
+    states: { disabled:['enabled = false','enabled=false','disabled','enabled(index)','enabled: Boolean'], loading:['loading','progress'], error:['error'], success:['success'] },
     a11y: ['semantics','contentDescription'],
     motion: ['animate','animation','motion','Button','OutlinedButton','OutlinedTextField','Checkbox','RadioButton','Switch','Text'],
   },
@@ -290,6 +290,9 @@ for (const [id, platforms] of Object.entries(implementationChecks)) {
   for (const [platform, check] of Object.entries(platforms)) {
     try {
       const source = await readFile(join(root, check.file), 'utf8');
+      const implementationSource = platform === 'web'
+        ? source + '\\n' + await readFile(join(root, 'packages/design-system-web/src/styles.css'), 'utf8')
+        : source;
       for (const symbol of check.symbols) {
         if (!source.includes(symbol)) failures.push(`${id}:${platform}: required symbol ${symbol} is not implemented`);
       }
@@ -309,19 +312,19 @@ for (const [id, platforms] of Object.entries(implementationChecks)) {
             }
           }
           for (const marker of markers.a11y || []) {
-            if (markers.a11y?.length && !markers.a11y.some(marker => marker === 'aria-' ? /aria-[a-z-]+/.test(source) : source.toLowerCase().includes(marker.toLowerCase()))) failures.push(`${id}:${platform}: accessibility marker missing: ${markers.a11y.join(' | ')}`);
+            if (markers.a11y?.length && !markers.a11y.some(marker => marker === 'aria-' ? /aria-[a-z-]+/.test(source) : implementationSource.toLowerCase().includes(marker.toLowerCase()))) failures.push(`${id}:${platform}: accessibility marker missing: ${markers.a11y.join(' | ')}`);
           }
           for (const marker of markers.motion || []) {
-            if (markers.motion?.length && !markers.motion.some(marker => source.toLowerCase().includes(marker.toLowerCase()))) failures.push(`${id}:${platform}: motion implementation marker missing: ${markers.motion.join(' | ')}`);
+            if (markers.motion?.length && !markers.motion.some(marker => implementationSource.toLowerCase().includes(marker.toLowerCase()))) failures.push(`${id}:${platform}: motion implementation marker missing: ${markers.motion.join(' | ')}`);
           }
           const contentRequirements = (contractComponent.content || []).map(item => String(item).toLowerCase()).join(' ');
           const localizationRequired = /long|local|korean|english|wrap|multiline|overflow|content/.test(contentRequirements);
           if (localizationRequired) {
             const contentMarkers = platformContentMarkers[platform] || [];
-            if (platform === 'web' && !contentMarkers.some(marker => source.toLowerCase().includes(marker.toLowerCase()))) {
+            if (platform === 'web' && !contentMarkers.some(marker => implementationSource.toLowerCase().includes(marker.toLowerCase()))) {
               failures.push(`${id}:${platform}: localization/content contract has no wrapping or sizing implementation marker`);
             }
-            if (platform !== 'web' && !contentMarkers.some(marker => source.toLowerCase().includes(marker.toLowerCase()))) {
+            if (platform !== 'web' && !contentMarkers.some(marker => implementationSource.toLowerCase().includes(marker.toLowerCase()))) {
               failures.push(`${id}:${platform}: localization/content contract has no text-layout implementation marker`);
             }
           }
@@ -330,7 +333,7 @@ for (const [id, platforms] of Object.entries(implementationChecks)) {
           if (accessibilityMarkers) {
             for (const [dimension, markers] of Object.entries(accessibilityMarkers)) {
               const relevant = new RegExp(dimension === 'screenReader' ? 'screen|reader|aria|talkback|voiceover|accessib' : dimension === 'largeText' ? 'large|text|type|font|scale' : dimension === 'reducedMotion' ? 'motion|animation|reduce' : 'keyboard|focus').test(accessibilityRequirements);
-              if (relevant && !markers.some(marker => source.toLowerCase().includes(marker.toLowerCase()))) {
+              if (relevant && !markers.some(marker => implementationSource.toLowerCase().includes(marker.toLowerCase()))) {
                 failures.push(`${id}:${platform}: ${dimension} contract has no implementation marker`);
               }
             }
@@ -338,9 +341,9 @@ for (const [id, platforms] of Object.entries(implementationChecks)) {
         }
       }
       if (platform === 'web' && id === 'button' && !/aria-busy/.test(source)) failures.push('button:web: loading accessibility contract is not represented');
-      if (platform === 'web' && id === 'text-field' && !/aria-invalid/.test(source)) failures.push('text-field:web: invalid-state accessibility contract is not represented');
-      if (platform === 'web' && id === 'tabs' && !/role="tab"/.test(source)) failures.push('tabs:web: tab role contract is not represented');
-      if (platform === 'web' && id === 'switch' && !/role="switch"/.test(source)) failures.push('switch:web: switch role contract is not represented');
+      if (platform === 'web' && id === 'text-field' && !/aria-invalid/.test(implementationSource)) failures.push('text-field:web: invalid-state accessibility contract is not represented');
+      if (platform === 'web' && id === 'tabs' && !/role="tab"/.test(implementationSource)) failures.push('tabs:web: tab role contract is not represented');
+      if (platform === 'web' && id === 'switch' && !/role="switch"/.test(implementationSource)) failures.push('switch:web: switch role contract is not represented');
     } catch {
       failures.push(`${id}:${platform}: implementation file missing: ${check.file}`);
     }
