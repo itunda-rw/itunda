@@ -2,6 +2,7 @@ import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, ViewStyle } from 'react-native';
 import { colors } from './colors';
 import { BodyBold } from './Typography';
+import { Text } from 'react-native';
 import { layout } from './layout';
 
 export type ButtonType = 'primary' | 'secondary' | 'tertiary' | 'destructive';
