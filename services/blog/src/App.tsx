@@ -1,8 +1,22 @@
+import { useEffect, useState } from 'react';
 import { Link, Routes, Route } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import PostPage from './pages/PostPage';
 
 export default function App() {
+  const [theme, setTheme] = useState<'system' | 'dark' | 'light'>(() => {
+    const saved = localStorage.getItem('itunda-tech-theme');
+    return saved === 'dark' || saved === 'light' ? saved : 'system';
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('itunda-tech-theme', theme);
+  }, [theme]);
+
+  const nextTheme = theme === 'system' ? 'dark' : theme === 'dark' ? 'light' : 'system';
+  const themeLabel = theme === 'system' ? 'Theme: Auto' : theme === 'dark' ? 'Theme: Dark' : 'Theme: Light';
+
   return (
     <div className="page">
       <header className="site-header">
@@ -14,6 +28,7 @@ export default function App() {
             <a href="/itunda-business/" aria-label="Open Itunda Business">Business</a>
             <a href="/itunda-developers/" aria-label="Open Itunda Developers">Developers</a>
           </nav>
+          <button className="theme-toggle" type="button" onClick={() => setTheme(nextTheme)} aria-label={themeLabel} title={themeLabel}>{theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'Auto'}</button>
           <a className="header-cta" href="https://github.com/itunda-rw/itunda">GitHub</a>
         </div>
       </header>
