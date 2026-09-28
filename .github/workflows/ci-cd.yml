@@ -72,6 +72,7 @@ jobs:
 
   root-workspace-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [lint-and-typecheck]
     steps:
       - uses: actions/checkout@v4
@@ -93,6 +94,7 @@ jobs:
 
   api-gateway-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [lint-and-typecheck]
     steps:
       - uses: actions/checkout@v4
@@ -178,6 +180,7 @@ jobs:
   # savings, stocks, loans, insurance, bills, notifications, discover, contacts, system)
   backend-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -201,6 +204,7 @@ jobs:
   # services/microservices: the independently-deployable ledger-service + payment-service
   microservices-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -284,6 +288,7 @@ jobs:
   # that's been a real, run green check instead of an untested claim.
   ios-build:
     runs-on: macos-15
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
