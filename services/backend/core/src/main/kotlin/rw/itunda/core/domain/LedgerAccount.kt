@@ -37,6 +37,9 @@ class LedgerAccount(
             "insurance_premium_revenue" to "Insurance Premium Revenue",
             "rewards_expense" to "Rewards Expense",
             "insurance_claims_expense" to "Insurance Claims Expense",
+            // Used by VUP and cooperative loan write-off flows (bad-debt expense). Seeded so
+            // the first real write-off cannot fail with an unknown ledger account.
+            "bad_debt_expense" to "Bad Debt Expense",
             // A dedicated clearing account for MerchantService.chargeCard's demo card
             // authorization flow (2026-07-17) -- deliberately separate from the shared
             // "rail_suspense" account (bills/airtime/external transfers) so card
