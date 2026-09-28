@@ -1797,7 +1797,7 @@ export function SearchAndCategoryChips({
           <button
             onClick={() => onSelectCategory(null)}
             style={{
-              flexShrink: 0, padding: '6px 14px', borderRadius: '16px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
+              flexShrink: 0, padding: '6px 14px', borderRadius: 'var(--itunda-radius-pill, 999px)', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
               color: selectedCategory === null ? 'var(--itunda-surface-default)' : 'var(--itunda-text-secondary)',
               backgroundColor: selectedCategory === null ? 'var(--itunda-indigo)' : 'var(--itunda-surface-subtle)',
             }}
@@ -1809,7 +1809,7 @@ export function SearchAndCategoryChips({
               key={c}
               onClick={() => onSelectCategory(c === selectedCategory ? null : c)}
               style={{
-                flexShrink: 0, padding: '6px 14px', borderRadius: '16px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
+                flexShrink: 0, padding: '6px 14px', borderRadius: 'var(--itunda-radius-pill, 999px)', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
                 color: selectedCategory === c ? 'var(--itunda-surface-default)' : 'var(--itunda-text-secondary)',
                 backgroundColor: selectedCategory === c ? 'var(--itunda-indigo)' : 'var(--itunda-surface-subtle)',
               }}
@@ -1997,7 +1997,7 @@ export function TrustBadge({ score }: { score: number }) {
     <span
       style={{
         fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-grey-600)',
-        backgroundColor: 'var(--itunda-surface-subtle)', padding: '2px 6px', borderRadius: '6px',
+        backgroundColor: 'var(--itunda-surface-subtle)', padding: '2px 8px', borderRadius: 'var(--itunda-radius-pill, 999px)',
       }}
     >
       Trust {score}
