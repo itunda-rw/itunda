@@ -5,7 +5,7 @@ import federation from '@originjs/vite-plugin-federation'
 const remoteHost = process.env.VITE_REMOTE_HOST ?? 'localhost'
 const remoteBase = process.env.VITE_REMOTE_BASE ?? '/remotes'
 
-const remote = (name: string, port: number) =>
+const remote = (name: string) =>
   remoteBase.startsWith('http')
     ? `${remoteBase}/${name}/assets/remoteEntry.js`
     : `${remoteBase}/${name}/assets/remoteEntry.js`
@@ -18,8 +18,8 @@ export default defineConfig({
     federation({
       name: 'host_app',
       remotes: {
-        kyc_mfe: remote('kyc', 5001),
-        bank_mfe: remote('bank', 5002),
+        kyc_mfe: remote('kyc'),
+        bank_mfe: remote('bank'),
       },
       shared: ['react', 'react-dom']
     })
