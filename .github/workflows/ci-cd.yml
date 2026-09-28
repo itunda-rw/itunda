@@ -7,6 +7,7 @@ concurrency:
 permissions:
   contents: read
 
+
 on:
   push:
     branches:
@@ -137,8 +138,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build ${{ matrix.name }} container
-        run: docker build --tag itunda/${{ matrix.name }}:ci --file ${{ matrix.dockerfile }} ${{ matrix.context }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+
 
   progressive-manifest-verify:
     runs-on: ubuntu-latest
