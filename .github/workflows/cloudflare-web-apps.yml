@@ -106,7 +106,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: customer-production-smoke-${{ github.run_id }}
-          path: /tmp/customer-production.png
+          path: |
+            /tmp/customer-production.png
+            /tmp/customer.html
+            /tmp/customer.js
           if-no-files-found: ignore
           retention-days: 14
 
@@ -163,7 +166,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: business-production-smoke-${{ github.run_id }}
-          path: /tmp/business-production.png
+          path: |
+            /tmp/business-production.png
+            /tmp/business.html
+            /tmp/business.js
           if-no-files-found: ignore
           retention-days: 14
 
