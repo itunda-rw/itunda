@@ -204,9 +204,6 @@ import rw.itunda.feature.ride.impl.DesignatedDriverEntryPoint
 import rw.itunda.core.network.BucketDetailTarget
 import rw.itunda.core.network.MoneyActionResult
 import rw.itunda.core.designsystem.theme.AccentIndigo
-import rw.itunda.core.designsystem.theme.AccentTeal
-import rw.itunda.core.designsystem.theme.AccentPurple
-import rw.itunda.core.designsystem.theme.AccentOrange
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsIconButton
