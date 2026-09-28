@@ -119,6 +119,7 @@ jobs:
   application-container-build:
     runs-on: ubuntu-latest
     needs: [lint-and-typecheck]
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -149,7 +150,7 @@ jobs:
           push: false
           tags: itunda/${{ matrix.name }}:ci
           cache-from: type=gha,scope=itunda-${{ matrix.name }}
-          cache-to: type=gha,mode=max,scope=itunda-${{ matrix.name }}
+          cache-to: ${{ github.event_name == 'push' && format('type=gha,mode=max,scope=itunda-{0}', matrix.name) || '' }}
 
   progressive-manifest-verify:
     runs-on: ubuntu-latest
