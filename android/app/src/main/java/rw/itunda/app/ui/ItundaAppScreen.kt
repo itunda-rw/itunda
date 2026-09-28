@@ -279,7 +279,6 @@ import rw.itunda.core.designsystem.itundaface.TravelHouse
 // (staying in :app) share one real definition. AccentGray moved there too
 // (2026-09-02, Menu Feature-module decomposition) -- MenuScreen was its only real
 // caller.
-internal val AccentRed = Color(0xFFFF5B5B)
 private val AccentPink = IdsLightSemanticColors.brand
 
 // Real super-app bottom nav: Home/Pay/Explore/Messages/You (2026-08-10), replacing
