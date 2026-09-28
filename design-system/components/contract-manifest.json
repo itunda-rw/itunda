@@ -54,35 +54,35 @@
       },
       "qa": {
         "scenarios": {
-          "button.default": {
+          "default": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "button.pressed": {
+          "pressed": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "button.disabled": {
+          "disabled": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "button.loading": {
+          "loading": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "button.long": {
+          "long": {
             "platforms": [
               "web",
               "android",
@@ -148,35 +148,35 @@
       },
       "qa": {
         "scenarios": {
-          "textfield.default": {
+          "default": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "textfield.focus": {
+          "focus": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "textfield.error": {
+          "error": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "textfield.success": {
+          "success": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "textfield.long": {
+          "long": {
             "platforms": [
               "web",
               "android",
@@ -246,42 +246,42 @@
       },
       "qa": {
         "scenarios": {
-          "select.placeholder": {
+          "placeholder": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "select.focus": {
+          "focus": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "select.disabled": {
+          "disabled": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "select.error": {
+          "error": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "select.success": {
+          "success": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "select.option-disabled": {
+          "option-disabled": {
             "platforms": [
               "web",
               "android",
@@ -349,28 +349,28 @@
       },
       "qa": {
         "scenarios": {
-          "checkbox.checked": {
+          "checked": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "checkbox.indeterminate": {
+          "indeterminate": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "checkbox.disabled": {
+          "disabled": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "checkbox.error": {
+          "error": {
             "platforms": [
               "web",
               "android",
@@ -439,28 +439,28 @@
       },
       "qa": {
         "scenarios": {
-          "radio.checked": {
+          "checked": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "radio.disabled": {
+          "disabled": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "radio.error": {
+          "error": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "radio.group": {
+          "group": {
             "platforms": [
               "web",
               "android",
@@ -530,35 +530,35 @@
       },
       "qa": {
         "scenarios": {
-          "switch.on": {
+          "on": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "switch.off": {
+          "off": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "switch.loading": {
+          "loading": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "switch.disabled": {
+          "disabled": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "switch.error": {
+          "error": {
             "platforms": [
               "web",
               "android",
@@ -624,28 +624,28 @@
       },
       "qa": {
         "scenarios": {
-          "tabs.selected": {
+          "selected": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "tabs.disabled": {
+          "disabled": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "tabs.controls": {
+          "controls": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "tabs.roving-focus": {
+          "roving-focus": {
             "platforms": [
               "web",
               "android",
@@ -706,28 +706,28 @@
       },
       "qa": {
         "scenarios": {
-          "empty.default": {
+          "default": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "empty.error": {
+          "error": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "empty.success": {
+          "success": {
             "platforms": [
               "web",
               "android",
               "ios"
             ]
           },
-          "empty.long": {
+          "long": {
             "platforms": [
               "web",
               "android",
