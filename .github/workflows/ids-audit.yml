@@ -26,7 +26,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: yarn
       - run: corepack enable
       - run: yarn install --immutable
       - name: Verify generated IDS showcase manifest is synchronized
