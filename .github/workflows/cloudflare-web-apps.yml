@@ -162,6 +162,10 @@ jobs:
           if (!interactive) throw new Error('Business production has no interactive controls');
           await page.screenshot({path:'/tmp/business-production.png',fullPage:true});
           if (pageErrors.length || consoleErrors.length) throw new Error('Business browser errors: '+JSON.stringify({pageErrors,consoleErrors}));
+          await page.emulateMedia({colorScheme:'dark'});
+          await page.reload({waitUntil:'networkidle', timeout:60000});
+          const darkBodyText = (await page.locator('body').innerText()).trim();
+          if (!darkBodyText) throw new Error('Business dark-mode render failed');
           await browser.close();
           EOF
 
