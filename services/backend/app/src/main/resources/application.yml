@@ -230,5 +230,7 @@ spring:
 itunda:
   providers:
     simulation-enabled: false
+  cors:
+    allowed-origins: "https://itunda-app.pages.dev,https://itunda-business-app.pages.dev,https://itunda-developers.pages.dev,https://itunda-business.pages.dev"
   jwt:
     secret: ${JWT_SECRET}
