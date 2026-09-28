@@ -32,7 +32,7 @@ class SimulatedProviderConnectorTest : BehaviorSpec({
         val incidentDetector = mockk<IncidentDetector>(relaxed = true)
         val providerHealthTracker = mockk<ProviderHealthTracker>(relaxed = true)
         val reconciliationService = mockk<ReconciliationService>(relaxed = true)
-        val connector = SimulatedProviderConnector(incidentDetector, providerHealthTracker, reconciliationService)
+        val connector = SimulatedProviderConnector(incidentDetector, providerHealthTracker, reconciliationService, simulationEnabled = true)
         val rail = railProfile(successRate = 1.0, offline = true)
 
         When("an attempt is made") {
@@ -49,7 +49,7 @@ class SimulatedProviderConnectorTest : BehaviorSpec({
         val incidentDetector = mockk<IncidentDetector>(relaxed = true)
         val providerHealthTracker = mockk<ProviderHealthTracker>(relaxed = true)
         val reconciliationService = mockk<ReconciliationService>(relaxed = true)
-        val connector = SimulatedProviderConnector(incidentDetector, providerHealthTracker, reconciliationService)
+        val connector = SimulatedProviderConnector(incidentDetector, providerHealthTracker, reconciliationService, simulationEnabled = true)
         val rail = railProfile(successRate = 1.0)
 
         When("an attempt is made") {
@@ -66,7 +66,7 @@ class SimulatedProviderConnectorTest : BehaviorSpec({
         val incidentDetector = mockk<IncidentDetector>(relaxed = true)
         val providerHealthTracker = mockk<ProviderHealthTracker>(relaxed = true)
         val reconciliationService = mockk<ReconciliationService>(relaxed = true)
-        val connector = SimulatedProviderConnector(incidentDetector, providerHealthTracker, reconciliationService)
+        val connector = SimulatedProviderConnector(incidentDetector, providerHealthTracker, reconciliationService, simulationEnabled = true)
         val rail = railProfile(successRate = 0.0, degraded = false)
 
         When("an attempt is made") {
@@ -82,7 +82,7 @@ class SimulatedProviderConnectorTest : BehaviorSpec({
         val incidentDetector = mockk<IncidentDetector>(relaxed = true)
         val providerHealthTracker = mockk<ProviderHealthTracker>(relaxed = true)
         val reconciliationService = mockk<ReconciliationService>(relaxed = true)
-        val connector = SimulatedProviderConnector(incidentDetector, providerHealthTracker, reconciliationService)
+        val connector = SimulatedProviderConnector(incidentDetector, providerHealthTracker, reconciliationService, simulationEnabled = true)
         val rail = railProfile(successRate = 0.0, degraded = true)
 
         When("an attempt is made") {
