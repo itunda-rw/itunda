@@ -18,7 +18,8 @@ const allow = new Set([
 ]);
 
 const contractPath = 'design-system/components/contract-manifest.json';
-const evidenceSchemaPath = 'design-system/qa/evidence-schema.json';\nconst renderMatrixPath = 'design-system/qa/render-matrix.json';
+const evidenceSchemaPath = 'design-system/qa/evidence-schema.json';
+const renderMatrixPath = 'design-system/qa/render-matrix.json';
 async function walk(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
   const files = [];
@@ -33,7 +34,8 @@ async function walk(dir) {
 
 const failures = [];
 const manifest = JSON.parse(await readFile(join(root, contractPath), 'utf8'));
-const evidenceSchema = JSON.parse(await readFile(join(root, evidenceSchemaPath), 'utf8'));\nconst renderMatrix = JSON.parse(await readFile(join(root, renderMatrixPath), 'utf8'));
+const evidenceSchema = JSON.parse(await readFile(join(root, evidenceSchemaPath), 'utf8'));
+const renderMatrix = JSON.parse(await readFile(join(root, renderMatrixPath), 'utf8'));
 if (renderMatrix.schema !== 'ids-render-matrix/v1') failures.push('Render matrix must be ids-render-matrix/v1');
 for (const platform of ['web','android','ios']) {
   if (!renderMatrix.platforms?.[platform]) failures.push('Render matrix missing platform: '+platform);
