@@ -785,4 +785,3 @@ public struct IdsEmptyState: View {
         .accessibilityElement(children: .contain)
     }
 }
-\n
