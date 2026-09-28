@@ -51,7 +51,7 @@ class FeatureIsolationTest {
         val missing = features.mapNotNull { feature ->
             val gradleFile = java.io.File(
                 java.io.File("."),
-                "../features/$feature/impl/build.gradle.kts",
+                "features/$feature/impl/build.gradle.kts",
             )
             if (!gradleFile.isFile) {
                 "$feature: missing impl/build.gradle.kts"
@@ -75,7 +75,7 @@ class FeatureIsolationTest {
     fun `app shell feature imports are composition entry points`() {
         val appScreen = java.io.File(
             java.io.File("."),
-            "../app/src/main/java/rw/itunda/app/ui/ItundaAppScreen.kt",
+            "app/src/main/java/rw/itunda/app/ui/ItundaAppScreen.kt",
         )
 
         val violations = appScreen.readText()
