@@ -79,6 +79,24 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy services/micro-frontends/host-app/dist --project-name=itunda-app --branch=agent/itunda-agent-network --commit-message="Deploy customer web app"
 
+      - name: Browser smoke test customer production
+        if: matrix.app == 'customer' && (github.event_name == 'workflow_run' || inputs.app == 'customer')
+        run: |
+          npx --yes playwright@1.55.0 install --with-deps chromium
+          node --input-type=module <<'EOF'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({headless:true});
+          const page = await browser.newPage({viewport:{width:390,height:844}});
+          await page.goto('https://itunda-app.pages.dev/', {waitUntil:'networkidle', timeout:60000});
+          const tab = page.getByRole('tab', {name:/home/i});
+          if (!(await tab.count())) throw new Error('Customer Home tab not rendered');
+          if (!(await page.getByRole('tab', {name:/identity/i}).count())) throw new Error('Customer Identity tab not rendered');
+          await tab.click();
+          if (!(await page.getByRole('tabpanel').count())) throw new Error('Customer tab panel missing');
+          await page.screenshot({path:'/tmp/customer-production.png',fullPage:true});
+          await browser.close();
+          EOF
+
       - name: Smoke test customer production
         if: matrix.app == 'customer' && (github.event_name == 'workflow_run' || inputs.app == 'customer')
         run: |
@@ -105,6 +123,23 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy services/micro-frontends/merchant-mfe/dist --project-name=itunda-business-app --branch=agent/itunda-agent-network --commit-message="Deploy business web app"
+
+      - name: Browser smoke test business production
+        if: matrix.app == 'business' && (github.event_name == 'workflow_run' || inputs.app == 'business')
+        run: |
+          npx --yes playwright@1.55.0 install --with-deps chromium
+          node --input-type=module <<'EOF'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({headless:true});
+          const page = await browser.newPage({viewport:{width:390,height:844}});
+          await page.goto('https://itunda-business-app.pages.dev/', {waitUntil:'networkidle', timeout:60000});
+          const bodyText = (await page.locator('body').innerText()).trim();
+          if (!bodyText) throw new Error('Business production rendered empty');
+          const interactive = await page.locator('button, a, input, select, textarea').count();
+          if (!interactive) throw new Error('Business production has no interactive controls');
+          await page.screenshot({path:'/tmp/business-production.png',fullPage:true});
+          await browser.close();
+          EOF
 
       - name: Smoke test business production
         if: matrix.app == 'business' && (github.event_name == 'workflow_run' || inputs.app == 'business')
