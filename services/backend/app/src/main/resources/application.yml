@@ -124,6 +124,9 @@ spring:
         format_sql: true
 
 itunda:
+  providers:
+    # Development/CI may use deterministic simulated rails; production disables this explicitly.
+    simulation-enabled: ${ITUNDA_PROVIDER_SIMULATION_ENABLED:true}
   jwt:
     secret: ${JWT_SECRET:itunda-dev-secret-do-not-use-in-production}
   # Real USSD gateway shared secret (2026-08-02) -- see UssdController's own doc
@@ -217,3 +220,15 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: production
+
+itunda:
+  providers:
+    simulation-enabled: false
+  jwt:
+    secret: ${JWT_SECRET}
