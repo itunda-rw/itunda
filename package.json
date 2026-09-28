@@ -85,7 +85,7 @@
     "private-cloud:deploy": "bash ./scripts/private-cloud-deploy.sh deploy",
     "build": "bash ./scripts/local-ecosystem.sh web-build",
     "build:web": "bash ./scripts/local-ecosystem.sh web-build",
-    "lint": "oxlint",
+    "lint": "oxlint --format=stylish",
     "lint:web": "bash ./scripts/local-ecosystem.sh web-lint",
     "depcruise": "depcruise --config .dependency-cruiser.cjs \"services/micro-frontends/**/src/**/*.{ts,tsx}\" \"packages/*/src/**/*.{ts,tsx}\" \"services/api-gateway/**/*.{ts,tsx}\"",
     "audit:ids": "node ./scripts/audit-ids.mjs"
