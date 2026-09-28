@@ -81,14 +81,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install dependencies
-        run: |
-          corepack enable
-          yarn install --immutable
+      - name: Install Tech dependencies
+        working-directory: services/blog
+        run: npm ci
 
       - name: Build Itunda Tech
         working-directory: services/blog
-        run: yarn build
+        run: npm run build
 
       - name: Deploy Itunda Tech
         uses: cloudflare/wrangler-action@v3
