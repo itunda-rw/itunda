@@ -1,9 +1,15 @@
 name: IDS Native Build Verification
 
 on:
-  # GitHub-hosted runner provisioning is currently unavailable for the Itunda
-  # Enterprise trial. Keep native IDS verification manual until hosted Actions
-  # entitlement is restored.
+  push:
+    branches:
+      - agent/itunda-agent-network
+    paths:
+      - "android/**"
+      - "ios/**"
+      - "packages/saronite/**"
+      - "scripts/verify-native-boundary.sh"
+      - ".github/workflows/ids-native-build.yml"
   workflow_dispatch:
 
 permissions:
