@@ -207,7 +207,6 @@ import rw.itunda.core.designsystem.theme.AccentIndigo
 import rw.itunda.core.designsystem.theme.AccentTeal
 import rw.itunda.core.designsystem.theme.AccentPurple
 import rw.itunda.core.designsystem.theme.AccentOrange
-import rw.itunda.core.designsystem.theme.IdsLightSemanticColors
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsIconButton
@@ -279,8 +278,6 @@ import rw.itunda.core.designsystem.itundaface.TravelHouse
 // (staying in :app) share one real definition. AccentGray moved there too
 // (2026-09-02, Menu Feature-module decomposition) -- MenuScreen was its only real
 // caller.
-private val AccentPink = IdsLightSemanticColors.brand
-
 // Real super-app bottom nav: Home/Pay/Explore/Messages/You (2026-08-10), replacing
 // the previous Home/Shop/Hood/Talk/All layout -- an explicit product decision after
 // directly comparing both against each other (see docs/DESIGN_REFERENCES.md Section
