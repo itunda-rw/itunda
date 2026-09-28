@@ -48,6 +48,9 @@ jobs:
           cp sites/public/ids.css "${{ matrix.directory }}/ids.css"
           cp sites/public/theme.js "${{ matrix.directory }}/theme.js"
 
+      - name: Enable Corepack for Wrangler
+        run: corepack enable
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
@@ -84,7 +87,8 @@ jobs:
           yarn install --immutable
 
       - name: Build Itunda Tech
-        run: yarn workspace itunda-tech-blog build
+        working-directory: services/blog
+        run: yarn build
 
       - name: Deploy Itunda Tech
         uses: cloudflare/wrangler-action@v3
