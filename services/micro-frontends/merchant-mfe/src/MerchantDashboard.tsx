@@ -149,7 +149,7 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
           value={locale}
           onChange={(e) => setLocale(e.target.value as 'en' | 'rw' | 'fr')}
           aria-label="Language"
-          style={{ fontSize: '12px', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--itunda-border-default)', color: 'var(--itunda-text-secondary)', background: 'var(--itunda-surface-default)', marginBottom: '16px' }}
+          style={{ fontSize: '12px', padding: '4px 6px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', color: 'var(--itunda-text-secondary)', background: 'var(--itunda-surface-default)', marginBottom: '16px' }}
         >
           {LOCALES.map((l) => (
             <option key={l.code} value={l.code}>{l.label}</option>
