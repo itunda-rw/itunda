@@ -39,6 +39,7 @@ class FeatureIsolationTest {
                 "`api` module instead:\n" + violations.joinToString("\n"),
         )
     }
+
     @Test
     fun `feature impl modules depend on their own api module`() {
         val features = listOf(
@@ -70,7 +71,6 @@ class FeatureIsolationTest {
         )
     }
 
-
     @Test
     fun `app shell feature imports are composition entry points`() {
         val appScreen = java.io.File(
@@ -96,7 +96,7 @@ class FeatureIsolationTest {
     fun `app shell uses feature composition entry points for primary tabs`() {
         val appScreen = java.io.File(
             java.io.File("."),
-            "../app/src/main/java/rw/itunda/app/ui/ItundaAppScreen.kt",
+            "app/src/main/java/rw/itunda/app/ui/ItundaAppScreen.kt",
         )
 
         assertTrue(appScreen.isFile, "Expected native app shell source: ${appScreen.path}")
@@ -138,5 +138,4 @@ class FeatureIsolationTest {
                 violations.joinToString("\n"),
         )
     }
-
 }
