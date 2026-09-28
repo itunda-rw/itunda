@@ -1,8 +1,12 @@
 name: CI
 
 on:
-  # GitHub-hosted runner provisioning is currently unavailable for the Itunda Enterprise trial.
-  # Keep full CI manually runnable until hosted Actions entitlement is restored.
+  push:
+    branches:
+      - agent/itunda-agent-network
+  pull_request:
+    branches:
+      - agent/itunda-agent-network
   workflow_dispatch:
 
 jobs:
