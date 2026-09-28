@@ -70,7 +70,7 @@ jobs:
 
       - name: Ensure customer Pages project
         if: matrix.app == 'customer' && (github.event_name == 'workflow_run' || inputs.app == 'customer')
-        run: npx wrangler pages project create itunda-app --production-branch agent/itunda-agent-network || true
+        run: npx --yes wrangler@4.39.0 pages project create itunda-app --production-branch agent/itunda-agent-network || true
 
       - name: Deploy customer web app
         if: matrix.app == 'customer' && (github.event_name == 'workflow_run' || inputs.app == 'customer')
@@ -131,7 +131,7 @@ jobs:
 
       - name: Ensure business Pages project
         if: matrix.app == 'business' && (github.event_name == 'workflow_run' || inputs.app == 'business')
-        run: npx wrangler pages project create itunda-business-app --production-branch agent/itunda-agent-network || true
+        run: npx --yes wrangler@4.39.0 pages project create itunda-business-app --production-branch agent/itunda-agent-network || true
 
       - name: Deploy business web app
         if: matrix.app == 'business' && (github.event_name == 'workflow_run' || inputs.app == 'business')
