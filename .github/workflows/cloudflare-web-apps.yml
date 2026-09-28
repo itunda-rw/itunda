@@ -101,6 +101,15 @@ jobs:
           await browser.close();
           EOF
 
+      - name: Upload customer production evidence
+        if: always() && matrix.app == 'customer' && (github.event_name == 'workflow_run' || inputs.app == 'customer')
+        uses: actions/upload-artifact@v4
+        with:
+          name: customer-production-smoke-${{ github.run_id }}
+          path: /tmp/customer-production.png
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Smoke test customer production
         if: matrix.app == 'customer' && (github.event_name == 'workflow_run' || inputs.app == 'customer')
         run: |
@@ -145,6 +154,15 @@ jobs:
           if (pageErrors.length || consoleErrors.length) throw new Error('Business browser errors: '+JSON.stringify({pageErrors,consoleErrors}));
           await browser.close();
           EOF
+
+      - name: Upload business production evidence
+        if: always() && matrix.app == 'business' && (github.event_name == 'workflow_run' || inputs.app == 'business')
+        uses: actions/upload-artifact@v4
+        with:
+          name: business-production-smoke-${{ github.run_id }}
+          path: /tmp/business-production.png
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Smoke test business production
         if: matrix.app == 'business' && (github.event_name == 'workflow_run' || inputs.app == 'business')
