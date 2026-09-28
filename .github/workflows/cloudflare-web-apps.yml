@@ -82,9 +82,16 @@ jobs:
       - name: Smoke test customer production
         if: matrix.app == 'customer' && (github.event_name == 'workflow_run' || inputs.app == 'customer')
         run: |
-          curl --fail --silent --show-error --location --max-time 30 https://itunda-app.pages.dev/ > /tmp/customer.html
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --silent --show-error --location --max-time 30 https://itunda-app.pages.dev/ > /tmp/customer.html; then break; fi
+            sleep 5
+          done
           test -s /tmp/customer.html
           grep -Eiq '<(html|body|div|main|script)[ >]' /tmp/customer.html
+          test "$(grep -Eo '/assets/[^"]+\\.js' /tmp/customer.html | head -n 1)" != ""
+          customer_js="$(grep -Eo '/assets/[^"]+\\.js' /tmp/customer.html | head -n 1)"
+          curl --fail --silent --show-error --location --max-time 30 "https://itunda-app.pages.dev${customer_js}" > /tmp/customer.js
+          grep -q 'consumer-bank-tab' /tmp/customer.js
           echo "Customer production smoke test passed"
 
       - name: Ensure business Pages project
@@ -102,7 +109,14 @@ jobs:
       - name: Smoke test business production
         if: matrix.app == 'business' && (github.event_name == 'workflow_run' || inputs.app == 'business')
         run: |
-          curl --fail --silent --show-error --location --max-time 30 https://itunda-business-app.pages.dev/ > /tmp/business.html
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --silent --show-error --location --max-time 30 https://itunda-business-app.pages.dev/ > /tmp/business.html; then break; fi
+            sleep 5
+          done
           test -s /tmp/business.html
           grep -Eiq '<(html|body|div|main|script)[ >]' /tmp/business.html
+          test "$(grep -Eo '/assets/[^"]+\\.js' /tmp/business.html | head -n 1)" != ""
+          business_js="$(grep -Eo '/assets/[^"]+\\.js' /tmp/business.html | head -n 1)"
+          curl --fail --silent --show-error --location --max-time 30 "https://itunda-business-app.pages.dev${business_js}" > /tmp/business.js
+          test -s /tmp/business.js
           echo "Business production smoke test passed"
