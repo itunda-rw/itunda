@@ -697,11 +697,11 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <input
               type="text" value={giftNote} onChange={(e) => setGiftNote(e.target.value)} placeholder="Add a note (optional)" maxLength={200}
-              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-14-size)', textAlign: 'center' }}
+              style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-14-size)', textAlign: 'center' }}
             />
             <select
               value={giftTheme} onChange={(e) => setGiftTheme(e.target.value as GiftTheme | '')}
-              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-14-size)' }}
+              style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-14-size)' }}
             >
               <option value="">No theme (plain gift)</option>
               {(Object.keys(GIFT_THEME_LABELS) as GiftTheme[]).map((theme) => (
@@ -712,7 +712,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
         ) : (
           <input
             type="text" value={memo} onChange={(e) => setMemo(e.target.value)} placeholder={t('transfer.memoPlaceholder')} maxLength={200}
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)', textAlign: 'center', width: '100%', boxSizing: 'border-box' }}
+            style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)', textAlign: 'center', width: '100%', boxSizing: 'border-box' }}
           />
         )}
 
@@ -722,7 +722,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
               key={k} type="button"
               onClick={() => (k === '⌫' ? backspace() : appendDigit(k))}
               aria-label={k === '⌫' ? 'Backspace' : `Enter ${k}`}
-              style={{ padding: '16px 0', background: 'none', border: 'none', fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 600, color: 'var(--itunda-text-primary)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ padding: '16px 0', background: 'none', border: 'none', fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 600, color: 'var(--itunda-text-primary)', borderRadius: 'var(--itunda-control-radius, 12px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               {/* Real gap found live (2026-08-31, direct user correction: "backspace
                   button of keyboard should be horizontal arrow (toss style) instead
@@ -759,7 +759,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
           <input
             type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)}
             placeholder={t('transfer.recipientPlaceholder')} required
-            style={{ width: '100%', padding: '12px 14px 12px 36px', borderRadius: '10px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-14-size)', boxSizing: 'border-box' }}
+            style={{ width: '100%', padding: '12px 14px 12px 36px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-14-size)', boxSizing: 'border-box' }}
           />
         </div>
         {/* Real fix (2026-08-18, direct live-testing catch): IdsButton's own Large-size
@@ -793,11 +793,11 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <input
             type="text" value={newContactName} onChange={(e) => setNewContactName(e.target.value)} placeholder={t('transfer.namePlaceholder')}
-            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+            style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
           />
           <input
             type="text" value={newContactPhone} onChange={(e) => setNewContactPhone(e.target.value)} placeholder={t('transfer.phonePlaceholder')}
-            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+            style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
           />
           <button type="button" className="itunda-btn itunda-btn-secondary" disabled={!newContactName || !newContactPhone} onClick={handleAddContact}>
             {t('transfer.saveContact')}
@@ -968,7 +968,7 @@ function ExploreHub({ groups, tabLabel, tabIcon, recentTabs, onSelect, autoFocus
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search all services"
           aria-label="Search all services"
-          style={{ width: '100%', padding: '10px 32px', borderRadius: '10px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)', background: 'var(--itunda-surface-default)', color: 'var(--itunda-text-primary)' }}
+          style={{ width: '100%', padding: '10px 32px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)', background: 'var(--itunda-surface-default)', color: 'var(--itunda-text-primary)' }}
         />
         {search && (
           <button onClick={() => setSearch('')} aria-label="Clear search" style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--itunda-text-tertiary)', display: 'flex' }}>
@@ -1224,7 +1224,7 @@ export function YouthAccountCard() {
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-tertiary)' }}>{t('youthAccount.birthDatePrompt')}</p>
           <input
             type="date" value={birthDate} onChange={(e) => setBirthDateInput(e.target.value)} required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+            style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
           />
           {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): "Continue"
               doesn't say what happens next -- the paragraph above already names the real
@@ -1252,7 +1252,7 @@ export function YouthAccountCard() {
             <form onSubmit={handleDeposit} style={{ display: 'flex', gap: '8px' }}>
               <input
                 type="number" placeholder={t('youthAccount.amountPlaceholder')} value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
-                style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+                style={{ flex: 1, padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
               />
               <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('youthAccount.adding') : t('youthAccount.add')}</button>
             </form>
@@ -1361,15 +1361,15 @@ export function AutoTransfersCard() {
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
           <input
             type="text" placeholder={t('autoTransfers.recipientPlaceholder')} value={recipient} onChange={(e) => setRecipient(e.target.value)} required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+            style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
           />
           <input
             type="number" placeholder={t('autoTransfers.amountPlaceholder')} value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+            style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
           />
           <select
             value={frequency} onChange={(e) => setFrequency(e.target.value as AutoTransferFrequency)}
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+            style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
           >
             <option value="WEEKLY">{t('autoTransfers.weekly')}</option>
             <option value="MONTHLY">{t('autoTransfers.monthly')}</option>
@@ -1377,21 +1377,21 @@ export function AutoTransfersCard() {
           {frequency === 'WEEKLY' ? (
             <select
               value={dayOfWeek} onChange={(e) => setDayOfWeek(e.target.value)}
-              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+              style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
             >
               {WEEKDAY_NAMES.map((name, i) => <option key={name} value={i + 1}>{t(WEEKDAY_KEYS[i])}</option>)}
             </select>
           ) : (
             <select
               value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)}
-              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+              style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
             >
               {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{t('autoTransfers.dayOfMonth', { day: d })}</option>)}
             </select>
           )}
           <input
             type="text" placeholder={t('autoTransfers.descriptionPlaceholder')} value={description} onChange={(e) => setDescription(e.target.value)}
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+            style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
           />
           <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('autoTransfers.settingUp') : t('autoTransfers.setUpButton')}</button>
         </form>
@@ -1685,7 +1685,7 @@ export function AddressAutocomplete({
         onFocus={() => { setFocused(true); setOpen(suggestions.length > 0); }}
         onBlur={() => setTimeout(() => { setFocused(false); setOpen(false); }, 150)}
         placeholder={placeholder} required autoComplete="off"
-        style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-14-size)' }}
+        style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-14-size)' }}
       />
       {searching && (
         <span style={{ position: 'absolute', right: '12px', top: '12px', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>…</span>
@@ -1930,7 +1930,7 @@ export function PlaceSearchInput({ label, placeholder, value, onSelect }: {
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => setFocused(true)}
         onBlur={() => setTimeout(() => setFocused(false), 150)}
-        style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-14-size)' }}
+        style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-14-size)' }}
       />
       {results && results.length > 0 && (
         <div className="itunda-card" style={{ position: 'absolute', zIndex: 10, width: '100%', marginTop: '4px', padding: '4px', maxHeight: '220px', overflowY: 'auto' }}>
@@ -2600,12 +2600,12 @@ function CardView() {
             <input
               type="password" inputMode="numeric" placeholder={t('card.newPinPlaceholder')} value={newPinInput}
               onChange={(e) => setNewPinInput(e.target.value)} required maxLength={4} pattern="\d{4}"
-              style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)' }}
+              style={{ padding: '10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)' }}
             />
             <input
               type="password" placeholder={t('card.currentPasswordPlaceholder')} value={pinPasswordInput}
               onChange={(e) => setPinPasswordInput(e.target.value)} required
-              style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)' }}
+              style={{ padding: '10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)' }}
             />
             <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>
               {busy ? '…' : t('card.savePin')}
@@ -2628,11 +2628,11 @@ function CardView() {
         <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
           <input
             type="number" placeholder={t('card.dailyLimitPlaceholder')} value={dailyLimitInput} onChange={(e) => setDailyLimitInput(e.target.value)}
-            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)' }}
+            style={{ flex: 1, padding: '10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)' }}
           />
           <input
             type="number" placeholder={t('card.monthlyLimitPlaceholder')} value={monthlyLimitInput} onChange={(e) => setMonthlyLimitInput(e.target.value)}
-            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)' }}
+            style={{ flex: 1, padding: '10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)' }}
           />
         </div>
         <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={handleSaveLimits} style={{ width: '100%' }}>
@@ -2650,18 +2650,18 @@ function CardView() {
           {chargeSuccess && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-green)' }}>{chargeSuccess}</p>}
           <input
             placeholder={t('card.merchantNamePlaceholder')} value={merchantName} onChange={(e) => setMerchantName(e.target.value)} required
-            style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)' }}
+            style={{ padding: '10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)' }}
           />
           <input
             type="number" placeholder={t('card.amountPlaceholder')} value={chargeAmount} onChange={(e) => setChargeAmount(e.target.value)} required min="1"
-            style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)' }}
+            style={{ padding: '10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)' }}
           />
           <label style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>
             {t('card.fundingAccountLabel')}
             <select
               value={fundingAccountType}
               onChange={(e) => setFundingAccountType(e.target.value as CardFundingAccountType)}
-              style={{ display: 'block', width: '100%', marginTop: '4px', padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-border-default)' }}
+              style={{ display: 'block', width: '100%', marginTop: '4px', padding: '10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)' }}
             >
               <option value="MAIN">{t('card.fundingAccountMain')}</option>
               <option value="PAY">{t('card.fundingAccountPay')}</option>
