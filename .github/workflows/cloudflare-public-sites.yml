@@ -1,0 +1,74 @@
+name: Deploy Itunda Public Sites to Cloudflare Pages
+
+on:
+  push:
+    branches: [agent/itunda-agent-network]
+    paths:
+      - "sites/public/**"
+      - "sites/itunda/**"
+      - "sites/tech/**"
+      - "sites/developers/**"
+      - "sites/business/**"
+      - ".github/workflows/cloudflare-public-sites.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: itunda-public-sites-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: itunda
+            directory: sites/itunda
+          - name: itunda-tech
+            directory: sites/tech
+          - name: itunda-developers
+            directory: sites/developers
+          - name: itunda-business
+            directory: sites/business
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Validate site
+        run: |
+          test -s "${{ matrix.directory }}/index.html"
+          test -s sites/public/ids.css
+          test -s sites/public/theme.js
+
+      - name: Assemble shared IDS assets
+        run: |
+          cp sites/public/ids.css "${{ matrix.directory }}/ids.css"
+          cp sites/public/theme.js "${{ matrix.directory }}/theme.js"
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy "${{ matrix.directory }}" --project-name="${{ matrix.name }}" --branch=main
+
+      - name: Production smoke test
+        env:
+          URL: https://${{ matrix.name }}.pages.dev/
+        run: |
+          for i in 1 2 3 4 5; do
+            if curl --fail --silent --show-error --location --max-time 20 "$URL" -o /tmp/site.html; then break; fi
+            sleep 5
+          done
+          test -s /tmp/site.html
+          grep -q '<h1' /tmp/site.html
