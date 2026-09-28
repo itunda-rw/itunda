@@ -34,7 +34,7 @@ jobs:
     timeout-minutes: 30
     environment:
       name: production
-      url: https://itunda-app.pages.dev
+      url: ${{ matrix.app == 'customer' && 'https://itunda-app.pages.dev' || 'https://itunda-business-app.pages.dev' }}
     concurrency:
       group: itunda-production-web
       cancel-in-progress: true
