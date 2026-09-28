@@ -1,8 +1,7 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
 import { colors } from './colors';
 import { BodyBold } from './Typography';
-import { Text } from 'react-native';
 import { layout } from './layout';
 
 export type ButtonType = 'primary' | 'secondary' | 'tertiary' | 'destructive';
@@ -65,7 +64,7 @@ export const Button: React.FC<ButtonProps> = ({
           type === 'secondary' && styles.secondaryText,
           isTertiary && styles.tertiaryText,
           isDestructive && styles.destructiveText,
-        ]}>{title}</BodyBold>
+        ]}>{title}</Text>
       )}
     </Pressable>
   );
