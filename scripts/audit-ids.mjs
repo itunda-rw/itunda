@@ -169,6 +169,8 @@ const platformContract = await readFile(join(root, platformContractPath), 'utf8'
 for (const platform of ['Web', 'Android', 'iOS']) {
   if (!new RegExp('\\b' + platform + '\\b', 'i').test(platformContract)) failures.push('Platform contract missing '+platform+' coverage');
 }
+const tokensPath = 'packages/design-tokens/tokens.json';
+const tokens = JSON.parse(await readFile(join(root, tokensPath), 'utf8'));
 const tokenCssPath = 'packages/design-tokens/tokens.css';
 const expectedBrand = '#7472F4';
 const tokenCss = await readFile(join(root, tokenCssPath), 'utf8');
