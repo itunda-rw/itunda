@@ -58,12 +58,13 @@ public struct IDSTextField: View {
     @Binding public var text: String
     public var helpText: String? = nil
     public var error: String? = nil
+    public var success: String? = nil
     public var required = false
     public var disabled = false
     public var secure = false
 
-    public init(label: String, text: Binding<String>, helpText: String? = nil, error: String? = nil, required: Bool = false, disabled: Bool = false, secure: Bool = false) {
-        self.label = label; self._text = text; self.helpText = helpText; self.error = error; self.required = required; self.disabled = disabled; self.secure = secure
+    public init(label: String, text: Binding<String>, helpText: String? = nil, error: String? = nil, success: String? = nil, required: Bool = false, disabled: Bool = false, secure: Bool = false) {
+        self.label = label; self._text = text; self.helpText = helpText; self.error = error; self.success = success; self.required = required; self.disabled = disabled; self.secure = secure
     }
 
     public var body: some View {
@@ -77,11 +78,11 @@ public struct IDSTextField: View {
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(error == nil ? IDS.Colors.divider : IDS.Colors.error, lineWidth: 1))
             .disabled(disabled)
-            if let message = error ?? helpText {
-                Text(message).font(IDS.Typography.caption).foregroundStyle(error == nil ? IDS.Colors.textSecondary : IDS.Colors.error)
+            if let message = error ?? success ?? helpText {
+                Text(message).font(IDS.Typography.caption).foregroundStyle(error != nil ? IDS.Colors.error : success != nil ? IDS.Colors.success : IDS.Colors.textSecondary)
             }
         }
-        .accessibilityElement(children: .contain).accessibilityLabel(Text(label)).accessibilityHint(Text(error ?? helpText ?? ""))
+        .accessibilityElement(children: .contain).accessibilityLabel(Text(label)).accessibilityHint(Text(error ?? success ?? helpText ?? ""))
     }
 }
 
@@ -91,10 +92,11 @@ public struct IDSSelect<Option: Hashable>: View {
     @Binding public var selection: Option?
     public let title: (Option) -> String
     public var disabled = false
+    public var success: String? = nil
     public var disabledOptions: Set<Option> = []
 
-    public init(label: String, options: [Option], selection: Binding<Option?>, disabled: Bool = false, disabledOptions: Set<Option> = [], title: @escaping (Option) -> String) {
-        self.label = label; self.options = options; self._selection = selection; self.disabled = disabled; self.disabledOptions = disabledOptions; self.title = title
+    public init(label: String, options: [Option], selection: Binding<Option?>, disabled: Bool = false, success: String? = nil, disabledOptions: Set<Option> = [], title: @escaping (Option) -> String) {
+        self.label = label; self.options = options; self._selection = selection; self.disabled = disabled; self.success = success; self.disabledOptions = disabledOptions; self.title = title
     }
 
     public var body: some View {
@@ -109,6 +111,7 @@ public struct IDSSelect<Option: Hashable>: View {
                 }
             }
             .pickerStyle(.menu).frame(minHeight: 48).disabled(disabled)
+            if let success { Text(success).font(IDS.Typography.caption).foregroundStyle(IDS.Colors.success) }
         }
     }
 }
