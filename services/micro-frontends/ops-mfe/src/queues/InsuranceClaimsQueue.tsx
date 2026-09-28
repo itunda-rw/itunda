@@ -58,7 +58,7 @@ function InsuranceClaimCard({ claim, onDecided }: { claim: InsuranceClaim; onDec
           placeholder="Reason (optional)"
           maxLength={255}
           rows={2}
-          style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', resize: 'vertical' }}
+          style={{ padding: '10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', resize: 'vertical' }}
         />
       )}
 
