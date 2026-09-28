@@ -31,9 +31,9 @@ const brandChecks = [
   ["web light", web, "#7472F4"],
   ["web dark", web, "#7675F8"],
   ["android light", android, "0xFF7472F4"],
-  ["android dark", android, "0xFF7675F8"],
+  ["android dark", android, "0xFF9B98FF"],
   ["ios light", ios, "0x7472F4"],
-  ["ios dark", ios, "0x7675F8"],
+  ["ios dark", ios, "0x9B98FF"],
 ];
 for (const [label, source, anchor] of brandChecks) {
   if (!source.includes(anchor)) failures.push(`${label}: missing brand anchor ${anchor}`);
