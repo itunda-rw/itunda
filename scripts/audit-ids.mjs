@@ -384,8 +384,8 @@ for (const target of targets) {
     const rel = relative(root, file).replaceAll('\\\\', '/');
     if ([...allow].some(prefix => rel === prefix || rel.startsWith(prefix + '/'))) continue;
     const source = (await readFile(file, 'utf8'))
-      .replace(/\\/\\*[\\s\\S]*?\\*\\//g, '')
-      .replace(/(^|\\s)\\/\\/.*$/gm, '$1');
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|\s)\/\/.*$/gm, '$1');
     for (const pattern of banned) {
       if (pattern.test(source)) {
         failures.push(`${rel}: raw color value/function`);
