@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,6 +35,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.semantics
@@ -495,7 +497,7 @@ fun IdsLoading(
         label?.let {
             Text(
                 text = it,
-                style = IdsTypography.bodySmall,
+                style = IdsTypography.Body2,
                 color = Ids.colors.textSecondary,
             )
         }
@@ -511,7 +513,7 @@ fun IdsErrorText(
     Text(
         text = message,
         modifier = modifier,
-        style = IdsTypography.bodyMedium,
+        style = IdsTypography.Body1,
         color = Ids.colors.danger,
     )
 }
@@ -535,7 +537,7 @@ fun IdsEmptyState(
     ) {
         Text(
             text = title,
-            style = IdsTypography.Title3,
+            style = IdsTypography.Title1,
             color = Ids.colors.textPrimary,
         )
         message?.let {
