@@ -141,7 +141,15 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-
+      - name: Build application container
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: false
+          tags: itunda/${{ matrix.name }}:ci
+          cache-from: type=gha,scope=itunda-${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=itunda-${{ matrix.name }}
 
   progressive-manifest-verify:
     runs-on: ubuntu-latest
