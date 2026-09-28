@@ -12,6 +12,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsTypography
@@ -27,6 +29,7 @@ fun IdsSelect(
     disabledOptions: Set<String> = emptySet(),
     supportingText: String? = null,
     errorText: String? = null,
+    successText: String? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Column(
@@ -36,13 +39,13 @@ fun IdsSelect(
         Text(
             text = label,
             style = IdsTypography.Label,
-            color = if (errorText == null) Ids.colors.textSecondary else Ids.colors.danger,
+            color = when { errorText != null -> Ids.colors.danger; successText != null -> Ids.colors.success; else -> Ids.colors.textSecondary },
         )
         Box(modifier = Modifier.fillMaxWidth()) {
             OutlinedButton(
                 onClick = { expanded = true },
                 enabled = enabled,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics { contentDescription = listOf(label, selected ?: "", errorText ?: successText ?: "").filter { it.isNotBlank() }.joinToString(", ") },
             ) { Text(selected ?: label) }
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 options.forEach { option ->
@@ -60,11 +63,11 @@ fun IdsSelect(
                 }
             }
         }
-        (errorText ?: supportingText)?.let { message ->
+        (errorText ?: successText ?: supportingText)?.let { message ->
             Text(
                 text = message,
                 style = IdsTypography.Caption,
-                color = if (errorText == null) Ids.colors.textSecondary else Ids.colors.danger,
+                color = when { errorText != null -> Ids.colors.danger; successText != null -> Ids.colors.success; else -> Ids.colors.textSecondary },
                 modifier = Modifier.padding(horizontal = 4.dp),
             )
         }
