@@ -99,6 +99,9 @@ jobs:
           if (!(await page.getByRole('tabpanel').count())) throw new Error('Customer tab panel missing');
           await page.screenshot({path:'/tmp/customer-production.png',fullPage:true});
           if (pageErrors.length || consoleErrors.length) throw new Error('Customer browser errors: '+JSON.stringify({pageErrors,consoleErrors}));
+          await page.emulateMedia({colorScheme:'dark'});
+          await page.reload({waitUntil:'networkidle', timeout:60000});
+          if (!(await page.getByRole('tab', {name:/home/i}).count())) throw new Error('Customer dark-mode render failed');
           await browser.close();
           EOF
 
