@@ -1,4 +1,5 @@
 name: Deploy Itunda Web Apps to Cloudflare Pages
+# GitHub-hosted runner path is active; deploy directly from the public repository.
 
 on:
   push:
