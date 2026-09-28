@@ -50,7 +50,7 @@ class FeatureIsolationTest {
 
         val missing = features.mapNotNull { feature ->
             val gradleFile = java.io.File(
-                projectDir,
+                java.io.File("."),
                 "../features/$feature/impl/build.gradle.kts",
             )
             if (!gradleFile.isFile) {
@@ -74,7 +74,7 @@ class FeatureIsolationTest {
     @Test
     fun `app shell feature imports are composition entry points`() {
         val appScreen = java.io.File(
-            projectDir,
+            java.io.File("."),
             "../app/src/main/java/rw/itunda/app/ui/ItundaAppScreen.kt",
         )
 
@@ -95,7 +95,7 @@ class FeatureIsolationTest {
     @Test
     fun `app shell uses feature composition entry points for primary tabs`() {
         val appScreen = java.io.File(
-            projectDir,
+            java.io.File("."),
             "../app/src/main/java/rw/itunda/app/ui/ItundaAppScreen.kt",
         )
 
