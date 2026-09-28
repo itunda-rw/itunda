@@ -858,7 +858,7 @@ export function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode,
               if (item.savingsTarget) onNavigateToSavingsTarget(item.savingsTarget);
               onNavigateToTab(item.tab);
             }}
-            style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 8px', borderRadius: '10px', textAlign: 'left', width: '100%' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 8px', borderRadius: 'var(--itunda-control-radius, 12px)', textAlign: 'left', width: '100%' }}
           >
             <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: item.tint, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {item.icon}
@@ -871,7 +871,7 @@ export function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode,
         ))}
         <button
           onClick={() => { recordEvent('coop_rail_tap', 'see_all'); onNavigateToTab('SAVINGS'); }}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 8px', borderRadius: '10px', textAlign: 'left', width: '100%', marginTop: '4px' }}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 8px', borderRadius: 'var(--itunda-control-radius, 12px)', textAlign: 'left', width: '100%', marginTop: '4px' }}
         >
           <span style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--itunda-indigo)' }}>{t('coopRail.seeAll')}</span>
           <IconChevronRight size={16} color="var(--itunda-indigo)" />
@@ -1701,7 +1701,7 @@ export function AddressAutocomplete({
               key={b.id}
               type="button"
               onMouseDown={() => { onSelectSuggestion({ displayName: b.displayName, latitude: b.latitude, longitude: b.longitude }); onChangeText(b.displayName); }}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', textAlign: 'left', padding: '8px 6px', fontSize: 'var(--itunda-type-scale-13-size)', borderRadius: '6px' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', textAlign: 'left', padding: '8px 6px', fontSize: 'var(--itunda-type-scale-13-size)', borderRadius: 'var(--itunda-control-radius, 12px)' }}
             >
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: b.color, flexShrink: 0 }} />
               {b.displayName}
@@ -1719,7 +1719,7 @@ export function AddressAutocomplete({
               key={i}
               type="button"
               onMouseDown={() => { onSelectSuggestion(s); setOpen(false); }}
-              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 6px', fontSize: 'var(--itunda-type-scale-13-size)', borderRadius: '6px' }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 6px', fontSize: 'var(--itunda-type-scale-13-size)', borderRadius: 'var(--itunda-control-radius, 12px)' }}
             >
               {s.displayName}
             </button>
@@ -1937,7 +1937,7 @@ export function PlaceSearchInput({ label, placeholder, value, onSelect }: {
           {results.map((r, i) => (
             <button
               key={`${r.latitude}-${r.longitude}-${i}`} type="button"
-              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px', fontSize: 'var(--itunda-type-scale-13-size)', borderRadius: '6px' }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px', fontSize: 'var(--itunda-type-scale-13-size)', borderRadius: 'var(--itunda-control-radius, 12px)' }}
               onClick={() => { onSelect(r); setQuery(r.displayName); setResults(null); }}
             >
               {r.displayName}
@@ -1951,7 +1951,7 @@ export function PlaceSearchInput({ label, placeholder, value, onSelect }: {
           {bookmarks.map((b) => (
             <button
               key={b.id} type="button"
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', textAlign: 'left', padding: '10px', fontSize: 'var(--itunda-type-scale-13-size)', borderRadius: '6px' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', textAlign: 'left', padding: '10px', fontSize: 'var(--itunda-type-scale-13-size)', borderRadius: 'var(--itunda-control-radius, 12px)' }}
               onClick={() => selectBookmark(b)}
             >
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: b.color, flexShrink: 0 }} />
