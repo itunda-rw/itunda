@@ -53,3 +53,5 @@ jobs:
             --quiet
       - name: Show service URL
         run: gcloud run services describe "${SERVICE_NAME}" --region "${REGION}" --project "${PROJECT_ID}" --format="value(status.url)"
+
+# Deployment trigger verification commit.
