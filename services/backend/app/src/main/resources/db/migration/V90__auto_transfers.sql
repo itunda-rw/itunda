@@ -1,0 +1,21 @@
+CREATE TABLE auto_transfers (
+    id VARCHAR(64) NOT NULL PRIMARY KEY,
+    user_id VARCHAR(64) NOT NULL,
+    wallet_id VARCHAR(64) NOT NULL,
+    recipient_identifier VARCHAR(64) NOT NULL,
+    recipient_name VARCHAR(255) NOT NULL,
+    amount DECIMAL(18, 2) NOT NULL,
+    frequency VARCHAR(16) NOT NULL,
+    day_of_week INT NULL,
+    day_of_month INT NULL,
+    description VARCHAR(255) NOT NULL DEFAULT 'Auto-transfer',
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    next_execution_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    last_executed_at TIMESTAMP NULL,
+    execution_count INT NOT NULL DEFAULT 0,
+    last_failure_reason VARCHAR(255) NULL,
+    cancelled_at TIMESTAMP NULL,
+    INDEX idx_auto_transfers_user (user_id),
+    INDEX idx_auto_transfers_due (status, next_execution_at)
+);

@@ -10,9 +10,11 @@ import io.mockk.slot
 import io.mockk.verify
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Partner
 import rw.itunda.core.domain.PartnerMiniApp
+import rw.itunda.core.domain.PartnerMiniAppCategory
 import rw.itunda.core.domain.PartnerMiniAppStatus
 import rw.itunda.core.domain.PartnerStatus
 import rw.itunda.core.repository.PartnerMiniAppRepository
@@ -64,6 +66,18 @@ class PartnerServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        When("registering with an email that isn't shaped like one") {
+            Then("it throws InvalidPartnerEmailException before ever checking for a duplicate or spending a rate-limit attempt") {
+                try {
+                    service.register("Acme Rwanda", "not-an-email")
+                    error("expected InvalidPartnerEmailException")
+                } catch (e: InvalidPartnerEmailException) {
+                    verify(exactly = 0) { rateLimiter.checkLimit(any(), any(), any()) }
+                    verify(exactly = 0) { partnerRepository.save(any()) }
+                }
+            }
+        }
     }
 
     Given("a registered partner submitting a mini-app for review") {
@@ -80,13 +94,29 @@ class PartnerServiceTest : BehaviorSpec({
         When("submitting with only real, allowed permission scopes") {
             val miniApp = service.submitMiniApp(
                 "sk_test_real_key", "Acme Delivery", "Order food in Kigali", null, "https://acme.rw/bundle.js",
-                listOf("wallet:read", "profile:read"),
+                listOf("account:read", "profile:read"),
             )
 
             Then("a real PENDING submission is created, not auto-approved") {
                 miniApp.status shouldBe PartnerMiniAppStatus.PENDING
                 miniApp.partnerId shouldBe "partner_1"
-                miniApp.permissions shouldBe "wallet:read,profile:read"
+                miniApp.permissions shouldBe "account:read,profile:read"
+            }
+        }
+
+        When("the partner has hit their real submission rate limit") {
+            every { rateLimiter.checkLimit("partner:submit_mini_app:partner_1", any(), any()) } throws RateLimitExceededException("Too many mini-app submissions")
+
+            Then("it real-429s rather than silently accepting unlimited submissions") {
+                try {
+                    service.submitMiniApp(
+                        "sk_test_real_key", "Acme Delivery", "desc", null, "https://acme.rw/bundle.js",
+                        listOf("account:read"),
+                    )
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { partnerMiniAppRepository.save(any()) }
+                }
             }
         }
 
@@ -95,7 +125,7 @@ class PartnerServiceTest : BehaviorSpec({
                 try {
                     service.submitMiniApp(
                         "sk_test_real_key", "Acme Delivery", "desc", null, "https://acme.rw/bundle.js",
-                        listOf("wallet:write", "admin:everything"),
+                        listOf("account:write", "admin:everything"),
                     )
                     error("expected InvalidPermissionScopeException")
                 } catch (e: InvalidPermissionScopeException) {
@@ -112,6 +142,40 @@ class PartnerServiceTest : BehaviorSpec({
                     )
                     error("expected InvalidMiniAppSubmissionException")
                 } catch (e: InvalidMiniAppSubmissionException) {
+                    verify(exactly = 0) { partnerMiniAppRepository.save(any()) }
+                }
+            }
+        }
+
+        When("submitting with a real, valid category") {
+            val miniApp = service.submitMiniApp(
+                "sk_test_real_key", "Acme Wallet", "Track your spending", null, "https://acme.rw/wallet.js",
+                emptyList(), "finance",
+            )
+
+            Then("the category is parsed case-insensitively and persisted") {
+                miniApp.category shouldBe PartnerMiniAppCategory.FINANCE
+            }
+        }
+
+        When("submitting with no category at all") {
+            val miniApp = service.submitMiniApp(
+                "sk_test_real_key", "Acme Misc", "desc", null, "https://acme.rw/misc.js", emptyList(),
+            )
+
+            Then("it defaults to OTHER rather than leaving it unset") {
+                miniApp.category shouldBe PartnerMiniAppCategory.OTHER
+            }
+        }
+
+        When("submitting with a category that isn't a real one") {
+            Then("it real-fails before ever creating a submission, rather than silently defaulting") {
+                try {
+                    service.submitMiniApp(
+                        "sk_test_real_key", "Acme Delivery", "desc", null, "https://acme.rw/bundle.js", emptyList(), "GAMES",
+                    )
+                    error("expected InvalidMiniAppCategoryException")
+                } catch (e: InvalidMiniAppCategoryException) {
                     verify(exactly = 0) { partnerMiniAppRepository.save(any()) }
                 }
             }
@@ -154,10 +218,11 @@ class PartnerServiceTest : BehaviorSpec({
 
         val miniApp = PartnerMiniApp(
             id = "partner_app_1", partnerId = "partner_1", name = "Acme Delivery", description = "desc",
-            bundleUrl = "https://acme.rw/bundle.js", permissions = "wallet:read", status = PartnerMiniAppStatus.PENDING,
+            bundleUrl = "https://acme.rw/bundle.js", permissions = "account:read", status = PartnerMiniAppStatus.PENDING,
         )
         every { partnerMiniAppRepository.findById("partner_app_1") } returns Optional.of(miniApp)
-        every { partnerMiniAppRepository.save(any()) } answers { firstArg() }
+        val savedSlot = slot<PartnerMiniApp>()
+        every { partnerMiniAppRepository.save(capture(savedSlot)) } answers { firstArg() }
 
         When("approving") {
             val decided = service.decide("partner_app_1", "admin_1", approve = true, reason = null)
@@ -165,6 +230,17 @@ class PartnerServiceTest : BehaviorSpec({
             Then("it's marked APPROVED and now appears in the real published catalog") {
                 decided.status shouldBe PartnerMiniAppStatus.APPROVED
                 decided.reviewedBy shouldBe "admin_1"
+            }
+
+            // Real bug found live (2026-08-02): decide() already read this exact
+            // submission, checked its status, then wrote back to it -- the correct
+            // check-then-act shape -- but with no @Version, two admins concurrently
+            // reviewing the same submission could race to a conflicting final decision.
+            // Asserts the mechanism the fix now relies on: the same versioned entity
+            // read is the one saved.
+            Then("the same versioned mini-app instance that was read is the one saved") {
+                savedSlot.captured shouldBe miniApp
+                savedSlot.captured.version shouldBe miniApp.version
             }
         }
 
@@ -180,6 +256,23 @@ class PartnerServiceTest : BehaviorSpec({
             Then("it's marked REJECTED and records the real reason") {
                 decided.status shouldBe PartnerMiniAppStatus.REJECTED
                 decided.decisionReason shouldBe "Bundle URL not HTTPS-verified"
+            }
+        }
+
+        When("rejecting with a reason over 255 characters") {
+            val pendingYetAgain = PartnerMiniApp(
+                id = "partner_app_4", partnerId = "partner_1", name = "Verbose App", description = "desc",
+                bundleUrl = "https://verbose.example.com/bundle.js", permissions = "", status = PartnerMiniAppStatus.PENDING,
+            )
+            every { partnerMiniAppRepository.findById("partner_app_4") } returns Optional.of(pendingYetAgain)
+
+            Then("it throws InvalidMiniAppDecisionReasonException before ever saving") {
+                try {
+                    service.decide("partner_app_4", "admin_1", approve = false, reason = "x".repeat(256))
+                    error("expected InvalidMiniAppDecisionReasonException")
+                } catch (e: InvalidMiniAppDecisionReasonException) {
+                    verify(exactly = 0) { partnerMiniAppRepository.save(any()) }
+                }
             }
         }
 
@@ -201,6 +294,86 @@ class PartnerServiceTest : BehaviorSpec({
         }
     }
 
+    // Real gap closed 2026-09-07 (Partners product-completeness pass): resolvePartner
+    // already real-enforces PartnerStatus.SUSPENDED, but nothing anywhere could ever
+    // set a Partner to SUSPENDED until this pass -- same real gap class this sweep
+    // already found and fixed for Merchant/vehicle-inspection mechanics.
+    Given("an admin suspending a real active partner") {
+        val partnerRepository = mockk<PartnerRepository>()
+        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
+        val partner = Partner(id = "partner_1", companyName = "Acme Ltd", contactEmail = "dev@acme.rw", apiKeyHash = "hash")
+        every { partnerRepository.findById("partner_1") } returns Optional.of(partner)
+        every { partnerRepository.save(any()) } answers { firstArg() }
+
+        When("suspending") {
+            val suspended = service.suspendPartner("partner_1", "admin_1")
+
+            Then("it real-flips the partner's own status field and records which admin acted") {
+                suspended.status shouldBe PartnerStatus.SUSPENDED
+                suspended.statusChangedBy shouldBe "admin_1"
+                suspended.statusChangedAt shouldNotBe null
+            }
+        }
+    }
+
+    Given("an admin reactivating a real suspended partner") {
+        val partnerRepository = mockk<PartnerRepository>()
+        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
+        val partner = Partner(id = "partner_1", companyName = "Acme Ltd", contactEmail = "dev@acme.rw", apiKeyHash = "hash", status = PartnerStatus.SUSPENDED)
+        every { partnerRepository.findById("partner_1") } returns Optional.of(partner)
+        every { partnerRepository.save(any()) } answers { firstArg() }
+
+        When("reactivating") {
+            val reactivated = service.reactivatePartner("partner_1", "admin_2")
+
+            Then("it real-clears the suspension and records which admin acted") {
+                reactivated.status shouldBe PartnerStatus.ACTIVE
+                reactivated.statusChangedBy shouldBe "admin_2"
+                reactivated.statusChangedAt shouldNotBe null
+            }
+        }
+    }
+
+    Given("an admin acting on a partner that doesn't exist") {
+        val partnerRepository = mockk<PartnerRepository>()
+        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
+        every { partnerRepository.findById("unknown") } returns Optional.empty()
+
+        When("suspending") {
+            Then("it real-404s") {
+                try {
+                    service.suspendPartner("unknown", "admin_1")
+                    error("expected PartnerNotFoundException")
+                } catch (e: PartnerNotFoundException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("the real list of every registered partner") {
+        val partnerRepository = mockk<PartnerRepository>()
+        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
+        val partner = Partner(id = "partner_1", companyName = "Acme Ltd", contactEmail = "dev@acme.rw", apiKeyHash = "hash")
+        every { partnerRepository.findAll() } returns listOf(partner)
+
+        When("fetched for the real admin moderation queue") {
+            val partners = service.getAllPartners()
+
+            Then("it reports every real registered partner, not just a filtered subset") {
+                partners shouldBe listOf(partner)
+            }
+        }
+    }
+
     Given("the real published mini-app catalog") {
         val partnerRepository = mockk<PartnerRepository>()
         val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
@@ -217,6 +390,18 @@ class PartnerServiceTest : BehaviorSpec({
 
             Then("it only ever contains real APPROVED entries -- never PENDING/REJECTED ones") {
                 catalog.content shouldBe listOf(approved)
+            }
+        }
+
+        When("fetched filtered to a real category") {
+            val financeApp = PartnerMiniApp(id = "partner_app_2", partnerId = "partner_1", name = "Acme Wallet", description = "desc", bundleUrl = "z", permissions = "", status = PartnerMiniAppStatus.APPROVED, category = PartnerMiniAppCategory.FINANCE)
+            every { partnerMiniAppRepository.findByStatusAndCategory(PartnerMiniAppStatus.APPROVED, PartnerMiniAppCategory.FINANCE, pageable) } returns PageImpl(listOf(financeApp))
+
+            val catalog = service.getCatalog(pageable, PartnerMiniAppCategory.FINANCE)
+
+            Then("only that category's real approved entries come back") {
+                catalog.content shouldBe listOf(financeApp)
+                verify(exactly = 0) { partnerMiniAppRepository.findByStatus(any(), any()) }
             }
         }
     }

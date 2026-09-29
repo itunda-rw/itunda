@@ -1,0 +1,130 @@
+package rw.itunda.card.web
+
+import io.kotest.core.spec.IsolationMode
+import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.shouldBe
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.slot
+import io.mockk.verify
+import org.springframework.http.HttpStatus
+import rw.itunda.card.CardChargeService
+import rw.itunda.card.CardService
+import rw.itunda.card.CardView
+import rw.itunda.core.domain.DebitCard
+import rw.itunda.core.idempotency.IdempotencyService
+import rw.itunda.core.security.CurrentUser
+
+/**
+ * Real gap found and fixed 2026-09-05 (feedback_idempotency_key_sweep, same class as
+ * StudentLoanController.apply's identical fix): before the fix, `issue` called
+ * CardService.issueCard directly with no Idempotency-Key protection -- a lost
+ * response after a successful issue would resubmit here and hit
+ * CardAlreadyIssuedException on the retry, a confusing conflict for an issuance
+ * that actually already succeeded. `charge` was already protected; `issue` was the
+ * outlier. This file exists to make sure that wiring can't silently regress.
+ */
+class CardControllerTest : BehaviorSpec({
+
+    val currentUser = CurrentUser(userId = "user_1")
+
+    Given("a first-time card issuance request") {
+        val cardService = mockk<CardService>()
+        val cardChargeService = mockk<CardChargeService>(relaxed = true)
+        val idempotencyService = mockk<IdempotencyService>()
+        val controller = CardController(cardService, cardChargeService, idempotencyService)
+
+        val card = mockk<DebitCard>(relaxed = true)
+        every { card.id } returns "card_1"
+        val cardView = mockk<CardView>(relaxed = true)
+        every { cardService.issueCard("user_1", "DEFAULT") } returns card
+        every { cardService.getMyCard("user_1") } returns cardView
+
+        val actionSlot = slot<() -> Pair<Int, Map<String, Any?>>>()
+        every {
+            idempotencyService.replayOrExecute("POST /api/v1/card/issue", "key-1", any(), capture(actionSlot))
+        } answers { actionSlot.captured.invoke() }
+
+        When("issuing the card") {
+            val response = controller.issue(IssueCardRequest("DEFAULT"), "key-1", currentUser)
+
+            Then("it routes through the real idempotency service, keyed to this exact route") {
+                verify(exactly = 1) { idempotencyService.replayOrExecute("POST /api/v1/card/issue", "key-1", any(), any()) }
+                verify(exactly = 1) { cardService.issueCard("user_1", "DEFAULT") }
+                response.statusCode shouldBe HttpStatus.CREATED
+                response.body?.get("cardId") shouldBe "card_1"
+            }
+        }
+    }
+
+    Given("a retried card issuance request using the same Idempotency-Key as a completed one") {
+        val cardService = mockk<CardService>()
+        val cardChargeService = mockk<CardChargeService>(relaxed = true)
+        val idempotencyService = mockk<IdempotencyService>()
+        val controller = CardController(cardService, cardChargeService, idempotencyService)
+
+        every {
+            idempotencyService.replayOrExecute("POST /api/v1/card/issue", "key-1", any(), any())
+        } returns (201 to mapOf("success" to true, "cardId" to "cached-result"))
+
+        When("retrying with the same key") {
+            val response = controller.issue(IssueCardRequest("DEFAULT"), "key-1", currentUser)
+
+            Then("the cached response is returned and a second card is never issued") {
+                response.body?.get("cardId") shouldBe "cached-result"
+                verify(exactly = 0) { cardService.issueCard(any(), any()) }
+            }
+        }
+    }
+
+    // Real gap closed 2026-09-07 (Card product-completeness pass): reissue had no
+    // Idempotency-Key protection at all before this -- same class of gap `issue`
+    // above already got fixed 2026-09-05. Same test shape as the two Given blocks
+    // above, proving the wiring can't silently regress.
+    Given("a first-time card reissue request") {
+        val cardService = mockk<CardService>()
+        val cardChargeService = mockk<CardChargeService>(relaxed = true)
+        val idempotencyService = mockk<IdempotencyService>()
+        val controller = CardController(cardService, cardChargeService, idempotencyService)
+
+        val cardView = mockk<CardView>(relaxed = true)
+        every { cardService.reissue("user_1") } returns cardView
+
+        val actionSlot = slot<() -> Pair<Int, Map<String, Any?>>>()
+        every {
+            idempotencyService.replayOrExecute("POST /api/v1/card/reissue", "key-1", any(), capture(actionSlot))
+        } answers { actionSlot.captured.invoke() }
+
+        When("reissuing the card") {
+            val response = controller.reissue("key-1", currentUser)
+
+            Then("it routes through the real idempotency service, keyed to this exact route") {
+                verify(exactly = 1) { idempotencyService.replayOrExecute("POST /api/v1/card/reissue", "key-1", any(), any()) }
+                verify(exactly = 1) { cardService.reissue("user_1") }
+                response.statusCode shouldBe HttpStatus.OK
+            }
+        }
+    }
+
+    Given("a retried card reissue request using the same Idempotency-Key as a completed one") {
+        val cardService = mockk<CardService>()
+        val cardChargeService = mockk<CardChargeService>(relaxed = true)
+        val idempotencyService = mockk<IdempotencyService>()
+        val controller = CardController(cardService, cardChargeService, idempotencyService)
+
+        every {
+            idempotencyService.replayOrExecute("POST /api/v1/card/reissue", "key-1", any(), any())
+        } returns (200 to mapOf("success" to true, "card" to "cached-result"))
+
+        When("retrying with the same key") {
+            val response = controller.reissue("key-1", currentUser)
+
+            Then("the cached response is returned and the card is never reissued twice") {
+                response.body?.get("card") shouldBe "cached-result"
+                verify(exactly = 0) { cardService.reissue(any()) }
+            }
+        }
+    }
+}) {
+    override fun isolationMode() = IsolationMode.InstancePerLeaf
+}

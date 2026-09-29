@@ -40,12 +40,22 @@ spec:
             port: 5000
           initialDelaySeconds: 5
           periodSeconds: 10
+          # Real fix (2026-08-28, itunda Hood redesign deploy) -- no timeoutSeconds
+          # here silently defaulted to 1s, and this single-node private cloud's own
+          # real CPU starvation (load 40-60+ during a heavy build/push) regularly
+          # makes even a genuinely healthy `GET /v2/` take longer than that, which
+          # crash-loops a working registry right when a deploy needs it most (see
+          # [[project_itunda_private_cloud]] for the live incident this closes).
+          timeoutSeconds: 8
+          failureThreshold: 3
         livenessProbe:
           httpGet:
             path: /v2/
             port: 5000
           initialDelaySeconds: 15
           periodSeconds: 20
+          timeoutSeconds: 8
+          failureThreshold: 3
         resources:
           requests:
             cpu: 50m

@@ -47,11 +47,27 @@ run_workspace() {
   (cd "$ROOT_DIR" && "${PACKAGE_MANAGER[@]}" workspace "$workspace" "$script_name")
 }
 
+run_workspace_with_args() {
+  local workspace="$1"
+  shift
+
+  detect_package_manager
+  (cd "$ROOT_DIR" && "${PACKAGE_MANAGER[@]}" workspace "$workspace" "$@")
+}
+
 run_workspace_in_background() {
   local workspace="$1"
   local script_name="$2"
 
   run_workspace "$workspace" "$script_name" &
+  CHILD_PIDS+=("$!")
+}
+
+run_workspace_with_args_in_background() {
+  local workspace="$1"
+  shift
+
+  run_workspace_with_args "$workspace" "$@" &
   CHILD_PIDS+=("$!")
 }
 
@@ -94,6 +110,14 @@ start_infra() {
   )
 }
 
+# Real fix (2026-08-09), found live via a real "no places found" Maps search on the physical
+# device: without NOMINATIM_BASE_URL/OSRM_BASE_URL/OSRM_FOOT_BASE_URL, NominatimGeocodingClient/
+# OsrmRoutingClient are unconfigured and every maps search/reverse-geocode/directions call
+# silently no-op's to an empty result -- the exact same failure mode
+# infra/k8s/progressive-delivery/backend-rollout.yaml's own comment documents as a real past
+# production outage (2026-07-27), just never also fixed for local dev. Same self-hosted node
+# (itunda-dc-a, 192.168.252.4) as the tile/glyph servers Android's own tilesBaseUrl/glyphsBaseUrl
+# gradle properties already default to.
 start_backend() {
   local default_db_port="3306"
   local default_redis_port="6379"
@@ -113,6 +137,9 @@ start_backend() {
     REDIS_HOST="${REDIS_HOST:-localhost}" \
     REDIS_PORT="${REDIS_PORT:-$default_redis_port}" \
     KAFKA_BOOTSTRAP_SERVERS="${KAFKA_BOOTSTRAP_SERVERS:-localhost:9092}" \
+    NOMINATIM_BASE_URL="${NOMINATIM_BASE_URL:-http://192.168.252.4:8088}" \
+    OSRM_BASE_URL="${OSRM_BASE_URL:-http://192.168.252.4:5000}" \
+    OSRM_FOOT_BASE_URL="${OSRM_FOOT_BASE_URL:-http://192.168.252.4:5001}" \
     ./gradlew :app:bootRun
   )
 }
@@ -120,6 +147,19 @@ start_backend() {
 start_gateway() {
   (
     export BACKEND_URL="${BACKEND_URL:-http://localhost:4001}"
+    export CARD_SERVICE_URL="${CARD_SERVICE_URL:-http://localhost:4002}"
+    export INSURANCE_SERVICE_URL="${INSURANCE_SERVICE_URL:-http://localhost:4003}"
+    export AGENTS_SERVICE_URL="${AGENTS_SERVICE_URL:-http://localhost:4004}"
+    export TRANSIT_SERVICE_URL="${TRANSIT_SERVICE_URL:-http://localhost:4005}"
+    export CERTIFICATE_SERVICE_URL="${CERTIFICATE_SERVICE_URL:-http://localhost:4006}"
+    export BILLS_SERVICE_URL="${BILLS_SERVICE_URL:-http://localhost:4007}"
+    export VEHICLE_SERVICE_URL="${VEHICLE_SERVICE_URL:-http://localhost:4008}"
+    export PARTNERS_SERVICE_URL="${PARTNERS_SERVICE_URL:-http://localhost:4009}"
+    export IDENTITY_SERVICE_URL="${IDENTITY_SERVICE_URL:-http://localhost:4010}"
+    export OVERVIEW_SERVICE_URL="${OVERVIEW_SERVICE_URL:-http://localhost:4011}"
+    export KNOWLEDGE_SERVICE_URL="${KNOWLEDGE_SERVICE_URL:-http://localhost:4012}"
+    export NOTIFICATIONS_SERVICE_URL="${NOTIFICATIONS_SERVICE_URL:-http://localhost:4013}"
+    export ANALYTICS_SERVICE_URL="${ANALYTICS_SERVICE_URL:-http://localhost:4014}"
     export LEDGER_SERVICE_URL="${LEDGER_SERVICE_URL:-http://localhost:8082}"
     export PAYMENT_SERVICE_URL="${PAYMENT_SERVICE_URL:-http://localhost:8081}"
     run_workspace "@itunda/api-gateway" start
@@ -131,6 +171,26 @@ start_web_dev() {
   run_workspace_in_background "kyc-mfe" "dev"
   run_workspace_in_background "ops-mfe" "dev"
   run_workspace_in_background "host-app" "dev"
+  wait
+}
+
+start_web_lan() {
+  local lan_ip
+  lan_ip="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
+
+  if [[ -z "$lan_ip" ]]; then
+    echo "Could not determine this Mac's LAN IP address." >&2
+    return 1
+  fi
+
+  run_workspace "kyc-mfe" "build"
+  run_workspace "bank-mfe" "build"
+  run_workspace "ops-mfe" "build"
+
+  VITE_DEV_HOST=0.0.0.0 VITE_PORT=5001 run_workspace_with_args_in_background "kyc-mfe" "preview" "--host" "0.0.0.0" "--port" "5001" "--strictPort"
+  VITE_DEV_HOST=0.0.0.0 VITE_PORT=5002 run_workspace_with_args_in_background "bank-mfe" "preview" "--host" "0.0.0.0" "--port" "5002" "--strictPort"
+  VITE_DEV_HOST=0.0.0.0 VITE_PORT=5003 run_workspace_with_args_in_background "ops-mfe" "preview" "--host" "0.0.0.0" "--port" "5003" "--strictPort"
+  VITE_DEV_HOST=0.0.0.0 VITE_PORT=5100 VITE_REMOTE_HOST="$lan_ip" run_workspace_in_background "host-app" "dev"
   wait
 }
 
@@ -182,6 +242,7 @@ Commands:
   backend     Run the canonical Kotlin backend against the configured infra
   gateway     Run the API gateway against the canonical backend
   web-dev     Run bank-mfe, kyc-mfe, ops-mfe, and host-app together
+  web-lan     Run the web shell on this Mac's LAN address for phone testing
   web-build   Build bank-mfe, kyc-mfe, ops-mfe, and host-app
   web-lint    Lint bank-mfe, kyc-mfe, ops-mfe, and host-app
   all         Start backend, gateway, and web apps against existing infra
@@ -202,6 +263,10 @@ case "$MODE" in
   web-dev)
     trap 'terminate_children' EXIT INT TERM
     start_web_dev
+    ;;
+  web-lan)
+    trap 'terminate_children' EXIT INT TERM
+    start_web_lan
     ;;
   web-build)
     build_web

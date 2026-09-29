@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="invest_tab_market">Marché</string>
+    <string name="invest_tab_portfolio">Portefeuille</string>
+    <string name="invest_tab_watchlist">Liste de suivi</string>
+    <string name="invest_buy">Acheter</string>
+    <string name="invest_sell">Vendre</string>
+    <string name="invest_working">Traitement…</string>
+    <string name="invest_add_funds">Ajouter des fonds</string>
+</resources>

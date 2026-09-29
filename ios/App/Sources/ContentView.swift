@@ -1,16 +1,44 @@
 import SwiftUI
 import UIKit
+import CoreNetwork
+import CoreDesignSystem
 import FeatureBanking
+import FeatureCredit
+import FeatureEats
+import FeatureHome
+import FeatureMaps
+import FeatureMy
+import FeaturePay
 import FeaturePayments
+import FeatureShop
+import FeatureSupport
+import FeatureWealth
 
 // Fixed (2026-07-11): every Text() in this file used .font(.system(size:weight:)) --
 // a fixed point size that doesn't grow or shrink with iOS's Dynamic Type
 // accessibility setting. Same bug, same fix as CoreDesignSystem's IDS.swift/
-// IdsTheme.swift (see IDS.swift's Typography struct for the full reasoning) --
-// this file doesn't import CoreDesignSystem for anything else today, so a small
-// local helper avoids adding a new cross-module dependency just for this.
-private func scaledFont(size: CGFloat, weight: UIFont.Weight, relativeTo style: UIFont.TextStyle) -> Font {
-    Font(UIFontMetrics(forTextStyle: style).scaledFont(for: UIFont.systemFont(ofSize: size, weight: weight)))
+// IdsTheme.swift (see IDS.swift's Typography struct for the full reasoning). This
+// file didn't import CoreDesignSystem for anything else at the time (a real import
+// was added later, 2026-08-22, for ToastOverlay -- see the TabView's own doc
+// comment below) -- kept as its own local copy rather than switching to
+// IDS.scaledFont now that the import exists, since that's an unrelated cleanup out
+// of scope for today's change.
+// Real typeface fix (2026-08-13) -- see IDS.scaledFont's own doc comment for the full
+// sourced account; kept as its own local copy for the same reason this function
+// duplicates IDS.scaledFont's logic in the first place (see the comment above).
+private func pretendardFont(size: CGFloat, weight: UIFont.Weight) -> UIFont {
+    let postscriptName: String
+    switch weight {
+    case .bold, .heavy, .black: postscriptName = "Pretendard-Bold"
+    case .semibold: postscriptName = "Pretendard-SemiBold"
+    case .medium: postscriptName = "Pretendard-Medium"
+    default: postscriptName = "Pretendard-Regular"
+    }
+    return UIFont(name: postscriptName, size: size) ?? UIFont.systemFont(ofSize: size, weight: weight)
+}
+
+func scaledFont(size: CGFloat, weight: UIFont.Weight, relativeTo style: UIFont.TextStyle) -> Font {
+    Font(UIFontMetrics(forTextStyle: style).scaledFont(for: pretendardFont(size: size, weight: weight)))
 }
 
 // Tab taxonomy history: Home/Benefits/Shop/Pay/All (2026-07-11, matching Android's
@@ -19,13 +47,45 @@ private func scaledFont(size: CGFloat, weight: UIFont.Weight, relativeTo style: 
 // comment on the TabView for the current rationale).
 /// Real savings deposit/claim flow (2026-07-12) -- see SavingsFlowContainer.swift.
 enum SavingsFlowStep: Identifiable {
-    case deposit(goalId: String, goalName: String)
+    // wasAlreadyCompleted added 2026-09-05 (real Toss UX-writing "Find Hidden
+    // Emotion" principle, toss.tech/article/8-writing-principles-of-toss --
+    // matches Android's identical SavingsFlowStep.Deposit fix, see
+    // MoneyActionResult.goalDepositCompleted's own doc comment) -- the goal's
+    // pre-deposit completion state, captured when this step is created (the one
+    // construction site already has currentAmount/targetAmount in scope), so the
+    // deposit result handler can tell a genuine active->completed transition from
+    // a redundant deposit into an already-completed goal.
+    case deposit(goalId: String, goalName: String, wasAlreadyCompleted: Bool)
+    // Real gap found live (2026-08-31, direct user re-reference of the real Toss
+    // "얼마나 꺼낼까요?" (withdraw) screenshot) -- see backend SavingsService
+    // .withdrawFromGoal's own doc comment for the full account.
+    case withdraw(goalId: String, goalName: String, currentAmount: Double)
     case claimInterest
 
     var id: String {
         switch self {
-        case .deposit(let goalId, _): return "deposit-\(goalId)"
+        case .deposit(let goalId, _, _): return "deposit-\(goalId)"
+        case .withdraw(let goalId, _, _): return "withdraw-\(goalId)"
         case .claimInterest: return "claim"
+        }
+    }
+}
+
+// Real per-bucket detail screen (2026-08-31, direct user-supplied Toss Bank
+// screenshots: 보관하기/매일모으기 each get their own full-screen ledger). Tapping a
+// bucket's row now opens its own detail screen (BucketDetailScreen.swift) instead
+// of jumping straight into the deposit/claim flow -- Fill/Withdraw live INSIDE that
+// screen instead, matching the real reference. Interest Jar's row keeps no
+// secondary action (never had one); Savings Goal rows keep their existing
+// secondaryAction (quick Withdraw) untouched alongside this.
+enum BucketDetailTarget: Identifiable {
+    case interestJar
+    case goal(id: String, name: String, currentAmount: Double, targetAmount: Double)
+
+    var id: String {
+        switch self {
+        case .interestJar: return "interestJar"
+        case .goal(let id, _, _, _): return "goal-\(id)"
         }
     }
 }
@@ -37,7 +97,19 @@ struct ContentView: View {
     // mechanism (mirrors bank-mfe's BankDashboard.tsx pendingConversationId/
     // onConsumedInitial pattern and Android's identical ItundaAppScreen.kt state).
     @State private var pendingConversationId: String?
-    // Real wallet/savings data (2026-07-11) -- see BankViewModel.swift for why this
+    // Shop/Eats/Marketplace/Community/Jobs/Property all lost their own primary tab
+    // (2026-08-10, see the TabView's own doc comment below) -- each reached as a real
+    // full-screen-cover entry point from Explore instead, same established pattern
+    // showSacco/showIkimina/etc. below already use. Property previously used a
+    // pendingHoodOpenProperty deep-link into Hood's own chip; no longer needed now
+    // that Property is its own direct destination.
+    @State private var showShop = false
+    @State private var showEats = false
+    @State private var showMarketplace = false
+    @State private var showCommunity = false
+    @State private var showJobs = false
+    @State private var showProperty = false
+    // Real account/savings data (2026-07-11) -- see BankViewModel.swift for why this
     // lives here rather than inside BankView's own module.
     @StateObject private var bankViewModel = BankViewModel()
     // Real send-money flow (2026-07-12) -- "Send money now" was decorative until
@@ -45,10 +117,216 @@ struct ContentView: View {
     @State private var showTransferFlow = false
     // Real savings deposit/claim flow (2026-07-12) -- see SavingsFlowContainer.swift.
     @State private var savingsFlowStep: SavingsFlowStep?
+    // Real per-bucket detail screen (2026-08-31) -- see BucketDetailTarget's own doc
+    // comment.
+    @State private var bucketDetailTarget: BucketDetailTarget?
+    // Real "itunda Bank assets" hub (2026-08-31) -- see ItundaBankAssetsScreen.swift's
+    // own doc comment.
+    @State private var showBankAssets = false
+    // Real savings-goal creation (2026-08-22) -- see CreateSavingsGoalScreen.swift.
+    // Its own separate boolean, not folded into savingsFlowStep/SavingsFlowContainer:
+    // creation doesn't move money, so it needs none of that container's
+    // MoneyActionResult/device-step-up machinery -- matches
+    // CreateWeeklySavingsPlanView's own established self-contained-sheet pattern.
+    @State private var showCreateSavingsGoal = false
     // Real transaction history (2026-07-12) -- see TransactionHistoryScreen.swift.
     @State private var showTransactionHistory = false
     // Real account settings screen (2026-07-12) -- see SettingsScreen.swift.
     @State private var showSettings = false
+    // Real bell/profile icons inside BankView's own header (product-feel audit,
+    // §235) -- see BankView.swift's TopBarActionButton doc comment for why these
+    // route to Settings (the one real destination that already has a notification
+    // feed) rather than a dedicated feed screen iOS doesn't have. Kept as its own
+    // state var (not reusing $showSettings) since it needs to present as a sheet
+    // ON TOP OF the already-showing $showBank fullScreenCover below, not stack a
+    // second fullScreenCover on that binding's own separate presentation.
+    @State private var showBankSettings = false
+    @State private var showMapFromDeepLink = false
+    @State private var mapSearchFromDeepLink: String?
+    // Real Kakao Map-style shared-folder landing (2026-08-18) -- resolves a real
+    // `itunda://maps/shared/{userId}/{folderName}` link (Android already resolved
+    // this since 2026-08-14; iOS never did until now). Mutually exclusive with a plain
+    // search link -- see the onOpenURL handler below.
+    @State private var mapSharedFolderFromDeepLink: (ownerId: String, folderName: String)?
+    // Real "verify with itunda" identity-verification-for-partners deep link
+    // (Partners product-completeness pass, 2026-09-07) -- resolves a real
+    // itunda://verify/{requestId} link, the exact `verifyUrl` the backend itself
+    // hands a partner (IdentityVerificationService.createRequest), confirmed
+    // against a real response rather than assumed. Android already resolved this
+    // since 2026-08-14; iOS never did until now. Separate host from maps, so it's
+    // parsed on its own rather than inside the maps-only gate below.
+    @State private var identityVerifyRequestId: String?
+    @State private var showIdentityVerifyFromDeepLink = false
+    // My's own real content (orders/favorites/listings) is its own primary tab now
+    // (ItundaTab.You, 2026-08-10) -- no overlay state needed to reach it anymore.
+    // Real Toss Bank 송금 (Transfer) full page (2026-07-24) -- reachable from the
+    // 전체/All tab's own "Financial services" section, matching real Toss where Home's
+    // own Send button stays a quick recipient-picker (unchanged) while the full grouped
+    // page (Send money/Auto-transfer/history) lives one level into the menu. See
+    // TransferHubScreen.swift's own doc comment.
+    @State private var showTransferHub = false
+    // Real product-positioning fix (2026-08-10, see the "itunda: the wedge, not the
+    // mirror" strategy memo, and the identical fix on bank-mfe's HomeView / Android's
+    // HomeTab): these 4 screens already existed but were only reachable from
+    // EntireMenuScreen's own local @State -- same "each presenting view owns its own
+    // sheet state" convention already used there, duplicated here so Home can reach
+    // them directly instead of only through the All tab.
+    @State private var showSacco = false
+    @State private var showIkimina = false
+    @State private var showMotoOwnership = false
+    @State private var showHarvestAdvance = false
+    // Real itunda Bank product identity (2026-08-11) -- see Android's identical
+    // BankHubScreen/BankSummaryCard and bank-mfe's identical SavingsView rebrand for
+    // the full "itunda Bank vs itunda account/Pay" research this came out of.
+    // LoansScreenView/InvestScreenView already existed (reachable only from
+    // EntireMenuScreen's own local @State before this) -- same "each presenting view
+    // owns its own sheet state" duplication already used for showSacco above.
+    @State private var showLoans = false
+    @State private var showInvest = false
+    // Real gap found 2026-09-06 (Bank product-completeness pass): WeeklySavingsScreenView/
+    // Grow31SavingsScreenView/UpfrontDepositScreenView/CreditScoreScreenView were fully
+    // built and API-wired but only reachable from MenuTabContent's own local @State --
+    // BankView itself (itunda's real Bank hub) had no path to any of the 4. Same
+    // "duplicate the presenting view's own local @State so Home/Bank can reach it
+    // directly" convention showSacco/showLoans/showInvest above already establish.
+    @State private var showWeeklySavings = false
+    @State private var showGrow31Savings = false
+    @State private var showUpfrontDeposit = false
+    @State private var showCreditScore = false
+    // Real gap found 2026-09-07 (Savings/Account product-completeness pass):
+    // YouthAccountScreenView/GroupAccountScreenView were fully built and API-wired
+    // but only reachable from MenuTabContent's own local @State, the exact same
+    // gap class the 2026-09-06 fix above already closed for Weekly/Grow31/
+    // Upfront/CreditScore -- never extended to these two.
+    @State private var showYouthAccount = false
+    @State private var showGroupAccounts = false
+    // Real architectural fix (2026-08-13, matching the identical Android fix same
+    // session, direct user directive): "all itunda product features are independent
+    // and isolated -- itunda bank is a complete product... tabs are not products,
+    // are just access points." BankView used to render directly as this TabView's
+    // own Home (tag 0) -- real Bank-product content (balance, savings, coop rail,
+    // connected money, discover, deposit protection) baked into what's meant to be
+    // a generic access point. Reachable from Explore's "Bank" icon now instead (see
+    // EntireMenuScreen's own onOpenBank doc comment), matching Android's identical
+    // BankHubScreen move. Home no longer carries any Bank-specific data at all.
+    @State private var showBank = false
+    // Real "View all rewards" destination for PayScreen's Membership sheet
+    // (2026-09-02, Pay Feature-module decomposition) -- PayScreen now lives in
+    // FeaturePay and injects this as a plain onOpenRewardsMiniApp callback, same
+    // onOpenRewards precedent FeatureAssets' own OverviewScreenView already
+    // established, since SaroniteRewardTasksView is :App-only.
+    @State private var showRewardTasksMiniApp = false
+    // Real Toss Bank 관리 (Manage) account-settings hub (2026-09-01) -- ports
+    // web's/Android's already-built AccountManageScreen (see that type's own doc
+    // comment in FeatureBanking for the full account of what it surfaces and what's
+    // honestly scoped out). This is the one place that can wire its rows to real
+    // App-module screens, since AccountManageScreen itself (FeatureBanking) can't
+    // import them.
+    @State private var showAccountManage = false
+    @State private var showDeviceList = false
+    @State private var showVerificationMethod = false
+    @State private var showTransferLimitDetail = false
+    @State private var showBankCard = false
+    @State private var showBankForeignCurrency = false
+    @State private var showBankPayBills = false
+    @State private var showBankSupport = false
+    // Set true only when AccountManageScreen's "Auto transfer" row opens
+    // showTransferHub, so TransferHubContainer lands straight on its own
+    // AutoTransferListScreen instead of the hub's top-level row list.
+    @State private var transferHubStartAtAutoTransfers = false
+    @State private var transferHubStartAtDelayedTransfers = false
+
+    // Real, minimal usage signal on each tap (2026-08-10) -- same event name/metadata
+    // shape bank-mfe's/Android's identical coop rails already fire, stable keys
+    // (sacco/ikimina/moto_ownership/harvest_advance) rather than the localized title.
+    private var coopRows: [CooperativeRowData] {
+        [
+            CooperativeRowData(title: "SACCO shares", subtitle: "Buy cooperative shares, earn a real dividend", symbol: "building.columns.fill", tint: Color.accentPurple.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "sacco")
+                showSacco = true
+            }),
+            CooperativeRowData(title: "Ikimina", subtitle: "Join a rotating savings circle with people you trust", symbol: "person.2.fill", tint: Color.accentTeal.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "ikimina")
+                showIkimina = true
+            }),
+            CooperativeRowData(title: "Moto-Taxi Ownership", subtitle: "Save toward your own bike, then convert to a loan", symbol: "bicycle", tint: Color.accentIndigo.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "moto_ownership")
+                showMotoOwnership = true
+            }),
+            CooperativeRowData(title: "Harvest advance", subtitle: "Input financing from your coffee cooperative", symbol: "leaf.fill", tint: Color.accentOrange.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "harvest_advance")
+                showHarvestAdvance = true
+            }),
+            CooperativeRowData(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "account.pass.fill", tint: Color.accentIndigo.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "loans")
+                showLoans = true
+            }),
+            CooperativeRowData(title: "Grow your money", subtitle: "RSE stocks, bonds & fixed income, IPOs", symbol: "chart.line.uptrend.xyaxis", tint: Color.accentTeal.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "invest")
+                showInvest = true
+            }),
+            // Real gap found 2026-09-06 (Bank product-completeness pass) -- these 4 rows
+            // reuse the exact same, already-built, already-API-wired screens
+            // MenuTabContent.swift already presents; only the entry point is new.
+            CooperativeRowData(title: "Weekly savings", subtitle: "26-week plan, a bonus rate for staying consistent", symbol: "calendar", tint: Color.accentOrange.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "weekly_savings")
+                showWeeklySavings = true
+            }),
+            CooperativeRowData(title: "31-day challenge", subtitle: "Save every day for a month, earn a streak bonus", symbol: "flame.fill", tint: Color.accentOrange.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "grow31_savings")
+                showGrow31Savings = true
+            }),
+            CooperativeRowData(title: "12-month deposit", subtitle: "\(String(format: "%.2f", upfrontDepositAnnualRate))%/yr interest paid upfront, principal locked", symbol: "lock.fill", tint: Color.accentPurple.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "upfront_deposit")
+                showUpfrontDeposit = true
+            }),
+            CooperativeRowData(title: "Credit score", subtitle: "Free check, see what's helping or hurting it", symbol: "star.fill", tint: Color.accentIndigo.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "credit_score")
+                showCreditScore = true
+            }),
+            // Real gap found 2026-09-07 (Savings/Account product-completeness pass) --
+            // reuse the exact same, already-built, already-API-wired screens
+            // MenuTabContent.swift already presents; only the entry point is new.
+            CooperativeRowData(title: "Youth account", subtitle: "A starter account for under-18s, parent-supervised", symbol: "figure.child", tint: Color.accentOrange.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "youth_account")
+                showYouthAccount = true
+            }),
+            CooperativeRowData(title: "Group accounts", subtitle: "Shared savings for family, church or cooperative groups", symbol: "person.3.fill", tint: Color.accentIndigo.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "group_accounts")
+                showGroupAccounts = true
+            }),
+        ]
+    }
+
+    // Real Toss Bank reference (2026-09-11, 7 real account-detail/전체 screenshots)
+    // -- Section 65 (docs/DESIGN_REFERENCES.md) named a "추천" (Recommended) rail
+    // leading the product catalog as a gap in 2026-08-13 and it was never built on
+    // any platform. Real bug found live during this pass: BankView's own
+    // `discoverRows` param used to be fed bankViewModel.discoverRows directly --
+    // the EXACT SAME unfiltered, all-category array passed into HomeTabContent
+    // (see this file's own HomeTabContent call site above), with no onTap at all.
+    // Filtered here (not in BankViewModel, which HomeTabContent's feed must stay
+    // untouched) to the same 4 ids web/Android use, built here rather than in
+    // BankViewModel because the real tap targets need ContentView's own @State
+    // (showSacco/showIkimina/showLoans/showCreateSavingsGoal), same reasoning as
+    // coopRows/savingsRows above. p_first_goal reuses showCreateSavingsGoal --
+    // already real (savingsRows' own "New savings goal" row sets it from this same
+    // Bank tab, confirming its .sheet works regardless of which row triggers it).
+    private var bankRecommendationRows: [DiscoverRowData] {
+        let anchors: [String: () -> Void] = [
+            "p_first_goal": { showCreateSavingsGoal = true },
+            "p_try_sacco": { showSacco = true },
+            "p_try_ikimina": { showIkimina = true },
+            "p_try_loan": { showLoans = true },
+        ]
+        return bankViewModel.discoverItems.compactMap { item in
+            guard let onTap = anchors[item.id] else { return nil }
+            return DiscoverRowData(title: item.title, subtitle: item.subtitle, badge: item.badge, isNew: item.isNew, onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("bank_recommendation_tap", metadata: item.id)
+                onTap()
+            })
+        }
+    }
 
     // Real Savings section rows with real tap targets (2026-07-12) -- built here,
     // not inside BankViewModel, because triggering savingsFlowStep needs
@@ -56,21 +334,55 @@ struct ContentView: View {
     // views take plain data rather than owning navigation state themselves).
     private var savingsRows: [SavingsRowData] {
         var rows: [SavingsRowData] = []
+        // Real "+ New savings goal" entry point (2026-08-22, product-feel/Toss-parity
+        // work) -- matches web's CreateGoalForm/Android's identical row, both already
+        // real. Leads the section, like web's own placement, with a distinct
+        // plus-icon/neutral tint (not the shared leaf used by real goals/jar below).
+        rows.append(SavingsRowData(
+            title: "New savings goal",
+            subtitle: "Set a target and save toward it",
+            trailing: "",
+            symbol: "plus.circle",
+            iconBackground: Color(.systemGray5),
+            onTap: { showCreateSavingsGoal = true }
+        ))
+        rows.append(SavingsRowData(
+            title: "itunda Bank assets",
+            subtitle: "See every account, goal, and plan you hold",
+            trailing: "",
+            symbol: "list.bullet",
+            iconBackground: Color(.systemGray5),
+            onTap: { showBankAssets = true }
+        ))
         if let jar = bankViewModel.interestJar {
+            // Real interest-methodology transparency (2026-08-11) -- this row only
+            // ever showed the opaque earned-this-month figure, never the rate or
+            // accrual frequency backing it (SavingsService.accrueInterest() divides
+            // jar.rate, the real annual rate, by 365 for a real daily accrual -- that
+            // math was never shown to the user on this platform). Matches the same
+            // fix applied to bank-mfe's mislabeled "daily interest" copy and Android's
+            // equivalent row the same day.
             rows.append(SavingsRowData(
                 title: "Interest jar",
-                subtitle: "Earned this month",
-                trailing: "RWF \(Int(jar.earnedThisMonth))",
-                onTap: { savingsFlowStep = .claimInterest }
+                subtitle: String(format: "%.1f%% annual, accrued daily", jar.rate),
+                trailing: "\(formatAmount(Int(jar.earnedThisMonth))) RWF",
+                onTap: { bucketDetailTarget = .interestJar }
             ))
         }
         for goal in bankViewModel.savingsGoals {
             let percent = goal.targetAmount > 0 ? Int(goal.currentAmount / goal.targetAmount * 100) : 0
+            // Real fix (2026-08-23, same session as a backend guard against depositing
+            // into an already-completed goal): this row never distinguished a completed
+            // goal at all -- matches Android's identical fix the same day, and web's own
+            // "· Completed 🎉" subtitle marker (BankDashboard.tsx) that already existed.
+            let completedSuffix = goal.status == "completed" ? " · Completed 🎉" : ""
             rows.append(SavingsRowData(
                 title: goal.name,
-                subtitle: "RWF \(Int(goal.currentAmount)) of \(Int(goal.targetAmount))",
+                subtitle: "\(Int(goal.currentAmount)) of \(formatAmount(Int(goal.targetAmount))) RWF\(completedSuffix)",
                 trailing: "\(percent)%",
-                onTap: { savingsFlowStep = .deposit(goalId: goal.id, goalName: goal.name) }
+                onTap: { bucketDetailTarget = .goal(id: goal.id, name: goal.name, currentAmount: goal.currentAmount, targetAmount: goal.targetAmount) },
+                secondaryAction: goal.currentAmount > 0 ? "Withdraw" : nil,
+                onSecondaryTap: goal.currentAmount > 0 ? { savingsFlowStep = .withdraw(goalId: goal.id, goalName: goal.name, currentAmount: goal.currentAmount) } : nil
             ))
         }
         return rows
@@ -78,18 +390,17 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            // Real, ported screen (was previously unreachable from any navigation --
-            // see docs/ARCHITECTURE.md §3's "New finding" note) replaces the crude,
-            // hardcoded-mock-data BankScreen struct that used to live in this file,
-            // same "delete the unreachable duplicate, wire in the real one" fix
-            // Android already went through for its own legacy BankScreen.kt.
-            BankView(
-                balanceText: bankViewModel.balanceText,
-                savingsRows: savingsRows,
-                onSend: { showTransferFlow = true },
-                onOpenTransactionHistory: { showTransactionHistory = true }
+            // Real minimal access-point Home (2026-08-13) -- see showBank's own doc
+            // comment above for why this used to be BankView directly. Discover is
+            // real, already-fetched data (bankViewModel.discoverRows); isOffline was
+            // already tracked by BankViewModel but never rendered anywhere -- same
+            // "tracked but never shown" bug just found and fixed on Android's
+            // identical HomeTab.
+            HomeTabContent(
+                discoverRows: bankViewModel.discoverRows,
+                isOffline: bankViewModel.isOffline,
+                onLoad: { await bankViewModel.load() }
             )
-                .task { await bankViewModel.load() }
                 .fullScreenCover(isPresented: $showTransferFlow) {
                     TransferFlowContainer(
                         availableBalance: bankViewModel.availableBalance,
@@ -107,6 +418,49 @@ struct ContentView: View {
                             savingsFlowStep = nil
                             Task { await bankViewModel.load() }
                         }
+                    )
+                }
+                .fullScreenCover(item: $bucketDetailTarget) { target in
+                    switch target {
+                    case .interestJar:
+                        let jar = bankViewModel.interestJar
+                        BucketDetailScreen(
+                            title: "Interest Jar",
+                            subtitle: "Safe Box",
+                            balanceText: "\(formatAmount(Int(jar?.balance ?? 0))) RWF",
+                            secondaryStatLabel: "Earned all-time",
+                            secondaryStatValue: "\(formatAmount(Int(jar?.earnedTotal ?? 0))) RWF",
+                            fetchTransactions: { try await NetworkClient.shared.getInterestJarTransactions().transactions },
+                            fillLabel: (jar?.earnedThisMonth ?? 0) > 0 ? "Get interest" : nil,
+                            onFill: (jar?.earnedThisMonth ?? 0) > 0 ? { bucketDetailTarget = nil; savingsFlowStep = .claimInterest } : nil,
+                            onBack: { bucketDetailTarget = nil }
+                        )
+                    case .goal(let id, let name, let currentAmount, let targetAmount):
+                        BucketDetailScreen(
+                            title: name,
+                            subtitle: "Savings Goal",
+                            balanceText: "\(formatAmount(Int(currentAmount))) RWF",
+                            secondaryStatLabel: "Target",
+                            secondaryStatValue: "\(formatAmount(Int(targetAmount))) RWF",
+                            fetchTransactions: { try await NetworkClient.shared.getSavingsGoalTransactions(goalId: id).transactions },
+                            fillLabel: "Deposit",
+                            onFill: { bucketDetailTarget = nil; savingsFlowStep = .deposit(goalId: id, goalName: name, wasAlreadyCompleted: currentAmount >= targetAmount) },
+                            withdrawLabel: currentAmount > 0 ? "Withdraw" : nil,
+                            onWithdraw: currentAmount > 0 ? { bucketDetailTarget = nil; savingsFlowStep = .withdraw(goalId: id, goalName: name, currentAmount: currentAmount) } : nil,
+                            onBack: { bucketDetailTarget = nil }
+                        )
+                    }
+                }
+                .fullScreenCover(isPresented: $showBankAssets) {
+                    ItundaBankAssetsScreen(onBack: { showBankAssets = false })
+                }
+                .sheet(isPresented: $showCreateSavingsGoal) {
+                    CreateSavingsGoalScreen(
+                        onCreated: {
+                            showCreateSavingsGoal = false
+                            Task { await bankViewModel.load() }
+                        },
+                        onCancel: { showCreateSavingsGoal = false }
                     )
                 }
                 .fullScreenCover(isPresented: $showTransactionHistory) {
@@ -130,46 +484,342 @@ struct ContentView: View {
                 }
                 .tag(0)
 
-            // Real super-app bottom nav (2026-07-18): Home/Shop/Hood/Talk/My,
-            // replacing the previous Home/Benefits/Shop/Pay/All layout now that
-            // itunda has real Coupang-style commerce (Shop), 당근마켓-style
-            // marketplace (Hood), and Kakao-style messaging (Talk) backends to put
-            // behind top-level tabs -- exact same restructure Android's
-            // ItundaAppScreen.kt just went through, see that file's own header
-            // comment for the full reasoning (Benefits/Pay folded into My below,
-            // not dropped).
-            ShopScreen()
+            // Real super-app bottom nav: Home/Pay/Explore/Messages/You (2026-08-10),
+            // replacing the previous Home/Shop/Hood/Talk/All layout -- an explicit
+            // product decision after directly comparing both, matching bank-mfe's
+            // BankDashboard.tsx and Android's ItundaAppScreen.kt the same session (see
+            // docs/DESIGN_REFERENCES.md Section 41 in the web repo for the full
+            // comparison). itunda is bank-first, so Pay and You (profile/account) get
+            // dedicated primary slots instead of being nested a tap into Explore/My the
+            // way the previous layout had them. Shop, Eats, Marketplace, Community,
+            // Jobs, and Property all lose their own tabs -- none demoted for being
+            // weak, all real, fully-built features -- and are each their own flat,
+            // individually reachable Explore entry point (same established
+            // full-screen-cover pattern showSacco/showIkimina/etc. already use). Real
+            // same-day correction: an earlier pass nested Shop+Eats behind
+            // ShopScreen's own Picker and Marketplace+Community+Jobs+Property behind
+            // HoodScreen's own Picker -- a tab bar inside a tab, noise a flat catalog
+            // shouldn't have -- so each is flat instead; see HoodSectionScreen's own
+            // doc comment (HoodScreen.swift) for the fuller account.
+            PayScreen(
+                onSwitchToYou: { selectedTab = 4 },
+                onOpenRewardsMiniApp: { showRewardTasksMiniApp = true },
+                cardDestination: { dismiss in CardScreenView(onBack: dismiss) },
+                supportDestination: { dismiss in SupportScreenView(onBack: dismiss) },
+                requestMoneyDestination: { dismiss in RequestMoneyScreenView(onBack: dismiss) }
+            )
+                .sheet(isPresented: $showRewardTasksMiniApp) {
+                    SaroniteRewardTasksView()
+                }
                 .tabItem {
-                    Image(systemName: "bag.fill")
-                    Text("Shop")
+                    Image(systemName: "creditcard.fill")
+                    Text("Pay")
                 }
                 .tag(1)
 
-            HoodScreen(pendingConversationId: $pendingConversationId, onSwitchToTalk: { selectedTab = 3 })
-                .tabItem {
-                    Image(systemName: "location.fill")
-                    Text("Hood")
+            // Real Menu Feature-module decomposition (2026-09-02) -- EntireMenuScreen
+            // itself now lives in FeatureMenu as a pure callback-driven catalog;
+            // MenuTabContent.swift owns its ~45 destinations' state + presentation
+            // (everything below this call, unchanged from before the move), matching
+            // HomeTabContent's own established App-Feature-bridge role.
+            MenuTabContent(
+                onOpenSettings: { showSettings = true },
+                onClaimInterest: { savingsFlowStep = .claimInterest },
+                onSwitchToTalk: { selectedTab = 3 },
+                onOpenTransferHub: { showTransferHub = true },
+                onOpenShop: { showShop = true },
+                onOpenEats: { showEats = true },
+                onOpenMarketplace: { showMarketplace = true },
+                onOpenCommunity: { showCommunity = true },
+                onOpenJobs: { showJobs = true },
+                onOpenProperty: { showProperty = true },
+                onOpenBank: { showBank = true }
+            )
+                .fullScreenCover(isPresented: $showBank) {
+                    // BankView was built to be a TabView root (no back button of its
+                    // own -- the tab bar was navigation enough); presented here as a
+                    // real destination instead, so it needs one, matching every other
+                    // fullScreenCover destination in this file (SaccoScreenView etc.
+                    // each take their own onBack).
+                    // Real fix (2026-08-24, TransactionDetailScreen's "Balance
+                    // after" -- matches Android's/bank-mfe's identical running-
+                    // balance computation): explicitly re-sorted newest-first
+                    // (matching those two platforms' own defensive re-sort) since a
+                    // running balance is only correct walked in that order.
+                    let sortedTransactions = bankViewModel.transactions.sorted { $0.createdAt > $1.createdAt }
+                    var runningBalance = bankViewModel.balance
+                    let recentTransactionRows: [RecentTransactionRowData] = sortedTransactions.map { tx in
+                        let isOutgoing = tx.senderId == bankViewModel.currentUserId
+                        let afterBalance = runningBalance
+                        runningBalance -= isOutgoing ? tx.amount : -tx.amount
+                        return RecentTransactionRowData(
+                            id: tx.id,
+                            title: tx.description,
+                            subtitle: tx.status.capitalized,
+                            amountText: "\(isOutgoing ? "-" : "+")\(Int(tx.amount)) \(tx.currency)",
+                            isOutgoing: isOutgoing,
+                            type: tx.type,
+                            createdAt: tx.createdAt,
+                            fee: tx.fee,
+                            currency: tx.currency,
+                            afterBalance: afterBalance
+                        )
+                    }
+                    NavigationStack {
+                        BankView(
+                            balanceText: bankViewModel.balanceText,
+                            accountNumber: bankViewModel.accountNumber,
+                            savingsRows: savingsRows,
+                            recommendationRows: bankRecommendationRows,
+                            coopRows: coopRows,
+                            recentTransactions: recentTransactionRows,
+                            onSend: { showTransferFlow = true },
+                            onOpenTransactionHistory: { showTransactionHistory = true },
+                            onOpenNotifications: { showBankSettings = true },
+                            onOpenProfile: { showBankSettings = true },
+                            unreadNotificationCount: bankViewModel.unreadNotificationCount,
+                            payBalanceText: bankViewModel.payBalanceText,
+                            onOpenPay: { showBank = false; selectedTab = 1 },
+                            onOpenCard: { showBankCard = true },
+                            onOpenManage: { showAccountManage = true }
+                        )
+                            .toolbar {
+                                ToolbarItem(placement: .navigationBarLeading) {
+                                    Button("Close") { showBank = false }
+                                }
+                            }
+                    }
+                        .task { await bankViewModel.load() }
+                        .sheet(isPresented: $showBankSettings) {
+                            SettingsScreen(onDone: { showBankSettings = false })
+                        }
+                        .sheet(isPresented: $showSacco) {
+                            SaccoScreenView(onBack: { showSacco = false })
+                        }
+                        .sheet(isPresented: $showIkimina) {
+                            IkiminaScreenView(onBack: { showIkimina = false })
+                        }
+                        .sheet(isPresented: $showMotoOwnership) {
+                            MotoOwnershipScreenView(onBack: { showMotoOwnership = false })
+                        }
+                        .sheet(isPresented: $showHarvestAdvance) {
+                            HarvestAdvanceScreenView(onBack: { showHarvestAdvance = false })
+                        }
+                        .sheet(isPresented: $showLoans) {
+                            LoansScreenView(onBack: { showLoans = false })
+                        }
+                        .sheet(isPresented: $showInvest) {
+                            InvestScreenView(onBack: { showInvest = false })
+                        }
+                        .sheet(isPresented: $showWeeklySavings) {
+                            WeeklySavingsScreenView(onBack: { showWeeklySavings = false })
+                        }
+                        .sheet(isPresented: $showGrow31Savings) {
+                            Grow31SavingsScreenView(onBack: { showGrow31Savings = false })
+                        }
+                        .sheet(isPresented: $showUpfrontDeposit) {
+                            UpfrontDepositScreenView(onBack: { showUpfrontDeposit = false })
+                        }
+                        .sheet(isPresented: $showCreditScore) {
+                            CreditScoreScreenView(onBack: { showCreditScore = false })
+                        }
+                        .sheet(isPresented: $showYouthAccount) {
+                            YouthAccountScreenView(onBack: { showYouthAccount = false })
+                        }
+                        .sheet(isPresented: $showGroupAccounts) {
+                            GroupAccountScreenView(onBack: { showGroupAccounts = false })
+                        }
+                        .fullScreenCover(isPresented: $showAccountManage) {
+                            AccountManageScreen(
+                                accountId: bankViewModel.accountId ?? "",
+                                accountNumber: bankViewModel.accountNumber ?? "",
+                                nickname: bankViewModel.accountNickname,
+                                onNicknameChanged: { bankViewModel.updateAccountNickname($0) },
+                                onChangePassword: { currentCredential, newPin in
+                                    switch await SessionManager.shared.updateAccountPin(currentCredential: currentCredential, newPin: newPin) {
+                                    case .success: return nil
+                                    case .failure(let message): return message
+                                    }
+                                },
+                                onBack: { showAccountManage = false },
+                                onOpenCard: { showAccountManage = false; showBankCard = true },
+                                onOpenDevices: { showAccountManage = false; showDeviceList = true },
+                                onOpenInterestJar: { showAccountManage = false; bucketDetailTarget = .interestJar },
+                                onOpenVerificationMethod: { showAccountManage = false; showVerificationMethod = true },
+                                onOpenAutoTransfer: { showAccountManage = false; transferHubStartAtAutoTransfers = true; showTransferHub = true },
+                                onOpenDelayedTransfers: { showAccountManage = false; transferHubStartAtDelayedTransfers = true; showTransferHub = true },
+                                onOpenTransferLimit: { showAccountManage = false; showTransferLimitDetail = true },
+                                onOpenForeignCurrency: { showAccountManage = false; showBankForeignCurrency = true },
+                                onOpenBills: { showAccountManage = false; showBankPayBills = true },
+                                onOpenSupport: { showAccountManage = false; showBankSupport = true }
+                            )
+                        }
+                        .sheet(isPresented: $showBankCard) {
+                            CardScreenView(onBack: { showBankCard = false })
+                        }
+                        .sheet(isPresented: $showBankForeignCurrency) {
+                            ForeignCurrencyScreenView(onBack: { showBankForeignCurrency = false })
+                        }
+                        .sheet(isPresented: $showBankPayBills) {
+                            SaronitePayBillsView()
+                        }
+                        .sheet(isPresented: $showBankSupport) {
+                            SupportScreenView(onBack: { showBankSupport = false })
+                        }
+                        .fullScreenCover(isPresented: $showDeviceList) {
+                            DeviceListScreen(onBack: { showDeviceList = false })
+                        }
+                        .fullScreenCover(isPresented: $showVerificationMethod) {
+                            VerificationMethodScreen(onBack: { showVerificationMethod = false })
+                        }
+                        .fullScreenCover(isPresented: $showTransferLimitDetail) {
+                            TransferLimitScreen(onBack: { showTransferLimitDetail = false })
+                        }
                 }
-                .tag(2)
-
-            TalkScreen(pendingConversationId: $pendingConversationId)
-                .tabItem {
-                    Image(systemName: "bubble.left.and.bubble.right.fill")
-                    Text("Talk")
-                }
-                .tag(3)
-
-            EntireMenuScreen(onOpenSettings: { showSettings = true })
                 .fullScreenCover(isPresented: $showSettings) {
                     SettingsScreen(onDone: { showSettings = false })
                 }
+                .fullScreenCover(isPresented: $showTransferHub) {
+                    TransferHubContainer(
+                        onBack: { showTransferHub = false; transferHubStartAtAutoTransfers = false; transferHubStartAtDelayedTransfers = false },
+                        onSendMoney: { showTransferHub = false; showTransferFlow = true },
+                        onSplitBill: { showTransferHub = false; selectedTab = 3 },
+                        onOpenHistory: { showTransferHub = false; showTransactionHistory = true },
+                        startAtAutoTransfers: transferHubStartAtAutoTransfers,
+                        startAtDelayedTransfers: transferHubStartAtDelayedTransfers
+                    )
+                }
+                .fullScreenCover(isPresented: $showShop) {
+                    CommerceShopContent(onMessageSeller: { conversationId in
+                        pendingConversationId = conversationId
+                        showShop = false
+                        selectedTab = 3
+                    })
+                }
+                .fullScreenCover(isPresented: $showEats) {
+                    EatsContent()
+                }
+                .fullScreenCover(isPresented: $showMarketplace) {
+                    HoodSectionScreen(mode: .marketplace, pendingConversationId: $pendingConversationId, onSwitchToTalk: { showMarketplace = false; selectedTab = 3 })
+                }
+                .fullScreenCover(isPresented: $showCommunity) {
+                    HoodSectionScreen(mode: .community, pendingConversationId: $pendingConversationId, onSwitchToTalk: { showCommunity = false; selectedTab = 3 })
+                }
+                .fullScreenCover(isPresented: $showJobs) {
+                    HoodSectionScreen(mode: .jobs, pendingConversationId: $pendingConversationId, onSwitchToTalk: { showJobs = false; selectedTab = 3 })
+                }
+                .fullScreenCover(isPresented: $showProperty) {
+                    HoodSectionScreen(mode: .property, pendingConversationId: $pendingConversationId, onSwitchToTalk: { showProperty = false; selectedTab = 3 })
+                }
+                .tabItem {
+                    Image(systemName: "square.grid.2x2.fill")
+                    Text("Explore")
+                }
+                .tag(2)
+
+            // Real service-channel ctaRoute navigation (itunda Talk redesign,
+            // 2026-08-28) -- a real, honest partial router: routes to the right real
+            // top-level destination by prefix (this app has no generic route-string
+            // sub-screen dispatcher), not the exact sub-screen every ctaRoute names.
+            // A real, named, deliberate scope limit, not fabricated navigation.
+            TalkScreen(pendingConversationId: $pendingConversationId, onNavigateRoute: { route in
+                if route.hasPrefix("/bank") { showBank = true }
+                else if route.hasPrefix("/pay") { selectedTab = 1 }
+                else if route.hasPrefix("/hood") || route.hasPrefix("/marketplace") { showMarketplace = true }
+            })
+                .tabItem {
+                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                    Text("Messages")
+                }
+                .tag(3)
+                // Real cross-platform-parity gap found live (2026-09-13) -- web
+                // already shows this exact numeric badge (BankDashboard.tsx, capped
+                // "99+" there; SwiftUI's native .badge() applies its own "99+"-style
+                // truncation automatically, so no manual capping needed here) on the
+                // Messages tab; iOS had none at all.
+                .badge(bankViewModel.messagesUnreadCount)
+
+            // Real, dedicated primary tab (2026-08-10, see this TabView's own doc
+            // comment) -- MyTabView's own real content (orders/favorites/listings) is
+            // completely unchanged, just reached directly instead of via Explore's
+            // profile icon. Now FeatureMy (2026-09-02, My Feature-module
+            // decomposition) -- onUpdatePin bridges to SessionManager, App-only
+            // since it's the app's own central session/auth orchestrator.
+            MyTabView(
+                onSwitchToShop: { showShop = true },
+                onSwitchToEats: { showEats = true },
+                onSwitchToMarketplace: { showMarketplace = true },
+                onSwitchToJobs: { showJobs = true },
+                onSwitchToProperty: { showProperty = true },
+                onUpdatePin: { currentCredential, newPin in
+                    switch await SessionManager.shared.updateAccountPin(currentCredential: currentCredential, newPin: newPin) {
+                    case .success: return nil
+                    case .failure(let message): return message
+                    }
+                }
+            )
                 .tabItem {
                     Image(systemName: "person.fill")
-                    Text("My")
+                    Text("You")
                 }
                 .tag(4)
         }
         .accentColor(.primary)
+        // Real Toast mount point (2026-08-22) -- see CoreDesignSystem's Toast.swift
+        // for the full account. Attached here, not deeper, so it's visible on the
+        // Home tab's own layer the moment a .sheet/.fullScreenCover presented from
+        // it (CreateSavingsGoalScreen, SavingsFlowContainer, TransferFlowContainer,
+        // ...) dismisses itself and calls ToastCenter.shared.show(...) right before
+        // its own onCreated/onDone callback. A SwiftUI .overlay can't render ABOVE
+        // an active .sheet/.fullScreenCover (those present in their own separate
+        // UIKit modal layer, genuinely on top of any overlay on the presenter) --
+        // that's a real SwiftUI limitation, not an oversight here; every real call
+        // site fires its toast at (or after) the moment its own cover/sheet is
+        // already dismissing, which is the actual use case this needs to cover.
+        .overlay(ToastOverlay())
+        .fullScreenCover(isPresented: $showMapFromDeepLink) {
+            MapScreenView(initialSearchQuery: mapSearchFromDeepLink, initialSharedFolder: mapSharedFolderFromDeepLink)
+        }
+        .fullScreenCover(isPresented: $showIdentityVerifyFromDeepLink) {
+            if let identityVerifyRequestId {
+                IdentityVerificationConsentView(requestId: identityVerifyRequestId, onDone: { showIdentityVerifyFromDeepLink = false })
+            }
+        }
+        .onOpenURL { url in
+            guard url.scheme?.caseInsensitiveCompare("itunda") == .orderedSame else { return }
+            if url.host?.caseInsensitiveCompare("verify") == .orderedSame {
+                if let id = url.path.split(separator: "/").first.map(String.init)?.trimmingCharacters(in: .whitespacesAndNewlines), !id.isEmpty {
+                    identityVerifyRequestId = id
+                    showIdentityVerifyFromDeepLink = true
+                }
+                return
+            }
+            guard url.host?.caseInsensitiveCompare("maps") == .orderedSame else { return }
+            // Real shared-folder link (2026-08-18) -- itunda://maps/shared/{userId}/{folderName},
+            // matching Android's own identical path-shape check and bank-mfe's own
+            // ?sharedOwner=&sharedFolder= query-param equivalent.
+            let pathParts = url.path.split(separator: "/").map(String.init)
+            if pathParts.count == 3, pathParts[0].caseInsensitiveCompare("shared") == .orderedSame {
+                mapSharedFolderFromDeepLink = (ownerId: pathParts[1], folderName: pathParts[2].removingPercentEncoding ?? pathParts[2])
+                mapSearchFromDeepLink = nil
+                showMapFromDeepLink = true
+                return
+            }
+            mapSharedFolderFromDeepLink = nil
+            mapSearchFromDeepLink = url.path.caseInsensitiveCompare("/search") == .orderedSame
+                ? url.queryValue(named: "query")?.trimmingCharacters(in: .whitespacesAndNewlines).prefix(160).description
+                : nil
+            showMapFromDeepLink = true
+        }
+    }
+}
+
+private extension URL {
+    func queryValue(named name: String) -> String? {
+        URLComponents(url: self, resolvingAgainstBaseURL: false)?
+            .queryItems?
+            .first(where: { $0.name == name })?
+            .value
     }
 }
 
@@ -179,163 +829,15 @@ struct ContentView: View {
 // file's own header for why. (DiscoverScreen, the old "Shop" tab, was removed
 // 2026-07-18 -- see BenefitsShopAllScreens.swift's own note on why.)
 //
-// PayScreen stays defined here and is now reached from My (EntireMenuScreen's real
-// "Quick links" row), not its own top-level tab -- same fold-in Android's AllTab
-// went through. Still real-UI-only (no real backend quote/confirm wired -- see this
-// struct's own header comment below), that scope gap is unrelated to the nav move.
-struct PayScreen: View {
-    // Wires the real, ported TransferQuoteScreen (ios/Features/Payments/
-    // Sources/TransferScreen.swift) in for the first time -- it had zero call
-    // sites anywhere in ios/ despite being real code with a working biometric
-    // confirm gate (docs/ARCHITECTURE.md §3's "BankView wired in" note names
-    // this same pattern for BankView; this is the same fix for
-    // TransferQuoteScreen). No real backend session exists on iOS yet (no
-    // login flow -- same honest caveat android/features/payments/impl/
-    // TransferFlow.kt's own header states for Android), so recipient/amount/
-    // fee are UI-only placeholder state, not a real quote.
-    @State private var selectedMerchant: String?
-    @State private var showTransferSheet = false
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                HeaderTitle(title: "Itunda Pay")
-                CardItem(title: "Pay Balance", value: "32,050 RWF", buttonText: "Scan QR / Barcode", buttonColor: .blue)
-
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("Nearby Merchants")
-                        .font(scaledFont(size: 18, weight: .bold, relativeTo: .headline))
-                        .padding(.horizontal, 24)
-                        .padding(.bottom, 16)
-                    TransactionRow(title: "Kigali Heights", date: "1.2 km away", amount: "Pay with QR", isNegative: false) {
-                        selectedMerchant = "Kigali Heights"
-                        showTransferSheet = true
-                    }
-                    TransactionRow(title: "Brioche Cafe", date: "2.0 km away", amount: "Pay with QR", isNegative: false) {
-                        selectedMerchant = "Brioche Cafe"
-                        showTransferSheet = true
-                    }
-                }
-                .padding(.vertical, 24)
-                .background(Color(.secondarySystemGroupedBackground))
-                .cornerRadius(24)
-                .padding(.horizontal, 20)
-            }
-            .padding(.top, 24)
-        }
-        .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
-        .sheet(isPresented: $showTransferSheet) {
-            TransferQuoteScreen(
-                recipientName: selectedMerchant ?? "Merchant",
-                amount: "2,000",
-                fee: "0",
-                onConfirm: { showTransferSheet = false },
-                onCancel: { showTransferSheet = false }
-            )
-        }
-    }
-}
-
-// EntireMenuScreen (the "All" tab) also moved to BenefitsShopAllScreens.swift
-// (2026-07-11) -- same reason as the comment above.
-
-struct HeaderTitle: View {
-    let title: String
-    var body: some View {
-        HStack {
-            Text(title)
-                .font(scaledFont(size: 28, weight: .bold, relativeTo: .largeTitle))
-                .foregroundColor(.primary)
-            Spacer()
-            Image(systemName: "bell.fill")
-                .foregroundColor(.secondary)
-                .font(.title2)
-        }
-        .padding(.horizontal, 24)
-        .padding(.top, 16)
-    }
-}
-
-struct CardItem: View {
-    let title: String
-    let value: String
-    let buttonText: String
-    let buttonColor: Color
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(title)
-                .font(scaledFont(size: 14, weight: .semibold, relativeTo: .footnote))
-                .foregroundColor(.secondary)
-
-            Text(value)
-                .font(scaledFont(size: 22, weight: .bold, relativeTo: .title1))
-                .foregroundColor(.primary)
-
-            Button(action: {}) {
-                Text(buttonText)
-                    .font(scaledFont(size: 16, weight: .semibold, relativeTo: .body))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(buttonColor)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-            }
-        }
-        .padding(24)
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(24)
-        .padding(.horizontal, 20)
-    }
-}
-
-struct TransactionRow: View {
-    let title: String
-    let date: String
-    let amount: String
-    let isNegative: Bool
-    // Optional so a read-only usage (a past transaction, say) doesn't need to pass a
-    // no-op closure -- PayScreen's merchant rows are the first real, tappable usage.
-    var action: (() -> Void)? = nil
-
-    var body: some View {
-        let content = HStack {
-            Circle()
-                .fill(Color.secondary.opacity(0.2))
-                .frame(width: 40, height: 40)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(scaledFont(size: 16, weight: .semibold, relativeTo: .body))
-                    .foregroundColor(.primary)
-                Text(date)
-                    .font(scaledFont(size: 14, weight: .regular, relativeTo: .footnote))
-                    .foregroundColor(.secondary)
-            }
-            Spacer()
-            Text(amount)
-                .font(scaledFont(size: 16, weight: .bold, relativeTo: .body))
-                .foregroundColor(isNegative ? .primary : .blue)
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 12)
-
-        if let action {
-            Button(action: action) { content }
-                .buttonStyle(.plain)
-        } else {
-            content
-        }
-    }
-}
-
-// #Preview { ContentView() } removed (2026-07-11) -- the real, working Xcode
-// toolchain discovered this session (DEVELOPER_DIR=/Applications/Xcode.app/...,
-// Xcode 14.3.1 + Tuist 3.42.3 via mise, see ARCHITECTURE.md §3) rejected this with
-// "use of unknown directive '#Preview'" -- the preview-macro plugin isn't available
-// in this generated project's build configuration. #Preview has zero runtime/
-// production effect (canvas-only, Xcode-GUI-only), and no interactive canvas can
-// ever render in this non-GUI environment anyway, so removing it was the right call
-// rather than fighting toolchain plumbing for a feature that could never be used
-// here. This was the *only* error in an otherwise clean full xcodebuild of every
-// target in the workspace.
+// Real fix (2026-08-11, itunda Pay research pass -- user-provided KakaoPay/Toss
+// Pay screenshots): this whole tab was a decorative mockup -- hardcoded "32,050
+// RWF" balance, hardcoded "Kigali Heights"/"Brioche Cafe" merchant rows with fake
+// distances, a "Scan QR / Barcode" button that was a literal no-op
+// (Button(action: {})), and tapping a merchant opened a hardcoded fake quote
+// ("2,000" RWF) that never called any API. The REAL payment-collection UI
+// (pay-by-code, pay-by-static-QR, Face Pay -- all genuinely wired to
+// rw.itunda.merchant.MerchantService.collect) already existed, just misfiled
+// inside the unrelated Shop screen (ShopScreen.swift's own PayAMerchantSection)
+// where the Pay tab could never reach it. This is that real UI, moved to where
+// "Pay" actually means pay -- same fix as Android's identical PayTab mock the
+// same day.

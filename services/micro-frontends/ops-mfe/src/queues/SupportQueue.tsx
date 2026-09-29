@@ -9,6 +9,14 @@ const CATEGORY_LABEL: Record<SupportTicket['category'], string> = {
   GENERAL: 'General',
   PAYMENT_DISPUTE: 'Payment dispute',
   ACCOUNT_TAKEOVER: 'Account takeover',
+  // Real Uber "trip issue report" category (2026-08-16) -- see backend
+  // SupportTicketCategory.RIDE_ISSUE's own doc comment.
+  RIDE_ISSUE: 'Ride issue',
+  // Real gap found (Support product-completeness pass, 2026-09-08): this backend
+  // category has existed since the Eats pass (2026-09-06) and is already
+  // creatable via bank-mfe, but this admin queue never learned about it -- a real
+  // EATS_ORDER_ISSUE ticket rendered with an undefined category label here.
+  EATS_ORDER_ISSUE: 'Eats order issue',
 };
 
 function isOverdue(dueBy: string) {
@@ -36,7 +44,7 @@ function SupportCard({ ticket, onResolved }: { ticket: SupportTicket; onResolved
   };
 
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
@@ -44,8 +52,8 @@ function SupportCard({ ticket, onResolved }: { ticket: SupportTicket; onResolved
               style={{
                 fontSize: '12px',
                 fontWeight: 700,
-                color: 'var(--toss-blue)',
-                backgroundColor: 'var(--toss-blue-light)',
+                color: 'var(--itunda-brand)',
+                backgroundColor: 'var(--itunda-surface-brand)',
                 padding: '2px 8px',
                 borderRadius: '6px',
               }}
@@ -53,19 +61,19 @@ function SupportCard({ ticket, onResolved }: { ticket: SupportTicket; onResolved
               {CATEGORY_LABEL[ticket.category]}
             </span>
             {ticket.category === 'ACCOUNT_TAKEOVER' && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 700, color: '#E53935' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 700, color: 'var(--itunda-field-border-error)' }}>
                 <AlertOctagon size={13} /> Wallet frozen
               </span>
             )}
           </div>
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--toss-grey-900)' }}>{ticket.description}</p>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-text-primary)' }}>{ticket.description}</p>
         </div>
       </div>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)' }}>
         User {ticket.userId}
         {ticket.transactionId && ` · Transaction ${ticket.transactionId}`}
       </p>
-      <p style={{ fontSize: '13px', fontWeight: 600, color: overdue ? '#E53935' : 'var(--toss-grey-500)' }}>
+      <p style={{ fontSize: '13px', fontWeight: 600, color: overdue ? 'var(--itunda-field-border-error)' : 'var(--itunda-text-tertiary)' }}>
         Due {new Date(ticket.dueBy).toLocaleString()}{overdue && ' · Overdue'}
       </p>
 
@@ -75,12 +83,12 @@ function SupportCard({ ticket, onResolved }: { ticket: SupportTicket; onResolved
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Resolution notes (optional)"
           rows={2}
-          style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
+          style={{ padding: '10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '14px', resize: 'vertical' }}
         />
       )}
 
       {actionError && (
-        <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: 0 }} role="alert" aria-live="polite">
           {actionError}
         </p>
       )}
@@ -88,11 +96,11 @@ function SupportCard({ ticket, onResolved }: { ticket: SupportTicket; onResolved
       <div style={{ display: 'flex', gap: '8px' }}>
         {!resolving ? (
           <>
-            <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={pending} onClick={() => setResolving('REJECTED')}>
+            <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={pending} onClick={() => setResolving('REJECTED')}>
               Reject
             </button>
             <button
-              className="toss-btn toss-btn-primary"
+              className="itunda-btn itunda-btn-primary"
               style={{ flex: 1 }}
               disabled={pending || !ticket.transactionId}
               onClick={() => setResolving('REFUNDED')}
@@ -103,11 +111,11 @@ function SupportCard({ ticket, onResolved }: { ticket: SupportTicket; onResolved
           </>
         ) : (
           <>
-            <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={pending} onClick={() => setResolving(null)}>
+            <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={pending} onClick={() => setResolving(null)}>
               Cancel
             </button>
             <button
-              className={resolving === 'REFUNDED' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-danger'}
+              className={resolving === 'REFUNDED' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-danger'}
               style={{ flex: 1 }}
               disabled={pending}
               onClick={() => resolve(resolving)}

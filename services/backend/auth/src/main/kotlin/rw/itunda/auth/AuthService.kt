@@ -3,54 +3,127 @@ package rw.itunda.auth
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import rw.itunda.core.domain.EmailVerificationToken
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.Notification
+import rw.itunda.core.domain.TermsAcceptance
+import rw.itunda.core.domain.TermsCatalog
 import rw.itunda.core.domain.User
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.NominatimGeocodingClient
-import rw.itunda.core.repository.EmailVerificationTokenRepository
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.NotificationRepository
+import rw.itunda.core.repository.TermsAcceptanceRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.account.AccountNumberGenerator
+import rw.itunda.core.validation.isValidEmail
+import rw.itunda.core.validation.isValidPhoneNumber
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.UUID
+
+// Real Toss-sourced 6-digit numeric PIN (support.toss.im's own real help-center
+// articles: "6자리 비밀번호") -- see AuthService.register's own doc comment.
+private val PIN_PATTERN = Regex("^\\d{6}$")
 
 /**
  * Port of backend/src/controllers/auth.controller.ts's login/register, with one fix
  * applied from day one instead of ported as a known gap: registration provisions a real
- * MAIN wallet (zero balance) for the new user. The Express backend's SECURITY.md lists
- * "new accounts have no wallet of their own" as its #1 open remediation item — since this
+ * MAIN account (zero balance) for the new user. The Express backend's SECURITY.md lists
+ * "new accounts have no account of their own" as its #1 open remediation item — since this
  * is a fresh implementation, there's no reason to carry that gap forward.
  */
 @Service
 class AuthService(
     private val userRepository: UserRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val interestJarRepository: InterestJarRepository,
     private val jwtService: JwtService,
     private val tokenBlocklistService: TokenBlocklistService,
     private val rateLimiter: RateLimiter,
-    private val emailVerificationTokenRepository: EmailVerificationTokenRepository,
-    private val notificationRepository: NotificationRepository,
     private val nominatimGeocodingClient: NominatimGeocodingClient,
     private val deviceService: DeviceService,
+    private val realtimeMessagePublisher: RealtimeMessagePublisher,
+    private val accountNumberGenerator: AccountNumberGenerator,
+    private val termsAcceptanceRepository: TermsAcceptanceRepository,
+    private val userVerificationService: UserVerificationService,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private val passwordEncoder = BCryptPasswordEncoder()
 
     @Transactional
     fun register(request: RegisterRequest): AuthResponse {
+        // Real gap found 2026-09-05, same shape as the email check below -- phoneNumber
+        // was never checked for even being shaped like a real phone number. Checked
+        // before the rate limiter so a malformed value doesn't spend a real attempt.
+        if (!isValidPhoneNumber(request.phoneNumber)) {
+            throw InvalidPhoneNumberException("Please enter a valid phone number, including country code")
+        }
+        // Real gap found 2026-09-05: firstName/lastName had no length bound, unlike the
+        // identical User.firstName/lastName@Column (no explicit length -> Hibernate's
+        // real 255-character VARCHAR default) already-fixed everywhere else this exact
+        // sweep covered (see PartnerService.submitMiniApp's own doc comment: "found via
+        // the same systematic sweep that fixed the identical gap across Commerce/Eats/
+        // Marketplace/Jobs/RealEstate/Community/Messaging/Maps the same day") -- this
+        // backend's own registration endpoint was the one real gap that sweep missed.
+        //
+        // Self-correction, same pass: 255 alone is the WRONG bound for firstName --
+        // this method concatenates it into 4 different real Account.accountName values
+        // below ("${user.firstName}'s Main Account" / "...itunda Pay Money" /
+        // "...Savings Account" / "...Investment Account"), and accountName's own
+        // column has no explicit length either (same 255 default). The longest suffix,
+        // "'s Investment Account", is 21 characters -- a firstName right at 255 would
+        // fit User.firstName but overflow accountName by up to 21 characters, the exact
+        // same concatenation-overflow shape GroupAccountService.createGroupAccount's own
+        // fix just closed. 234 (255 - 21) is the real safe bound, not the naive 255 this
+        // fix originally shipped with in this same pass.
+        if (request.firstName.isBlank() || request.firstName.length > 234) {
+            throw InvalidNameException("First name must be between 1 and 234 characters")
+        }
+        if (request.lastName.isBlank() || request.lastName.length > 255) {
+            throw InvalidNameException("Last name must be between 1 and 255 characters")
+        }
         // Stricter and longer-windowed than login: creating an account is a rarer,
         // more sensitive action than a login retry, so fewer attempts should be
         // tolerated before this starts looking like account-creation spam.
         rateLimiter.checkLimit("auth:register:${request.phoneNumber}", limit = 3, window = Duration.ofMinutes(10))
         if (userRepository.existsByPhoneNumber(request.phoneNumber)) {
             throw PhoneAlreadyRegisteredException("An account with this phone number already exists")
+        }
+        // Real Toss/Korean-fintech-style 약관 동의 (terms consent) enforcement -- see
+        // TermsCatalog's own doc comment for the full sourced account. Checked before
+        // any real write below (fail fast, same discipline the phone-uniqueness check
+        // right above already follows) -- a client that skips a required checkbox
+        // never gets a real account or a real account provisioned for it.
+        val acceptedTermsIds = request.acceptedTermsIds.toSet()
+        val missingRequiredTermsIds = TermsCatalog.requiredIds() - acceptedTermsIds
+        if (missingRequiredTermsIds.isNotEmpty()) {
+            throw RequiredTermsNotAcceptedException("Please agree to all required terms to continue")
+        }
+        // Real Toss-sourced passwordless-login rollout (2026-08-24, direct user
+        // follow-up "we need that simplification" after real sourced research into
+        // exactly how Toss's own flow works): registration is phone+OTP, then a real
+        // 6-digit numeric PIN -- not a free-form password. Real Toss's own actual term
+        // is literally "6자리 비밀번호" (6-digit password), confirmed via
+        // support.toss.im's own real help-center articles.
+        if (!PIN_PATTERN.matches(request.password)) {
+            throw InvalidPinException("Your PIN must be exactly 6 digits")
+        }
+        // Real gap found 2026-09-05: email is optional, but an email that IS provided
+        // was never checked for even being shaped like one -- see EmailValidation.kt's
+        // own doc comment for the full account.
+        if (request.email != null && !isValidEmail(request.email)) {
+            throw InvalidEmailException("Please enter a valid email address")
         }
         // Real, not honor-system: an invalid/typo'd code fails registration loudly
         // rather than silently registering with no attribution, matching this repo's
@@ -71,30 +144,67 @@ class AuthService(
             createdAt = Instant.now(),
             referralCode = generateReferralCode(),
             referredByUserId = referredByUserId,
+            pinSet = true,
         )
         userRepository.save(user)
+        // Real immutable consent audit trail -- one row per real accepted term
+        // (required AND any optional ones the client actually sent), only ever for
+        // ids TermsCatalog itself recognizes (an unknown id is silently ignored here
+        // rather than 500ing registration over a client sending a stale/removed id).
+        val validAcceptedTermsIds = acceptedTermsIds.intersect(TermsCatalog.validIds())
+        val termsById = TermsCatalog.documents.associateBy { it.id }
+        validAcceptedTermsIds.forEach { termsId ->
+            val document = termsById.getValue(termsId)
+            termsAcceptanceRepository.save(
+                TermsAcceptance(
+                    id = "terms_acceptance_${UUID.randomUUID()}",
+                    userId = user.id,
+                    termsId = document.id,
+                    termsVersion = document.version,
+                ),
+            )
+        }
+        // Real phone verification, sent at registration itself (2026-07-26) -- see
+        // requestPhoneVerification's own doc comment for the full delivery story.
+        userVerificationService.sendPhoneVerificationCode(user.id)
 
-        walletRepository.save(
-            Wallet(
-                id = "wallet_${UUID.randomUUID()}",
+        accountRepository.save(
+            Account(
+                id = "account_${UUID.randomUUID()}",
                 userId = user.id,
-                accountNumber = generateAccountNumber(),
+                accountNumber = accountNumberGenerator.generate(2024100000L),
                 accountName = "${user.firstName}'s Main Account",
-                type = WalletType.MAIN,
+                type = AccountType.MAIN,
+                balance = BigDecimal.ZERO,
+                availableBalance = BigDecimal.ZERO,
+            ),
+        )
+        // Real Toss Bank/Toss Pay separation -- see AccountType.PAY's own doc comment.
+        // Provisioned unconditionally at registration, same as MAIN/SAVINGS below --
+        // every real user has an itunda Pay money balance from day one, starting at
+        // zero and auto-funded from MAIN (or an external linked account) the first
+        // time it's actually needed (MerchantService.collect).
+        accountRepository.save(
+            Account(
+                id = "account_${UUID.randomUUID()}",
+                userId = user.id,
+                accountNumber = accountNumberGenerator.generate(2024100000L),
+                accountName = "${user.firstName}'s itunda Pay Money",
+                type = AccountType.PAY,
                 balance = BigDecimal.ZERO,
                 availableBalance = BigDecimal.ZERO,
             ),
         )
         // Fixed 2026-07-13, found live: SavingsService.createGoal requires a real
-        // WalletType.SAVINGS wallet and only MAIN was ever provisioned here, so
-        // POST /api/v1/savings/goals 404'd (WALLET_NOT_FOUND) for every real user.
-        val savingsWallet = walletRepository.save(
-            Wallet(
-                id = "wallet_${UUID.randomUUID()}",
+        // AccountType.SAVINGS account and only MAIN was ever provisioned here, so
+        // POST /api/v1/savings/goals 404'd (ACCOUNT_NOT_FOUND) for every real user.
+        val savingsAccount = accountRepository.save(
+            Account(
+                id = "account_${UUID.randomUUID()}",
                 userId = user.id,
-                accountNumber = generateAccountNumber(),
+                accountNumber = accountNumberGenerator.generate(2024100000L),
                 accountName = "${user.firstName}'s Savings Account",
-                type = WalletType.SAVINGS,
+                type = AccountType.SAVINGS,
                 balance = BigDecimal.ZERO,
                 availableBalance = BigDecimal.ZERO,
             ),
@@ -110,7 +220,7 @@ class AuthService(
         interestJarRepository.save(
             InterestJar(
                 userId = user.id,
-                walletId = savingsWallet.id,
+                accountId = savingsAccount.id,
                 balance = BigDecimal.ZERO,
                 rate = 7.5,
                 earnedThisMonth = BigDecimal.ZERO,
@@ -120,11 +230,48 @@ class AuthService(
             ),
         )
 
+        // Real bug found and fixed 2026-07-27, same "only ever seeded, never
+        // provisioned" gap as SAVINGS/InterestJar above, one more layer over:
+        // StocksService.buyStock requires a real AccountType.INVESTMENT account and only
+        // the seeded demo user (SeedDataRunner) ever got one -- POST /api/v1/stocks/buy
+        // 404'd (ACCOUNT_NOT_FOUND, via NoAccountException) for every real registered
+        // user, meaning the entire real Toss Securities/Kakao Pay Securities-style
+        // stock-buying feature was silently unusable outside the demo account.
+        accountRepository.save(
+            Account(
+                id = "account_${UUID.randomUUID()}",
+                userId = user.id,
+                accountNumber = accountNumberGenerator.generate(2024100000L),
+                accountName = "${user.firstName}'s Investment Account",
+                type = AccountType.INVESTMENT,
+                balance = BigDecimal.ZERO,
+                availableBalance = BigDecimal.ZERO,
+            ),
+        )
+
         // Real device binding (2026-07-20) -- the device used to register already
         // proved password ownership in this same request, so it's auto-trusted rather
         // than needing a separate step-up immediately after signing up.
         deviceService.recordRegistrationDevice(user.id, request.deviceId, request.deviceName)
+        // Real passwordless-login rollout (2026-08-24) -- see DeviceService.
+        // registerKeyDuringAuth's own doc comment: folds real device-key registration
+        // into this same request when the client supplies one, so the very next app
+        // open can use biometric/PIN-pad against this device instead of the full PIN.
+        request.devicePublicKey?.let { deviceService.registerKeyDuringAuth(user.id, request.deviceId, it) }
         return issueAuthResponse(user, "Registration successful", request.deviceId)
+    }
+
+    // Real unified phone-first entry (2026-08-13) -- see PhoneCheckRequest's own doc
+    // comment. Rate-limited by phoneNumber like login/register above: this is a real
+    // account-existence oracle (an attacker could probe numbers to learn who has an
+    // itunda account), the same accepted trade-off real Toss/Kakao/WhatsApp all make
+    // for this exact UX -- a phone number isn't a secret the way a password is, and
+    // limiting attempts keeps bulk enumeration expensive without blocking the one
+    // real check a genuine user needs. Reuses existsByPhoneNumber, the same repository
+    // method register() above already calls for its own duplicate-account guard.
+    fun checkPhoneExists(phoneNumber: String): PhoneCheckResponse {
+        rateLimiter.checkLimit("auth:check-phone:$phoneNumber", limit = 10, window = Duration.ofMinutes(1))
+        return PhoneCheckResponse(exists = userRepository.existsByPhoneNumber(phoneNumber))
     }
 
     fun login(request: LoginRequest): AuthResponse {
@@ -143,7 +290,74 @@ class AuthService(
         // recorded as untrusted until a real step-up re-verification -- see
         // DeviceVerificationFilter for where that's actually enforced.
         deviceService.recordLoginDevice(user.id, request.deviceId, request.deviceName)
+        // Real passwordless-login rollout (2026-08-24) -- see DeviceService.
+        // registerKeyDuringAuth's own doc comment. Covers both a pre-existing user
+        // establishing a key for the first time and a device re-establishing one
+        // (e.g. after being revoked) -- either way the caller just proved PIN/password
+        // ownership in this exact request.
+        request.devicePublicKey?.let { deviceService.registerKeyDuringAuth(user.id, request.deviceId, it) }
         return issueAuthResponse(user, "Login successful", request.deviceId)
+    }
+
+    // Real passwordless LOGIN (2026-08-24) -- see DeviceService.verifyLoginSignature's
+    // own doc comment for why this is a distinct method from the existing JWT-gated
+    // device-verify endpoints. This IS the "no PIN needed on a recognized device"
+    // outcome Toss's own real flow is built on -- a valid signature issues a real,
+    // fresh session exactly like login()/register() do, no password/PIN involved.
+    fun loginWithDeviceSignature(request: LoginWithSignatureRequest): AuthResponse {
+        val user = deviceService.verifyLoginSignature(request.phoneNumber, request.deviceId, request.signature)
+        return issueAuthResponse(user, "Login successful", request.deviceId)
+    }
+
+    // Real Toss-sourced "set your 6-digit PIN" flow (2026-08-24) -- used both by a
+    // pre-PIN-era user upgrading (currentCredential = their existing, any-shape
+    // password) and by a real "forgot PIN" reset (currentCredential = a fresh
+    // credential re-established via phone OTP re-verification -- itself a separate,
+    // already-real UserVerificationService flow, not duplicated here). Either way,
+    // the exact same passwordEncoder.matches proof-of-ownership login() already
+    // requires, reused rather than re-implemented.
+    @Transactional
+    fun setPin(userId: String, request: SetPinRequest): PublicUser {
+        // Real sibling-asymmetry fix (2026-09-13) -- CardService.setPin reuses this
+        // exact same passwordEncoder.matches proof-of-ownership pattern for the card
+        // PIN, and already rate-limits + sends a security alert on success. This
+        // method changes the LOGIN credential (at least as security-sensitive) but
+        // had neither -- unreachable from any real UI until 2026-09-12's "Change
+        // password" screens shipped, now a real brute-forceable endpoint.
+        rateLimiter.checkLimit("auth:set-pin:$userId", limit = 5, window = Duration.ofHours(1))
+        if (!PIN_PATTERN.matches(request.newPin)) {
+            throw InvalidPinException("Your PIN must be exactly 6 digits")
+        }
+        val user = userRepository.findById(userId).orElseThrow { UserNotFoundException("User not found") }
+        if (!passwordEncoder.matches(request.currentCredential, user.passwordHash)) {
+            throw InvalidCredentialsException("Incorrect current password or PIN")
+        }
+        user.passwordHash = passwordEncoder.encode(request.newPin)
+        user.pinSet = true
+        userRepository.save(user)
+        val title = "Your itunda password was changed"
+        val body = "Your itunda login password/PIN was just changed. If this wasn't you, contact support immediately."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = userId, type = "PASSWORD_CHANGED",
+                title = title, body = body,
+                isRead = false, createdAt = Instant.now(), dataJson = "{}",
+            ),
+        )
+        sendPasswordChangedPushAfterCommit(userId, title, body)
+        return user.toPublic()
+    }
+
+    /** An external security alert must not claim a credential change that rolled back. */
+    private fun sendPasswordChangedPushAfterCommit(userId: String, title: String, body: String) {
+        val send = { pushNotificationService.sendToUser(userId, title, body) }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     fun getProfile(userId: String): PublicUser {
@@ -158,7 +372,10 @@ class AuthService(
      * isn't a real logout at all.
      */
     fun logout(accessToken: String, refreshToken: String?) {
-        jwtService.verify(accessToken)?.let { tokenBlocklistService.blacklist(it.jti, it.expiresAt) }
+        jwtService.verify(accessToken)?.let { decoded ->
+            tokenBlocklistService.blacklist(decoded.jti, decoded.expiresAt)
+            realtimeMessagePublisher.closeSessionsForToken(decoded.userId, decoded.jti)
+        }
         refreshToken?.let { jwtService.verify(it)?.let { decoded -> tokenBlocklistService.blacklist(decoded.jti, decoded.expiresAt) } }
     }
 
@@ -232,51 +449,56 @@ class AuthService(
         val neighborhood = nominatimGeocodingClient.reverseGeocode(latitude, longitude)
             ?: throw NeighborhoodNotResolvedException("Couldn't determine a neighborhood for this location")
         user.neighborhood = neighborhood
+        user.neighborhoodVerifiedAt = Instant.now()
+        user.neighborhoodVerificationCount += 1
         userRepository.save(user)
         return user.toPublic()
     }
 
-    // Real, single-use, 30-minute token -- see EmailVerificationToken's doc comment.
-    // Delivered via a real Notification (this backend's own existing in-app delivery
-    // mechanism, already used for budget alerts) rather than a real email, since there
-    // is no SMTP relay anywhere in this backend -- the token itself is real and never
-    // echoed back in this endpoint's own response, so a client can't self-verify without
-    // actually receiving it through that real channel.
+    // Real dual-neighborhood support (2026-08-04) -- see User.kt's own doc comment.
+    // Same real reverse-geocode-only provenance and anti-spam limit as setNeighborhood
+    // above (shares the same rate-limit key/budget -- a second Nominatim call is exactly
+    // as expensive as the first, no reason for a separate allowance). A caller with no
+    // primary neighborhood yet can still call this -- it doesn't require setNeighborhood
+    // to have run first, since "second" here just means "an additional real place", not
+    // literally the second one ever set.
     @Transactional
-    fun requestEmailVerification(userId: String) {
+    fun setSecondNeighborhood(userId: String, latitude: Double, longitude: Double): PublicUser {
+        if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
+            throw InvalidCoordinatesException("Latitude must be between -90 and 90, longitude between -180 and 180")
+        }
+        rateLimiter.checkLimit("auth:neighborhood:$userId", limit = 10, window = Duration.ofHours(1))
         val user = userRepository.findById(userId).orElseThrow { UserNotFoundException("User not found") }
-        if (user.email == null) throw NoEmailOnFileException("No email address on file to verify")
-        if (user.emailVerified) throw EmailAlreadyVerifiedException("Email is already verified")
-
-        val token = UUID.randomUUID().toString().replace("-", "")
-        emailVerificationTokenRepository.save(
-            EmailVerificationToken(
-                id = "evt_${UUID.randomUUID()}", userId = userId, token = token,
-                expiresAt = Instant.now().plusSeconds(1800), createdAt = Instant.now(),
-            ),
-        )
-        notificationRepository.save(
-            Notification(
-                id = "notif_${UUID.randomUUID()}", userId = userId, type = "PROFILE_EMAIL_VERIFICATION",
-                title = "Verify your email", body = "Your email verification code is $token. It expires in 30 minutes.",
-                isRead = false, createdAt = Instant.now(), dataJson = null,
-            ),
-        )
+        val neighborhood = nominatimGeocodingClient.reverseGeocode(latitude, longitude)
+            ?: throw NeighborhoodNotResolvedException("Couldn't determine a neighborhood for this location")
+        user.secondNeighborhood = neighborhood
+        userRepository.save(user)
+        return user.toPublic()
     }
 
     @Transactional
-    fun confirmEmailVerification(userId: String, token: String): PublicUser {
-        val record = emailVerificationTokenRepository.findByToken(token)
-            ?.takeIf { it.userId == userId }
-            ?: throw InvalidVerificationTokenException("Invalid or expired verification token")
-        if (record.usedAt != null || record.expiresAt.isBefore(Instant.now())) {
-            throw InvalidVerificationTokenException("Invalid or expired verification token")
-        }
-        record.usedAt = Instant.now()
-        emailVerificationTokenRepository.save(record)
-
+    fun clearSecondNeighborhood(userId: String): PublicUser {
         val user = userRepository.findById(userId).orElseThrow { UserNotFoundException("User not found") }
-        user.emailVerified = true
+        user.secondNeighborhood = null
+        userRepository.save(user)
+        return user.toPublic()
+    }
+
+    // Real age-eligibility gate for the Youth account (2026-07-28) -- see
+    // YouthAccountService's own doc comment for the sourced 만 7세~18세 real eligibility
+    // window this backs. Set once; a real, plausible past date only -- neither a future
+    // date (obviously wrong input) nor implausibly far in the past (a fat-fingered year).
+    @Transactional
+    fun setBirthDate(userId: String, birthDate: LocalDate): PublicUser {
+        val today = LocalDate.now(ZoneOffset.UTC)
+        if (!birthDate.isBefore(today)) {
+            throw InvalidBirthDateException("Birth date must be in the past")
+        }
+        if (birthDate.isBefore(today.minusYears(120))) {
+            throw InvalidBirthDateException("Birth date is not plausible")
+        }
+        val user = userRepository.findById(userId).orElseThrow { UserNotFoundException("User not found") }
+        user.birthDate = birthDate
         userRepository.save(user)
         return user.toPublic()
     }
@@ -288,17 +510,23 @@ class AuthService(
         refreshToken = jwtService.issueRefreshToken(user.id, deviceId),
     )
 
-    private fun generateAccountNumber(): String = (2024100000L + (Math.random() * 900000).toLong()).toString()
-
     // No collision-avoidance loop, same accepted-risk precedent as generateAccountNumber
     // above -- a UUID-derived 6-char code has a negligible real collision chance, and the
     // real DB unique constraint on referral_code is the actual backstop.
     private fun generateReferralCode(): String = "ITD" + UUID.randomUUID().toString().replace("-", "").take(6).uppercase()
-
-    private fun User.toPublic() = PublicUser(
-        id = id, phoneNumber = phoneNumber, email = email, firstName = firstName,
-        lastName = lastName, kycVerified = kycVerified, creditScore = creditScore, createdAt = createdAt,
-        referralCode = referralCode, profilePhotoUrl = profilePhotoUrl, emailVerified = emailVerified,
-        neighborhood = neighborhood,
-    )
 }
+
+// Top-level + internal (not a private AuthService member) so UserVerificationService's
+// own confirmEmailVerification/confirmPhoneVerification -- and any other same-module
+// caller -- can build the same real PublicUser shape without duplicating this mapping.
+internal fun User.toPublic() = PublicUser(
+    id = id, phoneNumber = phoneNumber, email = email, firstName = firstName,
+    lastName = lastName, kycVerified = kycVerified, creditScore = creditScore, createdAt = createdAt,
+    referralCode = referralCode, profilePhotoUrl = profilePhotoUrl, emailVerified = emailVerified,
+    phoneVerified = phoneVerified,
+    neighborhood = neighborhood, neighborhoodVerifiedAt = neighborhoodVerifiedAt,
+    neighborhoodVerificationCount = neighborhoodVerificationCount,
+    secondNeighborhood = secondNeighborhood,
+    birthDate = birthDate,
+    pinSet = pinSet,
+)

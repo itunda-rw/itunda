@@ -1,0 +1,285 @@
+name: IDS Audit
+
+concurrency:
+  group: ids-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - agent/itunda-agent-network
+    paths:
+      - "business/developers/design/**"
+      - "scripts/ids-*.mjs"
+      - "scripts/accessibility-lint.py"
+      - ".github/workflows/ids-audit.yml"
+  workflow_dispatch:
+    inputs:
+      update_visual_baseline:
+        description: "Accept the current rendered screenshots as the IDS visual baseline"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: corepack enable
+      - run: yarn install --immutable
+      - name: Verify generated IDS showcase manifest is synchronized
+        run: |
+          node scripts/sync-ids-contract.mjs
+          git diff --exit-code -- business/developers/design/contract-manifest.json
+      - run: yarn audit:ids
+
+      - name: Install Chromium for IDS visual smoke test
+        run: npx --yes playwright@1.55.0 install --with-deps chromium
+
+      - name: Run IDS rendered smoke test
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --directory business/developers/design >/tmp/ids-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID' EXIT
+          node --input-type=module <<'EOF'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({headless:true});
+          const page = await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
+          await page.goto('http://127.0.0.1:4173/', {waitUntil:'networkidle'});
+          const checks = {
+            visualQa: await page.locator('#visual-qa').count(),
+            lab: await page.locator('#lab').count(),
+            darkTheme: await page.locator('[data-theme]').count(),
+            coreComponents: await page.locator('[data-lab-kind]').count(),
+          };
+          for (const [name,value] of Object.entries(checks)) if (!value) throw new Error('IDS visual smoke check failed: '+name);
+          await page.screenshot({path:'/tmp/ids-mobile.png',fullPage:true});
+          await page.locator('#visual-qa').scrollIntoViewIfNeeded();
+          await page.screenshot({path:'/tmp/ids-visual-qa.png',fullPage:true});
+          const bodyWidth=await page.evaluate(()=>document.documentElement.scrollWidth);
+          if (bodyWidth > 430) throw new Error('IDS mobile visual overflow detected: '+bodyWidth+'px');
+          await browser.close();
+          console.log('IDS rendered smoke test passed', checks);
+          EOF
+
+      - name: Run IDS accessibility and stress smoke test
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --directory business/developers/design >/tmp/ids-server-stress.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID' EXIT
+          node --input-type=module <<'EOF'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({headless:true});
+          const page = await browser.newPage({viewport:{width:375,height:812},deviceScaleFactor:1});
+          await page.goto('http://127.0.0.1:4173/', {waitUntil:'networkidle'});
+          const failures=[];
+          if (!(await page.locator('#visual-qa').count())) failures.push('visual QA matrix missing');
+          if (!(await page.locator('#lab').count())) failures.push('component lab missing');
+          const kinds=await page.locator('[data-lab-kind]').count();
+          if (kinds < 8) failures.push('core component coverage incomplete: '+kinds);
+          const states=await page.locator('[data-lab-state]').count();
+          if (states < 5) failures.push('state controls incomplete: '+states);
+          const buttons=await page.locator('button').count();
+          if (!buttons) failures.push('interactive controls missing');
+          const badButtons=await page.locator('button').evaluateAll(xs=>xs.filter(x=>!x.textContent?.trim() && !x.getAttribute('aria-label')).length);
+          if (badButtons) failures.push('unnamed buttons: '+badButtons);
+          await page.evaluate(()=>document.documentElement.style.fontSize='20px');
+          const width=await page.evaluate(()=>document.documentElement.scrollWidth);
+          const viewport=await page.evaluate(()=>window.innerWidth);
+          if (width > viewport + 24) failures.push('large-text overflow: '+width+' > '+viewport);
+          await page.emulateMedia({reducedMotion:'reduce'});
+          const motion=await page.evaluate(()=>{
+            const selectors=['.pg-switch i','.btn','.tab','.lab-statebar button','html'];
+            return selectors.flatMap(sel=>[...document.querySelectorAll(sel)]).filter(x=>{
+              const s=getComputedStyle(x);
+              const hasAnimation=s.animationName!=='none' && s.animationDuration!=='0s';
+              const hasTransition=s.transitionDuration!=='0s' && s.transitionDuration!=='0ms';
+              return hasAnimation||hasTransition;
+            }).map(x=>({tag:x.tagName,classes:x.className,animation:getComputedStyle(x).animationName,transition:getComputedStyle(x).transitionDuration}));
+          });
+          if (motion.length) throw new Error('Reduced-motion contract failed: '+JSON.stringify(motion.slice(0,10)));
+          const roles=await page.locator('[role="tab"], [role="switch"], input, select').count();
+          if (!roles) failures.push('native/semantic form controls missing');
+          if (failures.length) throw new Error(failures.join(' | '));
+          await page.locator('#lab').scrollIntoViewIfNeeded();
+          await page.screenshot({path:'/tmp/ids-stress.png',fullPage:true});
+          console.log('IDS accessibility/stress smoke test passed');
+          await browser.close();
+          EOF
+
+      - name: Run IDS contract state matrix
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --directory business/developers/design >/tmp/ids-server-matrix.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID' EXIT
+          node --input-type=module <<'EOF'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
+          const manifest=JSON.parse(fs.readFileSync('design-system/components/contract-manifest.json','utf8'));
+          const browser = await chromium.launch({headless:true});
+          const page = await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
+          await page.goto('http://127.0.0.1:4173/', {waitUntil:'networkidle'});
+          const kindMap={'text-field':'field','empty-state':'empty'};
+          const labelMap={button:'Button',field:'Text field',select:'Select',checkbox:'Checkbox',radio:'Radio',switch:'Switch',tabs:'Tabs',empty:'Empty state'};
+          const failures=[];
+          const kindButtons=page.locator('[data-lab-kind]');
+          for(const component of manifest.components||[]){
+            const kind=kindMap[component.id]||component.id;
+            const label=labelMap[kind]||component.id;
+            const kindButton=kindButtons.filter({hasText:label});
+            if(await kindButton.count()!==1){failures.push(kind+': component selector missing');continue;}
+            await kindButton.click();
+            const declared=[...(component.states||[])];
+            for(const state of declared){
+              const control=page.locator('[data-lab-state="'+state+'"]');
+              if(await control.count()!==1){failures.push(kind+': declared state missing: '+state);continue;}
+              if(await control.isHidden()){failures.push(kind+': declared state hidden: '+state);continue;}
+              await control.click();
+              const rendered=await page.locator('#labPreview').textContent();
+              const renderedState=await page.locator('#labPreview').getAttribute('data-lab-state');
+              const renderedKind=await page.locator('#labPreview').getAttribute('data-lab-kind');
+              if(renderedState!==state) failures.push(kind+': '+state+' rendered state mismatch: '+renderedState);
+              if(renderedKind!==kind) failures.push(kind+': rendered kind mismatch: '+renderedKind);
+              if(!rendered?.trim()) failures.push(kind+': '+state+' rendered empty');
+              if(state==='disabled' && await page.locator('#labPreview :disabled').count()===0) failures.push(kind+': disabled state has no disabled control');
+              if(state==='loading' && await page.locator('#labPreview :disabled').count()===0) failures.push(kind+': loading state does not lock the primary control');
+              if(state==='error' && (await page.locator('#labPreview [aria-invalid="true"]').count()===0) && kind==='field') failures.push(kind+': error state missing aria-invalid');
+            }
+          }
+          const generatedCases=(manifest.components||[]).reduce((n,c)=>n+(c.states?.length||0),0);
+          if(failures.length) throw new Error('IDS contract state matrix failed: '+failures.join(' | '));
+          await page.screenshot({path:'/tmp/ids-contract-matrix.png',fullPage:true});
+          console.log('IDS contract state matrix passed: '+generatedCases+' manifest-declared state cases');
+          await browser.close();
+          EOF
+
+      - name: Run manifest-driven IDS visual evidence matrix
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --directory business/developers/design >/tmp/ids-server-visual-matrix.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID' EXIT
+          mkdir -p /tmp/ids-visual-matrix
+          node --input-type=module <<'EOF'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
+
+          const manifest=JSON.parse(fs.readFileSync('design-system/components/contract-manifest.json','utf8'));
+          const kindMap={'text-field':'field','empty-state':'empty'};
+          const labelMap={button:'Button',field:'Text field',select:'Select',checkbox:'Checkbox',radio:'Radio',switch:'Switch',tabs:'Tabs',empty:'Empty state'};
+          const cases=[];
+
+          for(const component of manifest.components||[]){
+            const kind=kindMap[component.id]||component.id;
+            for(const state of component.states||[]){
+              cases.push({
+                component:kind,
+                state,
+                theme:'light',
+                scale:100,
+                viewport:'mobile',
+                motion:'normal',
+                filename:'base-'+kind+'-'+state
+              });
+            }
+            const stressState=(component.states||[]).includes('focus')?'focus':component.states?.[0];
+            cases.push({component:kind,state:stressState,theme:'dark',scale:125,viewport:'mobile',motion:'reduced',filename:'stress-dark-'+kind});
+            cases.push({component:kind,state:stressState,theme:'light',scale:150,viewport:'desktop',motion:'normal',filename:'stress-large-'+kind});
+          }
+
+          fs.writeFileSync('/tmp/ids-visual-matrix.json',JSON.stringify({
+            version:'1.0.0',
+            source:'design-system/components/contract-manifest.json',
+            dimensions:['state','theme','scale','viewport','motion'],
+            cases
+          },null,2));
+
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
+          await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});
+
+          const failures=[];
+          const kindButtons=page.locator('[data-lab-kind]');
+          const applyDimensions=async(c)=>{
+            await page.setViewportSize(c.viewport==='desktop'?{width:1280,height:900}:{width:390,height:844});
+            await page.evaluate(({theme,scale})=>{
+              document.documentElement.dataset.theme=theme;
+              document.documentElement.style.fontSize=(16*scale/100)+'px';
+            },{theme:c.theme,scale:c.scale});
+            await page.emulateMedia({reducedMotion:c.motion==='reduced'?'reduce':'no-preference'});
+          };
+
+          for(const c of cases){
+            const label=labelMap[c.component];
+            const selector=kindButtons.filter({hasText:label});
+            if(await selector.count()!==1){failures.push(c.component+': component selector missing');continue;}
+            await selector.click();
+            await applyDimensions(c);
+            const stateControl=page.locator('[data-lab-state="'+c.state+'"]');
+            if(await stateControl.count()!==1){failures.push(c.component+': state missing: '+c.state);continue;}
+            await stateControl.click();
+            const preview=page.locator('#labPreview');
+            const renderedState=await preview.getAttribute('data-lab-state');
+            const renderedKind=await preview.getAttribute('data-lab-kind');
+            if(renderedState!==c.state) failures.push(c.component+'/'+c.state+': state mismatch '+renderedState);
+            if(renderedKind!==c.component) failures.push(c.component+'/'+c.state+': kind mismatch '+renderedKind);
+            if(!await preview.textContent()) failures.push(c.component+'/'+c.state+': empty preview');
+            await preview.screenshot({path:'/tmp/ids-visual-matrix/'+c.filename+'.png'});
+          }
+
+          await page.evaluate(()=>{document.documentElement.style.fontSize='16px';document.documentElement.dataset.theme='light';});
+          await page.emulateMedia({reducedMotion:'no-preference'});
+          await page.setViewportSize({width:390,height:844});
+          const summary={
+            manifestVersion:manifest.version,
+            components:(manifest.components||[]).length,
+            declaredStateCases:(manifest.components||[]).reduce((n,c)=>n+(c.states?.length||0),0),
+            visualCases:cases.length,
+            screenshots:fs.readdirSync('/tmp/ids-visual-matrix').filter(x=>x.endsWith('.png')).length
+          };
+          fs.writeFileSync('/tmp/ids-visual-matrix/README.json',JSON.stringify(summary,null,2));
+          if(failures.length) throw new Error('IDS visual matrix failed: '+failures.join(' | '));
+          console.log('IDS manifest-driven visual evidence passed',summary);
+          await browser.close();
+          EOF
+
+      - name: Enforce IDS visual regression baseline
+        shell: bash
+        run: |
+          node scripts/ids-visual-regression.mjs /tmp/ids-visual-matrix.json design-system/components/visual-baseline.json ${{ inputs.update_visual_baseline && '--update' || '' }}
+          if git diff --quiet -- design-system/components/visual-baseline.json; then
+            echo "IDS visual baseline unchanged."
+          elif [[ "${{ inputs.update_visual_baseline }}" == "true" ]]; then
+            echo "IDS visual baseline generated for explicit workflow_dispatch; publishing it as an artifact."
+          else
+            echo "IDS visual baseline is missing. Re-run this workflow with update_visual_baseline=true to bootstrap it."
+            exit 1
+          fi
+
+      - name: Upload IDS visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ids-visual-evidence
+          path: |
+            /tmp/ids-mobile.png
+            /tmp/ids-visual-qa.png
+            /tmp/ids-stress.png
+            /tmp/ids-contract-matrix.png
+            /tmp/ids-visual-matrix.json
+            /tmp/ids-visual-matrix/
+            /tmp/ids-visual-diff/
+            design-system/components/visual-baseline.json
+          if-no-files-found: ignore
+

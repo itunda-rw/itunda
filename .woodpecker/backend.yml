@@ -1,0 +1,31 @@
+# Real port of .github/workflows/ci-cd.yml's backend-build, microservices-build,
+# and backend-migration-verify jobs. Two different JDK versions genuinely needed --
+# see each job's own comment in ci-cd.yml (root build.gradle.kts pins Kotlin's
+# jvmTarget to 17, but services/microservices was built independently against 21).
+labels:
+  backend: docker
+
+steps:
+  - name: backend-migration-verify
+    image: python:3.12-slim
+    commands:
+      - bash scripts/verify-flyway-migrations.sh
+      - python3 scripts/verify-ledger-account-seeds.py
+    when:
+      - event: [push, pull_request]
+
+  - name: backend-build
+    image: eclipse-temurin:17-jdk-jammy
+    directory: services/backend
+    commands:
+      - ./gradlew build --no-daemon
+    when:
+      - event: [push, pull_request]
+
+  - name: microservices-build
+    image: eclipse-temurin:21-jdk-jammy
+    directory: services/microservices
+    commands:
+      - ./gradlew build --no-daemon
+    when:
+      - event: [push, pull_request]

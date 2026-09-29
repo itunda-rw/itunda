@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.Listing
@@ -46,7 +47,7 @@ class PriceOfferServiceTest : BehaviorSpec({
             val offer = service.makeOffer("buyer_1", "listing_1", BigDecimal("12000"))
 
             Then("it posts a real offer message and saves a real PENDING offer proposed by the buyer") {
-                messageSlot.captured shouldBe "💰 Offered 12000 RWF for \"Bicycle\""
+                messageSlot.captured shouldBe "💰 Offered 12,000 RWF for \"Bicycle\""
                 offer.amount shouldBe BigDecimal("12000")
                 offer.buyerId shouldBe "buyer_1"
                 offer.sellerId shouldBe "seller_1"
@@ -54,6 +55,14 @@ class PriceOfferServiceTest : BehaviorSpec({
                 offer.status shouldBe PriceOfferStatus.PENDING
                 offer.conversationId shouldBe "conversation_1"
                 offer.messageId shouldBe "message_1"
+            }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08): rateLimiter was relaxed = true with zero verify{} anywhere
+            // in this file, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("marketplace:offer:buyer_1", limit = 20, window = java.time.Duration.ofHours(1)) }
             }
         }
 
@@ -141,7 +150,15 @@ class PriceOfferServiceTest : BehaviorSpec({
             Then("status flips to ACCEPTED, respondedAt is set, and a real acceptance message is posted") {
                 result.status shouldBe PriceOfferStatus.ACCEPTED
                 (result.respondedAt != null) shouldBe true
-                bodySlot.captured shouldBe "✅ Offer accepted: 12000 RWF"
+                bodySlot.captured shouldBe "✅ Offer accepted: 12,000 RWF"
+            }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08): rateLimiter was relaxed = true with zero verify{} anywhere
+            // in this file, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("marketplace:offer-response:seller_1", limit = 30, window = java.time.Duration.ofHours(1)) }
             }
         }
 
@@ -178,7 +195,7 @@ class PriceOfferServiceTest : BehaviorSpec({
                 result.status shouldBe PriceOfferStatus.PENDING
                 result.proposedByUserId shouldBe "seller_1"
                 result.amount shouldBe BigDecimal("13500")
-                bodySlot.captured shouldBe "🔁 Countered: 13500 RWF for \"Bicycle\""
+                bodySlot.captured shouldBe "🔁 Countered: 13,500 RWF for \"Bicycle\""
             }
         }
 

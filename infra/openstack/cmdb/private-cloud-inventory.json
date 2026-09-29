@@ -60,7 +60,7 @@
     "nodes": [
       {
         "name": "itunda-dc-a",
-        "ip": "192.168.252.2",
+        "ip": "192.168.252.4",
         "status": "enabled",
         "failureDomain": "dc-a",
         "roles": [
@@ -73,7 +73,7 @@
       {
         "name": "itunda-dc-b",
         "ip": "192.168.252.3",
-        "status": "enabled",
+        "status": "disabled",
         "failureDomain": "dc-b",
         "roles": [
           "multipass-lab-node",

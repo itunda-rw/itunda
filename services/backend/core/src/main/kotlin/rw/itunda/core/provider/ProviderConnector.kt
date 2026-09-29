@@ -1,5 +1,6 @@
 package rw.itunda.core.provider
 
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import rw.itunda.core.health.ProviderHealthTracker
 import rw.itunda.core.incident.IncidentDetector
@@ -53,8 +54,8 @@ object RailCatalog {
     }
 
     /**
-     * Real per-rail routing for P2P wallet transfers (2026-07-13) -- closes the gap
-     * docs/TOSS_PARITY_MATRIX.md's Transfer row named: WalletService.confirmTransfer
+     * Real per-rail routing for P2P account transfers (2026-07-13) -- closes the gap
+     * docs/TOSS_PARITY_MATRIX.md's Transfer row named: AccountService.confirmTransfer
      * called [resolve] against `quote.recipient`, a phone number, not a provider name,
      * so it always fell through to [generic] regardless of which real rail the
      * recipient's number actually belongs to. A phone number's own prefix is a real,
@@ -84,7 +85,7 @@ object RailCatalog {
 interface ProviderConnector {
     /** Simulates a network call to an external rail. Throws [ProviderDeclinedException]
      * on failure; callers must call this *before* posting to the ledger, so a decline
-     * never touches a wallet balance. */
+     * never touches a account balance. */
     fun attempt(rail: RailProfile, description: String)
 }
 
@@ -108,8 +109,15 @@ class SimulatedProviderConnector(
     private val incidentDetector: IncidentDetector,
     private val providerHealthTracker: ProviderHealthTracker,
     private val reconciliationService: ReconciliationService,
+    @Value("\${itunda.providers.simulation-enabled:true}") private val simulationEnabled: Boolean,
 ) : ProviderConnector {
     override fun attempt(rail: RailProfile, description: String) {
+        if (!simulationEnabled) {
+            throw ProviderDeclinedException(
+                rail.displayName + " is unavailable: no real production provider is configured",
+            )
+        }
+
         if (rail.offline) {
             incidentDetector.recordFailure(rail)
             providerHealthTracker.recordAttempt(rail.id, rail.displayName, success = false, latencyMs = 0)

@@ -28,11 +28,48 @@ class Message(
     @Column(nullable = false, length = 2000)
     val body: String,
 
+    @Column(name = "reply_to_message_id", length = 64)
+    val replyToMessageId: String? = null,
+
     @Column(name = "sent_at", nullable = false)
     val sentAt: Instant = Instant.now(),
 
     @Column(name = "read_at")
     var readAt: Instant? = null,
+
+    @Column(name = "deleted_at")
+    var deletedAt: Instant? = null,
+
+    @Column(name = "deleted_by_user_id", length = 64)
+    var deletedByUserId: String? = null,
+
+    // Real message forwarding (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Talk
+    // section recommendation #3: Kakao's confirmed real per-message toolkit is Copy/
+    // Reply/Forward/Pin/Delete/@mention -- reply/pin/delete already existed, this adds
+    // Forward. The source message is always resolved server-side (see
+    // MessageForwardService.forward's own doc comment) and its real body copied here --
+    // never a client-asserted body -- so `forwardedFromMessageId`/`forwardedFromType`
+    // are a genuine, verifiable provenance label, not just a cosmetic tag.
+    @Column(name = "forwarded_from_message_id", length = 64)
+    val forwardedFromMessageId: String? = null,
+
+    @Column(name = "forwarded_from_type", length = 16)
+    val forwardedFromType: String? = null,
+
+    // Real composer photo send (2026-07-25) -- see V99's migration comment. A real
+    // uploaded-file URL from UploadController, never a client-asserted arbitrary URL
+    // beyond that (MessagingService.sendMessage validates it looks like one of our own
+    // /api/v1/uploads/ URLs before storing -- see that method's own doc comment).
+    @Column(name = "image_url", length = 255)
+    val imageUrl: String? = null,
+
+    // Real Emoticon Store send (2026-07-26) -- see EmoticonService's own doc comment.
+    // Same "content field alongside body, never replacing it" shape imageUrl already
+    // establishes -- an emoticon-only send still gets a real placeholder body (see
+    // MessagingService.sendMessage's own doc comment) so every preview/notification
+    // surface has real text to show without special-casing null bodies everywhere.
+    @Column(name = "emoticon_id", length = 64)
+    val emoticonId: String? = null,
 ) {
     protected constructor() : this(id = "", conversationId = "", senderId = "", body = "")
 }

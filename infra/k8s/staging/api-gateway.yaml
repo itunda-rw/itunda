@@ -16,18 +16,63 @@ spec:
     spec:
       # See infra/k8s/local-dev/kafka.yaml's comment on enableServiceLinks.
       enableServiceLinks: false
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: api-gateway
-        image: ghcr.io/itunda/api-gateway:staging
+        image: ghcr.io/itunda-rw/api-gateway:staging
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
         ports:
         - containerPort: 3000
         env:
         - name: BACKEND_URL
           value: "http://backend:4001"
+        - name: CARD_SERVICE_URL
+          value: "http://card-service:4002"
+        - name: INSURANCE_SERVICE_URL
+          value: "http://insurance-service:4003"
+        - name: AGENTS_SERVICE_URL
+          value: "http://agents-service:4004"
+        - name: TRANSIT_SERVICE_URL
+          value: "http://transit-service:4005"
+        - name: CERTIFICATE_SERVICE_URL
+          value: "http://certificate-service:4006"
+        - name: BILLS_SERVICE_URL
+          value: "http://bills-service:4007"
+        - name: VEHICLE_SERVICE_URL
+          value: "http://vehicle-service:4008"
+        - name: PARTNERS_SERVICE_URL
+          value: "http://partners-service:4009"
+        - name: IDENTITY_SERVICE_URL
+          value: "http://identity-service:4010"
+        - name: OVERVIEW_SERVICE_URL
+          value: "http://overview-service:4011"
+        - name: KNOWLEDGE_SERVICE_URL
+          value: "http://knowledge-service:4012"
+        - name: NOTIFICATIONS_SERVICE_URL
+          value: "http://notifications-service:4013"
+        - name: ANALYTICS_SERVICE_URL
+          value: "http://analytics-service:4014"
+        - name: LOANS_SERVICE_URL
+          value: "http://loans-service:4015"
         - name: LEDGER_SERVICE_URL
           value: "http://ledger-service:8082"
         - name: PAYMENT_SERVICE_URL
           value: "http://payment-service:8081"
+        - name: UPSTREAM_TIMEOUT_MS
+          value: "15000"
+        - name: CORS_ALLOWED_ORIGINS
+          value: "http://localhost:3000,http://localhost:5000,http://localhost:5001,http://localhost:5002,http://localhost:5003,http://localhost:5004,http://localhost:5005"
         resources:
           requests:
             memory: "128Mi"
@@ -40,6 +85,9 @@ spec:
             path: /health
             port: 3000
           initialDelaySeconds: 30
+      volumes:
+      - name: tmp
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

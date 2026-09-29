@@ -23,7 +23,7 @@ import java.util.Optional
  */
 class MenuOptionServiceTest : BehaviorSpec({
 
-    val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_merchant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
+    val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_merchant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
     val product = MerchantProduct(id = "product_1", merchantId = "merchant_1", name = "Burger", price = BigDecimal("3000"))
 
     Given("a restaurant owner adding a real required option group to their own menu item") {
@@ -56,6 +56,14 @@ class MenuOptionServiceTest : BehaviorSpec({
                 view.choices.size shouldBe 3
                 view.choices.first { it.name == "Small" }.priceDelta shouldBe BigDecimal.ZERO
                 view.choices.first { it.name == "Large" }.priceDelta shouldBe BigDecimal("1000")
+            }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08): rateLimiter was relaxed = true with zero verify{} anywhere
+            // in this file, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                io.mockk.verify(exactly = 1) { rateLimiter.checkLimit("merchant:menu-option-group:owner_1", limit = 30, window = java.time.Duration.ofHours(1)) }
             }
         }
 

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Real NFC "tap to present my payment code" (2026-08-27, direct user follow-up: "for
+  simplification we need nfc"); see TransitHceService.kt's own doc comment for the
+  full account. AID F04954554E4441 is self-assigned under the 0xF0 "proprietary, no
+  ISO registration required" RID prefix (ISO 7816-5): 0xF0 followed by the ASCII bytes
+  of "ITUNDA" (49 54 55 4E 44 41). Must match TransitNfcReader.kt's own AID constant
+  exactly, or the reader will never select this service.
+-->
+
+<host-apdu-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/transit_hce_description"
+    android:requireDeviceUnlock="false">
+    <aid-group
+        android:category="other"
+        android:description="@string/transit_hce_description">
+        <aid-filter android:name="F04954554E4441" />
+    </aid-group>
+</host-apdu-service>

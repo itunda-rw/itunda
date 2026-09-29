@@ -104,6 +104,1847 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  # Real, first product-level dashboard (2026-09-06, Bank product-completeness
+  # pass) -- see docs/ARCHITECTURE.md's dated follow-up. Both dashboards above are
+  # pure infra (pod health/JVM/node resources); zero transaction-volume or
+  # error-rate panel existed for any single PRODUCT before this. Built from data
+  # that is ALREADY flowing (every service here already runs with
+  # prometheus.io/scrape: "true" + /actuator/prometheus, Micrometer already wired)
+  # -- zero new backend instrumentation needed. Bank's 11 real route prefixes are
+  # split across two JVMs today: `backend` (application="itunda") still serves
+  # /api/v1/account and /api/v1/savings/** (+ its 6 sibling prefixes -- see
+  # docs/ARCHITECTURE.md's Fourteenth-extraction entry for why those stayed in
+  # the monolith), and `loans-service` (application="itunda-loans-service") serves
+  # /api/v1/loans/**, /api/v1/cooperatives, /api/v1/vendor-advance. The uri regex
+  # below deliberately spans both JVMs by matching on route path, not on
+  # `application`, so this dashboard reflects the real product surface
+  # regardless of which JVM currently answers each route -- it does not need
+  # editing if/when :account/:savings are ever extracted too.
+  name: grafana-dashboard-itunda-bank
+  namespace: monitoring
+data:
+  itunda-bank.json: |
+    {
+      "title": "itunda Bank",
+      "uid": "itunda-bank",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Bank request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(account|savings|upfront-deposits|sacco|ikiminas|group-accounts|weekly-savings|grow31-savings|loans|cooperatives|vendor-advance)(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Bank error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(account|savings|upfront-deposits|sacco|ikiminas|group-accounts|weekly-savings|grow31-savings|loans|cooperatives|vendor-advance)(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Bank request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(account|savings|upfront-deposits|sacco|ikiminas|group-accounts|weekly-savings|grow31-savings|loans|cooperatives|vendor-advance)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(account|savings|upfront-deposits|sacco|ikiminas|group-accounts|weekly-savings|grow31-savings|loans|cooperatives|vendor-advance)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "loans-service JVM heap used",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "targets": [
+            {
+              "expr": "sum(jvm_memory_used_bytes{area=\"heap\", application=\"itunda-loans-service\"})",
+              "legendFormat": "loans-service heap"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "title": "Bank-serving pods up (backend + loans-service)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+          "targets": [
+            {
+              "expr": "count(up{job=\"itunda-services\", app=~\"backend|loans-service\"} == 1) by (app)",
+              "legendFormat": "{{app}}"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, second product-level dashboard (2026-09-06, Pay product-completeness
+  # pass) -- see docs/ARCHITECTURE.md's dated follow-up. Same zero-new-
+  # instrumentation approach as itunda-bank above: every route below already
+  # runs on `backend` (application="itunda") with Prometheus/actuator already
+  # flowing. No per-service JVM/pods-up panel here, unlike itunda-bank's --
+  # this pass's own backend-extraction attempt (:gift -> gift-service) was
+  # investigated and correctly ruled out (see staged-swimming-sun.md's own
+  # account of the real RealtimeMessagePublisher-via-:messaging blocker), so
+  # there is no new JVM to chart; all of Pay's routes still run on the one
+  # `backend` deployment charted by itunda-fleet's own "Pods up by app" panel.
+  name: grafana-dashboard-itunda-pay
+  namespace: monitoring
+data:
+  itunda-pay.json: |
+    {
+      "title": "itunda Pay",
+      "uid": "itunda-pay",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Pay request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(p2p|split-bills|gifts|gift-vouchers|pay|facepay)(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Pay error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(p2p|split-bills|gifts|gift-vouchers|pay|facepay)(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Pay request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(p2p|split-bills|gifts|gift-vouchers|pay|facepay)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(p2p|split-bills|gifts|gift-vouchers|pay|facepay)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, third product-level dashboard (2026-09-06, Merchant product-
+  # completeness pass) -- see docs/ARCHITECTURE.md's dated follow-up. Same
+  # zero-new-instrumentation approach as itunda-bank/itunda-pay above: every
+  # route below already runs on `backend` (application="itunda") with
+  # Prometheus/actuator already flowing. No per-service JVM/pods-up panel here
+  # either -- this pass's own backend-extraction attempt (:merchant/:commerce)
+  # was investigated and correctly ruled out (see staged-swimming-sun.md's own
+  # account of the real reverse-coupling and RealtimeMessagePublisher-via-
+  # :messaging blockers), so there is no new JVM to chart.
+  name: grafana-dashboard-itunda-merchant
+  namespace: monitoring
+data:
+  itunda-merchant.json: |
+    {
+      "title": "itunda Merchant",
+      "uid": "itunda-merchant",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Merchant request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(merchant|facepay|pay|shopping|orders|affiliate|product-subscriptions|time-deals|system/merchants|system/merchant-webhooks)(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Merchant error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(merchant|facepay|pay|shopping|orders|affiliate|product-subscriptions|time-deals|system/merchants|system/merchant-webhooks)(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Merchant request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(merchant|facepay|pay|shopping|orders|affiliate|product-subscriptions|time-deals|system/merchants|system/merchant-webhooks)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(merchant|facepay|pay|shopping|orders|affiliate|product-subscriptions|time-deals|system/merchants|system/merchant-webhooks)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, fourth product-level dashboard (2026-09-06, Wealth/Invest product-
+  # completeness pass) -- see docs/ARCHITECTURE.md's dated follow-up. Same
+  # zero-new-instrumentation approach as itunda-bank/itunda-pay/itunda-merchant
+  # above: /api/v1/stocks already runs on `backend` (application="itunda") with
+  # Prometheus/actuator already flowing. No per-service JVM/pods-up panel here
+  # either -- this pass's own backend-extraction attempt (:stocks) was
+  # investigated and correctly ruled out (real reverse coupling from :savings,
+  # which stays in :app for round-up-to-invest -- see staged-swimming-sun.md's
+  # own account, including a methodology correction to an initial research
+  # conclusion), so there is no new JVM to chart.
+  name: grafana-dashboard-itunda-wealth
+  namespace: monitoring
+data:
+  itunda-wealth.json: |
+    {
+      "title": "itunda Wealth",
+      "uid": "itunda-wealth",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Wealth request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/stocks(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Wealth error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/stocks(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Wealth request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/stocks(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/stocks(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, fifth product-level dashboard (2026-09-06, Insurance product-
+  # completeness pass) -- see docs/ARCHITECTURE.md's dated follow-up.
+  # insurance-service was extracted on 2026-09-01, five days BEFORE the first
+  # product dashboard (itunda-bank, 2026-09-06) existed, and never got one --
+  # a real, confirmed gap this closes. Unlike itunda-bank/pay/merchant/wealth
+  # (whose routes all still run on the shared `backend` monolith), this is the
+  # first product dashboard in the sweep that CAN chart a real, separately
+  # deployed JVM -- insurance-service's own real
+  # spring.application.name="itunda-insurance-service" (confirmed by reading
+  # insurance-service/src/main/resources/application.yml directly, not
+  # guessed), so a real per-service heap/pods-up panel is included below.
+  name: grafana-dashboard-itunda-insurance
+  namespace: monitoring
+data:
+  itunda-insurance.json: |
+    {
+      "title": "itunda Insurance",
+      "uid": "itunda-insurance",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Insurance request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/insurance(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Insurance error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/insurance(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Insurance request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/insurance(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/insurance(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "insurance-service JVM heap used",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "targets": [
+            {
+              "expr": "sum(jvm_memory_used_bytes{area=\"heap\", application=\"itunda-insurance-service\"})",
+              "legendFormat": "insurance-service heap"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "title": "insurance-service pods up",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+          "targets": [
+            {
+              "expr": "count(up{job=\"itunda-services\", app=\"insurance-service\"} == 1)",
+              "legendFormat": "insurance-service"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, sixth product-level dashboard (2026-09-06, Talk product-completeness
+  # pass) -- see docs/ARCHITECTURE.md's dated follow-up. Talk (:messaging +
+  # :calling) stays inside the shared `backend` monolith deployment (not
+  # extractable -- real reverse coupling from realestate/marketplace/gift/
+  # splitbill/rideshare/jobs/eats/merchant, plus :calling's real circular
+  # dependency on :app's MessagingWebSocketHandler), so this follows the same
+  # pattern as itunda-bank/pay/merchant/wealth: route-filtered request-rate/
+  # error-rate/latency panels, no per-service JVM/pods-up panel (no new,
+  # separately deployed JVM to chart). Real route prefixes confirmed by
+  # reading each controller directly: /api/v1/messages(/groups), /api/v1/calls,
+  # /api/v1/emoticons, /api/v1/talk/ai-chat, /api/v1/chat/reports.
+  name: grafana-dashboard-itunda-talk
+  namespace: monitoring
+data:
+  itunda-talk.json: |
+    {
+      "title": "itunda Talk",
+      "uid": "itunda-talk",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Talk request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(messages|calls|emoticons|talk|chat)(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Talk error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(messages|calls|emoticons|talk|chat)(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Talk request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(messages|calls|emoticons|talk|chat)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(messages|calls|emoticons|talk|chat)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, seventh product-level dashboard (2026-09-06, Eats product-completeness
+  # pass) -- see docs/ARCHITECTURE.md's dated follow-up. `:eats` stays inside the
+  # shared `backend` monolith deployment (not extractable -- real reverse coupling
+  # from `:maps`, plus a direct, unexcludable MessagingService dependency and
+  # direct build.gradle.kts coupling to :account/:merchant/:splitbill), so this
+  # follows the same pattern as itunda-bank/pay/merchant/wealth/talk: route-filtered
+  # request-rate/error-rate/latency panels, no per-service JVM/pods-up panel (no
+  # new, separately deployed JVM to chart). Single real prefix covers dishes/
+  # orders/riders/reviews/favorites/memberships/group-orders in one regex.
+  name: grafana-dashboard-itunda-eats
+  namespace: monitoring
+data:
+  itunda-eats.json: |
+    {
+      "title": "itunda Eats",
+      "uid": "itunda-eats",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Eats request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/eats(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Eats error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/eats(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Eats request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/eats(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/eats(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, ninth product-level dashboard (2026-09-07, Shop/Commerce product-
+  # completeness pass) -- see docs/ARCHITECTURE.md's dated follow-up. `:commerce`
+  # stays inside the shared `backend` monolith deployment (not extractable -- real,
+  # unexcludable forward coupling to `:merchant`/`:account` beyond `:core`/`:auth`,
+  # part of the same reverse-coupling web that keeps `:account`/`:savings` in
+  # `:app` too), so this follows the same route-filtered request-rate/error-rate/
+  # latency pattern as itunda-bank/pay/merchant/wealth/talk/eats/rideshare -- no
+  # per-service JVM/pods-up panel. Scoped to /api/v1/orders(/.*)? -- confirmed by
+  # reading OrderController.kt's own @RequestMapping directly (NOT "/api/v1/
+  # commerce" or "/api/v1/shop", despite the Gradle module's own name and the
+  # product's own consumer-facing name -- same module-name-vs-route-prefix
+  # divergence already caught for Rideshare).
+  name: grafana-dashboard-itunda-shop
+  namespace: monitoring
+data:
+  itunda-shop.json: |
+    {
+      "title": "itunda Shop",
+      "uid": "itunda-shop",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Shop request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/orders(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Shop error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/orders(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Shop request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/orders(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/orders(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, tenth product-level dashboard (2026-09-07, Bills product-completeness
+  # pass) -- see docs/ARCHITECTURE.md's dated follow-up. `bills-service` is a
+  # genuine, separately-deployed service (own Dockerfile/application.yml/k8s
+  # Deployment in staging and production, confirmed zero-coupling Gradle
+  # extraction), yet had zero monitoring coverage before this -- the only "bills"
+  # hits anywhere in this directory matched split-bills (:splitbill, an unrelated
+  # feature), not this product's real /api/v1/bills/* routes. Same route-filtered
+  # request-rate/error-rate/latency pattern as every other product dashboard, no
+  # per-service JVM panel (bills-service shares the same JVM-hosting pattern as
+  # every other *-service extraction -- see CLAUDE.md). Scoped to /api/v1/bills(/.*)?
+  # -- confirmed by reading BillsController.kt's own @RequestMapping directly.
+  name: grafana-dashboard-itunda-bills
+  namespace: monitoring
+data:
+  itunda-bills.json: |
+    {
+      "title": "itunda Bills",
+      "uid": "itunda-bills",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Bills request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/bills(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Bills error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/bills(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Bills request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/bills(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/bills(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, eleventh product-level dashboard (2026-09-07, Agents product-
+  # completeness pass) -- see docs/ARCHITECTURE.md's "Third extraction" entry.
+  # `:agents-service` is a genuine, separately-deployed service (confirmed
+  # zero-coupling Gradle extraction), yet had zero monitoring coverage before
+  # this. Scoped to a single alternation covering all three real consumer/
+  # operator-facing prefixes -- /api/v1/(agent|agents|float-marketplace)(/.*)?
+  # -- confirmed by reading AgentOperatorController.kt/AgentDiscoveryController.kt/
+  # FloatMarketplaceController.kt's own @RequestMapping annotations directly.
+  # The shared admin sub-path /api/v1/system/agents is deliberately excluded,
+  # matching how every other product dashboard leaves shared
+  # /api/v1/system/** admin routes off its own chart. No per-service JVM
+  # panel, matching every prior product dashboard on the shared backend.
+  name: grafana-dashboard-itunda-agents
+  namespace: monitoring
+data:
+  itunda-agents.json: |
+    {
+      "title": "itunda Agents",
+      "uid": "itunda-agents",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Agents request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(agent|agents|float-marketplace)(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Agents error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(agent|agents|float-marketplace)(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Agents request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(agent|agents|float-marketplace)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(agent|agents|float-marketplace)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, twelfth product-level dashboard (2026-09-07, Card product-completeness
+  # pass) -- see docs/ARCHITECTURE.md's "First independently-deployable product"
+  # entry. `:card-service` was the very first backend extraction, yet had zero
+  # monitoring coverage before this. Scoped to /api/v1/card(/.*)? -- confirmed by
+  # reading CardController.kt's own @RequestMapping directly. No per-service JVM
+  # panel, matching every other product dashboard on the shared backend.
+  name: grafana-dashboard-itunda-card
+  namespace: monitoring
+data:
+  itunda-card.json: |
+    {
+      "title": "itunda Card",
+      "uid": "itunda-card",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Card request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/card(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Card error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/card(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Card request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/card(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/card(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, eighth product-level dashboard (2026-09-06, Rideshare product-completeness
+  # pass) -- see docs/ARCHITECTURE.md's dated follow-up. `:rideshare` stays inside
+  # the shared `backend` monolith deployment (not extractable -- real, direct,
+  # unexcludable MessagingService coupling for the real Share Trip Status/Trusted
+  # Contacts safety features), so this follows the same pattern as itunda-bank/pay/
+  # merchant/wealth/talk/eats: route-filtered request-rate/error-rate/latency
+  # panels, no per-service JVM/pods-up panel (no new, separately deployed JVM to
+  # chart). Scoped to the real Rideshare (ride-hailing) product itself --
+  # /api/v1/rides(/.*)? -- confirmed by reading RideController.kt's own
+  # @RequestMapping directly (NOT "/api/v1/rideshare", despite the Gradle module's
+  # own name). This deliberately excludes :rideshare's sibling sub-features (bus,
+  # bike rental, parking, moto-fare, designated driver), which each have their own
+  # separate top-level route prefix (/api/v1/bus, /api/v1/bikeshare, /api/v1/
+  # parking, /api/v1/moto-fare, /api/v1/designated-driver) and are real, distinct
+  # products sharing this Gradle module, not part of ride-hailing itself -- each is
+  # a reasonable candidate for its own future product-completeness pass.
+  name: grafana-dashboard-itunda-rideshare
+  namespace: monitoring
+data:
+  itunda-rideshare.json: |
+    {
+      "title": "itunda Rideshare",
+      "uid": "itunda-rideshare",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Rideshare request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/rides(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Rideshare error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/rides(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Rideshare request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/rides(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/rides(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, thirteenth product-level dashboard (2026-09-07, Transit product-
+  # completeness pass) -- see docs/ARCHITECTURE.md's dated follow-up. `:transit`/
+  # `:transit-service` is the 4th independently-deployable backend extraction
+  # (own Gradle module, own bootJar/Dockerfile/k8s Deployment), same shared-MySQL-
+  # schema shape as the other extracted services, so this follows the same
+  # route-filtered request-rate/error-rate/latency panel shape as itunda-card/
+  # itunda-agents (no per-service JVM/pods-up panel beyond what those already
+  # established). Scoped to /api/v1/transit(/.*)? -- confirmed by reading
+  # TransitController.kt's own @RequestMapping directly. Deliberately distinct
+  # from :maps' unrelated /api/v1/system/transit/import-gtfs GTFS-import admin
+  # route, which is a different feature entirely and stays off this chart.
+  name: grafana-dashboard-itunda-transit
+  namespace: monitoring
+data:
+  itunda-transit.json: |
+    {
+      "title": "itunda Transit",
+      "uid": "itunda-transit",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Transit request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/transit(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Transit error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/transit(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Transit request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/transit(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/transit(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, fourteenth product-level dashboard (2026-09-07, Certificate product-
+  # completeness pass) -- see docs/ARCHITECTURE.md's dated follow-up. `:certificate`/
+  # `:certificate-service` is the 5th independently-deployable backend extraction
+  # (own Gradle module, own bootJar/Dockerfile/k8s Deployment), same shared-MySQL-
+  # schema shape as the other extracted services, so this follows the same
+  # route-filtered request-rate/error-rate/latency panel shape as itunda-card/
+  # itunda-transit (no per-service JVM panel beyond what those already established).
+  # Scoped to /api/v1/certificate(/.*)? -- confirmed by reading
+  # CertificateController.kt's own @RequestMapping directly.
+  name: grafana-dashboard-itunda-certificate
+  namespace: monitoring
+data:
+  itunda-certificate.json: |
+    {
+      "title": "itunda Certificate",
+      "uid": "itunda-certificate",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Certificate request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/certificate(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Certificate error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/certificate(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Certificate request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/certificate(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/certificate(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, fifteenth product-level dashboard (2026-09-07, Vehicle product-
+  # completeness pass) -- see docs/ARCHITECTURE.md's dated follow-up. This
+  # product spans two real routes: `:vehicle`/`:vehicle-service` (the 7th
+  # independently-deployable backend extraction, a pure B2C valuation
+  # tracker) and the real B2B2C vehicle-inspection escrow feature, which
+  # lives inside the shared `:marketplace` module under a different route
+  # prefix -- both covered by one regex, same route-filtered request-rate/
+  # error-rate/latency panel shape as itunda-card/itunda-certificate (no
+  # per-service JVM panel). Scoped to /api/v1/vehicles(/.*)? and
+  # /api/v1/marketplace/inspections(/.*)?, confirmed by reading
+  # VehicleController.kt's and VehicleInspectionController.kt's own
+  # @RequestMapping directly. Deliberately distinct from itunda-shop's
+  # existing dashboard, which is scoped to /api/v1/orders(/.*)? and does
+  # not touch either of these routes.
+  name: grafana-dashboard-itunda-vehicle
+  namespace: monitoring
+data:
+  itunda-vehicle.json: |
+    {
+      "title": "itunda Vehicle",
+      "uid": "itunda-vehicle",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Vehicle request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(vehicles|marketplace/inspections)(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Vehicle error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(vehicles|marketplace/inspections)(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Vehicle request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(vehicles|marketplace/inspections)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(vehicles|marketplace/inspections)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, sixteenth product-level dashboard (2026-09-07, Partners product-
+  # completeness pass) -- see docs/ARCHITECTURE.md's dated follow-up. `:partners`/
+  # `:partners-service` is the 8th independently-deployable backend extraction
+  # (own Gradle module, own bootJar/Dockerfile/k8s Deployment), same shared-MySQL-
+  # schema shape as the other extracted services. This product spans 4 real route
+  # prefixes -- partner-facing (/api/v1/partners, including its /identity
+  # sub-path), the published catalog (/api/v1/mini-apps), the itunda-user-facing
+  # identity-verification consent side (/api/v1/identity/verification), and the
+  # ADMIN-only review/moderation queue (/api/v1/system/partners) -- confirmed by
+  # reading each of the 5 real controllers' own @RequestMapping directly. Same
+  # route-filtered request-rate/error-rate/latency panel shape as itunda-card/
+  # itunda-vehicle (no per-service JVM panel).
+  name: grafana-dashboard-itunda-partners
+  namespace: monitoring
+data:
+  itunda-partners.json: |
+    {
+      "title": "itunda Partners",
+      "uid": "itunda-partners",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Partners request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(partners|mini-apps|identity/verification|system/partners)(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Partners error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(partners|mini-apps|identity/verification|system/partners)(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Partners request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(partners|mini-apps|identity/verification|system/partners)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(partners|mini-apps|identity/verification|system/partners)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, seventeenth product-level dashboard (2026-09-07, Identity product-
+  # completeness pass) -- see docs/ARCHITECTURE.md's dated follow-up. `:identity`/
+  # `:identity-service` is the 9th independently-deployable backend extraction
+  # (own Gradle module, own bootJar/Dockerfile/k8s Deployment), same shared-MySQL-
+  # schema shape as the other extracted services. Scoped to the real personal
+  # KYC/KYB submission routes (/api/v1/identity/submit, /api/v1/identity/status)
+  # and this product's own admin review queue (/api/v1/system/compliance),
+  # confirmed by reading IdentityController.kt's and ComplianceController.kt's
+  # own @RequestMapping directly. Deliberately NOT a bare /api/v1/identity(/.*)?
+  # wildcard -- that would also match Partners' unrelated
+  # /api/v1/identity/verification/** (identity-verification-FOR-PARTNERS, a
+  # different backend module entirely, the exact real route-prefix collision
+  # CLAUDE.md's own note on gateway registration order already documents) --
+  # the explicit /submit and /status sub-paths keep this dashboard scoped to
+  # only this product's own real traffic. Same route-filtered request-rate/
+  # error-rate/latency panel shape as
+  # itunda-card/itunda-partners (no per-service JVM panel).
+  name: grafana-dashboard-itunda-identity
+  namespace: monitoring
+data:
+  itunda-identity.json: |
+    {
+      "title": "itunda Identity",
+      "uid": "itunda-identity",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Identity request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(identity/(submit|status)|system/compliance)(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Identity error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(identity/(submit|status)|system/compliance)(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Identity request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(identity/(submit|status)|system/compliance)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(identity/(submit|status)|system/compliance)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, nineteenth product-level dashboard (2026-09-07, Overview product-
+  # completeness pass) -- see docs/ARCHITECTURE.md's dated follow-up. `:overview`/
+  # `:overview-service` is the 10th independently-deployable backend extraction
+  # (own Gradle module, own bootJar/Dockerfile/k8s Deployment), same shared-MySQL-
+  # schema shape as the other extracted services. Covers both of this product's
+  # real route prefixes -- the net-worth/asset aggregation dashboard
+  # (/api/v1/overview) and the external bank/MoMo account-linking consent
+  # registry (/api/v1/accounts) -- confirmed by reading OverviewController.kt's
+  # and LinkedAccountController.kt's own @RequestMapping directly, and confirmed
+  # via a repo-wide grep that no other module registers either prefix (unlike
+  # Identity's real collision with Partners' /api/v1/identity/verification,
+  # this pair is exclusively owned by :overview, so a plain wildcard is safe
+  # here). Same route-filtered request-rate/error-rate/latency panel shape as
+  # itunda-card/itunda-identity (no per-service JVM panel).
+  name: grafana-dashboard-itunda-overview
+  namespace: monitoring
+data:
+  itunda-overview.json: |
+    {
+      "title": "itunda Overview",
+      "uid": "itunda-overview",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Overview request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(overview|accounts)(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Overview error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(overview|accounts)(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Overview request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(overview|accounts)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(overview|accounts)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-itunda-knowledge
+  namespace: monitoring
+data:
+  itunda-knowledge.json: |
+    {
+      "title": "itunda Knowledge",
+      "uid": "itunda-knowledge",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Knowledge request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/knowledge(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Knowledge error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/knowledge(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Knowledge request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/knowledge(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/knowledge(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-itunda-notifications
+  namespace: monitoring
+data:
+  itunda-notifications.json: |
+    {
+      "title": "itunda Notifications",
+      "uid": "itunda-notifications",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Notifications request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(notifications|talk/service-channel|system/notifications)(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Notifications error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(notifications|talk/service-channel|system/notifications)(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Notifications request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(notifications|talk/service-channel|system/notifications)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(notifications|talk/service-channel|system/notifications)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-itunda-analytics
+  namespace: monitoring
+data:
+  itunda-analytics.json: |
+    {
+      "title": "itunda Analytics",
+      "uid": "itunda-analytics",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Analytics request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/analytics(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Analytics error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/analytics(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Analytics request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/analytics(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/analytics(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-itunda-loans
+  namespace: monitoring
+data:
+  itunda-loans.json: |
+    {
+      "title": "itunda Loans",
+      "uid": "itunda-loans",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Loans request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(loans|cooperatives|vendor-advance|system/loans)(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Loans error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(loans|cooperatives|vendor-advance|system/loans)(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Loans request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(loans|cooperatives|vendor-advance|system/loans)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(loans|cooperatives|vendor-advance|system/loans)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, twenty-third product-level dashboard (2026-09-07, Maps product-
+  # completeness pass) -- see docs/ARCHITECTURE.md's dated follow-up. `:maps`
+  # is NOT one of the independently-deployable extracted services (bundled
+  # inside the monolith, real reverse Gradle coupling from :eats/:merchant --
+  # see MapsPlaceDetailService's own doc comment), but still gets the same
+  # route-filtered request-rate/error-rate/latency panel shape as
+  # itunda-card/itunda-loans, since it has real, previously-zero monitoring
+  # coverage otherwise. Scoped to /api/v1/maps(/.*)? -- confirmed by reading
+  # MapsController.kt's own @RequestMapping directly. Deliberately excludes
+  # /api/v1/system/transit/import-gtfs (TransitGtfsAdminController), same
+  # "different feature entirely" reasoning itunda-transit's own doc comment
+  # already gives for excluding it there too.
+  name: grafana-dashboard-itunda-maps
+  namespace: monitoring
+data:
+  itunda-maps.json: |
+    {
+      "title": "itunda Maps",
+      "uid": "itunda-maps",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Maps request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/maps(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Maps error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/maps(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Maps request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/maps(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/maps(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, twenty-fourth product-level dashboard (2026-09-07, Hood product-
+  # completeness pass) -- see docs/ARCHITECTURE.md's dated follow-up. None of
+  # :marketplace/:community/:jobs/:realestate are independently-deployable
+  # extracted services (real :messaging -> :app-only RealtimeMessagePublisher
+  # coupling, direct for 3 of the 4 and transitive via :splitbill for
+  # :community -- see that same follow-up), but they still get the same
+  # route-filtered request-rate/error-rate/latency panel shape as
+  # itunda-card/itunda-maps, since these four had zero monitoring coverage
+  # otherwise. Scoped to all four real route prefixes -- confirmed by reading
+  # each controller's own @RequestMapping directly.
+  name: grafana-dashboard-itunda-hood
+  namespace: monitoring
+data:
+  itunda-hood.json: |
+    {
+      "title": "itunda Hood",
+      "uid": "itunda-hood",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Hood request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(marketplace|community|jobs|realestate)(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Hood error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(marketplace|community|jobs|realestate)(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Hood request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(marketplace|community|jobs|realestate)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(marketplace|community|jobs|realestate)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, twenty-sixth product-level dashboard (2026-09-08, Support product-
+  # completeness pass) -- :support and :system both stay inside the :app monolith
+  # (not independently-deployable services, see docs/ARCHITECTURE.md's own
+  # candidate-pool note on both), so this reuses the same zero-new-instrumentation
+  # request-rate/error-rate/latency panel shape as itunda-card/itunda-maps/
+  # itunda-hood, scoped to the real routes confirmed by reading SupportController's
+  # and SupportAdminController's own @RequestMapping directly.
+  name: grafana-dashboard-itunda-support
+  namespace: monitoring
+data:
+  itunda-support.json: |
+    {
+      "title": "itunda Support",
+      "uid": "itunda-support",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Support request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(support|system/support)(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Support error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/(support|system/support)(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Support request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(support|system/support)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/(support|system/support)(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, twenty-seventh product-level dashboard (2026-09-08, USSD product-
+  # completeness pass) -- :ussd stays inside the :app monolith (real reverse
+  # coupling from both :p2p and :merchant rules out extraction, see
+  # docs/ARCHITECTURE.md's own candidate-pool note), so this reuses the same
+  # zero-new-instrumentation request-rate/error-rate/latency panel shape as
+  # itunda-card/itunda-maps/itunda-hood/itunda-support, scoped to the real
+  # route confirmed by reading UssdController's own @RequestMapping directly.
+  name: grafana-dashboard-itunda-ussd
+  namespace: monitoring
+data:
+  itunda-ussd.json: |
+    {
+      "title": "itunda USSD",
+      "uid": "itunda-ussd",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "USSD request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/ussd(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "USSD error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/ussd(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "USSD request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/ussd(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/ussd(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Real, twenty-ninth product-level dashboard (2026-09-08, Family product-
+  # completeness pass) -- :family stays inside the :app monolith (real
+  # reverse coupling from :p2p's sendToFamilyMember rules out extraction,
+  # see docs/ARCHITECTURE.md's own candidate-pool note), so this reuses the
+  # same zero-new-instrumentation request-rate/error-rate/latency panel
+  # shape as itunda-card/itunda-maps/itunda-hood/itunda-support/itunda-ussd,
+  # scoped to the real route confirmed by reading FamilyLinkController's
+  # own @RequestMapping directly.
+  name: grafana-dashboard-itunda-family
+  namespace: monitoring
+data:
+  itunda-family.json: |
+    {
+      "title": "itunda Family",
+      "uid": "itunda-family",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Family request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/family(/.*)?\"}[1m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Family error rate (5xx) by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/family(/.*)?\", status=~\"5..\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Family request latency p50/p95",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/family(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/v1/family(/.*)?\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: grafana-dashboard-itunda-private-cloud
   namespace: monitoring
 data:
@@ -249,6 +2090,60 @@ spec:
           sources:
           - configMap:
               name: grafana-dashboard-itunda-fleet
+          - configMap:
+              name: grafana-dashboard-itunda-bank
+          - configMap:
+              name: grafana-dashboard-itunda-pay
+          - configMap:
+              name: grafana-dashboard-itunda-merchant
+          - configMap:
+              name: grafana-dashboard-itunda-wealth
+          - configMap:
+              name: grafana-dashboard-itunda-insurance
+          - configMap:
+              name: grafana-dashboard-itunda-talk
+          - configMap:
+              name: grafana-dashboard-itunda-eats
+          - configMap:
+              name: grafana-dashboard-itunda-rideshare
+          - configMap:
+              name: grafana-dashboard-itunda-shop
+          - configMap:
+              name: grafana-dashboard-itunda-bills
+          - configMap:
+              name: grafana-dashboard-itunda-agents
+          - configMap:
+              name: grafana-dashboard-itunda-card
+          - configMap:
+              name: grafana-dashboard-itunda-transit
+          - configMap:
+              name: grafana-dashboard-itunda-certificate
+          - configMap:
+              name: grafana-dashboard-itunda-vehicle
+          - configMap:
+              name: grafana-dashboard-itunda-partners
+          - configMap:
+              name: grafana-dashboard-itunda-identity
+          - configMap:
+              name: grafana-dashboard-itunda-overview
+          - configMap:
+              name: grafana-dashboard-itunda-knowledge
+          - configMap:
+              name: grafana-dashboard-itunda-notifications
+          - configMap:
+              name: grafana-dashboard-itunda-analytics
+          - configMap:
+              name: grafana-dashboard-itunda-loans
+          - configMap:
+              name: grafana-dashboard-itunda-maps
+          - configMap:
+              name: grafana-dashboard-itunda-hood
+          - configMap:
+              name: grafana-dashboard-itunda-support
+          - configMap:
+              name: grafana-dashboard-itunda-ussd
+          - configMap:
+              name: grafana-dashboard-itunda-family
           - configMap:
               name: grafana-dashboard-itunda-private-cloud
 ---

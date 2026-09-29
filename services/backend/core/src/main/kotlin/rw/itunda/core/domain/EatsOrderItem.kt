@@ -44,8 +44,19 @@ class EatsOrderItem(
     // majority of pre-existing menu items, unaffected by this additive feature).
     @Column(name = "selected_options_json", length = 4000, nullable = true)
     val selectedOptionsJson: String? = null,
+
+    // Real DoorDash/Uber Eats-style "Item Unavailable" flow (2026-08-17) -- see
+    // EatsOrderService.markItemUnavailable's own doc comment for the full account. False
+    // for every pre-existing item (the overwhelming majority), unaffected by this
+    // additive feature.
+    @Column(nullable = false)
+    var unavailable: Boolean = false,
+
+    @Column(name = "refund_transaction_id", length = 64, nullable = true)
+    var refundTransactionId: String? = null,
 ) {
     protected constructor() : this(
         id = "", orderId = "", productId = "", productName = "", unitPrice = BigDecimal.ZERO, quantity = 0, selectedOptionsJson = null,
+        unavailable = false, refundTransactionId = null,
     )
 }

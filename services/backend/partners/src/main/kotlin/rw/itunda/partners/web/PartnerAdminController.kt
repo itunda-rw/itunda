@@ -17,6 +17,7 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.partners.PartnerMiniAppNotFoundException
 import rw.itunda.partners.PartnerMiniAppNotPendingException
+import rw.itunda.partners.PartnerNotFoundException
 import rw.itunda.partners.PartnerService
 
 data class DecidePartnerMiniAppRequest(val approve: Boolean, val reason: String? = null)
@@ -44,6 +45,32 @@ class PartnerAdminController(private val partnerService: PartnerService) {
         return ResponseEntity.ok(mapOf("success" to true, "miniApp" to miniApp))
     }
 
+    // Real admin moderation lever (2026-09-07, Partners product-completeness pass) --
+    // PartnerService.resolvePartner already real-enforces PartnerStatus.SUSPENDED, but
+    // nothing anywhere could ever set a Partner to SUSPENDED until this pass -- same
+    // real gap class this sweep already found and fixed for Merchant/vehicle-inspection
+    // mechanics.
+    @GetMapping
+    fun listPartners(): ResponseEntity<Map<String, Any?>> {
+        val partners = partnerService.getAllPartners().map {
+            mapOf("partnerId" to it.id, "companyName" to it.companyName, "contactEmail" to it.contactEmail, "status" to it.status.name, "createdAt" to it.createdAt.toString())
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "partners" to partners))
+    }
+
+    // Real admin-accountability gap closed (2026-09-12): these 2 endpoints previously
+    // had zero record of which admin acted, unlike the identical-shape decide() above
+    // that already captures currentUser.userId -- same real gap class this codebase
+    // already closed for Merchant (MerchantModerationAdminController) and Vehicle
+    // Inspection's mechanics.
+    @PostMapping("/{partnerId}/suspend")
+    fun suspend(@PathVariable partnerId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "partner" to partnerService.suspendPartner(partnerId, currentUser.userId)))
+
+    @PostMapping("/{partnerId}/reactivate")
+    fun reactivate(@PathVariable partnerId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "partner" to partnerService.reactivatePartner(partnerId, currentUser.userId)))
+
     @ExceptionHandler(PartnerMiniAppNotFoundException::class)
     fun handleNotFound(ex: PartnerMiniAppNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("PARTNER_MINI_APP_NOT_FOUND", ex.message ?: "Not found"))
@@ -51,4 +78,8 @@ class PartnerAdminController(private val partnerService: PartnerService) {
     @ExceptionHandler(PartnerMiniAppNotPendingException::class)
     fun handleNotPending(ex: PartnerMiniAppNotPendingException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("PARTNER_MINI_APP_NOT_PENDING", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(PartnerNotFoundException::class)
+    fun handlePartnerNotFound(ex: PartnerNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("PARTNER_NOT_FOUND", ex.message ?: "Not found"))
 }

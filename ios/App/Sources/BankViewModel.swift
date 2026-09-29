@@ -1,25 +1,60 @@
 import Foundation
 import FeatureBanking
+import CoreDesignSystem
+import CoreNetwork
 
 /// Real data backing BankView (2026-07-11) -- mirrors Android's MainViewModel.kt.
 /// Lives in the App target, not Features/Banking, because BankView's module can't
-/// depend back on App's NetworkClient/Wallet types (App depends on Feature, never
+/// depend back on App's NetworkClient/Account types (App depends on Feature, never
 /// the reverse -- see Project.swift's featureModules list); ContentView owns this
 /// and passes plain formatted values into BankView, the same way it already passes
 /// plain strings into TransferQuoteScreen.
 @MainActor
 final class BankViewModel: ObservableObject {
     @Published private(set) var balanceText = "RWF 0"
+    // Real Toss Bank reference (user-provided screenshots, 2026-08-11) -- see
+    // AccountSummaryCard's own doc comment in BankView.swift.
+    @Published private(set) var accountNumber: String?
+    // Real Toss Bank reference (2026-09-12, "계좌 별명" -- account nickname) -- see
+    // AccountManageScreen.swift's own AccountNicknameScreen doc comment.
+    @Published private(set) var accountId: String?
+    @Published private(set) var accountNickname: String?
     @Published private(set) var savingsRows: [SavingsRowData] = []
+    @Published private(set) var discoverRows: [DiscoverRowData] = []
+    // Real bug found live (2026-09-11, Toss Bank reference pass): discoverRows above
+    // is shared verbatim between HomeTabContent (all categories) and BankView (used
+    // to be the exact same unfiltered feed, a real bug -- see ContentView's own
+    // bankRecommendationRows doc comment). Keeping the raw items separately lets
+    // ContentView filter to the 4 Bank-relevant ids without touching Home's feed.
+    @Published private(set) var discoverItems: [DiscoverItem] = []
     @Published private(set) var isOffline = false
     // Raw values for screens that need to compute with them (send-money/deposit
     // flows), not just display them -- balanceText/savingsRows are formatted display
     // strings only.
     @Published private(set) var availableBalance: Double = 0
+    // Real raw ledger balance (2026-08-24, for TransactionDetailScreen's "Balance
+    // after" -- distinct from availableBalance above, which nets out holds and
+    // isn't the right basis for a historical per-transaction running balance).
+    @Published private(set) var balance: Double = 0
     @Published private(set) var savingsGoals: [SavingsGoal] = []
     @Published private(set) var interestJar: InterestJar?
     @Published private(set) var transactions: [TransactionDto] = []
     @Published private(set) var currentUserId: String?
+    // Dual-balance UI (2026-08-29, closing [[project_itunda_bank_pay_separation]]'s
+    // last open item, ported from bank-mfe's identical AccountSummaryRow.tsx fix):
+    // nil when the account genuinely doesn't exist yet, not just still loading.
+    @Published private(set) var payBalanceText: String?
+    // Real gap found live (2026-09-07): Android's HomeTopBar/web's nav-tab both
+    // already show a small dot when unreadCount > 0; iOS's HomeTopBar showed
+    // nothing at all, because unreadCount only ever lived inside the separate
+    // SettingsViewModel, never plumbed into the view model that actually backs
+    // Home. Matches Android's/web's own "a dot, never a number" design rule.
+    @Published private(set) var unreadNotificationCount: Int = 0
+
+    // Real cross-platform-parity gap found live (2026-09-13) -- web already shows a
+    // real numeric Messages-tab badge (BankDashboard.tsx) using this exact unbounded
+    // backend aggregate; iOS had neither the endpoint nor any tab-badge state.
+    @Published private(set) var messagesUnreadCount: Int = 0
 
     // Real offline queue + connectivity signal (2026-07-13) -- see
     // docs/TOSS_PARITY_MATRIX.md's Offline row. Started once, from init(), matching
@@ -105,6 +140,15 @@ final class BankViewModel: ObservableObject {
     /// reachable (any successful load, e.g. the automatic reload ContentView
     /// already triggers when a savings sheet closes), that's a strictly stronger
     /// signal than "the network interface is up" anyway.
+    // Real Toss Bank reference (2026-09-12, "계좌 별명" -- account nickname) -- the
+    // Manage screen's own PATCH call already updated the backend; this just reflects
+    // that same real value into the already-loaded account so the account header can
+    // show it without a full re-fetch. Mirrors Android's MainViewModel
+    // .updatePrimaryAccountNickname exactly.
+    func updateAccountNickname(_ nickname: String?) {
+        accountNickname = nickname
+    }
+
     func load() async {
         await loadInternal()
         if !isOffline {
@@ -114,11 +158,18 @@ final class BankViewModel: ObservableObject {
 
     private func loadInternal() async {
         do {
-            let walletsRes = try await NetworkClient.shared.getWallets()
-            if walletsRes.success, let wallet = walletsRes.wallets.first(where: { $0.type == "MAIN" }) ?? walletsRes.wallets.first {
-                balanceText = formatAmount(wallet.balance, currency: wallet.currency)
-                availableBalance = wallet.availableBalance
-                currentUserId = wallet.userId
+            let accountsRes = try await NetworkClient.shared.getAccounts()
+            if accountsRes.success, let account = accountsRes.accounts.first(where: { $0.type == "MAIN" }) ?? accountsRes.accounts.first {
+                balanceText = formatAmount(account.balance, currency: account.currency)
+                accountNumber = account.accountNumber
+                accountId = account.id
+                accountNickname = account.nickname
+                availableBalance = account.availableBalance
+                balance = account.balance
+                currentUserId = account.userId
+            }
+            if accountsRes.success, let payAccount = accountsRes.accounts.first(where: { $0.type == "PAY" }) {
+                payBalanceText = formatAmount(payAccount.balance, currency: payAccount.currency)
             }
 
             let transactionsRes = try await NetworkClient.shared.getTransactionHistory()
@@ -164,6 +215,38 @@ final class BankViewModel: ObservableObject {
                 }
             }
             savingsRows = rows
+
+            // Real curated promo rail -- see rw.itunda.discover.web.DiscoverController
+            // on the backend. Purely informational, so scoped in its own try/catch,
+            // same discipline as the interest-jar 404 handling above: a Discover
+            // hiccup must never block the rest of Home from loading real data.
+            if let discoverRes = try? await NetworkClient.shared.getDiscoverItems(), discoverRes.success {
+                // Real server-side ranking (2026-08-11) -- see DiscoverItem's own doc
+                // comment (Toss Intelligence-banner research). Backend already returns
+                // items sorted by priority; sorting here too makes that explicit,
+                // matching Android's/web's identical defensive re-sort.
+                let sortedItems = discoverRes.items.sorted { $0.priority > $1.priority }
+                discoverItems = sortedItems
+                discoverRows = sortedItems.map {
+                    DiscoverRowData(title: $0.title, subtitle: $0.subtitle, badge: $0.badge, isNew: $0.isNew)
+                }
+            }
+
+            // Real bug fix (2026-09-07, same class as Android's MainViewModel.kt fix):
+            // scoped in its own try?, same "purely informational, must never block Home"
+            // discipline as the Discover-items fetch above -- a notifications hiccup
+            // must never block the rest of Home from loading real data.
+            if let notificationsRes = try? await NetworkClient.shared.getNotifications(), notificationsRes.success {
+                unreadNotificationCount = notificationsRes.unreadCount
+            }
+
+            // Real cross-platform-parity gap found live (2026-09-13) -- see
+            // messagesUnreadCount's own doc comment above. Same non-blocking,
+            // leave-stale-on-failure discipline as the notifications fetch above.
+            if let unreadRes = try? await NetworkClient.shared.getUnreadCount(), unreadRes.success {
+                messagesUnreadCount = unreadRes.total
+            }
+
             isOffline = false
         } catch is URLError {
             // Genuinely unreachable backend -- the only case that should fall back to
@@ -179,10 +262,11 @@ final class BankViewModel: ObservableObject {
 
     private func formatAmount(_ value: Double, currency: String) -> String {
         let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.numberStyle = .decimal
         formatter.maximumFractionDigits = 0
         formatter.groupingSeparator = ","
         let number = formatter.string(from: NSNumber(value: value)) ?? "0"
-        return "\(currency) \(number)"
+        return "\(number) \(currency)"
     }
 }

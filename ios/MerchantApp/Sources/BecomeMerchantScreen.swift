@@ -1,6 +1,15 @@
 import SwiftUI
+import CoreDesignSystem
 
 /// Shown once for any logged-in itunda user who hasn't registered a business yet.
+///
+/// Real gap found 2026-08-15 (backend AlreadyX audit, matches Android's identical
+/// BecomeMerchantScreen.kt fix): a fresh install/reinstall has no local memory of a
+/// prior registration, so this screen is reachable by an account that's already a
+/// real registered merchant. That real, specific MERCHANT_ALREADY_REGISTERED backend
+/// 409 used to be caught by a plain `catch` and replaced with a hardcoded "couldn't
+/// register, try again" message -- a dead loop on every retry. Toss-style
+/// resolve-forward: load the existing merchant profile and proceed, same as Android.
 struct BecomeMerchantScreen: View {
     let onRegistered: (MerchantDto) -> Void
     let onLogout: () -> Void
@@ -16,25 +25,26 @@ struct BecomeMerchantScreen: View {
             Text("Accept real payments, manage your menu, and handle incoming Eats orders from one app.")
                 .font(.subheadline).foregroundColor(.secondary)
 
-            TextField("Business name", text: $businessName)
-                .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
+            IdsTextField("Business name", text: $businessName)
 
             if let error {
-                Text(error).foregroundColor(.red).font(.footnote)
+                Text(error).foregroundColor(IDS.Colors.danger).font(.footnote)
             }
 
             Button(action: { Task { await register() } }) {
                 Text(busy ? "Registering…" : "Register my business")
                     .bold().foregroundColor(.white)
                     .frame(maxWidth: .infinity).padding(.vertical, 14)
-                    .background(Color.blue).cornerRadius(12)
+                    .background(IDS.Colors.brand).cornerRadius(12)
             }
             .disabled(busy)
 
-            Text("Log out")
-                .foregroundColor(.blue)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .onTapGesture(perform: onLogout)
+            Button(action: onLogout) {
+                Text("Log out")
+                    .foregroundColor(.blue)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .buttonStyle(PressScaleButtonStyle())
 
             Spacer()
         }
@@ -52,6 +62,18 @@ struct BecomeMerchantScreen: View {
         do {
             let merchant = try await MerchantNetworkClient.shared.registerMerchant(businessName: businessName).merchant
             onRegistered(merchant)
+        } catch NetworkError.httpErrorWithMessage(let statusCode, _) where statusCode == 409 {
+            // MERCHANT_ALREADY_REGISTERED in practice -- this screen only ever
+            // renders for a logged-in user with no LOCAL registration record, so the
+            // only real 409 this endpoint can produce here is the account already
+            // being registered server-side. Real Toss-style resolution: load the
+            // existing profile and move forward instead of a dead-end error.
+            do {
+                let merchant = try await MerchantNetworkClient.shared.getMyMerchant().merchant
+                onRegistered(merchant)
+            } catch {
+                self.error = "You're already registered, but we couldn't load your business right now. Try again."
+            }
         } catch {
             self.error = "Couldn't register your business right now. Try again."
         }

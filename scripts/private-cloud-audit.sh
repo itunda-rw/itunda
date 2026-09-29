@@ -111,6 +111,100 @@ current_time() {
   date '+%Y-%m-%d %H:%M:%S %Z'
 }
 
+mysql_backup_summary() {
+  run_vm "${NODES[0]}" "
+    timer=\$(sudo systemctl is-active itunda-mysql-backup.timer 2>/dev/null || true)
+    latest=\$(find /home/ubuntu/itunda-backups/mysql -maxdepth 1 -type f -name 'itunda-mysql-*.sql.gz' -printf '%T@\\n' 2>/dev/null | sort -nr | head -n 1 | cut -d. -f1)
+    if [[ \"\$latest\" =~ ^[0-9]+$ ]]; then
+      echo \"timer=\${timer:-inactive} age_seconds=\$((\$(date +%s) - latest))\"
+    else
+      echo \"timer=\${timer:-inactive} age_seconds=absent\"
+    fi
+  " 2>/dev/null || echo "timer=unknown age_seconds=unknown"
+}
+
+webhook_delivery_summary() {
+  local writer_index
+  local container
+  local root_password
+  local table_exists
+  local result
+  local pending=0
+  local exhausted=0
+  local overdue=0
+
+  if [[ "${#MYSQL_WRITER_INDEXES[@]}" -ne 1 ]]; then
+    echo "available=unknown pending=unknown exhausted=unknown overdue=unknown"
+    return 0
+  fi
+
+  writer_index="${MYSQL_WRITER_INDEXES[0]}"
+  container="${MYSQL_CONTAINERS[$writer_index]}"
+  root_password="$(container_env "${NODE_NAMES[$writer_index]}" "$container" MYSQL_ROOT_PASSWORD)"
+  table_exists="$(mysql_query "${NODE_NAMES[$writer_index]}" "$container" "$root_password" "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'itunda' AND table_name = 'webhook_deliveries';" || true)"
+  if [[ "$table_exists" != "1" ]]; then
+    echo "available=0 pending=0 exhausted=0 overdue=0"
+    return 0
+  fi
+
+  result="$(mysql_query "${NODE_NAMES[$writer_index]}" "$container" "$root_password" "SELECT SUM(status = 'PENDING'), SUM(status = 'EXHAUSTED'), SUM(status = 'PENDING' AND next_attempt_at < UTC_TIMESTAMP()) FROM itunda.webhook_deliveries;" || true)"
+  IFS=$'\t' read -r pending exhausted overdue <<<"$result"
+  [[ "$pending" =~ ^[0-9]+$ ]] || pending=0
+  [[ "$exhausted" =~ ^[0-9]+$ ]] || exhausted=0
+  [[ "$overdue" =~ ^[0-9]+$ ]] || overdue=0
+  echo "available=1 pending=${pending} exhausted=${exhausted} overdue=${overdue}"
+}
+
+fraud_review_summary() {
+  local writer_index
+  local container
+  local root_password
+  local table_exists
+  local result
+  local unreviewed=0
+  local oldest_age_seconds=0
+
+  if [[ "${#MYSQL_WRITER_INDEXES[@]}" -ne 1 ]]; then
+    echo "available=unknown unreviewed=unknown oldest_age_seconds=unknown"
+    return 0
+  fi
+
+  writer_index="${MYSQL_WRITER_INDEXES[0]}"
+  container="${MYSQL_CONTAINERS[$writer_index]}"
+  root_password="$(container_env "${NODE_NAMES[$writer_index]}" "$container" MYSQL_ROOT_PASSWORD)"
+  table_exists="$(mysql_query "${NODE_NAMES[$writer_index]}" "$container" "$root_password" "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'itunda' AND table_name = 'fraud_flags';" || true)"
+  if [[ "$table_exists" != "1" ]]; then
+    echo "available=0 unreviewed=0 oldest_age_seconds=0"
+    return 0
+  fi
+
+  result="$(mysql_query "${NODE_NAMES[$writer_index]}" "$container" "$root_password" "SELECT COUNT(*), COALESCE(TIMESTAMPDIFF(SECOND, MIN(created_at), UTC_TIMESTAMP()), 0) FROM itunda.fraud_flags WHERE reviewed = FALSE;" || true)"
+  IFS=$'\t' read -r unreviewed oldest_age_seconds <<<"$result"
+  [[ "$unreviewed" =~ ^[0-9]+$ ]] || unreviewed=0
+  [[ "$oldest_age_seconds" =~ ^[0-9]+$ ]] || oldest_age_seconds=0
+  echo "available=1 unreviewed=${unreviewed} oldest_age_seconds=${oldest_age_seconds}"
+}
+
+print_fraud_review_backlog_warning() {
+  local summary="$1"
+  local available
+  local unreviewed
+  local oldest_age_seconds
+  local warn_unreviewed="${ITUNDA_PRIVATE_CLOUD_FRAUD_REVIEW_WARN_UNREVIEWED:-50}"
+  local warn_oldest_age_seconds="${ITUNDA_PRIVATE_CLOUD_FRAUD_REVIEW_WARN_OLDEST_AGE_SECONDS:-86400}"
+
+  available="$(printf '%s\n' "$summary" | sed -n 's/.*available=\([^ ]*\).*/\1/p')"
+  unreviewed="$(printf '%s\n' "$summary" | sed -n 's/.*unreviewed=\([^ ]*\).*/\1/p')"
+  oldest_age_seconds="$(printf '%s\n' "$summary" | sed -n 's/.*oldest_age_seconds=\([^ ]*\).*/\1/p')"
+  [[ "$warn_unreviewed" =~ ^[0-9]+$ ]] || warn_unreviewed=50
+  [[ "$warn_oldest_age_seconds" =~ ^[0-9]+$ ]] || warn_oldest_age_seconds=86400
+
+  if [[ "$available" == "1" && "$unreviewed" =~ ^[0-9]+$ && "$oldest_age_seconds" =~ ^[0-9]+$ ]] && \
+    { (( unreviewed >= warn_unreviewed )) || (( oldest_age_seconds >= warn_oldest_age_seconds )); }; then
+    echo "- Warning: fraud review backlog needs an authorized reviewer (unreviewed=${unreviewed}, oldest_age_seconds=${oldest_age_seconds}; warning thresholds=${warn_unreviewed} flags or ${warn_oldest_age_seconds}s)."
+  fi
+}
+
 print_help() {
   cat <<'EOF'
 Usage: scripts/private-cloud-audit.sh <command>
@@ -424,9 +518,15 @@ detect_kubernetes_mm2_workers() {
 
 print_audit() {
   local cluster_count
+  local backup_summary
+  local webhook_summary
+  local fraud_summary
   local i
 
   cluster_count="$(kafka_cluster_count)"
+  backup_summary="$(mysql_backup_summary)"
+  webhook_summary="$(webhook_delivery_summary)"
+  fraud_summary="$(fraud_review_summary)"
 
   echo "Itunda private-cloud audit ($(current_time))"
   echo
@@ -502,6 +602,11 @@ print_audit() {
     echo "- No MM2 worker was detected; bidirectional Kafka mirroring is not proven by this topology alone."
   fi
 
+  echo "- MySQL local backup: ${backup_summary}."
+  echo "- Merchant webhook deliveries: ${webhook_summary}."
+  echo "- Fraud review queue: ${fraud_summary}."
+  print_fraud_review_backlog_warning "$fraud_summary"
+
   local redis_ha_phrase="Redis singleton"
   if [[ "${#REDIS_MASTER_INDEXES[@]}" -eq 1 && "${#REDIS_REPLICA_INDEXES[@]}" -gt 0 ]]; then
     redis_ha_phrase="Redis master+replica (no automated failover yet)"
@@ -511,6 +616,14 @@ print_audit() {
 
 verify_topology() {
   local issues=0
+  local backup_summary
+  local backup_timer
+  local backup_age
+  local max_backup_age_seconds="${ITUNDA_PRIVATE_CLOUD_MAX_BACKUP_AGE_SECONDS:-90000}"
+
+  backup_summary="$(mysql_backup_summary)"
+  backup_timer="$(printf '%s\n' "$backup_summary" | sed -n 's/.*timer=\([^ ]*\).*/\1/p')"
+  backup_age="$(printf '%s\n' "$backup_summary" | sed -n 's/.*age_seconds=\([^ ]*\).*/\1/p')"
 
   if [[ "${#MYSQL_WRITER_INDEXES[@]}" -ne 1 ]]; then
     echo "Unsafe topology: expected exactly 1 standalone MySQL writer, found ${#MYSQL_WRITER_INDEXES[@]}." >&2
@@ -547,6 +660,14 @@ verify_topology() {
 
   if [[ "${#KAFKA_BROKER_INDEXES[@]}" -lt 1 ]]; then
     echo "Unsafe topology: no Kafka brokers detected." >&2
+    issues=$((issues + 1))
+  fi
+
+  if [[ "$backup_timer" != "active" ]]; then
+    echo "Unsafe recovery baseline: MySQL backup timer is ${backup_timer:-unknown}." >&2
+    issues=$((issues + 1))
+  elif [[ ! "$backup_age" =~ ^[0-9]+$ ]] || (( backup_age > max_backup_age_seconds )); then
+    echo "Unsafe recovery baseline: latest MySQL backup age is ${backup_age:-unknown}s (maximum ${max_backup_age_seconds}s)." >&2
     issues=$((issues + 1))
   fi
 
@@ -651,11 +772,39 @@ print_json() {
   local writer_index
   local redis_master_index
   local kafka_index
+  local backup_summary
+  local webhook_summary
+  local fraud_summary
+  local backup_timer
+  local backup_age
+  local webhook_available
+  local webhook_pending
+  local webhook_exhausted
+  local webhook_overdue
+  local fraud_available
+  local fraud_unreviewed
+  local fraud_oldest_age
+  local fraud_warn_unreviewed="${ITUNDA_PRIVATE_CLOUD_FRAUD_REVIEW_WARN_UNREVIEWED:-50}"
+  local fraud_warn_oldest_age="${ITUNDA_PRIVATE_CLOUD_FRAUD_REVIEW_WARN_OLDEST_AGE_SECONDS:-86400}"
   local i
 
   require_cmd jq
   nodes_file="$(mktemp "${TMPDIR:-/tmp}/private-cloud-nodes.XXXXXX")"
   summary_file="$(mktemp "${TMPDIR:-/tmp}/private-cloud-summary.XXXXXX")"
+  backup_summary="$(mysql_backup_summary)"
+  webhook_summary="$(webhook_delivery_summary)"
+  fraud_summary="$(fraud_review_summary)"
+  backup_timer="$(printf '%s\n' "$backup_summary" | sed -n 's/.*timer=\([^ ]*\).*/\1/p')"
+  backup_age="$(printf '%s\n' "$backup_summary" | sed -n 's/.*age_seconds=\([^ ]*\).*/\1/p')"
+  webhook_available="$(printf '%s\n' "$webhook_summary" | sed -n 's/.*available=\([^ ]*\).*/\1/p')"
+  webhook_pending="$(printf '%s\n' "$webhook_summary" | sed -n 's/.*pending=\([^ ]*\).*/\1/p')"
+  webhook_exhausted="$(printf '%s\n' "$webhook_summary" | sed -n 's/.*exhausted=\([^ ]*\).*/\1/p')"
+  webhook_overdue="$(printf '%s\n' "$webhook_summary" | sed -n 's/.*overdue=\([^ ]*\).*/\1/p')"
+  fraud_available="$(printf '%s\n' "$fraud_summary" | sed -n 's/.*available=\([^ ]*\).*/\1/p')"
+  fraud_unreviewed="$(printf '%s\n' "$fraud_summary" | sed -n 's/.*unreviewed=\([^ ]*\).*/\1/p')"
+  fraud_oldest_age="$(printf '%s\n' "$fraud_summary" | sed -n 's/.*oldest_age_seconds=\([^ ]*\).*/\1/p')"
+  [[ "$fraud_warn_unreviewed" =~ ^[0-9]+$ ]] || fraud_warn_unreviewed=50
+  [[ "$fraud_warn_oldest_age" =~ ^[0-9]+$ ]] || fraud_warn_oldest_age=86400
 
   for ((i = 0; i < ${#NODE_NAMES[@]}; i++)); do
     jq -n \
@@ -733,6 +882,17 @@ print_json() {
     --arg writer_node "$writer_node" \
     --arg redis_master_node "$redis_master_node" \
     --arg kafka_bootstrap "${kafka_index:+$(external_kafka_bootstrap "$kafka_index")}" \
+    --arg backup_timer "$backup_timer" \
+    --arg backup_age "$backup_age" \
+    --arg webhook_available "$webhook_available" \
+    --arg webhook_pending "$webhook_pending" \
+    --arg webhook_exhausted "$webhook_exhausted" \
+    --arg webhook_overdue "$webhook_overdue" \
+    --arg fraud_available "$fraud_available" \
+    --arg fraud_unreviewed "$fraud_unreviewed" \
+    --arg fraud_oldest_age "$fraud_oldest_age" \
+    --argjson fraud_warn_unreviewed "$fraud_warn_unreviewed" \
+    --argjson fraud_warn_oldest_age "$fraud_warn_oldest_age" \
     --argjson mysql_writer_count "${#MYSQL_WRITER_INDEXES[@]}" \
     --argjson mysql_replica_count "${#MYSQL_REPLICA_INDEXES[@]}" \
     --argjson mysql_writable_replica_count "${#MYSQL_REPLICA_WRITABLE_INDEXES[@]}" \
@@ -743,7 +903,9 @@ print_json() {
     --argjson kafka_broker_count "${#KAFKA_BROKER_INDEXES[@]}" \
     --argjson kafka_cluster_count "$(kafka_cluster_count)" \
     --slurpfile nodes "$nodes_file" \
-    '{
+    'def number_or_null: tonumber? // null;
+     def availability: if . == "1" then true elif . == "0" then false else null end;
+     {
       generatedAt: $generated_at,
       inventoryPath: $inventory_path,
       nodes: $nodes,
@@ -765,8 +927,40 @@ print_json() {
           bootstrap: $kafka_bootstrap,
           brokerCount: $kafka_broker_count,
           clusterCount: $kafka_cluster_count
+        },
+        recovery: {
+          mysqlBackup: {
+            timer: $backup_timer,
+            ageSeconds: ($backup_age | number_or_null)
+          }
+        },
+        operations: {
+          webhookDeliveries: {
+            available: ($webhook_available | availability),
+            pending: ($webhook_pending | number_or_null),
+            exhausted: ($webhook_exhausted | number_or_null),
+            overdue: ($webhook_overdue | number_or_null)
+          },
+          fraudReview: {
+            available: ($fraud_available | availability),
+            unreviewed: ($fraud_unreviewed | number_or_null),
+            oldestUnreviewedAgeSeconds: ($fraud_oldest_age | number_or_null)
+          }
         }
-      }
+      },
+      warnings: [
+        (if $fraud_available == "1" and (($fraud_unreviewed | number_or_null) as $unreviewed | ($fraud_oldest_age | number_or_null) as $oldestAge | $unreviewed != null and $oldestAge != null and ($unreviewed >= $fraud_warn_unreviewed or $oldestAge >= $fraud_warn_oldest_age))
+         then {
+           code: "FRAUD_REVIEW_BACKLOG",
+           severity: "warning",
+           message: "Fraud review backlog needs an authorized reviewer",
+           unreviewed: ($fraud_unreviewed | number_or_null),
+           oldestUnreviewedAgeSeconds: ($fraud_oldest_age | number_or_null),
+           thresholds: {unreviewed: $fraud_warn_unreviewed, oldestAgeSeconds: $fraud_warn_oldest_age}
+         }
+         else empty
+         end)
+      ]
     }' > "$summary_file"
 
   cat "$summary_file"

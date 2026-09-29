@@ -11,20 +11,20 @@ function todayIso() {
 
 function SideToggle({ side, onChange }: { side: Side; onChange: (s: Side) => void }) {
   return (
-    <div style={{ display: 'flex', gap: '6px', backgroundColor: 'var(--toss-grey-100)', padding: '4px', borderRadius: '10px' }}>
+    <div style={{ display: 'flex', gap: '6px', backgroundColor: 'var(--itunda-grey-100)', padding: '4px', borderRadius: 'var(--itunda-control-radius, 12px)' }}>
       {(['ONE_SIDED', 'TWO_SIDED_DEMO'] as Side[]).map((s) => (
         <button
           key={s}
           onClick={() => onChange(s)}
           style={{
             padding: '6px 12px',
-            borderRadius: '8px',
+            borderRadius: 'var(--itunda-control-radius, 12px)',
             border: 'none',
             fontSize: '13px',
             fontWeight: 600,
             cursor: 'pointer',
-            backgroundColor: side === s ? 'var(--toss-blue)' : 'transparent',
-            color: side === s ? '#fff' : 'var(--toss-grey-700)',
+            backgroundColor: side === s ? 'var(--itunda-brand)' : 'transparent',
+            color: side === s ? '#fff' : 'var(--itunda-text-secondary)',
           }}
         >
           {s === 'ONE_SIDED' ? 'One-sided (real)' : 'Two-sided (demo)'}
@@ -37,7 +37,7 @@ function SideToggle({ side, onChange }: { side: Side; onChange: (s: Side) => voi
 function OneSidedTable({ items, error, reload }: { items: ReconciliationRow[] | null; error: string | null; reload: () => void }) {
   return (
     <div>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)', marginBottom: '12px' }}>
         Reconciles itunda's own provider-attempt log against itself, per rail, for the selected day.
         There's no external settlement file to diff against yet, so this is one-sided.
       </p>
@@ -45,12 +45,12 @@ function OneSidedTable({ items, error, reload }: { items: ReconciliationRow[] | 
       {!error && items === null && <QueueSkeleton />}
       {!error && items !== null && items.length === 0 && <QueueEmpty label="No provider attempts recorded for this date." />}
       {!error && items !== null && items.length > 0 && (
-        <div className="toss-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="itunda-card" style={{ padding: 0, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
             <thead>
-              <tr style={{ backgroundColor: 'var(--toss-grey-100)', textAlign: 'left' }}>
+              <tr style={{ backgroundColor: 'var(--itunda-grey-100)', textAlign: 'left' }}>
                 {['Rail', 'Attempts', 'Success', 'Failure', 'Success rate', 'Avg latency'].map((h) => (
-                  <th key={h} style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>
+                  <th key={h} style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>
                     {h}
                   </th>
                 ))}
@@ -58,11 +58,11 @@ function OneSidedTable({ items, error, reload }: { items: ReconciliationRow[] | 
             </thead>
             <tbody>
               {items.map((row) => (
-                <tr key={row.railId} style={{ borderTop: '1px solid var(--toss-grey-200)' }}>
-                  <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--toss-grey-900)' }}>{row.displayName}</td>
+                <tr key={row.railId} style={{ borderTop: '1px solid var(--itunda-border-default)' }}>
+                  <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--itunda-text-primary)' }}>{row.displayName}</td>
                   <td style={{ padding: '12px 16px' }}>{row.totalAttempts}</td>
-                  <td style={{ padding: '12px 16px', color: 'var(--toss-green)' }}>{row.successCount}</td>
-                  <td style={{ padding: '12px 16px', color: row.failureCount > 0 ? '#E53935' : 'var(--toss-grey-500)' }}>
+                  <td style={{ padding: '12px 16px', color: 'var(--itunda-green)' }}>{row.successCount}</td>
+                  <td style={{ padding: '12px 16px', color: row.failureCount > 0 ? 'var(--itunda-field-border-error)' : 'var(--itunda-text-tertiary)' }}>
                     {row.failureCount}
                   </td>
                   <td style={{ padding: '12px 16px' }}>{(row.successRate * 100).toFixed(1)}%</td>
@@ -88,7 +88,7 @@ function TwoSidedDemoTable({
 }) {
   return (
     <div>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)', marginBottom: '12px' }}>
         Compares itunda's own real success count against a real, deterministic <strong>simulated</strong> external
         settlement count for the same rail/day -- there's no real settlement file feed yet, so the external side is a
         demo. Every row is marked as such.
@@ -97,12 +97,12 @@ function TwoSidedDemoTable({
       {!error && items === null && <QueueSkeleton />}
       {!error && items !== null && items.length === 0 && <QueueEmpty label="No provider attempts recorded for this date." />}
       {!error && items !== null && items.length > 0 && (
-        <div className="toss-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="itunda-card" style={{ padding: 0, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
             <thead>
-              <tr style={{ backgroundColor: 'var(--toss-grey-100)', textAlign: 'left' }}>
+              <tr style={{ backgroundColor: 'var(--itunda-grey-100)', textAlign: 'left' }}>
                 {['Rail', 'itunda success (real)', 'External settled (demo)', 'Discrepancy', 'Status'].map((h) => (
-                  <th key={h} style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>
+                  <th key={h} style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>
                     {h}
                   </th>
                 ))}
@@ -110,8 +110,8 @@ function TwoSidedDemoTable({
             </thead>
             <tbody>
               {items.map((row) => (
-                <tr key={row.railId} style={{ borderTop: '1px solid var(--toss-grey-200)' }}>
-                  <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--toss-grey-900)' }}>{row.displayName}</td>
+                <tr key={row.railId} style={{ borderTop: '1px solid var(--itunda-border-default)' }}>
+                  <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--itunda-text-primary)' }}>{row.displayName}</td>
                   <td style={{ padding: '12px 16px' }}>{row.itundaSuccessCount}</td>
                   <td style={{ padding: '12px 16px' }}>
                     {row.externalSettledCount}
@@ -131,11 +131,11 @@ function TwoSidedDemoTable({
                       </span>
                     )}
                   </td>
-                  <td style={{ padding: '12px 16px', color: row.discrepancy !== 0 ? '#E53935' : 'var(--toss-grey-500)' }}>
+                  <td style={{ padding: '12px 16px', color: row.discrepancy !== 0 ? 'var(--itunda-field-border-error)' : 'var(--itunda-text-tertiary)' }}>
                     {row.discrepancy > 0 ? `+${row.discrepancy}` : row.discrepancy}
                   </td>
                   <td style={{ padding: '12px 16px' }}>
-                    <span style={{ color: row.matched ? 'var(--toss-green)' : '#E53935', fontWeight: 600 }}>
+                    <span style={{ color: row.matched ? 'var(--itunda-green)' : 'var(--itunda-field-border-error)', fontWeight: 600 }}>
                       {row.matched ? 'Matched' : 'Discrepancy'}
                     </span>
                   </td>
@@ -167,9 +167,10 @@ export default function ReconciliationView() {
           <SideToggle side={side} onChange={setSide} />
           <input
             type="date"
+            aria-label="Reconciliation date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ padding: '8px 10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '14px' }}
           />
         </div>
       </QueueHeader>

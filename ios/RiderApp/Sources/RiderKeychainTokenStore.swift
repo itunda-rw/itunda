@@ -28,10 +28,23 @@ final class RiderKeychainTokenStore {
     func getUserId() -> String? { get(.userId) }
     func hasSession() -> Bool { getAccessToken() != nil }
 
+    // Real, stable, per-install identifier (item 130) -- reused as this demo's
+    // client-generated push token (see NetworkClient.swift's own doc comment on
+    // registerDeviceToken). Deliberately NOT cleared on logout -- the same physical
+    // device is still the same device across a re-login, matching the consumer app's
+    // own getOrCreateDeviceId persistence.
+    func getOrCreateDeviceId() -> String {
+        if let existing = get(.deviceId) { return existing }
+        let generated = UUID().uuidString
+        set(generated, forKey: .deviceId)
+        return generated
+    }
+
     private enum Key: String {
         case userId = "user_id"
         case accessToken = "access_token"
         case refreshToken = "refresh_token"
+        case deviceId = "device_id"
     }
 
     private func set(_ value: String, forKey key: Key) {

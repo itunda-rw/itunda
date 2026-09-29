@@ -1,0 +1,11 @@
+-- Real full-text search index (2026-08-14, direct user request: "search online tech
+-- behind naver search engine and let's improve our search engine"). Product search
+-- (MerchantProductRepository.search) was a plain LOWER(name) LIKE '%q%' substring
+-- match against one field: no relevance ranking (results ordered however the DB
+-- happened to return them), no multi-word tolerance ("case for phone" never matched a
+-- "phone case" query since the exact substring "case for phone" doesn't appear
+-- anywhere), and description was never searched at all. This is the same
+-- inverted-index-plus-relevance-ranking concept real search engines (including
+-- Naver's) are built on, scoped to what's actually deployable on this single-node
+-- MySQL instance without standing up a separate search cluster.
+ALTER TABLE merchant_products ADD FULLTEXT INDEX ft_merchant_products_search (name, description);

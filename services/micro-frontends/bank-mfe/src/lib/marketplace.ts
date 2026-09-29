@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Real 당근마켓-style marketplace (rw.itunda.marketplace, 2026-07-18) -- the second
 // "super app" phase, built right after messaging so "message seller" could reuse it.
@@ -22,24 +23,174 @@ export interface Listing {
   // Real hyperlocal neighborhood (2026-07-20), cached at creation time -- see
   // lib/neighborhood.ts's own doc comment for the full account.
   neighborhood?: string | null;
+  // Seller-provided public landmark only. It is not verified and is never an
+  // address or a safety guarantee.
+  meetingPlace?: string | null;
+  // buyerId added 2026-07-24 -- real optional buyer identification captured at
+  // mark-sold time, see backend Listing.kt's own doc comment. Only set once a real
+  // review becomes possible for this transaction.
+  buyerId?: string | null;
+  // Real seller-uploaded photo (rw.itunda.marketplace.web.UploadController), real on
+  // backend + Android since 2026-07-24/25 -- bank-mfe never had this field at all
+  // despite createListing already accepting it server-side. Set once at creation time
+  // only (no separate edit-photo endpoint).
+  photoUrl?: string | null;
+  // Real 당근마켓 조회수 (view count), 2026-08-16 -- see backend Listing.viewCount's own
+  // doc comment. Real-incremented server-side on every real GET of this listing's
+  // detail page; optional since older cached listing objects (e.g. a browse-list item
+  // fetched before this field existed) may not carry it.
+  viewCount?: number;
+  // Real 당근카 (Karrot Vehicles) fields (itunda Hood redesign, 2026-08-28) -- see
+  // backend Listing.vehicleIsLeaseTakeover's own doc comment. A vehicle is still a
+  // regular Listing; these stay undefined for every non-vehicle listing (the
+  // overwhelming majority).
+  vehicleMileageKm?: number | null;
+  vehicleInsuranceClaimCount?: number | null;
+  vehicleIsLeaseTakeover?: boolean;
+  leaseTotalAcquisitionCost?: number | null;
+  leaseRemainingMonths?: number | null;
+  leaseTotalMonths?: number | null;
+  leaseMonthlyPayment?: number | null;
+  leaseSubsidyAmount?: number | null;
+  leaseReturnFee?: number | null;
+  // Real gap found live (2026-08-31, market-readiness audit): bank-mfe had zero client
+  // for either of these, despite both being real, live features on Android (bump+boost)
+  // and iOS (boost) -- see MarketplaceService.bumpListing/boostListing's own doc
+  // comments. bumpedAt (null = never bumped) resorts a listing to the top of browse;
+  // boostedUntil (null/past = not boosted) is a real seller-paid sponsored-placement
+  // window that also ranks a listing first.
+  bumpedAt?: string | null;
+  boostedUntil?: string | null;
 }
 
-export const fetchListings = (category?: string) =>
-  apiFetch<{ success: boolean; listings: Listing[] }>(
-    `/api/v1/marketplace/listings${category ? `?category=${encodeURIComponent(category)}` : ''}`,
-  ).then((r) => r.listings);
+// Real 당근카 vehicle-listing fields a seller optionally supplies at creation time --
+// see Listing's own doc comment above.
+export interface VehicleListingFields {
+  vehicleMileageKm?: number;
+  vehicleInsuranceClaimCount?: number;
+  vehicleIsLeaseTakeover?: boolean;
+  leaseTotalAcquisitionCost?: number;
+  leaseRemainingMonths?: number;
+  leaseTotalMonths?: number;
+  leaseMonthlyPayment?: number;
+  leaseSubsidyAmount?: number;
+  leaseReturnFee?: number;
+}
 
-export const fetchMyListings = () =>
-  apiFetch<{ success: boolean; listings: Listing[] }>('/api/v1/marketplace/my-listings').then((r) => r.listings);
+// String-valued create-listing form state for the fields above (kept here, a plain
+// .ts file, rather than in the HoodVehicleFields.tsx component file, so that file can
+// stay component-only for React Fast Refresh).
+export interface VehicleFieldsState {
+  isVehicle: boolean;
+  mileageKm: string;
+  insuranceClaimCount: string;
+  isLeaseTakeover: boolean;
+  leaseTotalAcquisitionCost: string;
+  leaseRemainingMonths: string;
+  leaseTotalMonths: string;
+  leaseMonthlyPayment: string;
+  leaseSubsidyAmount: string;
+  leaseReturnFee: string;
+}
+
+export const emptyVehicleFieldsState: VehicleFieldsState = {
+  isVehicle: false, mileageKm: '', insuranceClaimCount: '', isLeaseTakeover: false,
+  leaseTotalAcquisitionCost: '', leaseRemainingMonths: '', leaseTotalMonths: '',
+  leaseMonthlyPayment: '', leaseSubsidyAmount: '', leaseReturnFee: '',
+};
+
+export function vehicleFieldsToRequest(s: VehicleFieldsState): VehicleListingFields | undefined {
+  if (!s.isVehicle) return undefined;
+  const num = (v: string) => (v.trim() ? Number(v) : undefined);
+  return {
+    vehicleMileageKm: num(s.mileageKm),
+    vehicleInsuranceClaimCount: num(s.insuranceClaimCount),
+    vehicleIsLeaseTakeover: s.isLeaseTakeover,
+    ...(s.isLeaseTakeover
+      ? {
+          leaseTotalAcquisitionCost: num(s.leaseTotalAcquisitionCost),
+          leaseRemainingMonths: num(s.leaseRemainingMonths),
+          leaseTotalMonths: num(s.leaseTotalMonths),
+          leaseMonthlyPayment: num(s.leaseMonthlyPayment),
+          leaseSubsidyAmount: num(s.leaseSubsidyAmount),
+          leaseReturnFee: num(s.leaseReturnFee),
+        }
+      : {}),
+  };
+}
+
+// Real post-transaction review with asymmetric public/private visibility (2026-07-24)
+// -- see backend HoodTransactionReview.kt's own doc comment. goodPoints/
+// uncomfortablePoints are preset tag ids (never free text), matching Karrot's own real
+// review UX.
+export interface HoodReview {
+  id: string;
+  transactionType: string;
+  transactionId: string;
+  reviewerId: string;
+  revieweeId: string;
+  goodPoints: string[];
+  uncomfortablePoints: string[];
+  createdAt: string;
+}
+
+// Real Karrot-Score-style numeric trust/reputation badge (2026-07-21) -- see backend
+// TrustScoreService's own doc comment for the full account. A sellerId -> cached
+// User.trustScore map, resolved server-side in one batch call alongside the listing
+// page itself (see MarketplaceController's own doc comment) -- never fetched per-card.
+export type TrustScores = Record<string, number>;
+
+// Real pagination-discard fix (same systemic gap fixed for Knowledge/Community
+// across all 3 platforms, 2026-09-09) -- MarketplaceController's real
+// Pageable/pageMeta endpoints were always there; page/size just weren't sent,
+// silently capping every browse/my-listings/my-purchases/neighborhood feed at
+// its first 20 listings.
+export const fetchListings = (category?: string, page = 0, size = 20) => {
+  const params = new URLSearchParams();
+  if (category) params.set('category', category);
+  params.set('page', String(page));
+  params.set('size', String(size));
+  return apiFetch<{ success: boolean; listings: Listing[]; trustScores: TrustScores; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/marketplace/listings?${params.toString()}`,
+  );
+};
+
+// Real per-listing detail fetch (2026-08-16) -- GET /marketplace/listings/{id} existed
+// on the backend already (sellerTrustScore comes from here) but had zero real caller
+// on any platform; bank-mfe's own ListingCard renders straight off the already-fetched
+// browse-list item, never a fresh per-listing round trip. Wired in now specifically to
+// give the real backend 조회수 (view count) increment (Listing.viewCount) a genuine
+// trigger -- see ListingCard's own doc comment for where this is called.
+export const fetchListingDetail = (listingId: string) =>
+  apiFetch<{ success: boolean; listing: Listing; sellerTrustScore: number | null }>(
+    `/api/v1/marketplace/listings/${listingId}`,
+  );
+
+// Real Karrot 중고거래 category taxonomy -- see backend MarketplaceService
+// .CATEGORIES's own doc comment.
+export const fetchMarketplaceCategories = () =>
+  apiFetch<{ success: boolean; categories: string[] }>('/api/v1/marketplace/categories').then((r) => r.categories);
+
+export const fetchMyListings = (page = 0, size = 20) =>
+  apiFetch<{ success: boolean; listings: Listing[]; trustScores: TrustScores; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/marketplace/my-listings?page=${page}&size=${size}`,
+  );
+
+// Real "My purchases" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+// recommendation #6. See backend ListingRepository's own doc comment.
+export const fetchMyPurchases = (page = 0, size = 20) =>
+  apiFetch<{ success: boolean; listings: Listing[]; trustScores: TrustScores; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/marketplace/my-purchases?page=${page}&size=${size}`,
+  );
 
 // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see lib/neighborhood.ts's own
 // doc comment for the full account. Throws ApiError with code NEIGHBORHOOD_NOT_SET
 // (real 400) if the caller hasn't set one yet -- callers should catch that specific
 // code and prompt for setup, not treat it as a generic load failure.
-export const fetchListingsMyNeighborhood = (category?: string) =>
-  apiFetch<{ success: boolean; listings: Listing[] }>(
-    `/api/v1/marketplace/listings/my-neighborhood${category ? `?category=${encodeURIComponent(category)}` : ''}`,
-  ).then((r) => r.listings);
+export const fetchListingsMyNeighborhood = (category?: string, page = 0, size = 20) =>
+  apiFetch<{ success: boolean; listings: Listing[]; trustScores: TrustScores; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/marketplace/listings/my-neighborhood?page=${page}&size=${size}${category ? `&category=${encodeURIComponent(category)}` : ''}`,
+  );
 
 export const createListing = (
   title: string,
@@ -48,16 +199,119 @@ export const createListing = (
   category: string,
   latitude?: number,
   longitude?: number,
+  meetingPlace?: string,
+  photoUrl?: string,
+  vehicle?: VehicleListingFields,
 ) =>
   apiFetch<{ success: boolean; listing: Listing }>('/api/v1/marketplace/listings', {
     method: 'POST',
-    body: JSON.stringify({ title, description, price, category, latitude, longitude }),
+    body: JSON.stringify({ title, description, price, category, latitude, longitude, meetingPlace, photoUrl, ...vehicle }),
   }).then((r) => r.listing);
 
-export const markListingSold = (listingId: string) =>
+export const markListingSold = (listingId: string, buyerPhoneNumber?: string) =>
   apiFetch<{ success: boolean; listing: Listing }>(`/api/v1/marketplace/listings/${listingId}/mark-sold`, {
     method: 'POST',
+    body: JSON.stringify({ buyerPhoneNumber }),
   }).then((r) => r.listing);
+
+// Real 가격 수정 (price edit) + Karrot 가격 하락 알림 (price-drop notification) -- see
+// backend MarketplaceService.updatePrice's own doc comment. Found via
+// scripts/uncalled-endpoint-sweep.py: fully built (real favoriters-notified-on-drop
+// side effect) with zero client anywhere.
+export const updateListingPrice = (listingId: string, price: number) =>
+  apiFetch<{ success: boolean; listing: Listing }>(`/api/v1/marketplace/listings/${listingId}/price`, {
+    method: 'PATCH',
+    body: JSON.stringify({ price }),
+  }).then((r) => r.listing);
+
+// Real 당근마켓 끌어올리기 (bump to top of feed) -- see backend MarketplaceService
+// .bumpListing's own doc comment. Real gap found live (2026-08-31, market-readiness
+// audit): existed on Android since 2026-08-10 with zero web client. Free/self-serve
+// (no real money moves), same simpler discipline updateListingPrice above follows --
+// no Idempotency-Key. Real 24h cooldown enforced server-side (429 BUMP_COOLDOWN).
+export const bumpListing = (listingId: string) =>
+  apiFetch<{ success: boolean; listing: Listing }>(`/api/v1/marketplace/listings/${listingId}/bump`, {
+    method: 'POST',
+  }).then((r) => r.listing);
+
+// Real seller-paid sponsored placement -- see backend MarketplaceService.boostListing's
+// own doc comment. Real gap found live (2026-08-31, market-readiness audit): existed on
+// Android+iOS since 2026-07-25 with zero web client. Real money movement, so this is
+// the first Idempotency-Key-gated call in this file after payEscrow/confirmEscrowReceipt.
+export const fetchBoostTiers = () =>
+  apiFetch<{ success: boolean; tiers: Record<string, number> }>('/api/v1/marketplace/boost-tiers').then((r) => r.tiers);
+
+export const boostListing = (listingId: string, days: number) =>
+  apiFetch<{ success: boolean; listing: Listing }>(`/api/v1/marketplace/listings/${listingId}/boost`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ days }),
+  }).then((r) => r.listing);
+
+// Real "pay via itunda" Marketplace escrow (backend since 2026-07-25) -- an opt-in
+// safer alternative to the existing in-person cash handoff, never replacing it. Real
+// gap found 2026-08-15: this had existed on the backend and Android for weeks with
+// ZERO client on web (confirmed by grep -- no caller anywhere in this MFE). First web
+// client for these endpoints, mirroring Android's own MarketplaceScreen.kt flow.
+// deliveryAddress is real, optional (당근마켓 바로구매-style shipped-item support,
+// see backend MarketplaceEscrow.deliveryAddress's own doc comment) -- leaving it
+// blank keeps the original in-person handoff this feature has always assumed.
+export interface MarketplaceEscrow {
+  id: string;
+  listingId: string;
+  buyerId: string;
+  sellerId: string;
+  amount: number;
+  fee: number;
+  status: 'HELD' | 'RELEASED' | 'REFUNDED' | 'DISPUTED';
+  holdTransactionId: string;
+  resolutionTransactionId: string | null;
+  disputeReason: string | null;
+  deliveryAddress: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const payEscrow = (listingId: string, deliveryAddress?: string) =>
+  apiFetch<{ success: boolean; escrow: MarketplaceEscrow }>(`/api/v1/marketplace/listings/${listingId}/pay-escrow`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ deliveryAddress: deliveryAddress?.trim() || undefined }),
+  }).then((r) => r.escrow);
+
+export const confirmEscrowReceipt = (listingId: string) =>
+  apiFetch<{ success: boolean; escrow: MarketplaceEscrow }>(`/api/v1/marketplace/listings/${listingId}/confirm-receipt`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  }).then((r) => r.escrow);
+
+export const disputeEscrow = (listingId: string, reason: string) =>
+  apiFetch<{ success: boolean; escrow: MarketplaceEscrow }>(`/api/v1/marketplace/listings/${listingId}/dispute-escrow`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  }).then((r) => r.escrow);
+
+export const getEscrow = (listingId: string) =>
+  apiFetch<{ success: boolean; escrow: MarketplaceEscrow }>(`/api/v1/marketplace/listings/${listingId}/escrow`).then((r) => r.escrow);
+
+// Real post-transaction review with asymmetric public/private visibility (2026-07-24)
+// -- see backend HoodReviewService's own doc comment.
+export const submitListingReview = (listingId: string, goodPoints: string[], uncomfortablePoints: string[]) =>
+  apiFetch<{ success: boolean; review: HoodReview }>(`/api/v1/marketplace/listings/${listingId}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ goodPoints, uncomfortablePoints }),
+  }).then((r) => r.review);
+
+// Real read-back for the review submitted above (item 192) -- HoodReviewService's own
+// "asymmetric public/private visibility" is party-only even for reading: this real-403s
+// (HOOD_REVIEW_NOT_PARTY) for anyone who wasn't a real party to the transaction, so it's
+// safe to call for any transaction this account can see at all. Existed as a real,
+// callable endpoint since 2026-07-24 with zero client anywhere -- submitting a review
+// never showed it back, and a page refresh reset the local reviewSubmitted flag,
+// silently re-offering the form (the second POST attempt just surfaced the backend's
+// own REVIEW_ALREADY_SUBMITTED error rather than the actual submitted content).
+export const fetchListingReviews = (listingId: string) =>
+  apiFetch<{ success: boolean; reviews: HoodReview[] }>(`/api/v1/marketplace/listings/${listingId}/review`).then((r) => r.reviews);
 
 export const removeListing = (listingId: string) =>
   apiFetch<{ success: boolean; listing: Listing }>(`/api/v1/marketplace/listings/${listingId}`, {
@@ -129,5 +383,76 @@ export const addListingFavorite = (listingId: string) =>
 export const removeListingFavorite = (listingId: string) =>
   apiFetch<{ success: boolean }>(`/api/v1/marketplace/listings/${listingId}/favorite`, { method: 'DELETE' });
 
-export const fetchMyFavoriteListings = () =>
-  apiFetch<{ success: boolean; favorites: FavoriteListing[] }>('/api/v1/marketplace/listings/favorites').then((r) => r.favorites);
+// Real pagination-discard fix (2026-09-12, same systemic gap fixed
+// throughout the sweep -- see project_itunda_pagination_discard_sweep
+// memory) -- the real Pageable/pageMeta endpoint was always there; page
+// just wasn't ever sent, silently capping this list (and any count badge
+// reading it) at the most recent 20 favorited listings.
+export const fetchMyFavoriteListings = (page = 0) =>
+  apiFetch<{ success: boolean; favorites: FavoriteListing[]; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/marketplace/listings/favorites?page=${page}&size=20`,
+  );
+
+// Real Karrot "이 글 숨기기" (hide this post) -- see backend ListingHideService's own
+// doc comment for the full sourced account.
+export const hideListing = (listingId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/marketplace/listings/${listingId}/hide`, { method: 'POST' });
+
+export const unhideListing = (listingId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/marketplace/listings/${listingId}/hide`, { method: 'DELETE' });
+
+// Real "Hidden listings" list (2026-09-08 Hood product-completeness pass) -- mirrors
+// FavoriteListing's exact shape; see backend ListingHideService.getMyHiddenListings's
+// own doc comment (built by mirroring ListingFavoriteService.getMyFavorites field-for-field).
+export interface HiddenListing {
+  listingId: string;
+  title: string;
+  price: number;
+  category: string;
+  hiddenAt: string;
+}
+
+export const fetchMyHiddenListings = () =>
+  apiFetch<{ success: boolean; hidden: HiddenListing[] }>('/api/v1/marketplace/listings/hidden').then((r) => r.hidden);
+
+// Real 당근마켓-style Keyword Alert (rw.itunda.marketplace.KeywordAlertService, real
+// since before this session) -- first client UI for this feature on any platform
+// (item 114, found via a content-grep sweep confirming zero client anywhere).
+// Karrot's own real, published 30-keyword-per-user cap.
+export interface KeywordAlert {
+  id: string;
+  userId: string;
+  keyword: string;
+  createdAt: string;
+}
+
+export interface KeywordAlertQuietHours {
+  id: string;
+  userId: string;
+  startTime: string;
+  endTime: string;
+  enabled: boolean;
+}
+
+export const fetchKeywordAlerts = () =>
+  apiFetch<{ success: boolean; alerts: KeywordAlert[] }>('/api/v1/marketplace/keyword-alerts').then((r) => r.alerts);
+
+export const addKeywordAlert = (keyword: string) =>
+  apiFetch<{ success: boolean; alert: KeywordAlert }>('/api/v1/marketplace/keyword-alerts', {
+    method: 'POST',
+    body: JSON.stringify({ keyword }),
+  }).then((r) => r.alert);
+
+export const removeKeywordAlert = (alertId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/marketplace/keyword-alerts/${alertId}`, { method: 'DELETE' });
+
+export const fetchKeywordAlertQuietHours = () =>
+  apiFetch<{ success: boolean; quietHours: KeywordAlertQuietHours | null }>('/api/v1/marketplace/keyword-alerts/quiet-hours').then(
+    (r) => r.quietHours,
+  );
+
+export const setKeywordAlertQuietHours = (startTime: string, endTime: string, enabled: boolean) =>
+  apiFetch<{ success: boolean; quietHours: KeywordAlertQuietHours }>('/api/v1/marketplace/keyword-alerts/quiet-hours', {
+    method: 'POST',
+    body: JSON.stringify({ startTime, endTime, enabled }),
+  }).then((r) => r.quietHours);

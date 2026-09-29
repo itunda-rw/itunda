@@ -72,6 +72,14 @@ applyBrickModules.call(
 // compile time; this redirect is a real fix, not a bypass.
 project(":granite-js_brownfield-module").projectDir = file("brownfield-module-stub")
 
+// `brick-module` itself contains the runtime registry/package classes that the
+// generated bridge and MiniAppActivity genuinely use. Its published Gradle
+// script, however, is evaluated during React configuration and reads an empty
+// app extension before normal app configuration is possible. Compile the exact
+// vendored Kotlin source through an Itunda-owned wrapper instead of patching
+// node_modules or dropping the runtime dependency.
+project(":brick-module").projectDir = file("brick-module-stub")
+
 dependencyResolutionManagement {
     // Relaxed from FAIL_ON_PROJECT_REPOS (2026-07-12, granite-adoption stage 2): the
     // real React Native Gradle Plugin adds its own project-level `maven { }`
@@ -106,8 +114,12 @@ include(":riderapp")
 // same independence rationale as :riderapp.
 include(":merchantapp")
 
+// Store-agent operations are a separate, least-privilege install.  This is not a
+// consumer-app mode: its API only derives the assigned agent from the signed-in
+// operator, so a cashier cannot select or operate another store's till.
+include(":agentapp")
+
 // Core Bounded Contexts
-include(":core:sdui")
 include(":core:designsystem")
 include(":core:network")
 include(":core:testing")
@@ -120,6 +132,51 @@ include(":core:risk")
 include(":features:payments:api")
 include(":features:payments:impl")
 include(":features:payments:testing")
+
+// Real proof-of-slice Feature extraction (2026-07-22/23) -- Marketplace pulled out of
+// app/ui/SuperAppTabs.kt into its own Feature module, matching Toss's real published
+// Microfeatures architecture (toss.tech/article/slash23-iOS). See
+// features/marketplace/impl/.../MarketplaceScreen.kt's own header comment.
+include(":features:marketplace:api")
+include(":features:marketplace:impl")
+include(":features:marketplace:testing")
+
+include(":features:jobs:api")
+include(":features:jobs:impl")
+include(":features:jobs:testing")
+
+include(":features:property:api")
+include(":features:property:impl")
+include(":features:property:testing")
+
+// Real screen-extraction phase (2026-09-05) -- RideScreen/DesignatedDriverScreen were
+// the last remaining oversized :app screens with no existing Feature module to reuse
+// (unlike WeeklySavings/Grow31/GroupAccount -> :features:banking:impl and
+// TransferHub -> :features:pay:impl, done the same day). First-of-its-kind module,
+// same scaffolding shape as every other Feature.
+include(":features:ride:api")
+include(":features:ride:impl")
+include(":features:ride:testing")
+
+include(":features:community:api")
+include(":features:community:impl")
+include(":features:community:testing")
+
+include(":features:shop:api")
+include(":features:shop:impl")
+include(":features:shop:testing")
+
+include(":features:eats:api")
+include(":features:eats:impl")
+include(":features:eats:testing")
+
+include(":features:talk:api")
+include(":features:talk:impl")
+include(":features:talk:testing")
+
+include(":features:maps:api")
+include(":features:maps:impl")
+include(":features:maps:testing")
 
 include(":features:bills:api")
 include(":features:bills:impl")
@@ -153,5 +210,27 @@ include(":features:banking:api")
 include(":features:banking:impl")
 include(":features:banking:testing")
 
+include(":features:home:api")
+include(":features:home:impl")
+include(":features:home:testing")
+
+include(":features:pay:api")
+include(":features:pay:impl")
+include(":features:pay:testing")
+
+include(":features:menu:api")
+include(":features:menu:impl")
+include(":features:menu:testing")
+
+include(":features:my:api")
+include(":features:my:impl")
+include(":features:my:testing")
+
 // Itunda Pay SDK (For 3rd party integrations)
 include(":sdk:pay")
+
+// Real static-analysis guardrail (2026-07-23) for docs/MULTI_AGENT_ISOLATION.md's
+// silo model -- a standalone Kotlin/JVM module (Konsist parses source files
+// directly off disk, so it needs no dependency on any feature module) asserting
+// no feature's `impl` package imports another feature's `impl` package.
+include(":architecture-test")

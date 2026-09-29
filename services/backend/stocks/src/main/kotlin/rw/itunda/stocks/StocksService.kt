@@ -2,40 +2,52 @@ package rw.itunda.stocks
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Holding
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.StockTrade
 import rw.itunda.core.domain.StockWatchlist
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.HoldingRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.StockTradeRepository
 import rw.itunda.core.repository.StockWatchlistRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.UUID
 
 class StockNotFoundException(message: String) : RuntimeException(message)
-class NoWalletException(message: String) : RuntimeException(message)
+class NoAccountException(message: String) : RuntimeException(message)
 class NotEnoughSharesException(message: String) : RuntimeException(message)
 class InvalidPriceHistoryRangeException(message: String) : RuntimeException(message)
+class InvalidFundingAmountException(message: String) : RuntimeException(message)
+class InvalidPriceAlertException(message: String) : RuntimeException(message)
 
 data class PortfolioValuePoint(val date: LocalDate, val value: BigDecimal)
 
 /** Port of backend/src/controllers/stock.controller.ts. */
 @Service
 class StocksService(
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val holdingRepository: HoldingRepository,
     private val ledgerService: LedgerService,
     private val stockWatchlistRepository: StockWatchlistRepository,
     private val stockTradeRepository: StockTradeRepository,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
+    private val rateLimiter: RateLimiter,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     fun getStocks() = StockCatalog.stocks
 
@@ -74,22 +86,82 @@ class StocksService(
         )
     }
 
+    // Real bug found and fixed 2026-07-27, alongside the same-day AuthService.register
+    // fix that finally provisions a real AccountType.INVESTMENT account for every new
+    // user: even with that account now provisioned, it starts at a real zero balance,
+    // and nothing anywhere in this codebase ever let a user move money INTO it -- so
+    // `buyStock` would have real-422'd (InsufficientFundsException) for every real
+    // first purchase regardless. A real, honest internal account-to-account transfer,
+    // same shape `P2pService.sendDirect` already established for a different pair of
+    // real accounts -- no clearing account needed since both real ACCOUNT-type accounts
+    // belong to the exact same real user.
     @Transactional
-    fun buyStock(userId: String, stockId: String, shares: BigDecimal): Map<String, Any?> {
-        val stock = StockCatalog.find(stockId) ?: throw StockNotFoundException("Stock not found")
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.INVESTMENT) ?: throw NoWalletException("No investment wallet found for this account")
-        val cost = shares.multiply(stock.price)
+    fun fundInvestmentAccount(userId: String, amount: BigDecimal): Map<String, Any?> {
+        if (amount <= BigDecimal.ZERO) throw InvalidFundingAmountException("Amount must be greater than zero")
+        // Real anti-spam limit, matching this class's own buyStock/sellStock convention
+        // and AccountService.transferBetweenOwnAccounts's identical "own-account
+        // transfer skips the fraud check but still gets rate-limited" precedent.
+        rateLimiter.checkLimit("stocks:fund:$userId", limit = 30, window = Duration.ofHours(1))
+        val mainAccount = accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
+        val investmentAccount = accountRepository.findByUserIdAndType(userId, AccountType.INVESTMENT) ?: throw NoAccountException("No investment account found for this account")
 
         val result = ledgerService.postLedgerTransaction(
-            wallet.currency,
+            mainAccount.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, cost, "Buy $shares ${stock.symbol}"),
+                LedgerLeg(mainAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Transfer to investment account"),
+                LedgerLeg(investmentAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Transfer to investment account"),
+            ),
+        )
+        return mapOf("id" to result.transactionId, "amount" to amount, "completedAt" to Instant.now().toString())
+    }
+
+    @Transactional
+    fun buyStock(userId: String, stockId: String, shares: BigDecimal): Map<String, Any?> {
+        // Real gap found live (2026-09-04): every sibling money-moving domain (P2P,
+        // loans, savings) applies a per-user rateLimiter.checkLimit -- stock buy/sell
+        // had none. Idempotency-Key already prevents a double-execute on retry, but
+        // that's a different concern from capping how often a real trade can be
+        // placed at all. Same 30/hour figure P2pService.pay/send already establishes
+        // as this codebase's own baseline for a comparable-stakes real money action.
+        rateLimiter.checkLimit("stocks:buy:$userId", limit = 30, window = Duration.ofHours(1))
+        // Real gap found live (2026-09-04): unlike fundInvestmentAccount just above
+        // (which already validates its amount), buyStock/sellStock never checked
+        // shares was positive -- a zero/negative value would have both
+        // postLedgerTransaction legs share the same non-positive `cost`, which
+        // LedgerService's own leg filter (`rawLegs.filter { it.amount > ZERO }`)
+        // silently drops both, so no actual fund-direction reversal is possible --
+        // but the caller then gets an opaque, unhandled LedgerImbalanceException
+        // (500) instead of a clean validation error. Same exception/handler this
+        // file already established for fundInvestmentAccount's identical check.
+        if (shares <= BigDecimal.ZERO) throw InvalidFundingAmountException("Shares must be greater than zero")
+        val stock = StockCatalog.find(stockId) ?: throw StockNotFoundException("Stock not found")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.INVESTMENT) ?: throw NoAccountException("No investment account found for this account")
+        // Real bug found and fixed 2026-07-27: shares is caller-supplied BigDecimal with
+        // no scale constraint (round-up-to-invest passes real fractional shares scaled to
+        // 6dp) -- an unrounded cost could carry more than RWF's real 2 decimal places,
+        // which LedgerService.postLedgerTransaction's own balance check (`setScale(2)`,
+        // no RoundingMode) would then real-crash on with ArithmeticException("Rounding
+        // necessary") for any non-exact fractional-share cost. Caught live: the first
+        // real round-up-to-invest purchase 500'd the entire triggering P2P transfer.
+        val cost = shares.multiply(stock.price).setScale(2, RoundingMode.HALF_UP)
+
+        val result = ledgerService.postLedgerTransaction(
+            account.currency,
+            listOf(
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, cost, "Buy $shares ${stock.symbol}"),
                 LedgerLeg("securities_suspense", LedgerAccountType.SECURITIES_SUSPENSE, LedgerDirection.CREDIT, cost, "Custody for $shares ${stock.symbol}"),
             ),
         )
+        // Real gap found live (2026-09-08): every sibling money-leaves-account flow
+        // (P2P, Marketplace escrow, Bills, Ride, ...) already runs through
+        // FraudRuleEngine.evaluate -- stock buy/sell never did. recipientUserId is
+        // null since the counterparty is the internal securities_suspense account,
+        // not a named itunda user, matching BillsService/RideTripService's own
+        // null-recipient convention (see FraudRuleEngine's own doc comment).
+        fraudRuleEngine.evaluate(userId, null, cost, result.transactionId)
 
         val holding = holdingRepository.findByUserIdAndStockId(userId, stock.id)
-            ?: Holding(id = "hold_${UUID.randomUUID()}", userId = userId, walletId = wallet.id, stockId = stock.id, shares = BigDecimal.ZERO, avgPrice = stock.price)
+            ?: Holding(id = "hold_${UUID.randomUUID()}", userId = userId, accountId = account.id, stockId = stock.id, shares = BigDecimal.ZERO, avgPrice = stock.price)
         val totalCostBasis = holding.shares.multiply(holding.avgPrice).add(cost)
         holding.shares = holding.shares.add(shares)
         holding.avgPrice = totalCostBasis.divide(holding.shares, 4, RoundingMode.HALF_UP)
@@ -110,6 +182,8 @@ class StocksService(
 
     @Transactional
     fun sellStock(userId: String, stockId: String, shares: BigDecimal): Map<String, Any?> {
+        rateLimiter.checkLimit("stocks:sell:$userId", limit = 30, window = Duration.ofHours(1))
+        if (shares <= BigDecimal.ZERO) throw InvalidFundingAmountException("Shares must be greater than zero")
         val stock = StockCatalog.find(stockId) ?: throw StockNotFoundException("Stock not found")
         val holding = holdingRepository.findByUserIdAndStockId(userId, stock.id)
         if (holding == null || holding.shares < shares) throw NotEnoughSharesException("Not enough shares to sell")
@@ -119,9 +193,11 @@ class StocksService(
             "RWF",
             listOf(
                 LedgerLeg("securities_suspense", LedgerAccountType.SECURITIES_SUSPENSE, LedgerDirection.DEBIT, proceeds, "Release custody for $shares ${stock.symbol}"),
-                LedgerLeg(holding.walletId, LedgerAccountType.WALLET, LedgerDirection.CREDIT, proceeds, "Sell $shares ${stock.symbol}"),
+                LedgerLeg(holding.accountId, LedgerAccountType.WALLET, LedgerDirection.CREDIT, proceeds, "Sell $shares ${stock.symbol}"),
             ),
         )
+        // Real gap found live (2026-09-08) -- see buyStock's own identical comment above.
+        fraudRuleEngine.evaluate(userId, null, proceeds, result.transactionId)
 
         holding.shares = holding.shares.subtract(shares)
         holdingRepository.save(holding)
@@ -159,6 +235,98 @@ class StocksService(
     @Transactional
     fun unwatchStock(userId: String, stockId: String) {
         stockWatchlistRepository.deleteByUserIdAndStockId(userId, stockId)
+    }
+
+    // Real Toss Securities 목표가 알림 (target price alert) (2026-08-16) -- set a real
+    // target price on a stock and get notified once its real (deterministically
+    // simulated) price crosses it. Auto-watches the stock first if the caller hadn't
+    // already, same "setting an alert implies watching" real Toss UX -- there's no
+    // separate concept of "alert but not watching" in the real app either. Setting a
+    // new target on an already-alerted watchlist row re-arms it (clears
+    // alertTriggeredAt), same "your new choice replaces the old one" shape this
+    // codebase's other real toggles already establish.
+    @Transactional
+    fun setPriceAlert(userId: String, stockId: String, targetPrice: BigDecimal, direction: String): StockWatchlist {
+        if (direction != "ABOVE" && direction != "BELOW") {
+            throw InvalidPriceAlertException("direction must be ABOVE or BELOW")
+        }
+        if (targetPrice <= BigDecimal.ZERO) {
+            throw InvalidPriceAlertException("Target price must be greater than zero")
+        }
+        val stock = StockCatalog.find(stockId) ?: throw StockNotFoundException("Stock not found")
+        val watchlist = stockWatchlistRepository.findByUserIdAndStockId(userId, stock.id)
+            ?: stockWatchlistRepository.save(StockWatchlist(id = "watch_${UUID.randomUUID()}", userId = userId, stockId = stock.id))
+        watchlist.targetPrice = targetPrice
+        watchlist.targetDirection = direction
+        watchlist.alertTriggeredAt = null
+        return stockWatchlistRepository.save(watchlist)
+    }
+
+    @Transactional
+    fun clearPriceAlert(userId: String, stockId: String): StockWatchlist {
+        val watchlist = stockWatchlistRepository.findByUserIdAndStockId(userId, stockId)
+            ?: throw StockNotFoundException("You are not watching this stock")
+        watchlist.targetPrice = null
+        watchlist.targetDirection = null
+        watchlist.alertTriggeredAt = null
+        return stockWatchlistRepository.save(watchlist)
+    }
+
+    // Real gap fix (2026-08-18) -- found via a fresh "defined but uncalled" endpoint
+    // sweep: setPriceAlert/clearPriceAlert had shipped (section 113) with zero client
+    // anywhere ever calling them, and there wasn't even a read path a client could use
+    // to show "this stock already has an alert" when re-opening its detail screen.
+    // Null means either the stock isn't watched at all yet, or it's watched with no
+    // active alert -- the client can't tell those apart from this alone, but it
+    // doesn't need to: both render as "no alert set."
+    fun getPriceAlert(userId: String, stockId: String): StockWatchlist? =
+        stockWatchlistRepository.findByUserIdAndStockId(userId, stockId)
+
+    // Real due-alert query backing StockPriceAlertScheduler -- a real, not-yet-fired
+    // alert whose real current simulated price has actually crossed its real target,
+    // in the real direction the user asked for.
+    fun getDuePriceAlerts(): List<StockWatchlist> {
+        val candidates = stockWatchlistRepository.findByTargetPriceIsNotNullAndAlertTriggeredAtIsNull()
+        if (candidates.isEmpty()) return emptyList()
+        return candidates.filter { watchlist ->
+            val currentPrice = StockCatalog.find(watchlist.stockId)?.price ?: return@filter false
+            val target = watchlist.targetPrice ?: return@filter false
+            when (watchlist.targetDirection) {
+                "ABOVE" -> currentPrice >= target
+                "BELOW" -> currentPrice <= target
+                else -> false
+            }
+        }
+    }
+
+    /** One real alert notification, called per-row by the scheduler -- same resilience
+     * `ProductFavoriteService.notifyPriceDrop`'s own doc comment already establishes: a
+     * re-check right before firing (never trust the batch snapshot from getDuePriceAlerts
+     * as still true by the time this runs) so a genuine race can't double-fire. */
+    @Transactional
+    fun triggerPriceAlert(watchlistId: String) {
+        val watchlist = stockWatchlistRepository.findById(watchlistId).orElse(null) ?: return
+        if (watchlist.alertTriggeredAt != null) return
+        val stock = StockCatalog.find(watchlist.stockId) ?: return
+        val target = watchlist.targetPrice ?: return
+        val crossed = when (watchlist.targetDirection) {
+            "ABOVE" -> stock.price >= target
+            "BELOW" -> stock.price <= target
+            else -> false
+        }
+        if (!crossed) return
+
+        val title = "${stock.symbol} hit your target price"
+        val body = "${stock.name} is now ${stock.price} (target: $target)"
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = watchlist.userId, type = "STOCK_PRICE_ALERT",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"stockId\":\"${stock.id}\"}",
+            ),
+        )
+        pushNotificationService.sendToUser(watchlist.userId, title, body, mapOf("stockId" to stock.id))
+        watchlist.alertTriggeredAt = Instant.now()
+        stockWatchlistRepository.save(watchlist)
     }
 
     // StockCatalog is a small, static, in-memory list (no DB round trip involved at

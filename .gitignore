@@ -26,6 +26,10 @@ out/
 .env.local
 .env.*.local
 .env.production.local
+# infra/ci/'s Woodpecker exec-agent config isn't named plain ".env" (its own
+# docker-compose.yml sits in the same directory and would auto-load a real ".env"
+# meant for the agent instead) -- ignored explicitly instead.
+infra/ci/woodpecker-exec-agent.env
 
 # IDE
 .vscode/

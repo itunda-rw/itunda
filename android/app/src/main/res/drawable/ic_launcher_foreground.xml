@@ -4,17 +4,28 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Renderer-matched rear volume -->
-    <path android:fillColor="#2D0670"
-        android:pathData="M57,21 L87,21 L69,48 L87,48 L48,93 L53,61 L33,61 L57,21 Z" />
-    <path android:fillColor="#4D0BAF"
-        android:pathData="M55,19 L85,19 L67,46 L85,46 L46,91 L51,59 L31,59 L55,19 Z" />
-    <!-- Renderer front face -->
-    <path android:fillColor="#863BFF"
-        android:pathData="M54,17 L84,17 L66,44 L84,44 L45,89 L50,57 L30,57 L54,17 Z" />
-    <!-- Broad renderer-style highlight -->
-    <path android:fillColor="#BFA7FF"
-        android:pathData="M54,19 L79,19 L64,41 L58,41 L70,23 L54,23 Z" />
-    <path android:fillColor="#47BFFF"
-        android:pathData="M72,47 L82,47 L49,84 L51,70 Z" />
+<!-- Real itunda mark (2026-08-22, direct user identity work): replaces the old
+     shield-check glyph with the "petal" shape in indigo, chosen after a full 14-shape
+     x 16-color exploration pass - see the itunda-identity.html design artifact and
+     project_itunda_brand_identity.md for the full derivation (indigo is not
+     invented: same OKLCH hue-rotation technique Toss's own eng blog documents,
+     toss.tech/article/tds-color-system-update, applied to the real itunda blue
+     anchor this token held before). Two independent flat facets rather than the
+     exploration artifact's full 3D gradient rendering - Android VectorDrawable
+     gradients inside adaptive-icon layers render unreliably across launcher
+     implementations/densities, and a flat two-tone reads just as clearly at
+     launcher-icon scale (matches how Google's own apps flatten otherwise-gradient
+     marks for this exact context). Right facet uses the mark's own "mid" tone
+     (indigo family rm), left facet its darker "mid" counterpart (lm) - the same
+     two real tones the gradient's own mid-stop uses, so this stays a true flattening
+     of the real mark rather than a separately-invented icon color. Scaled to 0.60x
+     and centered on (54,54), fitting inside Android's real 66dp safe-zone circle
+     (108dp canvas) - verified against both a circular and squircle mask via a real
+     SVG render before this file was written (rsvg-convert, not eyeballed). -->
+    <path
+        android:fillColor="#7C7BFD"
+        android:pathData="M48.6,34.8 C67.8,30 79.8,51.6 57,78 C53.4,64.8 47.4,49.2 48.6,34.8 Z" />
+    <path
+        android:fillColor="#5C55D8"
+        android:pathData="M48.6,34.8 C47.4,49.2 53.4,64.8 57,78 C37.8,76.8 28.2,54 48.6,34.8 Z" />
 </vector>

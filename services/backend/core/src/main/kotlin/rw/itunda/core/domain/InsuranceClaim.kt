@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -17,6 +18,12 @@ enum class InsuranceClaimStatus { SUBMITTED, APPROVED, REJECTED }
  * pays out immediately from insurance_claims_expense, same "decide = terminal action" shape
  * as identity/ComplianceController and system/FraudReviewService, not a separate
  * approve-then-pay step -- there's no real insurer/reinsurer settlement delay to model here.
+ *
+ * 2026-08-17: `InsuranceService.decideClaim` now also sends a real claim-decision
+ * notification -- previously a claimant had zero way to ever learn a claim was decided
+ * except by polling their own claims list. Every real insurer notifies on both outcomes;
+ * see `decideClaim`'s own doc comment for the exact real sourcing (mirrors
+ * `OrderReturnService.decide`'s identical approve/reject-then-notify shape).
  */
 @Entity
 @Table(name = "insurance_claims")
@@ -52,6 +59,12 @@ class InsuranceClaim(
 
     @Column(name = "decision_reason")
     var decisionReason: String? = null,
+
+    // Approval posts a real payout.  Concurrent reviewers must not both approve the
+    // same submitted claim.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(id = "", policyId = "", userId = "", description = "", amount = BigDecimal.ZERO)
 }

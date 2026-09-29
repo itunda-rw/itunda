@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="property_new_listing_cta">+ Tanga inzu</string>
+    <string name="property_title_placeholder">Urugero: inzu y\'ibyumba 2 i Kacyiru</string>
+    <string name="property_description_placeholder">Sobanura inzu</string>
+    <string name="property_listing">Kohereza…</string>
+    <string name="property_list_it">Ohereza</string>
+</resources>

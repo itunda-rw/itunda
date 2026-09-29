@@ -9,10 +9,13 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Contact
 import rw.itunda.core.repository.ContactRepository
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
+import java.time.Duration
 import java.util.UUID
 
 data class AddContactRequest(val name: String, val bank: String? = null, val phoneNumber: String)
@@ -24,7 +27,7 @@ data class AddContactRequest(val name: String, val bank: String? = null, val pho
  */
 @RestController
 @RequestMapping("/api/v1/contacts")
-class ContactsController(private val contactRepository: ContactRepository) {
+class ContactsController(private val contactRepository: ContactRepository, private val rateLimiter: RateLimiter) {
 
     @GetMapping
     fun getContacts(@AuthenticationPrincipal currentUser: CurrentUser) =
@@ -35,11 +38,17 @@ class ContactsController(private val contactRepository: ContactRepository) {
         if (request.name.isBlank() || request.phoneNumber.isBlank()) {
             return ResponseEntity.badRequest().body(ApiError("INVALID_REQUEST", "Name and phone number are required"))
         }
+        // Real bug found live (2026-08-02): this content-creation endpoint had shipped
+        // with zero rate limiting -- every other real content/request-creation endpoint
+        // in this codebase (P2pService.generateRequest, GiftService.sendGift,
+        // FamilyLinkService.inviteChild, MessagingService.sendMessage, etc) already has
+        // one; an authenticated caller could otherwise spam unlimited Contact rows.
+        rateLimiter.checkLimit("contacts:add:${currentUser.userId}", limit = 60, window = Duration.ofHours(1))
         val contact = contactRepository.save(
             Contact(
                 id = "c_${UUID.randomUUID()}", userId = currentUser.userId, name = request.name,
                 bank = request.bank ?: "MTN MoMo", acc = request.phoneNumber, phoneNumber = request.phoneNumber,
-                color = "#E8F3FF", letter = request.name.take(1).uppercase(),
+                color = "#F5FAFF", letter = request.name.take(1).uppercase(),
             ),
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "contact" to contact))
@@ -47,4 +56,8 @@ class ContactsController(private val contactRepository: ContactRepository) {
 
     @ExceptionHandler(IllegalArgumentException::class)
     fun handleBadRequest(ex: IllegalArgumentException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_REQUEST", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(RateLimitExceededException::class)
+    fun handleRateLimit(ex: RateLimitExceededException) =
+        ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
 }

@@ -13,6 +13,25 @@ dependencyManagement {
 dependencies {
     implementation(project(":core"))
     implementation(project(":auth"))
+    // For SplitBillService.createDirectSplitBill -- real 배달의민족 함께주문 Dutch-pay
+    // requests after a group order is finalized, see GroupEatsOrderService.kt's own doc
+    // comment.
+    implementation(project(":splitbill"))
+    // Real "message restaurant" (2026-08-16, Uber Eats-sourced) -- see
+    // EatsController.contactRestaurant's own doc comment. Mirrors
+    // MarketplaceService.contactSeller's exact existing use of MessagingService.
+    implementation(project(":messaging"))
+    // For AutoTopUpService.topUpPayFromMain/topUpShortfall -- EatsOrderService/
+    // DineInOrderService now draw from the customer's real itunda Pay money
+    // (auto-topped from Bank if short) at order payment time, same as
+    // MerchantService.collect()'s own QR-payment treatment. No circular
+    // dependency: :account only depends on :core.
+    implementation(project(":account"))
+    // Real EATS_ORDER_STATUS_CHANGED webhooks (2026-08-30, market-readiness audit) --
+    // reuses the exact same WebhookDeliveryService infrastructure Commerce/Pay already
+    // established, rather than a second bespoke mechanism. No circular dependency:
+    // :merchant depends on :core/:auth/:account/:messaging only, never :eats.
+    implementation(project(":merchant"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

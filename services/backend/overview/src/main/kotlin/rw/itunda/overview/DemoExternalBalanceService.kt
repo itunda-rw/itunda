@@ -22,7 +22,7 @@ class DemoExternalBalanceService {
         val digest = MessageDigest.getInstance("SHA-256").digest("$provider:$externalAccountNumber".toByteArray())
         // A real, deterministic value in a realistic range (20,000 - 3,020,000 RWF,
         // roughly matching the spread already seen in this repo's own seeded demo
-        // wallet balances) -- unsigned-interpreted first 4 bytes of the hash, not the
+        // account balances) -- unsigned-interpreted first 4 bytes of the hash, not the
         // raw byte array, to spread evenly across the full range rather than clumping
         // near zero.
         val unsignedInt = ((digest[0].toLong() and 0xFF) shl 24) or

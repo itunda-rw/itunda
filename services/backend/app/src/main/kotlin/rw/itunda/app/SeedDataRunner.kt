@@ -11,8 +11,8 @@ import rw.itunda.core.domain.LoanAccount
 import rw.itunda.core.domain.LoanStatus
 import rw.itunda.core.domain.SavingsGoal
 import rw.itunda.core.domain.User
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.repository.ContactRepository
 import rw.itunda.core.repository.HoldingRepository
 import rw.itunda.core.repository.InterestJarRepository
@@ -20,7 +20,7 @@ import rw.itunda.core.repository.LedgerAccountRepository
 import rw.itunda.core.repository.LoanAccountRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.InsurancePolicyRepository
 import java.math.BigDecimal
@@ -29,7 +29,7 @@ import java.time.LocalDate
 
 /**
  * Seeds the same demo user as backend/src/services/database.ts (same phone number,
- * same "password123" login, same three wallet balances, same active loan and contacts)
+ * same "password123" login, same three account balances, same active loan and contacts)
  * so the two backends can be compared side by side during migration rather than
  * diverging on fixture data.
  *
@@ -42,7 +42,7 @@ import java.time.LocalDate
 @Component
 class SeedDataRunner(
     private val userRepository: UserRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerAccountRepository: LedgerAccountRepository,
     private val loanAccountRepository: LoanAccountRepository,
     private val contactRepository: ContactRepository,
@@ -51,6 +51,7 @@ class SeedDataRunner(
     private val interestJarRepository: InterestJarRepository,
     private val notificationRepository: NotificationRepository,
     private val insurancePolicyRepository: InsurancePolicyRepository,
+    private val commerceSeedDataRunner: CommerceSeedDataRunner,
 ) : CommandLineRunner {
 
     override fun run(vararg args: String?) {
@@ -95,12 +96,12 @@ class SeedDataRunner(
             )
         }
 
-        if (walletRepository.findByUserId(user.id).isEmpty()) {
-            walletRepository.saveAll(
+        if (accountRepository.findByUserId(user.id).isEmpty()) {
+            accountRepository.saveAll(
                 listOf(
-                    Wallet(id = "wallet_1", userId = user.id, accountNumber = "2024100001", accountName = "Jean's Main Account", type = WalletType.MAIN, balance = BigDecimal("2450000"), availableBalance = BigDecimal("2450000")),
-                    Wallet(id = "wallet_2", userId = user.id, accountNumber = "2024100002", accountName = "Jean's Savings", type = WalletType.SAVINGS, balance = BigDecimal("850000"), availableBalance = BigDecimal("850000")),
-                    Wallet(id = "wallet_3", userId = user.id, accountNumber = "2024100003", accountName = "Jean's Investment", type = WalletType.INVESTMENT, balance = BigDecimal("1500000"), availableBalance = BigDecimal("1500000")),
+                    Account(id = "account_1", userId = user.id, accountNumber = "2024100001", accountName = "Jean's Main Account", type = AccountType.MAIN, balance = BigDecimal("2450000"), availableBalance = BigDecimal("2450000")),
+                    Account(id = "account_2", userId = user.id, accountNumber = "2024100002", accountName = "Jean's Savings", type = AccountType.SAVINGS, balance = BigDecimal("850000"), availableBalance = BigDecimal("850000")),
+                    Account(id = "account_3", userId = user.id, accountNumber = "2024100003", accountName = "Jean's Investment", type = AccountType.INVESTMENT, balance = BigDecimal("1500000"), availableBalance = BigDecimal("1500000")),
                 ),
             )
         }
@@ -108,7 +109,7 @@ class SeedDataRunner(
         if (!loanAccountRepository.existsById("loan_active_1")) {
             loanAccountRepository.save(
                 LoanAccount(
-                    id = "loan_active_1", userId = user.id, walletId = "wallet_1", offerId = "loan_1",
+                    id = "loan_active_1", userId = user.id, accountId = "account_1", offerId = "loan_1",
                     principal = BigDecimal("100000"), outstanding = BigDecimal("65000"), interestRate = 5.0,
                     status = LoanStatus.ACTIVE, disbursedAt = Instant.now().minusSeconds(1_209_600),
                 ),
@@ -118,7 +119,7 @@ class SeedDataRunner(
         if (contactRepository.findByUserId(user.id).isEmpty()) {
             contactRepository.saveAll(
                 listOf(
-                    Contact(id = "c1", userId = user.id, name = "Jean Paul", bank = "Bank of Kigali", acc = "0004 1234 5678", phoneNumber = "+250788111222", color = "#E8F3FF", letter = "J"),
+                    Contact(id = "c1", userId = user.id, name = "Jean Paul", bank = "Bank of Kigali", acc = "0004 1234 5678", phoneNumber = "+250788111222", color = "#F5FAFF", letter = "J"),
                     Contact(id = "c2", userId = user.id, name = "Marie Claire", bank = "MTN MoMo", acc = "0788 123 456", phoneNumber = "+250788222333", color = "#FFF4E5", letter = "M"),
                     Contact(id = "c3", userId = user.id, name = "David N.", bank = "Airtel Money", acc = "0733 908 123", phoneNumber = "+250733444555", color = "#FEECEE", letter = "D"),
                     Contact(id = "c4", userId = user.id, name = "Alice Uwimana", bank = "Equity Bank", acc = "1000 5678 9012", phoneNumber = "+250788666777", color = "#E8F8F0", letter = "A"),
@@ -130,9 +131,9 @@ class SeedDataRunner(
         if (holdingRepository.findByUserId(user.id).isEmpty()) {
             holdingRepository.saveAll(
                 listOf(
-                    Holding(id = "hold_1", userId = user.id, walletId = "wallet_3", stockId = "s1", shares = BigDecimal("1000"), avgPrice = BigDecimal("580")),
-                    Holding(id = "hold_2", userId = user.id, walletId = "wallet_3", stockId = "s2", shares = BigDecimal("500"), avgPrice = BigDecimal("490")),
-                    Holding(id = "hold_3", userId = user.id, walletId = "wallet_3", stockId = "s3", shares = BigDecimal("200"), avgPrice = BigDecimal("130")),
+                    Holding(id = "hold_1", userId = user.id, accountId = "account_3", stockId = "s1", shares = BigDecimal("1000"), avgPrice = BigDecimal("580")),
+                    Holding(id = "hold_2", userId = user.id, accountId = "account_3", stockId = "s2", shares = BigDecimal("500"), avgPrice = BigDecimal("490")),
+                    Holding(id = "hold_3", userId = user.id, accountId = "account_3", stockId = "s3", shares = BigDecimal("200"), avgPrice = BigDecimal("130")),
                 ),
             )
         }
@@ -140,8 +141,8 @@ class SeedDataRunner(
         if (savingsGoalRepository.findByUserId(user.id).isEmpty()) {
             savingsGoalRepository.saveAll(
                 listOf(
-                    SavingsGoal(id = "sg_1", userId = user.id, walletId = "wallet_2", name = "Emergency Fund", targetAmount = BigDecimal("500000"), currentAmount = BigDecimal("320000"), monthlyContribution = BigDecimal("50000"), interestRate = 7.5, targetDate = "2025-06-01", category = "emergency", color = "#0066FF"),
-                    SavingsGoal(id = "sg_2", userId = user.id, walletId = "wallet_2", name = "New Laptop", targetAmount = BigDecimal("250000"), currentAmount = BigDecimal("80000"), monthlyContribution = BigDecimal("30000"), interestRate = 7.5, targetDate = "2025-09-01", category = "tech", color = "#9C27B0"),
+                    SavingsGoal(id = "sg_1", userId = user.id, accountId = "account_2", name = "Emergency Fund", targetAmount = BigDecimal("500000"), currentAmount = BigDecimal("320000"), monthlyContribution = BigDecimal("50000"), interestRate = 7.5, targetDate = "2025-06-01", category = "emergency", color = "#0066FF"),
+                    SavingsGoal(id = "sg_2", userId = user.id, accountId = "account_2", name = "New Laptop", targetAmount = BigDecimal("250000"), currentAmount = BigDecimal("80000"), monthlyContribution = BigDecimal("30000"), interestRate = 7.5, targetDate = "2025-09-01", category = "tech", color = "#9C27B0"),
                 ),
             )
         }
@@ -149,7 +150,7 @@ class SeedDataRunner(
         if (!interestJarRepository.existsById(user.id)) {
             interestJarRepository.save(
                 InterestJar(
-                    userId = user.id, walletId = "wallet_2", balance = BigDecimal("45200"), rate = 7.5,
+                    userId = user.id, accountId = "account_2", balance = BigDecimal("45200"), rate = 7.5,
                     earnedThisMonth = BigDecimal("2840"), earnedTotal = BigDecimal("45200"),
                     lastPaidAt = Instant.now(), nextPayoutAt = Instant.now().plusSeconds(86400),
                 ),
@@ -180,5 +181,7 @@ class SeedDataRunner(
                 )
             )
         }
+
+        commerceSeedDataRunner.seed(user.id)
     }
 }

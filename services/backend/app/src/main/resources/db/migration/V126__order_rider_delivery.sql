@@ -1,0 +1,1 @@
+ALTER TABLE orders ADD COLUMN rider_id VARCHAR(64) NULL;

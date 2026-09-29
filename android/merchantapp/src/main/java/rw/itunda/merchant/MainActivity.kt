@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
+import rw.itunda.core.designsystem.components.IdsLoading
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.merchant.network.MerchantDto
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.ui.BecomeMerchantScreen
@@ -32,9 +33,20 @@ private sealed class MerchantScreen {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Real screenshot/screen-recording protection (2026-08-09), same Toss-parity fix as
+        // the customer app's MainActivity.kt -- this app shows real till cash/order payment
+        // totals on nearly every screen.
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+        )
         setContent {
-            MaterialTheme {
-                Surface(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
+            // Real shared brand theme (2026-07-24), same fix as riderapp's own
+            // MainActivity.kt -- this app also depended on :core:designsystem
+            // without ever applying it, rendering in generic Material colors
+            // instead of itunda's real brand.
+            IdsTheme {
+                Surface(modifier = androidx.compose.ui.Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     MerchantApp()
                 }
             }
@@ -61,7 +73,7 @@ private fun MerchantApp() {
     LaunchedEffect(Unit) { resolveStartScreen() }
 
     when (val current = screen) {
-        is MerchantScreen.Loading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        is MerchantScreen.Loading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { IdsLoading() }
         is MerchantScreen.Login -> LoginScreen(onLoggedIn = { screen = MerchantScreen.BecomeMerchant })
         is MerchantScreen.BecomeMerchant -> {
             LaunchedEffect(current) {

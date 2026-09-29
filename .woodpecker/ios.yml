@@ -1,0 +1,35 @@
+# Real port of .github/workflows/ci-cd.yml's ios-build job. Routed to the SEPARATE
+# macOS "local"-backend agent (infra/ci/woodpecker-exec-agent.env +
+# scripts/woodpecker-exec-agent-install.sh) via the labels below -- Xcode has no
+# Linux container image, so this cannot run on the Docker-based agent the other
+# .woodpecker/*.yml files use. `image: bash` on the local backend just selects the
+# shell each command runs through -- see infra/ci/docker-compose.yml's own doc
+# comment for the full architecture.
+labels:
+  backend: local
+
+steps:
+  # Same two sub-steps ci-cd.yml's ios-build job runs, same working directories --
+  # ported as-is rather than collapsed into one step, to keep this an honest mirror
+  # of the GitHub Actions job instead of a re-derived, unverified rewrite.
+  - name: brick-codegen
+    image: bash
+    directory: packages/saronite/host-app
+    commands:
+      - npm ci
+      - node ../node_modules/.bin/brick-codegen --platform ios --output-ios ../../../ios/.brick --projectRoot .
+    when:
+      - event: [push, pull_request]
+
+  - name: ios-build
+    image: bash
+    directory: ios
+    commands:
+      - tuist generate --no-open
+      - pod install
+      - >
+        xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp
+        -destination 'generic/platform=iOS Simulator' build
+        CODE_SIGNING_ALLOWED=NO
+    when:
+      - event: [push, pull_request]

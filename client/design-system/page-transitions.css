@@ -1,0 +1,6 @@
+:root{--ids-page-ease:var(--itunda-ease);--ids-page-in-duration:620ms;--ids-page-out-duration:280ms}
+body{opacity:0;animation:ids-page-in var(--ids-page-in-duration) var(--ids-page-ease) forwards}
+body.ids-leaving{opacity:1;animation:ids-page-out var(--ids-page-out-duration) var(--ids-page-ease) forwards}
+@keyframes ids-page-in{from{opacity:0;transform:translate3d(0,10px,0)}to{opacity:1;transform:none}}
+@keyframes ids-page-out{from{opacity:1;transform:translate3d(0,-6px,0)}to{opacity:0;transform:translate3d(0,-10px,0)}}
+@media(prefers-reduced-motion:reduce){body,body.ids-leaving{animation:none!important;opacity:1;transform:none}}

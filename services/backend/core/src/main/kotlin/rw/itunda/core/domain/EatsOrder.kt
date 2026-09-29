@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -13,12 +14,17 @@ import java.time.Instant
 // states are restaurant-driven (PLACED -> ACCEPTED -> PREPARING -> READY_FOR_PICKUP), the
 // next three are rider-driven (a rider claims a READY_FOR_PICKUP order, moving it to
 // RIDER_ASSIGNED, then PICKED_UP, then DELIVERED -- the transition that triggers the real
-// delivery-fee payout out of `eats_delivery_holding` into the rider's own wallet). A real
+// delivery-fee payout out of `eats_delivery_holding` into the rider's own account). A real
 // CANCELLED terminal state (2026-07-18) is reachable only from PLACED -- before the
 // restaurant has started real fulfillment work and before any rider is involved, the
 // safest and simplest real scope. See EatsOrderService.cancelOrder's own doc comment for
 // the reversing-ledger-entry technique this reuses from SupportService.reverseTransaction.
 enum class EatsOrderStatus { PLACED, ACCEPTED, PREPARING, READY_FOR_PICKUP, RIDER_ASSIGNED, PICKED_UP, DELIVERED, CANCELLED }
+
+// Real Baemin-style 포장주문 (Pickup) order type (2026-07-26) -- see
+// EatsOrderService.placeOrder's own doc comment for the full account. DELIVERY is the
+// default, preserving every existing/legacy order's exact current behavior unchanged.
+enum class EatsFulfillmentType { DELIVERY, PICKUP }
 
 /**
  * A real Coupang Eats-style food order -- built on top of the same real `Merchant`/
@@ -37,7 +43,7 @@ enum class EatsOrderStatus { PLACED, ACCEPTED, PREPARING, READY_FOR_PICKUP, RIDE
  * already named for the neighborhood marketplace) -- it's held in the real
  * `eats_delivery_holding` clearing account from placement until a real rider completes
  * the delivery, at which point `EatsOrderService` posts a second real ledger transaction
- * paying it straight into that rider's own wallet.
+ * paying it straight into that rider's own account.
  */
 @Entity
 @Table(name = "eats_orders")
@@ -129,6 +135,70 @@ class EatsOrder(
     // comment already established for a different small-scale simplification.
     @Column(name = "excluded_rider_user_ids", length = 500)
     var excludedRiderUserIds: String? = null,
+
+    // Real Baemin-style 포장주문 (Pickup) order type (2026-07-26) -- a buyer-facing
+    // fulfillment choice, distinct from READY_FOR_PICKUP (a restaurant-fulfillment
+    // status meaning "food is ready for a RIDER to collect"). A PICKUP order always
+    // has a zero deliveryFee and never gets a rider assigned -- see
+    // EatsOrderService.completePickup's own doc comment for its real terminal edge.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "fulfillment_type", nullable = false, length = 16)
+    var fulfillmentType: EatsFulfillmentType = EatsFulfillmentType.DELIVERY,
+
+    // Real 배달의민족 예약주문 (scheduled ordering) (2026-07-26) -- see
+    // EatsOrderService.placeOrder's own doc comment for the real window/opt-in rules.
+    // Null (the default) means ASAP -- every existing/legacy order's exact current
+    // behavior, completely unchanged.
+    @Column(name = "scheduled_for")
+    val scheduledFor: Instant? = null,
+
+    // Real Baemin-style tiered order-amount promotion (2026-08-16, "가게배달" fee/
+    // promotion restructuring, April 2026) -- see EatsPromotionCalculator's own doc
+    // comment. itunda-funded, not restaurant-funded: netToRestaurant is computed from
+    // itemsSubtotal/platformFee exactly as before and never reduced by this discount,
+    // matching Baemin's own real "platform pays, not the restaurant" mechanic. Zero for
+    // every order below the lowest real tier -- the common case, not a fabricated
+    // always-present discount.
+    @Column(name = "promotion_discount", nullable = false, precision = 18, scale = 2)
+    val promotionDiscount: BigDecimal = BigDecimal.ZERO,
+
+    // Real Baemin/Coupang Eats/Uber Eats-style 안심배달 (safe/contactless delivery)
+    // proof photo (2026-08-17, migration V265) -- the assigned rider optionally attaches
+    // a photo of the delivered order at the customer's door when they mark the order
+    // DELIVERED (see EatsOrderService.updateRiderStatus's own doc comment). Nullable:
+    // most deliveries are still real hand-to-hand and never submit one, matching the
+    // real product's own optional, not-mandatory convention -- this is evidentiary
+    // trust, never a gate on completing the delivery.
+    @Column(name = "delivery_proof_photo_url", length = 500)
+    var deliveryProofPhotoUrl: String? = null,
+
+    // Real Baemin 포장할인 (pickup discount) (2026-08-17, migration V267) -- see
+    // Merchant.pickupDiscountPercent's own doc comment. RESTAURANT-funded, unlike
+    // promotionDiscount above (itunda-funded): netToRestaurant IS reduced by exactly
+    // this amount when it's non-zero. Zero for every DELIVERY order and every PICKUP
+    // order at a restaurant that hasn't opted in -- the common case, not a fabricated
+    // always-present discount, same convention promotionDiscount already establishes.
+    @Column(name = "pickup_discount", nullable = false, precision = 18, scale = 2)
+    val pickupDiscount: BigDecimal = BigDecimal.ZERO,
+
+    // Real Uber Eats-style post-delivery tip (2026-08-17, migration V269,
+    // help.uber.com/en/ubereats "Add or change tip amount for a past order") -- see
+    // EatsOrderService.tipRider's own doc comment. Null until a real tip is given
+    // (DELIVERY orders with an assigned rider only -- a PICKUP order has no rider to
+    // tip), same nullable-until-real-event convention deliveryProofPhotoUrl above
+    // already establishes.
+    @Column(name = "tip_amount", precision = 18, scale = 2)
+    var tipAmount: BigDecimal? = null,
+
+    @Column(name = "tip_transaction_id", length = 64)
+    var tipTransactionId: String? = null,
+
+    // Restaurant, rider, scheduler, and cancellation actions advance the same order
+    // through different request paths.  Protect the row so a concurrent terminal
+    // transition cannot post a duplicate delivery payout or refund.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(
         id = "", buyerId = "", restaurantId = "", deliveryAddress = "", itemsSubtotal = BigDecimal.ZERO,

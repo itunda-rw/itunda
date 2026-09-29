@@ -1,12 +1,19 @@
 import { useState } from 'react';
-import { Store } from 'lucide-react';
+import { Eye, EyeOff, Store } from 'lucide-react';
 import { ApiError, login } from './lib/api';
+import { useI18n } from './i18n/I18nContext';
+import { LOCALES } from './i18n/translations';
 
 export default function LoginPage({ onLogin }: { onLogin: () => void }) {
+  const { t, locale, setLocale } = useI18n();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Real "Minimum Input" simplicity addition (item 244, docs/DESIGN_REFERENCES.md §11),
+  // matching the identical same-day fix on bank-mfe's LoginPage.tsx: a local UI-only
+  // affordance, not a security control.
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,7 +26,7 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError("Can't connect right now. Please try again in a moment.");
+        setError(t('login.connectionError'));
       }
     } finally {
       setSubmitting(false);
@@ -30,58 +37,92 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
     <div style={{ minHeight: '100svh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <form
         onSubmit={handleSubmit}
-        className="toss-card"
+        className="itunda-card"
         style={{ width: '360px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '16px' }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-          <Store size={24} color="var(--toss-blue)" />
-          <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>Itunda Business</h1>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Store size={24} color="var(--itunda-brand)" />
+            <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--itunda-text-primary)' }}>Itunda Business</h1>
+          </div>
+          {/* Real first language switcher for merchant-mfe (2026-08-15) -- see
+              src/i18n's own doc comment: itunda's merchant/agent network is arguably
+              even more locally-Rwandan-first than bank-mfe's own customer base, making
+              this at least as high-value a target, not an afterthought. Placed on
+              login specifically, same reasoning bank-mfe's own switcher used. */}
+          <select
+            value={locale}
+            onChange={(e) => setLocale(e.target.value as 'en' | 'rw' | 'fr')}
+            aria-label="Language"
+            style={{ fontSize: '12px', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--itunda-border-default)', color: 'var(--itunda-text-secondary)', background: 'var(--itunda-surface-default)' }}
+          >
+            {LOCALES.map((l) => (
+              <option key={l.code} value={l.code}>{l.label}</option>
+            ))}
+          </select>
         </div>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginTop: '-8px' }}>
-          Sign in to your Itunda account.
+        <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)', marginTop: '-8px' }}>
+          {t('login.tagline')}
         </p>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Phone number</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('login.phoneNumber')}</span>
+          {/* Real "Minimum Input" simplicity fix (item 244, docs/DESIGN_REFERENCES.md §11,
+              rule #4), matching the identical same-day fix on bank-mfe's LoginPage.tsx. */}
           <input
             type="tel"
+            autoFocus
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
             placeholder="+250788123456"
             required
             style={{
+              minHeight: '48px',
               padding: '12px 14px',
-              borderRadius: '10px',
-              border: '1px solid var(--toss-grey-200)',
+              borderRadius: 'var(--itunda-control-radius, 12px)',
+              border: '1px solid var(--itunda-border-default)',
               fontSize: '15px',
             }}
           />
         </label>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Password</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-text-secondary)' }}>{t('login.password')}</span>
+          <div style={{ position: 'relative' }}>
           <input
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
             style={{
-              padding: '12px 14px',
-              borderRadius: '10px',
-              border: '1px solid var(--toss-grey-200)',
+              width: '100%',
+              boxSizing: 'border-box',
+              minHeight: '48px',
+              padding: '12px 40px 12px 14px',
+              borderRadius: 'var(--itunda-control-radius, 12px)',
+              border: '1px solid var(--itunda-border-default)',
               fontSize: '15px',
             }}
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
+            style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '8px', minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--itunda-text-tertiary)' }}
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+          </div>
         </label>
 
         {error && (
-          <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">
+          <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: 0 }} role="alert" aria-live="polite">
             {error}
           </p>
         )}
 
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
-          {submitting ? 'Signing in…' : 'Sign in'}
+        <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
+          {submitting ? t('login.signingIn') : t('login.signIn')}
         </button>
       </form>
     </div>

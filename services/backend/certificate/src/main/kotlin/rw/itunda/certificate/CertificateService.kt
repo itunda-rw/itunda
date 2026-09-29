@@ -2,10 +2,15 @@ package rw.itunda.certificate
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Certificate
 import rw.itunda.core.domain.CertificateStatus
+import rw.itunda.core.domain.Notification
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.CertificateRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
@@ -53,6 +58,8 @@ class CertificateService(
     private val certificateRepository: CertificateRepository,
     private val userRepository: UserRepository,
     private val rateLimiter: RateLimiter,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private val secureRandom = SecureRandom()
 
@@ -60,6 +67,13 @@ class CertificateService(
     // for digital certificates generally, not a claim about Toss's own specific
     // renewal cycle (which wasn't part of what this pass could directly source).
     private val validityDays = 365L
+
+    // Real Korean electronic-certificate renewal window -- accredited Korean CAs
+    // (gpki.go.kr/crosscert.com's own published renewal practice: "인증서 갱신은 만료일
+    // 60일전부터 가능") let a certificate be renewed starting 60 days before it expires,
+    // the same regulatory category Toss Certificate itself operates under (see
+    // Certificate.kt's own doc comment on Toss's real "전자서명인증사업자" status).
+    private val renewalWindowDays = 60L
 
     @Transactional
     fun issue(userId: String): Pair<Certificate, String> {
@@ -76,6 +90,22 @@ class CertificateService(
         if (!user.kycVerified) {
             throw CertificateUserNotVerifiedException("Real KYC verification is required before a certificate can be issued")
         }
+
+        // Real bug found live (2026-08-02): the revoke-then-create sequence just below
+        // reads the caller's own current ACTIVE certificate (if any), revokes it, and
+        // then unconditionally creates a brand-new ACTIVE one -- a real check-then-act
+        // race. Two concurrent issue() calls for the same user could both real-read the
+        // same starting ACTIVE certificate (or both real-read "none"), both revoke/skip
+        // independently, and both create a new certificate, leaving the user with two
+        // simultaneously ACTIVE certificates -- breaking the "one valid certificate per
+        // identity" invariant `verify()`/`getStatus()` and every downstream caller
+        // depend on. Fixed the same way this codebase's own "reject if already exists"
+        // race precedent works (AccountRepository/UserRepository.findByIdForUpdate): lock
+        // the caller's own real User row to serialize concurrent issue() calls, then
+        // re-check the ACTIVE certificate under that lock -- the second caller's re-read
+        // now real-sees the first caller's already-committed revoke/create and correctly
+        // revokes that new one instead of racing it.
+        userRepository.findByIdForUpdate(userId)
 
         // Reissuing revokes any prior active certificate -- a real certificate-renewal
         // convention (one valid certificate per identity at a time), not an arbitrary rule.
@@ -96,7 +126,24 @@ class CertificateService(
             publicKeyBase64 = publicKeyBase64,
             expiresAt = Instant.now().plus(validityDays, ChronoUnit.DAYS),
         )
-        return certificateRepository.save(certificate) to privateKeyBase64
+        val saved = certificateRepository.save(certificate)
+        // Real sibling-asymmetry gap found live (2026-09-14): this class's own
+        // sendRenewalReminder already sends a real notification, but issue() itself --
+        // which silently REVOKES the caller's prior certificate and mints a new
+        // signing key -- sent none. Same security-alert precedent CardService.setPin
+        // already establishes: if someone with temporary device/session access
+        // reissued the real user's e-signature certificate, they previously had no
+        // way to find out.
+        val issueTitle = "Your itunda Certificate was issued"
+        val issueBody = "A new signing certificate (serial ${saved.serialNumber}) was issued for your account. If this wasn't you, contact support immediately."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = userId, type = "CERTIFICATE_ISSUED",
+                title = issueTitle, body = issueBody, isRead = false, createdAt = Instant.now(), dataJson = "{\"certificateId\":\"${saved.id}\"}",
+            ),
+        )
+        sendRenewalPushAfterCommit(userId, issueTitle, issueBody, saved.id)
+        return saved to privateKeyBase64
     }
 
     fun getMyCertificate(userId: String): Certificate? =
@@ -104,21 +151,49 @@ class CertificateService(
 
     @Transactional
     fun revoke(userId: String): Certificate {
+        // Rate-limited 2026-09-07 (Certificate product-completeness pass) -- authenticated,
+        // but a rare, meaningful account action; same "bound how fast a sensitive action
+        // repeats" discipline issue() above already applies.
+        rateLimiter.checkLimit("certificate:revoke:$userId", limit = 10, window = Duration.ofHours(1))
         val cert = certificateRepository.findByUserIdAndStatus(userId, CertificateStatus.ACTIVE)
             ?: throw NoCertificateFoundException("No active certificate to revoke")
         cert.status = CertificateStatus.REVOKED
         cert.revokedAt = Instant.now()
-        return certificateRepository.save(cert)
+        val saved = certificateRepository.save(cert)
+        // Same real security-alert gap as issue() above, for the same reason.
+        val revokeTitle = "Your itunda Certificate was revoked"
+        val revokeBody = "Your signing certificate (serial ${saved.serialNumber}) was revoked. If this wasn't you, contact support immediately."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = userId, type = "CERTIFICATE_REVOKED",
+                title = revokeTitle, body = revokeBody, isRead = false, createdAt = Instant.now(), dataJson = "{\"certificateId\":\"${saved.id}\"}",
+            ),
+        )
+        sendRenewalPushAfterCommit(userId, revokeTitle, revokeBody, saved.id)
+        return saved
     }
 
-    fun getStatus(serialNumber: String): Certificate =
-        withEffectiveStatus(certificateRepository.findBySerialNumber(serialNumber) ?: throw CertificateNotFoundException("Certificate not found"))
+    // Rate-limited 2026-09-07 (Certificate product-completeness pass) -- this route is
+    // permitAll (public, unauthenticated: see CertificateController's own doc comment),
+    // so there's no userId to key on. Same real precedent AuthService.checkPhone already
+    // establishes for its own public endpoints: key by the natural identifier in the
+    // request (here, serialNumber) rather than by IP -- this codebase has no IP-based
+    // rate-limiting mechanism anywhere. Bounds serial-number-enumeration abuse of a
+    // public status check.
+    fun getStatus(serialNumber: String): Certificate {
+        rateLimiter.checkLimit("certificate:status:$serialNumber", limit = 20, window = Duration.ofMinutes(1))
+        return withEffectiveStatus(certificateRepository.findBySerialNumber(serialNumber) ?: throw CertificateNotFoundException("Certificate not found"))
+    }
 
     // Real cryptographic verification (JCA Ed25519) against the certificate's stored
     // public key -- reports signature validity and certificate status as two separate
     // real facts, matching how real PKI verification checks both the math and
     // revocation/expiry independently, rather than collapsing them into one boolean.
+    // Rate-limited 2026-09-07 -- same public-endpoint, key-by-serialNumber reasoning as
+    // getStatus above: an unrate-limited public endpoint doing real Ed25519 verification
+    // per call is a cheap signature-guessing target against one specific certificate.
     fun verify(serialNumber: String, payload: String, signatureBase64: String): VerificationResult {
+        rateLimiter.checkLimit("certificate:verify:$serialNumber", limit = 20, window = Duration.ofMinutes(1))
         val cert = certificateRepository.findBySerialNumber(serialNumber)
             ?: throw CertificateNotFoundException("Certificate not found")
         val signatureValid = try {
@@ -151,5 +226,55 @@ class CertificateService(
         val bytes = ByteArray(16)
         secureRandom.nextBytes(bytes)
         return bytes.joinToString("") { "%02X".format(it) }
+    }
+
+    // Real certificate-expiry renewal reminder -- `expiresAt` has been a real, stored
+    // field since this certificate concept existed, but nothing ever notified a user as
+    // it approached, the same "real data sitting unused" shape
+    // InsuranceService.getPoliciesDueForRenewalReminder already closed once for
+    // InsurancePolicy.endDate. See this class's own `renewalWindowDays` doc comment for
+    // the real sourcing.
+    fun getCertificatesDueForRenewalReminder(): List<Certificate> {
+        val cutoff = Instant.now().plus(renewalWindowDays, ChronoUnit.DAYS)
+        return certificateRepository.findByStatusAndRenewalReminderSentAtIsNull(CertificateStatus.ACTIVE)
+            .filter { !it.expiresAt.isAfter(cutoff) }
+    }
+
+    /** One real renewal-reminder notification, called per-certificate by the scheduler
+     * -- re-checks `status`/`renewalReminderSentAt` right before sending so a genuine
+     * race can't double-fire, same resilience discipline
+     * InsuranceService.sendRenewalReminder's own doc comment already establishes.
+     * Reissuing (`POST /api/v1/certificate/issue`) is the real, already-working renewal
+     * action -- this reminder just points the user at it before real expiry. */
+    @Transactional
+    fun sendRenewalReminder(certificateId: String) {
+        val cert = certificateRepository.findById(certificateId).orElse(null) ?: return
+        if (cert.status != CertificateStatus.ACTIVE || cert.renewalReminderSentAt != null) return
+
+        val title = "Your itunda Certificate is expiring soon"
+        val body = "Your certificate (serial ${cert.serialNumber}) expires on ${cert.expiresAt}. Reissue it anytime before then to keep signing without interruption."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = cert.userId, type = "CERTIFICATE_EXPIRING_SOON",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"certificateId\":\"${cert.id}\"}",
+            ),
+        )
+        cert.renewalReminderSentAt = Instant.now()
+        certificateRepository.save(cert)
+        // Real fix (2026-09-13, push-before-commit ordering sweep): the push used to
+        // fire BEFORE renewalReminderSentAt was saved -- a rollback after the push
+        // would leave the flag unset and the next scheduler pass would resend it.
+        sendRenewalPushAfterCommit(cert.userId, title, body, cert.id)
+    }
+
+    private fun sendRenewalPushAfterCommit(userId: String, title: String, body: String, certificateId: String) {
+        val send = { pushNotificationService.sendToUser(userId, title, body, mapOf("certificateId" to certificateId)) }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 }

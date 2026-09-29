@@ -77,3 +77,47 @@ target 'ItundaApp' do
     )
   end
 end
+
+# Real Maps Feature-module extraction (2026-08-19) -- MapScreenView.swift moved from
+# App/Sources into Features/Maps/Sources (see Project.swift's own featureModules doc
+# comment). CocoaPods integration here is per-Tuist-target, not global (see this
+# Podfile's own header comment on why Tuist 3.x needs this separate bridge) -- ItundaApp's
+# own `pod 'MapLibre'` above only links MapLibre.framework for that target, so the new
+# FeatureMaps target needs its own real declaration or `import MapLibre` fails to link.
+target 'FeatureMaps' do
+  pod 'MapLibre'
+end
+
+# Real Eats Feature-module extraction (2026-09-06, Eats product-completeness pass) --
+# EatsOrders.swift's live rider-tracking (LiveRiderMiniMap.swift, Eats-only, moved
+# alongside it) imports MapLibre directly, same per-Tuist-target CocoaPods
+# integration requirement as FeatureMaps above.
+target 'FeatureEats' do
+  pod 'MapLibre'
+end
+
+# RouteMiniMap.swift promoted from App/Sources into Core/DesignSystem/Sources/
+# Components (same pass) -- it's real, genuinely shared (3 still-App-only Hood
+# screens -- Jobs/Marketplace/Property -- use it besides Eats), so it moved to
+# CoreDesignSystem instead of FeatureEats. Its own `import MapLibre` needs the
+# same per-target declaration.
+target 'CoreDesignSystem' do
+  pod 'MapLibre'
+end
+
+# Real Ride Feature-module extraction (2026-09-06, Rideshare product-completeness
+# pass) -- RideLiveDriverMap.swift (new this pass, mirrors FeatureEats' own
+# LiveRiderMiniMap.swift) imports MapLibre directly, same per-Tuist-target
+# CocoaPods integration requirement as FeatureMaps/FeatureEats above.
+target 'FeatureRide' do
+  pod 'MapLibre'
+end
+
+# Real Shop Feature-module extraction (2026-09-07, Shop/Commerce product-completeness
+# pass) -- SimpleLiveRiderMiniMap.swift (Shop's own real live-tracking map, moved
+# alongside it -- its only real consumer, ShopMerchantOrders.swift, moved into the
+# same module) imports MapLibre directly, same per-Tuist-target CocoaPods
+# integration requirement as FeatureMaps/FeatureEats/FeatureRide above.
+target 'FeatureShop' do
+  pod 'MapLibre'
+end

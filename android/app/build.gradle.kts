@@ -5,6 +5,21 @@ plugins {
     id("com.facebook.react")
 }
 
+// Real FCM push (2026-08-12) -- see ItundaMessagingService.kt's own doc comment for
+// the full account of why FCM is the transport (Android has no OS-sanctioned
+// alternative for waking a backgrounded app -- this is a platform constraint, not a
+// vendor choice; every real Android app, itunda included, sits on top of it). The
+// google-services plugin needs a real google-services.json downloaded from the
+// Firebase Console (Project Settings -> General -> Your apps -> itunda, applicationId
+// rw.itunda.app) -- something only the project owner can generate, not something this
+// build can fabricate. Applied conditionally so the build stays green either way:
+// without the file, this app compiles and runs exactly as before (PushConfig.kt's
+// backend counterpart falls back the same way); with it, FCM lights up with zero
+// further code changes.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 // Real React Native Gradle Plugin config (2026-07-12, granite-adoption stage 2).
 // itunda's JS project root is NOT the default `..` the plugin assumes (that default
 // fits the standard co-located android/+node_modules/ layout the plugin was built
@@ -46,6 +61,21 @@ react {
     // Project Modules section below) -- only genuinely-standard-autolinked libraries
     // like react-native-safe-area-context were missing it.
     autolinkLibrariesWithApp()
+
+    // Real fix (2026-08-09), found while verifying the release-build R8/minify change below:
+    // release builds (never exercised by CI, which only runs assembleDebug -- see
+    // .github/workflows/ci-cd.yml) failed with "Couldn't determine Hermesc location" --
+    // node_modules/react-native/sdks/hermesc/ genuinely doesn't exist in this environment
+    // (the prebuilt-binary download step react-native's own postinstall normally runs never
+    // completed here). A real, working universal (arm64+x86_64) hermesc binary already exists
+    // a few packages over though, pulled in as a transitive dependency of the RN toolchain
+    // (`hermes-compiler`) -- point at it, but only as a fallback so a future environment where
+    // the real sdks/hermesc download succeeds isn't silently overridden by this local path.
+    val defaultHermescDir = file("../../packages/saronite/node_modules/react-native/sdks/hermesc")
+    val fallbackHermesc = file("../../packages/saronite/node_modules/hermes-compiler/hermesc/osx-bin/hermesc")
+    if (!defaultHermescDir.exists() && fallbackHermesc.exists()) {
+        hermesCommand = fallbackHermesc.absolutePath
+    }
 }
 
 // brick-module's own react-native-helpers.gradle (2026-07-12, granite-adoption
@@ -59,6 +89,21 @@ extra["REACT_NATIVE_NODE_MODULES_DIR"] = file("../../packages/saronite/node_modu
 android {
     namespace = "rw.itunda.app"
     compileSdk = 34
+
+    // Real Android 16KB memory-page-size fix (2026-08-12) -- found live via the
+    // real "Android 앱 호환성" system dialog on the physical test device: the
+    // default NDK this project resolved to (no ndkVersion was ever pinned, so AGP
+    // fell back to whatever's locally cached -- confirmed r27.0.12077973, no r28+
+    // present) does not produce 16KB-page-aligned native libraries by default.
+    // r28 is the first NDK release where 16KB alignment is the actual default
+    // (developer.android.com/16kb-page-size); r29 (installed here) supersedes it.
+    // Pinned here AND in the root build.gradle.kts's subprojects block below so
+    // every autolinked React Native native module (react-native-screens/-svg/
+    // -safe-area-context, Hermes, JSI/libfbjni) and itunda's own native
+    // dependencies (MapLibre, ML Kit barcode-scanning) all rebuild against the
+    // same, real 16KB-compliant toolchain -- a mismatched NDK across modules
+    // would silently re-introduce the exact misalignment this fixes.
+    ndkVersion = "29.0.14206865"
 
     defaultConfig {
         applicationId = "rw.itunda.app"
@@ -110,27 +155,40 @@ android {
 
         // Same real gap as API_BASE_URL above, just discovered later (2026-07-21):
         // MapScreen.kt had these two hardcoded straight at the private cloud's
-        // internal-only Multipass bridge address (192.168.252.3), unreachable for any
-        // device other than the Mac itself or another device on the same bridge --
-        // a real device testing over the public HTTPS endpoint got a permanently
-        // blank map with no way to fix it short of a rebuild. Mirrors bank-mfe's own
+        // internal-only Multipass bridge address, unreachable for any device other
+        // than the Mac itself or another device on the same bridge -- a real device
+        // testing over the public HTTPS endpoint got a permanently blank map with no
+        // way to fix it short of a rebuild. Mirrors bank-mfe's own
         // VITE_TILES_BASE_URL/VITE_GLYPHS_BASE_URL env vars (same LAN default, same
         // override mechanism), so both platforms follow the same real pattern.
+        //
+        // Address corrected 2026-07-27: itunda-dc-b (192.168.252.3, the address these
+        // defaults used to point at) was decommissioned -- the surviving sole node is
+        // itunda-dc-a, 192.168.252.4. bank-mfe's own equivalent was fixed the same day
+        // by switching to a same-origin relative path through the public nginx proxy,
+        // but that trick doesn't exist for a native client that always calls a fixed
+        // base URL -- this default stays a LAN address (matching apiBaseUrl's own
+        // dev-convenience default above), just the current correct one.
         buildConfigField(
             "String",
             "TILES_BASE_URL",
-            "\"${project.findProperty("tilesBaseUrl") ?: "http://192.168.252.3:8090"}\""
+            "\"${project.findProperty("tilesBaseUrl") ?: "http://192.168.252.4:8090"}\""
         )
         buildConfigField(
             "String",
             "GLYPHS_BASE_URL",
-            "\"${project.findProperty("glyphsBaseUrl") ?: "http://192.168.252.3:8091"}\""
+            "\"${project.findProperty("glyphsBaseUrl") ?: "http://192.168.252.4:8091"}\""
         )
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // Real Toss-parity performance/security fix (2026-08-09): this was `false` with a
+            // proguard-rules.pro reference that didn't even exist as a file -- meaning release
+            // builds shipped completely unshrunk and unobfuscated. See proguard-rules.pro's own
+            // header for why Gson needed explicit keep rules before this could be flipped on.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -156,38 +214,37 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     // collectAsStateWithLifecycle() for MainActivity's login-gate StateFlow collection.
-    implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.androidx.activity.compose)
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
+    implementation("androidx.activity:activity-compose:1.8.2")
     // FragmentActivity, not just ComponentActivity, is required by BiometricPrompt's
     // constructor (androidx.biometric:1.1.0) -- see NIDABiometricAuth.kt.
-    implementation(libs.androidx.fragment.ktx)
-    implementation(platform(libs.compose.bom))
+    implementation("androidx.fragment:fragment-ktx:1.6.2")
+    implementation(platform("androidx.compose:compose-bom:2024.02.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
-    
-    // Networking & Architecture
-    implementation(libs.retrofit)
-    implementation(libs.retrofit.converter.gson)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
-    // Real session storage for the login flow (2026-07-11): access/refresh tokens are
-    // real bearer credentials, not app preferences -- EncryptedSharedPreferences, not
-    // plain SharedPreferences. See network/TokenStore.kt.
-    implementation(libs.androidx.security.crypto)
 
-    // Real self-hosted Rwanda map (2026-07-19) -- itunda's own MapLibre GL tile server
-    // (see docs/TOSS_PARITY_MATRIX.md's Maps row), not Google Maps. Plain Maven Central
-    // coordinate, no new repository needed (already declared in settings.gradle.kts).
-    implementation(libs.maplibre.android)
+    // Real FCM push client (2026-08-12) -- see ItundaMessagingService.kt's own doc
+    // comment. Safe to compile/run even without google-services.json applied above:
+    // every call site into FirebaseMessaging guards on FirebaseApp.getApps(context)
+    // being non-empty first, so an unconfigured build just no-ops push registration
+    // rather than crashing.
+    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
+    implementation("com.google.firebase:firebase-messaging-ktx")
+
+    // Networking & Architecture
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
     // Real "my location" blue dot (2026-07-19) -- FusedLocationProviderClient, the
     // standard modern Android location API (battery-efficient, real GPS/network fusion).
     // `google()` is already a declared repository for this project.
-    implementation(libs.play.services.location)
+    implementation("com.google.android.gms:play-services-location:21.3.0")
 
     // Real product-image loading (2026-07-21) -- Coil, the standard modern
     // Compose-native async image loader. Closes docs/DESIGN_REFERENCES.md Section 5's
@@ -195,22 +252,73 @@ dependencies {
     // zero image-loading capability anywhere before this (confirmed by repo-wide
     // search), since no client feature needed one until real merchant-supplied product
     // photo URLs existed. Plain Maven Central coordinate, no new repository needed.
-    implementation(libs.coil.compose)
+    implementation("io.coil-kt:coil-compose:2.6.0")
 
     // Project Modules
     implementation(project(":core:designsystem"))
     implementation(project(":core:risk"))
     implementation(project(":core:identity"))
+    // Real shared networking layer (2026-07-22) -- NetworkClient/ApiService/
+    // TokenStore/etc. relocated here from :app itself, see :core:network's own
+    // build.gradle.kts doc comment for why.
+    implementation(project(":core:network"))
     implementation(project(":features:payments:impl"))
-    // features:banking:impl deliberately has no dependency here (2026-07-11): its
-    // real screens (BankScreen.kt, MySpendingScreen.kt) were intentionally deleted
-    // in 061cff6 as unreachable and superseded by ItundaAppScreen.kt's Home tab,
-    // built directly against real Toss reference screenshots -- see docs/ARCHITECTURE.md
-    // §3. Re-adding them would recreate the exact "two things doing the same job"
-    // duplication this repo has spent this session eliminating elsewhere (backend,
-    // SDKs, shared-utils). The module itself stays declared in settings.gradle.kts
-    // as a placeholder for a genuinely distinct future banking feature, matching the
-    // other empty feature modules -- it just has nothing to depend on yet.
+    // Real proof-of-slice Feature extraction (2026-07-22/23) -- Marketplace pulled out
+    // of app/ui/SuperAppTabs.kt, see MarketplaceScreen.kt's own header comment.
+    implementation(project(":features:marketplace:impl"))
+    implementation(project(":features:jobs:impl"))
+    implementation(project(":features:property:impl"))
+    implementation(project(":features:ride:impl"))
+    implementation(project(":features:community:impl"))
+    implementation(project(":features:shop:impl"))
+    implementation(project(":features:eats:impl"))
+    implementation(project(":features:talk:impl"))
+    implementation(project(":features:maps:impl"))
+    // Real content moved in 2026-09-02: LoansScreen.kt/CreditScoreScreen.kt/
+    // StudentLoanScreen.kt/VupLoanScreen.kt/LoansCreditPanels.kt relocated from
+    // :app's own ui/ package into :features:credit:impl, mirroring iOS's
+    // already-real Features/Credit split (see CLAUDE.md's own note).
+    implementation(project(":features:credit:impl"))
+    // Real content moved in 2026-09-02 (Banking Feature-module decomposition slice
+    // 5, following the 2026-07-11 note this comment used to carry): the note above
+    // rejected re-adding BankScreen.kt/MySpendingScreen.kt, which were genuinely
+    // superseded duplicates -- this is a different move, relocating the ALREADY-
+    // canonical BankHubScreen/NewSavingsGoalDialog (and their supporting
+    // ShellRow/ShellSection/RoundUpSettingsDialog) out of ItundaAppScreen.kt into
+    // their own Feature module, not recreating a deleted duplicate. See
+    // [[project_itunda_feature_isolation]] for the full account.
+    implementation(project(":features:banking:impl"))
+    // Real content moved in 2026-09-02 (Home Feature-module decomposition, following
+    // the user's explicit "Continue into HomeTab next" direction): unlike Banking/
+    // Credit, Home had no pre-existing empty scaffold on either platform -- it's
+    // genuinely cross-vertical (pulls content from Marketplace/Community/Jobs/
+    // Property), so this is a NEW module, not filling in an already-signaled one.
+    // See [[project_itunda_feature_isolation]] for the full account.
+    implementation(project(":features:home:impl"))
+    // Real content moved in 2026-09-02 (Pay Feature-module decomposition, same
+    // "Continue into HomeTab next" scope, which also covered Pay/Menu/My): PayTab
+    // and its 6 supporting screens (MyPaymentCodeCard/AccountCardCarousel/
+    // PayHomeExtras/PayMoneyDetailScreen/CouponBoxScreen/MembershipScreen). Three
+    // real prerequisites resolved first -- see [[project_itunda_feature_isolation]]
+    // -- before this dependency could be added cleanly.
+    implementation(project(":features:pay:impl"))
+    // Real content moved in 2026-09-02 (Menu Feature-module decomposition, same
+    // scope as Home/Pay): MenuScreen and its supporting IconGridSection/AllTopBar/
+    // MenuSearchBar/menuSections. 5 rw.itunda.app.miniapps.* Activity/loader
+    // references replaced with injected callbacks -- see
+    // [[project_itunda_feature_isolation]].
+    implementation(project(":features:menu:impl"))
+    // Real content moved in 2026-09-02 (My Feature-module decomposition, completing
+    // the Home/Pay/Menu/My scope): MyTab and its 3 supporting screens
+    // (ProfilePhotoCard/VerificationCard+VerificationRow/PinUpgradeCard) -- the
+    // cleanest of the four, zero MainViewModel/cross-Feature coupling.
+    implementation(project(":features:my:impl"))
+    // Real content moved 2026-09-03 (Wealth Feature-module extraction, filling the
+    // previously-empty :features:wealth scaffold noted in CLAUDE.md's own
+    // "product-scope gap" line): InvestScreen and its supporting StockDetailScreen/
+    // InvestPortfolio -- zero MainViewModel/R.string coupling, the cleanest
+    // extraction so far.
+    implementation(project(":features:wealth:impl"))
 
     // Apps-in-Itunda mini-app host (Saronite/Granite-pattern brownfield RN integration).
     // Real React Native Gradle Plugin as of 2026-07-12 (granite-adoption stage 2) --
@@ -227,10 +335,9 @@ dependencies {
     // granite-adoption plan for the staged version-upgrade path).
     implementation("com.facebook.react:react-android")
     implementation("com.facebook.react:hermes-android")
-    implementation(libs.androidx.appcompat)
-    implementation(libs.okhttp)
-    implementation(libs.gson)
-
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.google.code.gson:gson:2.10.1")
     // Real instrumented UI tests (2026-07-11) -- androidx.compose.ui.test reads the
     // same semantics tree TalkBack does, so this is a real live accessibility check
     // against a real emulator, not a static-analysis proxy for one. See
@@ -239,14 +346,14 @@ dependencies {
     // The compose-bom platform must be applied per-configuration -- declaring it
     // once under implementation doesn't cover androidTestImplementation, which
     // otherwise fails to resolve ui-test-junit4's version at all.
-    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.02.00"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
     // 3.7.0, not 3.5.1 (2026-07-11): 3.5.1's InputManagerEventInjectionStrategy
     // reflectively calls the hidden android.hardware.input.InputManager.getInstance()
     // -- removed/renamed by the real emulator's API 36 (Android 16) platform,
     // confirmed via a live NoSuchMethodException on that exact call. 3.7.0 targets
     // newer platforms correctly.
-    androidTestImplementation(libs.espresso.core)
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

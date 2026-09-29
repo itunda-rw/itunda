@@ -15,11 +15,19 @@ import java.time.Instant
  * required-option system is a first-class, *enforced* concept there) or Baemin's own
  * item-detail model.
  *
- * Deliberately scoped down for this v1 pass, named honestly rather than silently
- * under-delivering: every group here is a REQUIRED, SINGLE-SELECT choice (e.g. "Size":
- * Small/Medium/Large, exactly one must be chosen) -- there is no `required`/`multiSelect`
- * flag because v1 doesn't need one, not because it was forgotten. Multi-select optional
- * add-ons (e.g. extra toppings) are a real, separate follow-up, not built here.
+ * **`required`/`multiSelect` added 2026-07-26**, closing the exact "multi-select
+ * optional add-ons (e.g. extra toppings) are a real, separate follow-up, not built
+ * here" gap this doc comment itself originally named. Four real combinations, matching
+ * Coupang Eats/Baemin's own real option-group model: required+single (the original v1
+ * default, e.g. "Size": exactly one of Small/Medium/Large), required+multi (e.g. "pick
+ * at least one spice level"), optional+single (e.g. an optional size upgrade), and
+ * optional+multi (the new headline case -- toppings: choose zero or more). Existing
+ * pre-2026-07-26 groups default to `required=true, multiSelect=false` (migration
+ * `V113`), preserving their exact original "exactly one choice" enforcement unchanged
+ * -- this is additive, not a behavior change for any already-created group. Deliberately
+ * still no min/max choice-count bound (Baemin's own more advanced model) -- itunda's
+ * own honest v2 scoping choice, the two-flag model is the simpler, honestly-buildable
+ * one, same reasoning `MerchantCoupon`'s flat-fee tiers chose over a CPC/CPM auction.
  *
  * No JPA `@ManyToOne` to `MerchantProduct` -- same deliberate "raw id string, theta-style
  * join where needed" convention `MerchantProductRepository.search`'s own doc comment
@@ -40,6 +48,12 @@ class MenuOptionGroup(
 
     @Column(name = "display_order", nullable = false)
     var displayOrder: Int = 0,
+
+    @Column(nullable = false)
+    var required: Boolean = true,
+
+    @Column(name = "multi_select", nullable = false)
+    var multiSelect: Boolean = false,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),

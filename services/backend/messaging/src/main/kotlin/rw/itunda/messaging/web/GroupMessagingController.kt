@@ -12,36 +12,76 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.messaging.AlreadyGroupMemberException
+import rw.itunda.messaging.ConversationNotFoundException
 import rw.itunda.messaging.EmptyGroupMessageException
+import rw.itunda.messaging.EmptyMessageException
+import rw.itunda.messaging.ForwardResult
 import rw.itunda.messaging.GroupMemberNotFoundException
 import rw.itunda.messaging.GroupMessageNotFoundException
+import rw.itunda.messaging.GroupMessageDeleteForbiddenException
 import rw.itunda.messaging.GroupMessagingService
 import rw.itunda.messaging.GroupMessageTooLongException
 import rw.itunda.messaging.GroupNameRequiredException
 import rw.itunda.messaging.GroupNameTooLongException
 import rw.itunda.messaging.GroupNeedsMoreMembersException
 import rw.itunda.messaging.GroupNotFoundException
+import rw.itunda.messaging.GroupPhotoUrlTooLongException
+import rw.itunda.messaging.GroupDescriptionTooLongException
+import rw.itunda.messaging.GroupPollAnnouncementService
+import rw.itunda.messaging.GroupPollClosedException
+import rw.itunda.messaging.GroupPollNotFoundException
+import rw.itunda.messaging.GroupPollOptionNotFoundException
+import rw.itunda.messaging.InvalidForwardDestinationException
+import rw.itunda.messaging.InvalidGroupAnnouncementException
+import rw.itunda.messaging.InvalidGroupPollException
 import rw.itunda.messaging.InvalidGroupReactionException
+import rw.itunda.messaging.InvalidGroupJoinCodeException
+import rw.itunda.messaging.InvalidGroupMessageImageException
+import rw.itunda.messaging.InvalidGroupMessageSearchException
+import rw.itunda.messaging.MessageDestinationType
+import rw.itunda.messaging.MessageForwardService
+import rw.itunda.messaging.MessageNotFoundException
+import rw.itunda.messaging.MessageTooLongException
+import rw.itunda.messaging.UserBlockedException
+import java.time.Instant
 
 // memberPhoneNumbers is the real human-friendly entry point (same reasoning as
 // StartConversationRequest.phoneNumber); memberUserIds stays available for a call site
 // that already resolved real user ids.
 data class CreateGroupRequest(val name: String, val memberUserIds: List<String> = emptyList(), val memberPhoneNumbers: List<String> = emptyList())
-data class SendGroupMessageRequest(val body: String)
+data class CreateOpenGroupRequest(val name: String)
+data class JoinGroupByCodeRequest(val joinCode: String)
+data class SendGroupMessageRequest(val body: String, val replyToMessageId: String? = null, val imageUrl: String? = null)
 data class AddGroupMemberRequest(val userId: String)
 data class ToggleGroupReactionRequest(val emoji: String)
+// Real message forwarding (2026-07-25) -- see MessageForwardService's own doc comment.
+data class ForwardGroupMessageRequest(val destinationType: String, val destinationId: String)
+// Real group photo/description (2026-07-28) -- see GroupMessagingService
+// .setGroupPhotoUrl/setGroupDescription's own doc comments.
+data class SetGroupPhotoUrlRequest(val photoUrl: String)
+data class SetGroupDescriptionRequest(val description: String)
+// Real group 공지/투표 (announcement/poll) (itunda Talk redesign, 2026-08-28) -- see
+// GroupPollAnnouncementService's own doc comment.
+data class PostGroupAnnouncementRequest(val body: String)
+data class CreateGroupPollRequest(val question: String, val options: List<String>, val allowMultiple: Boolean = false, val closesAt: Instant? = null)
+data class VoteGroupPollRequest(val optionId: String)
 
 // Real group chat -- see GroupMessagingService's own doc comment for the full account.
 // Normal itunda-user JWT gate, same as every other user-facing feature in this backend.
 @RestController
 @RequestMapping("/api/v1/messages/groups")
-class GroupMessagingController(private val groupMessagingService: GroupMessagingService) {
+class GroupMessagingController(
+    private val groupMessagingService: GroupMessagingService,
+    private val messageForwardService: MessageForwardService,
+    private val groupPollAnnouncementService: GroupPollAnnouncementService,
+) {
 
     @PostMapping
     fun createGroup(
@@ -54,6 +94,26 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
             groupMessagingService.createGroup(currentUser.userId, request.name, request.memberUserIds)
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "group" to group))
+    }
+
+    // Real KakaoTalk 오픈채팅-style open group -- see GroupMessagingService
+    // .createOpenGroup's own doc comment.
+    @PostMapping("/open")
+    fun createOpenGroup(
+        @RequestBody request: CreateOpenGroupRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val group = groupMessagingService.createOpenGroup(currentUser.userId, request.name)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "group" to group))
+    }
+
+    @PostMapping("/join")
+    fun joinByCode(
+        @RequestBody request: JoinGroupByCodeRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val group = groupMessagingService.joinByCode(currentUser.userId, request.joinCode)
+        return ResponseEntity.ok(mapOf("success" to true, "group" to group))
     }
 
     @GetMapping
@@ -75,13 +135,69 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
         // Real reaction summaries attached in one batch query (2026-07-19) -- see
         // GroupMessagingService.getReactionSummaries's own doc comment.
         val reactionsByMessageId = groupMessagingService.getReactionSummaries(page.content.map { it.id })
+        // Real Kakao-style per-message read-receipt countdown (2026-07-26) -- see
+        // GroupMessagingService.getUnreadCounts's own doc comment.
+        val unreadCountByMessageId = groupMessagingService.getUnreadCounts(groupId, page.content)
+        // Real Thread support (2026-08-05) -- same batch-fetch discipline as reactions.
+        val replyCountsByMessageId = groupMessagingService.getReplyCounts(page.content.map { it.id })
         val messages = page.content.map { m ->
             mapOf(
-                "id" to m.id, "groupConversationId" to m.groupConversationId, "senderId" to m.senderId, "body" to m.body,
-                "sentAt" to m.sentAt, "reactions" to (reactionsByMessageId[m.id] ?: emptyList()),
+                "id" to m.id, "groupConversationId" to m.groupConversationId, "senderId" to m.senderId, "body" to if (m.deletedAt == null) m.body else "This message was deleted",
+                "sentAt" to m.sentAt, "deletedAt" to m.deletedAt, "replyToMessageId" to m.replyToMessageId, "reactions" to (reactionsByMessageId[m.id] ?: emptyList()),
+                "unreadCount" to (unreadCountByMessageId[m.id] ?: 0),
+                "replyCount" to (replyCountsByMessageId[m.id] ?: 0L),
+                // Real, pre-existing gap fixed 2026-07-26 -- see MessagingController
+                // .getMessages's own identical fix for the full account; same real
+                // fields (composer photo send, forwarding, @mentions, now emoticons)
+                // that were real columns on GroupMessage but never surfaced on refetch.
+                "imageUrl" to m.imageUrl, "emoticonId" to m.emoticonId,
+                "forwardedFromMessageId" to m.forwardedFromMessageId, "forwardedFromType" to m.forwardedFromType,
+                "mentionedUserIds" to m.mentionedUserIds,
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "messages" to messages) + pageMeta(page))
+    }
+
+    // Real group-chat message search -- see MessagingController.searchMessages's own
+    // doc comment for the 1:1 equivalent this mirrors.
+    @GetMapping("/{groupId}/messages/search")
+    fun searchMessages(
+        @PathVariable groupId: String,
+        @RequestParam query: String,
+        @PageableDefault(size = 30) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = groupMessagingService.searchMessages(currentUser.userId, groupId, query, pageable)
+        val reactions = groupMessagingService.getReactionSummaries(page.content.map { it.id })
+        val messages = page.content.map { m ->
+            mapOf(
+                "id" to m.id, "groupConversationId" to m.groupConversationId, "senderId" to m.senderId, "body" to m.body,
+                "sentAt" to m.sentAt, "deletedAt" to m.deletedAt, "replyToMessageId" to m.replyToMessageId, "reactions" to (reactions[m.id] ?: emptyList()),
+            )
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "messages" to messages) + pageMeta(page))
+    }
+
+    // Real Thread support (2026-08-05) -- see MessagingController.getThread's own doc
+    // comment for the full sourced account; identical shape for group chat.
+    @GetMapping("/{groupId}/messages/{messageId}/thread")
+    fun getThread(
+        @PathVariable groupId: String,
+        @PathVariable messageId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val thread = groupMessagingService.getThread(currentUser.userId, groupId, messageId)
+        val reactions = groupMessagingService.getReactionSummaries(thread.map { it.id })
+        val messages = thread.map { m ->
+            mapOf(
+                "id" to m.id, "groupConversationId" to m.groupConversationId, "senderId" to m.senderId, "body" to if (m.deletedAt == null) m.body else "This message was deleted",
+                "sentAt" to m.sentAt, "deletedAt" to m.deletedAt, "replyToMessageId" to m.replyToMessageId, "reactions" to (reactions[m.id] ?: emptyList()),
+                "imageUrl" to m.imageUrl, "emoticonId" to m.emoticonId,
+                "forwardedFromMessageId" to m.forwardedFromMessageId, "forwardedFromType" to m.forwardedFromType,
+                "mentionedUserIds" to m.mentionedUserIds,
+            )
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "messages" to messages))
     }
 
     // Real emoji reactions (2026-07-19) -- see GroupMessagingService.toggleReaction's
@@ -102,8 +218,86 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
         @RequestBody request: SendGroupMessageRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val message = groupMessagingService.sendMessage(currentUser.userId, groupId, request.body)
+        val message = groupMessagingService.sendMessage(currentUser.userId, groupId, request.body, request.replyToMessageId, imageUrl = request.imageUrl)
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "message" to message))
+    }
+
+    @DeleteMapping("/{groupId}/messages/{messageId}")
+    fun deleteMessage(@PathVariable groupId: String, @PathVariable messageId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Boolean>> {
+        groupMessagingService.deleteMessage(currentUser.userId, groupId, messageId)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    // Real group photo/description (2026-07-28) -- see GroupMessagingService
+    // .setGroupPhotoUrl/setGroupDescription's own doc comments.
+    @PostMapping("/{groupId}/photo")
+    fun setGroupPhotoUrl(
+        @PathVariable groupId: String,
+        @RequestBody request: SetGroupPhotoUrlRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val group = groupMessagingService.setGroupPhotoUrl(currentUser.userId, groupId, request.photoUrl)
+        return ResponseEntity.ok(mapOf("success" to true, "group" to group))
+    }
+
+    @PostMapping("/{groupId}/description")
+    fun setGroupDescription(
+        @PathVariable groupId: String,
+        @RequestBody request: SetGroupDescriptionRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val group = groupMessagingService.setGroupDescription(currentUser.userId, groupId, request.description)
+        return ResponseEntity.ok(mapOf("success" to true, "group" to group))
+    }
+
+    // Real group-chat pin (2026-07-26) -- see GroupMessagingService.setPinnedMessage's
+    // own doc comment; mirrors MessagingController's own 1:1 pin/unpin/get endpoints.
+    @PostMapping("/{groupId}/pin/{messageId}")
+    fun pinMessage(@PathVariable groupId: String, @PathVariable messageId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Boolean>> {
+        groupMessagingService.setPinnedMessage(currentUser.userId, groupId, messageId)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    @DeleteMapping("/{groupId}/pin")
+    fun unpinMessage(@PathVariable groupId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Boolean>> {
+        groupMessagingService.setPinnedMessage(currentUser.userId, groupId, null)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    @GetMapping("/{groupId}/pin")
+    fun getPinnedMessage(@PathVariable groupId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val message = groupMessagingService.getPinnedMessage(currentUser.userId, groupId)
+        val payload = message?.let {
+            mapOf(
+                "id" to it.id, "groupConversationId" to it.groupConversationId, "senderId" to it.senderId,
+                "body" to if (it.deletedAt == null) it.body else "This message was deleted", "sentAt" to it.sentAt,
+                "replyToMessageId" to it.replyToMessageId, "reactions" to emptyList<Any>(),
+            )
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "message" to payload))
+    }
+
+    // Real message forwarding (2026-07-25) -- see MessageForwardService's own doc
+    // comment. This message is always the real GROUP source; destinationType picks
+    // whether it lands in another group or a 1:1 conversation.
+    @PostMapping("/messages/{messageId}/forward")
+    fun forwardMessage(
+        @PathVariable messageId: String,
+        @RequestBody request: ForwardGroupMessageRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val destinationType = try {
+            MessageDestinationType.valueOf(request.destinationType)
+        } catch (e: IllegalArgumentException) {
+            throw InvalidForwardDestinationException("destinationType must be DIRECT or GROUP")
+        }
+        val result = messageForwardService.forward(currentUser.userId, MessageDestinationType.GROUP, messageId, destinationType, request.destinationId)
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+            when (result) {
+                is ForwardResult.Direct -> mapOf("success" to true, "message" to result.message, "destinationType" to "DIRECT")
+                is ForwardResult.Group -> mapOf("success" to true, "message" to result.message, "destinationType" to "GROUP")
+            },
+        )
     }
 
     // Real member list with real resolved display names (2026-07-18) -- see
@@ -127,6 +321,48 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
         return ResponseEntity.ok(mapOf("success" to true, "group" to group))
     }
 
+    // Real group 공지 (announcement) -- see GroupPollAnnouncementService's own doc
+    // comment. One active announcement at a time; posting a new one replaces the old.
+    @PostMapping("/{groupId}/announcement")
+    fun postAnnouncement(
+        @PathVariable groupId: String,
+        @RequestBody request: PostGroupAnnouncementRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val announcement = groupPollAnnouncementService.postAnnouncement(currentUser.userId, groupId, request.body)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "announcement" to announcement))
+    }
+
+    @GetMapping("/{groupId}/announcement")
+    fun getAnnouncement(@PathVariable groupId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "announcement" to groupPollAnnouncementService.getAnnouncement(currentUser.userId, groupId)))
+
+    // Real group 투표 (poll) -- see GroupPollAnnouncementService's own doc comment.
+    @PostMapping("/{groupId}/polls")
+    fun createPoll(
+        @PathVariable groupId: String,
+        @RequestBody request: CreateGroupPollRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val poll = groupPollAnnouncementService.createPoll(currentUser.userId, groupId, request.question, request.options, request.allowMultiple, request.closesAt)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "poll" to poll))
+    }
+
+    @GetMapping("/{groupId}/polls")
+    fun getPolls(@PathVariable groupId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "polls" to groupPollAnnouncementService.getPolls(currentUser.userId, groupId)))
+
+    @PostMapping("/{groupId}/polls/{pollId}/vote")
+    fun votePoll(
+        @PathVariable groupId: String,
+        @PathVariable pollId: String,
+        @RequestBody request: VoteGroupPollRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val poll = groupPollAnnouncementService.vote(currentUser.userId, groupId, pollId, request.optionId)
+        return ResponseEntity.ok(mapOf("success" to true, "poll" to poll))
+    }
+
     @DeleteMapping("/{groupId}/members/me")
     fun leaveGroup(
         @PathVariable groupId: String,
@@ -148,6 +384,14 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
     fun handleGroupNameTooLong(ex: GroupNameTooLongException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("GROUP_NAME_TOO_LONG", ex.message ?: "Bad request"))
 
+    @ExceptionHandler(GroupPhotoUrlTooLongException::class)
+    fun handleGroupPhotoUrlTooLong(ex: GroupPhotoUrlTooLongException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("GROUP_PHOTO_URL_TOO_LONG", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(GroupDescriptionTooLongException::class)
+    fun handleGroupDescriptionTooLong(ex: GroupDescriptionTooLongException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("GROUP_DESCRIPTION_TOO_LONG", ex.message ?: "Bad request"))
+
     @ExceptionHandler(GroupNeedsMoreMembersException::class)
     fun handleGroupNeedsMoreMembers(ex: GroupNeedsMoreMembersException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("GROUP_NEEDS_MORE_MEMBERS", ex.message ?: "Bad request"))
@@ -160,6 +404,10 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
     fun handleAlreadyGroupMember(ex: AlreadyGroupMemberException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("ALREADY_MEMBER", ex.message ?: "Conflict"))
 
+    @ExceptionHandler(InvalidGroupJoinCodeException::class)
+    fun handleInvalidGroupJoinCode(ex: InvalidGroupJoinCodeException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("INVALID_GROUP_JOIN_CODE", ex.message ?: "Not found"))
+
     @ExceptionHandler(EmptyGroupMessageException::class)
     fun handleEmptyMessage(ex: EmptyGroupMessageException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("EMPTY_MESSAGE", ex.message ?: "Bad request"))
@@ -167,6 +415,14 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
     @ExceptionHandler(GroupMessageTooLongException::class)
     fun handleMessageTooLong(ex: GroupMessageTooLongException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("MESSAGE_TOO_LONG", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidGroupMessageImageException::class)
+    fun handleInvalidMessageImage(ex: InvalidGroupMessageImageException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MESSAGE_IMAGE", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidGroupMessageSearchException::class)
+    fun handleInvalidSearch(ex: InvalidGroupMessageSearchException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MESSAGE_SEARCH", ex.message ?: "Bad request"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =
@@ -176,7 +432,59 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
     fun handleGroupMessageNotFound(ex: GroupMessageNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MESSAGE_NOT_FOUND", ex.message ?: "Not found"))
 
+    @ExceptionHandler(GroupMessageDeleteForbiddenException::class)
+    fun handleDeleteForbidden(ex: GroupMessageDeleteForbiddenException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("MESSAGE_DELETE_FORBIDDEN", ex.message ?: "Forbidden"))
+
     @ExceptionHandler(InvalidGroupReactionException::class)
     fun handleInvalidReaction(ex: InvalidGroupReactionException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_REACTION", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidForwardDestinationException::class)
+    fun handleInvalidForwardDestination(ex: InvalidForwardDestinationException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_FORWARD_DESTINATION", ex.message ?: "Bad request"))
+
+    // Real message forwarding (2026-07-25) -- these four can only surface here when
+    // forwarding a group message TO a 1:1 destination (MessageForwardService then calls
+    // straight into MessagingService), same "handle the other service's exceptions too"
+    // discipline MessagingController.forwardMessage's own doc comment names.
+    @ExceptionHandler(MessageNotFoundException::class)
+    fun handleMessageNotFound(ex: MessageNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MESSAGE_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(ConversationNotFoundException::class)
+    fun handleConversationNotFound(ex: ConversationNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("CONVERSATION_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(UserBlockedException::class)
+    fun handleBlocked(ex: UserBlockedException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("CONVERSATION_BLOCKED", ex.message ?: "Unavailable"))
+
+    @ExceptionHandler(EmptyMessageException::class)
+    fun handleEmptyMessage(ex: EmptyMessageException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("EMPTY_MESSAGE", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(MessageTooLongException::class)
+    fun handleMessageTooLong(ex: MessageTooLongException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("MESSAGE_TOO_LONG", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidGroupAnnouncementException::class)
+    fun handleInvalidAnnouncement(ex: InvalidGroupAnnouncementException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_ANNOUNCEMENT", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidGroupPollException::class)
+    fun handleInvalidPoll(ex: InvalidGroupPollException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_POLL", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(GroupPollNotFoundException::class)
+    fun handlePollNotFound(ex: GroupPollNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("POLL_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(GroupPollOptionNotFoundException::class)
+    fun handlePollOptionNotFound(ex: GroupPollOptionNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("POLL_OPTION_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(GroupPollClosedException::class)
+    fun handlePollClosed(ex: GroupPollClosedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("POLL_CLOSED", ex.message ?: "This poll has already closed"))
 }

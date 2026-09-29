@@ -35,6 +35,9 @@ class Conversation(
     @Column(name = "last_message_at", nullable = false)
     var lastMessageAt: Instant = Instant.now(),
 
+    @Column(name = "pinned_message_id", length = 64)
+    var pinnedMessageId: String? = null,
+
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 ) {

@@ -1,0 +1,28 @@
+-- Real product-naming fix (2026-08-23, direct user correction): "Mini account" collided
+-- with Saronite's own real "mini-app" framework naming (both shipped, user-facing labels
+-- in the same Explore/All-tab area on iOS, and an actual Android grid tile labeled bare
+-- "Mini" that opened this product, not mini-apps) -- see docs/UI_UX_GUIDELINES.md §12 for
+-- the full real research (Google/Samsung/Apple/Kakao's own "[Brand] Account = identity
+-- layer, never a sub-product" convention, and KakaoBank's own real "카카오뱅크 미니" naming,
+-- which never drops the parent-product prefix the way itunda's bare "Mini" tile did).
+-- Renamed to "Youth account" everywhere -- a plain, common real banking term covering the
+-- full 7-18 eligibility range without needing a subtitle to explain it.
+--
+-- This migration only backfills the plain descriptive `account_name` column on already-
+-- opened accounts, matching this session's real precedent for a low-risk display-string
+-- correction (see V290/V291's own wallet->account column rename for the harder,
+-- schema-level version of this same class of fix). The account TYPE itself
+-- (`accounts.type = 'MINI'`) is deliberately left unchanged -- it's a real, live
+-- `EnumType.STRING`-persisted value the Kotlin `AccountType.MINI` enum constant still
+-- serializes as; renaming the enum constant's own identifier would leave every existing
+-- row's stored 'MINI' string unrecognized by newly-deployed code. A real type-value
+-- migration, if ever done, needs its own separately reviewed pass coordinated with a
+-- Kotlin enum rename across all 4 codebases at once -- out of scope here.
+-- Real fix (2026-08-25, found live during a deploy): this originally referenced a
+-- table named `accounts`, which does not exist -- the Wallet->Account rename
+-- (V290/V291, see this file's own header comment) was a code/API/copy-level rename
+-- only; the underlying table is still physically named `wallets`. The migration
+-- failed validation the moment it actually ran (a real "table doesn't exist" SQL
+-- error, not a resource-pressure interruption), so it never touched any data --
+-- safe to correct in place rather than add a new migration on top of a no-op one.
+UPDATE wallets SET account_name = 'Youth Account' WHERE account_name = 'Mini Account' AND type = 'MINI';

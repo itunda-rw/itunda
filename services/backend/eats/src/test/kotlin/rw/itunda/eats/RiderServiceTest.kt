@@ -11,43 +11,43 @@ import io.mockk.verify
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Rider
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.repository.RiderRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
 
 class RiderServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
+    fun account(id: String, userId: String) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
     )
 
-    Given("a real itunda user with an existing wallet") {
+    Given("a real itunda user with an existing account") {
         val riderRepository = mockk<RiderRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = RiderService(riderRepository, walletRepository, rateLimiter)
-        val wallet = wallet("wallet_1", "user_1")
+        val service = RiderService(riderRepository, accountRepository, rateLimiter)
+        val account = account("account_1", "user_1")
 
         When("they register as a rider for the first time") {
             every { riderRepository.findByUserId("user_1") } returns null
-            every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet
+            every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account
             every { riderRepository.save(any()) } answers { firstArg() }
 
             val rider = service.register("user_1")
 
-            Then("it creates a real rider record pointing at their own real wallet") {
+            Then("it creates a real rider record pointing at their own real account") {
                 rider.userId shouldBe "user_1"
-                rider.walletId shouldBe "wallet_1"
+                rider.accountId shouldBe "account_1"
                 rider.available shouldBe false
             }
         }
 
         When("they try to register a second time") {
-            every { riderRepository.findByUserId("user_1") } returns Rider(id = "rider_1", userId = "user_1", walletId = "wallet_1")
+            every { riderRepository.findByUserId("user_1") } returns Rider(id = "rider_1", userId = "user_1", accountId = "account_1")
 
             Then("it throws RiderAlreadyRegisteredException") {
                 try {
@@ -60,7 +60,7 @@ class RiderServiceTest : BehaviorSpec({
         }
 
         When("a real registered rider goes online") {
-            val rider = Rider(id = "rider_1", userId = "user_1", walletId = "wallet_1", available = false)
+            val rider = Rider(id = "rider_1", userId = "user_1", accountId = "account_1", available = false)
             every { riderRepository.findByUserId("user_1") } returns rider
             every { riderRepository.save(any()) } answers { firstArg() }
 
@@ -85,7 +85,7 @@ class RiderServiceTest : BehaviorSpec({
         }
 
         When("a real registered rider shares their real current location") {
-            val rider = Rider(id = "rider_1", userId = "user_1", walletId = "wallet_1")
+            val rider = Rider(id = "rider_1", userId = "user_1", accountId = "account_1")
             every { riderRepository.findByUserId("user_1") } returns rider
             every { riderRepository.save(any()) } answers { firstArg() }
 
@@ -125,7 +125,7 @@ class RiderServiceTest : BehaviorSpec({
         // Real rate limit added 2026-07-20 -- see updateLocation's own doc comment for
         // why this endpoint only just got its first real client callers.
         When("a real rider's location update is checked against the rate limiter first") {
-            val rider = Rider(id = "rider_1", userId = "user_1", walletId = "wallet_1")
+            val rider = Rider(id = "rider_1", userId = "user_1", accountId = "account_1")
             every { riderRepository.findByUserId("user_1") } returns rider
             every { riderRepository.save(any()) } answers { firstArg() }
             every { rateLimiter.checkLimit("eats:rider-location:user_1", limit = 20, window = Duration.ofMinutes(1)) } just Runs

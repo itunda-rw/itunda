@@ -64,6 +64,17 @@ class Certificate(
 
     @Column(name = "revoked_at")
     var revokedAt: Instant? = null,
+
+    // Real Korean electronic-certificate renewal convention -- accredited Korean CAs
+    // (see CertificateRenewalReminderScheduler's own doc comment for the real sourcing:
+    // gpki.go.kr/crosscert.com's own published renewal-window practice, the same
+    // regulatory category Toss Certificate itself operates under per Certificate.kt's
+    // own doc comment) let a certificate be renewed starting 60 days before it expires.
+    // Null until a real reminder has been sent, same one-shot "re-check right before
+    // sending, never re-fire" discipline InsurancePolicy.renewalReminderSentAt already
+    // establishes for a structurally identical real-expiry-date reminder.
+    @Column(name = "renewal_reminder_sent_at")
+    var renewalReminderSentAt: Instant? = null,
 ) {
     protected constructor() : this(id = "", userId = "", serialNumber = "", publicKeyBase64 = "", expiresAt = Instant.now())
 }

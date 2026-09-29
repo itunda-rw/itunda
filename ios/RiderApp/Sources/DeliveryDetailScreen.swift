@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreDesignSystem
 
 /// A single active (or just-completed) delivery. Pushes this rider's real live
 /// coordinates every 15s while the order is in an in-progress status
@@ -20,7 +21,7 @@ struct DeliveryDetailScreen: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Button(action: onBack) { Image(systemName: "chevron.left") }
+                Button(action: onBack) { IDS.Icons.back(size: 17, color: IDS.Colors.textPrimary, relativeTo: .body) }.accessibilityLabel("Back")
                 Text("Delivery").font(.headline)
                 Spacer()
             }
@@ -60,12 +61,12 @@ struct DeliveryDetailScreen: View {
 
                     if !locationFetcher.isAuthorized {
                         Text("Location permission is needed so the buyer can see you're on the way.")
-                            .foregroundColor(.red).font(.footnote)
+                            .foregroundColor(IDS.Colors.danger).font(.footnote)
                             .padding(.horizontal, 16)
                     }
 
                     if let error {
-                        Text(error).foregroundColor(.red).font(.footnote).padding(.horizontal, 16)
+                        Text(error).foregroundColor(IDS.Colors.danger).font(.footnote).padding(.horizontal, 16)
                     }
 
                     if let (nextStatus, label) = nextAction(for: current.status) {
@@ -73,12 +74,12 @@ struct DeliveryDetailScreen: View {
                             Text(advancing ? "Updating…" : label)
                                 .bold().foregroundColor(.white)
                                 .frame(maxWidth: .infinity).padding(.vertical, 14)
-                                .background(Color.blue).cornerRadius(12)
+                                .background(IDS.Colors.brand).cornerRadius(12)
                         }
                         .disabled(advancing)
                         .padding(16)
                     } else if current.status == "DELIVERED" {
-                        Text("Delivered -- \(formattedRWF(current.deliveryFee)) RWF paid to your wallet.")
+                        Text("Delivered -- \(formattedRWF(current.deliveryFee)) RWF paid to your account.")
                             .bold().foregroundColor(.blue)
                             .padding(16)
                     }
@@ -86,9 +87,9 @@ struct DeliveryDetailScreen: View {
             } else {
                 Spacer()
                 if let error {
-                    Text(error).foregroundColor(.red)
+                    Text(error).foregroundColor(IDS.Colors.danger)
                 } else {
-                    ProgressView()
+                    SkeletonBlock(height: 96)
                 }
                 Spacer()
             }
@@ -135,6 +136,8 @@ struct DeliveryDetailScreen: View {
         do {
             order = try await RiderNetworkClient.shared.updateRiderOrderStatus(orderId, status: nextStatus).order
             if nextStatus == "DELIVERED" { onBack() }
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't update this delivery's status. Try again."
         } catch {
             self.error = "Couldn't update this delivery's status. Try again."
         }

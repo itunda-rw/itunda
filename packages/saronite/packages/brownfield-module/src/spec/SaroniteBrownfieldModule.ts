@@ -59,6 +59,60 @@ export interface PayBillResult {
   status: string;
 }
 
+/** Mirrors the transaction returned by `POST /api/v1/bills/airtime`
+ * (services/backend/bills's BillsController.buyAirtime) -- same real response
+ * shape as PayBillResult (a `message` plus the resulting transaction's id/
+ * referenceNumber/status), reused as-is since the backend returns an identical
+ * `{message, transaction}` envelope for both endpoints. Real gap closed
+ * 2026-09-07 (Bills product-completeness pass): bank-mfe's web BillsView.tsx
+ * already had "Buy airtime" since 2026-08-17; this bridge -- the only path
+ * Android/iOS have to Bills at all -- never did. */
+export type BuyAirtimeResult = PayBillResult;
+
+/** Mirrors a single billing partner from `GET /api/v1/bills/providers`
+ * (services/backend/bills's BillsController.getProviders / BillsCatalog.providers).
+ * `id` (e.g. "b1") is distinct from `PendingBill.provider`, which is only the
+ * display name -- `id` is what `setAutoPay`/`clearAutoPay` below actually take. */
+export interface BillProvider {
+  id: string;
+  name: string;
+  category: string;
+  logo: string;
+  isActive: boolean;
+}
+
+export interface BillProvidersResult {
+  providers: BillProvider[];
+}
+
+/** Real Kakao Pay 자동납부 (automatic bill payment) -- mirrors
+ * `BillAutoPaySetting` (services/backend/core's BillAutoPaySetting.kt / the
+ * bills module's own BillAutoPayProcessor doc comment). `maxAmount` is a real
+ * user-set safety ceiling: a due bill over this cap is skipped by the
+ * scheduler, never silently auto-charged. Wired to bank-mfe already
+ * (2026-08-17, `lib/bills.ts`); this is the same three endpoints
+ * (`POST/GET/DELETE /api/v1/bills/auto-pay`) reaching the Saronite bridge for
+ * the first time. */
+export interface BillAutoPaySetting {
+  id: string;
+  userId: string;
+  providerId: string;
+  accountNumber: string;
+  maxAmount: number;
+  active: boolean;
+  lastPaidBillId: string | null;
+  createdAt: string;
+}
+
+export interface AutoPaySettingsResult {
+  autoPay: BillAutoPaySetting[];
+}
+
+/** Mirrors the response of `POST /api/v1/bills/auto-pay`. */
+export interface SetAutoPayResult {
+  autoPay: BillAutoPaySetting;
+}
+
 /** Mirrors a single task from `GET /rewards/tasks`
  * (backend/src/controllers/rewards.controller.ts:getRewardTasks). */
 export interface RewardTask {
@@ -129,12 +183,181 @@ export interface EnrollInsuranceResult {
   policy: InsurancePolicy;
 }
 
+/** Real Ejo Heza ya Moto-style premium savings fund -- mirrors a single fund from
+ * `GET /insurance/premium-funds` (services/backend/insurance's
+ * InsuranceController.fundMap). Lets a user save toward a specific policy's next
+ * premium ahead of time, so the backend's recurring collection scheduler can draw on
+ * it instead of lapsing the policy. */
+export interface InsurancePremiumFund {
+  id: string;
+  policyId: string;
+  targetAmount: number;
+  currentAmount: number;
+  dailyContribution: number;
+  status: 'active' | 'cancelled';
+  createdAt: string;
+}
+
+/** Mirrors the response of `POST /insurance/policies/{policyId}/premium-fund`. */
+export interface CreatePremiumFundResult {
+  success: boolean;
+  fund: InsurancePremiumFund;
+}
+
+/** Mirrors the response of `POST /insurance/premium-funds/{fundId}/contribute`. */
+export interface ContributeToFundResult {
+  success: boolean;
+  fund: InsurancePremiumFund;
+}
+
+/** Mirrors the response of `POST /insurance/premium-funds/{fundId}/cancel`. */
+export interface CancelFundResult {
+  success: boolean;
+  fund: InsurancePremiumFund;
+}
+
+/** Mirrors the response of `GET /insurance/premium-funds`. */
+export interface MyPremiumFundsResult {
+  success: boolean;
+  funds: InsurancePremiumFund[];
+}
+
+/** Mirrors a single claim from `GET /insurance/claims` / `POST /insurance/claims`
+ * (services/backend/insurance's InsuranceController.submitClaim/getMyClaims -- the raw
+ * InsuranceClaim entity, no remapping). decisionReason is only set once an admin has
+ * decided it (InsuranceClaimsAdminController.decideClaim). */
+export interface InsuranceClaim {
+  id: string;
+  policyId: string;
+  description: string;
+  amount: number;
+  status: 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+  submittedAt: string;
+  decisionReason: string | null;
+}
+
+/** Mirrors the response of `POST /insurance/claims`. */
+export interface SubmitClaimResult {
+  success: boolean;
+  claim: InsuranceClaim;
+}
+
+/** Mirrors the response of `GET /insurance/claims`. */
+export interface MyClaimsResult {
+  success: boolean;
+  claims: InsuranceClaim[];
+}
+
+/** Real Rwanda National Agricultural Insurance Scheme (NAIS)-style parametric/weather-index
+ * crop insurance -- see services/backend's WeatherIndexInsuranceService doc comment for the
+ * full sourced account (WFP, Columbia IRI/Kilimo Salama, NISR Seasonal Agricultural Survey).
+ * Structurally distinct from InsuranceClaim above: no individual claim is ever filed here --
+ * a district+season's published rainfall index auto-triggers payout for every enrolled
+ * policy at once. Mirrors `GET /insurance/crop-index/catalog`. */
+export type WeatherIndexCropType = 'MAIZE' | 'RICE' | 'CHILLI_PEPPER' | 'FRENCH_BEANS' | 'IRISH_POTATO';
+
+export interface CropIndexCatalogEntry {
+  cropType: WeatherIndexCropType;
+  name: string;
+  premiumRatePercent: number;
+  description: string;
+}
+
+export interface CropIndexCatalogResult {
+  success: boolean;
+  catalog: CropIndexCatalogEntry[];
+}
+
+/** Mirrors a single policy from `GET /insurance/crop-index/policies`
+ * (WeatherIndexInsuranceController.policyMap). payoutAt is null until a payout actually
+ * fires. */
+export interface WeatherIndexPolicy {
+  id: string;
+  cropType: WeatherIndexCropType;
+  district: string;
+  season: string;
+  insuredAmount: number;
+  premiumAmount: number;
+  status: 'ENROLLED' | 'PAYOUT_TRIGGERED' | 'SEASON_ENDED_NO_PAYOUT' | 'CANCELLED';
+  createdAt: string;
+  payoutAt: string | null;
+}
+
+export interface MyCropIndexPoliciesResult {
+  success: boolean;
+  policies: WeatherIndexPolicy[];
+}
+
+/** Mirrors the response of `POST /insurance/crop-index/policies` and
+ * `POST /insurance/crop-index/policies/{id}/cancel`. */
+export interface CropIndexPolicyResult {
+  success: boolean;
+  policy: WeatherIndexPolicy;
+}
+
+/** Mirrors a published season rainfall index from
+ * `GET /insurance/crop-index/districts/{district}/seasons/{season}/index`
+ * (WeatherIndexInsuranceController.indexMap). Null until an ADMIN has transcribed that
+ * district+season's real published NISR/Rwanda Meteorology Agency figure -- itunda has no
+ * live satellite/rainfall-gauge feed integration (see WeatherIndexInsuranceService's own
+ * doc comment for the full honesty note). */
+export interface SeasonRainfallIndex {
+  district: string;
+  season: string;
+  rainfallIndexPercent: number;
+  droughtThresholdPercent: number;
+  publishedAt: string;
+}
+
+export interface CropIndexSeasonIndexResult {
+  success: boolean;
+  index: SeasonRainfallIndex | null;
+}
+
 /** Mirrors the response of `GET /rewards/referral`
  * (services/backend/rewards's RewardsController.referral). */
 export interface ReferralInfo {
   referralCode: string | null;
   referredCount: number;
   completedReferralCount: number;
+}
+
+/** Real, stated per-tier lottery odds (item 248, docs/DESIGN_REFERENCES.md Section 15)
+ * -- mirrors StepRewardTier exactly. The whole point of exposing this via the API: a
+ * client can show "5% chance of +100 RWF" up front, never a hidden mechanic only
+ * discovered by winning. */
+export interface StepRewardTierInfo {
+  stepsRequired: number;
+  rewardAmount: number;
+  lotteryOdds: number;
+  lotteryBonusAmount: number;
+}
+
+/** Real Toss 만보기 (walking rewards) -- mirrors the response of `POST /rewards/steps`
+ * (services/backend/rewards's RewardsController.reportSteps /
+ * StepRewardService.reportSteps). `steps` is honestly client-reported (see
+ * StepRewardService's own doc comment on the backend for the sourced boundary: a real
+ * sanity ceiling, not a real anti-spoofing measure). `newlyEarnedTiers` are the real
+ * step thresholds (1000/5000/10000) newly crossed by THIS report, matching
+ * StepRewardTier.stepsRequired exactly. `lotteryBonusWonTiers`/`lotteryBonusWonAmount`
+ * (item 248) are the real, additive-only lottery-bonus tiers won by THIS report --
+ * always present (possibly empty), never folded into `newlyEarnedAmount`, so a client
+ * can show the guaranteed reward and the disclosed-odds bonus as two separate things. */
+export interface StepReportResult {
+  steps: number;
+  newlyEarnedTiers: number[];
+  newlyEarnedAmount: number;
+  totalEarnedToday: number;
+  lotteryBonusWonTiers: number[];
+  lotteryBonusWonAmount: number;
+  lotteryBonusTotal: number;
+  tiers: StepRewardTierInfo[];
+}
+
+/** Mirrors the response of `GET /rewards/steps/today`. */
+export interface TodayStepsResult {
+  steps: number;
+  tiers: StepRewardTierInfo[];
 }
 
 /** Mirrors the response of `PUT /auth/profile/photo` and
@@ -167,12 +390,43 @@ export interface SaroniteBrownfieldModuleSpec {
     accountNumber: string,
     provider: string,
   ): Promise<PayBillResult>;
+  getBillProviders(): Promise<BillProvidersResult>;
+  buyAirtime(
+    phoneNumber: string,
+    amount: number,
+    provider: string,
+  ): Promise<BuyAirtimeResult>;
+  getAutoPaySettings(): Promise<AutoPaySettingsResult>;
+  setAutoPay(
+    providerId: string,
+    accountNumber: string,
+    maxAmount: number,
+  ): Promise<SetAutoPayResult>;
+  clearAutoPay(providerId: string): Promise<void>;
   getRewardTasks(): Promise<RewardTasksResult>;
   claimRewardTask(taskId: string): Promise<ClaimRewardResult>;
   getInsurancePlans(): Promise<InsurancePlansResult>;
   getMyPolicies(): Promise<MyPoliciesResult>;
   enrollInsurance(planId: string): Promise<EnrollInsuranceResult>;
+  createPremiumFund(policyId: string, dailyContribution: number): Promise<CreatePremiumFundResult>;
+  contributeToFund(fundId: string, amount: number): Promise<ContributeToFundResult>;
+  cancelFund(fundId: string): Promise<CancelFundResult>;
+  getMyPremiumFunds(): Promise<MyPremiumFundsResult>;
+  submitClaim(policyId: string, description: string, amount: number): Promise<SubmitClaimResult>;
+  getMyClaims(): Promise<MyClaimsResult>;
+  getCropIndexCatalog(): Promise<CropIndexCatalogResult>;
+  getMyCropIndexPolicies(): Promise<MyCropIndexPoliciesResult>;
+  enrollCropIndexPolicy(
+    cropType: WeatherIndexCropType,
+    district: string,
+    season: string,
+    insuredAmount: number,
+  ): Promise<CropIndexPolicyResult>;
+  cancelCropIndexPolicy(policyId: string): Promise<CropIndexPolicyResult>;
+  getCropIndexSeasonIndex(district: string, season: string): Promise<CropIndexSeasonIndexResult>;
   getReferralInfo(): Promise<ReferralInfo>;
+  reportSteps(steps: number): Promise<StepReportResult>;
+  getTodaySteps(): Promise<TodayStepsResult>;
   updateProfilePhoto(profilePhotoUrl: string): Promise<ProfileResult>;
   requestEmailVerification(): Promise<void>;
   confirmEmailVerification(token: string): Promise<ProfileResult>;

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Real localization for :features:property:impl (Hood product-completeness pass,
+     2026-09-08): this module had zero string-resource localization at all, unlike
+     sibling feature modules (:features:banking:impl, :features:home:impl,
+     :features:maps:impl all ship real values-rw/values-fr). Deliberately scoped to
+     the primary, always-visible surface (the "+ List a property" CTA and its own
+     create-listing form's title/description fields and submit button), not every
+     secondary/edge-case string in this module's screens, matching the Maps i18n
+     pass's own scoping precedent. All translations here are a good-faith, careful
+     effort, NOT verified by a native speaker of either language, and should get
+     real native-speaker review before being treated as production-final, same
+     honesty standard every other localized module in this repo already holds
+     itself to. -->
+<resources>
+    <string name="property_new_listing_cta">+ List a property</string>
+    <string name="property_title_placeholder">e.g. 2-bedroom apartment in Kacyiru</string>
+    <string name="property_description_placeholder">Describe the property</string>
+    <string name="property_listing">Listing…</string>
+    <string name="property_list_it">List it</string>
+</resources>

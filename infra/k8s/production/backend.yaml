@@ -5,14 +5,18 @@
 # service actually holding the real business logic and ledger had no deployment
 # story at all.
 #
-# Secrets referenced below (itunda-db-credentials, itunda-jwt-secret) are NOT
-# created by this file on purpose -- committing real credentials to a YAML file
-# in git is exactly the anti-pattern this repo's own SECURITY.md exists to catch
-# elsewhere. Provision them out-of-band, e.g.:
+# Secrets referenced below (itunda-db-credentials, itunda-jwt-secret,
+# itunda-firebase-credentials) are NOT created by this file on purpose --
+# committing real credentials to a YAML file in git is exactly the anti-pattern
+# this repo's own SECURITY.md exists to catch elsewhere. Provision them
+# out-of-band, e.g.:
 #   kubectl create secret generic itunda-db-credentials \
 #     --from-literal=username=itunda --from-literal=password=<real value> -n itunda
 #   kubectl create secret generic itunda-jwt-secret \
 #     --from-literal=secret=<real value> -n itunda
+#   kubectl create secret generic itunda-firebase-credentials \
+#     --from-file=firebase-service-account.json=<path to the real key downloaded
+#     from Firebase Console -> Project Settings -> Service Accounts> -n itunda
 #
 # DB_HOST/DB_PORT point at an external managed MySQL instance via itunda-db-config
 # (a ConfigMap, also provisioned out-of-band) -- this manifest deliberately does
@@ -23,7 +27,22 @@ metadata:
   name: backend
   namespace: itunda
 spec:
-  replicas: 2
+  # Real fix (2026-08-28, itunda Talk/KakaoTalk redesign): this was `replicas: 2`,
+  # but MessagingWebSocketHandler's own real-time session tracking is a plain
+  # ConcurrentHashMap in JVM heap, single-instance by design -- RealtimeMessagePublisher's
+  # own doc comment says explicitly it only reaches a recipient whose WebSocket
+  # session is held open on the SAME backend instance that processed the send.
+  # With 2 replicas, real-time push (messages/typing/presence/reactions) was
+  # silently failing for any two users whose sockets happened to land on different
+  # pods -- a real, live bug, not a hypothetical one. Reducing to 1 fixes it
+  # outright: infra/openstack/cmdb/private-cloud-inventory.json confirms
+  # itunda-dc-b is status: disabled, so both replicas were already colocating on
+  # the one real node (itunda-dc-a) regardless -- podAntiAffinity's "prefer
+  # different hosts" below was already a no-op. This also frees up to 1Gi of real
+  # memory headroom (this Deployment's own `limits.memory` below) on a node
+  # `docs/DESIGN_REFERENCES.md`'s own private-cloud incident history already
+  # documents as severely, repeatedly memory-constrained.
+  replicas: 1
   minReadySeconds: 10
   revisionHistoryLimit: 5
   strategy:
@@ -67,7 +86,7 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
       - name: backend
-        image: ghcr.io/itunda/backend:latest
+        image: ghcr.io/itunda-rw/backend:latest
         ports:
         - containerPort: 4001
         env:
@@ -103,11 +122,71 @@ spec:
             configMapKeyRef:
               name: itunda-redis-config
               key: port
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-kafka-config
+              key: bootstrap-servers
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
               name: itunda-jwt-secret
               key: secret
+        - name: SPRING_PROFILES_ACTIVE
+          value: "production"
+        - name: ITUNDA_PROVIDER_SIMULATION_ENABLED
+          value: "false"
+        # Real TURN/STUN ephemeral-credential minting (2026-08-28, itunda Talk
+        # redesign) -- see CallService.getTurnCredentials's own doc comment. Must be
+        # the exact same value as coturn.yaml's own itunda-turn-secret Secret
+        # (coturn's static-auth-secret), provisioned out-of-band the same way every
+        # other real credential above is.
+        - name: TURN_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: itunda-turn-secret
+              key: secret
+        # Real gap found live-testing the card-design-picker feature (2026-08-27):
+        # this list never included the private cloud's own NodePort origins
+        # (infra/k8s/private-cloud/micro-frontends.yaml, 30520-30525), so no
+        # browser-based login against a private-cloud-served mfe has ever actually
+        # worked -- every prior verification pass either hit the backend directly
+        # with curl (no CORS enforcement there) or ran against a different
+        # deployment. Added all 6 real mfe NodePort origins, not a wildcard, to
+        # keep this an explicit allowlist.
+        - name: ITUNDA_CORS_ALLOWED_ORIGINS
+          value: "https://itunda.duckdns.org,http://localhost:5000,http://localhost:5001,http://localhost:5002,http://localhost:5003,http://localhost:5004,http://localhost:5005,http://192.168.252.4:30520,http://192.168.252.4:30521,http://192.168.252.4:30522,http://192.168.252.4:30523,http://192.168.252.4:30524,http://192.168.252.4:30525"
+        # Real FCM push (2026-08-12) -- see PushConfig.kt's own doc comment. A file
+        # path, not a raw string value like JWT_SECRET above, so it's a Secret
+        # *volume* mount (below), not secretKeyRef on the env var directly --
+        # PushConfig reads this path and opens the file itself, matching the exact
+        # shape RealFcmPushSender's constructor expects. Absent/unmounted falls back
+        # to SimulatedPushSender exactly as it does with no env var set at all.
+        - name: FCM_CREDENTIALS_PATH
+          value: "/secrets/firebase/firebase-service-account.json"
+        volumeMounts:
+        - name: firebase-credentials
+          mountPath: /secrets/firebase
+          readOnly: true
+        # Real gap found live (2026-08-13, tracing a 500 on a real end-to-end upload
+        # test through to the pod): rw.itunda.marketplace.web.UploadController's own
+        # doc comment says its local-disk storage choice is deliberate for this
+        # single-node cluster ("Deliberately not S3/MinIO/a CDN... a plain
+        # validated-and-bounded local directory"), and its default UPLOAD_DIR is
+        # `/uploads` -- but no volume was ever actually mounted there. The container
+        # runs as a non-root user (uid 999) with no write access to the image's own
+        # root filesystem, so every real upload (this endpoint has been live and
+        # reachable since 2026-07-24, already used by Talk photo messages and
+        # marketplace listings) has been silently failing with a 500 in this
+        # deployment the whole time: `FileNotFoundException: /uploads/<id>.jpg (No
+        # such file or directory)`. hostPath is the right call specifically because
+        # this cluster genuinely has only the one node (itunda-dc-a) -- the usual
+        # "a rescheduled pod loses hostPath data" risk doesn't apply when there's
+        # nowhere else to reschedule to. The host directory itself
+        # (/var/lib/itunda/uploads, chown'd to 999:999) is provisioned out-of-band,
+        # same convention as the secrets referenced above.
+        - name: uploads-storage
+          mountPath: /uploads
         resources:
           requests:
             memory: "512Mi"
@@ -126,24 +205,89 @@ spec:
         # startupProbe owns the "give it time to boot" budget (up to 5 minutes);
         # readiness/liveness only start being evaluated after startupProbe succeeds
         # once.
+        #
+        # Real second-order bug hit (2026-08-28, itunda Shopping redesign deploy):
+        # none of these three probes set timeoutSeconds, so it silently defaulted to
+        # Kubernetes' own built-in 1s. That's fine once the node is calm, but under
+        # real contention on this single overcommitted node, /actuator/health's own
+        # Redis health contributor was observed taking 10-30s to respond (seen live
+        # in the app's own logs: "Health contributor ... (redis) took 29689ms to
+        # respond") -- a full, genuinely-healthy JVM that had already logged "Started
+        # ItundaApplicationKt in 238.488 seconds" still failed every single probe
+        # attempt (startupProbe's real 300s failureThreshold budget included) purely
+        # because each individual HTTP call timed out at 1s, never because the app
+        # wasn't actually up. CrashLoopBackOff on a container that was never actually
+        # broken, again -- same root cause class as the comment above, just the
+        # per-request timeout this time instead of the total attempt budget.
+        # timeoutSeconds: 5 gives a real health check enough room to answer even
+        # during a slow window, without masking a genuinely hung process (still far
+        # tighter than the total startupProbe budget above).
         startupProbe:
           httpGet:
             path: /actuator/health
             port: 4001
           failureThreshold: 30
           periodSeconds: 10
+          timeoutSeconds: 5
+        # Real third occurrence of the same root-cause class (2026-08-28, itunda Talk
+        # redesign deploy): a real, single-flight-limited AI chatbot completion
+        # (AiChatService, see its own doc comment) genuinely competes for this node's
+        # real CPU with the separate llama-server container during active inference --
+        # long enough that even timeoutSeconds: 5 wasn't consistently enough for
+        # /actuator/health to answer, and kubelet killed a genuinely healthy,
+        # already-Ready pod mid-request ("Liveness probe failed... context deadline
+        # exceeded"). Paired with a real fix on the request side too
+        # (AiSummaryClient's own new bounded read timeout, so a single completion
+        # can no longer tie up a worker thread indefinitely) -- this bump alone isn't
+        # a full guarantee under arbitrarily bad contention, but is a real, evidence-
+        # based increase proportionate to what was actually observed live.
+        #
+        # Real follow-up (same day, caught on the very next live-verify pass): the
+        # actual crash this incident produced wasn't just one blocked worker thread --
+        # `HikariPool-1 housekeeper` (an unrelated low-priority background thread)
+        # itself logged "Thread starvation ... delta=49s", meaning the whole JVM went
+        # genuinely unscheduled by the OS for ~49s, not just the AI request's own
+        # thread. At the previous livenessProbe periodSeconds: 15 with Kubernetes'
+        # default failureThreshold: 3, that's a 45s kill-window -- just under the
+        # measured 49s stall, which is exactly why it still got killed even after the
+        # timeoutSeconds bump above. failureThreshold: 4 below widens that to a real
+        # 60s window, covering the measured stall with margin. readinessProbe is left
+        # at its own default failureThreshold on purpose -- failing readiness fast
+        # during genuine starvation is the correct behavior (sheds new traffic without
+        # killing the pod), unlike livenessProbe where failing fast means a restart.
         readinessProbe:
           httpGet:
             path: /actuator/health
             port: 4001
           initialDelaySeconds: 30
           periodSeconds: 10
+          timeoutSeconds: 10
         livenessProbe:
           httpGet:
             path: /actuator/health
             port: 4001
           initialDelaySeconds: 45
           periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 4
+      volumes:
+      - name: firebase-credentials
+        secret:
+          secretName: itunda-firebase-credentials
+          optional: true
+          items:
+          - key: firebase-service-account.json
+            path: firebase-service-account.json
+      # See uploads-storage's own volumeMount comment above -- Directory (not
+      # DirectoryOrCreate) on purpose: the host path is provisioned and chown'd to
+      # the container's non-root uid out-of-band before this is applied, the same
+      # discipline the secrets referenced above already follow. DirectoryOrCreate
+      # would let kubelet silently create it root-owned instead, recreating the
+      # exact permission gap this fix closes.
+      - name: uploads-storage
+        hostPath:
+          path: /var/lib/itunda/uploads
+          type: Directory
 ---
 apiVersion: v1
 kind: Service

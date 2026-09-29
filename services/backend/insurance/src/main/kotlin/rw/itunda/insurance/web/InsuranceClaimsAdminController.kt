@@ -16,7 +16,8 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.insurance.ClaimNotFoundException
 import rw.itunda.insurance.ClaimNotPendingException
 import rw.itunda.insurance.InsuranceService
-import rw.itunda.insurance.NoWalletException
+import rw.itunda.insurance.InvalidClaimDecisionReasonException
+import rw.itunda.insurance.NoAccountException
 
 data class DecideClaimRequest(val approve: Boolean, val reason: String? = null)
 
@@ -48,11 +49,15 @@ class InsuranceClaimsAdminController(private val insuranceService: InsuranceServ
     fun handleNotPending(ex: ClaimNotPendingException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("CLAIM_NOT_PENDING", ex.message ?: "Conflict"))
 
-    @ExceptionHandler(NoWalletException::class)
-    fun handleNoWallet(ex: NoWalletException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    @ExceptionHandler(NoAccountException::class)
+    fun handleNoAccount(ex: NoAccountException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
+
+    @ExceptionHandler(InvalidClaimDecisionReasonException::class)
+    fun handleInvalidDecisionReason(ex: InvalidClaimDecisionReasonException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_DECISION_REASON", ex.message ?: "Invalid decision reason"))
 }

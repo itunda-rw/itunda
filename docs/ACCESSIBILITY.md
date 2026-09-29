@@ -22,53 +22,90 @@ objects (WCAG 1.4.11).
 |---|---|---|---|
 | textPrimary `#191f28` on background `#f2f4f6` | 15.02:1 | PASS | PASS |
 | textSecondary `#4e5968` on background `#f2f4f6` | 6.45:1 | PASS | PASS |
-| **textTertiary `#8b95a1` on background `#f2f4f6`** | **2.76:1** | **FAIL** | **FAIL** |
+| ~~textTertiary `#8b95a1` on background `#f2f4f6`~~ → `#636e7c` (fixed, item 241) | 4.70:1 | PASS | PASS |
 | textPrimary `#191f28` on card `#ffffff` | 16.56:1 | PASS | PASS |
 | textSecondary `#4e5968` on card `#ffffff` | 7.11:1 | PASS | PASS |
-| textTertiary `#8b95a1` on card `#ffffff` | 3.04:1 | FAIL | PASS (marginal) |
+| ~~textTertiary `#8b95a1` on card `#ffffff`~~ → `#636e7c` (fixed, item 241) | 5.18:1 | PASS | PASS |
 | brand blue `#3182f6` on white | 3.71:1 | FAIL | PASS |
-| **success green `#04c065` on white** | **2.40:1** | **FAIL** | **FAIL** |
+| ~~success green `#04c065` on white~~ → `#05804a` on white (fixed, item 240) | 5.01:1 | PASS | PASS |
 | danger red `#f04452` on white | 3.71:1 | FAIL | PASS |
 | white text on brand blue button | 3.71:1 | FAIL | PASS |
 
 ### Dark theme
 
+Note: the background/surface hex values below (`#000000`/`#17181d`) predate the
+2026-07-21 real-dark-palette correction (see `packages/design-tokens/tokens.css`'s
+own header) and no longer match the live tokens (now `#17171c`/`#202027`) --
+re-verified for `textTertiary` only, as part of fixing it (item 241); the rest of
+this table has not been re-audited against the current values.
+
 | Pair | Ratio | AA normal (4.5) | AA large/UI (3.0) |
 |---|---|---|---|
 | textPrimary `#ffffff` on background `#000000` | 21.00:1 | PASS | PASS |
 | textSecondary `#989eaa` on background `#000000` | 7.81:1 | PASS | PASS |
-| textTertiary `#575c66` on background `#000000` | 3.13:1 | FAIL | PASS |
+| ~~textTertiary `#575c66` on background~~ → `#848a96` on real background `#17171c` (fixed, item 241) | 5.15:1 | PASS | PASS |
 | textPrimary `#ffffff` on surface `#17181d` | 17.72:1 | PASS | PASS |
 | textSecondary `#989eaa` on surface `#17181d` | 6.59:1 | PASS | PASS |
-| **textTertiary `#575c66` on surface `#17181d`** | **2.64:1** | **FAIL** | **FAIL** |
+| ~~textTertiary `#575c66` on surface~~ → `#848a96` on real card `#202027` (fixed, item 241) | 4.67:1 | PASS | PASS |
 | brand blue `#4c8fff` on surface | 5.64:1 | PASS | PASS |
 | success green `#20d394` on surface | 9.12:1 | PASS | PASS |
 | danger red `#ff6b7a` on surface | 6.44:1 | PASS | PASS |
 
 ### Findings
 
-1. **`textTertiary` fails AA-normal-text contrast in both themes**, and fails even the
-   lenient large-text/UI threshold on the true-black dark background and on the
-   grey-100 light background (2.76:1 / 2.64:1, both below 3.0:1). It only clears
-   large-text/UI on a white card (3.04:1, and only marginally). `textTertiary` is
-   currently used for de-emphasized captions/timestamps — real WCAG failure risk
-   wherever it sits directly on `background` rather than a `card`/`surface`.
-2. **`success` (green) on white fails contrast at every threshold in light mode**
-   (2.40:1, below even 3.0:1). The dark-mode green (`#20d394`, chosen brighter for
-   exactly this reason) passes everywhere. This is a real, previously undocumented
-   light-mode-only defect — any light-mode "amount increased" / "payment received"
-   text or icon rendered directly in green-on-white is likely under WCAG minimums.
+1. **FIXED (item 241, 2026-08-07).** `textTertiary` failed AA-normal-text contrast in
+   both themes, and even the lenient large-text/UI threshold on the light-mode
+   `background` and (re-verified against real current dark tokens) the dark-mode
+   `background`/`card` (2.76:1 light-bg, 3.04:1 light-card, 2.66:1 dark-bg, 2.41:1
+   dark-card). Since this token renders small caption/timestamp text at 493 real web
+   call sites alone, it needed 4.5:1 everywhere it appears, not just the 3.0:1
+   UI-component threshold. Light `#8b95a1` → `#636e7c` (4.70:1 / 5.18:1); dark
+   `#575c66` → `#848a96` (5.15:1 / 4.67:1) — both the minimal step toward
+   `textSecondary`'s own hue that clears 4.5:1 on both real backgrounds in each
+   theme. Applied to `packages/design-tokens/tokens.css` `--toss-grey-500` (the
+   real single source of truth, 493 consumers, all confirmed text/icon colors, none
+   structural — verified via repo-wide grep before touching it) and its two mirrors
+   (Android `IdsSemanticColors.kt`, iOS `IDS.swift`). The raw `Gray500`/`gray500`
+   primitives used for non-text roles elsewhere were deliberately left untouched —
+   iOS's is machine-generated from `tokens.json` and marked do-not-hand-edit. Found
+   and fixed one real, separate bug along the way: `MapScreenView.swift` used that
+   raw non-theme-reactive `IdsPalette.gray500` primitive directly for caption text
+   (3 call sites) instead of the theme-reactive semantic token — swapped to
+   `IDS.Colors.textTertiary`, which also fixes its dark-mode adaptivity, not just
+   its contrast. **Extended, 2026-08-07 (item 244):** independently verified this
+   fix's own claim that it "applies automatically" everywhere the token is used —
+   it doesn't reach files keeping their own hardcoded copy instead of importing
+   the token, the exact drift class `tokens.css`'s own header comment already
+   warns about. Found and fixed two more real, live instances of the OLD,
+   pre-fix `#8B95A1`: `bank-mfe/MapView.tsx`'s `MAP_CARD_TEXT_TERTIARY` constant
+   (11 real call sites) and 17 real usages across 5 saronite mini-apps
+   (reward-tasks, pay-bills, insurance_mini_app, partner-demo, wallet-balance),
+   both against the same light `#F2F4F6`/`#FFFFFF` backgrounds the original fix
+   targeted. Also checked (before assuming) `services/blog/src/styles.css`'s own
+   `#8b95a1` — correctly left alone: that page is dark-mode-only, and the same
+   hex as light-on-dark text there measures 5.48-6.4:1, comfortably passing.
+2. **FIXED (item 240, 2026-08-07).** `success` (green) on white failed contrast at
+   every threshold in light mode (`#04c065`, 2.40:1, below even 3.0:1). Darkened to
+   `#05804a` (5.01:1, comfortably clears AA-normal-text 4.5:1), same hue family, same
+   fix already used for dark mode's own `#20d394`. Applied to the real single source
+   of truth (`packages/design-tokens/tokens.css` `--toss-green`) and its two mirrors
+   (Android `IdsSemanticColors.kt` `IdsLightSemanticColors.success`, iOS `IDS.swift`
+   `IDS.Colors.success` — the latter previously didn't exist at all; real screens used
+   SwiftUI's raw system `Color.green` directly, `#34c759`, which measured even worse
+   at 2.22:1). iOS call sites swapped from `Color.green` to `IDS.Colors.success`:
+   `BikeRentalScreenView.swift`, `ParkingScreenView.swift`, `InvestScreenView.swift`,
+   `TalkScreen.swift`. Two more real duplicate hardcoded `#04C065` text colors found
+   via repo-wide grep and fixed the same way: `packages/saronite/mini-apps/
+   reward-tasks/pages/index.tsx` (`rewardAmount`) and `.../insurance_mini_app/pages/
+   index.tsx` (`policyStatus`) — both real text-on-white-card usages, same failure
+   mode. Dark mode's `#20d394` (9.12:1) was already passing and left unchanged.
 3. **Brand blue, danger red, and white-on-blue-button all fail AA-normal-text (4.5:1)
    but pass AA-large/UI (3.0:1) in light mode.** This is fine for buttons and icons
    (UI-component threshold applies) but means these colors must not be used for
    small/normal-weight body text in light mode — only for button labels (which are
    typically bold/large enough) or icons/borders.
-4. Not yet fixed: doing so requires either brightening `--toss-grey-500` (has a
-   downstream ripple through every consumer of `TdsSemanticColors.textTertiary` /
-   `IDS.Colors.textTertiary` / `--toss-grey-500` across Android/iOS/web, so it's a
-   deliberate design-system decision, not a one-line patch) or restricting where
-   `textTertiary`/light-mode `success` are allowed to render. Left open rather than
-   patched blind.
+4. Both open items above (findings #1 and #2) are now fixed as of 2026-08-07 — see
+   items 240/241. No open color-contrast findings remain in this section.
 
 ## 2. Icon-only interactive elements without an accessible name
 
@@ -112,23 +149,52 @@ Other `Image(systemName:)` usages checked and left alone:
 - `ContentView.swift`'s `HeaderTitle`'s `bell.fill` is not wrapped in a `Button` —
   it's a static, non-interactive decorative image next to a heading, not an
   accessibility violation.
-- `AgreementWidget.swift` / `PaymentMethodWidget.swift` — icons inside `Button`s
-  that also contain `Text()` (terms checkbox, payment method rows). Not a hard
-  violation (each button has a text label), but not deeply verified for
-  SwiftUI's per-child accessibility-element merging — flagged as a follow-up, not
-  fixed. Could now actually be checked with the real simulator `ARCHITECTURE.md`
-  §3's major-correction note describes (VoiceOver can run in the iOS Simulator),
-  but wasn't re-visited in that pass — left open, no longer for lack of a
-  toolchain, just not yet done.
+- **FIXED (item 242, 2026-08-07).** `AgreementWidget.swift` / `PaymentMethodWidget.swift`
+  — icons inside `Button`s that also contain `Text()` (terms checkbox, payment
+  method rows). SwiftUI's `Button` already merges its subviews into one spoken
+  accessibility element by default, so this was never a hard "unlabeled control"
+  violation — but the checkbox/selection-indicator icons (`checkmark.square.fill`/
+  `square`, `checkmark.circle.fill`/`circle`) had no explicit accessibility
+  treatment, so their raw SF Symbol names would get folded into the combined
+  spoken label as redundant noise alongside the real text, and selected/checked
+  state was conveyed only by which icon shape was showing rather than through the
+  standard `.isSelected` accessibility trait. Fixed by marking the purely
+  decorative icons `.accessibilityHidden(true)` and adding
+  `.accessibilityAddTraits(.isSelected)` to each `Button` when checked/selected.
+  **Caveat, stated plainly:** this environment has `xcodebuild`/`xcrun` present but
+  `xcrun simctl list devices` shows zero configured simulator devices, so this was
+  resolved via documented Apple accessibility-API behavior (merge-by-default
+  `Button`, `accessibilityHidden`, `.isSelected` trait are all real, standard
+  SwiftUI APIs, not invented), not a live VoiceOver run — genuinely still open if
+  "verified live" is the bar, closed if "correct per documented platform
+  behavior" is.
 
 **Build-verification status corrected (2026-07-11):** this was written when "no
 macOS/Xcode toolchain in this environment" was believed true. It wasn't —
 `ARCHITECTURE.md` §3's major-correction note has the full account. A real
 `xcodebuild ... BUILD SUCCEEDED` now exists covering every Swift file this
 document's fixes touched (`ItundaAppScreen.kt`'s Android side was already
-build-verified throughout). The `AgreementWidget`/`PaymentMethodWidget` item above
-is the one real accessibility question this document leaves open that the
-now-available simulator could resolve but hasn't yet.
+build-verified throughout). As of 2026-08-07 this environment's `xcrun simctl
+list devices` shows zero configured simulator devices, so a live VoiceOver/
+XCUITest run isn't currently possible here — the `AgreementWidget`/
+`PaymentMethodWidget` item above was resolved via documented platform behavior
+instead (see its own note for exactly what that does and doesn't cover).
+
+**Re-audited against current Android code (item 242, 2026-08-07):** this section's
+original sweep only covered the 2026-07-11 `ItundaAppScreen.kt`, which has since
+been split across `:app` and 8 feature modules with a much larger surface. A fresh
+repo-wide grep of every `contentDescription = null` (43 occurrences, 15 files)
+found 42 correctly decorative (each paired with adjacent visible `Text()` in the
+same clickable container/row, matching this section's own established triage
+rule) and one genuine bug: `SuperAppTabs.kt`'s Hood-tab neighborhood-switcher
+location-pin icon had its own independent `.clickable`, separate from the
+neighborhood-name `Text()`'s own separate `.clickable` right next to it — making
+the icon a distinct, unlabeled clickable accessibility node (TalkBack would
+announce a bare "Button") and leaving a real tap dead-zone between icon and text.
+Fixed by wrapping icon+text in one shared inner `Row` with a single `.clickable`,
+scoped narrowly to just those two (the outer `Row` also holds the unrelated
+Search/Notifications/Menu icons as later siblings, so the fix couldn't just move
+onto the whole outer row).
 
 ## 3. Touch target size
 
@@ -320,16 +386,108 @@ every tab — the pattern (tap the real tab bar, assert accessibility-tree
 position matches visual position) is proven and directly reusable for any
 future screen.
 
+## 7. Web micro-frontends (item 244, 2026-08-07 — first audit, previously zero coverage)
+
+Every section above (1-6) covered only Android and iOS. `services/micro-frontends/`
+(bank-mfe, merchant-mfe, ops-mfe, kyc-mfe, pay-checkout, host-app) — real, live,
+user-facing web surfaces — had never been accessibility-audited at all until this
+pass. Two sweeps, both real bugs found and fixed, not a clean-bill-of-health report:
+
+**Form labels.** `<label>` without `htmlFor`/`id` isn't automatically a bug — the
+dominant, correct pattern across this codebase (`LoginPage.tsx`, `RegisterPage.tsx`,
+most `merchant-mfe/screens/*.tsx`) wraps the `<input>` as the label's own descendant,
+which needs no `htmlFor` at all. Found one real exception: `PlaceSearchInput`
+(`bank-mfe/BankDashboard.tsx`, used 5× for ride/rental pickup+dropoff fields) had its
+`<label>` as a plain *sibling* of `<input>`, with no association of either kind —
+neither click-to-focus nor a screen reader's field name worked. Fixed with
+`useId()` wiring `htmlFor`/`id`. Found one related, different-class bug in the same
+pass: a bill-split "Ladder game" toggle was a bare `<label onClick=...>` with no
+associated control at all — not in the tab order, not activatable via Enter/Space.
+Changed to a real `<button type="button">`. A follow-up check of `ops-mfe`'s own
+`<label>`-without-`htmlFor` hits confirmed those match the same correct wrapping
+pattern — no bug. `kyc-mfe`, `pay-checkout`, and `host-app` have no `<label>` at
+all; checking why surfaced a third, more consequential real bug: `kyc-mfe`'s real
+KYC identity-document submission form (`KycDashboard.tsx`) had its document-number
+and document-reference fields relying entirely on `placeholder` text for their
+name — not a substitute for a real label (WCAG 3.3.2), and it disappears the
+moment anyone starts typing, for every user, not just screen-reader users. This is
+itunda's real identity-verification submission flow, not a low-stakes form. Fixed
+with `aria-label` (this minimalist single-column wizard has no room shown in its
+CSS for a persistent visible caption per field, so `aria-label` is the fix that
+doesn't require a visual redesign).
+
+**Icon-only interactive elements without an accessible name** — the same category
+as Android/iOS §2 above, applied to web for the first time. Repo-wide sweep of
+every `<button>` (707 across `services/micro-frontends/*/src/`, only 37
+pre-existing `aria-label` uses) found 10 real violations, all fixed with a
+descriptive `aria-label` (using real per-item data for the label wherever
+available, e.g. `` `Decrease quantity of ${line.product.name}` ``, rather than a
+generic string): `BankDashboard.tsx`'s emoticon-store sticker picker, both 1:1/
+group chat Send buttons, both cancel-reply "×" buttons, both modal-close "×"
+buttons; `MapView.tsx`'s bookmark-folder color-swatch picker (also missing
+`type="button"` — a real bug risk inside a form, and now carries `aria-pressed`
+for the selected swatch); `merchant-mfe/PosScreen.tsx`'s cart quantity +/-
+buttons. `ops-mfe`, `kyc-mfe`, `pay-checkout`, and `host-app` had no genuine
+icon-only violations in this pass.
+
+**Touch target size** — WCAG 2.5.8 Target Size (Minimum), a 2.2-era AA-level
+criterion (not 2.5.5's AAA-only 44×44) requiring 24×24 CSS pixels unless an
+exception applies. First pass fixed 6 violations among the icon-only buttons
+already in hand from the label sweep. A full follow-up sweep of all 707 buttons
+across every micro-frontend found 16 more, all icon-only with zero/near-zero
+padding: 14 in `BankDashboard.tsx` — 11 of them one exact copy-pasted style
+object (`{ display: 'flex', color: 'var(--toss-grey-700)' }`) reused across every
+screen's "Back" navigation button plus a group-chat header's 3 icons (fixed in
+one pass since the style string was byte-identical everywhere), plus the
+stock-detail back/watchlist-star toggle, main dashboard sign-out, and the chat
+emoji-reaction-picker trigger; 2 more in `merchant-mfe/PosScreen.tsx`'s
+product-option-group and price-tier row editors. All bumped to a real ≥24×24px
+clickable area via padding. Deliberately left alone: the two chat "Cancel reply"
+"×" buttons, which sit inline within a flowing text sentence ("Replying to: ...
+×") — WCAG 2.5.8's own "inline" exception covers targets constrained by
+surrounding text's line-height, and forcing padding there would have broken the
+sentence's visual flow to satisfy a rule that doesn't apply. `ops-mfe`,
+`kyc-mfe`, `pay-checkout`, and `host-app` confirmed to have zero touch-target
+violations — this category is now a genuine full sweep, not a partial one.
+
+**Keyboard-inoperable click targets** — the same bug class as the "Ladder game"
+toggle above (a plain `<label onClick=...>`/`<div onClick=...>` with no
+`role="button"`/`tabIndex`, unreachable via keyboard or screen reader), swept
+across every micro-frontend. Found 3 more real instances, all in
+`BankDashboard.tsx`: the notification-list row (mark as read), the
+stock-watchlist row (open stock detail), and a community post card (open post —
+which also has a *different*, already-keyboard-accessible nested "Remove"
+button with its own `stopPropagation`, so only the card's own primary action was
+unreachable). All 3 fixed with `role="button"`, `tabIndex={0}`, and an
+`onKeyDown` handling Enter/Space (native click doesn't fire from keyboard Enter
+on a `<div>` even once it's focusable). Modal backdrops' click-outside-to-close
+and `stopPropagation` guards were correctly left alone — neither is a
+user-facing action needing its own keyboard affordance.
+
+Verified: `bank-mfe`, `merchant-mfe`, and `ops-mfe` all `tsc -b` + `vite build`
+clean on every change. **Not yet audited on web:** color contrast (the
+token-level fixes in §1 above apply automatically since every micro-frontend
+imports the same `packages/design-tokens/tokens.css`, but no independent
+web-specific contrast pass has been run), Dynamic Type/OS text-zoom equivalent,
+and focus *order* specifically (this pass fixed keyboard *reachability* for
+previously-unreachable elements, a different, narrower claim than verifying the
+resulting tab sequence actually matches visual layout the way §6's real
+XCUITest/Espresso tests did for Android/iOS) — these three categories remain
+genuinely open on web, not verified-clean.
+
 ## Status
 
 Corresponds to the `docs/TOSS_RWANDA_ALIGNMENT.md` gap-list item "Add accessibility
 checks for touch targets, contrast, form labels, and focus" — contrast and
-content-description/label checks are done (2 real color-contrast defects documented
-above, left open pending a design-system-level fix; all content-description/label
+content-description/label checks are done on Android/iOS (the 2 color-contrast
+defects documented in §1 are now fixed, item 240/241; all content-description/label
 bugs found were fixed), touch-target sizing is checked and the one real gap found
 (Android's `TopIconButton`) is fixed, form labels are audited and both bugs found
 are fixed, Dynamic Type/font scaling is audited and all 19 real bugs found (all on
 iOS) are fixed, focus order is now real, live-verified on both platforms across
 all 5 tabs (XCUITest on iOS — 6/6 passing; `androidx.compose.ui.test` on
 Android — 6/6 passing). Every item in the original gap list now has real,
-non-speculative, full-coverage verification behind it on both platforms.
+non-speculative, full-coverage verification behind it on Android and iOS. Web
+micro-frontends got their first-ever pass in §7 (form labels + icon-only buttons,
+10+2 real bugs found and fixed) — contrast/touch-target/Dynamic-Type/focus-order
+on web remain open, unaudited categories, not verified-clean ones.

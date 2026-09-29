@@ -2,14 +2,15 @@
    android/core/designsystem and ios/Core/DesignSystem's real values, real dark mode
    included. Previously this file hand-copied its own :root block, independently from
    bank-mfe's identical copy -- see the package's own header for the drift that
-   caused (bank-mfe's --toss-green had silently diverged to Apple's system green). */
+   caused (bank-mfe's --itunda-green had silently diverged to Apple's system green). */
 @import "@itunda/design-tokens/tokens.css";
+@import "@itunda/design-system-web/styles.css";
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background-color: var(--toss-grey-100);
-  color: var(--toss-grey-900);
+  font-family: var(--itunda-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
+  background-color: var(--itunda-surface-subtle);
+  color: var(--itunda-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -19,8 +20,8 @@ body {
   max-width: 480px;
   margin: 0 auto;
   min-height: 100svh;
-  background-color: var(--toss-grey-100);
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+  background-color: var(--itunda-surface-default);
+  box-shadow: none;
   position: relative;
   overflow-x: hidden;
 }
@@ -42,19 +43,34 @@ button:active {
   transform: scale(0.96);
 }
 
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--itunda-brand);
+  outline-offset: 2px;
+}
+
+.itunda-btn {
+  min-height: var(--itunda-touch-target-recommended, 48px);
+}
+
 /* Shared card/button primitives BankDashboard already relies on (bank-mfe's own
    copy of these classes, since Module Federation doesn't share CSS across remotes
    automatically). */
-.toss-card {
-  background: var(--toss-white);
-  border-radius: var(--toss-radius-md);
-  padding: 24px;
-  box-shadow: var(--toss-shadow);
-  margin-bottom: 16px;
-  transition: var(--toss-transition);
+.itunda-card {
+  /* IDS flat composition: grouping comes from spacing and a quiet divider,
+     not floating white cards and shadows. */
+  background: transparent;
+  border-radius: 0;
+  padding: var(--itunda-content-gap, 16px) 0;
+  border: 0;
+  border-bottom: 1px solid var(--itunda-border-default);
+  box-shadow: none;
+  margin-bottom: 0;
+  transition: background-color var(--itunda-motion-fast) var(--itunda-ease-out);
 }
 
-.toss-btn {
+.itunda-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -65,14 +81,14 @@ button:active {
   width: 100%;
 }
 
-.toss-btn-primary {
-  background-color: var(--toss-blue);
-  color: var(--toss-white);
+.itunda-btn-primary {
+  background-color: var(--itunda-button-primary-fill);
+  color: var(--itunda-text-inverse);
 }
 
-.toss-btn-secondary {
-  background-color: var(--toss-grey-100);
-  color: var(--toss-grey-800);
+.itunda-btn-secondary {
+  background-color: var(--itunda-button-secondary-fill);
+  color: var(--itunda-button-secondary-text);
 }
 
 @keyframes shimmer {
@@ -81,8 +97,8 @@ button:active {
 }
 
 .skeleton {
-  background: #f6f7f8;
-  background-image: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%);
+  background: var(--itunda-skeleton-base);
+  background-image: linear-gradient(to right, var(--itunda-skeleton-base) 0%, var(--itunda-skeleton-highlight) 20%, var(--itunda-skeleton-base) 40%, var(--itunda-skeleton-base) 100%);
   background-repeat: no-repeat;
   background-size: 800px 100%;
   animation-duration: 1s;
@@ -95,9 +111,9 @@ button:active {
 /* Host shell tab bar, switching between the federated bank_mfe and kyc_mfe remotes. */
 .host-tabbar {
   display: flex;
-  border-bottom: 1px solid var(--toss-grey-200);
+  border-bottom: 1px solid var(--itunda-grey-200);
   padding: 0 20px;
-  background: var(--toss-white);
+  background: var(--itunda-surface-default);
 }
 
 .host-tab {
@@ -105,11 +121,24 @@ button:active {
   padding: 16px 0;
   font-size: 15px;
   font-weight: 600;
-  color: var(--toss-grey-500);
+  color: var(--itunda-text-tertiary);
   border-bottom: 2px solid transparent;
 }
 
 .host-tab-active {
-  color: var(--toss-blue);
-  border-bottom-color: var(--toss-blue);
+  color: var(--itunda-brand);
+  border-bottom-color: var(--itunda-brand);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button,
+  .itunda-card,
+  .skeleton {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  button:active {
+    transform: none;
+  }
 }

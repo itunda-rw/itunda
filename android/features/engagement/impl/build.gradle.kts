@@ -18,3 +18,8 @@ android {
         jvmTarget = "17"
     }
 }
+
+
+dependencies {
+    implementation(project(":features:engagement:api"))
+}

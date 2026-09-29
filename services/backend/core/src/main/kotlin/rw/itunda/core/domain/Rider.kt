@@ -12,8 +12,8 @@ enum class RiderStatus { ACTIVE, SUSPENDED }
 
 /**
  * A real itunda user who has opted into delivering Eats orders -- reuses the user's own
- * existing MAIN wallet as the payout destination (same real WALLET-to-WALLET disbursement
- * precedent `PayrollService` already established for employee pay), no new wallet type or
+ * existing MAIN account as the payout destination (same real ACCOUNT-to-ACCOUNT disbursement
+ * precedent `PayrollService` already established for employee pay), no new account type or
  * external payout rail needed. `available` is a real self-reported online/offline toggle.
  * `currentLatitude`/`currentLongitude` (2026-07-19) close the "no real GPS/location
  * tracking" limitation this doc comment used to name -- `Merchant`/`EatsOrder` already
@@ -31,8 +31,8 @@ class Rider(
     @Column(name = "user_id", nullable = false, unique = true, length = 64)
     val userId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
@@ -53,5 +53,5 @@ class Rider(
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 ) {
-    protected constructor() : this(id = "", userId = "", walletId = "")
+    protected constructor() : this(id = "", userId = "", accountId = "")
 }

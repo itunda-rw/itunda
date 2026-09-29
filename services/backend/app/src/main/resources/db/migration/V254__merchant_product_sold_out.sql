@@ -1,0 +1,1 @@
+ALTER TABLE merchant_products ADD COLUMN sold_out BOOLEAN NOT NULL DEFAULT FALSE;

@@ -11,63 +11,37 @@ spec:
     targetPort: 4001
   type: ClusterIP
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: backend-stable
-  namespace: itunda
-spec:
-  selector:
-    app: backend
-  ports:
-  - port: 4001
-    targetPort: 4001
-  type: ClusterIP
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: backend-canary
-  namespace: itunda
-spec:
-  selector:
-    app: backend
-  ports:
-  - port: 4001
-    targetPort: 4001
-  type: ClusterIP
----
-apiVersion: argoproj.io/v1alpha1
-kind: Rollout
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: backend
   namespace: itunda
 spec:
-  replicas: 4
+  # Real architecture simplification (2026-08-11) -- see this repo's own live
+  # incident write-up in production/policies.yaml's HPA comment: this was an
+  # argoproj.io/v1alpha1 Rollout with a canary strategy depending on Istio traffic
+  # splitting between backend-stable/backend-canary Services. On a genuine single
+  # node, canary-ing between two pods on the SAME physical box gives none of Argo
+  # Rollouts' real value (testing a change against a subset of real DISTRIBUTED
+  # traffic before full rollout) -- it only added deploy latency (the 5m/10m pause
+  # steps below, now removed) and another controller to keep healthy (the
+  # argo-rollouts controller itself had 1000+ restarts and was stuck in a
+  # "Degraded" reconciliation state the night this was converted). A plain
+  # Deployment with a standard RollingUpdate removes both the mesh-sidecar
+  # overhead (see the now-removed sidecar.istio.io/* annotations below) and the
+  # rollout controller dependency, for a service that was never actually getting
+  # real canary protection here in the first place.
+  replicas: 1
   minReadySeconds: 10
   revisionHistoryLimit: 5
   selector:
     matchLabels:
       app: backend
   strategy:
-    canary:
-      stableService: backend-stable
-      canaryService: backend-canary
-      trafficRouting:
-        istio:
-          virtualServices:
-          - name: backend
-            routes:
-            - primary
-      steps:
-      - setWeight: 10
-      - pause:
-          duration: 5m
-      - setWeight: 25
-      - pause:
-          duration: 10m
-      - setWeight: 50
-      - pause: {}
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
@@ -76,10 +50,6 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/path: "/actuator/prometheus"
         prometheus.io/port: "4001"
-        sidecar.istio.io/proxyCPU: "50m"
-        sidecar.istio.io/proxyCPULimit: "200m"
-        sidecar.istio.io/proxyMemory: "64Mi"
-        sidecar.istio.io/proxyMemoryLimit: "128Mi"
     spec:
       enableServiceLinks: false
       terminationGracePeriodSeconds: 30
@@ -101,7 +71,26 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
       - name: backend
-        image: ghcr.io/itunda/backend:latest
+        # Keep a re-apply reproducible: pin the current audited private-registry
+        # artifact by content digest, not a mutable tag.
+        # Updated 2026-08-11 -- the prior digest (a2dff51d...) developed a corrupted
+        # manifest in the private registry ("unrecognized manifest schema version 0",
+        # HTTP 500 on HEAD) discovered live while deploying this same resource-limit
+        # fix, unrelated to it -- any fresh pod scheduling would hit ImagePullBackOff
+        # regardless of resource limits, since it could never re-pull. This digest is
+        # a real, freshly built+pushed image (Discover personalization, Section 42's
+        # itunda Bank split, and this file's own resource-limit fix, all baked in),
+        # built locally (not on this node, to avoid competing with it for memory
+        # during compilation) and pushed via this node's own local docker daemon
+        # after a `docker save`/`multipass transfer`/`docker load` hop -- the build
+        # machine's docker daemon (colima, its own isolated VM) couldn't reach this
+        # node's registry directly.
+        # Reverted 2026-08-11 -- briefly tried adding spring.main.lazy-initialization:
+        # true (digest f09e1a47...) as a second startup-time lever; live-measured at
+        # 165.7s, slower than this digest's own proven 95s (see application.yml's own
+        # doc comment for the full real-evidence account of why). Back to this digest,
+        # unchanged otherwise.
+        image: 192.168.252.4:32000/itunda/backend@sha256:666c1978c2dc75a4843d5d3f4f6294177438e5250164db8a6bfc3713daf83110
         ports:
         - containerPort: 4001
         env:
@@ -137,33 +126,122 @@ spec:
             configMapKeyRef:
               name: itunda-redis-config
               key: port
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-kafka-config
+              key: bootstrap-servers
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
               name: itunda-jwt-secret
               key: secret
+        - name: ITUNDA_CORS_ALLOWED_ORIGINS
+          value: "https://itunda.duckdns.org,http://localhost:5000,http://localhost:5001,http://localhost:5002,http://localhost:5003,http://localhost:5004,http://localhost:5005"
+        - name: UPLOAD_DIR
+          value: "/uploads"
+        # Real self-hosted OSRM/Nominatim (2026-07-27) -- these containers run directly
+        # on this same node (itunda-dc-a, 192.168.252.4), not as k8s-managed pods, reached
+        # via the node's own IP + published host ports. These vars were never actually
+        # set on this manifest (only ever patched ad hoc onto the live cluster object,
+        # a Deployment predating this Rollout) -- every maps search/reverse/directions
+        # call silently no-op'd via application.yml's own "empty means fall back" default
+        # until this was found and fixed live. Committing them here so a future
+        # `kubectl apply -f` of this manifest can't silently regress the same outage.
+        - name: OSRM_BASE_URL
+          value: "http://192.168.252.4:5000"
+        - name: OSRM_FOOT_BASE_URL
+          value: "http://192.168.252.4:5001"
+        - name: NOMINATIM_BASE_URL
+          value: "http://192.168.252.4:8088"
+        # Real heap-ergonomics fix (2026-07-27) -- the JVM's default MaxHeapSize is 25%
+        # of the container's *memory limit*, so even a generous limit gave only ~512MB
+        # of real heap unless told otherwise. Discovered live while chasing an
+        # intermittent multi-second-to-90-second hang that turned out to have a
+        # different root cause entirely (a real infinite loop in
+        # MerchantBookingService.getAvailableSlots, see that file's own git history) --
+        # kept anyway since a 25%-of-limit heap is genuinely too tight for this app's
+        # size now, real hygiene on its own merits.
+        - name: JAVA_TOOL_OPTIONS
+          value: "-XX:MaxRAMPercentage=70 -XX:InitialRAMPercentage=50"
+        volumeMounts:
+        - name: uploads
+          mountPath: /uploads
         resources:
+          # cpu request lowered 500m->200m (2026-07-24): this single-node,
+          # 2-vCPU cluster runs at ~100% CPU *requests* just from system pods
+          # (kube-apiserver/etcd/controller-manager/istiod) plus the other
+          # itunda services -- 500m left zero headroom and caused real
+          # "Insufficient cpu" FailedScheduling on this exact redeploy.
           requests:
             memory: "512Mi"
-            cpu: "500m"
+            cpu: "200m"
+          # Explicit limits restored (2026-08-11) -- the 2026-07-27 fix above removed
+          # limits entirely and relied on the itunda-limits namespace LimitRange's
+          # default instead, which was RAISED the same pass (memory 512Mi->2Gi,
+          # cpu 500m->2) to fix a real measured 49%-throttling bug. That solved
+          # throttling but also removed backend's only memory ceiling: a live
+          # investigation (2026-08-11, prompted by the whole node showing
+          # kube-controller-manager/kube-scheduler/argo-rollouts/backend all
+          # crash-looping with 200-1000+ restarts) found this container's real RSS
+          # already at ~1066Mi with NOTHING stopping it from growing toward the
+          # LimitRange's full 2Gi default on a node with only 5.8Gi total, of which
+          # ~2.2-2.5Gi is already consumed by real non-k8s processes (a host-level
+          # Kafka broker, MySQL, and the control plane itself) -- one container
+          # allowed to claim over a third of total node memory on an already
+          # memory-starved node is a real OOM/eviction risk, not a hypothetical one.
+          # 1536Mi/1500m keeps ~44% headroom above the observed 1066Mi (well clear of
+          # the throttling this container hit under the old 512Mi/500m-equivalent
+          # cap) while capping it far short of starving Kafka/MySQL/the control
+          # plane. See infra/k8s/production/policies.yaml's own LimitRange doc
+          # comment for the matching default-lowering half of this fix.
           limits:
-            memory: "1Gi"
-            cpu: "1000m"
+            memory: "1536Mi"
+            cpu: "1500m"
         startupProbe:
           httpGet:
             path: /actuator/health
             port: 4001
-          failureThreshold: 30
+          # failureThreshold raised 30->60 (2026-08-11) -- real fallout from this same
+          # file's own cpu limit fix above (unbounded/2-core LimitRange default -> an
+          # explicit 1500m): live logs showed a real, honest cold boot (174 JPA
+          # repositories, Hibernate metadata + EntityManagerFactory init, 9 real Flyway
+          # migrations) still mid-Hibernate-init at the 5-minute mark under the new,
+          # tighter CPU cap, at which point kubelet killed it for exceeding the OLD
+          # 300s (30*10s) budget -- a real, measured regression the resource-limit fix
+          # introduced, not a code bug. 60*10s = 600s gives real headroom above the
+          # observed boot time instead of guessing; the container's steady-state
+          # request-serving readiness (readinessProbe below) is unaffected either way.
+          failureThreshold: 60
           periodSeconds: 10
+          timeoutSeconds: 5
         readinessProbe:
           httpGet:
             path: /actuator/health
             port: 4001
           initialDelaySeconds: 30
           periodSeconds: 10
+          timeoutSeconds: 5
         livenessProbe:
           httpGet:
             path: /actuator/health
             port: 4001
           initialDelaySeconds: 45
           periodSeconds: 15
+          # Real fix (2026-07-27) -- Kubernetes' own 1s default timeout is far too tight
+          # for a JVM under any real GC/request-processing load; this cluster's
+          # payment-service/ledger-service each had 60-70 restarts before this same fix
+          # was applied to all 4 services, all consistent with kubelet hard-killing
+          # containers that were still alive, just briefly slow to answer a probe.
+          timeoutSeconds: 5
+      # Real photo upload storage (2026-07-24) -- see UploadController's own doc
+      # comment. hostPath, not a PVC/storage class, because this private-cloud
+      # deployment is a genuine single node (itunda-dc-a) -- a hostPath here is
+      # exactly as durable as a PVC would be on one node, without needing a
+      # provisioner this cluster doesn't have. Revisit if the cluster ever becomes
+      # genuinely multi-node again.
+      volumes:
+      - name: uploads
+        hostPath:
+          path: /srv/itunda-uploads
+          type: DirectoryOrCreate

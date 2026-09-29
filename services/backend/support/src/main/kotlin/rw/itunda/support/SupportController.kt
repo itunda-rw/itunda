@@ -9,12 +9,14 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.SupportTicketCategory
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.support.SupportService
 import rw.itunda.core.support.SupportTransactionNotFoundException
-import rw.itunda.core.support.SupportTransactionNotOwnedException
 import rw.itunda.core.web.ApiError
+import java.time.Duration
 
 data class CreateTicketRequest(val transactionId: String, val category: SupportTicketCategory, val description: String)
 
@@ -26,13 +28,28 @@ data class CreateTicketRequest(val transactionId: String, val category: SupportT
  */
 @RestController
 @RequestMapping("/api/v1/support")
-class SupportController(private val supportService: SupportService) {
+class SupportController(private val supportService: SupportService, private val rateLimiter: RateLimiter) {
+
+    // Real bug found live (2026-08-02): ticket creation had no real rate limit at all
+    // -- every other real content/request-creation endpoint in this codebase
+    // (VehicleValuationService.registerVehicle, IkiminaService.createIkimina,
+    // WeeklySavingsService, ...) already gates on rateLimiter.checkLimit. Without one
+    // here, an authenticated caller could spam-create tickets against their own real
+    // transaction ids without limit, each one a real row a real support reviewer has
+    // to triage (and, for ACCOUNT_TAKEOVER, each one real-freezing a account). :support
+    // didn't depend on :auth before this fix (SupportService itself lives in :core,
+    // which :auth depends ON -- the limiter can't live there without a circular
+    // dependency), so the check is applied here in the controller instead, the same
+    // module boundary VehicleValuationService's own real rate limit already respects.
+    private val CREATE_TICKET_LIMIT = 10
+    private val CREATE_TICKET_WINDOW: Duration = Duration.ofHours(1)
 
     @PostMapping("/tickets")
     fun createTicket(
         @RequestBody request: CreateTicketRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any>> {
+        rateLimiter.checkLimit("support:create-ticket:${currentUser.userId}", limit = CREATE_TICKET_LIMIT, window = CREATE_TICKET_WINDOW)
         val ticket = supportService.createTicket(currentUser.userId, request.transactionId, request.category, request.description)
         return ResponseEntity.ok(mapOf("success" to true, "ticket" to ticket))
     }
@@ -45,7 +62,7 @@ class SupportController(private val supportService: SupportService) {
     fun handleNotFound(ex: SupportTransactionNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("TRANSACTION_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(SupportTransactionNotOwnedException::class)
-    fun handleNotOwned(ex: SupportTransactionNotOwnedException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("TRANSACTION_NOT_OWNED", ex.message ?: "Forbidden"))
+    @ExceptionHandler(RateLimitExceededException::class)
+    fun handleRateLimit(ex: RateLimitExceededException) =
+        ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
 }

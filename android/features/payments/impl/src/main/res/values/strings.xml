@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Real Kinyarwanda/English localization for TransferFlow.kt (2026-08-08), the third
+  screen in the phased rollout, following :app's LoginScreen.kt/OverviewScreen.kt (see
+  docs/DESIGN_REFERENCES.md Section 19). This feature module had no res/ directory at
+  all before this. RecipientEntryScreen/TransferAmountScreen/DeviceStepUpDialog are all
+  reached from the same real send-money flow (ItundaAppScreen.kt wires them to the real
+  backend via MainViewModel.sendTransfer), so translated together as one unit, matching
+  bank-mfe's own TransferFlow scope exactly. Same honesty note as every prior screen:
+  the rw strings are a careful, good-faith translation, NOT verified by a native
+  speaker.
+-->
+<resources>
+    <string name="transfer_recipient_headline">Which account should\nwe send to?</string>
+    <string name="transfer_recipient_input_label">Enter phone or account number</string>
+    <string name="transfer_recipient_input_description">Phone or account number, up to 16 digits</string>
+    <string name="transfer_select_bank">Select bank</string>
+    <string name="transfer_select_bank_hint">Optional, for your own reference</string>
+    <string name="transfer_tab_account">Account</string>
+    <string name="transfer_tab_friends">Friends</string>
+    <string name="transfer_search_friends_placeholder">Search by name</string>
+    <string name="transfer_search_friends_description">Search friends by name</string>
+    <string name="transfer_contacts_label">Contacts</string>
+    <string name="transfer_add_contact">+ Add</string>
+    <string name="transfer_cancel">Cancel</string>
+    <string name="transfer_contact_name_placeholder">Name</string>
+    <string name="transfer_contact_name_description">Contact name</string>
+    <string name="transfer_contact_phone_placeholder">Phone number</string>
+    <string name="transfer_contact_phone_description">Contact phone number</string>
+    <string name="transfer_save_contact">Save contact</string>
+    <string name="transfer_no_contacts">No saved contacts yet — add one above to send faster next time.</string>
+    <string name="transfer_next">Next</string>
+    <string name="transfer_from_account">From Itunda Account</string>
+    <string name="transfer_available_balance">Available RWF %1$s</string>
+    <string name="transfer_to_account">To account %1$s</string>
+    <string name="transfer_new_recipient">New recipient</string>
+    <string name="transfer_scam_warning_title">Caution needed before this transfer</string>
+    <string name="transfer_scam_warning_body">This recipient has been reported by %1$d other itunda users. Double-check before sending.</string>
+    <string name="transfer_scam_reported_thanks">Thanks — this number has been reported.</string>
+    <string name="transfer_report_scam">Report this number as a scam</string>
+    <string name="transfer_amount_question">How much to send?</string>
+    <string name="transfer_amount_max">Max</string>
+    <string name="transfer_amount_insufficient">Not enough balance — you have RWF %1$s</string>
+    <string name="transfer_send">Send</string>
+    <string name="transfer_delete_digit">Delete</string>
+</resources>

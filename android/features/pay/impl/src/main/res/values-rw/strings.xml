@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="overview_card_number">Ikarita •••• %1$s</string>
+    <string name="overview_card_active">Irakora</string>
+    <string name="overview_card_frozen">Yahagaritswe</string>
+    <string name="overview_teaser_cards">Nta karita ufite</string>
+    <string name="overview_teaser_cards_cta">Bona ikarita</string>
+    <string name="pay_points_pay_money_row">Amanota · Pay Money</string>
+    <string name="pay_your_coupons_row">Amakuponi yawe</string>
+    <string name="pay_request_money_row">Saba amafaranga</string>
+    <string name="pay_coupon_box_title">Agasanduku k\'amakuponi</string>
+    <string name="pay_coupons_received">Amakuponi yakiriwe %1$d</string>
+    <string name="pay_coupons_used_expired">Yakoreshejwe / yarangiye %1$d</string>
+    <string name="pay_coupons_empty_title">Nta kuponi ufite</string>
+    <string name="pay_coupons_empty_subtitle">Ushaka amakuponi ushobora kubona ubu?</string>
+    <string name="pay_coupons_find_new">Shakisha amakuponi mashya</string>
+    <string name="pay_coupons_none_used">Ntiwigeze ukoresha ikuponi.</string>
+    <string name="pay_membership_title">Ubunyamuryango</string>
+    <string name="pay_membership_total">Ubunyamuryango buhujwe</string>
+    <string name="pay_membership_available_points">Amanota uhari</string>
+    <string name="pay_membership_pay_money">Pay Money</string>
+    <string name="pay_membership_store_points">Amanota y\'amaduka</string>
+    <string name="home_cash_out">Kubikuza</string>
+    <string name="home_send">Ohereza</string>
+    <string name="pay_money_detail_title">itunda Pay Money</string>
+    <string name="pay_money_add">Ongeramo amafaranga</string>
+    <string name="pay_money_history_only">Reba amakuru y\'ubwishyu gusa</string>
+    <string name="pay_money_empty">Nta makuru abonetse</string>
+    <string name="add_money_title">Ongeramo amafaranga</string>
+    <string name="add_money_from">Uhereye kuri</string>
+    <string name="add_money_amount">Umubare (RWF)</string>
+    <string name="add_money_no_source">Nta yindi konti ya itunda ufite yo kongeramo amafaranga kugeza ubu.</string>
+    <string name="add_money_submit">Ongeramo amafaranga</string>
+    <string name="add_money_submitting">Birimo kongerwamo…</string>
+    <string name="add_money_error">Ntibyakunze kurangiza iyi nyongera.</string>
+    <string name="back">Subira inyuma</string>
+    <string name="pay_picker_title">Hitamo uko wishyura</string>
+    <string name="pay_picker_recent">Vuba aha</string>
+    <string name="pay_picker_account">Konti</string>
+    <string name="pay_picker_card">Ikarita</string>
+    <string name="pay_picker_linked_accounts">Konti zihujwe</string>
+</resources>

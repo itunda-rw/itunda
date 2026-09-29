@@ -6,6 +6,7 @@
   "description": "itunda's engineering blog — tech.itunda.rw, modeled on toss.tech",
   "scripts": {
     "dev": "vite",
+    "prebuild": "cd ../.. && node scripts/audit-ids.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },

@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -16,17 +17,40 @@ import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
+import java.time.Instant
 
 // imageUrl/originalPrice added 2026-07-21 (see MerchantProduct.kt's own doc comment) --
 // both optional; discountPercent is deliberately NOT part of this request, it's always
-// server-computed from price/originalPrice, never trusted from the client.
+// server-computed from price/originalPrice, never trusted from the client. description
+// added 2026-07-21, also optional, backing the new product-detail screen.
 data class AddProductRequest(
     val name: String,
     val price: BigDecimal,
     val imageUrl: String? = null,
     val originalPrice: BigDecimal? = null,
+    val description: String? = null,
+    val durationMinutes: Int? = null,
+    // Real Kakao Hair Shop-style prepay-to-book (2026-07-25) -- see
+    // BookingDeposit.kt's own doc comment. Only valid with durationMinutes set.
+    val requiresPrepay: Boolean = false,
+    val stockQuantity: Int? = null,
 )
-data class AddMenuOptionGroupRequest(val name: String, val choices: List<MenuOptionChoiceRequest>)
+data class UpdateProductStockRequest(val stockQuantity: Int? = null)
+data class SetSurplusDealRequest(val expiresAt: Instant? = null, val stockQuantity: Int? = null)
+data class SetSoldOutRequest(val soldOut: Boolean)
+data class AddMenuOptionGroupRequest(
+    val name: String,
+    val choices: List<MenuOptionChoiceRequest>,
+    // Real multi-select optional add-ons (2026-07-26) -- see MenuOptionGroup.kt's own
+    // doc comment. Defaults preserve the original v1 "exactly one required choice"
+    // behavior for any caller not yet passing these.
+    val required: Boolean = true,
+    val multiSelect: Boolean = false,
+)
+
+// Real bulk/wholesale pricing (2026-07-25) -- see ProductPriceTier's own doc comment.
+data class PriceTierDto(val minQuantity: Int, val unitPrice: BigDecimal)
+data class SetPriceTiersRequest(val tiers: List<PriceTierDto>)
 
 // Real merchant product-catalog endpoints -- the register-software half of "Toss
 // Place" (see MerchantProductService's own doc comment). Not money-moving, so no
@@ -44,7 +68,9 @@ class MerchantProductController(
         @RequestBody request: AddProductRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val product = merchantProductService.addProduct(currentUser.userId, request.name, request.price, request.imageUrl, request.originalPrice)
+        val product = merchantProductService.addProduct(
+            currentUser.userId, request.name, request.price, request.imageUrl, request.originalPrice, request.description, request.durationMinutes, request.requiresPrepay, request.stockQuantity,
+        )
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "product" to product))
     }
 
@@ -58,8 +84,65 @@ class MerchantProductController(
         @RequestBody request: AddProductRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val product = merchantProductService.updateProduct(currentUser.userId, productId, request.name, request.price, request.imageUrl, request.originalPrice)
+        val product = merchantProductService.updateProduct(
+            currentUser.userId, productId, request.name, request.price, request.imageUrl, request.originalPrice, request.description, request.durationMinutes, request.requiresPrepay, request.stockQuantity,
+        )
         return ResponseEntity.ok(mapOf("success" to true, "product" to product))
+    }
+
+    // Stock is intentionally a focused operation: a cashier replenishing a shelf
+    // must not re-submit or accidentally erase the product's pricing, description,
+    // booking, or discount settings just to change availability.
+    @PatchMapping("/{productId}/stock")
+    fun updateStock(
+        @PathVariable productId: String,
+        @RequestBody request: UpdateProductStockRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val product = merchantProductService.updateStockQuantity(currentUser.userId, productId, request.stockQuantity)
+        return ResponseEntity.ok(mapOf("success" to true, "product" to product))
+    }
+
+    // Real 마감할인 (closing/surplus discount) toggle -- see
+    // MerchantProductService.setSurplusDeal's own doc comment. `expiresAt = null`
+    // clears the deal.
+    @PatchMapping("/{productId}/surplus-deal")
+    fun setSurplusDeal(
+        @PathVariable productId: String,
+        @RequestBody request: SetSurplusDealRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val product = merchantProductService.setSurplusDeal(currentUser.userId, productId, request.expiresAt, request.stockQuantity)
+        return ResponseEntity.ok(mapOf("success" to true, "product" to product))
+    }
+
+    // Real Baemin CEO app/DoorDash-style "86" (temporarily mark sold out) toggle -- see
+    // MerchantProductService.setSoldOut's own doc comment.
+    @PatchMapping("/{productId}/sold-out")
+    fun setSoldOut(
+        @PathVariable productId: String,
+        @RequestBody request: SetSoldOutRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val product = merchantProductService.setSoldOut(currentUser.userId, productId, request.soldOut)
+        return ResponseEntity.ok(mapOf("success" to true, "product" to product))
+    }
+
+    // Real Coupang WING 상품분석 (product analytics) report -- see
+    // MerchantProductService.getProductAnalytics's own doc comment.
+    @GetMapping("/{productId}/analytics")
+    fun getProductAnalytics(
+        @PathVariable productId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (product, orders) = merchantProductService.getProductAnalytics(currentUser.userId, productId)
+        return ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "viewCount" to product.viewCount,
+                "orderCount" to orders,
+            ),
+        )
     }
 
     @DeleteMapping("/{productId}")
@@ -71,17 +154,23 @@ class MerchantProductController(
         return ResponseEntity.ok(mapOf("success" to true, "product" to product))
     }
 
-    // Real menu-item option groups (2026-07-21, v1: required single-select only) -- see
-    // MenuOptionService.addOptionGroup's own doc comment for the full account.
+    // Real menu-item option groups (2026-07-21; multi-select optional add-ons added
+    // 2026-07-26) -- see MenuOptionService.addOptionGroup's own doc comment.
     @PostMapping("/{productId}/option-groups")
     fun addOptionGroup(
         @PathVariable productId: String,
         @RequestBody request: AddMenuOptionGroupRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val view = menuOptionService.addOptionGroup(currentUser.userId, productId, request.name, request.choices)
+        val view = menuOptionService.addOptionGroup(currentUser.userId, productId, request.name, request.choices, request.required, request.multiSelect)
         return ResponseEntity.status(HttpStatus.CREATED).body(
-            mapOf("success" to true, "optionGroup" to mapOf("id" to view.group.id, "name" to view.group.name, "choices" to view.choices)),
+            mapOf(
+                "success" to true,
+                "optionGroup" to mapOf(
+                    "id" to view.group.id, "name" to view.group.name, "required" to view.group.required,
+                    "multiSelect" to view.group.multiSelect, "choices" to view.choices,
+                ),
+            ),
         )
     }
 
@@ -95,7 +184,9 @@ class MerchantProductController(
         return ResponseEntity.ok(
             mapOf(
                 "success" to true,
-                "optionGroups" to views.map { mapOf("id" to it.group.id, "name" to it.group.name, "choices" to it.choices) },
+                "optionGroups" to views.map {
+                    mapOf("id" to it.group.id, "name" to it.group.name, "required" to it.group.required, "multiSelect" to it.group.multiSelect, "choices" to it.choices)
+                },
             ),
         )
     }
@@ -109,6 +200,27 @@ class MerchantProductController(
         menuOptionService.removeOptionGroup(currentUser.userId, productId, groupId)
         return ResponseEntity.ok(mapOf("success" to true))
     }
+
+    // Real bulk/wholesale pricing (2026-07-25) -- see MerchantProductService
+    // .setPriceTiers's own doc comment.
+    @PostMapping("/{productId}/price-tiers")
+    fun setPriceTiers(
+        @PathVariable productId: String,
+        @RequestBody request: SetPriceTiersRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val tiers = merchantProductService.setPriceTiers(
+            currentUser.userId, productId, request.tiers.map { PriceTierRequest(it.minQuantity, it.unitPrice) },
+        )
+        return ResponseEntity.ok(mapOf("success" to true, "tiers" to tiers))
+    }
+
+    // Real public read (owner or buyer -- no ownership gate), same convention
+    // getOptionGroups above already established -- a buyer needs real tier pricing
+    // visible before ordering.
+    @GetMapping("/{productId}/price-tiers")
+    fun getPriceTiers(@PathVariable productId: String): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "tiers" to merchantProductService.getPriceTiers(productId)))
 
     @ExceptionHandler(MerchantNotFoundException::class)
     fun handleMerchantNotFound(ex: MerchantNotFoundException) =
@@ -126,6 +238,22 @@ class MerchantProductController(
     fun handleInvalidDiscount(ex: InvalidProductDiscountException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PRODUCT_DISCOUNT", ex.message ?: "Bad request"))
 
+    @ExceptionHandler(InvalidProductDurationException::class)
+    fun handleInvalidDuration(ex: InvalidProductDurationException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PRODUCT_DURATION", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidStockQuantityException::class)
+    fun handleInvalidStock(ex: InvalidStockQuantityException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_STOCK_QUANTITY", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidSurplusDealException::class)
+    fun handleInvalidSurplusDeal(ex: InvalidSurplusDealException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_SURPLUS_DEAL", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidPriceTierException::class)
+    fun handleInvalidPriceTier(ex: InvalidPriceTierException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PRICE_TIER", ex.message ?: "Bad request"))
+
     @ExceptionHandler(MerchantProductNotFoundException::class)
     fun handleProductNotFound(ex: MerchantProductNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_PRODUCT_NOT_FOUND", ex.message ?: "Not found"))
@@ -140,5 +268,5 @@ class MerchantProductController(
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =
-        ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMIT_EXCEEDED", ex.message ?: "Too many requests"))
+        ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
 }

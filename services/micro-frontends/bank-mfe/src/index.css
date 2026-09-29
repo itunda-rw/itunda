@@ -1,17 +1,64 @@
 /* Toss color tokens -- single source of truth (2026-07-11), matching
    android/core/designsystem and ios/Core/DesignSystem's real values, real dark mode
    included. Previously this file hand-copied its own :root block, independently from
-   host-app's identical copy, and had drifted (--toss-green was Apple's iOS system
+   host-app's identical copy, and had drifted (--itunda-green was Apple's iOS system
    green #34c759, not Toss's real green500 #04C065) -- see the package's own header. */
 @import "@itunda/design-tokens/tokens.css";
 
+/* Defensive hygiene fix (2026-08-10): no box-sizing reset existed anywhere in this file,
+   so the default content-box model added every element's padding/border ON TOP of its
+   specified width instead of inside it -- e.g. LoginPage's card (`width: 360px, padding:
+   32px`) actually renders at 424px content-box width. An initial live headless-Chrome
+   screenshot at a claimed 390px viewport appeared to show this overflowing off-screen,
+   but that screenshot method turned out to be unreliable (Chrome's `--headless
+   --screenshot --window-size=W,H` CLI flags silently render at a fixed ~500px internal
+   width regardless of the requested size and crop the output image -- confirmed via a
+   proper CDP `Emulation.setDeviceMetricsOverride` capture, which showed the *original*
+   pre-border-box code rendering correctly at a real 390px width with no overflow at all).
+   So: no real user-facing bug was found or fixed here. border-box is kept anyway as a
+   real, standard, harmless improvement (every real CSS reset -- Toss's own site included
+   -- ships this from day one) since it makes every fixed-width+padding combination in
+   this file behave predictably regardless of viewport, which content-box does not
+   guarantee -- verified via the same reliable CDP method to cause zero visual
+   regression on this screen. LoginPage's width/padding were also left as the safer
+   `width: 100%, maxWidth: 360px` + outer 16px padding shape, for the same reason. */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background-color: var(--toss-grey-100);
-  color: var(--toss-grey-900);
+  font-family: var(--itunda-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
+  /* Real Toss reference (2026-08-24, direct user directive, screenshots of Toss's
+     Finance menu/All apps grid/Pay Money detail/membership list): every one of those
+     real screens sits on a pure white page canvas, not grey-100 -- grey-100 is reserved
+     for genuinely inset fills (search bars, chips, segmented-control tracks), never the
+     page itself. Previously this was grey-100 app-wide, which is the classic
+     "grey canvas + white cards" dashboard look, but itunda's own flat-design direction
+     (see .itunda-card's own header below) means most screens no longer have that
+     grey-vs-white contrast to justify -- see .itunda-card's new border for how cards
+     stay visually distinct now that the page under them is white too. */
+  background-color: var(--itunda-surface-default);
+  color: var(--itunda-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Real screen-reader-only utility (docs/DESIGN_REFERENCES.md §14) -- for content that
+   should reach an aria-live announcement or a screen reader's own reading order without
+   being visible on screen (e.g. Talk's new-message live region). The standard "clip"
+   pattern: display:none would remove it from the accessibility tree entirely, which
+   defeats the purpose. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 #root {
@@ -19,8 +66,8 @@ body {
   max-width: 480px;
   margin: 0 auto;
   min-height: 100svh;
-  background-color: var(--toss-grey-100);
-  box-shadow: 0 0 20px rgba(0,0,0,0.05);
+  background-color: var(--itunda-surface-default);
+  box-shadow: none;
   position: relative;
   overflow-x: hidden;
 }
@@ -36,41 +83,103 @@ button {
   cursor: pointer;
   font-family: inherit;
   padding: 0;
-  transition: transform 0.1s ease-in-out;
+  /* Real fix (2026-08-24): every button's press-feedback timing, itunda's single
+     most-repeated animation touchpoint, used a generic `ease-in-out` -- now the
+     real Toss `out` curve (--itunda-ease-out, see tokens.css's own sourcing
+     comment), matching Android/iOS's identical port of the same real value. */
+  transition: transform 0.1s var(--itunda-ease-out);
 }
 
 button:active {
   transform: scale(0.96);
 }
 
-.toss-card {
-  background: var(--toss-white);
-  border-radius: var(--toss-radius-md);
-  padding: 24px;
-  box-shadow: var(--toss-shadow);
-  margin-bottom: 16px;
-  transition: var(--toss-transition);
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+a[href]:focus-visible {
+  outline: 2px solid var(--itunda-brand);
+  outline-offset: 2px;
 }
 
-.toss-btn {
+input, textarea, select {
+  font-family: inherit;
+}
+
+
+.itunda-card {
+  /* IDS flat composition: grouping comes from spacing and a quiet divider,
+     not floating white cards and shadows. */
+  background: transparent;
+  border-radius: 0;
+  padding: var(--itunda-content-gap, 16px) 0;
+  border: 0;
+  border-bottom: 1px solid var(--itunda-border-default);
+  box-shadow: none;
+  margin-bottom: 0;
+  transition: background-color var(--itunda-motion-fast) var(--itunda-ease-out);
+}
+
+/* Real Toss Bank home reference (2026-08-21/22, direct user directive: "our bank
+   home screen should look 100% like toss bank screen") -- itunda Bank's own
+   product catalog (Save & Grow / SACCO / Ikimina / weekly & 31-day savings /
+   auto-transfer / mini account etc.) is one continuous flat list on real Toss,
+   not a grid of separate white shadowed cards. Same flat treatment already
+   shipped this session on Android's ShellSection and iOS's
+   AccountLedgerDetailRow -- no background/shadow/rounded-card box, just a thin
+   bottom divider between sections so the list still reads as separated content. */
+.itunda-flat-section {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--itunda-grey-100);
+}
+
+.itunda-flat-section:last-child {
+  border-bottom: none;
+}
+
+.itunda-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px 20px;
-  border-radius: 14px;
+  min-height: 48px;
+  padding: 12px 20px;
+  /* Real fix (2026-08-11, UI-consistency audit): was a hardcoded 14px matching no
+     token at all -- itunda-card two rules above uses the real --itunda-radius-md
+     (16px) token, so a card and the button sitting inside it had two subtly
+     different corner curvatures, a small but real "doesn't quite match" signal.
+     Snapped to the same token both should share. */
+  border-radius: var(--itunda-radius-md);
   font-weight: 600;
   font-size: 16px;
   width: 100%;
 }
 
-.toss-btn-primary {
-  background-color: var(--toss-blue);
-  color: var(--toss-white);
+.itunda-btn-primary {
+  background-color: var(--itunda-brand);
+  color: var(--itunda-surface-default);
 }
 
-.toss-btn-secondary {
-  background-color: var(--toss-grey-100);
-  color: var(--toss-grey-800);
+.itunda-btn-secondary {
+  background-color: var(--itunda-grey-100);
+  color: var(--itunda-grey-800);
+}
+
+/* No disabled state existed for .itunda-btn at all -- a disabled button
+   (busy, already submitted, already enrolled) looked pixel-identical to an
+   active one, giving no visual signal that a tap wouldn't do anything. */
+.itunda-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Referenced by DevicesView's "Remove" button and, since 2026-07-21, weekly
+   savings' "Cancel plan" button -- both real destructive actions that were
+   silently falling back to unstyled default button chrome (no color rule ever
+   existed for this class, even though it was already in use). */
+.itunda-btn-danger {
+  background-color: var(--itunda-field-border-error);
+  color: var(--itunda-surface-default);
 }
 
 /* Animations */
@@ -80,8 +189,8 @@ button:active {
 }
 
 .skeleton {
-  background: #f6f7f8;
-  background-image: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%);
+  background: var(--itunda-skeleton-base);
+  background-image: linear-gradient(to right, var(--itunda-skeleton-base) 0%, var(--itunda-skeleton-highlight) 20%, var(--itunda-skeleton-base) 40%, var(--itunda-skeleton-base) 100%);
   background-repeat: no-repeat;
   background-size: 800px 100%;
   animation-duration: 1s;
@@ -90,3 +199,76 @@ button:active {
   animation-name: shimmer;
   animation-timing-function: linear;
 }
+
+/* itundaface reaction-glyph hover animations (2026-08-22, direct user follow-up:
+   "toss and kakao they use animated graphics for better interactions"). Real,
+   sourced grounding: Toss's own real motion strategy names "symbolic animated
+   icons" and states their Tossface homepage itself uses "mouse-over and
+   click-triggered emoji animations" (toss.im/tossfeed/article/why-motion-in-finance,
+   fetched directly) -- KakaoTalk's own real emoticon platform overwhelmingly
+   favors animated over static (emoticonstudio.kakao.com's real submission spec:
+   animated packs outperform static ones so heavily that "static stickers are hard
+   to find in the top 20"). Neither precedent is a continuous idle loop -- both are
+   TRIGGERED by a real interaction moment, matching itunda's own restraint
+   principle (motion only when it serves a real, statable purpose, see
+   project_itunda_product_feel's own gate on this) -- so these fire once on hover
+   (the quick-react picker's own deliberate "choosing" moment), not on a timer.
+   `animation-fill-mode: forwards` + a React `key` remount on each hover-start
+   (see ItundaFace.tsx) is what makes the SAME element replay the animation on
+   every hover, not just the first. */
+@keyframes itdf-heartbeat {
+  0% { transform: scale(1); }
+  20% { transform: scale(1.16); }
+  40% { transform: scale(0.98); }
+  60% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+@keyframes itdf-nod {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(-10deg); }
+  55% { transform: rotate(9deg); }
+  80% { transform: rotate(-3deg); }
+  100% { transform: rotate(0deg); }
+}
+@keyframes itdf-shake {
+  0% { transform: translateY(0) rotate(0deg); }
+  20% { transform: translateY(-2px) rotate(-4deg); }
+  40% { transform: translateY(0) rotate(4deg); }
+  60% { transform: translateY(-1px) rotate(-3deg); }
+  80% { transform: translateY(0) rotate(2deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+@keyframes itdf-pop {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.22); }
+  55% { transform: scale(0.94); }
+  80% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+@keyframes itdf-droop {
+  0% { transform: rotate(0deg) translateY(0); }
+  40% { transform: rotate(6deg) translateY(2px); }
+  70% { transform: rotate(-2deg) translateY(1px); }
+  100% { transform: rotate(0deg) translateY(0); }
+}
+.itdf-anim-heart { transform-origin: 50% 60%; animation: itdf-heartbeat 0.7s ease-out forwards; }
+.itdf-anim-thumbsup { transform-origin: 50% 90%; animation: itdf-nod 0.5s ease-out forwards; }
+.itdf-anim-laughing { transform-origin: 50% 50%; animation: itdf-shake 0.55s ease-out forwards; }
+.itdf-anim-wow { transform-origin: 50% 50%; animation: itdf-pop 0.5s ease-out forwards; }
+.itdf-anim-sad { transform-origin: 50% 20%; animation: itdf-droop 0.6s ease-out forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .itdf-anim-heart, .itdf-anim-thumbsup, .itdf-anim-laughing, .itdf-anim-wow, .itdf-anim-sad {
+    animation: none;
+  }
+}
+
+/* IDS form anatomy: fields use the same 48px control rhythm, semantic focus ring, and full-width mobile-safe auth shell. */
+.itunda-auth-shell { width: 100%; max-width: 360px; padding: 16px 20px; display: flex; flex-direction: column; gap: var(--itunda-content-gap, 16px); }
+.itunda-auth-card { width: 100%; padding: 32px; display: flex; flex-direction: column; gap: var(--itunda-content-gap, 16px); }
+.itunda-field { display: flex; flex-direction: column; gap: 6px; }
+.itunda-field__label { font-size: 13px; line-height: 18px; font-weight: 600; color: var(--itunda-text-secondary); }
+.itunda-field__control { min-height: 48px; width: 100%; padding: 12px 14px; border: 1px solid var(--itunda-border-default); border-radius: var(--itunda-control-radius, 12px); background: var(--itunda-surface-default); color: var(--itunda-text-primary); font: inherit; font-size: 15px; outline: none; }
+.itunda-field__control:focus-visible, .itunda-field__select:focus-visible { border-color: var(--itunda-brand); box-shadow: 0 0 0 3px var(--itunda-focus-ring, rgba(116,114,244,.18)); }
+.itunda-field__select { min-height: 44px; padding: 8px 10px; border: 1px solid var(--itunda-border-default); border-radius: var(--itunda-control-radius, 12px); background: var(--itunda-surface-default); color: var(--itunda-text-secondary); font: inherit; outline: none; }
+.itunda-auth-error { margin: 0; color: var(--itunda-field-border-error); font-size: 13px; line-height: 18px; }
+@media (prefers-reduced-motion: reduce) { button { transition: none; } .skeleton { animation: none; } }

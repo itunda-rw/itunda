@@ -2,17 +2,24 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import federation from '@originjs/vite-plugin-federation'
 
+const remoteHost = process.env.VITE_REMOTE_HOST ?? 'localhost'
+const remoteBase = process.env.VITE_REMOTE_BASE ?? '/remotes'
+
+const remote = (name: string) =>
+  remoteBase.startsWith('http')
+    ? `${remoteBase}/${name}/assets/remoteEntry.js`
+    : `${remoteBase}/${name}/assets/remoteEntry.js`
+
 export default defineConfig({
+  base: '/',
   plugins: [
     react(),
-    // @ts-ignore -- same CJS/ESM default-export interop mismatch bank-mfe's and
-    // kyc-mfe's vite.config.ts already work around; federation() is callable
-    // at runtime.
+    // @ts-ignore -- vite-plugin-federation's CJS/ESM type interop is runtime-safe.
     federation({
       name: 'host_app',
       remotes: {
-        kyc_mfe: 'http://localhost:5001/assets/remoteEntry.js',
-        bank_mfe: 'http://localhost:5002/assets/remoteEntry.js',
+        kyc_mfe: remote('kyc'),
+        bank_mfe: remote('bank'),
       },
       shared: ['react', 'react-dom']
     })
@@ -24,6 +31,7 @@ export default defineConfig({
     cssCodeSplit: false
   },
   server: {
-    port: 5000
+    host: process.env.VITE_DEV_HOST ?? remoteHost,
+    port: Number(process.env.VITE_PORT ?? 5000)
   }
 })

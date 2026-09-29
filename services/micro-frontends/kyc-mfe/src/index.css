@@ -9,9 +9,9 @@
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background-color: var(--toss-grey-100);
-  color: var(--toss-grey-900);
+  font-family: var(--itunda-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
+  background-color: var(--itunda-surface-subtle);
+  color: var(--itunda-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -28,5 +28,5 @@ h1, h2, p {
 .kyc-app-shell {
   max-width: 400px;
   margin: 0 auto;
-  padding-top: 40px;
+  padding: var(--itunda-screen-padding-block, 16px) var(--itunda-screen-padding-inline, 20px);
 }

@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import React
+import CoreNetwork
 
 /// Direct iOS port of Android's `SaroniteBrownfieldModule`/`ItundaSaroniteHostBridge`
 /// (`android/app/.../miniapps/SaroniteBridge.kt`) -- itunda's own real, legacy
@@ -43,9 +44,33 @@ final class SaroniteBrownfieldModule: NSObject {
         }
     }
 
+    // Real gap found 2026-08-08 (super-app mini-program research pass, comparing this
+    // bridge against WeChat's own documented Mini Program model, which restricts
+    // outbound navigation to a pre-declared domain allowlist): this took any URL string
+    // and opened it with zero scheme/domain restriction -- an https link to anywhere,
+    // or another installed app's custom scheme. Mirrors the identical fix on Android's
+    // `SaroniteBridge.kt`'s own `openURL` -- same allowlist, same rationale (today's
+    // real callers are itunda's own first-party mini-apps, but the bridge itself had no
+    // structural defense if a lower-trust mini-app is ever loaded through Saronite
+    // later). Note, honestly scoped smaller than the Android fix: Android's bridge also
+    // gates every method behind a `requireScope`/`MiniAppSecurityContext` partner-scope
+    // check that this iOS bridge has no equivalent of at all yet, on any method -- that
+    // whole partner-scoping system is a real, separate, larger gap, not something to
+    // build inside this one fix.
     @objc func openURL(_ url: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
         guard let parsed = URL(string: url) else {
             reject("SARONITE_OPEN_URL_FAILED", "Invalid URL", nil)
+            return
+        }
+        let host = parsed.host?.lowercased()
+        let allowed: Bool
+        switch parsed.scheme?.lowercased() {
+        case "https": allowed = host != nil && (host == "itunda.rw" || host!.hasSuffix(".itunda.rw"))
+        case "tel", "mailto": allowed = true
+        default: allowed = false
+        }
+        guard allowed else {
+            reject("SARONITE_OPEN_URL_DENIED", "This mini-app tried to open a URL outside itunda's allowed domains: \(url)", nil)
             return
         }
         DispatchQueue.main.async {
@@ -55,27 +80,27 @@ final class SaroniteBrownfieldModule: NSObject {
         }
     }
 
-    @objc func getWalletBalance(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-        authorizedCall(path: "api/v1/wallet", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+    @objc func getAccountBalance(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/account", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
             var totalBalance = 0.0
             var currency = "RWF"
-            let wallets = ((root["wallets"] as? [[String: Any]]) ?? []).map { w -> [String: Any] in
+            let accounts = ((root["accounts"] as? [[String: Any]]) ?? []).map { w -> [String: Any] in
                 let balance = (w["balance"] as? NSNumber)?.doubleValue ?? 0
-                let walletCurrency = w["currency"] as? String ?? currency
+                let accountCurrency = w["currency"] as? String ?? currency
                 totalBalance += balance
-                currency = walletCurrency
+                currency = accountCurrency
                 return [
                     "id": w["id"] as? String ?? "",
                     "type": w["type"] as? String ?? "",
                     "name": w["accountName"] as? String ?? "",
                     "number": w["accountNumber"] as? String ?? "",
                     "balance": balance,
-                    "currency": walletCurrency,
+                    "currency": accountCurrency,
                     "icon": "",
                     "connected": true,
                 ]
             }
-            return ["totalBalance": totalBalance, "currency": currency, "wallets": wallets]
+            return ["totalBalance": totalBalance, "currency": currency, "accounts": accounts]
         }
     }
 
@@ -115,6 +140,90 @@ final class SaroniteBrownfieldModule: NSObject {
         }
     }
 
+    // Real Kakao Pay 자동납부 (automatic bill payment) -- see backend
+    // core/domain/BillAutoPaySetting.kt's own doc comment for the full sourced account.
+    // Wired to bank-mfe (2026-08-17, docs Section 162) and Android's SaroniteBridge.kt
+    // (2026-08-17, docs Section 163); this iOS bridge had getPendingBills/payBill since
+    // 2026-07-13 but never these four, even though the shared pay-bills mini-app UI
+    // (packages/saronite/mini-apps/pay-bills/pages/index.tsx) already calls all four --
+    // meaning the auto-pay section of that screen has been silently broken on iOS
+    // (every call rejecting with SARONITE_HTTP_ERROR/method-not-found) since Section 163
+    // shipped it, on this platform alone. `getBillProviders` is included alongside
+    // auto-pay for the same reason Android's own bridge added it in the same pass:
+    // `setAutoPay`/`clearAutoPay` take a real providerId (e.g. "b1"), distinct from
+    // `PendingBill.provider` (only ever a display name) -- without it the mini-app has
+    // no honest way to resolve which provider a user is registering. No scope check
+    // here (unlike Android's `requireScope`): this iOS bridge has no equivalent
+    // partner-scoping system on any method yet, matching getPendingBills/payBill above.
+    @objc func getBillProviders(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/bills/providers", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+            let providers = ((root["providers"] as? [[String: Any]]) ?? []).map(Self.mapBillProvider)
+            return ["providers": providers]
+        }
+    }
+
+    // Real gap closed 2026-09-07 (Bills product-completeness pass): bank-mfe's web
+    // BillsView.tsx has had "Buy airtime" since 2026-08-17, but this bridge -- the
+    // only path iOS has to Bills at all -- never did. `provider` is an empty string,
+    // not nil, when the mini-app's own picker has no selection ("Default provider"),
+    // matching every other method's non-optional String parameter here -- omitted
+    // from the request body entirely when blank, same as the backend's real optional
+    // `provider: String? = null` expects. Response shape is identical to payBill's,
+    // so it's parsed the same way rather than duplicating a mapper.
+    @objc func buyAirtime(
+        _ phoneNumber: String,
+        amount: NSNumber,
+        provider: String,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        var body: [String: Any] = ["phoneNumber": phoneNumber, "amount": amount]
+        if !provider.isEmpty { body["provider"] = provider }
+        authorizedCall(path: "api/v1/bills/airtime", method: "POST", body: body, resolve: resolve, reject: reject) { root in
+            let transaction = root["transaction"] as? [String: Any]
+            return [
+                "message": root["message"] as? String ?? "Airtime purchase successful",
+                "transactionId": transaction?["id"] as? String ?? "",
+                "referenceNumber": transaction?["referenceNumber"] as? String ?? "",
+                "status": transaction?["status"] as? String ?? "",
+            ]
+        }
+    }
+
+    @objc func getAutoPaySettings(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/bills/auto-pay", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+            let settings = ((root["autoPay"] as? [[String: Any]]) ?? []).map(Self.mapBillAutoPaySetting)
+            return ["autoPay": settings]
+        }
+    }
+
+    @objc func setAutoPay(
+        _ providerId: String,
+        accountNumber: String,
+        maxAmount: NSNumber,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        let body: [String: Any] = ["providerId": providerId, "accountNumber": accountNumber, "maxAmount": maxAmount]
+        authorizedCall(path: "api/v1/bills/auto-pay", method: "POST", body: body, resolve: resolve, reject: reject) { root in
+            var result: [String: Any] = [:]
+            if let setting = root["autoPay"] as? [String: Any] { result["autoPay"] = Self.mapBillAutoPaySetting(setting) }
+            return result
+        }
+    }
+
+    // DELETE with a query param, not a body -- matches Android's clearAutoPay exactly
+    // (BillsController.clearAutoPay takes `providerId` as a @RequestParam, not a path
+    // segment or JSON body). authorizedCall's body-gated headers (Content-Type/
+    // Idempotency-Key) are correctly skipped by passing body: nil, same as
+    // getPendingBills/getAutoPaySettings above -- this call moves no money and needs
+    // neither.
+    @objc func clearAutoPay(_ providerId: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        let allowed = CharacterSet.urlQueryAllowed
+        let encodedProviderId = providerId.addingPercentEncoding(withAllowedCharacters: allowed) ?? providerId
+        authorizedCall(path: "api/v1/bills/auto-pay?providerId=\(encodedProviderId)", method: "DELETE", body: nil, resolve: resolve, reject: reject) { _ in [:] }
+    }
+
     @objc func getRewardTasks(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
         authorizedCall(path: "api/v1/rewards/tasks", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
             let tasks = ((root["tasks"] as? [[String: Any]]) ?? []).map { t -> [String: Any] in
@@ -138,6 +247,50 @@ final class SaroniteBrownfieldModule: NSObject {
                 "message": root["message"] as? String ?? "Reward claimed",
                 "rewardAmount": (root["rewardAmount"] as? NSNumber)?.doubleValue ?? 0,
                 "newBalance": (root["newBalance"] as? NSNumber)?.doubleValue ?? 0,
+            ]
+        }
+    }
+
+    // Real Toss 만보기 (walking rewards) -- see Android's own SaroniteBridge.kt
+    // reportSteps/getTodaySteps for the same doc comment on why `steps` is honestly a
+    // manually-entered count, not a real CMPedometer reading (no sensor integration
+    // exists on either native host app yet).
+    // Real lottery-style bonus (item 248, docs/DESIGN_REFERENCES.md Section 15) --
+    // lotteryBonusWonTiers/-WonAmount/-Total and tiers (the real, stated per-tier odds)
+    // extended here so the mini-app can show the same disclosed-odds transparency
+    // Android's own identical addition already has -- this bridge previously silently
+    // dropped these fields since it only extracts what it explicitly names.
+    private func stepRewardTiers(_ root: [String: Any]) -> [[String: Any]] {
+        ((root["tiers"] as? [[String: Any]]) ?? []).map { tier in
+            [
+                "stepsRequired": (tier["stepsRequired"] as? NSNumber)?.intValue ?? 0,
+                "rewardAmount": (tier["rewardAmount"] as? NSNumber)?.doubleValue ?? 0,
+                "lotteryOdds": (tier["lotteryOdds"] as? NSNumber)?.doubleValue ?? 0,
+                "lotteryBonusAmount": (tier["lotteryBonusAmount"] as? NSNumber)?.doubleValue ?? 0,
+            ]
+        }
+    }
+
+    @objc func reportSteps(_ steps: NSNumber, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/rewards/steps", method: "POST", body: ["steps": steps.intValue], resolve: resolve, reject: reject) { root in
+            [
+                "steps": (root["steps"] as? NSNumber)?.intValue ?? 0,
+                "newlyEarnedTiers": (root["newlyEarnedTiers"] as? [NSNumber])?.map { $0.intValue } ?? [],
+                "newlyEarnedAmount": (root["newlyEarnedAmount"] as? NSNumber)?.doubleValue ?? 0,
+                "totalEarnedToday": (root["totalEarnedToday"] as? NSNumber)?.doubleValue ?? 0,
+                "lotteryBonusWonTiers": (root["lotteryBonusWonTiers"] as? [NSNumber])?.map { $0.intValue } ?? [],
+                "lotteryBonusWonAmount": (root["lotteryBonusWonAmount"] as? NSNumber)?.doubleValue ?? 0,
+                "lotteryBonusTotal": (root["lotteryBonusTotal"] as? NSNumber)?.doubleValue ?? 0,
+                "tiers": self.stepRewardTiers(root),
+            ]
+        }
+    }
+
+    @objc func getTodaySteps(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/rewards/steps/today", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+            [
+                "steps": (root["steps"] as? NSNumber)?.intValue ?? 0,
+                "tiers": self.stepRewardTiers(root),
             ]
         }
     }
@@ -174,6 +327,154 @@ final class SaroniteBrownfieldModule: NSObject {
         authorizedCall(path: "api/v1/insurance/enroll", method: "POST", body: ["planId": planId], resolve: resolve, reject: reject) { root in
             var result: [String: Any] = ["message": root["message"] as? String ?? "Enrolled"]
             if let policy = root["policy"] as? [String: Any] { result["policy"] = Self.mapPolicy(policy) }
+            return result
+        }
+    }
+
+    // Real Ejo Heza ya Moto-style premium savings fund -- see Android's own SaroniteBridge.kt
+    // createPremiumFund for the same doc comment. Row creation only, no Idempotency-Key
+    // required by the backend, though authorizedCall attaches one anyway (harmless: the
+    // backend's InsuranceController.createPremiumFund never reads that header).
+    @objc func createPremiumFund(
+        _ policyId: String,
+        dailyContribution: NSNumber,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        authorizedCall(path: "api/v1/insurance/policies/\(policyId)/premium-fund", method: "POST", body: ["dailyContribution": dailyContribution], resolve: resolve, reject: reject, parse: Self.mapPremiumFundResult)
+    }
+
+    // Money movement -- backend requires a real Idempotency-Key header
+    // (InsuranceController.contributeToFund's @RequestHeader), which authorizedCall
+    // already attaches on every call with a body (same as enrollInsurance above).
+    @objc func contributeToFund(
+        _ fundId: String,
+        amount: NSNumber,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        authorizedCall(path: "api/v1/insurance/premium-funds/\(fundId)/contribute", method: "POST", body: ["amount": amount], resolve: resolve, reject: reject, parse: Self.mapPremiumFundResult)
+    }
+
+    // Also money movement (refunds currentAmount back to the MAIN account) -- same real
+    // Idempotency-Key requirement as contributeToFund. body: [:] (not nil), same reasoning
+    // as requestEmailVerification above -- this is a real POST even with nothing to send.
+    @objc func cancelFund(_ fundId: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/insurance/premium-funds/\(fundId)/cancel", method: "POST", body: [:], resolve: resolve, reject: reject, parse: Self.mapPremiumFundResult)
+    }
+
+    @objc func getMyPremiumFunds(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/insurance/premium-funds", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+            let funds = ((root["funds"] as? [[String: Any]]) ?? []).map(Self.mapPremiumFund)
+            return ["success": root["success"] as? Bool ?? true, "funds": funds]
+        }
+    }
+
+    // Real claims filing -- mirrors Android's SaroniteBridge.kt submitClaim/getMyClaims.
+    // InsuranceController.submitClaim/getMyClaims existed on the backend with zero mobile
+    // client on either platform: the insurance mini-app only ever surfaced plans/policies/
+    // premium-funds. Not money-moving (only the ADMIN decide step pays out), so
+    // authorizedCall's always-attached Idempotency-Key header is harmless but unused,
+    // same as createPremiumFund above.
+    @objc func submitClaim(
+        _ policyId: String,
+        description: String,
+        amount: NSNumber,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        authorizedCall(path: "api/v1/insurance/claims", method: "POST", body: ["policyId": policyId, "description": description, "amount": amount], resolve: resolve, reject: reject) { root in
+            var result: [String: Any] = ["success": root["success"] as? Bool ?? true]
+            if let claim = root["claim"] as? [String: Any] { result["claim"] = Self.mapClaim(claim) }
+            return result
+        }
+    }
+
+    @objc func getMyClaims(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/insurance/claims", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+            let claims = ((root["claims"] as? [[String: Any]]) ?? []).map(Self.mapClaim)
+            return ["success": root["success"] as? Bool ?? true, "claims": claims]
+        }
+    }
+
+    // Real Rwanda NAIS-style parametric/weather-index crop insurance
+    // (WeatherIndexInsuranceController) -- mirrors Android's SaroniteBridge.kt additions.
+    // Structurally distinct from claims-based InsuranceController above: no individual
+    // claim is ever filed, a published district+season rainfall index auto-triggers
+    // payout for every enrolled policy at once. Had zero mobile client anywhere until now.
+    @objc func getCropIndexCatalog(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/insurance/crop-index/catalog", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+            let catalog = ((root["catalog"] as? [[String: Any]]) ?? []).map { c -> [String: Any] in
+                [
+                    "cropType": c["cropType"] as? String ?? "",
+                    "name": c["name"] as? String ?? "",
+                    "premiumRatePercent": (c["premiumRatePercent"] as? NSNumber)?.doubleValue ?? 0,
+                    "description": c["description"] as? String ?? "",
+                ]
+            }
+            return ["success": root["success"] as? Bool ?? true, "catalog": catalog]
+        }
+    }
+
+    @objc func getMyCropIndexPolicies(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/insurance/crop-index/policies", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+            let policies = ((root["policies"] as? [[String: Any]]) ?? []).map(Self.mapCropIndexPolicy)
+            return ["success": root["success"] as? Bool ?? true, "policies": policies]
+        }
+    }
+
+    @objc func enrollCropIndexPolicy(
+        _ cropType: String,
+        district: String,
+        season: String,
+        insuredAmount: NSNumber,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        authorizedCall(
+            path: "api/v1/insurance/crop-index/policies",
+            method: "POST",
+            body: ["cropType": cropType, "district": district, "season": season, "insuredAmount": insuredAmount],
+            resolve: resolve,
+            reject: reject
+        ) { root in
+            var result: [String: Any] = ["success": root["success"] as? Bool ?? true]
+            if let policy = root["policy"] as? [String: Any] { result["policy"] = Self.mapCropIndexPolicy(policy) }
+            return result
+        }
+    }
+
+    // Money movement in reverse only if the policy hasn't already paid out --
+    // WeatherIndexInsuranceService.cancel enforces that server-side; a real
+    // Idempotency-Key is attached by authorizedCall (same as the fund endpoints above).
+    @objc func cancelCropIndexPolicy(_ policyId: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/insurance/crop-index/policies/\(policyId)/cancel", method: "POST", body: [:], resolve: resolve, reject: reject) { root in
+            var result: [String: Any] = ["success": root["success"] as? Bool ?? true]
+            if let policy = root["policy"] as? [String: Any] { result["policy"] = Self.mapCropIndexPolicy(policy) }
+            return result
+        }
+    }
+
+    @objc func getCropIndexSeasonIndex(
+        _ district: String,
+        season: String,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        let allowed = CharacterSet.urlPathAllowed
+        let encodedDistrict = district.addingPercentEncoding(withAllowedCharacters: allowed) ?? district
+        let encodedSeason = season.addingPercentEncoding(withAllowedCharacters: allowed) ?? season
+        authorizedCall(path: "api/v1/insurance/crop-index/districts/\(encodedDistrict)/seasons/\(encodedSeason)/index", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+            var result: [String: Any] = ["success": root["success"] as? Bool ?? true]
+            if let index = root["index"] as? [String: Any] {
+                result["index"] = [
+                    "district": index["district"] as? String ?? "",
+                    "season": index["season"] as? String ?? "",
+                    "rainfallIndexPercent": (index["rainfallIndexPercent"] as? NSNumber)?.doubleValue ?? 0,
+                    "droughtThresholdPercent": (index["droughtThresholdPercent"] as? NSNumber)?.doubleValue ?? 0,
+                    "publishedAt": index["publishedAt"] as? String ?? "",
+                ]
+            }
             return result
         }
     }
@@ -233,6 +534,92 @@ final class SaroniteBrownfieldModule: NSObject {
         ]
     }
 
+    // Real backend shape: InsuranceController.submitClaim/getMyClaims return the raw
+    // InsuranceClaim entity (no remapping, unlike fundMap/policyMap above) -- field names
+    // read directly from core/domain/InsuranceClaim.kt. status is one of
+    // SUBMITTED/APPROVED/REJECTED; decisionReason is only set once an admin has decided it.
+    private static func mapClaim(_ c: [String: Any]) -> [String: Any] {
+        [
+            "id": c["id"] as? String ?? "",
+            "policyId": c["policyId"] as? String ?? "",
+            "description": c["description"] as? String ?? "",
+            "amount": (c["amount"] as? NSNumber)?.doubleValue ?? 0,
+            "status": c["status"] as? String ?? "SUBMITTED",
+            "submittedAt": c["submittedAt"] as? String ?? "",
+            "decisionReason": (c["decisionReason"] as? String) ?? NSNull(),
+        ]
+    }
+
+    // Real backend shape: WeatherIndexInsuranceController.policyMap -- read directly from
+    // that controller, not guessed. status is one of ENROLLED/PAYOUT_TRIGGERED/
+    // SEASON_ENDED_NO_PAYOUT/CANCELLED; payoutAt is null until a payout actually fires.
+    private static func mapCropIndexPolicy(_ p: [String: Any]) -> [String: Any] {
+        [
+            "id": p["id"] as? String ?? "",
+            "cropType": p["cropType"] as? String ?? "",
+            "district": p["district"] as? String ?? "",
+            "season": p["season"] as? String ?? "",
+            "insuredAmount": (p["insuredAmount"] as? NSNumber)?.doubleValue ?? 0,
+            "premiumAmount": (p["premiumAmount"] as? NSNumber)?.doubleValue ?? 0,
+            "status": p["status"] as? String ?? "ENROLLED",
+            "createdAt": p["createdAt"] as? String ?? "",
+            "payoutAt": (p["payoutAt"] as? String) ?? NSNull(),
+        ]
+    }
+
+    // Real backend shape: services/backend/insurance's InsuranceController.fundMap
+    // (POST .../premium-fund, POST .../contribute, POST .../cancel, GET premium-funds)
+    // -- read directly from InsuranceController.kt, not guessed.
+    private static func mapPremiumFund(_ f: [String: Any]) -> [String: Any] {
+        [
+            "id": f["id"] as? String ?? "",
+            "policyId": f["policyId"] as? String ?? "",
+            "targetAmount": (f["targetAmount"] as? NSNumber)?.doubleValue ?? 0,
+            "currentAmount": (f["currentAmount"] as? NSNumber)?.doubleValue ?? 0,
+            "dailyContribution": (f["dailyContribution"] as? NSNumber)?.doubleValue ?? 0,
+            "status": f["status"] as? String ?? "",
+            "createdAt": f["createdAt"] as? String ?? "",
+        ]
+    }
+
+    private static func mapPremiumFundResult(_ root: [String: Any]) -> [String: Any] {
+        var result: [String: Any] = ["success": root["success"] as? Bool ?? true]
+        if let fund = root["fund"] as? [String: Any] { result["fund"] = mapPremiumFund(fund) }
+        return result
+    }
+
+    // Real backend shape: services/backend/bills's BillsController.getProviders /
+    // BillsCatalog.providers -- read directly, not guessed. `id` (e.g. "b1") is the
+    // real key setAutoPay/clearAutoPay above take, distinct from PendingBill.provider
+    // above (only ever a display name). Matches Android's parseBillProvider exactly.
+    private static func mapBillProvider(_ p: [String: Any]) -> [String: Any] {
+        [
+            "id": p["id"] as? String ?? "",
+            "name": p["name"] as? String ?? "",
+            "category": p["category"] as? String ?? "",
+            "logo": p["logo"] as? String ?? "",
+            "isActive": p["isActive"] as? Bool ?? true,
+        ]
+    }
+
+    // Real backend shape: core/domain/BillAutoPaySetting.kt, returned as-is by
+    // BillsController's setAutoPay/getAutoPay (no remapping, same convention as
+    // mapPolicy/mapPremiumFund above). lastPaidBillId is null until
+    // BillAutoPayProcessor has actually run this setting once. Matches Android's
+    // parseBillAutoPaySetting exactly.
+    private static func mapBillAutoPaySetting(_ s: [String: Any]) -> [String: Any] {
+        [
+            "id": s["id"] as? String ?? "",
+            "userId": s["userId"] as? String ?? "",
+            "providerId": s["providerId"] as? String ?? "",
+            "accountNumber": s["accountNumber"] as? String ?? "",
+            "maxAmount": (s["maxAmount"] as? NSNumber)?.doubleValue ?? 0,
+            "active": s["active"] as? Bool ?? true,
+            "lastPaidBillId": (s["lastPaidBillId"] as? String) ?? NSNull(),
+            "createdAt": s["createdAt"] as? String ?? "",
+        ]
+    }
+
     private func authorizedCall(
         path: String,
         method: String,
@@ -268,8 +655,12 @@ final class SaroniteBrownfieldModule: NSObject {
                 return
             }
             guard (200..<300).contains(http.statusCode) else {
+                // Real gap (2026-08-30, see Android's SaroniteBridge.kt sibling fix) --
+                // every mini-app error surfaced the raw JSON dump instead of ApiError.message.
                 let bodyString = String(data: data, encoding: .utf8) ?? ""
-                reject("SARONITE_HTTP_ERROR", "itunda API returned \(http.statusCode): \(bodyString)", nil)
+                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                let message = (json ?? nil)?["message"] as? String
+                reject("SARONITE_HTTP_ERROR", message ?? "itunda API returned \(http.statusCode): \(bodyString)", nil)
                 return
             }
             guard let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {

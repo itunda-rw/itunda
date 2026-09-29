@@ -7,12 +7,15 @@
   "workspaces": [
     "packages/shared-utils",
     "packages/design-tokens",
+    "packages/design-system-web",
+    "packages/itunda-pay-widget",
     "services/micro-frontends/*",
     "services/api-gateway"
   ],
   "scripts": {
     "dev": "bash ./scripts/local-ecosystem.sh web-dev",
     "dev:web": "bash ./scripts/local-ecosystem.sh web-dev",
+    "dev:lan": "bash ./scripts/local-ecosystem.sh web-lan",
     "dev:infra": "bash ./scripts/local-ecosystem.sh infra",
     "dev:backend": "bash ./scripts/local-ecosystem.sh backend",
     "dev:gateway": "bash ./scripts/local-ecosystem.sh gateway",
@@ -44,6 +47,7 @@
     "private-cloud:mode:full": "bash ./scripts/private-cloud-platform-mode.sh full",
     "private-cloud:mode:status": "bash ./scripts/private-cloud-platform-mode.sh status",
     "private-cloud:progressive": "bash ./scripts/private-cloud-platform.sh deploy-progressive",
+    "private-cloud:release:inventory": "bash ./scripts/private-cloud-platform.sh release-inventory",
     "private-cloud:kafka-replication": "bash ./scripts/private-cloud-platform.sh deploy-kafka",
     "private-cloud:kafka:status": "bash ./scripts/private-cloud-kafka-drill.sh status",
     "private-cloud:kafka:drill": "bash ./scripts/private-cloud-kafka-drill.sh drill",
@@ -74,15 +78,20 @@
     "private-cloud:observability:install-vm-metrics": "bash ./scripts/private-cloud-observability.sh install-vm-metrics",
     "private-cloud:observability:run-vm-metrics": "bash ./scripts/private-cloud-observability.sh run-vm-metrics",
     "private-cloud:observability:status": "bash ./scripts/private-cloud-observability.sh status",
+    "private-cloud:mysql:backup": "bash ./scripts/private-cloud-mysql-backup.sh backup",
+    "private-cloud:mysql:install-backup-timer": "bash ./scripts/private-cloud-mysql-backup.sh install-timer",
     "private-cloud:topics": "bash ./scripts/private-cloud-kafka-topics.sh ensure",
     "private-cloud:topics:list": "bash ./scripts/private-cloud-kafka-topics.sh list",
     "private-cloud:deploy": "bash ./scripts/private-cloud-deploy.sh deploy",
     "build": "bash ./scripts/local-ecosystem.sh web-build",
     "build:web": "bash ./scripts/local-ecosystem.sh web-build",
-    "lint": "oxlint",
-    "lint:web": "bash ./scripts/local-ecosystem.sh web-lint"
+    "lint": "oxlint --format=stylish",
+    "lint:web": "bash ./scripts/local-ecosystem.sh web-lint",
+    "depcruise": "depcruise --config .dependency-cruiser.cjs \"services/micro-frontends/**/src/**/*.{ts,tsx}\" \"packages/*/src/**/*.{ts,tsx}\" \"services/api-gateway/**/*.{ts,tsx}\"",
+    "audit:ids": "node ./scripts/audit-ids.mjs"
   },
   "devDependencies": {
+    "dependency-cruiser": "^16.10.0",
     "oxlint": "^1.69.0",
     "typescript": "~6.0.2"
   },

@@ -6,20 +6,28 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.GroupAccount
+import rw.itunda.core.domain.GroupAccountContribution
+import rw.itunda.core.domain.GroupAccountDuesReminder
 import rw.itunda.core.domain.GroupAccountMember
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.User
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.GroupAccountContributionRepository
+import rw.itunda.core.repository.GroupAccountDuesReminderRepository
 import rw.itunda.core.repository.GroupAccountMemberRepository
 import rw.itunda.core.repository.GroupAccountRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.account.AccountNumberGenerator
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.Optional
@@ -27,8 +35,8 @@ import java.util.Optional
 /** First test coverage for the real Kakao Bank 모임통장 (group account) equivalent. */
 class GroupAccountServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String, type: WalletType = WalletType.MAIN, balance: BigDecimal = BigDecimal("100000")) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
+    fun account(id: String, userId: String, type: AccountType = AccountType.MAIN, balance: BigDecimal = BigDecimal("100000")) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
         type = type, balance = balance, availableBalance = balance,
     )
 
@@ -40,31 +48,61 @@ class GroupAccountServiceTest : BehaviorSpec({
     Given("creating a group account") {
         val groupAccountRepository = mockk<GroupAccountRepository>()
         val groupAccountMemberRepository = mockk<GroupAccountMemberRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val groupAccountContributionRepository = mockk<GroupAccountContributionRepository>()
+        val groupAccountDuesReminderRepository = mockk<GroupAccountDuesReminderRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>()
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = GroupAccountService(groupAccountRepository, groupAccountMemberRepository, walletRepository, userRepository, notificationRepository, ledgerService, rateLimiter)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val accountNumberGenerator = mockk<AccountNumberGenerator>(relaxed = true)
+        val service = GroupAccountService(
+            groupAccountRepository, groupAccountMemberRepository, groupAccountContributionRepository, groupAccountDuesReminderRepository,
+            accountRepository, userRepository, notificationRepository, ledgerService, rateLimiter, pushNotificationService, accountNumberGenerator,
+        )
 
         When("an owner creates a new group account") {
             every { userRepository.findById("owner_1") } returns Optional.of(user("owner_1"))
-            every { walletRepository.save(any()) } answers { firstArg() }
+            every { accountRepository.save(any()) } answers { firstArg() }
             every { groupAccountRepository.save(any()) } answers { firstArg() }
             val memberSlot = mutableListOf<GroupAccountMember>()
             every { groupAccountMemberRepository.save(capture(memberSlot)) } answers { firstArg() }
 
             val account = service.createGroupAccount("owner_1", "Roommates")
 
-            Then("it provisions a real zero-balance GROUP wallet and adds the owner as a real member") {
+            Then("it provisions a real zero-balance GROUP account and adds the owner as a real member") {
                 account.ownerId shouldBe "owner_1"
                 account.name shouldBe "Roommates"
-                val walletSlot = mutableListOf<Wallet>()
-                verify(exactly = 1) { walletRepository.save(capture(walletSlot)) }
-                walletSlot.single().type shouldBe WalletType.GROUP
-                walletSlot.single().balance shouldBe BigDecimal.ZERO
+                val accountSlot = mutableListOf<Account>()
+                verify(exactly = 1) { accountRepository.save(capture(accountSlot)) }
+                accountSlot.single().type shouldBe AccountType.GROUP
+                accountSlot.single().balance shouldBe BigDecimal.ZERO
                 memberSlot.single().userId shouldBe "owner_1"
                 verify(exactly = 1) { rateLimiter.checkLimit("group-account:create:owner_1", limit = 10, window = any()) }
+            }
+        }
+
+        When("creating a group account with a blank name") {
+            Then("it throws InvalidGroupAccountNameException before ever spending a rate-limit attempt") {
+                try {
+                    service.createGroupAccount("owner_1", "   ")
+                    error("expected InvalidGroupAccountNameException")
+                } catch (e: InvalidGroupAccountNameException) {
+                    verify(exactly = 0) { rateLimiter.checkLimit(any(), any(), any()) }
+                    verify(exactly = 0) { groupAccountRepository.save(any()) }
+                }
+            }
+        }
+
+        When("creating a group account with a name that would overflow the settlement account's own accountName column once \" (Group Account)\" is appended") {
+            Then("it throws InvalidGroupAccountNameException rather than risking a raw DB insert failure on either column") {
+                try {
+                    service.createGroupAccount("owner_1", "x".repeat(239))
+                    error("expected InvalidGroupAccountNameException")
+                } catch (e: InvalidGroupAccountNameException) {
+                    verify(exactly = 0) { groupAccountRepository.save(any()) }
+                }
             }
         }
     }
@@ -72,14 +110,21 @@ class GroupAccountServiceTest : BehaviorSpec({
     Given("a group account with an owner and one invited member") {
         val groupAccountRepository = mockk<GroupAccountRepository>()
         val groupAccountMemberRepository = mockk<GroupAccountMemberRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val groupAccountContributionRepository = mockk<GroupAccountContributionRepository>()
+        val groupAccountDuesReminderRepository = mockk<GroupAccountDuesReminderRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>()
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = GroupAccountService(groupAccountRepository, groupAccountMemberRepository, walletRepository, userRepository, notificationRepository, ledgerService, rateLimiter)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val accountNumberGenerator = mockk<AccountNumberGenerator>(relaxed = true)
+        val service = GroupAccountService(
+            groupAccountRepository, groupAccountMemberRepository, groupAccountContributionRepository, groupAccountDuesReminderRepository,
+            accountRepository, userRepository, notificationRepository, ledgerService, rateLimiter, pushNotificationService, accountNumberGenerator,
+        )
 
-        val account = GroupAccount(id = "grp_1", name = "Roommates", ownerId = "owner_1", walletId = "wallet_grp_1")
+        val account = GroupAccount(id = "grp_1", name = "Roommates", ownerId = "owner_1", accountId = "account_grp_1")
 
         When("the owner invites a real itunda user by phone number") {
             every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
@@ -96,16 +141,20 @@ class GroupAccountServiceTest : BehaviorSpec({
                 member.isOwner shouldBe false
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "member_2" && it.type == "GROUP_ACCOUNT_INVITE" }) }
             }
+
+            Then("the invitee also gets a real mobile push notification, not just the in-app one") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("member_2", "Added to \"Roommates\"", any(), any()) }
+            }
         }
 
         When("someone who isn't the owner tries to invite a member") {
             every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
 
-            Then("it throws GroupAccountNotOwnerException before touching the member repository") {
+            Then("it throws GroupAccountNotFoundException before touching the member repository") {
                 try {
                     service.inviteMember("member_2", "grp_1", "+250788000003")
-                    error("expected GroupAccountNotOwnerException")
-                } catch (e: GroupAccountNotOwnerException) {
+                    error("expected GroupAccountNotFoundException")
+                } catch (e: GroupAccountNotFoundException) {
                     verify(exactly = 0) { groupAccountMemberRepository.save(any()) }
                 }
             }
@@ -161,23 +210,30 @@ class GroupAccountServiceTest : BehaviorSpec({
             every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
             every { groupAccountMemberRepository.findByGroupAccountIdAndUserId("grp_1", "member_2") } returns
                 GroupAccountMember(id = "grpmem_x", groupAccountId = "grp_1", userId = "member_2")
-            every { walletRepository.findByUserIdAndType("member_2", WalletType.MAIN) } returns wallet("wallet_member_2", "member_2")
-            every { walletRepository.findById("wallet_grp_1") } returns Optional.of(wallet("wallet_grp_1", "owner_1", WalletType.GROUP, BigDecimal("5000")))
+            every { accountRepository.findByUserIdAndType("member_2", AccountType.MAIN) } returns account("account_member_2", "member_2")
+            every { accountRepository.findById("account_grp_1") } returns Optional.of(account("account_grp_1", "owner_1", AccountType.GROUP, BigDecimal("5000")))
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
             every { groupAccountMemberRepository.findByGroupAccountId("grp_1") } returns listOf(
                 GroupAccountMember(id = "m1", groupAccountId = "grp_1", userId = "owner_1"),
                 GroupAccountMember(id = "m2", groupAccountId = "grp_1", userId = "member_2"),
             )
             every { userRepository.findAllById(any<List<String>>()) } returns listOf(user("owner_1"), user("member_2"))
-            every { notificationRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.saveAll<Notification>(any()) } answers { firstArg() }
+            every { groupAccountContributionRepository.save(any()) } answers { firstArg() }
 
             val result = service.deposit("member_2", "grp_1", BigDecimal("3000"))
 
-            Then("it posts a real ledger transfer from the member's own MAIN wallet and notifies the other real members, not the depositor") {
+            Then("it posts a real ledger transfer from the member's own MAIN account and notifies, in one batched saveAll, the other real members, not the depositor") {
                 verify(exactly = 1) { ledgerService.postLedgerTransaction(any(), any()) }
-                verify(exactly = 1) { notificationRepository.save(match { it.userId == "owner_1" && it.type == "GROUP_ACCOUNT_ACTIVITY" }) }
-                verify(exactly = 0) { notificationRepository.save(match { it.userId == "member_2" && it.type == "GROUP_ACCOUNT_ACTIVITY" }) }
+                verify(exactly = 1) {
+                    notificationRepository.saveAll<Notification>(match { batch ->
+                        batch.count() == 1 && batch.any { it.userId == "owner_1" && it.type == "GROUP_ACCOUNT_ACTIVITY" }
+                    })
+                }
                 result.members.size shouldBe 2
+            }
+            Then("it records a real per-cycle dues contribution for the depositing member") {
+                verify(exactly = 1) { groupAccountContributionRepository.save(match { it.userId == "member_2" && it.groupAccountId == "grp_1" && it.amount == BigDecimal("3000") }) }
             }
         }
 
@@ -185,11 +241,11 @@ class GroupAccountServiceTest : BehaviorSpec({
             every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
             every { groupAccountMemberRepository.findByGroupAccountIdAndUserId("grp_1", "outsider") } returns null
 
-            Then("it throws GroupAccountNotMemberException before touching the ledger") {
+            Then("it throws GroupAccountNotFoundException before touching the ledger") {
                 try {
                     service.deposit("outsider", "grp_1", BigDecimal("1000"))
-                    error("expected GroupAccountNotMemberException")
-                } catch (e: GroupAccountNotMemberException) {
+                    error("expected GroupAccountNotFoundException")
+                } catch (e: GroupAccountNotFoundException) {
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
             }
@@ -197,8 +253,8 @@ class GroupAccountServiceTest : BehaviorSpec({
 
         When("the owner withdraws from the group account") {
             every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
-            every { walletRepository.findById("wallet_grp_1") } returns Optional.of(wallet("wallet_grp_1", "owner_1", WalletType.GROUP, BigDecimal("5000")))
-            every { walletRepository.findByUserIdAndType("owner_1", WalletType.MAIN) } returns wallet("wallet_owner_1", "owner_1")
+            every { accountRepository.findById("account_grp_1") } returns Optional.of(account("account_grp_1", "owner_1", AccountType.GROUP, BigDecimal("5000")))
+            every { accountRepository.findByUserIdAndType("owner_1", AccountType.MAIN) } returns account("account_owner_1", "owner_1")
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
             every { groupAccountMemberRepository.findByGroupAccountId("grp_1") } returns listOf(
                 GroupAccountMember(id = "m1", groupAccountId = "grp_1", userId = "owner_1"),
@@ -207,24 +263,28 @@ class GroupAccountServiceTest : BehaviorSpec({
             every { groupAccountMemberRepository.findByGroupAccountIdAndUserId("grp_1", "owner_1") } returns
                 GroupAccountMember(id = "m1", groupAccountId = "grp_1", userId = "owner_1")
             every { userRepository.findAllById(any<List<String>>()) } returns listOf(user("owner_1"), user("member_2"))
-            every { notificationRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.saveAll<Notification>(any()) } answers { firstArg() }
 
             service.withdraw("owner_1", "grp_1", BigDecimal("2000"))
 
-            Then("it posts a real ledger transfer to the owner's own MAIN wallet and notifies other members transparently") {
+            Then("it posts a real ledger transfer to the owner's own MAIN account and notifies, in one batched saveAll, other members transparently") {
                 verify(exactly = 1) { ledgerService.postLedgerTransaction(any(), any()) }
-                verify(exactly = 1) { notificationRepository.save(match { it.userId == "member_2" && it.type == "GROUP_ACCOUNT_ACTIVITY" }) }
+                verify(exactly = 1) {
+                    notificationRepository.saveAll<Notification>(match { batch ->
+                        batch.count() == 1 && batch.any { it.userId == "member_2" && it.type == "GROUP_ACCOUNT_ACTIVITY" }
+                    })
+                }
             }
         }
 
         When("a member who isn't the owner tries to withdraw") {
             every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
 
-            Then("it throws GroupAccountNotOwnerException -- matching Kakao Bank's real withdrawal-authority-stays-with-organizer rule") {
+            Then("it throws GroupAccountNotFoundException -- matching Kakao Bank's real withdrawal-authority-stays-with-organizer rule") {
                 try {
                     service.withdraw("member_2", "grp_1", BigDecimal("1000"))
-                    error("expected GroupAccountNotOwnerException")
-                } catch (e: GroupAccountNotOwnerException) {
+                    error("expected GroupAccountNotFoundException")
+                } catch (e: GroupAccountNotFoundException) {
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
             }
@@ -232,8 +292,8 @@ class GroupAccountServiceTest : BehaviorSpec({
 
         When("the owner tries to withdraw more than the real group balance") {
             every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
-            every { walletRepository.findById("wallet_grp_1") } returns Optional.of(wallet("wallet_grp_1", "owner_1", WalletType.GROUP, BigDecimal("1000")))
-            every { walletRepository.findByUserIdAndType("owner_1", WalletType.MAIN) } returns wallet("wallet_owner_1", "owner_1")
+            every { accountRepository.findById("account_grp_1") } returns Optional.of(account("account_grp_1", "owner_1", AccountType.GROUP, BigDecimal("1000")))
+            every { accountRepository.findByUserIdAndType("owner_1", AccountType.MAIN) } returns account("account_owner_1", "owner_1")
 
             Then("it throws InsufficientFundsException without touching the ledger") {
                 try {
@@ -241,6 +301,170 @@ class GroupAccountServiceTest : BehaviorSpec({
                     error("expected InsufficientFundsException")
                 } catch (e: InsufficientFundsException) {
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("the owner sets a real monthly dues amount") {
+            every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
+            every { groupAccountRepository.save(any()) } answers { firstArg() }
+
+            val updated = service.setDuesAmount("owner_1", "grp_1", BigDecimal("2000"))
+
+            Then("it's stored on the real account row") {
+                updated.monthlyDuesAmount shouldBe BigDecimal("2000")
+            }
+        }
+
+        When("a member who isn't the owner tries to set the dues amount") {
+            every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
+
+            Then("it throws GroupAccountNotFoundException, matching every other real settlement-authority action") {
+                try {
+                    service.setDuesAmount("member_2", "grp_1", BigDecimal("2000"))
+                    error("expected GroupAccountNotFoundException")
+                } catch (e: GroupAccountNotFoundException) {
+                    verify(exactly = 0) { groupAccountRepository.save(any()) }
+                }
+            }
+        }
+
+        When("checking real dues status for the current cycle, with one member paid and one unpaid") {
+            val duesAccount = GroupAccount(id = "grp_1", name = "Roommates", ownerId = "owner_1", accountId = "account_grp_1", monthlyDuesAmount = BigDecimal("2000"))
+            val cycleMonth = java.time.YearMonth.now().toString()
+            every { groupAccountRepository.findById("grp_1") } returns Optional.of(duesAccount)
+            every { groupAccountMemberRepository.findByGroupAccountIdAndUserId("grp_1", "owner_1") } returns
+                GroupAccountMember(id = "m1", groupAccountId = "grp_1", userId = "owner_1")
+            every { groupAccountMemberRepository.findByGroupAccountId("grp_1") } returns listOf(
+                GroupAccountMember(id = "m1", groupAccountId = "grp_1", userId = "owner_1"),
+                GroupAccountMember(id = "m2", groupAccountId = "grp_1", userId = "member_2"),
+            )
+            every { userRepository.findAllById(any<List<String>>()) } returns listOf(user("owner_1"), user("member_2"))
+            every { groupAccountContributionRepository.findByGroupAccountIdAndCycleMonth("grp_1", cycleMonth) } returns listOf(
+                GroupAccountContribution(id = "c1", groupAccountId = "grp_1", userId = "owner_1", cycleMonth = cycleMonth, amount = BigDecimal("2000")),
+                GroupAccountContribution(id = "c2", groupAccountId = "grp_1", userId = "member_2", cycleMonth = cycleMonth, amount = BigDecimal("500")),
+            )
+
+            val status = service.getDuesStatus("owner_1", "grp_1")
+
+            Then("it correctly computes paid vs unpaid live from real deposits, never a separately-tracked flag") {
+                status.duesAmount shouldBe BigDecimal("2000")
+                status.members.first { it.userId == "owner_1" }.paid shouldBe true
+                status.members.first { it.userId == "owner_1" }.contributedAmount shouldBe BigDecimal("2000")
+                status.members.first { it.userId == "member_2" }.paid shouldBe false
+                status.members.first { it.userId == "member_2" }.contributedAmount shouldBe BigDecimal("500")
+            }
+        }
+
+        When("the owner requests reminders for real unpaid members") {
+            val duesAccount = GroupAccount(id = "grp_1", name = "Roommates", ownerId = "owner_1", accountId = "account_grp_1", monthlyDuesAmount = BigDecimal("2000"))
+            val cycleMonth = java.time.YearMonth.now().toString()
+            every { groupAccountRepository.findById("grp_1") } returns Optional.of(duesAccount)
+            every { groupAccountMemberRepository.findByGroupAccountId("grp_1") } returns listOf(
+                GroupAccountMember(id = "m1", groupAccountId = "grp_1", userId = "owner_1"),
+                GroupAccountMember(id = "m2", groupAccountId = "grp_1", userId = "member_2"),
+                GroupAccountMember(id = "m3", groupAccountId = "grp_1", userId = "member_3"),
+            )
+            every { groupAccountContributionRepository.findByGroupAccountIdAndCycleMonth("grp_1", cycleMonth) } returns listOf(
+                GroupAccountContribution(id = "c1", groupAccountId = "grp_1", userId = "owner_1", cycleMonth = cycleMonth, amount = BigDecimal("2000")),
+            )
+            // member_2 hasn't paid and hasn't been reminded yet -- member_3 hasn't paid but was already reminded this cycle.
+            every { groupAccountDuesReminderRepository.findByGroupAccountIdAndCycleMonth("grp_1", cycleMonth) } returns listOf(
+                GroupAccountDuesReminder(id = "grpdue_1", groupAccountId = "grp_1", userId = "member_3", cycleMonth = cycleMonth),
+            )
+            every { notificationRepository.saveAll<Notification>(any()) } answers { firstArg() }
+            every { groupAccountDuesReminderRepository.saveAll<GroupAccountDuesReminder>(any()) } answers { firstArg() }
+
+            val remindedCount = service.requestUnpaidDues("owner_1", "grp_1")
+
+            Then("it reminds only the real never-yet-reminded unpaid member, in one batched saveAll -- not the paid owner, not the already-reminded member") {
+                remindedCount shouldBe 1
+                verify(exactly = 1) {
+                    notificationRepository.saveAll<Notification>(match { batch ->
+                        batch.count() == 1 && batch.any { it.userId == "member_2" && it.type == "GROUP_ACCOUNT_DUES_REMINDER" }
+                    })
+                }
+                verify(exactly = 1) {
+                    groupAccountDuesReminderRepository.saveAll<GroupAccountDuesReminder>(match { batch ->
+                        batch.count() == 1 && batch.any { it.userId == "member_2" }
+                    })
+                }
+            }
+
+            Then("only the real never-yet-reminded unpaid member gets a real mobile push notification") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("member_2", any(), any(), any()) }
+                verify(exactly = 0) { pushNotificationService.sendToUser("owner_1", any(), any(), any()) }
+                verify(exactly = 0) { pushNotificationService.sendToUser("member_3", any(), any(), any()) }
+            }
+        }
+
+        When("a member who isn't the owner tries to request unpaid-dues reminders") {
+            val duesAccount = GroupAccount(id = "grp_1", name = "Roommates", ownerId = "owner_1", accountId = "account_grp_1", monthlyDuesAmount = BigDecimal("2000"))
+            every { groupAccountRepository.findById("grp_1") } returns Optional.of(duesAccount)
+
+            Then("it throws GroupAccountNotFoundException before touching notifications") {
+                try {
+                    service.requestUnpaidDues("member_2", "grp_1")
+                    error("expected GroupAccountNotFoundException")
+                } catch (e: GroupAccountNotFoundException) {
+                    verify(exactly = 0) { notificationRepository.save(any()) }
+                }
+            }
+        }
+
+        When("the owner requests reminders but never configured a dues amount") {
+            every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
+
+            Then("it throws a real, honest IllegalArgumentException rather than silently reminding nobody") {
+                try {
+                    service.requestUnpaidDues("owner_1", "grp_1")
+                    error("expected IllegalArgumentException")
+                } catch (e: IllegalArgumentException) {
+                    verify(exactly = 0) { notificationRepository.save(any()) }
+                }
+            }
+        }
+    }
+
+    Given("a real caller who has already exceeded a real group-account rate limit") {
+        val groupAccountRepository = mockk<GroupAccountRepository>()
+        val groupAccountMemberRepository = mockk<GroupAccountMemberRepository>()
+        val groupAccountContributionRepository = mockk<GroupAccountContributionRepository>()
+        val groupAccountDuesReminderRepository = mockk<GroupAccountDuesReminderRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val userRepository = mockk<UserRepository>()
+        val notificationRepository = mockk<NotificationRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val rateLimiter = mockk<RateLimiter>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val accountNumberGenerator = mockk<AccountNumberGenerator>(relaxed = true)
+        val service = GroupAccountService(
+            groupAccountRepository, groupAccountMemberRepository, groupAccountContributionRepository, groupAccountDuesReminderRepository,
+            accountRepository, userRepository, notificationRepository, ledgerService, rateLimiter, pushNotificationService, accountNumberGenerator,
+        )
+
+        When("depositing to a group account") {
+            every { rateLimiter.checkLimit("group-account:deposit:user_1", limit = 30, window = any()) } throws RateLimitExceededException("Too many requests")
+
+            Then("a real RateLimitExceededException fires before ever touching the real group account row") {
+                try {
+                    service.deposit("user_1", "grp_1", BigDecimal("1000"))
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { groupAccountRepository.findById(any()) }
+                }
+            }
+        }
+
+        When("withdrawing from a group account") {
+            every { rateLimiter.checkLimit("group-account:withdraw:owner_1", limit = 30, window = any()) } throws RateLimitExceededException("Too many requests")
+
+            Then("a real RateLimitExceededException fires before ever touching the real group account row") {
+                try {
+                    service.withdraw("owner_1", "grp_1", BigDecimal("1000"))
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { groupAccountRepository.findById(any()) }
                 }
             }
         }

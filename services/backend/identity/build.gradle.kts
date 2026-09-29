@@ -12,6 +12,12 @@ dependencyManagement {
 
 dependencies {
     implementation(project(":core"))
+    // For RateLimiter -- real anti-spam limit on KYC document submission, same
+    // convention Community/Jobs/Marketplace already established for user-initiated
+    // creation endpoints. Real bug found live (2026-08-02): this endpoint had shipped
+    // with zero rate limiting at all, unlike every comparable abuse-prone endpoint in
+    // this codebase.
+    implementation(project(":auth"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

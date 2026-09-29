@@ -1,0 +1,106 @@
+name: Deploy Itunda Public Sites to Cloudflare Pages
+
+on:
+  push:
+    branches: [agent/itunda-agent-network]
+    paths:
+      - "sites/public/**"
+      - "sites/itunda/**"
+      - "sites/developers/**"
+      - "sites/business/**"
+      - "services/blog/**"
+      - ".github/workflows/cloudflare-public-sites.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: itunda-public-sites-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: itunda
+            directory: sites/itunda
+          - name: itunda-developers
+            directory: sites/developers
+          - name: itunda-business
+            directory: sites/business
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+
+      - name: Assemble shared IDS assets
+        run: |
+          cp sites/public/ids.css "${{ matrix.directory }}/ids.css"
+          cp sites/public/theme.js "${{ matrix.directory }}/theme.js"
+
+      - name: Enable Corepack for Wrangler
+        run: corepack enable
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy "${{ matrix.directory }}" --project-name="${{ matrix.name }}" --branch=main
+
+      - name: Production smoke test
+        env:
+          URL: https://${{ matrix.name }}.pages.dev/
+        run: |
+          for i in 1 2 3 4 5; do
+            if curl --fail --silent --show-error --location --max-time 20 "$URL" -o /tmp/site.html; then break; fi
+            sleep 5
+          done
+          test -s /tmp/site.html
+          grep -q '<h1' /tmp/site.html
+
+  deploy-tech:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install Tech dependencies
+        working-directory: services/blog
+        run: npm ci
+
+      - name: Build Itunda Tech
+        working-directory: services/blog
+        run: npm run build
+
+      - name: Deploy Itunda Tech
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy "services/blog/dist" --project-name="itunda-tech" --branch=main
+
+      - name: Production smoke test
+        run: |
+          for i in 1 2 3 4 5; do
+            if curl --fail --silent --show-error --location --max-time 20 https://itunda-tech.pages.dev/ -o /tmp/tech.html; then break; fi
+            sleep 5
+          done
+          test -s /tmp/tech.html
+          grep -q '<main' /tmp/tech.html

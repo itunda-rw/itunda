@@ -27,7 +27,14 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // Real Toss-parity performance/security fix (2026-08-09), same as :app -- see
+            // proguard-rules.pro's own header for why Gson needed explicit keep rules first.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
     compileOptions {
@@ -49,11 +56,11 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.compose.bom))
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
+    implementation("androidx.activity:activity-compose:1.8.2")
+    implementation(platform("androidx.compose:compose-bom:2024.02.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -63,18 +70,34 @@ dependencies {
     // Networking -- a real, minimal client scoped to exactly what a merchant/POS app
     // needs (rw.itunda.merchant's own endpoints + rw.itunda.eats' restaurant-order
     // endpoints), not a dependency on :app's own much larger ApiService.
-    implementation(libs.retrofit)
-    implementation(libs.retrofit.converter.gson)
-    implementation(libs.okhttp)
-    implementation(libs.gson)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.security.crypto)
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.google.code.gson:gson:2.10.1")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     // Real QR code rendering for the register/POS checkout flow -- itunda://pay?intentId=
     // encoded as a real scannable QR bitmap for a customer's own itunda app to scan, same
     // payload convention merchant-mfe's web POS screen already established. Pure encoding
     // (ZXing core only, no camera/scanning dependency needed here).
-    implementation(libs.zxing.core)
+    implementation("com.google.zxing:core:3.5.3")
+
+    // Real camera-based QR scanning (2026-08-11) -- the customer-presented payment
+    // code flow (see ApiService.kt's own chargeByCustomerCode doc comment) is the
+    // FIRST real camera-scanning capability anywhere in this monorepo, on any
+    // platform/app -- confirmed via a full-repo audit before building this. CameraX
+    // for the real camera preview/frame pipeline, ML Kit Barcode Scanning for
+    // on-device (no network round-trip, no per-scan cost) QR decoding -- the
+    // standard modern Android combination, not a third-party scanning SDK.
+    // 1.4.2, not 1.3.4: CameraX 1.3.x ships libimage_processing_util_jni.so built
+    // without 16KB-page alignment (real, confirmed via readelf on itunda's own
+    // :app APK 2026-08-12) -- Google fixed this starting 1.4.0.
+    implementation("androidx.camera:camera-core:1.4.2")
+    implementation("androidx.camera:camera-camera2:1.4.2")
+    implementation("androidx.camera:camera-lifecycle:1.4.2")
+    implementation("androidx.camera:camera-view:1.4.2")
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
 
     implementation(project(":core:designsystem"))
 }

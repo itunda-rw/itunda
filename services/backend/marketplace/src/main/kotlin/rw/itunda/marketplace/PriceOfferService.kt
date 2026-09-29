@@ -6,6 +6,7 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.ListingStatus
 import rw.itunda.core.domain.PriceOffer
 import rw.itunda.core.domain.PriceOfferStatus
+import rw.itunda.core.format.formatAmount
 import rw.itunda.core.repository.ListingRepository
 import rw.itunda.core.repository.PriceOfferRepository
 import rw.itunda.messaging.MessagingService
@@ -116,7 +117,6 @@ class PriceOfferService(
         priceOfferRepository.findByConversationIdOrderByCreatedAtDesc(conversationId)
             .filter { it.buyerId == userId || it.sellerId == userId }
 
-    private fun formatAmount(amount: BigDecimal): String = amount.stripTrailingZeros().toPlainString()
     private fun formatOfferBody(amount: BigDecimal, listingTitle: String): String = "💰 Offered ${formatAmount(amount)} RWF for \"$listingTitle\""
     private fun formatCounterBody(amount: BigDecimal, listingTitle: String): String = "🔁 Countered: ${formatAmount(amount)} RWF for \"$listingTitle\""
 }

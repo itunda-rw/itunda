@@ -38,10 +38,20 @@ plugins {
     // React Native itself requires.
     id("org.jetbrains.kotlin.android") version "2.1.20" apply false
     id("org.jetbrains.kotlin.plugin.compose") version "2.1.20" apply false
+    // Plain Kotlin/JVM (no Android Gradle Plugin) for :architecture-test -- that
+    // module only statically parses Kotlin source files via Konsist, it never
+    // compiles or runs against an Android SDK.
+    id("org.jetbrains.kotlin.jvm") version "2.1.20" apply false
     // Real React Native Gradle Plugin (2026-07-12, granite-adoption stage 2) -- no
     // version string here since it's resolved via settings.gradle.kts's
     // includeBuild composite-build substitution, not a published Maven coordinate.
     id("com.facebook.react") apply false
+    // Real FCM push (2026-08-12) -- see :app's own build.gradle.kts for why this is
+    // applied conditionally rather than unconditionally like every other plugin
+    // above: it requires a real google-services.json (from the Firebase Console)
+    // that doesn't exist in this repo, and unconditionally applying it would break
+    // every build/CI run until one is dropped in.
+    id("com.google.gms.google-services") version "4.4.2" apply false
 }
 
 buildscript {
@@ -78,3 +88,48 @@ extra["kotlinVersion"] = "2.1.20"
 // live: "Unable to resolve react-native location in node_modules").
 extra["REACT_NATIVE_NODE_MODULES_DIR"] = file("../packages/saronite/node_modules/react-native")
 
+// Some autolinked React Native libraries still ship Gradle scripts written for
+// older AGP releases.  Give every Android library the same SDK baseline as the
+// app when its plugin is applied, before that library's script configures its
+// own `android {}` block.  This keeps the non-standard monorepo wiring in our
+// build instead of patching generated node_modules content.
+subprojects {
+    pluginManager.withPlugin("com.android.library") {
+        extensions.configure<com.android.build.api.dsl.LibraryExtension> {
+            compileSdk = 34
+            // Real Android 16KB memory-page-size fix (2026-08-12), same reasoning as
+            // :app's own ndkVersion pin in android/app/build.gradle.kts -- every
+            // autolinked React Native native module (react-native-screens/-svg/
+            // -safe-area-context, Hermes/JSI) must build against the same
+            // 16KB-compliant NDK as :app itself, or the mismatch re-introduces the
+            // exact misaligned .so files this is fixing.
+            ndkVersion = "29.0.14206865"
+            if (project.name == "react-native-safe-area-context") {
+                compileOptions {
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
+                }
+            }
+        }
+    }
+    // react-native-safe-area-context 5.6.2 still leaves Java compilation at the
+    // Android plugin default (1.8), while this repository's Kotlin toolchain is 17.
+    // Configure the autolinked module at the root rather than mutating node_modules,
+    // so Kotlin/Java target validation remains consistent and dependency reinstalls
+    // stay reproducible.
+    if (name == "react-native-safe-area-context") {
+        tasks.withType<org.gradle.api.tasks.compile.JavaCompile>().configureEach {
+            sourceCompatibility = JavaVersion.VERSION_17.toString()
+            targetCompatibility = JavaVersion.VERSION_17.toString()
+        }
+    }
+}
+
+// `react-native-screens` reads the React Native directory from the first Android
+// application project's Groovy `ext` object while it is being evaluated.  Seed
+// that exact object from the root configuration phase; relying on :app's own
+// later script assignment is order-sensitive once settings autolinking adds
+// libraries to this build.
+allprojects {
+    extra["REACT_NATIVE_NODE_MODULES_DIR"] = rootProject.file("../packages/saronite/node_modules/react-native")
+}

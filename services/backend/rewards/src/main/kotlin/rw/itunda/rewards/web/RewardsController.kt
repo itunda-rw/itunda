@@ -19,11 +19,15 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.rewards.RewardTaskAlreadyClaimedException
 import rw.itunda.rewards.RewardTaskNotEligibleException
 import rw.itunda.rewards.RewardTaskNotFoundException
-import rw.itunda.rewards.RewardsNoWalletException
+import rw.itunda.rewards.RewardsNoAccountException
 import rw.itunda.rewards.RewardsService
 import rw.itunda.rewards.RewardsUserNotFoundException
+import rw.itunda.rewards.InvalidStepCountException
+import rw.itunda.rewards.StepRewardService
+import rw.itunda.rewards.StepRewardTier
 
 data class ClaimRewardRequest(val taskId: String)
+data class ReportStepsRequest(val steps: Int)
 
 // The Saronite reward-tasks mini-app's native bridge (android/.../SaroniteBridge.kt) has
 // called these two routes since it was built -- see docs/API_SPECIFICATION.md's Rewards
@@ -31,12 +35,29 @@ data class ClaimRewardRequest(val taskId: String)
 // previously a false "real" claim.
 @RestController
 @RequestMapping("/api/v1/rewards")
-class RewardsController(private val rewardsService: RewardsService, private val idempotencyService: IdempotencyService) {
+class RewardsController(
+    private val rewardsService: RewardsService,
+    private val idempotencyService: IdempotencyService,
+    private val stepRewardService: StepRewardService,
+) {
 
     @GetMapping("/tasks")
     fun getTasks(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> {
         val result = rewardsService.getTasks(currentUser.userId)
         return ResponseEntity.ok(mapOf("success" to true, "tasks" to result.tasks, "rewardsTotal" to result.rewardsTotal))
+    }
+
+    // Real Naver Pay 페이펫-inspired collectible companion -- see
+    // RewardsService.getPet's own doc comment.
+    @GetMapping("/pet")
+    fun getPet(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val pet = rewardsService.getPet(currentUser.userId)
+        return ResponseEntity.ok(
+            mapOf(
+                "success" to true, "level" to pet.level, "stageName" to pet.stageName, "emoji" to pet.emoji,
+                "claimedTaskCount" to pet.claimedTaskCount, "activeRewardDays" to pet.activeRewardDays,
+            ),
+        )
     }
 
     // Real referral subsystem (2026-07-17): the caller's own share code plus real
@@ -71,6 +92,57 @@ class RewardsController(private val rewardsService: RewardsService, private val 
         return ResponseEntity.status(status).body(body)
     }
 
+    // Real Toss 만보기 (walking rewards) -- see StepRewardService's own doc comment.
+    // Naturally idempotent (a tier only ever credits once, checked against a real
+    // stored flag before crediting), same convention AutoTopUpController.trigger
+    // already uses for a conditionally-money-moving endpoint -- no Idempotency-Key.
+    @PostMapping("/steps")
+    fun reportSteps(
+        @RequestBody request: ReportStepsRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val result = stepRewardService.reportSteps(currentUser.userId, request.steps)
+        return ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "steps" to result.reward.steps,
+                "newlyEarnedTiers" to result.newlyEarned.map { it.stepsRequired },
+                "newlyEarnedAmount" to result.newlyEarned.sumOf { it.rewardAmount },
+                "totalEarnedToday" to result.totalEarnedToday,
+                // Real lottery-style bonus (item 248) -- always present, whether or not
+                // anything was won this call, alongside the real, stated tier odds below,
+                // so a client can show the mechanic honestly rather than only surfacing
+                // it the moment someone happens to win.
+                "lotteryBonusWonTiers" to result.lotteryBonusWon.map { it.stepsRequired },
+                "lotteryBonusWonAmount" to result.lotteryBonusWon.sumOf { it.lotteryBonusAmount },
+                "lotteryBonusTotal" to result.lotteryBonusTotal,
+                "tiers" to tierInfo(),
+            ),
+        )
+    }
+
+    @GetMapping("/steps/today")
+    fun getTodaySteps(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val reward = stepRewardService.getToday(currentUser.userId)
+        return ResponseEntity.ok(mapOf("success" to true, "steps" to (reward?.steps ?: 0), "tiers" to tierInfo()))
+    }
+
+    // Real, stated odds (item 248) -- the whole point of building this "toss style"
+    // rather than as a hidden mechanic: a client can show "5% chance of +100 RWF" up
+    // front, not just the outcome after the fact.
+    private fun tierInfo() = StepRewardTier.entries.map {
+        mapOf(
+            "stepsRequired" to it.stepsRequired,
+            "rewardAmount" to it.rewardAmount,
+            "lotteryOdds" to it.lotteryOdds,
+            "lotteryBonusAmount" to it.lotteryBonusAmount,
+        )
+    }
+
+    @ExceptionHandler(InvalidStepCountException::class)
+    fun handleInvalidStepCount(ex: InvalidStepCountException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_STEP_COUNT", ex.message ?: "Bad request"))
+
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENCY_KEY_CONFLICT", ex.message ?: "Conflict"))
@@ -95,9 +167,9 @@ class RewardsController(private val rewardsService: RewardsService, private val 
     fun handleNotEligible(ex: RewardTaskNotEligibleException) =
         ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("REWARD_TASK_NOT_ELIGIBLE", ex.message ?: "Forbidden"))
 
-    @ExceptionHandler(RewardsNoWalletException::class)
-    fun handleNoWallet(ex: RewardsNoWalletException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    @ExceptionHandler(RewardsNoAccountException::class)
+    fun handleNoAccount(ex: RewardsNoAccountException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(RewardsUserNotFoundException::class)
     fun handleUserNotFound(ex: RewardsUserNotFoundException) =

@@ -20,7 +20,7 @@ spec:
       enableServiceLinks: false
       containers:
       - name: ledger-service
-        image: ghcr.io/itunda/ledger-service:staging
+        image: ghcr.io/itunda-rw/ledger-service:staging
         ports:
         - containerPort: 8082
         env:

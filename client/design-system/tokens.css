@@ -1,0 +1,152 @@
+/* Itunda Design System v2 — foundations
+   Primitive → semantic → component roles.
+   Identity stays Itunda; product surfaces consume semantic roles.
+*/
+:root{
+  --itunda-indigo-50:#F7F6FF;
+  --itunda-indigo-100:#F0EFFF;
+  --itunda-indigo-200:#E2E0FF;
+  --itunda-indigo-300:#C9C6FF;
+  --itunda-indigo-400:#A7A4FF;
+  --itunda-indigo-500:#7472F4;
+  --itunda-indigo-600:#625FE0;
+  --itunda-indigo-700:#514FC4;
+  --itunda-ink-950:#101318;
+  --itunda-ink-900:#191F28;
+  --itunda-ink-800:#303844;
+  --itunda-ink-700:#4A5562;
+  --itunda-ink-600:#6B7684;
+  --itunda-ink-500:#8B95A1;
+  --itunda-ink-400:#AEB5BD;
+  --itunda-ink-300:#DDE2E7;
+  --itunda-ink-200:#EEF0F2;
+  --itunda-ink-100:#F7F8FA;
+  --itunda-white:#FFFFFF;
+
+  --itunda-success-500:#16845F;
+  --itunda-success-100:#EAF9F1;
+  --itunda-warning-500:#9A6B00;
+  --itunda-warning-100:#FFF7D9;
+  --itunda-error-500:#C53D3D;
+  --itunda-error-100:#FFF0EF;
+  --itunda-info-500:#7472F4;
+  --itunda-info-100:#F0EFFF;
+
+  --itunda-space-1:4px; --itunda-space-2:8px; --itunda-space-3:12px;
+  --itunda-space-4:16px; --itunda-space-5:20px; --itunda-space-6:24px;
+  --itunda-space-7:32px; --itunda-space-8:40px; --itunda-space-9:48px;
+  --itunda-space-10:64px; --itunda-space-11:80px; --itunda-space-12:96px;
+  --itunda-space-13:120px; --itunda-space-14:160px; --itunda-space-15:192px;
+
+  --itunda-radius-xs:8px; --itunda-radius-sm:12px; --itunda-radius-md:16px;
+  --itunda-radius-lg:20px; --itunda-radius-xl:28px; --itunda-radius-2xl:36px;
+  --itunda-radius-display:44px; --itunda-radius-pill:999px;
+
+  --itunda-font-body:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --itunda-font-mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  --itunda-text-xs:12px; --itunda-text-sm:14px; --itunda-text-md:16px;
+  --itunda-text-lg:18px; --itunda-text-xl:22px; --itunda-text-2xl:28px;
+  --itunda-text-3xl:36px; --itunda-text-4xl:48px;
+  --itunda-text-display:clamp(48px,7vw,88px);
+  --itunda-leading-tight:1.08; --itunda-leading-normal:1.5; --itunda-leading-relaxed:1.65;
+  --itunda-weight-regular:400; --itunda-weight-medium:500; --itunda-weight-semibold:650;
+  --itunda-weight-bold:750; --itunda-weight-heavy:850;
+  --itunda-letter-tight:-.04em; --itunda-letter-normal:-.01em;
+
+  --itunda-nav-height:72px; --itunda-control-height-sm:40px;
+  --itunda-control-height-md:48px; --itunda-control-height-lg:56px;
+  --itunda-max:1200px; --itunda-gutter:32px;
+  --itunda-content-reading:680px; --itunda-content-narrow:560px;
+
+  --itunda-z-nav:20; --itunda-z-popover:40; --itunda-z-sheet:60;
+  --itunda-z-modal:80; --itunda-z-toast:100;
+  --itunda-motion-fast:140ms; --itunda-motion-normal:220ms; --itunda-motion-slow:420ms;
+  --itunda-ease:cubic-bezier(.22,1,.36,1);
+  --itunda-ease-standard:cubic-bezier(.2,.8,.2,1);
+}
+
+/* Semantic roles — canonical cross-platform IDS contract.
+   Existing aliases are preserved so product CSS stays source-compatible while
+   Web/Android/iOS converge on the same semantic values. */
+:root{
+  --itunda-color-bg:#FFFFFF;
+  --itunda-color-surface:#FFFFFF;
+  --itunda-color-surface-sunken:#F2F4F6;
+  --itunda-color-surface-brand:#E2E0FF;
+  --itunda-color-text:#191F28;
+  --itunda-color-text-strong:#101318;
+  --itunda-color-text-muted:#4E5968;
+  --itunda-color-text-subtle:#636E7C;
+  --itunda-color-border:#E5E8EB;
+  --itunda-color-border-strong:#DDE2E7;
+  --itunda-color-brand:#7472F4;
+  --itunda-color-brand-strong:#625FE0;
+  --itunda-color-brand-soft:#E2E0FF;
+  --itunda-color-success:#05804A;
+  --itunda-color-success-soft:#F5FAFF;
+  --itunda-color-warning:#FFA000;
+  --itunda-color-warning-soft:#FFF4D6;
+  --itunda-color-error:#F04452;
+  --itunda-color-error-soft:#FFECEB;
+  --itunda-color-info:#7472F4;
+  --itunda-color-info-soft:#F0EFFF;
+  --itunda-focus:#A7A4FF;
+  --itunda-color-icon-primary:#2C3643;
+  --itunda-color-icon-secondary:#6B7684;
+  --itunda-color-pressed:#EEF0FF;
+  --itunda-color-shadow:rgba(0,0,0,.08);
+  /* Canonical names consumed by parity tooling and new components. */
+  --itunda-color-background:var(--itunda-color-bg);
+  --itunda-color-surface-soft:var(--itunda-color-surface-sunken);
+  --itunda-color-text-primary:var(--itunda-color-text);
+  --itunda-color-text-secondary:var(--itunda-color-text-muted);
+  --itunda-color-text-tertiary:var(--itunda-color-text-subtle);
+  --itunda-color-text-brand:var(--itunda-color-brand);
+  --itunda-color-divider:var(--itunda-color-border);
+  --itunda-color-brand-pressed:var(--itunda-color-pressed);
+  --itunda-color-icon-primary:var(--itunda-color-icon-primary);
+  --itunda-color-icon-secondary:var(--itunda-color-icon-secondary);
+  --itunda-shadow-sm:0 2px 10px rgba(16,19,24,.06);
+  --itunda-shadow-md:0 10px 30px rgba(16,19,24,.10);
+  --itunda-shadow-lg:0 24px 64px rgba(16,19,24,.14);
+}
+[data-theme="dark"]{
+  --itunda-color-bg:#17171C; --itunda-color-surface:#202027; --itunda-color-surface-sunken:#2C2C35;
+  --itunda-color-surface-brand:#2B2C52; --itunda-color-text:#FFFFFF; --itunda-color-text-strong:#FFFFFF;
+  --itunda-color-text-muted:#989EAA; --itunda-color-text-subtle:#848A96; --itunda-color-border:#3C3C47;
+  --itunda-color-border-strong:#3C3C47; --itunda-color-brand:#7675F8; --itunda-color-brand-strong:#A7A4FF;
+  --itunda-color-brand-soft:#2B2C52; --itunda-color-success:#20D394; --itunda-color-success-soft:#10321F;
+  --itunda-color-warning:#FFC24C; --itunda-color-warning-soft:#3A2E10;
+  --itunda-color-error:#FF6B7A; --itunda-color-error-soft:#3A1418;
+  --itunda-color-info:#7675F8; --itunda-color-info-soft:#2B2C52; --itunda-color-pressed:#2B2C52;
+  --itunda-color-icon-primary:#E8EAED; --itunda-color-icon-secondary:#989EAA;
+  --itunda-color-shadow:rgba(0,0,0,.25); --itunda-overlay:rgba(0,0,0,.64);
+  --itunda-shadow-sm:0 2px 12px rgba(0,0,0,.22); --itunda-shadow-md:0 12px 36px rgba(0,0,0,.30);
+  --itunda-shadow-lg:0 24px 70px rgba(0,0,0,.42);
+  --itunda-color-background:var(--itunda-color-bg);
+  --itunda-color-surface-soft:var(--itunda-color-surface-sunken);
+  --itunda-color-text-primary:var(--itunda-color-text);
+  --itunda-color-text-secondary:var(--itunda-color-text-muted);
+  --itunda-color-text-tertiary:var(--itunda-color-text-subtle);
+  --itunda-color-text-brand:var(--itunda-color-brand);
+  --itunda-color-divider:var(--itunda-color-border);
+  --itunda-color-brand-pressed:var(--itunda-color-pressed);
+  --itunda-color-icon-primary:var(--itunda-color-icon-primary);
+  --itunda-color-icon-secondary:var(--itunda-color-icon-secondary);
+}
+@media(max-width:720px){
+  :root{--itunda-gutter:20px;--itunda-nav-height:64px;--itunda-text-display:clamp(44px,13vw,68px)}
+}
+
+
+/* Component contract tokens */
+:root{
+  --tds-target-min:44px;
+  --tds-overlay:rgb(8 10 16 / .48);
+  --tds-motion-fast:140ms;
+  --tds-motion-standard:220ms;
+  --tds-motion-emphasis:420ms;
+}
+@media (pointer:coarse){
+  :root{--tds-target-min:48px}
+}

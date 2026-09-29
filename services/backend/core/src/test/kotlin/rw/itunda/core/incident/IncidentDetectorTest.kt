@@ -5,6 +5,7 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import rw.itunda.core.domain.Incident
 import rw.itunda.core.domain.IncidentStatus
@@ -72,7 +73,8 @@ class IncidentDetectorTest : BehaviorSpec({
 
         val incident = Incident(id = "incident_2", railId = "mtn_momo", railDisplayName = "MTN Mobile Money", description = "test", failureCount = 2)
         every { incidentRepository.findById("incident_2") } returns Optional.of(incident)
-        every { incidentRepository.save(any()) } answers { firstArg() }
+        val savedSlot = slot<Incident>()
+        every { incidentRepository.save(capture(savedSlot)) } answers { firstArg() }
 
         When("an admin resolves it") {
             val resolved = detector.resolve("incident_2", "admin_1")
@@ -80,6 +82,19 @@ class IncidentDetectorTest : BehaviorSpec({
             Then("it's marked RESOLVED with a real resolver and timestamp") {
                 resolved.status shouldBe IncidentStatus.RESOLVED
                 resolved.resolvedBy shouldBe "admin_1"
+            }
+
+            // Real bug found live (2026-08-02): resolve() already read this exact
+            // incident, checked its status, then wrote back to it -- the correct shape
+            // for a race-safe check-then-act -- but with no @Version, two admins
+            // concurrently resolving the same incident could silently overwrite each
+            // other's resolvedBy. This asserts the mechanism the fix now relies on: the
+            // same versioned entity that was read is the one saved, so a concurrent
+            // second resolve() on a stale version real-409s via the existing global
+            // ObjectOptimisticLockingFailureException handler.
+            Then("the same versioned incident instance that was read is the one saved") {
+                savedSlot.captured shouldBe incident
+                savedSlot.captured.version shouldBe incident.version
             }
         }
     }

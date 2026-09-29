@@ -1,0 +1,102 @@
+version: '3.9'
+
+# Woodpecker CI -- real, open-source (Apache 2.0, forked from Drone after Drone's
+# 2021 licensing change restricted self-hosted use) replacement for GitHub Actions'
+# hosted-runner compute. The repo stays on GitHub (source hosting, PRs, issues); only
+# CI *execution* moves off GitHub's billed runners onto infrastructure itunda owns.
+# GitHub Actions' own workflow (.github/workflows/ci-cd.yml) is left in place --
+# .woodpecker/*.yml at the repo root is an independent, parallel pipeline definition,
+# not a replacement file GitHub Actions reads.
+#
+# Architecture (deliberately NOT single-node): the server here is the lightweight
+# control plane (<50MB RAM per Woodpecker's own docs) that receives GitHub webhooks
+# and serves the UI/API -- it does not run any build itself. The DOCKER-BASED agent
+# below does the real work for every JVM/Node/Python job (lint-and-typecheck,
+# backend-build, microservices-build, android-build, api-gateway-test,
+# progressive-manifest-verify, backend-migration-verify, application-container-build,
+# root-workspace-build -- see .woodpecker/*.yml). The ios-build job needs a SEPARATE
+# agent using Woodpecker's "exec" backend instead of Docker (Xcode cannot run inside
+# a Linux container -- there is no official Docker image for it) -- see
+# infra/ci/woodpecker-exec-agent.env + infra/launchd/com.itunda.woodpecker-exec-agent.plist
+# for that one, which runs directly on a macOS host's own already-installed
+# Xcode/tuist/pod instead.
+#
+# Deliberately NOT deployed to itunda-dc-a (the shared production k8s node): that
+# node is already documented as overcommitted (see docs/PRIVATE_CLOUD_OPERATIONS.md /
+# memory project_itunda_private_cloud) with real past incidents from memory pressure.
+# Adding CI build load to the same node real production traffic runs on risks
+# repeating those incidents. Run this compose file on a separate, dedicated host
+# instead (a spare machine, or a new low-spec cloud VM) -- see README section below
+# for exposing it publicly so GitHub can deliver webhooks to it.
+
+services:
+  woodpecker-server:
+    image: woodpeckerci/woodpecker-server:v3
+    container_name: woodpecker-server
+    ports:
+      - "8000:8000"
+    volumes:
+      - woodpecker-server-data:/var/lib/woodpecker/
+    environment:
+      # Real security requirement for a private fintech repo -- WOODPECKER_OPEN=true
+      # (Woodpecker's own quickstart default) would let ANY GitHub account log in.
+      # false + an explicit admin allow-list is the documented secure configuration
+      # for exactly this "only specific named people" case.
+      - WOODPECKER_OPEN=false
+      - WOODPECKER_ADMIN=${WOODPECKER_ADMIN}
+      - WOODPECKER_HOST=${WOODPECKER_HOST}
+      - WOODPECKER_GITHUB=true
+      - WOODPECKER_GITHUB_CLIENT=${WOODPECKER_GITHUB_CLIENT}
+      - WOODPECKER_GITHUB_SECRET=${WOODPECKER_GITHUB_SECRET}
+      - WOODPECKER_AGENT_SECRET=${WOODPECKER_AGENT_SECRET}
+      # Real finding from an actual local dry-run of this file (2026-09-04, not from
+      # the docs alone): left unset, the server logs "generated a temporary random
+      # secret" and picks a NEW one on every restart, forcing every agent to
+      # reauthenticate each time (signs the agent<->server gRPC session JWTs --
+      # distinct from WOODPECKER_AGENT_SECRET above, which is the initial handshake
+      # secret). Harmless for this single-server setup, but avoidable churn -- same
+      # "generate once with openssl rand -hex 32, persist it" treatment as the agent
+      # secret.
+      - WOODPECKER_GRPC_SECRET=${WOODPECKER_GRPC_SECRET}
+      # Real repo scoping (defense in depth alongside WOODPECKER_ADMIN) -- without
+      # this, an admin account that also belongs to unrelated GitHub orgs would see
+      # every repo they can access, not just itunda-rw/itunda.
+      - WOODPECKER_REPO_OWNERS=itunda-rw
+    restart: unless-stopped
+    networks:
+      - woodpecker-network
+
+  # Docker-based build agent -- handles every job EXCEPT ios-build (see the
+  # exec-backend agent referenced above for that one). Each pipeline step in
+  # .woodpecker/*.yml runs as its own container, same isolation model GitHub Actions'
+  # own hosted runners use, just scheduled by this agent instead.
+  woodpecker-agent:
+    image: woodpeckerci/woodpecker-agent:v3
+    container_name: woodpecker-agent
+    command: agent
+    restart: unless-stopped
+    depends_on:
+      - woodpecker-server
+    volumes:
+      - woodpecker-agent-config:/etc/woodpecker
+      # Real requirement, not optional: this agent launches pipeline-step containers
+      # by talking to the host's own Docker daemon -- it does not run Docker-in-Docker.
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WOODPECKER_SERVER=woodpecker-server:9000
+      - WOODPECKER_AGENT_SECRET=${WOODPECKER_AGENT_SECRET}
+      # Real Woodpecker convention (not itunda-invented): every agent auto-reports a
+      # `backend=<type>` label matching how it actually runs steps -- this one
+      # defaults to `backend=docker` with no override needed, which is exactly what
+      # lets .woodpecker/*.yml's ios-build job (labels: {backend: exec}) route only to
+      # the separate macOS exec-backend agent instead of here.
+    networks:
+      - woodpecker-network
+
+volumes:
+  woodpecker-server-data:
+  woodpecker-agent-config:
+
+networks:
+  woodpecker-network:
+    driver: bridge

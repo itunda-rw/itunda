@@ -6,7 +6,7 @@
 > `Authorization: Bearer MERCHANT_API_KEY` scheme and webhook event names
 > like `payment.received` that don't match how any real provider works).
 > Most of this file is still not implemented — POS/card processing, B2B
-> payroll/invoicing, webhooks, inventory, and analytics all remain exactly
+> payroll/invoicing, inventory, and analytics all remain exactly
 > as aspirational as when this note was first written. For the real,
 > working payment gateway — mirroring Toss Payments' actual REST API,
 > researched from their public docs rather than imagined — see
@@ -21,6 +21,15 @@
 > every other money-moving endpoint in that backend. See
 > `docs/TOSS_PARITY_MATRIX.md`'s Merchant row for the current real/not-real
 > split.
+>
+> **Update (2026-08-30):** §6's "Webhook Events" list below (`payment.received`
+> etc.) is still this file's own invented, never-built naming — real webhook
+> delivery exists now, but under real names and a real mechanism, not these:
+> `PAYMENT_STATUS_CHANGED`/`CANCEL_STATUS_CHANGED`/`ORDER_STATUS_CHANGED`/
+> `EATS_ORDER_STATUS_CHANGED`, HMAC-SHA256-signed (`X-Itunda-Signature`), with
+> real persistent retry. See **[PAYMENTS.md](PAYMENTS.md)**'s Webhooks section
+> for the actual, current mechanism — this file's §6 stays exactly as
+> aspirational as everything else in it.
 
 ## Overview
 Itunda Merchant Services enable businesses and merchants to accept payments, manage inventory, and process settlements.

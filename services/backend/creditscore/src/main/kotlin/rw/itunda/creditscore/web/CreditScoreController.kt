@@ -29,6 +29,12 @@ class CreditScoreController(private val creditScoreService: CreditScoreService) 
         )
     }
 
+    // Real Toss 신용플러스 (Credit Plus)-style "what would move your score" suggestions
+    // -- see CreditScoreService.getImprovementSuggestions's own doc comment.
+    @GetMapping("/suggestions")
+    fun getSuggestions(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "suggestions" to creditScoreService.getImprovementSuggestions(currentUser.userId)))
+
     @ExceptionHandler(CreditScoreUserNotFoundException::class)
     fun handleUserNotFound(ex: CreditScoreUserNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("USER_NOT_FOUND", ex.message ?: "Not found"))

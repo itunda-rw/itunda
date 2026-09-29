@@ -1,4 +1,5 @@
 import Foundation
+import CoreNetwork
 
 /// A real action queued locally while the device couldn't reach itunda's backend --
 /// see docs/TOSS_PARITY_MATRIX.md's Offline row (backend half: real

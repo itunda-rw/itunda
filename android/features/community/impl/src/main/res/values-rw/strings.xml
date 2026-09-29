@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="community_new_post_cta">+ Andika ubutumwa</string>
+    <string name="community_title_placeholder">Umutwe</string>
+    <string name="community_body_placeholder">Ni iki kibaho mu mudugudu?</string>
+    <string name="community_posting">Kohereza…</string>
+    <string name="community_post">Ohereza</string>
+</resources>

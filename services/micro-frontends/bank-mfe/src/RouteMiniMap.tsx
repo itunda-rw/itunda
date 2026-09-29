@@ -3,6 +3,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { TILES_SOURCE_URL, getDirections } from './lib/maps';
 import { ApiError } from './lib/api';
+import { useI18n } from './i18n/I18nContext';
 
 // A real, compact, non-interactive drawn-route map -- reuses the exact same self-hosted
 // OSRM directions itunda's own Maps feature already exposes (see MapsService.getDirections'
@@ -32,7 +33,7 @@ const ROUTE_STYLE: maplibregl.StyleSpecification = {
     {
       id: 'route-line', type: 'line', source: 'route',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#3182F6', 'line-width': 5, 'line-opacity': 0.9 },
+      paint: { 'line-color': '#7472F4', 'line-width': 5, 'line-opacity': 0.9 },
     },
   ],
 };
@@ -42,6 +43,7 @@ export default function RouteMiniMap({
 }: {
   fromLat: number; fromLng: number; toLat: number; toLng: number; fromLabel: string; toLabel: string;
 }) {
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [route, setRoute] = useState<{ distanceKm: number; durationMinutes: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -59,8 +61,8 @@ export default function RouteMiniMap({
       attributionControl: false,
     });
 
-    new maplibregl.Marker({ color: '#3182F6' }).setLngLat([fromLng, fromLat]).setPopup(new maplibregl.Popup({ offset: 12 }).setText(fromLabel)).addTo(map);
-    new maplibregl.Marker({ color: '#E53935' }).setLngLat([toLng, toLat]).setPopup(new maplibregl.Popup({ offset: 12 }).setText(toLabel)).addTo(map);
+    new maplibregl.Marker({ color: '#7472F4' }).setLngLat([fromLng, fromLat]).setPopup(new maplibregl.Popup({ offset: 12 }).setText(fromLabel)).addTo(map);
+    new maplibregl.Marker({ color: 'var(--itunda-red)' }).setLngLat([toLng, toLat]).setPopup(new maplibregl.Popup({ offset: 12 }).setText(toLabel)).addTo(map);
 
     getDirections(fromLat, fromLng, toLat, toLng)
       .then((result) => {
@@ -82,7 +84,7 @@ export default function RouteMiniMap({
         map.fitBounds(bounds, { padding: 40 });
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof ApiError ? err.message : 'Could not find a real route between these two points.');
+        if (!cancelled) setError(err instanceof ApiError ? err.message : t('common.loadError'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -97,10 +99,10 @@ export default function RouteMiniMap({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
       <div ref={containerRef} style={{ width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden' }} />
-      {loading && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Finding the real road route…</p>}
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      {loading && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Finding the real road route…</p>}
+      {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert" aria-live="polite">{error}</p>}
       {route && (
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>
+        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-700)' }}>
           🚗 {route.distanceKm.toFixed(1)} km · {Math.round(route.durationMinutes)} min by real road, via itunda's own self-hosted OSRM
         </p>
       )}

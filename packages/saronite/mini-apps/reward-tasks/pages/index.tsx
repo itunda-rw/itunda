@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { colors } from '../../../../packages/ids-react-native/src/colors';
 import {
   ActivityIndicator,
   Alert,
@@ -17,10 +18,29 @@ import {
   confirmEmailVerification,
   getRewardTasks,
   getReferralInfo,
+  getTodaySteps,
+  reportSteps,
   requestEmailVerification,
   updateProfilePhoto,
 } from '@itunda/saronite-react-native';
 import type { ReferralInfo, RewardTask } from '@itunda/saronite-react-native';
+
+// Real Toss 만보기 (walking rewards) tier structure -- mirrors
+// StepRewardTier.stepsRequired/rewardAmount exactly (services/backend/rewards's
+// StepRewardService.kt). Purely for display (progress bar, "next tier" copy); the
+// backend is the actual source of truth and authoritative validator/payer.
+//
+// Real lottery-style bonus (item 248, docs/DESIGN_REFERENCES.md Section 15) --
+// lotteryOdds/lotteryBonusAmount mirror StepRewardTier's own real, stated constants,
+// same "hardcoded for display, backend is authoritative" convention this file already
+// established. Disclosing the real odds here (not just after a win) is what keeps this
+// a bonus rather than the dark-pattern-style hidden mechanic this project has
+// otherwise deliberately avoided building.
+const STEP_TIERS = [
+  { steps: 1000, rewardAmount: 50, lotteryOdds: 0.05, lotteryBonusAmount: 100 },
+  { steps: 5000, rewardAmount: 150, lotteryOdds: 0.05, lotteryBonusAmount: 300 },
+  { steps: 10000, rewardAmount: 300, lotteryOdds: 0.05, lotteryBonusAmount: 600 },
+];
 
 /**
  * A real rewards/points mini-app — one of the most common categories in
@@ -103,6 +123,8 @@ export default function RewardTasksPage() {
       <Text style={styles.title}>Rewards</Text>
       <Text style={styles.total}>{total.toLocaleString()} RWF earned</Text>
 
+      <StepsPanel />
+
       {tasks === null && !error && <ActivityIndicator style={styles.spacer} />}
 
       {error && <Text style={[styles.body, styles.error]}>Couldn't load rewards: {error}</Text>}
@@ -118,7 +140,7 @@ export default function RewardTasksPage() {
                   <Text style={styles.taskTitle}>{item.title}</Text>
                   <Text style={styles.subtitle}>{item.subtitle}</Text>
                 </View>
-                <Text style={styles.rewardAmount}>+{item.rewardAmount} RWF</Text>
+                <Text style={styles.rewardAmount}>+{item.rewardAmount.toLocaleString()} RWF</Text>
                 <TouchableOpacity
                   style={[styles.claimButton, item.claimed && styles.claimButtonDone]}
                   disabled={item.claimed || claimingId === item.id}
@@ -145,6 +167,93 @@ export default function RewardTasksPage() {
         <Text style={styles.closeButtonText}>Close</Text>
       </TouchableOpacity>
     </SafeAreaView>
+  );
+}
+
+/**
+ * Real Toss 만보기 (walking rewards) -- see StepRewardService's own doc comment on the
+ * backend. `steps` is honestly a manually-entered count, not a real device pedometer/
+ * HealthKit reading: no sensor integration exists on either native host app (a real,
+ * separate, not-yet-started follow-up), and the backend's own doc comment already
+ * names client-reported step data as the honest boundary here (a sanity ceiling, not
+ * real anti-spoofing) -- so a manual entry is a real, honest way to use this feature
+ * today, not a fabrication of sensor data that was never actually read.
+ */
+function StepsPanel() {
+  const [steps, setSteps] = useState<number | null>(null);
+  const [input, setInput] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    getTodaySteps()
+      .then((r) => setSteps(r.steps))
+      .catch(() => {
+        // Non-fatal: the panel just stays in its loading state.
+      });
+  }, []);
+
+  useEffect(load, [load]);
+
+  const handleSubmit = async () => {
+    const value = Number(input);
+    if (!Number.isFinite(value) || value < 0) {
+      setError('Enter a real step count.');
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await reportSteps(Math.round(value));
+      setSteps(result.steps);
+      setInput('');
+      if (result.newlyEarnedTiers.length > 0) {
+        // Real lottery-style bonus (item 248) -- always named separately from the
+        // guaranteed reward, never folded into one number.
+        const bonusLine = result.lotteryBonusWonAmount > 0
+          ? `\n\nPlus a lottery bonus: +${result.lotteryBonusWonAmount.toLocaleString()} RWF! 🎉`
+          : '';
+        Alert.alert('Walking reward earned', `+${result.newlyEarnedAmount.toLocaleString()} RWF for reaching ${result.newlyEarnedTiers.join(', ')} steps today${bonusLine}`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not report your steps.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const nextTier = STEP_TIERS.find((t) => (steps ?? 0) < t.steps);
+
+  return (
+    <View style={[styles.row, styles.stepsPanel]}>
+      <Text style={styles.taskTitle}>Today's steps</Text>
+      <Text style={styles.stepsCount}>{(steps ?? 0).toLocaleString()}</Text>
+      <Text style={styles.subtitle}>
+        {nextTier
+          ? `${(nextTier.steps - (steps ?? 0)).toLocaleString()} steps to +${nextTier.rewardAmount} RWF`
+          : 'All tiers earned for today'}
+      </Text>
+      {/* Real lottery-style bonus (item 248) -- the real, stated odds shown up front,
+          same disclosed-odds discipline bank-mfe's own identical addition already has. */}
+      {nextTier && (
+        <Text style={styles.panelHint}>
+          Plus a {Math.round(nextTier.lotteryOdds * 100)}% chance of a +{nextTier.lotteryBonusAmount.toLocaleString()} RWF bonus
+        </Text>
+      )}
+      <View style={styles.inlineRow}>
+        <TextInput
+          style={styles.input}
+          value={input}
+          onChangeText={setInput}
+          placeholder="Log today's step count"
+          keyboardType="number-pad"
+        />
+        <TouchableOpacity style={styles.panelButton} disabled={submitting} onPress={handleSubmit}>
+          <Text style={styles.panelButtonText}>{submitting ? 'Logging…' : 'Log steps'}</Text>
+        </TouchableOpacity>
+      </View>
+      {error && <Text style={[styles.body, styles.error]}>{error}</Text>}
+    </View>
   );
 }
 
@@ -264,15 +373,15 @@ export const Route = createRoute('/', {
 });
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: '#F2F4F6' },
-  title: { fontSize: 20, fontWeight: '800', color: '#191F28' },
-  total: { fontSize: 28, fontWeight: '900', color: '#3182F6', marginTop: 4, marginBottom: 16 },
-  body: { fontSize: 15, color: '#4E5968' },
-  error: { color: '#F04452' },
+  container: { flex: 1, paddingHorizontal: 20, paddingVertical: 16, backgroundColor: colors.background },
+  title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
+  total: { fontSize: 28, fontWeight: '700', color: colors.primaryIndigo, marginTop: 4, marginBottom: 16 },
+  body: { fontSize: 15, color: colors.textSecondary },
+  error: { color: colors.error },
   spacer: { flex: 1 },
   row: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 24,
     padding: 16,
     marginBottom: 10,
   },
@@ -281,46 +390,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rowLeft: { flex: 1 },
-  taskTitle: { fontSize: 15, fontWeight: '700', color: '#191F28' },
-  subtitle: { fontSize: 12, color: '#8B95A1', marginTop: 2 },
+  stepsPanel: { marginBottom: 16 },
+  stepsCount: { fontSize: 26, fontWeight: '700', color: colors.textPrimary, marginTop: 4 },
+  taskTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
+  subtitle: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
   // Real fix (2026-07-13): #31CE66 was a one-off green that didn't match itunda's
   // own already-established Toss green500 (#04C065 -- android/.../IdsColors.kt,
   // ios/.../IdsTheme.swift, packages/design-tokens/tokens.css all agree), the exact
   // class of drift design-tokens.css's own header comment already documented fixing
   // once for bank-mfe's green -- found again here via a repo-wide color audit.
-  rewardAmount: { fontSize: 14, fontWeight: '700', color: '#04C065', marginRight: 12 },
-  claimButton: { backgroundColor: '#3182F6', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
-  claimButtonDone: { backgroundColor: '#E5E8EB' },
-  claimButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
+  // Real WCAG AA contrast fix (item 240, docs/ACCESSIBILITY.md finding #2): that
+  // #04C065 itself measures 2.40:1 against white, failing even the lenient 3.0:1
+  // AA-large/UI threshold for this text. Darkened to colors.positive (5.01:1), matching
+  // the same fix applied to packages/design-tokens/tokens.css --itunda-green and
+  // the Android/iOS semantic `success` token.
+  rewardAmount: { fontSize: 14, fontWeight: '700', color: colors.positive, marginRight: 12 },
+  claimButton: { backgroundColor: colors.primaryIndigo, borderRadius: 16, minHeight: 48, paddingVertical: 12, paddingHorizontal: 16 },
+  claimButtonDone: { backgroundColor: colors.divider },
+  claimButtonText: { color: colors.surface, fontWeight: '700', fontSize: 13 },
   closeButton: { alignItems: 'center', paddingVertical: 14 },
-  closeButtonText: { color: '#8B95A1', fontWeight: '600' },
+  closeButtonText: { color: colors.textTertiary, fontWeight: '600' },
   panel: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#E5E8EB',
+    borderTopColor: colors.divider,
   },
-  panelLabel: { fontSize: 12, fontWeight: '700', color: '#4E5968' },
+  panelLabel: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
   panelLabelSpaced: { marginTop: 12 },
-  panelHint: { fontSize: 12, color: '#8B95A1', marginTop: 4 },
-  referralCode: { fontSize: 20, fontWeight: '900', color: '#191F28', marginTop: 4, letterSpacing: 1 },
+  panelHint: { fontSize: 12, color: colors.textTertiary, marginTop: 4 },
+  referralCode: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, marginTop: 4, letterSpacing: 1 },
   panelButton: {
     marginTop: 8,
     alignSelf: 'flex-start',
-    backgroundColor: '#E8F3FF',
-    borderRadius: 8,
-    paddingVertical: 8,
+    backgroundColor: '#F5FAFF',
+    borderRadius: 16,
+    paddingVertical: 12,
     paddingHorizontal: 14,
   },
-  panelButtonText: { color: '#3182F6', fontWeight: '700', fontSize: 13 },
+  panelButtonText: { color: colors.primaryIndigo, fontWeight: '700', fontSize: 13 },
   inlineRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   input: {
     flex: 1,
-    backgroundColor: '#F2F4F6',
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     fontSize: 13,
-    color: '#191F28',
+    color: colors.textPrimary,
   },
 });

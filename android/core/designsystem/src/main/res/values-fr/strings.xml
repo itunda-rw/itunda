@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="device_step_up_title">🔒 Vérifiez cet appareil</string>
+    <string name="device_step_up_body">Il s\'agit d\'un nouvel appareil pour votre compte. Ressaisissez votre mot de passe pour l\'autoriser à envoyer de l\'argent, puis réessayez.</string>
+    <string name="device_step_up_password_description">Mot de passe</string>
+    <string name="device_step_up_show_password">Afficher le mot de passe</string>
+    <string name="device_step_up_hide_password">Masquer le mot de passe</string>
+    <string name="device_step_up_verifying">Vérification…</string>
+    <string name="device_step_up_verify">Vérifier l\'appareil</string>
+    <string name="device_step_up_cancel">Annuler</string>
+</resources>

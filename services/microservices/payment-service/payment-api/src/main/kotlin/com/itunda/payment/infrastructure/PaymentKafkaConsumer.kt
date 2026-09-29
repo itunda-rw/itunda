@@ -1,37 +1,28 @@
 package com.itunda.payment.infrastructure
 
-import com.itunda.payment.application.ConfirmPaymentCommand
-import com.itunda.payment.application.ConfirmPaymentUseCase
 import org.springframework.kafka.annotation.KafkaListener
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
+import org.slf4j.LoggerFactory
 
 @Component
-class PaymentKafkaConsumer(
-    private val confirmPaymentUseCase: ConfirmPaymentUseCase
-) {
+@ConditionalOnProperty(
+    name = ["itunda.payment.kafka.transfer-confirmation.enabled"],
+    havingValue = "true",
+)
+class PaymentKafkaConsumer {
+    private val log = LoggerFactory.getLogger(PaymentKafkaConsumer::class.java)
 
     @KafkaListener(topics = [TOPIC_TRANSFER_CONFIRMED], groupId = "payment-service-group")
     fun consumeLedgerEvent(message: String) {
-        println("[Kafka Consumer] Received ledger transfer event: \$message")
-        
-        // In a real scenario, deserialize JSON to extract orderId, amount, paymentKey
-        // For demonstration, simulating parsing
-        // val event = objectMapper.readValue(message, TransferEvent::class.java)
-        
-        // Trigger Toss-style Confirm API
-        try {
-            // Hardcoded values for simulation based on the prompt's request
-            val command = ConfirmPaymentCommand(
-                paymentKey = "pay_key_simulated",
-                orderId = "order_simulated",
-                amount = 1000L, 
-                idempotencyKey = "idemp_key_simulated"
-            )
-            confirmPaymentUseCase.confirm(command)
-            println("[Kafka Consumer] Payment confirmed successfully.")
-        } catch (e: Exception) {
-            println("[Kafka Consumer] Failed to confirm payment: \${e.message}")
-            // Typically send to Dead Letter Queue (DLQ)
-        }
+        // transfer.confirmed identifies a wallet transfer, not a payment intent.
+        // It has no provider payment key, order ID, or authorization proof, so it
+        // must never be converted into a provider confirmation. A future consumer
+        // needs a separately versioned payment-authorized event and a durable
+        // processed-event store before this feature may be enabled.
+        log.warn(
+            "Ignoring transfer.confirmed event because no payment-authorization event contract is configured; payloadSize={}",
+            message.length,
+        )
     }
 }

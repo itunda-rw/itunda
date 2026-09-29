@@ -1,0 +1,2111 @@
+import { useEffect, useRef, useState } from 'react';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import {
+  RWANDA_CENTER,
+  TILES_SOURCE_URL,
+  GLYPHS_URL,
+  searchPlaces,
+  reverseGeocode,
+  getDirectionsAlternatives,
+  getItineraryDirections,
+  searchNearbyPlaces,
+  fetchNearbyAgents,
+  NEARBY_CATEGORIES,
+  fetchMapCategories,
+  fetchMapAroundMe,
+  fetchMapTrending,
+  fetchMyMapBookmarks,
+  addMapBookmark,
+  removeMapBookmark,
+  moveMapBookmark,
+  setMapFolderPublic,
+  fetchSharedMapFolder,
+  subscribeToSharedMapFolder,
+  startLocationShare,
+  updateMyLocationShare,
+  extendLocationShare,
+  stopLocationShare,
+  fetchMyLocationShares,
+  fetchLocationSharesWithMe,
+  fetchLocationShare,
+  fetchTransitDirections,
+  fetchKigaliWeather,
+  travelModeIcon,
+  type PlaceSearchResult,
+  type NearbyPlace,
+  type MapBookmark,
+  type RouteStep,
+  type RouteResult,
+  type TravelMode,
+  type LiveLocationShare,
+  type TransitJourney,
+  type KigaliWeather,
+  type MapPlaceCategory,
+  type TrendingPlace,
+} from './lib/maps';
+import { fetchShoppingCatalog, type ShoppingMerchant } from './lib/shopping';
+import { searchBusTrips, type BusTrip } from './lib/bus';
+import { useI18n } from './i18n/I18nContext';
+import { ApiError, getStoredUser } from './lib/api';
+import { PlaceGlyph } from './icons/ItundaFacePlaces';
+import { MerchantBookableServicesSection, MyBookingReviewsCard, MyBookingsCard } from './MapsBooking';
+import { MapPlaceDetailPanel } from './MapPlaceDetailPanel';
+import { MapDirectionsPanel } from './MapDirectionsPanel';
+
+// A real, minimal MapLibre style over itunda's own self-hosted vector tiles -- basic
+// OpenMapTiles-schema layers (water/landcover/roads/buildings) plus, 2026-07-19, real
+// text labels (place/road/water/POI names) via itunda's own self-hosted glyphs server
+// -- see lib/maps.ts's GLYPHS_URL doc comment. Real Rwanda geography and real OSM place
+// names, not a fabricated placeholder map. Also declares the two real,
+// empty-until-populated sources the search/directions features below write into: a
+// destination marker and a real road-following route line.
+const MAP_STYLE: maplibregl.StyleSpecification = {
+  version: 8,
+  glyphs: GLYPHS_URL,
+  sources: {
+    rwanda: {
+      type: 'vector',
+      tiles: [TILES_SOURCE_URL],
+      minzoom: 0,
+      maxzoom: 14,
+    },
+    route: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+    // Real distance-measurement (ruler) tool (2026-07-22) -- Naver/Kakao Maps' own real
+    // "measure distance" action, a genuinely distinct capability from Directions (no
+    // real road route, no OSRM call -- just the straight-line path between whatever
+    // points a user taps, same as the real tool this mirrors).
+    measure: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+  },
+  layers: [
+    { id: 'background', type: 'background', paint: { 'background-color': '#f2efe9' } },
+    {
+      id: 'landcover', type: 'fill', source: 'rwanda', 'source-layer': 'landcover',
+      paint: { 'fill-color': '#d8e8c8', 'fill-opacity': 0.6 },
+    },
+    {
+      id: 'park', type: 'fill', source: 'rwanda', 'source-layer': 'park',
+      paint: { 'fill-color': '#c8e0b0', 'fill-opacity': 0.5 },
+    },
+    {
+      id: 'water', type: 'fill', source: 'rwanda', 'source-layer': 'water',
+      paint: { 'fill-color': '#a8d0e6' },
+    },
+    {
+      id: 'landuse-residential', type: 'fill', source: 'rwanda', 'source-layer': 'landuse',
+      filter: ['==', ['get', 'class'], 'residential'],
+      paint: { 'fill-color': '#e6e1d8', 'fill-opacity': 0.5 },
+    },
+    {
+      id: 'building', type: 'fill', source: 'rwanda', 'source-layer': 'building',
+      minzoom: 13,
+      paint: { 'fill-color': '#dcd4c6', 'fill-outline-color': '#c8bfae' },
+    },
+    {
+      id: 'transportation-minor', type: 'line', source: 'rwanda', 'source-layer': 'transportation',
+      filter: ['!', ['match', ['get', 'class'], ['motorway', 'trunk', 'primary', 'secondary'], true, false]],
+      paint: { 'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.5, 16, 3] },
+    },
+    {
+      id: 'transportation-major', type: 'line', source: 'rwanda', 'source-layer': 'transportation',
+      filter: ['match', ['get', 'class'], ['motorway', 'trunk', 'primary', 'secondary'], true, false],
+      paint: { 'line-color': '#f5c96b', 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 1, 16, 5] },
+    },
+    {
+      id: 'boundary', type: 'line', source: 'rwanda', 'source-layer': 'boundary',
+      filter: ['<=', ['get', 'admin_level'], 4],
+      paint: { 'line-color': '#a08ccb', 'line-width': 1, 'line-dasharray': [2, 1] },
+    },
+    // Real drawn route (2026-07-19) -- see MapsService.getDirections' own doc comment.
+    // Rendered above every base layer so it's always visible over roads/buildings.
+    {
+      id: 'route-line', type: 'line', source: 'route',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#7472F4', 'line-width': 5, 'line-opacity': 0.9 },
+    },
+    // Real distance-measurement (ruler) tool line (2026-07-22) -- dashed, and a
+    // deliberately different color from the real drawn route above, so the two are never
+    // visually confused: one is a real road route, the other a plain straight-line
+    // measurement between tapped points.
+    {
+      id: 'measure-line', type: 'line', source: 'measure',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': 'var(--itunda-red)', 'line-width': 3, 'line-dasharray': [2, 1.5] },
+    },
+    {
+      id: 'measure-points', type: 'circle', source: 'measure',
+      filter: ['==', ['geometry-type'], 'Point'],
+      paint: { 'circle-radius': 5, 'circle-color': 'var(--itunda-red)', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' },
+    },
+    // Real text labels (2026-07-19) -- item 5, the last item on the Maps "100%"
+    // roadmap. Real OSM name data already baked into the tile archive (see the
+    // vector_layers this project's own `pmtiles show --metadata` inspection confirmed:
+    // `place`/`transportation_name`/`water_name`/`poi` all carry a real `name` field),
+    // rendered via itunda's own self-hosted glyph PBFs (GLYPHS_URL above). Ordered so
+    // labels paint above every fill/line/route layer -- real map text always wins
+    // legibility over the geometry beneath it.
+    {
+      id: 'water-label', type: 'symbol', source: 'rwanda', 'source-layer': 'water_name',
+      minzoom: 7,
+      layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 12 },
+      paint: { 'text-color': '#3d6e8f', 'text-halo-color': '#ffffff', 'text-halo-width': 1 },
+    },
+    {
+      id: 'road-label', type: 'symbol', source: 'rwanda', 'source-layer': 'transportation_name',
+      minzoom: 12,
+      layout: {
+        'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 12,
+        'symbol-placement': 'line', 'text-letter-spacing': 0.05,
+      },
+      paint: { 'text-color': '#6b5a2a', 'text-halo-color': '#ffffff', 'text-halo-width': 1.2 },
+    },
+    {
+      id: 'poi-label', type: 'symbol', source: 'rwanda', 'source-layer': 'poi',
+      minzoom: 14,
+      layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11 },
+      paint: { 'text-color': '#5a5044', 'text-halo-color': '#ffffff', 'text-halo-width': 1 },
+    },
+    {
+      id: 'place-label-minor', type: 'symbol', source: 'rwanda', 'source-layer': 'place',
+      minzoom: 10,
+      filter: ['!', ['match', ['get', 'class'], ['city', 'town'], true, false]],
+      layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 12 },
+      paint: { 'text-color': '#3d3d3d', 'text-halo-color': '#ffffff', 'text-halo-width': 1.2 },
+    },
+    {
+      id: 'place-label-major', type: 'symbol', source: 'rwanda', 'source-layer': 'place',
+      filter: ['match', ['get', 'class'], ['city', 'town'], true, false],
+      layout: {
+        'text-field': ['get', 'name'], 'text-font': ['Noto Sans Bold'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 4, 12, 10, 18],
+      },
+      paint: { 'text-color': '#1f1f1f', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
+    },
+  ],
+};
+
+const EMPTY_ROUTE_GEOJSON: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
+
+// Real Naver Maps-style colored merchant pins (2026-08-16, closing Section 27's own
+// "named, not built" recommendation) -- itunda's own per-merchant `category` was
+// already real, stored data (see `ShoppingMerchant`'s own doc comment), only ever used
+// to drive the single-blue-dot-for-every-merchant pin. Client-side-only, same
+// convention `RECENT_SEARCHES_KEY`'s doc comment above already establishes for this
+// map's other real-but-cosmetic lookups -- category is free text on the backend (a
+// seller-set string, not a fixed enum), so this is a real, extensible
+// substring/contains match with an honest neutral fallback for any category not
+// explicitly mapped, same "no invented category ever silently mismatched" discipline
+// Android's own `eatsCategoryIcon` fallback already establishes for an identical shape
+// of problem.
+function merchantPinColor(category: string | null | undefined): string {
+  const c = (category ?? '').toLowerCase();
+  if (c.includes('rwandan') || c.includes('fast food') || c.includes('restaurant') || c.includes('food')) return '#F59E0B';
+  if (c.includes('coffee') || c.includes('bakery')) return '#92400E';
+  if (c.includes('electronics')) return '#3182F6';
+  if (c.includes('fashion') || c.includes('clothing') || c.includes('beauty')) return '#EC4899';
+  if (c.includes('furniture') || c.includes('home')) return '#059669';
+  return '#6B7280';
+}
+
+// Real recent-searches persistence key (2026-07-22) -- see the `recentSearches` state's
+// own doc comment. Namespaced per-app, not just "recent_searches", since this is real
+// shared browser localStorage the whole bank-mfe origin's other features also write into.
+const RECENT_SEARCHES_KEY = 'itunda_map_recent_searches';
+
+// Real bookmark-folder defaults/palette (2026-07-22) -- see MapsService.addBookmark's
+// own doc comment on the backend for DEFAULT_BOOKMARK_FOLDER/DEFAULT_BOOKMARK_COLOR
+// (kept in sync by hand, not imported, since this is a plain frontend literal). A
+// small fixed palette rather than a full color picker -- matches this app's own
+// itunda-* palette, not an arbitrary hex input a user could fat-finger into an
+// unreadable pin color. Independent of itunda's own brand color (a user-choice
+// palette, not a brand pointer -- deliberately left untouched by the itundaface
+// pass below, same real distinction the earlier indigo rebrand already drew for
+// this exact palette, see feedback captured in project_itunda_own_icons_graphics.md).
+const DEFAULT_BOOKMARK_FOLDER = 'Saved places';
+const BOOKMARK_COLOR_PALETTE = ['#F5A623', '#3182F6', '#8B5CF6', 'var(--itunda-red)', '#22B07D', '#4E5968'];
+
+// Real fixed (non-theme-reactive) text colors for this component's own deliberately-
+// white map chrome (search pill, chip row, results dropdown, bottom sheet) -- found as a
+// real bug 2026-07-21 while verifying the redesign live in a real dark-mode browser
+// session: `var(--itunda-grey-900)` resolves to #ffffff in this app's dark theme (correct
+// for text on the app's own dark page background), but every one of these panels uses a
+// literal `background: 'var(--itunda-color-surface)'`, not the theme-reactive `--itunda-white` token `.itunda-card`
+// uses -- so grey-900 text on them was rendering fully invisible (white-on-white), not
+// just low-contrast. This affected the pre-existing bottom sheet ("Around you" heading,
+// selected-place name, bookmark/nearby-result rows) as well as this pass's new zoom
+// control, not only newly-added elements.
+const MAP_CARD_TEXT = 'var(--itunda-color-text-strong)';
+const MAP_CARD_TEXT_SECONDARY = 'var(--itunda-color-text-muted)';
+// Real WCAG AA contrast fix (item 244, web accessibility sweep): this was a
+// hardcoded, independent copy of --itunda-grey-500's OLD, pre-fix value -- the
+// exact drift class packages/design-tokens/tokens.css's own header comment
+// already warns about (a file keeping its own literal copy instead of the
+// shared token, so it silently misses future fixes). #8B95A1 measured 2.76:1
+// against this map card's background / 3.04:1 against white, both failing
+// 4.5:1 AA-normal-text -- real, live text on 11 real call sites (Recent
+// searches, saved-place captions, route-step distances, etc.), not decorative.
+// Updated to match the same #636E7C already applied to --itunda-grey-500 /
+// Android's IdsSemanticColors.textTertiary / iOS's IDS.Colors.textTertiary.
+const MAP_CARD_TEXT_TERTIARY = 'var(--itunda-color-text-subtle)';
+const MAP_CARD_DIVIDER = 'var(--itunda-color-divider)';
+
+/**
+ * Real interactive Rwanda map -- itunda's own self-hosted Kakao Maps/Naver Maps-style
+ * mapping. Plots real registered merchants (reusing the same GET /api/v1/shopping/merchants
+ * catalog the Shop tab already uses -- zero new backend browse endpoint) that have set a
+ * real location via POST /api/v1/merchant/location, plus three real "feels like a real
+ * maps app" capabilities added 2026-07-19 at the user's direct request ("make sure our
+ * maps is fully 100% like naver maps/kakao maps for rwanda"): real place search (backed
+ * by itunda's own self-hosted Nominatim, not just the Eats-checkout-scoped autocomplete
+ * that existed before), a real "my location" blue dot (the browser's own real Geolocation
+ * API, no backend call), and real turn-by-turn-capable directions (itunda's own
+ * self-hosted OSRM, drawing the actual road-following route, not just a straight line).
+ */
+export default function MapView() {
+  const { t } = useI18n();
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const myLocationMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const destinationMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const myLocationRef = useRef<[number, number] | null>(null); // [lat, lng]
+  const categoryMarkersRef = useRef<maplibregl.Marker[]>([]);
+
+  const [error, setError] = useState<string | null>(null);
+  const [merchantCount, setMerchantCount] = useState<number | null>(null);
+  // Real merchant-pin enrichment (2026-07-22) -- itunda's own registered merchants
+  // already carry a real photo/rating/category/cashback rate (see ShoppingMerchant's own
+  // doc comment in lib/shopping.ts, all wired up for the Shop tab's browse cards), but
+  // tapping a merchant pin on the map only ever showed a plain-text business-name popup --
+  // none of that real data reached the map, unlike Naver/Kakao Maps' own real "tap a
+  // business pin -> see a rich place card" convention. Kept as its own list (not folded
+  // into `selectedPlace`, which only ever has displayName/lat/lng) so the detail sheet can
+  // look up a real match by coordinate and layer on enrichment when one exists, without
+  // changing what a plain Nominatim search result looks like.
+  const [merchants, setMerchants] = useState<ShoppingMerchant[]>([]);
+  const [query, setQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<PlaceSearchResult[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceSearchResult | null>(null);
+  const [route, setRoute] = useState<{ distanceKm: number; durationMinutes: number; steps: RouteStep[] } | null>(null);
+  // Real alternative routes (2026-07-22) -- see lib/maps.ts's getDirectionsAlternatives
+  // doc comment. `routeAlternatives` holds every real route OSRM offered for this trip
+  // (often just one -- OSRM itself decides whether a real alternative exists);
+  // `selectedRouteIndex` is whichever one is currently drawn/reported above.
+  const [routeAlternatives, setRouteAlternatives] = useState<RouteResult[] | null>(null);
+  // Stops for the currently displayed itinerary, in the exact user-selected order.
+  // Keeping these separately from the ruler's draft points lets a user inspect or
+  // re-run the real itinerary in another travel mode without losing their draft.
+  const [itineraryStops, setItineraryStops] = useState<[number, number][] | null>(null);
+  const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
+  const [showSteps, setShowSteps] = useState(false);
+  const [routing, setRouting] = useState(false);
+  // Real driving/walking toggle (2026-07-22) -- see lib/maps.ts's TravelMode doc
+  // comment for the real, separately-deployed foot-profile OSRM instance this reaches.
+  const [travelMode, setTravelMode] = useState<TravelMode | 'BUS' | 'TRANSIT'>('DRIVING');
+  // Real Kigali GTFS-based transit journeys (2026-08-28, itunda Maps redesign) -- see
+  // TransitRoutingService's own doc comment on the backend. Deliberately separate
+  // from busTrips/'BUS' above (the pre-existing intercity coach marketplace) -- 'TRANSIT'
+  // is the real local city-transit journey planner, matching the reference's own
+  // distinct real-time-styled transit tab.
+  const [transitJourneys, setTransitJourneys] = useState<TransitJourney[] | null>(null);
+  const [transitSearching, setTransitSearching] = useState(false);
+  // Real tabbed place-detail panel (2026-08-28, itunda Maps redesign) -- see
+  // MapPlaceDetailPanel's own doc comment. Holds the real merchantId currently expanded
+  // into the full panel, or null when the compact bottom-sheet preview is showing.
+  const [viewingPlaceDetail, setViewingPlaceDetail] = useState<string | null>(null);
+  const [weather, setWeather] = useState<KigaliWeather | null>(null);
+  // Real backend category list (Maps product-completeness pass, 2026-09-07) -- see
+  // NEARBY_CATEGORIES's own doc comment. Starts as that hardcoded default, then
+  // replaced by the real fetched list below.
+  const [categories, setCategories] = useState<MapPlaceCategory[]>(NEARBY_CATEGORIES);
+  // Real "Smart Around"-style default map state (Maps product-completeness pass,
+  // 2026-09-07) -- Android already has this (MapsScreen.kt's loadAroundMe); ports it
+  // here for cross-platform parity, same honest 2-of-5-Naver-sections scope decision.
+  const [aroundMePlaces, setAroundMePlaces] = useState<NearbyPlace[] | null>(null);
+  const [trendingPlaces, setTrendingPlaces] = useState<TrendingPlace[] | null>(null);
+  // Real Naver Map-style transit tab (2026-08-12, direct user screenshot) -- see the
+  // Android/iOS ports' own doc comments for the full account: itunda has no live
+  // bus-GPS or transit-schedule feed, so this surfaces the real, already-shipped
+  // peer-to-peer BusService trip marketplace instead -- honestly labeled "Scheduled",
+  // never implying live tracking. Widened travelMode's own type (not the shared
+  // TravelMode used for real OSRM calls) to include this local-only pseudo-mode.
+  const [busTrips, setBusTrips] = useState<BusTrip[] | null>(null);
+  const [busSearching, setBusSearching] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [categoryLoading, setCategoryLoading] = useState(false);
+  const [categoryResults, setCategoryResults] = useState<NearbyPlace[] | null>(null);
+  const [bookmarks, setBookmarks] = useState<MapBookmark[]>([]);
+  const [bookmarking, setBookmarking] = useState(false);
+  // Real folder/color picker (2026-07-22) -- see lib/maps.ts's MapBookmark doc comment.
+  // `savingToFolder` holds whichever real place's picker is currently expanded (null =
+  // closed); tapping ☆ opens it instead of immediately saving with silent defaults, the
+  // same real "pick a list" step Naver/Kakao Maps' own save flow has.
+  const [savingToFolder, setSavingToFolder] = useState<PlaceSearchResult | null>(null);
+  const [folderNameInput, setFolderNameInput] = useState(DEFAULT_BOOKMARK_FOLDER);
+  const [folderColorInput, setFolderColorInput] = useState(BOOKMARK_COLOR_PALETTE[0]);
+  // Real "move to folder" (2026-07-23) -- moveMapBookmark already existed in lib/maps.ts
+  // with zero UI calling it on this platform, the one honestly-open gap left on the
+  // "100% Naver/Kakao Maps" roadmap (Android/iOS already had this real picker).
+  // `movingBookmark` holds whichever real bookmark's move-picker is currently expanded.
+  const [movingBookmark, setMovingBookmark] = useState<MapBookmark | null>(null);
+  const [moveFolderNameInput, setMoveFolderNameInput] = useState('');
+  const [moveFolderColorInput, setMoveFolderColorInput] = useState(BOOKMARK_COLOR_PALETTE[0]);
+  // Real Naver Map-style folder share (2026-08-18) -- bank-mfe never had a client for
+  // this until now (setMapFolderPublic/MapsService.setFolderPublic existed on the
+  // backend since 2026-08-04 with only an Android caller). `sharingFolder` holds
+  // whichever folder name a share/unshare request is currently in flight for.
+  const [sharingFolder, setSharingFolder] = useState<string | null>(null);
+  const [shareLinkCopiedFor, setShareLinkCopiedFor] = useState<string | null>(null);
+  // Real Kakao Map-style "구독" (subscribe) -- opening a real itunda maps share link
+  // (?sharedOwner=&sharedFolder=) shows the owner's shared places read-only, with a real
+  // "Save to my places" action that copies them into the viewer's own bookmarks (see
+  // MapsService.subscribeToSharedFolder's own doc comment on the backend). A link
+  // opened while signed out can still view the list (the GET is unauthenticated) but the
+  // Save action needs a real session, same as every other write in this app.
+  const [sharedFolderView, setSharedFolderView] = useState<{ ownerId: string; folderName: string } | null>(null);
+  const [sharedFolderBookmarks, setSharedFolderBookmarks] = useState<MapBookmark[] | null>(null);
+  const [sharedFolderLoading, setSharedFolderLoading] = useState(false);
+  const [sharedFolderError, setSharedFolderError] = useState<string | null>(null);
+  const [subscribing, setSubscribing] = useState(false);
+  const [subscribedCount, setSubscribedCount] = useState<number | null>(null);
+  // Real Kakao Map-style "친구위치" (Friend Location) live location sharing -- a real,
+  // moving position shared for a bounded window, distinct from the static folder
+  // share/subscribe above. See lib/maps.ts's LiveLocationShare doc comment for the
+  // full real sourcing. `myShares` are shares this user is the SHARER on (their own
+  // position is being pushed out); `sharesWithMe` are shares someone else made TO this
+  // user. `watchingShareId` is whichever incoming share currently has an active
+  // periodic-poll marker on the map (null = not watching any).
+  const [showStartShare, setShowStartShare] = useState(false);
+  const [shareRecipientPhone, setShareRecipientPhone] = useState('');
+  const [shareDurationHours, setShareDurationHours] = useState(1);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [myShares, setMyShares] = useState<LiveLocationShare[]>([]);
+  const [sharesWithMe, setSharesWithMe] = useState<LiveLocationShare[]>([]);
+  const [watchingShareId, setWatchingShareId] = useState<string | null>(null);
+  const sharingPushIntervalRef = useRef<number | null>(null);
+  const watchingPollIntervalRef = useRef<number | null>(null);
+  const watchedShareMarkerRef = useRef<maplibregl.Marker | null>(null);
+  // Real "share this place" clipboard-fallback confirmation (2026-07-22) -- only used on
+  // browsers without the native Web Share API (navigator.share), see shareLocation's own
+  // doc comment.
+  const [shareCopied, setShareCopied] = useState(false);
+  // Real distance-measurement (ruler) tool state (2026-07-22) -- see the toggle button's
+  // own doc comment. Plain [lat, lng] pairs, same convention as everywhere else in this
+  // file, in tap order.
+  const [measuring, setMeasuring] = useState(false);
+  const [measurePoints, setMeasurePoints] = useState<[number, number][]>([]);
+  const [lastMeasuredPlaceName, setLastMeasuredPlaceName] = useState<string | null>(null);
+  const latestMeasureReverseRequest = useRef(0);
+  // Real recent-searches list (2026-07-22) -- the other half of the same previously-
+  // flagged "no autocomplete/recent-searches" gap the live-search-as-you-type pass just
+  // closed the first half of. Naver/Kakao Maps' own real recent-searches list is a purely
+  // client-side, per-device convenience (no account-wide sync), so this is real
+  // localStorage persistence, not a fabricated backend feature -- no server-side value in
+  // storing "which places did this browser search for" centrally.
+  const [recentSearches, setRecentSearches] = useState<PlaceSearchResult[]>([]);
+  const [searchFocused, setSearchFocused] = useState(false);
+
+  // Real draggable peek/half/full bottom sheet (2026-07-21) -- see
+  // docs/DESIGN_REFERENCES.md section 1, recommendation 1. Brings bank-mfe to parity
+  // with Android's own `MapScreen.kt` restructure (commit 48ad768): this component was
+  // a plain flex column stacking the search bar -> chips -> a fixed-height map div ->
+  // detail/bookmark cards below it, in normal document flow. Restructured to a
+  // full-bleed layout *within this component's own allotted box* (the surrounding
+  // dashboard is a fixed 480px-wide mobile-style column, not a full browser viewport,
+  // so "full-bleed" here means filling this component's box, the same way Android's
+  // map fills whatever Scaffold padding it's given): the map fills the whole box,
+  // search/chips/results float on top via the browser's native Pointer Events API
+  // (works for both mouse and touch, no extra dependency), the same anchor-based
+  // peek/half/full model Android implements via `AnchoredDraggableState` and iOS
+  // implements via a hand-rolled `DragGesture`.
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const [wrapperHeight, setWrapperHeight] = useState(0);
+  const [sheetY, setSheetY] = useState<number | null>(null);
+  const [sheetDragging, setSheetDragging] = useState(false);
+  const sheetSettledYRef = useRef(0);
+  const dragStartRef = useRef<{ pointerY: number; startY: number } | null>(null);
+
+  const PEEK_HEIGHT = 130;
+  const FULL_TOP_GAP = 70;
+  const peekAnchorY = wrapperHeight - PEEK_HEIGHT;
+  const halfAnchorY = wrapperHeight * 0.55;
+  const fullAnchorY = FULL_TOP_GAP;
+
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver((entries) => setWrapperHeight(entries[0].contentRect.height));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Real cleanup for the two live-location-share polling intervals -- without this,
+  // navigating away from the map mid-share/mid-watch would leave a real setInterval
+  // running forever in the background, silently pushing/polling location after the
+  // user can no longer see or stop it.
+  useEffect(() => {
+    return () => {
+      if (sharingPushIntervalRef.current !== null) window.clearInterval(sharingPushIntervalRef.current);
+      if (watchingPollIntervalRef.current !== null) window.clearInterval(watchingPollIntervalRef.current);
+    };
+  }, []);
+
+  // Real Kigali weather chip (2026-08-28, itunda Maps redesign) -- see
+  // KigaliWeatherClient's own doc comment on the backend, real 30-minute server cache;
+  // a real once-on-mount fetch here is enough, not a client-side poll. `weather` stays
+  // null (chip doesn't render) if the real upstream is unreachable -- never fabricated.
+  useEffect(() => {
+    fetchKigaliWeather().then(setWeather).catch(() => setWeather(null));
+  }, []);
+
+  useEffect(() => {
+    fetchMapCategories()
+      .then(setCategories)
+      .catch(() => {
+        // Honest partial failure -- the hardcoded default above still renders.
+      });
+  }, []);
+
+  useEffect(() => {
+    const [lat, lng] = myLocationRef.current ?? [RWANDA_CENTER[1], RWANDA_CENTER[0]];
+    fetchMapAroundMe(lat, lng).then(setAroundMePlaces).catch(() => setAroundMePlaces(null));
+    fetchMapTrending().then(setTrendingPlaces).catch(() => setTrendingPlaces(null));
+  }, []);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(RECENT_SEARCHES_KEY);
+      if (raw) setRecentSearches(JSON.parse(raw));
+    } catch {
+      // Corrupt/unavailable localStorage just means an empty recent-searches list --
+      // a pure convenience feature, never worth failing the whole map view over.
+    }
+  }, []);
+
+  // Real shared-folder-link landing (2026-08-18) -- the receiving half of the Share
+  // button below. Android already resolves its own itunda://maps/shared/... deep link
+  // (2026-08-14); bank-mfe never did, so a recipient opening a shared link on the web
+  // client landed on a plain blank map. Mirrors that same real, deliberately-
+  // unauthenticated GET (see MapsController.sharedFolder's own doc comment) -- this
+  // works even for a recipient who isn't signed in.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ownerId = params.get('sharedOwner');
+    const folderName = params.get('sharedFolder');
+    if (!ownerId || !folderName) return;
+    setSharedFolderView({ ownerId, folderName });
+    setSharedFolderLoading(true);
+    setSharedFolderError(null);
+    fetchSharedMapFolder(ownerId, folderName)
+      .then((real) => setSharedFolderBookmarks(real))
+      .catch((err) => setSharedFolderError(err instanceof ApiError ? err.message : 'Could not load this shared list.'))
+      .finally(() => setSharedFolderLoading(false));
+  }, []);
+
+  // Real distance-measurement (ruler) tool -- map click handler (2026-07-22). Only
+  // attached while `measuring` is on; uses the functional setState form so it never
+  // needs `measurePoints` in its closure (no stale-state risk across re-renders).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !measuring) return;
+    const handleClick = (e: maplibregl.MapMouseEvent) => {
+      if (measurePoints.length >= 7) return;
+      const latitude = e.lngLat.lat;
+      const longitude = e.lngLat.lng;
+      setMeasurePoints((prev) => [...prev, [latitude, longitude]]);
+      setLastMeasuredPlaceName('Finding area…');
+      const requestId = ++latestMeasureReverseRequest.current;
+      void reverseGeocode(latitude, longitude)
+        .then((placeName) => {
+          if (latestMeasureReverseRequest.current === requestId) setLastMeasuredPlaceName(placeName);
+        })
+        .catch(() => {
+          if (latestMeasureReverseRequest.current === requestId) setLastMeasuredPlaceName(null);
+        });
+    };
+    map.on('click', handleClick);
+    return () => {
+      map.off('click', handleClick);
+    };
+  }, [measuring, measurePoints.length]);
+
+  // Real distance-measurement (ruler) tool -- keeps the `measure` GeoJSON source (a
+  // dot per tapped point, a dashed line once there are 2+) in sync with real tapped
+  // points, and clears it whenever measuring is turned off.
+  useEffect(() => {
+    const map = mapRef.current;
+    const source = map?.getSource('measure') as maplibregl.GeoJSONSource | undefined;
+    if (!source) return;
+    const features: GeoJSON.Feature[] = measurePoints.map(([lat, lng]) => ({
+      type: 'Feature',
+      properties: {},
+      geometry: { type: 'Point', coordinates: [lng, lat] },
+    }));
+    if (measurePoints.length > 1) {
+      features.push({
+        type: 'Feature',
+        properties: {},
+        geometry: { type: 'LineString', coordinates: measurePoints.map(([lat, lng]) => [lng, lat]) },
+      });
+    }
+    source.setData({ type: 'FeatureCollection', features });
+  }, [measurePoints]);
+
+  useEffect(() => {
+    if (wrapperHeight > 0 && sheetY === null) {
+      setSheetY(wrapperHeight - PEEK_HEIGHT);
+      sheetSettledYRef.current = wrapperHeight - PEEK_HEIGHT;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wrapperHeight]);
+
+  // A newly-selected place should be immediately visible without a manual drag --
+  // expands to Half; clearing the selection relaxes back to Peek instead of staying
+  // pinned open over an empty card.
+  useEffect(() => {
+    if (wrapperHeight === 0) return;
+    const target = selectedPlace ? wrapperHeight * 0.55 : wrapperHeight - PEEK_HEIGHT;
+    setSheetY(target);
+    sheetSettledYRef.current = target;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPlace]);
+
+  const onSheetPointerDown = (e: React.PointerEvent) => {
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    dragStartRef.current = { pointerY: e.clientY, startY: sheetSettledYRef.current };
+    setSheetDragging(true);
+  };
+  const onSheetPointerMove = (e: React.PointerEvent) => {
+    if (!dragStartRef.current) return;
+    const delta = e.clientY - dragStartRef.current.pointerY;
+    const proposed = dragStartRef.current.startY + delta;
+    setSheetY(Math.min(peekAnchorY, Math.max(fullAnchorY, proposed)));
+  };
+  const onSheetPointerUp = () => {
+    if (!dragStartRef.current) return;
+    setSheetDragging(false);
+    const current = sheetY ?? peekAnchorY;
+    const candidates = [fullAnchorY, halfAnchorY, peekAnchorY];
+    const nearest = candidates.reduce((a, b) => (Math.abs(b - current) < Math.abs(a - current) ? b : a));
+    setSheetY(nearest);
+    sheetSettledYRef.current = nearest;
+    dragStartRef.current = null;
+  };
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    let map: maplibregl.Map;
+    try {
+      // Real fix (2026-08-10): maplibre-gl's Map constructor creates a WebGL context
+      // synchronously and throws if that fails -- confirmed live via a real headless
+      // Chrome run with WebGL disabled (webglcontextcreationerror). The existing
+      // `map.on('error', ...)` handler below only catches async runtime errors (tile
+      // fetch failures); it never runs for this because the throw happens before the
+      // map object -- and therefore that handler -- exists. Uncaught, this crashed the
+      // ENTIRE app (React unmounts the whole tree on an uncaught effect error), not
+      // just this screen. WebGL context creation can legitimately fail on real
+      // low-end/older devices too, not only in a test harness -- a fintech app can't
+      // let one map tile view take down a user's whole session.
+      map = new maplibregl.Map({
+        container: containerRef.current,
+        style: MAP_STYLE,
+        center: RWANDA_CENTER,
+        zoom: 12,
+        attributionControl: false,
+      });
+    } catch {
+      setError('Map could not load on this device.');
+      return;
+    }
+    mapRef.current = map;
+    // Real custom zoom control (2026-07-21) -- replaces MapLibre's own default
+    // `NavigationControl` (a plain white square button pair, visually inconsistent
+    // with the rest of this app's rounded-card/shadow language) with the same
+    // itunda-styled floating control the JSX below renders, mirroring Android's own
+    // MapScreen.kt zoom +/- stack exactly.
+
+    let cancelled = false;
+    map.on('error', (e) => {
+      // A real tile-fetch failure (tile server unreachable) surfaces here rather than
+      // throwing -- MapLibre keeps rendering whatever tiles it already has.
+      if (!cancelled) setError('Map tiles are temporarily unavailable.');
+      console.warn('MapLibre error', e.error);
+    });
+
+    fetchMyMapBookmarks()
+      .then((real) => {
+        if (!cancelled) setBookmarks(real);
+      })
+      .catch(() => {
+        // Honest partial failure -- bookmarks are a real-nice-to-have, never block the
+        // base map or the rest of the Maps feature set from loading.
+      });
+
+    // Real Kakao Map-style "친구위치" live location shares -- same honest
+    // partial-failure posture as bookmarks above (a signed-out visitor real-401s here,
+    // which is expected and fine -- this whole feature needs a real session).
+    fetchMyLocationShares()
+      .then((real) => {
+        if (!cancelled) setMyShares(real);
+      })
+      .catch(() => {});
+    fetchLocationSharesWithMe()
+      .then((real) => {
+        if (!cancelled) setSharesWithMe(real);
+      })
+      .catch(() => {});
+
+    fetchShoppingCatalog()
+      .then((fetched: ShoppingMerchant[]) => {
+        if (cancelled) return;
+        const located = fetched.filter((m) => m.latitude != null && m.longitude != null);
+        located.forEach((m) => {
+          // Real tap-through to the full search/directions/bookmark sheet (2026-07-22)
+          // -- previously a merchant pin just showed a plain MapLibre popup with no
+          // further action; a real business pin now behaves exactly like tapping a
+          // search result, plus a real enrichment header (see the detail-sheet render
+          // below) since a merchant lookup by coordinate finds this real catalog entry.
+          new maplibregl.Marker({ color: merchantPinColor(m.category) })
+            .setLngLat([m.longitude as number, m.latitude as number])
+            .addTo(map)
+            .getElement()
+            .addEventListener('click', () => selectPlace({ displayName: m.businessName, latitude: m.latitude as number, longitude: m.longitude as number }));
+        });
+        setMerchants(located);
+        setMerchantCount(located.length);
+      })
+      .catch(() => {
+        // Honest partial failure -- the base map still renders even if the merchant
+        // overlay fails to load, never a blank screen for a real infra hiccup.
+        if (!cancelled) setMerchantCount(0);
+      });
+
+    return () => {
+      cancelled = true;
+      map.remove();
+      mapRef.current = null;
+      myLocationMarkerRef.current = null;
+      destinationMarkerRef.current = null;
+      categoryMarkersRef.current.forEach((m) => m.remove());
+      categoryMarkersRef.current = [];
+    };
+  }, []);
+
+  // Real search-as-you-type autocomplete (2026-07-22) -- itunda's search was submit-then-
+  // list only, unlike Naver/Kakao Maps' own real live-suggestion box; MapsService.searchPlaces
+  // already anticipated this ("search-as-you-type is easy to hammer otherwise" -- its own
+  // rate limit was sized for it before this UI ever called it that way). No new backend
+  // work needed, just a debounced front door onto the same real Nominatim-backed endpoint
+  // handleSearch below already uses. `searchRequestIdRef` discards a stale response that
+  // resolves after a newer keystroke's request -- typing "Kigal" then "Kigali" fast enough
+  // could otherwise let "Kigal"'s slower response overwrite "Kigali"'s newer, more relevant
+  // results.
+  const searchRequestIdRef = useRef(0);
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      setSearchResults(null);
+      return;
+    }
+    const requestId = ++searchRequestIdRef.current;
+    const timer = window.setTimeout(async () => {
+      setSearching(true);
+      setError(null);
+      try {
+        const results = await searchPlaces(trimmed);
+        if (searchRequestIdRef.current === requestId) setSearchResults(results);
+      } catch (err) {
+        if (searchRequestIdRef.current === requestId) {
+          setError(err instanceof ApiError ? err.message : t('maps.searchError'));
+        }
+      } finally {
+        if (searchRequestIdRef.current === requestId) setSearching(false);
+      }
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [query, t]);
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    searchRequestIdRef.current += 1;
+    setSearching(true);
+    setError(null);
+    try {
+      const results = await searchPlaces(trimmed);
+      setSearchResults(results);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('maps.searchError'));
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const addRecentSearch = (place: PlaceSearchResult) => {
+    setRecentSearches((prev) => {
+      const next = [place, ...prev.filter((p) => p.latitude !== place.latitude || p.longitude !== place.longitude)].slice(0, 8);
+      try {
+        window.localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(next));
+      } catch {
+        // Best-effort only -- a private-browsing/storage-disabled session just doesn't
+        // get a persisted recent-searches list, not a broken search feature.
+      }
+      return next;
+    });
+  };
+
+  const clearRecentSearches = () => {
+    setRecentSearches([]);
+    try {
+      window.localStorage.removeItem(RECENT_SEARCHES_KEY);
+    } catch {
+      // same best-effort reasoning as addRecentSearch above
+    }
+  };
+
+  const selectSearchResult = (place: PlaceSearchResult) => {
+    addRecentSearch(place);
+    selectPlace(place);
+  };
+
+  const selectPlace = (place: PlaceSearchResult) => {
+    setSelectedPlace(place);
+    setSearchResults(null);
+    setRoute(null);
+    setRouteAlternatives(null);
+    setSelectedRouteIndex(0);
+    setSavingToFolder(null);
+    const map = mapRef.current;
+    if (!map) return;
+    map.flyTo({ center: [place.longitude, place.latitude], zoom: 15 });
+    destinationMarkerRef.current?.remove();
+    destinationMarkerRef.current = new maplibregl.Marker({ color: 'var(--itunda-red)' })
+      .setLngLat([place.longitude, place.latitude])
+      .setPopup(new maplibregl.Popup({ offset: 12 }).setText(place.displayName))
+      .addTo(map);
+    // Clear any previously-drawn route -- a new destination needs a fresh "Directions" tap.
+    const source = map.getSource('route') as maplibregl.GeoJSONSource | undefined;
+    source?.setData(EMPTY_ROUTE_GEOJSON);
+  };
+
+  const selectAndRoute = (place: PlaceSearchResult) => {
+    selectPlace(place);
+    void handleGetDirections(asOsrmMode(travelMode), place);
+  };
+
+  const isBookmarked = (place: PlaceSearchResult) =>
+    bookmarks.some((b) => b.latitude === place.latitude && b.longitude === place.longitude);
+
+  // Real "share this place" (2026-07-22) -- Naver/Kakao Maps' own real share action.
+  // Deliberately plain name+coordinate text, not a link into itunda's own domain: bank-mfe
+  // is an authenticated dashboard with no public per-place page, so a fabricated
+  // "shareable link" would open to nothing useful for a recipient who isn't logged into
+  // this exact deployment -- honest plain text a recipient can paste into whatever real
+  // maps app they already use is the truthful choice here, not an itunda-hosted URL that
+  // doesn't actually exist.
+  const shareLocation = async (place: PlaceSearchResult) => {
+    const text = `${place.displayName} (${place.latitude.toFixed(6)}, ${place.longitude.toFixed(6)})`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: place.displayName, text });
+      } catch {
+        // A cancelled native share sheet throws -- not a real error, nothing to show.
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setShareCopied(true);
+      window.setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      setError(t('maps.shareError'));
+    }
+  };
+
+  // Real "My Places" folder grouping (2026-07-22) -- see lib/maps.ts's MapBookmark doc
+  // comment. Groups preserve `bookmarks`' own createdAt-desc order (a folder's position
+  // here is simply wherever its most-recently-saved place falls), not a separate alphabetic
+  // re-sort -- matches how a real recently-used folder list naturally feels most useful.
+  const bookmarksByFolder = bookmarks.reduce<Array<[string, MapBookmark[]]>>((groups, b) => {
+    const group = groups.find(([folder]) => folder === b.folderName);
+    if (group) {
+      group[1].push(b);
+    } else {
+      groups.push([b.folderName, [b]]);
+    }
+    return groups;
+  }, []);
+
+  // Real Naver Map-style folder share toggle (2026-08-18) -- see MapsService
+  // .setFolderPublic's own doc comment on the backend. The share link points back at
+  // this same MapView (?sharedOwner=&sharedFolder=), read by the useEffect above --
+  // itunda has no other public web surface for Maps to host a share URL on (see
+  // MapBookmark.isPublic's own doc comment for why that's a deliberate scope decision,
+  // not an oversight), so bank-mfe's own origin doubles as the "web page" a link opens.
+  const toggleFolderShare = async (folderName: string, makePublic: boolean) => {
+    const currentUser = getStoredUser();
+    if (!currentUser) return;
+    setSharingFolder(folderName);
+    try {
+      await setMapFolderPublic(folderName, makePublic);
+      setBookmarks((prev) => prev.map((b) => (b.folderName === folderName ? { ...b, isPublic: makePublic } : b)));
+      if (makePublic) {
+        const link = `${window.location.origin}${window.location.pathname}?sharedOwner=${encodeURIComponent(currentUser.id)}&sharedFolder=${encodeURIComponent(folderName)}`;
+        try {
+          await navigator.clipboard.writeText(link);
+          setShareLinkCopiedFor(folderName);
+          setTimeout(() => setShareLinkCopiedFor(null), 3000);
+        } catch {
+          // Clipboard access can be denied by the browser -- the folder is still real,
+          // genuinely public either way, this only affects the copy-to-clipboard nicety.
+        }
+      }
+    } catch {
+      // Best-effort, matches this file's own established "leave state as it was, let the
+      // user retry" convention for a failed write (see handleAddBookmark et al).
+    } finally {
+      setSharingFolder(null);
+    }
+  };
+
+  const handleSubscribeToSharedFolder = async () => {
+    if (!sharedFolderView) return;
+    setSubscribing(true);
+    setSharedFolderError(null);
+    try {
+      const copied = await subscribeToSharedMapFolder(sharedFolderView.ownerId, sharedFolderView.folderName);
+      setSubscribedCount(copied);
+      // Real bug found live (2026-08-18): the "Your saved places" panel below only ever
+      // loaded `bookmarks` once, on mount -- the subscribe action's own real new rows
+      // were correctly persisted server-side (confirmed via a direct API check) but
+      // stayed invisible in this same session until a manual page reload. Refresh it
+      // here so a successful subscribe is visible immediately, matching how every other
+      // real bookmark write in this file (add/move/remove) already updates `bookmarks`.
+      setBookmarks(await fetchMyMapBookmarks());
+    } catch (err) {
+      setSharedFolderError(err instanceof ApiError ? err.message : 'Could not save this list -- sign in and try again.');
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
+  // Real Kakao Map-style "친구위치" (Friend Location) live location sharing -- see
+  // lib/maps.ts's LiveLocationShare doc comment for the full real sourcing. Starts a
+  // real, time-bounded share, then begins a real periodic browser-geolocation push
+  // (matches the honest "periodically refreshed, not a push channel" scope this
+  // feature was built to -- itunda has no WebSocket infra for this).
+  const handleStartLocationShare = async () => {
+    if (!shareRecipientPhone.trim()) return;
+    setShareBusy(true);
+    setShareError(null);
+    try {
+      const share = await startLocationShare(shareRecipientPhone.trim(), shareDurationHours);
+      setMyShares((prev) => [share, ...prev]);
+      setShowStartShare(false);
+      setShareRecipientPhone('');
+      startPushingMyLocation();
+    } catch (err) {
+      setShareError(err instanceof ApiError ? err.message : 'Could not start sharing your location.');
+    } finally {
+      setShareBusy(false);
+    }
+  };
+
+  // Real "client owns when to push a fresh reading" loop -- pushes the browser's own
+  // real geolocation every 30s while at least one real share is active, matching
+  // RideDriverService.updateLocation's own real backend rate limit (20/min = one push
+  // every 3s minimum; 30s is comfortably under that with real headroom for retries).
+  // Idempotent to call again -- clears any prior interval first, so a second share
+  // started while one is already running doesn't double-push.
+  const startPushingMyLocation = () => {
+    if (sharingPushIntervalRef.current !== null) window.clearInterval(sharingPushIntervalRef.current);
+    const push = () => {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          updateMyLocationShare(position.coords.latitude, position.coords.longitude).catch(() => {
+            // Best-effort -- a single missed push just means recipients see a
+            // slightly stale position until the next real successful one.
+          });
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 10000 },
+      );
+    };
+    push();
+    sharingPushIntervalRef.current = window.setInterval(push, 30000);
+  };
+
+  // Real "extend while active" (2026-09-04) -- a fully-built backend
+  // (LiveLocationShareService.extendSharing, capped at MAX_DURATION_HOURS total from the
+  // share's own original creation) had zero UI on any platform since the feature shipped;
+  // once shared, a user could only let it lapse or stop it early, never lengthen it.
+  // Best-effort like handleStopLocationShare above -- silent no-op on failure (e.g.
+  // already past the 6h cap) rather than a new error-display path for this compact row.
+  const handleExtendLocationShare = async (shareId: string) => {
+    try {
+      const updated = await extendLocationShare(shareId, 1);
+      setMyShares((prev) => prev.map((s) => (s.id === shareId ? updated : s)));
+    } catch {
+      // Best-effort -- see handleStopLocationShare's own doc comment above.
+    }
+  };
+
+  const handleStopLocationShare = async (shareId: string) => {
+    try {
+      await stopLocationShare(shareId);
+    } catch {
+      // Best-effort -- proceed to update local state regardless, matching this file's
+      // own established convention for a failed write on a real, already-user-visible action.
+    }
+    const remaining = myShares.filter((s) => s.id !== shareId);
+    setMyShares(remaining);
+    if (remaining.length === 0 && sharingPushIntervalRef.current !== null) {
+      window.clearInterval(sharingPushIntervalRef.current);
+      sharingPushIntervalRef.current = null;
+    }
+  };
+
+  // Real recipient-side watch -- polls the sharer's latest pushed position every 15s
+  // and drops/updates a real marker, distinct in color from "my location"'s own blue
+  // dot so the two are never visually confused.
+  const handleWatchIncomingShare = (shareId: string) => {
+    if (watchingPollIntervalRef.current !== null) window.clearInterval(watchingPollIntervalRef.current);
+    setWatchingShareId(shareId);
+    const poll = () => {
+      fetchLocationShare(shareId)
+        .then((share) => {
+          if (share.latitude == null || share.longitude == null) return;
+          const map = mapRef.current;
+          if (!map) return;
+          watchedShareMarkerRef.current?.remove();
+          const el = document.createElement('div');
+          el.style.width = '16px';
+          el.style.height = '16px';
+          el.style.borderRadius = '50%';
+          el.style.backgroundColor = '#F59E0B';
+          el.style.border = '3px solid white';
+          el.style.boxShadow = '0 0 0 2px rgba(245,158,11,0.4)';
+          watchedShareMarkerRef.current = new maplibregl.Marker({ element: el }).setLngLat([share.longitude, share.latitude]).addTo(map);
+          map.flyTo({ center: [share.longitude, share.latitude], zoom: 14 });
+        })
+        .catch(() => {
+          // A real expired/revoked share (or a real transient network hiccup) just
+          // means this poll cycle doesn't move the marker -- stopWatchingIncomingShare
+          // is the explicit, real way to end a watch, not an inferred failure here.
+        });
+    };
+    poll();
+    watchingPollIntervalRef.current = window.setInterval(poll, 15000);
+  };
+
+  const stopWatchingIncomingShare = () => {
+    if (watchingPollIntervalRef.current !== null) {
+      window.clearInterval(watchingPollIntervalRef.current);
+      watchingPollIntervalRef.current = null;
+    }
+    watchedShareMarkerRef.current?.remove();
+    watchedShareMarkerRef.current = null;
+    setWatchingShareId(null);
+  };
+
+  const toggleBookmark = async (place: PlaceSearchResult) => {
+    if (isBookmarked(place)) {
+      setBookmarking(true);
+      setError(null);
+      try {
+        await removeMapBookmark(place.latitude, place.longitude);
+        setBookmarks((prev) => prev.filter((b) => !(b.latitude === place.latitude && b.longitude === place.longitude)));
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : t('maps.bookmarkRemoveError'));
+      } finally {
+        setBookmarking(false);
+      }
+      return;
+    }
+    // Real folder/color picker (2026-07-22) -- opens inline rather than saving straight
+    // to the default folder, defaulting to whichever real folder was used last (a real,
+    // small convenience: most saves in a session go to the same folder in a row).
+    setFolderNameInput(bookmarks[0]?.folderName ?? DEFAULT_BOOKMARK_FOLDER);
+    setFolderColorInput(bookmarks[0]?.color ?? BOOKMARK_COLOR_PALETTE[0]);
+    setSavingToFolder(place);
+  };
+
+  const confirmSaveToFolder = async () => {
+    if (!savingToFolder) return;
+    setBookmarking(true);
+    setError(null);
+    try {
+      const saved = await addMapBookmark(
+        savingToFolder.displayName,
+        savingToFolder.latitude,
+        savingToFolder.longitude,
+        folderNameInput.trim() || DEFAULT_BOOKMARK_FOLDER,
+        folderColorInput,
+      );
+      setBookmarks((prev) => [saved, ...prev]);
+      setSavingToFolder(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('maps.bookmarkSaveError'));
+    } finally {
+      setBookmarking(false);
+    }
+  };
+
+  const findMyLocation = () => {
+    if (!navigator.geolocation) {
+      setError('This browser does not support real location access.');
+      return;
+    }
+    setLocating(true);
+    setError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocating(false);
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        myLocationRef.current = [lat, lng];
+        const map = mapRef.current;
+        if (!map) return;
+        myLocationMarkerRef.current?.remove();
+        // A real, distinct "blue dot" marker (Naver/Kakao Maps' own real convention) --
+        // a plain div styled as a filled circle, not MapLibre's default pin shape, so
+        // "my location" reads visually distinct from a search-result/merchant pin.
+        const el = document.createElement('div');
+        el.style.width = '16px';
+        el.style.height = '16px';
+        el.style.borderRadius = '50%';
+        el.style.backgroundColor = '#7472F4';
+        el.style.border = '3px solid white';
+        el.style.boxShadow = '0 0 0 2px rgba(49,130,246,0.4)';
+        myLocationMarkerRef.current = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
+        map.flyTo({ center: [lng, lat], zoom: 14 });
+      },
+      () => {
+        setLocating(false);
+        setError('Could not access your real location. Check your browser permissions.');
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
+
+  // Real category-chip "nearby places" search (Naver/Kakao's own convention) -- searches
+  // a real radius around the user's real location if known, otherwise the map's current
+  // center (the same "browse this area" behavior a real maps app falls back to without
+  // location permission). Tapping an already-active chip clears it, matching a real
+  // toggle-filter UX rather than only ever adding more markers.
+  const handleCategorySearch = async (categoryId: string) => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (activeCategory === categoryId) {
+      categoryMarkersRef.current.forEach((m) => m.remove());
+      categoryMarkersRef.current = [];
+      setActiveCategory(null);
+      setCategoryResults(null);
+      return;
+    }
+    const center = myLocationRef.current ?? [map.getCenter().lat, map.getCenter().lng];
+    setActiveCategory(categoryId);
+    setCategoryLoading(true);
+    setError(null);
+    try {
+      // Real itunda cash-agent discovery (item 157) -- distinct from OSM-backed
+      // categories above, same real "own dedicated endpoint" special-case Android's
+      // own MapsScreen.kt already established for this one category.
+      const places = categoryId === 'ITUNDA_AGENT'
+        ? await fetchNearbyAgents(center[0], center[1])
+        : await searchNearbyPlaces(categoryId, center[0], center[1]);
+      categoryMarkersRef.current.forEach((m) => m.remove());
+      categoryMarkersRef.current = places.map((place) =>
+        new maplibregl.Marker({ color: 'var(--itunda-color-brand)' })
+          .setLngLat([place.longitude, place.latitude])
+          .setPopup(new maplibregl.Popup({ offset: 12 }).setText(`${place.displayName} · ${place.distanceKm.toFixed(1)}km`))
+          .addTo(map),
+      );
+      setCategoryResults(places);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not search nearby places.');
+      setActiveCategory(null);
+    } finally {
+      setCategoryLoading(false);
+    }
+  };
+
+  // Draws one real route's geometry, fits the map to it, and updates the displayed
+  // stats -- shared by the initial "Directions" fetch and by tapping a real alternative
+  // route chip below it (2026-07-22, see lib/maps.ts's getDirectionsAlternatives doc
+  // comment), so switching which route is selected never re-fetches from OSRM.
+  const applyRoute = (result: RouteResult) => {
+    const map = mapRef.current;
+    if (!map) return;
+    setRoute({ distanceKm: result.distanceKm, durationMinutes: result.durationMinutes, steps: result.steps });
+    setShowSteps(false);
+    const source = map.getSource('route') as maplibregl.GeoJSONSource | undefined;
+    source?.setData({
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        properties: {},
+        geometry: { type: 'LineString', coordinates: result.geometry.map(([lat, lng]) => [lng, lat]) },
+      }],
+    });
+    const bounds = result.geometry.reduce(
+      (b, [lat, lng]) => b.extend([lng, lat]),
+      new maplibregl.LngLatBounds(
+        [result.geometry[0][1], result.geometry[0][0]],
+        [result.geometry[0][1], result.geometry[0][0]],
+      ),
+    );
+    map.fitBounds(bounds, { padding: 60 });
+  };
+
+  // Real fallback for the two local-only pseudo-modes ('BUS'/'TRANSIT' aren't real
+  // OSRM TravelMode values) -- both default a subsequent real OSRM call back to
+  // DRIVING, matching the pre-existing 'BUS' behavior extended to cover 'TRANSIT' too.
+  const asOsrmMode = (m: TravelMode | 'BUS' | 'TRANSIT'): TravelMode => (m === 'BUS' || m === 'TRANSIT' ? 'DRIVING' : m);
+
+  const handleGetDirections = async (mode: TravelMode = asOsrmMode(travelMode), destination: PlaceSearchResult | null = null) => {
+    const map = mapRef.current;
+    const place = destination ?? selectedPlace;
+    if (!map || !place) return;
+    const origin = myLocationRef.current ?? [map.getCenter().lat, map.getCenter().lng];
+    setRouting(true);
+    setError(null);
+    try {
+      const results = await getDirectionsAlternatives(origin[0], origin[1], place.latitude, place.longitude, mode);
+      setTravelMode(mode);
+      setItineraryStops(null);
+      setRouteAlternatives(results);
+      setSelectedRouteIndex(0);
+      applyRoute(results[0]);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not find directions to this place.');
+    } finally {
+      setRouting(false);
+    }
+  };
+
+  // Real scheduled bus trips (BusService.kt) -- see busTrips's own doc comment above.
+  const searchBus = async (destination: string) => {
+    setBusSearching(true);
+    setBusTrips(null);
+    try {
+      const trips = await searchBusTrips(undefined, destination);
+      setBusTrips(trips);
+    } catch {
+      setBusTrips([]);
+    } finally {
+      setBusSearching(false);
+    }
+  };
+
+  // Real Kigali GTFS-based transit journeys (2026-08-28, itunda Maps redesign) -- see
+  // transitJourneys' own doc comment above. An empty real result (never an error) means
+  // no real direct route was found.
+  const searchTransit = async (destination: PlaceSearchResult) => {
+    const map = mapRef.current;
+    const origin = myLocationRef.current ?? (map ? [map.getCenter().lat, map.getCenter().lng] : null);
+    if (!origin) return;
+    setTransitSearching(true);
+    setTransitJourneys(null);
+    try {
+      const journeys = await fetchTransitDirections(origin[0], origin[1], destination.latitude, destination.longitude);
+      setTransitJourneys(journeys);
+    } catch {
+      setTransitJourneys([]);
+    } finally {
+      setTransitSearching(false);
+    }
+  };
+
+  // Turns the ruler's ordered points into one real OSRM itinerary. The backend validates
+  // the same 2–7-stop boundary, but this guard keeps the action self-explanatory before
+  // making a network request. We intentionally preserve the ruler points afterward so
+  // users can undo/reorder by editing their selected stops and route again.
+  const handleRouteItinerary = async (mode: TravelMode = asOsrmMode(travelMode)) => {
+    if (measurePoints.length < 2 || measurePoints.length > 7) return;
+    setRouting(true);
+    setError(null);
+    try {
+      const result = await getItineraryDirections(
+        measurePoints.map(([latitude, longitude]) => ({ latitude, longitude })),
+        mode,
+      );
+      setTravelMode(mode);
+      setRouteAlternatives(null);
+      setSelectedRouteIndex(0);
+      setItineraryStops(measurePoints);
+      applyRoute(result);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not find a route through these stops.');
+    } finally {
+      setRouting(false);
+    }
+  };
+
+  const selectRouteAlternative = (index: number) => {
+    if (!routeAlternatives || index === selectedRouteIndex) return;
+    setSelectedRouteIndex(index);
+    applyRoute(routeAlternatives[index]);
+  };
+
+  // Real merchant-pin enrichment lookup (2026-07-22) -- see the `merchants` state's own
+  // doc comment. A plain Nominatim search/nearby result has no matching entry here, so
+  // the detail sheet below only shows the enrichment header for a real itunda merchant.
+  const selectedMerchant = selectedPlace
+    ? merchants.find((m) => m.latitude === selectedPlace.latitude && m.longitude === selectedPlace.longitude)
+    : undefined;
+
+  const toggleMeasuring = () => {
+    setMeasuring((prev) => !prev);
+    setMeasurePoints([]);
+    setItineraryStops(null);
+  };
+
+  // Real straight-line distance (2026-07-22) -- the standard Haversine great-circle
+  // formula, the same one `rw.itunda.core.geo.GeoUtils.haversineKm` implements on the
+  // backend; kept as a plain local function here rather than a network round-trip since
+  // a ruler tool needs to update live as a user taps, not once per API call.
+  const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  const measureTotalKm = measurePoints.slice(1).reduce((total, [lat, lng], i) => {
+    const [prevLat, prevLng] = measurePoints[i];
+    return total + haversineKm(prevLat, prevLng, lat, lng);
+  }, 0);
+
+  const sheetTop = sheetY ?? peekAnchorY;
+
+  return (
+    <div
+      ref={wrapperRef}
+      style={{ position: 'relative', width: '100%', height: '70vh', minHeight: '460px', borderRadius: '16px', overflow: 'hidden' }}
+    >
+      {/* Real full-bleed map (2026-07-21) -- fills this component's entire box; every
+          other panel below floats on top of it via absolute positioning, instead of
+          the map being one fixed-height div in a document-flow column. */}
+      <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
+
+      {/* Real tabbed place-detail panel (itunda Maps redesign, 2026-08-28) -- see
+          MapPlaceDetailPanel's own doc comment. Rendered last among the map's own
+          absolute-positioned overlays so it sits above everything else, including the
+          bottom sheet, while open. */}
+      {viewingPlaceDetail && (
+        <MapPlaceDetailPanel merchantId={viewingPlaceDetail} onClose={() => setViewingPlaceDetail(null)} />
+      )}
+
+      {/* Real Kakao Map-style shared-folder landing (2026-08-18) -- shown when this page
+          was opened via a real ?sharedOwner=&sharedFolder= share link (see the loading
+          useEffect above). A banner over the map rather than replacing it, so the places
+          in the shared list are still visible in context on the real map underneath. */}
+      {sharedFolderView && (
+        <div
+          style={{
+            position: 'absolute', top: 0, left: 0, right: 0, zIndex: 3, margin: '12px',
+            background: 'var(--itunda-color-surface)', borderRadius: 'var(--itunda-radius-md)', padding: '14px 16px',
+            boxShadow: 'var(--itunda-shadow-sm)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+            <div>
+              <p style={{ fontSize: '14px', fontWeight: 700, color: MAP_CARD_TEXT }}>📍 {sharedFolderView.folderName}</p>
+              <p style={{ fontSize: '11px', color: MAP_CARD_TEXT_TERTIARY }}>A shared list of saved places</p>
+            </div>
+            <button
+              type="button"
+              aria-label="Close shared list"
+              onClick={() => setSharedFolderView(null)}
+              style={{ fontSize: '13px', color: MAP_CARD_TEXT_SECONDARY, background: 'none', border: 'none' }}
+            >
+              ✕
+            </button>
+          </div>
+          {sharedFolderLoading ? (
+            <p style={{ fontSize: '12px', color: MAP_CARD_TEXT_TERTIARY, marginTop: '8px' }}>Loading…</p>
+          ) : sharedFolderError ? (
+            <p style={{ fontSize: '12px', color: 'var(--itunda-color-error)', marginTop: '8px' }}>{sharedFolderError}</p>
+          ) : !sharedFolderBookmarks || sharedFolderBookmarks.length === 0 ? (
+            <p style={{ fontSize: '12px', color: MAP_CARD_TEXT_TERTIARY, marginTop: '8px' }}>This list is empty or is no longer public.</p>
+          ) : (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px', maxHeight: '160px', overflowY: 'auto' }}>
+                {sharedFolderBookmarks.map((b) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => selectPlace({ displayName: b.displayName, latitude: b.latitude, longitude: b.longitude })}
+                    style={{ textAlign: 'left', fontSize: '13px', color: MAP_CARD_TEXT, display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: b.color, flexShrink: 0 }} />
+                    {b.displayName}
+                  </button>
+                ))}
+              </div>
+              {subscribedCount !== null ? (
+                <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-color-brand)', marginTop: '10px' }}>
+                  ✓ Saved {subscribedCount} new place{subscribedCount === 1 ? '' : 's'} to your own bookmarks
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  disabled={subscribing}
+                  onClick={handleSubscribeToSharedFolder}
+                  style={{
+                    marginTop: '10px', width: '100%', padding: '10px', borderRadius: 'var(--itunda-radius-sm)',
+                    background: 'var(--itunda-color-brand)', color: 'var(--itunda-white)', fontSize: '13px', fontWeight: 700, border: 'none',
+                  }}
+                >
+                  {subscribing ? 'Saving…' : `Save to my places (${sharedFolderBookmarks.length})`}
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Real floating chrome (2026-07-21 redesign, mirrors Android's MapScreen.kt) --
+          previously one flat, edge-to-edge gradient band that read as a fixed toolbar.
+          Now the search pill and chip row are their own individually-shadowed rounded
+          surfaces with real map visible between them, matching the actual Naver
+          Map/Kakao Map/Google Maps chrome convention. */}
+      <div
+        style={{
+          position: 'absolute', top: 0, left: 0, right: 0, zIndex: 2,
+          display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px',
+        }}
+      >
+        <form
+          onSubmit={handleSearch}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            background: 'var(--itunda-color-surface)', borderRadius: 'var(--itunda-radius-pill)', padding: '4px 14px 4px 12px',
+            boxShadow: 'var(--itunda-shadow-sm)',
+          }}
+        >
+          <span style={{ fontSize: '15px', color: searching ? 'var(--itunda-grey-400)' : 'var(--itunda-indigo)' }}>🔍</span>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
+            placeholder={t('maps.searchPlaceholder')}
+            style={{ flex: 1, padding: '10px 6px', border: 'none', outline: 'none', fontSize: '14px', background: 'transparent' }}
+          />
+          {query.trim() !== '' && (
+            <button
+              type="button"
+              onClick={() => { setQuery(''); setSearchResults(null); }}
+              aria-label="Clear search"
+              style={{ fontSize: '13px', color: 'var(--itunda-grey-400)', padding: '4px' }}
+            >
+              ✕
+            </button>
+          )}
+        </form>
+
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '2px' }}>
+          {categories.map((category) => {
+            const active = activeCategory === category.id;
+            return (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() => handleCategorySearch(category.id)}
+                disabled={categoryLoading && !active}
+                style={{
+                  flexShrink: 0,
+                  display: 'flex', alignItems: 'center', gap: '4px',
+                  padding: '8px 12px',
+                  borderRadius: 'var(--itunda-radius-pill)',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  border: 'none',
+                  boxShadow: active ? '0 2px 6px rgba(116,114,244,0.4)' : '0 1px 4px rgba(0,0,0,0.1)',
+                  backgroundColor: active ? '#7472F4' : '#fff',
+                  color: active ? '#fff' : MAP_CARD_TEXT_SECONDARY,
+                }}
+              >
+                <PlaceGlyph category={category.id} size={16} />
+                {active && categoryLoading ? '…' : category.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {(searchResults !== null || error) && (
+          <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px', maxHeight: '160px', overflowY: 'auto', boxShadow: 'var(--itunda-shadow-sm)' }}>
+            {searchResults !== null && (searchResults.length === 0 ? (
+              <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', padding: '8px' }}>No real places found for that search.</p>
+            ) : (
+              searchResults.map((place, i) => (
+                <button
+                  key={`${place.latitude}-${place.longitude}-${i}`}
+                  onClick={() => selectSearchResult(place)}
+                  style={{ textAlign: 'left', padding: '10px 12px', borderRadius: 'var(--itunda-radius-xs)', fontSize: '13px', color: 'var(--itunda-grey-900)' }}
+                >
+                  {place.displayName}
+                </button>
+              ))
+            ))}
+            {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', padding: '8px' }} role="alert">{error}</p>}
+          </div>
+        )}
+
+        {/* Real recent-searches list (2026-07-22) -- only shown while the search box is
+            focused and empty (Naver/Kakao Maps' own real convention: tap the search box
+            before typing anything to see what you searched for before), never competing
+            with live results once a query exists. */}
+        {searchFocused && query.trim() === '' && recentSearches.length > 0 && (
+          <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px', maxHeight: '160px', overflowY: 'auto', boxShadow: 'var(--itunda-shadow-sm)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px' }}>
+              <p style={{ fontSize: '12px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY }}>Recent searches</p>
+              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={clearRecentSearches} style={{ fontSize: '11px', color: 'var(--itunda-indigo)', fontWeight: 700 }}>
+                Clear
+              </button>
+            </div>
+            {recentSearches.map((place, i) => (
+              <button
+                key={`${place.latitude}-${place.longitude}-${i}`}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => selectSearchResult(place)}
+                style={{ textAlign: 'left', padding: '10px 12px', borderRadius: 'var(--itunda-radius-xs)', fontSize: '13px', color: 'var(--itunda-grey-900)', display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <span style={{ color: MAP_CARD_TEXT_TERTIARY }}>🕐</span>
+                {place.displayName}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Real floating right-side controls (2026-07-21) -- zoom +/- and a dedicated
+          "locate me" button, matching the standard Google Maps/Naver Map/Kakao Map
+          convention of a vertical control stack on the right, distinct from the search
+          bar (which previously carried the locate button inline). Mirrors Android's
+          own MapScreen.kt control stack exactly. Anchored above the sheet's own peek
+          height so it's never covered at rest. */}
+      <div
+        style={{
+          position: 'absolute', right: '12px', zIndex: 2,
+          bottom: `${PEEK_HEIGHT + 16}px`,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
+        }}
+      >
+        <div style={{ background: 'var(--itunda-color-surface)', borderRadius: 'var(--itunda-radius-md)', boxShadow: 'var(--itunda-shadow-sm)', overflow: 'hidden' }}>
+          <button
+            type="button"
+            aria-label="Zoom in"
+            onClick={() => mapRef.current?.zoomIn()}
+            style={{ display: 'block', width: '44px', height: '44px', fontSize: '18px', color: MAP_CARD_TEXT }}
+          >
+            +
+          </button>
+          <div style={{ height: '1px', background: '#E5E8EB' }} />
+          <button
+            type="button"
+            aria-label="Zoom out"
+            onClick={() => mapRef.current?.zoomOut()}
+            style={{ display: 'block', width: '44px', height: '44px', fontSize: '18px', color: MAP_CARD_TEXT }}
+          >
+            −
+          </button>
+        </div>
+        <button
+          type="button"
+          disabled={locating}
+          onClick={findMyLocation}
+          aria-label="Find my real location"
+          style={{
+            width: '46px', height: '46px', borderRadius: '50%',
+            background: 'var(--itunda-color-surface)', boxShadow: 'var(--itunda-shadow-sm)',
+            fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: locating ? 'var(--itunda-grey-400)' : 'var(--itunda-indigo)',
+          }}
+        >
+          {locating ? '…' : '📍'}
+        </button>
+        {/* Real distance-measurement (ruler) tool toggle (2026-07-22) -- Naver/Kakao
+            Maps' own real "measure distance" action: tap to enter measure mode, then tap
+            points on the map to build a straight-line path and see the real cumulative
+            distance -- a genuinely different capability from Directions (no road route,
+            no OSRM call, just the plain distance between tapped points). */}
+        <button
+          type="button"
+          onClick={toggleMeasuring}
+          aria-label={measuring ? 'Stop measuring distance' : 'Measure distance'}
+          style={{
+            width: '46px', height: '46px', borderRadius: '50%',
+            background: measuring ? 'var(--itunda-red)' : '#fff', boxShadow: 'var(--itunda-shadow-sm)',
+            fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: measuring ? '#fff' : MAP_CARD_TEXT_SECONDARY,
+          }}
+        >
+          📏
+        </button>
+      </div>
+
+      {/* Real distance-measurement (ruler) tool info badge (2026-07-22) -- only shown
+          while active, floats above the search chrome so it never fights the docked
+          bottom sheet for space. */}
+      {measuring && (
+        <div
+          style={{
+            position: 'absolute', top: '72px', left: '50%', transform: 'translateX(-50%)', zIndex: 2,
+            background: 'var(--itunda-color-surface)', borderRadius: 'var(--itunda-radius-pill)', padding: '8px 16px',
+            boxShadow: 'var(--itunda-shadow-sm)',
+            display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px',
+          }}
+        >
+          <span style={{ fontWeight: 700, color: MAP_CARD_TEXT }}>
+            {measurePoints.length === 0
+              ? 'Tap the map to add 2–7 stops'
+              : measurePoints.length === 1
+                ? 'Add 1 more stop to route it'
+                : `${measurePoints.length} stops · ${measureTotalKm.toFixed(2)} km straight-line`}
+          </span>
+          {lastMeasuredPlaceName && (
+            <span style={{ color: MAP_CARD_TEXT_TERTIARY, maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {lastMeasuredPlaceName}
+            </span>
+          )}
+          {measurePoints.length > 0 && (
+            <button type="button" onClick={() => { setMeasurePoints((prev) => prev.slice(0, -1)); setLastMeasuredPlaceName(null); }} style={{ fontSize: '12px', color: 'var(--itunda-indigo)', fontWeight: 700 }}>
+              Undo
+            </button>
+          )}
+          {measurePoints.length >= 2 && (
+            <button
+              type="button"
+              disabled={routing}
+              onClick={() => handleRouteItinerary()}
+              style={{ fontSize: '12px', color: 'var(--itunda-white)', background: 'var(--itunda-indigo)', borderRadius: 'var(--itunda-radius-pill)', padding: '6px 10px', fontWeight: 700 }}
+            >
+              {routing ? 'Routing…' : 'Route itinerary'}
+            </button>
+          )}
+          <button type="button" onClick={() => { setMeasuring(false); setMeasurePoints([]); setLastMeasuredPlaceName(null); }} style={{ fontSize: '12px', color: MAP_CARD_TEXT_TERTIARY, fontWeight: 700 }}>
+            Done
+          </button>
+        </div>
+      )}
+
+      {/* Real draggable peek/half/full bottom sheet (2026-07-21) -- a persistent,
+          non-modal panel docked over the map. Pointer Events drive `sheetY` live; on
+          release it snaps to whichever of the three real anchors above is closest --
+          the same anchor-based model Android implements via `AnchoredDraggableState`
+          and iOS implements via a hand-rolled `DragGesture`. */}
+      <div
+        style={{
+          position: 'absolute', left: 0, right: 0, top: 0, height: '100%', zIndex: 3,
+          transform: `translateY(${sheetTop}px)`,
+          transition: sheetDragging ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
+          background: 'var(--itunda-color-surface)', borderRadius: 'var(--itunda-radius-md) var(--itunda-radius-md) 0 0',
+          boxShadow: 'var(--itunda-shadow-lg)',
+          display: 'flex', flexDirection: 'column',
+        }}
+      >
+        <div
+          onPointerDown={onSheetPointerDown}
+          onPointerMove={onSheetPointerMove}
+          onPointerUp={onSheetPointerUp}
+          onPointerCancel={onSheetPointerUp}
+          style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 6px', cursor: 'grab', touchAction: 'none' }}
+        >
+          <div style={{ width: '36px', height: '4px', borderRadius: '2px', backgroundColor: MAP_CARD_DIVIDER }} />
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {itineraryStops && route && (
+            <section style={{ padding: '10px', borderRadius: 'var(--itunda-radius-sm)', background: 'var(--itunda-color-info-soft)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                <strong style={{ fontSize: '13px', color: MAP_CARD_TEXT }}>Itinerary · {itineraryStops.length} stops</strong>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-indigo)' }}>
+                  {travelModeIcon(travelMode as TravelMode)} {route.distanceKm.toFixed(1)} km · {Math.round(route.durationMinutes)} min
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                {itineraryStops.slice(1).map((_, index) => (
+                  <span key={index} style={{ fontSize: '12px', color: MAP_CARD_TEXT_SECONDARY }}>
+                    Leg {index + 1}: Stop {index + 1} → Stop {index + 2}
+                  </span>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button type="button" disabled={routing} onClick={() => handleRouteItinerary()} style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-indigo)' }}>
+                  {routing ? 'Refreshing…' : 'Refresh route'}
+                </button>
+                <button type="button" onClick={() => setItineraryStops(null)} style={{ fontSize: '12px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY }}>
+                  Hide
+                </button>
+              </div>
+            </section>
+          )}
+          {selectedPlace ? (
+            <>
+              {/* Real merchant-pin enrichment (2026-07-22) -- only rendered for a real
+                  itunda merchant pin, matching Naver/Kakao Maps' own real "tap a business
+                  pin -> see a rich place card" convention. A plain Nominatim search result
+                  still renders exactly as it did before this feature existed. */}
+              {selectedMerchant && (
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  {selectedMerchant.photoUrl && (
+                    <img
+                      src={selectedMerchant.photoUrl}
+                      alt=""
+                      style={{ width: '48px', height: '48px', borderRadius: 'var(--itunda-radius-sm)', objectFit: 'cover', flexShrink: 0 }}
+                    />
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '12px', color: MAP_CARD_TEXT_SECONDARY }}>
+                    {selectedMerchant.rating != null && (
+                      <span>★ {selectedMerchant.rating.toFixed(1)} ({selectedMerchant.reviewCount ?? 0})</span>
+                    )}
+                    {(selectedMerchant.category || selectedMerchant.cashbackRate) && (
+                      <span>
+                        {selectedMerchant.category}
+                        {selectedMerchant.category && selectedMerchant.cashbackRate ? ' · ' : ''}
+                        {selectedMerchant.cashbackRate ? `${selectedMerchant.cashbackRate} cashback` : ''}
+                      </span>
+                    )}
+                    {selectedMerchant.openingHours && <span>🕒 {selectedMerchant.openingHours}</span>}
+                    {selectedMerchant.phoneNumber && (
+                      <a
+                        href={`tel:${selectedMerchant.phoneNumber}`}
+                        style={{ fontWeight: 700, color: 'var(--itunda-indigo)', textDecoration: 'none' }}
+                      >
+                        📞 {selectedMerchant.phoneNumber}
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+              {/* Real tabbed place-detail panel entry point (itunda Maps redesign,
+                  2026-08-28) -- see MapPlaceDetailPanel's own doc comment: the compact
+                  preview above stays exactly as it was (bottom-sheet peek), this opens
+                  the real full Home/Menu/Reviews/Photos/News/Info panel. */}
+              {selectedMerchant && (
+                <button
+                  type="button"
+                  onClick={() => setViewingPlaceDetail(selectedMerchant.merchantId)}
+                  style={{ alignSelf: 'flex-start', fontSize: '12px', fontWeight: 700, color: 'var(--itunda-indigo)' }}
+                >
+                  View full profile →
+                </button>
+              )}
+              {/* Real bookable-service entry point (moved here 2026-08-25 from
+                  bank-mfe's Shop -- see MapsBooking.tsx's own doc comment). */}
+              {selectedMerchant && <MerchantBookableServicesSection merchantId={selectedMerchant.merchantId} />}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: MAP_CARD_TEXT, flex: 1 }}>{selectedPlace.displayName}</p>
+                <button
+                  type="button"
+                  onClick={() => shareLocation(selectedPlace)}
+                  aria-label="Share this real place"
+                  style={{ fontSize: '18px', lineHeight: 1, color: MAP_CARD_TEXT_SECONDARY }}
+                >
+                  {shareCopied ? '✓' : '📤'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleBookmark(selectedPlace)}
+                  disabled={bookmarking}
+                  aria-label={isBookmarked(selectedPlace) ? 'Remove real bookmark' : 'Save this real place'}
+                  style={{ fontSize: '20px', lineHeight: 1, color: isBookmarked(selectedPlace) ? '#F5A623' : MAP_CARD_DIVIDER }}
+                >
+                  {isBookmarked(selectedPlace) ? '★' : '☆'}
+                </button>
+              </div>
+              {/* Real folder/color picker (2026-07-22) -- only expanded for the place
+                  that's actually being saved right now, closes itself once saved or
+                  cancelled. See lib/maps.ts's MapBookmark doc comment for the real
+                  backend feature this is the front door onto. */}
+              {savingToFolder && savingToFolder.latitude === selectedPlace.latitude && savingToFolder.longitude === selectedPlace.longitude && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '8px', borderRadius: 'var(--itunda-radius-xs)', background: 'var(--itunda-color-surface-sunken)' }}>
+                  <input
+                    type="text"
+                    value={folderNameInput}
+                    onChange={(e) => setFolderNameInput(e.target.value)}
+                    placeholder={t('maps.folderNamePlaceholder')}
+                    maxLength={120}
+                    style={{ padding: '8px 10px', borderRadius: 'var(--itunda-radius-xs)', border: `1px solid ${MAP_CARD_DIVIDER}`, fontSize: '13px' }}
+                  />
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {['Home', 'Work'].map((preset) => <button key={preset} type="button" onClick={() => setFolderNameInput(preset)} style={{ borderRadius: 'var(--itunda-radius-pill)', padding: '6px 10px', fontSize: '12px', fontWeight: 700, background: folderNameInput.toLowerCase() === preset.toLowerCase() ? '#7472F4' : '#F2F4F6', color: folderNameInput.toLowerCase() === preset.toLowerCase() ? '#fff' : MAP_CARD_TEXT }}>{preset}</button>)}
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    {BOOKMARK_COLOR_PALETTE.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        aria-label={`Pin color ${c}`}
+                        aria-pressed={folderColorInput === c}
+                        onClick={() => setFolderColorInput(c)}
+                        style={{
+                          // Real touch-target-size fix (item 244, web accessibility
+                          // sweep): 22px was below WCAG 2.5.8's 24x24 CSS-pixel AA
+                          // minimum (2.2's non-AAA target-size criterion, unlike
+                          // 2.5.5 which is AAA-only) -- bumped to 24px, the smallest
+                          // size that actually clears it, keeping this dense
+                          // multi-swatch row's visual density close to its original.
+                          width: '24px', height: '24px', borderRadius: '50%', backgroundColor: c,
+                          border: folderColorInput === c ? '2px solid var(--itunda-grey-900)' : '2px solid transparent',
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button type="button" className="itunda-btn itunda-btn-primary" disabled={bookmarking} onClick={confirmSaveToFolder} style={{ flex: 1 }}>
+                      {bookmarking ? t('maps.saving') : t('maps.save')}
+                    </button>
+                    <button type="button" disabled={bookmarking} onClick={() => setSavingToFolder(null)} style={{ flex: 1, fontSize: '13px', color: MAP_CARD_TEXT_SECONDARY }}>
+                      {t('maps.cancel')}
+                    </button>
+                  </div>
+                </div>
+              )}
+              <MapDirectionsPanel
+                selectedPlace={selectedPlace}
+                travelMode={travelMode}
+                setTravelMode={setTravelMode}
+                routing={routing}
+                busSearching={busSearching}
+                transitSearching={transitSearching}
+                itineraryStops={itineraryStops}
+                route={route}
+                routeAlternatives={routeAlternatives}
+                selectedRouteIndex={selectedRouteIndex}
+                busTrips={busTrips}
+                transitJourneys={transitJourneys}
+                showSteps={showSteps}
+                setShowSteps={setShowSteps}
+                handleRouteItinerary={handleRouteItinerary}
+                handleGetDirections={handleGetDirections}
+                searchBus={searchBus}
+                searchTransit={searchTransit}
+                selectRouteAlternative={selectRouteAlternative}
+              />
+            </>
+          ) : (
+            <>
+              {/* Real default "around me" state (2026-07-21) -- Naver Map's own Smart
+                  Around sheet keeps a non-modal panel permanently docked with real
+                  curated content even before any search, rather than only ever
+                  appearing once a place is selected. itunda has no editorial "today's
+                  pick" feed to curate, so this surfaces real data it already has: the
+                  active category's real results, a real merchant count, and real
+              saved places -- honest functional content, not a fabricated feed. */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: MAP_CARD_TEXT }}>Around you</p>
+                {/* Real, free, keyless Kigali weather (itunda Maps redesign, 2026-08-28)
+                    -- see KigaliWeatherClient's own doc comment on the backend. Renders
+                    nothing at all when the real upstream is unreachable -- never a
+                    fabricated reading. */}
+                {weather && (
+                  <span style={{ fontSize: '12px', color: MAP_CARD_TEXT_SECONDARY }}>
+                    {Math.round(weather.temperatureCelsius)}° {weather.condition}
+                    {weather.pm2_5 != null && ` · PM2.5 ${Math.round(weather.pm2_5)}`}
+                  </span>
+                )}
+              </div>
+              {(() => {
+                const home = bookmarks.find((bookmark) => bookmark.folderName.toLowerCase() === 'home')
+                const work = bookmarks.find((bookmark) => bookmark.folderName.toLowerCase() === 'work')
+                if (!home && !work) return null
+                return <div style={{ display: 'flex', gap: '8px' }}>
+                  {home && <button onClick={() => selectAndRoute({ displayName: home.displayName, latitude: home.latitude, longitude: home.longitude })} style={{ borderRadius: 'var(--itunda-radius-pill)', padding: '8px 12px', fontSize: '12px', fontWeight: 700, background: 'var(--itunda-color-surface-sunken)', color: MAP_CARD_TEXT }}>⌂ Home</button>}
+                  {work && <button onClick={() => selectAndRoute({ displayName: work.displayName, latitude: work.latitude, longitude: work.longitude })} style={{ borderRadius: 'var(--itunda-radius-pill)', padding: '8px 12px', fontSize: '12px', fontWeight: 700, background: 'var(--itunda-color-surface-sunken)', color: MAP_CARD_TEXT }}>▣ Work</button>}
+                </div>
+              })()}
+              {activeCategory && categoryResults !== null ? (
+                categoryResults.length === 0 ? (
+                  <p style={{ fontSize: '13px', color: MAP_CARD_TEXT_TERTIARY }}>
+                    No real matches found nearby for {categories.find((c) => c.id === activeCategory)?.label.toLowerCase()}.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {categoryResults.map((place, i) => (
+                      <button
+                        key={`${place.latitude}-${place.longitude}-${i}`}
+                        onClick={() => selectPlace({ displayName: place.displayName, latitude: place.latitude, longitude: place.longitude })}
+                        style={{ textAlign: 'left', padding: '6px 0', fontSize: '13px', color: MAP_CARD_TEXT }}
+                      >
+                        {place.displayName} · {place.distanceKm.toFixed(1)} km
+                      </button>
+                    ))}
+                  </div>
+                )
+              ) : (
+                <p style={{ fontSize: '13px', color: MAP_CARD_TEXT_TERTIARY }}>
+                  {merchantCount === null
+                    ? 'Loading real merchants near you…'
+                    : merchantCount === 0
+                    ? t('maps.exploreDefault')
+                    : `${merchantCount} real merchant${merchantCount === 1 ? '' : 's'} on the map. Search a place or pick a category above to explore.`}
+                </p>
+              )}
+
+              {/* Real "Smart Around"-style default state (2026-09-07) -- see
+                  fetchMapAroundMe's own doc comment for the real Naver Map sourcing
+                  and honest scope. Android already has this (MapsScreen.kt's
+                  loadAroundMe); ports it here for cross-platform parity. */}
+              {aroundMePlaces !== null && aroundMePlaces.length > 0 && (
+                <>
+                  <p style={{ fontSize: '12px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY, marginTop: '8px' }}>주변 · Nearby</p>
+                  <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '2px' }}>
+                    {aroundMePlaces.map((place, i) => (
+                      <button
+                        key={`${place.latitude}-${place.longitude}-${i}`}
+                        onClick={() => selectPlace({ displayName: place.displayName, latitude: place.latitude, longitude: place.longitude })}
+                        style={{ textAlign: 'left', flexShrink: 0, width: '140px', padding: '10px', borderRadius: 'var(--itunda-radius-sm)', background: 'var(--itunda-color-surface-sunken)' }}
+                      >
+                        <p style={{ fontSize: '12px', fontWeight: 600, color: MAP_CARD_TEXT, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                          {place.displayName.split(',')[0]}
+                        </p>
+                        <p style={{ fontSize: '11px', color: MAP_CARD_TEXT_SECONDARY, marginTop: '2px' }}>{place.distanceKm.toFixed(1)} km</p>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              {trendingPlaces !== null && trendingPlaces.length > 0 && (
+                <>
+                  <p style={{ fontSize: '12px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY, marginTop: '8px' }}>이번 주에 많이 저장한 · Popular this week</p>
+                  <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '2px' }}>
+                    {trendingPlaces.map((place, i) => (
+                      <button
+                        key={`${place.latitude}-${place.longitude}-${i}`}
+                        onClick={() => selectPlace({ displayName: place.displayName, latitude: place.latitude, longitude: place.longitude })}
+                        style={{ textAlign: 'left', flexShrink: 0, width: '140px', padding: '10px', borderRadius: 'var(--itunda-radius-sm)', background: 'var(--itunda-color-surface-sunken)' }}
+                      >
+                        <p style={{ fontSize: '12px', fontWeight: 600, color: MAP_CARD_TEXT, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                          {place.displayName.split(',')[0]}
+                        </p>
+                        <p style={{ fontSize: '11px', color: MAP_CARD_TEXT_SECONDARY, marginTop: '2px' }}>★ saved by {place.saveCount}</p>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <p style={{ fontSize: '12px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY, marginTop: '8px' }}>★ Your saved places</p>
+              {bookmarks.length === 0 ? (
+                <p style={{ fontSize: '12px', color: MAP_CARD_TEXT_TERTIARY }}>No saved places yet -- tap ☆ on a place to save it.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {bookmarksByFolder.map(([folderName, folderBookmarks]) => (
+                    <div key={folderName}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 0' }}>
+                        {/* Folder name label only shown once there's more than one real
+                            folder -- a single default "Saved places" folder stays exactly
+                            as flat as it looked before this feature existed. The Share
+                            button itself is always shown -- even a single default folder
+                            is a real, shareable list. */}
+                        {bookmarksByFolder.length > 1 && (
+                          <p style={{ fontSize: '11px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY, flex: 1 }}>{folderName}</p>
+                        )}
+                        <button
+                          type="button"
+                          disabled={sharingFolder === folderName}
+                          onClick={() => toggleFolderShare(folderName, !folderBookmarks.some((b) => b.isPublic))}
+                          style={{
+                            marginLeft: bookmarksByFolder.length > 1 ? 0 : 'auto',
+                            fontSize: '11px', fontWeight: 700,
+                            color: folderBookmarks.some((b) => b.isPublic) ? '#7472F4' : MAP_CARD_TEXT_SECONDARY,
+                            background: 'none', border: 'none',
+                          }}
+                        >
+                          {sharingFolder === folderName
+                            ? '…'
+                            : shareLinkCopiedFor === folderName
+                              ? 'Link copied!'
+                              : folderBookmarks.some((b) => b.isPublic)
+                                ? '🌐 Public · Share'
+                                : '🔒 Private · Share'}
+                        </button>
+                      </div>
+                      {folderBookmarks.map((b) => (
+                        <div key={b.id}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 0' }}>
+                            <button
+                              onClick={() => selectPlace({ displayName: b.displayName, latitude: b.latitude, longitude: b.longitude })}
+                              style={{ textAlign: 'left', fontSize: '13px', color: MAP_CARD_TEXT, display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}
+                            >
+                              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: b.color, flexShrink: 0 }} />
+                              {b.displayName}
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (movingBookmark && movingBookmark.latitude === b.latitude && movingBookmark.longitude === b.longitude) {
+                                  setMovingBookmark(null);
+                                } else {
+                                  setMovingBookmark(b);
+                                  setMoveFolderNameInput(b.folderName);
+                                  setMoveFolderColorInput(b.color);
+                                }
+                              }}
+                              style={{ fontSize: '11px', fontWeight: 700, color: MAP_CARD_TEXT_SECONDARY }}
+                            >
+                              Move
+                            </button>
+                          </div>
+                          {movingBookmark && movingBookmark.latitude === b.latitude && movingBookmark.longitude === b.longitude && (
+                            <div style={{ background: 'var(--itunda-color-surface-sunken)', borderRadius: 'var(--itunda-radius-xs)', padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <input
+                                type="text"
+                                value={moveFolderNameInput}
+                                onChange={(e) => setMoveFolderNameInput(e.target.value)}
+                                placeholder="Folder name"
+                                style={{ fontSize: '13px', padding: '6px 8px', borderRadius: 'var(--itunda-radius-xs)', border: '1px solid var(--itunda-color-border)' }}
+                              />
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                {BOOKMARK_COLOR_PALETTE.map((c) => (
+                                  <button
+                                    key={c}
+                                    type="button"
+                                    aria-label={`Color ${c}`}
+                                    aria-pressed={moveFolderColorInput === c}
+                                    onClick={() => setMoveFolderColorInput(c)}
+                                    style={{
+                                      // Real touch-target-size fix (item 244, web
+                                      // accessibility sweep): matches the identical
+                                      // fix on this file's other color-swatch picker.
+                                      width: '24px', height: '24px', borderRadius: '50%', backgroundColor: c,
+                                      border: moveFolderColorInput === c ? `2px solid ${MAP_CARD_TEXT}` : '2px solid transparent',
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                              <button
+                                disabled={!moveFolderNameInput.trim()}
+                                onClick={async () => {
+                                  const target = movingBookmark;
+                                  if (!target) return;
+                                  try {
+                                    await moveMapBookmark(target.latitude, target.longitude, moveFolderNameInput.trim() || DEFAULT_BOOKMARK_FOLDER, moveFolderColorInput);
+                                    setBookmarks(await fetchMyMapBookmarks());
+                                    setMovingBookmark(null);
+                                  } catch {
+                                    // Best-effort -- leaves the picker open so the user can retry.
+                                  }
+                                }}
+                                style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-indigo)', alignSelf: 'flex-start' }}
+                              >
+                                Save
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Real Kakao Map-style "친구위치" live location sharing -- see
+                  handleStartLocationShare's own doc comment. Placed right after saved
+                  places, the same real "your own account-level Maps state" grouping
+                  the folder-share section above already establishes. */}
+              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--itunda-color-divider)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <p style={{ fontSize: '12px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY }}>{t('maps.locationShareTitle')}</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowStartShare((v) => !v)}
+                    style={{ fontSize: '11px', fontWeight: 700, color: 'var(--itunda-color-brand)', background: 'none', border: 'none' }}
+                  >
+                    {showStartShare ? t('maps.cancel') : t('maps.shareMyLocation')}
+                  </button>
+                </div>
+
+                {showStartShare && (
+                  <div style={{ background: 'var(--itunda-color-surface-sunken)', borderRadius: 'var(--itunda-radius-xs)', padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+                    <input
+                      type="text"
+                      value={shareRecipientPhone}
+                      onChange={(e) => setShareRecipientPhone(e.target.value)}
+                      placeholder={t('maps.recipientPhonePlaceholder')}
+                      style={{ fontSize: '13px', padding: '6px 8px', borderRadius: 'var(--itunda-radius-xs)', border: '1px solid var(--itunda-color-border)' }}
+                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '12px', color: MAP_CARD_TEXT_SECONDARY }}>{t('maps.shareFor')}</span>
+                      <select
+                        value={shareDurationHours}
+                        onChange={(e) => setShareDurationHours(Number(e.target.value))}
+                        style={{ fontSize: '13px', padding: '4px 6px', borderRadius: 'var(--itunda-radius-xs)', border: '1px solid var(--itunda-color-border)' }}
+                      >
+                        {[1, 2, 3, 4, 5, 6].map((h) => (
+                          <option key={h} value={h}>{h} hour{h === 1 ? '' : 's'}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {shareError && <p style={{ fontSize: '12px', color: 'var(--itunda-color-error)' }}>{shareError}</p>}
+                    <button
+                      type="button"
+                      disabled={shareBusy || !shareRecipientPhone.trim()}
+                      onClick={handleStartLocationShare}
+                      style={{ fontSize: '13px', fontWeight: 700, color: 'white', background: 'var(--itunda-color-brand)', border: 'none', borderRadius: 'var(--itunda-radius-xs)', padding: '8px', opacity: shareBusy ? 0.6 : 1 }}
+                    >
+                      {shareBusy ? t('maps.starting') : t('maps.startSharing')}
+                    </button>
+                  </div>
+                )}
+
+                {myShares.length > 0 && (
+                  <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {myShares.map((s) => (
+                      <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
+                        <span style={{ color: MAP_CARD_TEXT }}>Sharing until {new Date(s.expiresAt).toLocaleTimeString()}</span>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                          <button type="button" onClick={() => handleExtendLocationShare(s.id)} style={{ fontSize: '11px', fontWeight: 700, color: 'var(--itunda-color-brand)', background: 'none', border: 'none' }}>
+                            +1h
+                          </button>
+                          <button type="button" onClick={() => handleStopLocationShare(s.id)} style={{ fontSize: '11px', fontWeight: 700, color: 'var(--itunda-color-error)', background: 'none', border: 'none' }}>
+                            Stop
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {sharesWithMe.length > 0 && (
+                  <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <p style={{ fontSize: '11px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY }}>Shared with you</p>
+                    {sharesWithMe.map((s) => (
+                      <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
+                        <span style={{ color: MAP_CARD_TEXT }}>Live location · until {new Date(s.expiresAt).toLocaleTimeString()}</span>
+                        {watchingShareId === s.id ? (
+                          <button type="button" onClick={stopWatchingIncomingShare} style={{ fontSize: '11px', fontWeight: 700, color: 'var(--itunda-color-error)', background: 'none', border: 'none' }}>
+                            Stop watching
+                          </button>
+                        ) : (
+                          <button type="button" onClick={() => handleWatchIncomingShare(s.id)} style={{ fontSize: '11px', fontWeight: 700, color: 'var(--itunda-color-brand)', background: 'none', border: 'none' }}>
+                            View on map
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* Real local-business appointment booking (moved here 2026-08-25 --
+                  see MapsBooking.tsx's own doc comment). */}
+              <MyBookingsCard />
+              <MyBookingReviewsCard />
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

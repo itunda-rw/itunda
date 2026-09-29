@@ -14,16 +14,21 @@ import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
 
 data class TradeStockRequest(val stockId: String, val shares: BigDecimal)
+data class FundInvestmentRequest(val amount: BigDecimal)
+// Real Toss Securities 목표가 알림 (target price alert) -- see
+// StocksService.setPriceAlert's own doc comment.
+data class SetPriceAlertRequest(val targetPrice: BigDecimal, val direction: String)
 
 @RestController
 @RequestMapping("/api/v1/stocks")
@@ -54,6 +59,22 @@ class StocksController(private val stocksService: StocksService, private val ide
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "history" to stocksService.getPortfolioHistory(currentUser.userId, days)))
+
+    // Real bug fix (2026-07-27) -- see StocksService.fundInvestmentAccount's own doc
+    // comment. Real money-moving internal transfer, so Idempotency-Key required, same
+    // convention as every other money-moving POST in this codebase.
+    @PostMapping("/fund")
+    fun fund(
+        @RequestBody request: FundInvestmentRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/stocks/fund", idempotencyKey, request) {
+            val transaction = stocksService.fundInvestmentAccount(currentUser.userId, request.amount)
+            200 to mapOf("success" to true, "transaction" to transaction)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
 
     @PostMapping("/buy")
     fun buy(
@@ -106,6 +127,46 @@ class StocksController(private val stocksService: StocksService, private val ide
     fun getWatchlist(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "watchlist" to stocksService.getWatchlist(currentUser.userId)))
 
+    // Real gap fix (2026-08-18) -- see StocksService.getPriceAlert's own doc comment.
+    // Lets a client show current alert state (or its absence) when a stock detail
+    // screen re-opens, instead of only ever being able to write-and-forget.
+    @GetMapping("/{stockId}/price-alert")
+    fun getPriceAlert(
+        @PathVariable stockId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val watch = stocksService.getPriceAlert(currentUser.userId, stockId)
+        return ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "targetPrice" to watch?.targetPrice,
+                "targetDirection" to watch?.targetDirection,
+                "alertTriggeredAt" to watch?.alertTriggeredAt,
+            ),
+        )
+    }
+
+    // Real Toss Securities 목표가 알림 (target price alert) -- see
+    // StocksService.setPriceAlert's own doc comment.
+    @PostMapping("/{stockId}/price-alert")
+    fun setPriceAlert(
+        @PathVariable stockId: String,
+        @RequestBody request: SetPriceAlertRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val watch = stocksService.setPriceAlert(currentUser.userId, stockId, request.targetPrice, request.direction)
+        return ResponseEntity.ok(mapOf("success" to true, "watch" to watch))
+    }
+
+    @DeleteMapping("/{stockId}/price-alert")
+    fun clearPriceAlert(
+        @PathVariable stockId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val watch = stocksService.clearPriceAlert(currentUser.userId, stockId)
+        return ResponseEntity.ok(mapOf("success" to true, "watch" to watch))
+    }
+
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENCY_KEY_CONFLICT", ex.message ?: "Conflict"))
 
@@ -121,8 +182,11 @@ class StocksController(private val stocksService: StocksService, private val ide
     @ExceptionHandler(InvalidPriceHistoryRangeException::class)
     fun handleInvalidRange(ex: InvalidPriceHistoryRangeException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PRICE_HISTORY_RANGE", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(NoWalletException::class)
-    fun handleNoWallet(ex: NoWalletException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    @ExceptionHandler(NoAccountException::class)
+    fun handleNoAccount(ex: NoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(InvalidFundingAmountException::class)
+    fun handleInvalidFunding(ex: InvalidFundingAmountException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AMOUNT", ex.message ?: "Bad request"))
 
     @ExceptionHandler(NotEnoughSharesException::class)
     fun handleNotEnough(ex: NotEnoughSharesException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_SHARES", ex.message ?: "Insufficient shares"))
@@ -130,6 +194,12 @@ class StocksController(private val stocksService: StocksService, private val ide
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(RateLimitExceededException::class)
+    fun handleRateLimit(ex: RateLimitExceededException) = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
+
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
+
+    @ExceptionHandler(InvalidPriceAlertException::class)
+    fun handleInvalidPriceAlert(ex: InvalidPriceAlertException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PRICE_ALERT", ex.message ?: "Bad request"))
 }

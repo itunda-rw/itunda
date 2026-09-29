@@ -17,7 +17,7 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
@@ -27,8 +27,16 @@ data class AddPayrollEmployeeRequest(val phoneNumber: String, val salaryAmount: 
 /**
  * Real B2B payroll endpoints -- see PayrollService's own doc comment for why this needs
  * no external credentials, unlike the rest of docs/TOSS_PARITY_MATRIX.md's blocked
- * Merchant-row gaps. Roster reads/writes aren't money-moving (no Idempotency-Key);
- * runPayroll is (same convention as /collect, /card/charge).
+ * Merchant-row gaps. runPayroll is real money movement (same convention as /collect,
+ * /card/charge).
+ *
+ * Correction, 2026-09-05 (see feedback_idempotency_key_sweep memory): the "roster
+ * writes aren't money-moving, no Idempotency-Key" reasoning this comment used to give
+ * for addEmployee missed the real risk -- PayrollService.addEmployee is guarded by
+ * EmployeeAlreadyOnRosterException, so a lost-response retry hits that guard
+ * regardless of whether money moved; the uniqueness constraint, not money movement,
+ * is what a retry can trip. Same recurring flaw this sweep already found and fixed
+ * on ForeignCurrencyController/MotoOwnershipController/others.
  */
 @RestController
 @RequestMapping("/api/v1/merchant/payroll")
@@ -39,10 +47,14 @@ class PayrollController(
     @PostMapping("/employees")
     fun addEmployee(
         @RequestBody request: AddPayrollEmployeeRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val employee = payrollService.addEmployee(currentUser.userId, request.phoneNumber, request.salaryAmount)
-        return ResponseEntity.ok(mapOf("success" to true, "employee" to employee))
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/merchant/payroll/employees", idempotencyKey, request) {
+            val employee = payrollService.addEmployee(currentUser.userId, request.phoneNumber, request.salaryAmount)
+            200 to mapOf("success" to true, "employee" to employee)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @GetMapping("/employees")
@@ -84,9 +96,9 @@ class PayrollController(
     fun handleMerchantNotFound(ex: MerchantNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(MerchantNoWalletException::class)
-    fun handleMerchantNoWallet(ex: MerchantNoWalletException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    @ExceptionHandler(MerchantNoAccountException::class)
+    fun handleMerchantNoAccount(ex: MerchantNoAccountException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(EmployeeNotFoundException::class)
     fun handleEmployeeNotFound(ex: EmployeeNotFoundException) =
@@ -100,9 +112,9 @@ class PayrollController(
     fun handleEmployeeIsOwner(ex: EmployeeIsOwnerException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("EMPLOYEE_IS_OWNER", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(EmployeeNoWalletException::class)
-    fun handleEmployeeNoWallet(ex: EmployeeNoWalletException) =
-        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("EMPLOYEE_NO_WALLET", ex.message ?: "Unprocessable"))
+    @ExceptionHandler(EmployeeNoAccountException::class)
+    fun handleEmployeeNoAccount(ex: EmployeeNoAccountException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("EMPLOYEE_NO_ACCOUNT", ex.message ?: "Unprocessable"))
 
     @ExceptionHandler(InvalidSalaryAmountException::class)
     fun handleInvalidSalary(ex: InvalidSalaryAmountException) =
@@ -136,7 +148,7 @@ class PayrollController(
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 }

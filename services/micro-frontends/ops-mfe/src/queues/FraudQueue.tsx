@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { usePagedQueue } from '../hooks/useQueue';
 import { decideFraud, fetchFraudQueue, type FraudFlag } from '../lib/queues';
+import { ApiError } from '../lib/api';
 import { QueueEmpty, QueueError, QueueHeader, QueueLoadMore, QueueSkeleton } from '../QueueState';
 
 const RULE_LABEL: Record<FraudFlag['rule'], string> = {
@@ -11,19 +12,23 @@ const RULE_LABEL: Record<FraudFlag['rule'], string> = {
 
 function FraudCard({ flag, onDecided }: { flag: FraudFlag; onDecided: (id: string) => void }) {
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const decide = async (decision: 'CLEARED' | 'CONFIRMED') => {
     setPending(true);
+    setError(null);
     try {
       await decideFraud(flag.id, decision);
       onDecided(flag.id);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not decide this flag.');
     } finally {
       setPending(false);
     }
   };
 
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <span
@@ -31,8 +36,8 @@ function FraudCard({ flag, onDecided }: { flag: FraudFlag; onDecided: (id: strin
               display: 'inline-block',
               fontSize: '12px',
               fontWeight: 700,
-              color: 'var(--toss-blue)',
-              backgroundColor: 'var(--toss-blue-light)',
+              color: 'var(--itunda-indigo)',
+              backgroundColor: 'var(--itunda-indigo-light)',
               padding: '2px 8px',
               borderRadius: '6px',
               marginBottom: '6px',
@@ -40,18 +45,19 @@ function FraudCard({ flag, onDecided }: { flag: FraudFlag; onDecided: (id: strin
           >
             {RULE_LABEL[flag.rule]}
           </span>
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--toss-grey-900)' }}>{flag.description}</p>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{flag.description}</p>
         </div>
-        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
-          {flag.amount.toLocaleString()} RWF
+        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
+          {flag.amount.toLocaleString('en-US')} RWF
         </span>
       </div>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
         User {flag.userId} · Transaction {flag.transactionId} · Flagged {new Date(flag.createdAt).toLocaleString()}
       </p>
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '8px' }}>
         <button
-          className="toss-btn toss-btn-secondary"
+          className="itunda-btn itunda-btn-secondary"
           style={{ flex: 1 }}
           disabled={pending}
           onClick={() => decide('CLEARED')}
@@ -59,7 +65,7 @@ function FraudCard({ flag, onDecided }: { flag: FraudFlag; onDecided: (id: strin
           Clear
         </button>
         <button
-          className="toss-btn toss-btn-danger"
+          className="itunda-btn itunda-btn-danger"
           style={{ flex: 1 }}
           disabled={pending}
           onClick={() => decide('CONFIRMED')}

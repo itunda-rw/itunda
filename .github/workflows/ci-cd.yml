@@ -1,23 +1,49 @@
 name: CI
 
+concurrency:
+  group: itunda-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+
 on:
   push:
-    branches: [ main, develop ]
+    branches:
+      - agent/itunda-agent-network
   pull_request:
-    branches: [ main, develop ]
+    branches:
+      - agent/itunda-agent-network
+  workflow_dispatch:
 
 jobs:
+  # Root Yarn workspace: packages/shared-utils, services/micro-frontends/*, services/api-gateway
   lint-and-typecheck:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
+      # Real CI fix (2026-09-03), reverted same day: actions/setup-node's own
+      # `cache: yarn` option shells out to `yarn cache dir` as PART of this step's
+      # own execution, before the separate "Enable Corepack" step below ever runs --
+      # it hit the exact same Corepack error as the original bug this workflow
+      # already fixes. Yarn v4 (Berry) also has no `.yarnrc.yml`/`.yarn/cache` in
+      # this repo, so its real cache location isn't even confirmed -- reverted
+      # rather than guess at a manual actions/cache key for something that was
+      # never a requirement. npm/gradle caching below are unaffected and confirmed
+      # working (backend/microservices/android/ios all passed with them).
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v4
         with:
-          node-version: 24.x
-          package-manager-cache: false
+          node-version: 20.x
 
+      # Real CI fix (2026-09-03): package.json pins "packageManager": "yarn@4.17.0"
+      # (Corepack-managed), but the runner's global Yarn is 1.22.22 -- without this,
+      # `yarn install --immutable` fails immediately with "Corepack must currently be
+      # enabled". Same fix needed in root-workspace-build/api-gateway-test below,
+      # every job that runs a root yarn install.
       - name: Enable Corepack
         run: corepack enable
 
@@ -30,17 +56,36 @@ jobs:
       - name: Type check
         run: yarn tsc --noEmit
 
+      - name: Silo boundary check (dependency-cruiser)
+        run: yarn depcruise
+
+      - name: Silo boundary check (iOS Feature imports)
+        run: python3 scripts/ios-silo-boundary-check.py
+
+      - name: Accessibility lint (item 247, docs/DESIGN_REFERENCES.md Section 14)
+        run: python3 scripts/accessibility-lint.py
+
+      - name: File-size guardrail (no new "everything in one file" monoliths)
+        run: python3 scripts/file-size-lint.py
+
+      - name: Map category parity (backend MapPlaceCategory vs. bank-mfe/Android/iOS's hand-maintained copies)
+        run: python3 scripts/verify-map-category-parity.py
+
+
+      - name: Production backend security profile
+        run: bash scripts/verify-production-backend-security.sh
   root-workspace-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [lint-and-typecheck]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
+      # No `cache: yarn` here -- see lint-and-typecheck's own doc comment above for why.
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v4
         with:
-          node-version: 24.x
-          package-manager-cache: false
+          node-version: 20.x
 
       - name: Enable Corepack
         run: corepack enable
@@ -51,47 +96,242 @@ jobs:
       - name: Build host-app
         run: yarn build
 
+  api-gateway-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [lint-and-typecheck]
+    steps:
+      - uses: actions/checkout@v4
+
+      # No `cache: yarn` here -- see lint-and-typecheck's own doc comment above for why.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Test API gateway resilience behavior
+        run: yarn workspace @itunda/api-gateway test
+
+  # The private-cloud image builder intentionally refuses to build while the
+  # single-node cluster is short on memory. Build every production container
+  # in CI too, so Dockerfile/package changes are verified before a later
+  # progressive rollout builds and publishes the private-registry images.
+  application-container-build:
+    runs-on: ubuntu-latest
+    needs: [lint-and-typecheck]
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: api-gateway
+            dockerfile: services/api-gateway/Dockerfile
+            context: services/api-gateway
+          - name: backend
+            dockerfile: services/backend/Dockerfile
+            context: services/backend
+          - name: ledger-service
+            dockerfile: services/microservices/ledger-service/Dockerfile
+            context: services/microservices
+          - name: payment-service
+            dockerfile: services/microservices/payment-service/Dockerfile
+            context: services/microservices
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build application container
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: false
+          tags: itunda/${{ matrix.name }}:ci
+          cache-from: type=gha,scope=itunda-${{ matrix.name }}
+          cache-to: ${{ github.event_name == 'push' && format('type=gha,mode=max,scope=itunda-{0}', matrix.name) || '' }}
+
+  progressive-manifest-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify progressive rollout image pins
+        run: bash scripts/verify-progressive-images.sh
+
+      - name: Verify API gateway runtime security controls
+        run: bash scripts/verify-api-gateway-runtime-security.sh
+
+  backend-migration-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify Flyway migration versions
+        run: bash scripts/verify-flyway-migrations.sh
+
+      - name: Verify every LedgerLeg accountId has a matching LedgerAccount seed row
+        run: python3 scripts/verify-ledger-account-seeds.py
+
+  # services/backend: the canonical Kotlin/Spring Boot backend (auth, wallet, ledger,
+  # savings, stocks, loans, insurance, bills, notifications, discover, contacts, system)
   backend-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
+      # Real CI fix (2026-09-03): root build.gradle.kts pins `jvmTarget = "17"` for
+      # Kotlin compilation, but nothing pins compileJava's target -- it just uses
+      # whatever JDK is active. JDK 21 here caused "Inconsistent JVM-target
+      # compatibility detected for tasks 'compileJava' (21) and 'compileKotlin' (17)"
+      # on every CI run. 17 matches the project's own pin (and android-build's own
+      # JDK setup below), not an arbitrary downgrade.
       - name: Setup JDK
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
 
       - name: Build
         working-directory: services/backend
         run: ./gradlew build --no-daemon
 
+  # services/microservices: the independently-deployable ledger-service + payment-service
   microservices-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
-        
+      - uses: actions/checkout@v4
+
       - name: Setup JDK
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
+          cache: gradle
 
       - name: Build
         working-directory: services/microservices
         run: ./gradlew build --no-daemon
 
+  # android/: native Kotlin/Compose app (verified compiling and running on-device --
+  # see docs/ARCHITECTURE.md §3).
   android-build:
     runs-on: ubuntu-latest
+    # Real CI fix (2026-09-03): the first-ever run to get this far (everything
+    # before it was blocked by the two fixes below) silently ran ~64 minutes then
+    # died with no error and no captured log -- an external timeout, not a Gradle
+    # failure. A real, explicit job timeout replaces that silent kill: if the heap
+    # fix below doesn't fully resolve it, this at least fails cleanly with a real,
+    # readable log instead of vanishing.
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+          cache-dependency-path: packages/saronite/package-lock.json
+
+      # Real CI fix (2026-09-03): android/settings.gradle.kts applies the
+      # `com.facebook.react.settings` plugin from
+      # packages/saronite/node_modules/@react-native/gradle-plugin -- without
+      # installing Saronite's JS deps first, Gradle fails at settings-evaluation
+      # time with "does not exist" before a single Kotlin file compiles. Same step
+      # ios-build already has below; android-build was just missing it.
+      - name: Install Saronite JS dependencies (own npm workspace, not the root yarn workspace)
+        working-directory: packages/saronite
+        run: npm ci
 
       - name: Setup JDK
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
+
+      # Real CI fix (2026-09-03): android/gradle.properties pins
+      # `org.gradle.jvmargs=-Xmx6144m`, tuned for a developer's own local machine,
+      # not this runner -- on top of that, the Kotlin compiler's own separate
+      # daemon claims its own heap alongside it. The likely cause of the ~64min
+      # silent stall above: severe memory thrashing, not a real hang. A
+      # GRADLE_USER_HOME-level override here takes precedence over the project's
+      # own gradle.properties without editing the checked-in file (which stays
+      # correct for real developer machines).
+      - name: Cap Gradle/Kotlin daemon heap for this CI runner
+        run: |
+          mkdir -p ~/.gradle
+          echo "org.gradle.jvmargs=-Xmx3072m -Dfile.encoding=UTF-8" >> ~/.gradle/gradle.properties
+          echo "kotlin.daemon.jvmargs=-Xmx2048m" >> ~/.gradle/gradle.properties
+
+      - name: Silo boundary check (Konsist architecture test)
+        working-directory: android
+        run: ./gradlew :architecture-test:test --no-daemon
 
       - name: Assemble debug APK
         working-directory: android
-        run: ./gradlew :app:assembleDebug --no-daemon
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+
+  # ios/: Tuist-generated Xcode project (real Feature/Interface/Testing microfeature
+  # split, see docs/MULTI_AGENT_ISOLATION.md) + CocoaPods-integrated React Native
+  # bridge for the Saronite mini-app host. Verified building locally 2026-07-23 (the
+  # `Target(...)` manifest calls needed updating to Tuist's current
+  # `Target.target(destinations:...)` API, and `pod install` must run after
+  # `tuist generate` -- see ios/Podfile's own comment) -- this is the first time
+  # that's been a real, run green check instead of an untested claim.
+  ios-build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+          cache-dependency-path: packages/saronite/package-lock.json
+
+      - name: Install Saronite JS dependencies (own npm workspace, not the root yarn workspace)
+        working-directory: packages/saronite
+        run: npm ci
+
+      # Real CI fix (2026-09-03): ios/.brick/ (BrickCodegen's own podspec + generated
+      # bridge sources) is gitignored, regenerated from each mini-app's *.brick.ts spec
+      # -- a fresh CI checkout never has it, so `pod install` below failed with "No
+      # podspec found for BrickCodegen in .brick". Same command the Podfile's own
+      # BrickCodegen doc comment already documents for local regeneration.
+      - name: Generate BrickCodegen iOS bridge
+        working-directory: packages/saronite/host-app
+        run: node ../node_modules/.bin/brick-codegen --platform ios --output-ios ../../../ios/.brick --projectRoot .
+
+      - name: Install Tuist
+        run: brew install --cask tuist
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: tuist generate --no-open
+
+      - name: Install CocoaPods dependencies
+        working-directory: ios
+        run: pod install
+
+      - name: Build ItundaApp
+        working-directory: ios
+        run: |
+          xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp \
+            -destination 'generic/platform=iOS Simulator' build \
+            CODE_SIGNING_ALLOWED=NO

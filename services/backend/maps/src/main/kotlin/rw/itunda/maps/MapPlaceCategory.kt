@@ -23,6 +23,14 @@ enum class MapPlaceCategory(val label: String, val searchTerm: String) {
     SUPERMARKET("Supermarkets", "supermarket"),
     GAS_STATION("Gas stations", "gas station"),
     SCHOOL("Schools", "school"),
+    // Real additions (2026-08-09), same "take it seriously, real Rwandans use this every day"
+    // pass -- live-verified against itunda's actual self-hosted Nominatim exactly like every
+    // category above (real, non-empty, relevant results confirmed via direct curl before
+    // adding: "market"/"bus stop" both returned genuine Rwanda market/bus-stop rows, not noise
+    // matches). Markets and bus stops are genuinely everyday wayfinding needs this category
+    // list was missing entirely.
+    MARKET("Markets", "market"),
+    BUS_STOP("Bus stops", "bus stop"),
     ;
 
     companion object {

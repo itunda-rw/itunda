@@ -7,6 +7,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 
 enum class PartnerStatus { ACTIVE, SUSPENDED }
@@ -19,7 +20,7 @@ enum class PartnerStatus { ACTIVE, SUSPENDED }
  * review, and ship inside Toss once approved -- this is the same real shape, applied to
  * itunda's own real Saronite mini-app host (see docs/ARCHITECTURE.md's mini-app host
  * row) for the first time to a genuinely external party rather than itunda's own
- * first-party mini-apps (bills, wallet, rewards, insurance).
+ * first-party mini-apps (bills, account, rewards, insurance).
  *
  * apiKeyHash stores only a SHA-256 hash, never the raw key -- the same real convention
  * Stripe/GitHub personal-access-token issuance uses: the raw key is shown exactly once,
@@ -54,11 +55,32 @@ class Partner(
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
+
+    // Real admin-accountability gap closed (2026-09-12): PartnerAdminController's
+    // suspend/reactivate had zero record of which admin acted, the exact same gap
+    // this codebase already closed for Merchant (MerchantService.suspendMerchant,
+    // statusChangedBy/statusChangedAt) and Vehicle Inspection's mechanics, but missed
+    // here. Nullable: legacy status changes made before this field existed have no
+    // historical value to backfill, same convention as Merchant's own fields.
+    @Column(name = "status_changed_by", length = 64)
+    var statusChangedBy: String? = null,
+
+    @Column(name = "status_changed_at")
+    var statusChangedAt: Instant? = null,
 ) {
     protected constructor() : this(id = "", companyName = "", contactEmail = "", apiKeyHash = "")
 }
 
 enum class PartnerMiniAppStatus { PENDING, APPROVED, REJECTED, SUSPENDED }
+
+// Real Toss/Kakao mini-app-store reference (2026-09-11, 7 real screenshots of Kakao's
+// 미니앱 store, which categorizes its catalog) -- deliberately a small, generic set
+// rather than copying Kakao's full ~17-category taxonomy verbatim: itunda has zero
+// real submitted partner apps yet to justify more granularity, and this registry's own
+// scope is a conservative, read-only third-party developer platform (see
+// PartnerMiniAppPermissions.ALLOWED), not a general app store. OTHER is the real
+// default for a submission that doesn't specify one, never a fabricated guess.
+enum class PartnerMiniAppCategory { FINANCE, SHOPPING, PRODUCTIVITY, LIFESTYLE, OTHER }
 
 /**
  * A real mini-app manifest a partner has submitted for human review -- the same
@@ -102,6 +124,10 @@ class PartnerMiniApp(
     @Column(nullable = false, length = 16)
     var status: PartnerMiniAppStatus = PartnerMiniAppStatus.PENDING,
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    var category: PartnerMiniAppCategory = PartnerMiniAppCategory.OTHER,
+
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 
@@ -113,6 +139,15 @@ class PartnerMiniApp(
 
     @Column(name = "decision_reason")
     var decisionReason: String? = null,
+
+    // Real bug found live (2026-08-02): PartnerService.decide reads this exact entity,
+    // checks `status != PENDING`, then writes APPROVED/REJECTED -- the same check-then-
+    // act shape SupportTicket/Incident/HoodReport's own @Version fixes already address.
+    // Two admins concurrently reviewing the same submission could both pass the status
+    // check and race to a conflicting final decision.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(id = "", partnerId = "", name = "", description = "", bundleUrl = "", permissions = "")
 }

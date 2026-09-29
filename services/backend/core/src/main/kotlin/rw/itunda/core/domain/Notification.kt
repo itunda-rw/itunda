@@ -32,7 +32,15 @@ class Notification(
     val createdAt: Instant,
 
     @Column(name = "data_json", columnDefinition = "TEXT")
-    val dataJson: String?
+    val dataJson: String?,
+
+    // Real admin-accountability field (2026-09-13) -- only ever set for a
+    // NotificationAdminController.broadcast-originated row; null for every
+    // ordinary user-triggered notification (new message, payout, etc.), same
+    // "not every row has an acting admin" shape Partner.statusChangedBy already
+    // establishes.
+    @Column(name = "sent_by_user_id", length = 64)
+    val sentByUserId: String? = null,
 ) {
-    protected constructor() : this(id = "", userId = "", type = "", title = "", body = "", isRead = false, createdAt = Instant.now(), dataJson = null)
+    protected constructor() : this(id = "", userId = "", type = "", title = "", body = "", isRead = false, createdAt = Instant.now(), dataJson = null, sentByUserId = null)
 }

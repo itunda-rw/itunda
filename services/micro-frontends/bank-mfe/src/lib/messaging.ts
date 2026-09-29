@@ -1,4 +1,5 @@
 import { apiFetch, getToken, BASE_URL } from './api';
+import type { GroupMessage } from './groupMessaging';
 
 // Real 1:1 messaging (rw.itunda.messaging, 2026-07-18) -- the Kakao-style chat primitive
 // named in the "super app" goal expansion, picked as the first of the three new phases
@@ -14,7 +15,18 @@ export interface ConversationSummary {
   lastMessageAt: string;
   lastMessagePreview: string | null;
   unreadCount: number;
+  quiet: boolean;
+  pinnedMessageId: string | null;
+  // Real recoverable archive (2026-08-05) -- see backend ConversationPreference
+  // .archived's own doc comment. Same private-to-me model as quiet.
+  archived: boolean;
+  // Real KakaoTalk 채팅방 상단 고정 (pin chat room to top) -- see backend
+  // MessagingController's own doc comment distinguishing this from the existing
+  // per-message pin (pinnedMessageId above). Was already returned by
+  // GET /conversations for every summary; this was the missing client-side field.
+  pinnedToTop: boolean;
 }
+export interface TalkContact { userId: string; name: string }
 
 // Real emoji reactions (2026-07-19) -- see MessagingService.toggleReaction's own doc
 // comment for the real toggle semantics (tapping an active reaction removes it).
@@ -30,13 +42,62 @@ export interface Message {
   body: string;
   sentAt: string;
   readAt: string | null;
+  deletedAt?: string | null;
+  replyToMessageId: string | null;
   reactions: ReactionGroup[];
+  // Real message forwarding (2026-07-25) -- see backend Message.kt's own doc comment.
+  // Only ever set on a message that was actually created via the forward endpoint,
+  // never a client-asserted label.
+  forwardedFromMessageId?: string | null;
+  forwardedFromType?: 'DIRECT' | 'GROUP' | null;
+  // Real KakaoTalk Emoticon Store (item 133) -- set only on a message actually sent
+  // via EmoticonController's /send endpoints, never a client-asserted label. See
+  // lib/emoticons.ts's own doc comment.
+  emoticonId?: string | null;
+  // Real photo message -- ports Android TalkScreen.kt's own identical addition
+  // (2026-08-04) to bank-mfe. Set only on a message sent with a real uploaded photo
+  // (POST /api/v1/uploads -> imageUrl passed to sendMessage), never client-asserted.
+  imageUrl?: string | null;
+  // Real Thread support (2026-08-05) -- closes docs/DESIGN_REFERENCES.md Talk section
+  // recommendation #3's remaining gap: Kakao's confirmed 2025 toolkit includes a real
+  // reply-expands-into-its-own-sub-conversation view. A real, read-time-computed count
+  // of direct replies to this message (0 for a message no one has replied to).
+  replyCount?: number;
 }
 
-export const fetchConversations = () =>
-  apiFetch<{ success: boolean; conversations: ConversationSummary[] }>('/api/v1/messages/conversations').then(
-    (r) => r.conversations,
+// Real pagination-discard fix (2026-09-09, same systemic gap as the
+// Hood/Knowledge features fixed earlier -- see
+// project_itunda_pagination_discard_sweep memory) -- MessagingController's
+// GET /conversations is a real Spring Pageable endpoint (found while
+// re-deriving the sweep's real remaining candidate list from the backend's
+// own pageMeta call sites, not a frontend grep), but every client discarded
+// page/totalPages and only ever showed the first 20 conversations -- itunda's
+// own core Talk chat inbox, a real, high-severity instance of this bug class,
+// not a secondary Hood feed.
+export const fetchConversations = (archived = false, page = 0, size = 20) =>
+  apiFetch<{ success: boolean; conversations: ConversationSummary[]; page: number; totalPages: number }>(
+    `/api/v1/messages/conversations?archived=${archived}&page=${page}&size=${size}`,
   );
+
+// Real total-unread-count fix (2026-09-11, backend commit adding
+// MessagingController.getUnreadCount) -- closes the accuracy gap named in
+// project_itunda_pagination_discard_sweep's own "Messaging" section: the
+// top-level tab badge used to sum unreadCount across only each list's own
+// first page (conversations AND groups), undercounting for any real user
+// with more than 20 of either. This is a real, unbounded backend aggregate
+// covering ALL of a user's conversations/groups, not a page.
+export const fetchUnreadCount = () =>
+  apiFetch<{ success: boolean; conversationsUnread: number; groupsUnread: number; total: number }>(
+    '/api/v1/messages/unread-count',
+  );
+
+export const fetchTalkContacts = () =>
+  apiFetch<{ success: boolean; contacts: TalkContact[] }>('/api/v1/messages/contacts').then((r) => r.contacts);
+
+// Real KakaoTalk-style "오늘의 생일" (Today's Birthday) (2026-08-17) -- see backend
+// MessagingService.getTodaysBirthdays's own doc comment.
+export const fetchTodaysBirthdays = () =>
+  apiFetch<{ success: boolean; contacts: TalkContact[] }>('/api/v1/messages/contacts/birthdays-today').then((r) => r.contacts);
 
 // Real phone-number-based start -- the human-friendly entry point
 // MessagingService.startOrGetConversationByPhoneNumber added specifically for this UI
@@ -45,6 +106,11 @@ export const startConversation = (phoneNumber: string) =>
   apiFetch<{ success: boolean; conversation: { id: string } }>('/api/v1/messages/conversations', {
     method: 'POST',
     body: JSON.stringify({ phoneNumber }),
+  }).then((r) => r.conversation);
+
+export const startConversationWithUser = (otherUserId: string) =>
+  apiFetch<{ success: boolean; conversation: { id: string } }>('/api/v1/messages/conversations', {
+    method: 'POST', body: JSON.stringify({ otherUserId }),
   }).then((r) => r.conversation);
 
 // Newest-first from the real API (matches MessagingService.getMessages -- also what
@@ -56,11 +122,84 @@ export const fetchMessages = (conversationId: string) =>
     (r) => [...r.messages].reverse(),
   );
 
-export const sendMessage = (conversationId: string, body: string) =>
+export const searchConversationMessages = (conversationId: string, query: string) =>
+  apiFetch<{ success: boolean; messages: Message[] }>(`/api/v1/messages/conversations/${conversationId}/messages/search?query=${encodeURIComponent(query)}`)
+    .then((r) => r.messages);
+
+// Real Thread support (2026-08-05) -- root message first, then every direct reply
+// oldest-first, matching a real thread screen's own natural render order.
+export const fetchThread = (conversationId: string, messageId: string) =>
+  apiFetch<{ success: boolean; messages: Message[] }>(`/api/v1/messages/conversations/${conversationId}/messages/${messageId}/thread`)
+    .then((r) => r.messages);
+
+export const sendMessage = (conversationId: string, body: string, replyToMessageId?: string, imageUrl?: string) =>
   apiFetch<{ success: boolean; message: Message }>(`/api/v1/messages/conversations/${conversationId}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ body }),
+    body: JSON.stringify({ body, replyToMessageId, imageUrl }),
   }).then((r) => r.message);
+
+export const deleteMessage = (conversationId: string, messageId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/messages/conversations/${conversationId}/messages/${messageId}`, { method: 'DELETE' });
+
+// Real message forwarding (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Talk
+// section recommendation #3. See backend MessageForwardService's own doc comment for
+// the full account -- the real source message is always resolved server-side, this
+// call never sends a body, only where to forward it. destinationType: 'GROUP' targets
+// a group by id instead of a 1:1 conversation.
+export const forwardMessage = (messageId: string, destinationType: 'DIRECT' | 'GROUP', destinationId: string) =>
+  apiFetch<{ success: boolean; destinationType: 'DIRECT' | 'GROUP' }>(`/api/v1/messages/messages/${messageId}/forward`, {
+    method: 'POST',
+    body: JSON.stringify({ destinationType, destinationId }),
+  });
+
+export const blockConversationParticipant = (conversationId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/messages/conversations/${conversationId}/block`, { method: 'POST' });
+
+export const unblockConversationParticipant = (conversationId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/messages/conversations/${conversationId}/block`, { method: 'DELETE' });
+
+export const pinConversationMessage = (conversationId: string, messageId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/messages/conversations/${conversationId}/pin/${messageId}`, { method: 'POST' });
+
+export const unpinConversationMessage = (conversationId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/messages/conversations/${conversationId}/pin`, { method: 'DELETE' });
+
+export const fetchPinnedConversationMessage = (conversationId: string) =>
+  apiFetch<{ success: boolean; message: Message | null }>(`/api/v1/messages/conversations/${conversationId}/pin`).then((r) => r.message);
+
+export const fetchConversationQuiet = (conversationId: string) =>
+  apiFetch<{ success: boolean; quiet: boolean }>(`/api/v1/messages/conversations/${conversationId}/quiet`).then((r) => r.quiet);
+
+export const setConversationQuiet = (conversationId: string, quiet: boolean) =>
+  apiFetch<{ success: boolean; quiet: boolean }>(`/api/v1/messages/conversations/${conversationId}/quiet`, {
+    method: 'POST', body: JSON.stringify({ quiet }),
+  }).then((r) => r.quiet);
+
+export const fetchConversationArchived = (conversationId: string) =>
+  apiFetch<{ success: boolean; archived: boolean }>(`/api/v1/messages/conversations/${conversationId}/archive`).then((r) => r.archived);
+
+export const setConversationArchived = (conversationId: string, archived: boolean) =>
+  apiFetch<{ success: boolean; archived: boolean }>(`/api/v1/messages/conversations/${conversationId}/archive`, {
+    method: 'POST', body: JSON.stringify({ archived }),
+  }).then((r) => r.archived);
+
+// Real KakaoTalk 채팅방 상단 고정 (pin chat room to top) -- backend
+// (MessagingController POST/GET .../pin-to-top, MessagingService.setConversationPinnedToTop)
+// was fully built with zero client anywhere; found via a fresh uncalled-endpoint sweep.
+// Named setConversationPinnedToTop (not setConversationPinned) to stay distinct from the
+// existing per-message pinConversationMessage/unpinConversationMessage above.
+export const fetchConversationPinnedToTop = (conversationId: string) =>
+  apiFetch<{ success: boolean; pinned: boolean }>(`/api/v1/messages/conversations/${conversationId}/pin-to-top`).then((r) => r.pinned);
+
+export const setConversationPinnedToTop = (conversationId: string, pinned: boolean) =>
+  apiFetch<{ success: boolean; pinned: boolean }>(`/api/v1/messages/conversations/${conversationId}/pin-to-top`, {
+    method: 'POST', body: JSON.stringify({ pinned }),
+  }).then((r) => r.pinned);
+
+export const reportChatMessage = (messageId: string, reason: string) =>
+  apiFetch<{ success: boolean }>('/api/v1/chat/reports', {
+    method: 'POST', body: JSON.stringify({ messageId, reason }),
+  });
 
 // Real toggle -- tapping an already-active reaction removes it (matches
 // MessagingService.toggleReaction's own toggle-off semantics), not add/remove as two
@@ -70,71 +209,6 @@ export const toggleReaction = (messageId: string, emoji: string) =>
     method: 'POST',
     body: JSON.stringify({ emoji }),
   }).then((r) => r.reactions);
-
-// Real group chat (2026-07-18) -- the single most defining KakaoTalk capability the
-// original 1:1-only pair above didn't cover, added at the user's direct request
-// ("Talk should be 100% like KakaoTalk + 당근 채팅 for Rwanda"). See
-// GroupMessagingService.kt's own doc comment for the full backend account.
-
-export interface GroupSummary {
-  groupId: string;
-  name: string;
-  memberCount: number;
-  lastMessageAt: string;
-  lastMessagePreview: string | null;
-  unreadCount: number;
-}
-
-export interface GroupMessage {
-  id: string;
-  groupConversationId: string;
-  senderId: string;
-  body: string;
-  sentAt: string;
-  reactions: ReactionGroup[];
-}
-
-// memberPhoneNumbers is the real human-friendly entry point (same reasoning as
-// startConversation's phoneNumber) -- a real UI user only ever knows someone else's
-// phone number, never their internal id.
-export const createGroup = (name: string, memberPhoneNumbers: string[]) =>
-  apiFetch<{ success: boolean; group: { id: string; name: string } }>('/api/v1/messages/groups', {
-    method: 'POST',
-    body: JSON.stringify({ name, memberPhoneNumbers }),
-  }).then((r) => r.group);
-
-export const fetchGroups = () =>
-  apiFetch<{ success: boolean; groups: GroupSummary[] }>('/api/v1/messages/groups').then((r) => r.groups);
-
-export const fetchGroupMessages = (groupId: string) =>
-  apiFetch<{ success: boolean; messages: GroupMessage[] }>(`/api/v1/messages/groups/${groupId}/messages`).then(
-    (r) => [...r.messages].reverse(),
-  );
-
-export const sendGroupMessage = (groupId: string, body: string) =>
-  apiFetch<{ success: boolean; message: GroupMessage }>(`/api/v1/messages/groups/${groupId}/messages`, {
-    method: 'POST',
-    body: JSON.stringify({ body }),
-  }).then((r) => r.message);
-
-export const toggleGroupReaction = (groupMessageId: string, emoji: string) =>
-  apiFetch<{ success: boolean; reactions: ReactionGroup[] }>(`/api/v1/messages/groups/messages/${groupMessageId}/reactions`, {
-    method: 'POST',
-    body: JSON.stringify({ emoji }),
-  }).then((r) => r.reactions);
-
-export interface GroupMember {
-  userId: string;
-  name: string;
-}
-
-// Real member list with real resolved display names (2026-07-18) -- closes the honest,
-// named limitation this UI carried since group chat first shipped: message bubbles
-// showing a truncated sender id instead of a real name.
-export const fetchGroupMembers = (groupId: string) =>
-  apiFetch<{ success: boolean; members: GroupMember[] }>(`/api/v1/messages/groups/${groupId}/members`).then(
-    (r) => r.members,
-  );
 
 interface MessagePushPayload {
   type: 'message';
@@ -179,12 +253,25 @@ interface ReactionPushPayload {
   reactions: ReactionGroup[];
 }
 
+// Real group-chat read-receipt push (2026-07-26) -- see
+// RealtimeMessagePublisher.publishGroupReadReceiptChange's own doc comment. Fired
+// whenever any real member's read cursor advances; the client's own response is to
+// just refetch the thread (the server is the source of truth for each message's real
+// remaining unreadCount, not something worth recomputing client-side from this alone).
+interface GroupReadReceiptPushPayload {
+  type: 'group_read_receipt';
+  groupConversationId: string;
+  readByUserId: string;
+  lastReadAt: string;
+}
+
 type SocketPushPayload =
   | MessagePushPayload
   | GroupMessagePushPayload
   | PresencePushPayload
   | TypingPushPayload
-  | ReactionPushPayload;
+  | ReactionPushPayload
+  | GroupReadReceiptPushPayload;
 
 // Real on-demand presence check, for any set of user ids (a group thread's members,
 // or a 1:1 partner not covered by the real-time push above).
@@ -216,27 +303,61 @@ export interface MessagingSocketHandle {
 }
 
 export function connectMessagingSocket(onMessage: (payload: SocketPushPayload) => void): MessagingSocketHandle {
-  const token = getToken();
-  if (!token) return { close: () => {}, sendTyping: () => {} };
+  let socket: WebSocket | undefined;
+  let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+  let closedByCaller = false;
+  let reconnectAttempt = 0;
 
-  const wsUrl = `${BASE_URL.replace(/^http/, 'ws')}/ws/messaging?token=${encodeURIComponent(token)}`;
-  const socket = new WebSocket(wsUrl);
+  const scheduleReconnect = () => {
+    if (closedByCaller || reconnectTimer) return;
+    // Exponential backoff with bounded jitter prevents every open chat screen from
+    // reconnecting at once after a deploy, network switch, or upstream restart. REST
+    // polling remains the correctness path while this best-effort channel recovers.
+    const capMs = 30_000;
+    const baseMs = Math.min(1_000 * 2 ** reconnectAttempt, capMs);
+    const jitterMs = Math.floor(Math.random() * Math.max(1, Math.floor(baseMs * 0.25)));
+    reconnectAttempt += 1;
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = undefined;
+      connect();
+    }, baseMs + jitterMs);
+  };
 
-  socket.addEventListener('message', (event) => {
-    try {
-      const payload = JSON.parse(event.data) as SocketPushPayload;
-      if (payload.type === 'message' || payload.type === 'group_message' || payload.type === 'presence' || payload.type === 'typing' || payload.type === 'reaction') {
-        onMessage(payload);
+  const connect = () => {
+    const token = getToken();
+    if (!token || closedByCaller) return;
+
+    const wsUrl = `${BASE_URL.replace(/^http/, 'ws')}/ws/messaging?token=${encodeURIComponent(token)}`;
+    const nextSocket = new WebSocket(wsUrl);
+    socket = nextSocket;
+    nextSocket.addEventListener('open', () => {
+      reconnectAttempt = 0;
+    });
+    nextSocket.addEventListener('message', (event) => {
+      try {
+        const payload = JSON.parse(event.data) as SocketPushPayload;
+        if (payload.type === 'message' || payload.type === 'group_message' || payload.type === 'presence' || payload.type === 'typing' || payload.type === 'reaction' || payload.type === 'group_read_receipt') {
+          onMessage(payload);
+        }
+      } catch {
+        // Malformed/unexpected frame -- ignore, the poll fallback still covers delivery.
       }
-    } catch {
-      // Malformed/unexpected frame -- ignore, the poll fallback still covers delivery.
-    }
-  });
+    });
+    nextSocket.addEventListener('close', scheduleReconnect);
+    nextSocket.addEventListener('error', () => nextSocket.close());
+  };
+
+  connect();
 
   return {
-    close: () => socket.close(),
+    close: () => {
+      closedByCaller = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = undefined;
+      socket?.close();
+    },
     sendTyping: (target) => {
-      if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'typing', ...target }));
+      if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'typing', ...target }));
     },
   };
 }

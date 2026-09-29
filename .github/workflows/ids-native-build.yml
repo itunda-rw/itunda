@@ -1,0 +1,152 @@
+name: IDS Native Build Verification
+
+on:
+  push:
+    branches:
+      - agent/itunda-agent-network
+    paths:
+      - "android/**"
+      - "ios/**"
+      - "packages/saronite/**"
+      - "scripts/verify-native-boundary.sh"
+      - ".github/workflows/ids-native-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Production IDS verification is native-first:
+# Android -> Kotlin/Compose via Gradle
+# iOS -> Swift/SwiftUI via Tuist -> Xcode
+# Expo Go, Expo Snack and EAS are not verification evidence.
+#
+# This workflow intentionally uses the same deterministic native build lanes
+# as the repository's main CI instead of depending on an external simulator
+# service or LIM_API_KEY.
+
+jobs:
+  android:
+    name: Android IDS native build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify native production boundary
+        run: bash ./scripts/verify-native-boundary.sh
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+          cache-dependency-path: packages/saronite/package-lock.json
+
+      - name: Install Saronite JS dependencies
+        working-directory: packages/saronite
+        run: npm ci
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Cap Gradle/Kotlin daemon heap
+        run: |
+          mkdir -p ~/.gradle
+          echo "org.gradle.jvmargs=-Xmx3072m -Dfile.encoding=UTF-8" >> ~/.gradle/gradle.properties
+          echo "kotlin.daemon.jvmargs=-Xmx2048m" >> ~/.gradle/gradle.properties
+
+      - name: Silo boundary check
+        working-directory: android
+        run: ./gradlew :architecture-test:test --no-daemon
+
+      - name: Assemble native debug APK
+        working-directory: android
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Capture Android verification manifest
+        run: |
+          cat > android-native-verification.txt <<EOF
+          commit=${GITHUB_SHA}
+          lane=github-actions-gradle
+          project=android
+          artifact=android/app/build/outputs/apk/debug/app-debug.apk
+          status=build-complete
+          expo_evidence=false
+          EOF
+
+      - name: Upload Android verification
+        uses: actions/upload-artifact@v4
+        with:
+          name: ids-native-android-verification
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android-native-verification.txt
+          retention-days: 14
+
+  ios:
+    name: iOS IDS native Xcode build
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify native production boundary
+        run: bash ./scripts/verify-native-boundary.sh
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+          cache-dependency-path: packages/saronite/package-lock.json
+
+      - name: Install Saronite JS dependencies
+        working-directory: packages/saronite
+        run: npm ci
+
+      - name: Generate BrickCodegen iOS bridge
+        working-directory: packages/saronite/host-app
+        run: node ../node_modules/.bin/brick-codegen --platform ios --output-ios ../../../ios/.brick --projectRoot .
+
+      - name: Install Tuist
+        run: brew install --cask tuist
+
+      - name: Generate native Xcode project
+        working-directory: ios
+        run: tuist generate --no-open
+
+      - name: Install CocoaPods dependencies
+        working-directory: ios
+        run: pod install
+
+      - name: Build native ItundaApp
+        working-directory: ios
+        run: |
+          xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp \
+            -destination 'generic/platform=iOS Simulator' build \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Capture iOS verification manifest
+        run: |
+          cat > ios-native-verification.txt <<EOF
+          commit=${GITHUB_SHA}
+          lane=github-actions-xcode
+          scheme=ItundaApp
+          configuration=Debug
+          project_generation=tuist
+          status=build-complete
+          expo_evidence=false
+          EOF
+
+      - name: Upload iOS verification
+        uses: actions/upload-artifact@v4
+        with:
+          name: ids-native-ios-verification
+          path: ios-native-verification.txt
+          retention-days: 14

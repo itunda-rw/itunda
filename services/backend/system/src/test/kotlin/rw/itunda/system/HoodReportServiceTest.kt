@@ -1,0 +1,196 @@
+package rw.itunda.system
+
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.slot
+import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.HoodReport
+import rw.itunda.core.domain.HoodReportStatus
+import rw.itunda.core.domain.HoodReportTargetType
+import rw.itunda.core.domain.JobPayType
+import rw.itunda.core.domain.JobPost
+import rw.itunda.core.domain.JobPostStatus
+import rw.itunda.core.domain.Listing
+import rw.itunda.core.domain.ListingStatus
+import rw.itunda.core.repository.HoodReportRepository
+import rw.itunda.core.repository.ListingRepository
+import rw.itunda.core.repository.CommunityPostRepository
+import rw.itunda.core.repository.JobPostRepository
+import rw.itunda.core.repository.PropertyListingRepository
+import java.util.Optional
+import java.math.BigDecimal
+
+class HoodReportServiceTest : BehaviorSpec({
+    Given("an open report for a job") {
+        val repository = mockk<HoodReportRepository>()
+        val listings = mockk<ListingRepository>()
+        val community = mockk<CommunityPostRepository>()
+        val jobs = mockk<JobPostRepository>()
+        val properties = mockk<PropertyListingRepository>()
+        val service = HoodReportService(repository, listings, community, jobs, properties, mockk(), mockk(), mockk(relaxed = true))
+        val existing = HoodReport("report_1", "user_1", HoodReportTargetType.JOB_POST, "job_1", "Fee requested")
+
+        When("the same user reports the same job again") {
+            every { repository.findByReporterUserIdAndTargetTypeAndTargetIdAndStatus("user_1", HoodReportTargetType.JOB_POST, "job_1", HoodReportStatus.OPEN) } returns existing
+            every { jobs.existsById("job_1") } returns true
+
+            Then("it rejects the duplicate instead of growing the review queue") {
+                shouldThrow<HoodReportAlreadyOpenException> {
+                    service.report("user_1", HoodReportTargetType.JOB_POST, "job_1", "Fee requested")
+                }
+                verify(exactly = 0) { repository.save(any()) }
+            }
+        }
+    }
+
+    // Real bug found live (2026-08-02): report() had shipped with zero rate limiting
+    // -- every other real content/report-creation endpoint in this codebase already
+    // has one. An authenticated caller could otherwise spam unlimited real HoodReport
+    // rows against any listing/post/message they can see.
+    Given("a user who has already hit the real hood-report rate limit") {
+        val repository = mockk<HoodReportRepository>()
+        val listings = mockk<ListingRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        every { rateLimiter.checkLimit("hood-report:user_4", any(), any()) } throws RateLimitExceededException("Too many requests")
+        val service = HoodReportService(repository, listings, mockk(), mockk(), mockk(), mockk(), mockk(), rateLimiter)
+
+        When("they try to file yet another report") {
+            Then("it real-429s before ever touching the target lookup or the repository") {
+                shouldThrow<RateLimitExceededException> {
+                    service.report("user_4", HoodReportTargetType.MARKETPLACE_LISTING, "listing_1", "Spam")
+                }
+                verify(exactly = 0) { listings.existsById(any()) }
+                verify(exactly = 0) { repository.save(any()) }
+            }
+        }
+    }
+
+    Given("an open report awaiting review") {
+        val repository = mockk<HoodReportRepository>()
+        val service = HoodReportService(repository, mockk(), mockk(), mockk(), mockk(), mockk(), mockk(), mockk(relaxed = true))
+        val report = HoodReport("report_2", "user_2", HoodReportTargetType.JOB_POST, "job_2", "Misleading pay")
+
+        When("an administrator resolves it") {
+            every { repository.findById("report_2") } returns Optional.of(report)
+            val savedSlot = slot<HoodReport>()
+            every { repository.save(capture(savedSlot)) } answers { firstArg() }
+            val resolved = service.resolve("report_2", "admin_1")
+
+            Then("it records an auditable resolution") {
+                resolved.status shouldBe HoodReportStatus.RESOLVED
+                resolved.reviewedBy shouldBe "admin_1"
+                resolved.reviewedAt shouldNotBe null
+            }
+
+            // Real bug found live (2026-08-02): resolve() already read this exact
+            // report, then wrote back to it -- the correct check-then-act shape -- but
+            // with no @Version, two moderators concurrently resolving the same report
+            // could silently overwrite each other's reviewedBy. Asserts the mechanism
+            // the fix now relies on: the same versioned entity read is the one saved.
+            Then("the same versioned report instance that was read is the one saved") {
+                savedSlot.captured shouldBe report
+                savedSlot.captured.version shouldBe report.version
+            }
+        }
+    }
+
+    Given("a report for a missing marketplace listing") {
+        val repository = mockk<HoodReportRepository>()
+        val listings = mockk<ListingRepository>()
+        val service = HoodReportService(repository, listings, mockk(), mockk(), mockk(), mockk(), mockk(), mockk(relaxed = true))
+
+        When("a member submits it") {
+            every { listings.existsById("listing_missing") } returns false
+
+            Then("it is rejected before entering the review queue") {
+                shouldThrow<HoodReportTargetNotFoundException> {
+                    service.report(
+                        reporterId = "user_3",
+                        targetType = HoodReportTargetType.MARKETPLACE_LISTING,
+                        targetId = "listing_missing",
+                        reason = "This post no longer exists",
+                    )
+                }
+                verify(exactly = 0) { repository.save(any()) }
+            }
+        }
+    }
+
+    Given("a substantiated job report") {
+        val repository = mockk<HoodReportRepository>()
+        val jobs = mockk<JobPostRepository>()
+        val service = HoodReportService(repository, mockk(), mockk(), jobs, mockk(), mockk(), mockk(), mockk(relaxed = true))
+        val report = HoodReport("report_3", "user_3", HoodReportTargetType.JOB_POST, "job_3", "Asks for a fee")
+        val job = JobPost("job_3", "poster_1", "cleaning", "Cleaner needed", "Bring supplies", JobPayType.FIXED, BigDecimal("3000"))
+
+        When("an administrator removes the reported job") {
+            every { repository.findById("report_3") } returns Optional.of(report)
+            every { jobs.findById("job_3") } returns Optional.of(job)
+            every { jobs.save(any()) } answers { firstArg() }
+            every { repository.findByTargetTypeAndTargetIdAndStatus(HoodReportTargetType.JOB_POST, "job_3", HoodReportStatus.OPEN) } returns listOf(report)
+            every { repository.saveAll(any<Iterable<HoodReport>>()) } answers { firstArg() }
+            val resolved = service.removeTarget("report_3", "admin_1")
+
+            Then("the job is hidden and the decision is audited") {
+                job.status shouldBe JobPostStatus.REMOVED
+                resolved.status shouldBe HoodReportStatus.RESOLVED
+                resolved.reviewedBy shouldBe "admin_1"
+                verify { jobs.save(job) }
+            }
+        }
+    }
+
+    // Real 당근마켓 auto-hide-at-threshold behavior, ported into this unified endpoint
+    // from the now-retired MarketplaceService.reportListing/CommunityService.reportPost
+    // (see docs/DESIGN_REFERENCES.md Section 249) -- those had zero real callers, this
+    // one is what every real client (Android/iOS/bank-mfe) actually calls.
+    Given("a marketplace listing's 3rd distinct open report, reaching the real auto-hide threshold") {
+        val repository = mockk<HoodReportRepository>()
+        val listings = mockk<ListingRepository>()
+        val service = HoodReportService(repository, listings, mockk(), mockk(), mockk(), mockk(), mockk(), mockk(relaxed = true))
+        val listing = Listing(id = "listing_1", sellerId = "seller_1", title = "Bicycle", description = "desc", price = BigDecimal("15000"), category = "sports")
+        val savedSlot = slot<HoodReport>()
+
+        When("a third distinct reporter files an open report") {
+            every { listings.existsById("listing_1") } returns true
+            every { repository.findByReporterUserIdAndTargetTypeAndTargetIdAndStatus("reporter_3", HoodReportTargetType.MARKETPLACE_LISTING, "listing_1", HoodReportStatus.OPEN) } returns null
+            every { repository.save(capture(savedSlot)) } answers { firstArg() }
+            every { repository.findByTargetTypeAndTargetIdAndStatus(HoodReportTargetType.MARKETPLACE_LISTING, "listing_1", HoodReportStatus.OPEN) } returns
+                listOf(mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true))
+            every { listings.findById("listing_1") } returns Optional.of(listing)
+            every { listings.save(any()) } answers { firstArg() }
+
+            service.report("reporter_3", HoodReportTargetType.MARKETPLACE_LISTING, "listing_1", "Looks like a scam")
+
+            Then("the listing is silently auto-hidden -- real status REMOVED, no reviewer action needed") {
+                listing.status shouldBe ListingStatus.REMOVED
+                verify(exactly = 1) { listings.save(listing) }
+            }
+        }
+    }
+
+    Given("a job post's 3rd distinct open report -- auto-hide was never extended to this target type") {
+        val repository = mockk<HoodReportRepository>()
+        val jobs = mockk<JobPostRepository>()
+        val service = HoodReportService(repository, mockk(), mockk(), jobs, mockk(), mockk(), mockk(), mockk(relaxed = true))
+
+        When("a third distinct reporter files an open report") {
+            every { jobs.existsById("job_1") } returns true
+            every { repository.findByReporterUserIdAndTargetTypeAndTargetIdAndStatus("reporter_3", HoodReportTargetType.JOB_POST, "job_1", HoodReportStatus.OPEN) } returns null
+            every { repository.save(any()) } answers { firstArg() }
+
+            service.report("reporter_3", HoodReportTargetType.JOB_POST, "job_1", "Asks for a fee")
+
+            Then("no auto-removal is attempted -- only reviewer-driven removeTarget applies to job posts") {
+                verify(exactly = 0) { repository.findByTargetTypeAndTargetIdAndStatus(any(), any(), any()) }
+                verify(exactly = 0) { jobs.save(any()) }
+            }
+        }
+    }
+})

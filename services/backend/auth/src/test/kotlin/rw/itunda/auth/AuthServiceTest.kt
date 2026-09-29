@@ -7,21 +7,32 @@ import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import jakarta.persistence.LockModeType
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
-import rw.itunda.core.domain.EmailVerificationToken
+import org.springframework.data.jpa.repository.Lock
 import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.Notification
+import rw.itunda.core.domain.PhoneVerificationToken
+import rw.itunda.core.domain.TermsAcceptance
+import rw.itunda.core.domain.TermsCatalog
 import rw.itunda.core.domain.User
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.geo.NominatimGeocodingClient
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.EmailVerificationTokenRepository
 import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.NotificationRepository
+import rw.itunda.core.repository.PhoneVerificationTokenRepository
+import rw.itunda.core.repository.TermsAcceptanceRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.account.AccountNumberGenerator
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.Optional
 
 /**
@@ -32,10 +43,10 @@ import java.util.Optional
  * not just generic coverage.
  *
  * JwtService is used for real (it's a small, pure, self-contained class -- no external
- * dependencies), same reasoning as WalletServiceTest's real QuoteStore: real signed/
+ * dependencies), same reasoning as AccountServiceTest's real QuoteStore: real signed/
  * verified tokens are more meaningful coverage than a mocked stand-in. Same for
  * BCryptPasswordEncoder, which AuthService instantiates internally and can't be mocked
- * anyway. UserRepository/WalletRepository (real DB) and TokenBlocklistService/RateLimiter
+ * anyway. UserRepository/AccountRepository (real DB) and TokenBlocklistService/RateLimiter
  * (real Redis) are mocked.
  */
 class AuthServiceTest : BehaviorSpec({
@@ -45,49 +56,196 @@ class AuthServiceTest : BehaviorSpec({
 
     Given("a fresh AuthService") {
         val userRepository = mockk<UserRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val interestJarRepository = mockk<InterestJarRepository>()
         val jwtService = JwtService(testSecret)
         val tokenBlocklistService = mockk<TokenBlocklistService>()
         val rateLimiter = mockk<RateLimiter>()
+        every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
         val emailVerificationTokenRepository = mockk<EmailVerificationTokenRepository>()
+        every { emailVerificationTokenRepository.invalidateUnusedByUserId(any()) } returns 0
+        val phoneVerificationTokenRepository = mockk<PhoneVerificationTokenRepository>()
+        every { phoneVerificationTokenRepository.invalidateUnusedByUserId(any()) } returns 0
         val notificationRepository = mockk<NotificationRepository>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         // Real device binding (2026-07-20) -- relaxed since these tests aren't about
         // device binding itself, just registration/login/profile behavior; DeviceServiceTest
         // covers the real device-recording/verification logic directly.
         val deviceService = mockk<DeviceService>(relaxed = true)
-        val service = AuthService(
-            userRepository, walletRepository, interestJarRepository, jwtService, tokenBlocklistService, rateLimiter,
-            emailVerificationTokenRepository, notificationRepository, nominatimGeocodingClient, deviceService,
+        // Real push (item 122) -- relaxed since these tests aren't about the push
+        // pipeline itself, just registration/login/profile behavior.
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
+        val accountNumberGenerator = mockk<AccountNumberGenerator>(relaxed = true)
+        // Real Toss/Korean-fintech-style 약관 동의 (terms consent) -- relaxed since most
+        // of these pre-existing tests aren't about terms consent itself, just
+        // registration/login/profile behavior; the dedicated "terms consent" Given
+        // block below covers the real enforcement logic directly. A default `save`
+        // stub is still needed even though this mock is relaxed: `JpaRepository.save`
+        // is a self-bounded generic (`fun <S : T> save(entity: S): S`), and mockk's
+        // relaxed auto-answer can't safely synthesize a same-shape return value for
+        // that signature -- a real `ClassCastException` during spec construction,
+        // confirmed live catching this exact issue, not a guess.
+        val termsAcceptanceRepository = mockk<TermsAcceptanceRepository>(relaxed = true)
+        every { termsAcceptanceRepository.save(any()) } answers { firstArg() }
+        // Split out of AuthService (2026-08-21) -- see UserVerificationService.kt's own
+        // doc comment. Built from the same shared mocks this Given block already
+        // declares, not a duplicated fixture -- register() below still exercises the
+        // real cross-class call into this instance for its own phone-OTP delivery.
+        val userVerificationService = UserVerificationService(
+            userRepository, emailVerificationTokenRepository, phoneVerificationTokenRepository,
+            notificationRepository, pushNotificationService, rateLimiter,
         )
+        val service = AuthService(
+            userRepository, accountRepository, interestJarRepository, jwtService, tokenBlocklistService, rateLimiter,
+            nominatimGeocodingClient, deviceService, realtimeMessagePublisher, accountNumberGenerator,
+            termsAcceptanceRepository, userVerificationService, notificationRepository, pushNotificationService,
+        )
+        val requiredTermsIds = TermsCatalog.requiredIds().toList()
 
         When("registering a brand-new phone number") {
             every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
             every { userRepository.existsByPhoneNumber("+250788000001") } returns false
-            every { userRepository.save(any()) } answers { firstArg() }
-            every { walletRepository.save(any()) } answers { firstArg() }
+            val registeredUserSlot = mutableListOf<User>()
+            every { userRepository.save(capture(registeredUserSlot)) } answers { firstArg() }
+            every { accountRepository.save(any()) } answers { firstArg() }
             val jarSlot = mutableListOf<InterestJar>()
             every { interestJarRepository.save(capture(jarSlot)) } answers { firstArg() }
+            val phoneTokenSlot = mutableListOf<PhoneVerificationToken>()
+            every { phoneVerificationTokenRepository.save(capture(phoneTokenSlot)) } answers { firstArg() }
+            val notificationSlot = mutableListOf<Notification>()
+            every { notificationRepository.save(capture(notificationSlot)) } answers { firstArg() }
+            val termsAcceptanceSlot = mutableListOf<TermsAcceptance>()
+            every { termsAcceptanceRepository.save(capture(termsAcceptanceSlot)) } answers { firstArg() }
 
-            val response = service.register(RegisterRequest("+250788000001", "a@b.rw", "Jean", "B", "password123"))
+            val response = service.register(RegisterRequest("+250788000001", "a@b.rw", "Jean", "B", "123456", acceptedTermsIds = requiredTermsIds))
 
-            Then("it rate-limits, creates a user, provisions real zero-balance MAIN and SAVINGS wallets, and issues real tokens") {
+            Then("it rate-limits, creates a user, provisions real zero-balance MAIN, PAY, SAVINGS, and INVESTMENT accounts, and issues real tokens") {
                 verify(exactly = 1) { rateLimiter.checkLimit("auth:register:+250788000001", 3, any()) }
-                val walletSlot = mutableListOf<Wallet>()
+                val accountSlot = mutableListOf<Account>()
                 // Fixed 2026-07-13: registration used to only provision MAIN, so
-                // POST /api/v1/savings/goals 404'd (WALLET_NOT_FOUND) for every real user --
-                // this asserts both wallets exist, not just that *a* wallet got saved.
-                verify(exactly = 2) { walletRepository.save(capture(walletSlot)) }
-                walletSlot.map { it.type }.toSet() shouldBe setOf(WalletType.MAIN, WalletType.SAVINGS)
-                walletSlot.all { it.balance.signum() == 0 } shouldBe true
+                // POST /api/v1/savings/goals 404'd (ACCOUNT_NOT_FOUND) for every real user --
+                // this asserts all real accounts exist, not just that *a* account got saved.
+                // INVESTMENT added 2026-07-27: the same real gap, one layer deeper --
+                // StocksService.buyStock required a real INVESTMENT account only the seeded
+                // demo user ever had, so POST /api/v1/stocks/buy 404'd for every real user.
+                // PAY added 2026-08-21: real Toss Bank/Toss Pay separation -- see
+                // AccountType.PAY's own doc comment.
+                verify(exactly = 4) { accountRepository.save(capture(accountSlot)) }
+                accountSlot.map { it.type }.toSet() shouldBe setOf(AccountType.MAIN, AccountType.PAY, AccountType.SAVINGS, AccountType.INVESTMENT)
+                accountSlot.all { it.balance.signum() == 0 } shouldBe true
                 jwtService.verify(response.accessToken) shouldNotBe null
                 jwtService.verify(response.refreshToken)!!.isRefresh shouldBe true
 
                 // Fixed 2026-07-20: SeedDataRunner was the only place an InterestJar was ever
                 // created, so GET /api/v1/savings/interest-jar 404'd for every real user.
-                jarSlot.single().walletId shouldBe walletSlot.single { it.type == WalletType.SAVINGS }.id
+                jarSlot.single().accountId shouldBe accountSlot.single { it.type == AccountType.SAVINGS }.id
                 jarSlot.single().earnedThisMonth.signum() shouldBe 0
+            }
+            Then("it real-sends a 6-digit phone verification code via a real in-app notification, at registration itself") {
+                phoneTokenSlot.single().token.startsWith("\$2") shouldBe true
+                val notification = notificationSlot.single { it.type == "PHONE_VERIFICATION" }
+                val deliveredCode = Regex("\\d{6}").find(notification.body)!!.value
+                passwordEncoder.matches(deliveredCode, phoneTokenSlot.single().token) shouldBe true
+            }
+            Then("it real-records one immutable TermsAcceptance per real accepted required term") {
+                termsAcceptanceSlot.map { it.termsId }.toSet() shouldBe requiredTermsIds.toSet()
+                termsAcceptanceSlot.all { it.userId.isNotBlank() } shouldBe true
+            }
+            // Real Toss-sourced passwordless-login rollout (2026-08-24) -- every NEW
+            // registration is on the 6-digit-PIN scheme, not the pre-existing free-
+            // form-password one -- see User.pinSet's own doc comment.
+            Then("the new user is marked pinSet = true, the new 6-digit-PIN scheme") {
+                registeredUserSlot.single().pinSet shouldBe true
+            }
+        }
+
+        When("registering with a free-form password instead of a real 6-digit PIN") {
+            every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+            every { userRepository.existsByPhoneNumber("+250788000030") } returns false
+
+            Then("it throws InvalidPinException before ever saving a user -- the real Toss-sourced 6-digit-PIN requirement") {
+                try {
+                    service.register(RegisterRequest("+250788000030", null, "Jean", "B", "password123", acceptedTermsIds = requiredTermsIds))
+                    error("expected InvalidPinException")
+                } catch (e: InvalidPinException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+
+        When("registering with a phone number that isn't shaped like one") {
+            Then("it throws InvalidPhoneNumberException before ever checking for a duplicate or spending a rate-limit attempt") {
+                try {
+                    service.register(RegisterRequest("0788000033", null, "Jean", "B", "123456", acceptedTermsIds = requiredTermsIds))
+                    error("expected InvalidPhoneNumberException")
+                } catch (e: InvalidPhoneNumberException) {
+                    verify(exactly = 0) { rateLimiter.checkLimit(any(), any(), any()) }
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+
+        When("registering with a blank first name") {
+            Then("it throws InvalidNameException before ever checking for a duplicate") {
+                try {
+                    service.register(RegisterRequest("+250788000034", null, "   ", "B", "123456", acceptedTermsIds = requiredTermsIds))
+                    error("expected InvalidNameException")
+                } catch (e: InvalidNameException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+
+        When("registering with a first name longer than the real 255-char DB column bound") {
+            Then("it throws InvalidNameException rather than risking a raw DB insert failure") {
+                try {
+                    service.register(RegisterRequest("+250788000035", null, "x".repeat(256), "B", "123456", acceptedTermsIds = requiredTermsIds))
+                    error("expected InvalidNameException")
+                } catch (e: InvalidNameException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+
+        When("registering with a first name between 235 and 255 characters -- fits User.firstName's own column but would overflow accountName once a suffix like \"'s Investment Account\" is appended") {
+            Then("it throws InvalidNameException at the real 234-char safe bound, not the naive 255") {
+                try {
+                    service.register(RegisterRequest("+250788000036", null, "x".repeat(240), "B", "123456", acceptedTermsIds = requiredTermsIds))
+                    error("expected InvalidNameException")
+                } catch (e: InvalidNameException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+
+        When("registering with an email that isn't shaped like one") {
+            every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+            every { userRepository.existsByPhoneNumber("+250788000031") } returns false
+
+            Then("it throws InvalidEmailException before ever saving a user") {
+                try {
+                    service.register(RegisterRequest("+250788000031", "not-an-email", "Jean", "B", "123456", acceptedTermsIds = requiredTermsIds))
+                    error("expected InvalidEmailException")
+                } catch (e: InvalidEmailException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+
+        When("registering with no email at all") {
+            every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+            every { userRepository.existsByPhoneNumber("+250788000032") } returns false
+            every { userRepository.save(any()) } answers { firstArg() }
+            every { accountRepository.save(any()) } answers { firstArg() }
+            every { interestJarRepository.save(any()) } answers { firstArg() }
+            every { phoneVerificationTokenRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
+            every { termsAcceptanceRepository.save(any()) } answers { firstArg() }
+
+            Then("email is genuinely optional -- registration still succeeds") {
+                val response = service.register(RegisterRequest("+250788000032", null, "Jean", "B", "123456", acceptedTermsIds = requiredTermsIds))
+                response.user.email shouldBe null
             }
         }
 
@@ -101,10 +259,12 @@ class AuthServiceTest : BehaviorSpec({
             every { userRepository.findByReferralCode("ITDREF01") } returns referrer
             val userSlot = mutableListOf<User>()
             every { userRepository.save(capture(userSlot)) } answers { firstArg() }
-            every { walletRepository.save(any()) } answers { firstArg() }
+            every { accountRepository.save(any()) } answers { firstArg() }
             every { interestJarRepository.save(any()) } answers { firstArg() }
+            every { phoneVerificationTokenRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
 
-            service.register(RegisterRequest("+250788000011", null, "New", "User", "password123", "ITDREF01"))
+            service.register(RegisterRequest("+250788000011", null, "New", "User", "123456", "ITDREF01", acceptedTermsIds = requiredTermsIds))
 
             Then("the new user is saved with a real referredByUserId pointing at the referrer") {
                 userSlot.single().referredByUserId shouldBe "user_referrer"
@@ -118,7 +278,7 @@ class AuthServiceTest : BehaviorSpec({
 
             Then("it throws ReferralCodeNotFoundException before ever saving a user -- an invalid code fails loudly, not silently") {
                 try {
-                    service.register(RegisterRequest("+250788000012", null, "New", "User", "password123", "BOGUSCODE"))
+                    service.register(RegisterRequest("+250788000012", null, "New", "User", "123456", "BOGUSCODE", acceptedTermsIds = requiredTermsIds))
                     error("expected ReferralCodeNotFoundException")
                 } catch (e: ReferralCodeNotFoundException) {
                     verify(exactly = 0) { userRepository.save(any()) }
@@ -130,13 +290,88 @@ class AuthServiceTest : BehaviorSpec({
             every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
             every { userRepository.existsByPhoneNumber("+250788000002") } returns true
 
-            Then("it throws PhoneAlreadyRegisteredException without touching the wallet repository") {
+            Then("it throws PhoneAlreadyRegisteredException without touching the account repository") {
                 try {
-                    service.register(RegisterRequest("+250788000002", null, "Jean", "B", "password123"))
+                    service.register(RegisterRequest("+250788000002", null, "Jean", "B", "123456"))
                     error("expected PhoneAlreadyRegisteredException")
                 } catch (e: PhoneAlreadyRegisteredException) {
-                    verify(exactly = 0) { walletRepository.save(any()) }
+                    verify(exactly = 0) { accountRepository.save(any()) }
                 }
+            }
+        }
+
+        // Real Toss/Korean-fintech-style 약관 동의 (terms consent) enforcement -- see
+        // TermsCatalog's own doc comment for the full sourced account (Korea's real
+        // 2025-02-14 dark-pattern regulation and 2026-09-11 penalty increase). itunda
+        // had zero terms-consent tracking anywhere before this.
+        When("registering without accepting every required term") {
+            every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+            every { userRepository.existsByPhoneNumber("+250788000020") } returns false
+
+            Then("it throws RequiredTermsNotAcceptedException before ever saving a user") {
+                // Only one of the two real required terms accepted -- a genuine
+                // partial-consent case, not just "accepted nothing at all".
+                val partialTermsIds = listOf(requiredTermsIds.first())
+                try {
+                    service.register(RegisterRequest("+250788000020", null, "Jean", "B", "123456", acceptedTermsIds = partialTermsIds))
+                    error("expected RequiredTermsNotAcceptedException")
+                } catch (e: RequiredTermsNotAcceptedException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                    verify(exactly = 0) { accountRepository.save(any()) }
+                }
+            }
+        }
+
+        When("registering with every required term accepted but the real optional marketing term skipped") {
+            every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+            every { userRepository.existsByPhoneNumber("+250788000021") } returns false
+            every { userRepository.save(any()) } answers { firstArg() }
+            every { accountRepository.save(any()) } answers { firstArg() }
+            every { interestJarRepository.save(any()) } answers { firstArg() }
+            every { phoneVerificationTokenRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
+            val termsAcceptanceSlot = mutableListOf<TermsAcceptance>()
+            every { termsAcceptanceRepository.save(capture(termsAcceptanceSlot)) } answers { firstArg() }
+
+            Then("registration succeeds -- an optional term is honestly optional, never a blocker") {
+                service.register(RegisterRequest("+250788000021", null, "Jean", "B", "123456", acceptedTermsIds = requiredTermsIds))
+                termsAcceptanceSlot.map { it.termsId }.toSet() shouldBe requiredTermsIds.toSet()
+                (TermsCatalog.requiredIds() - termsAcceptanceSlot.map { it.termsId }.toSet()).isEmpty() shouldBe true
+            }
+        }
+
+        When("registering with every required term plus the real optional marketing term also accepted") {
+            every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+            every { userRepository.existsByPhoneNumber("+250788000022") } returns false
+            every { userRepository.save(any()) } answers { firstArg() }
+            every { accountRepository.save(any()) } answers { firstArg() }
+            every { interestJarRepository.save(any()) } answers { firstArg() }
+            every { phoneVerificationTokenRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
+            val termsAcceptanceSlot = mutableListOf<TermsAcceptance>()
+            every { termsAcceptanceRepository.save(capture(termsAcceptanceSlot)) } answers { firstArg() }
+
+            Then("it records a real TermsAcceptance for the optional term too, not just the required ones") {
+                val allTermsIds = TermsCatalog.documents.map { it.id }
+                service.register(RegisterRequest("+250788000022", null, "Jean", "B", "123456", acceptedTermsIds = allTermsIds))
+                termsAcceptanceSlot.map { it.termsId }.toSet() shouldBe allTermsIds.toSet()
+            }
+        }
+
+        When("registering with an unknown/stale terms id mixed in with the real required ones") {
+            every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+            every { userRepository.existsByPhoneNumber("+250788000023") } returns false
+            every { userRepository.save(any()) } answers { firstArg() }
+            every { accountRepository.save(any()) } answers { firstArg() }
+            every { interestJarRepository.save(any()) } answers { firstArg() }
+            every { phoneVerificationTokenRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
+            val termsAcceptanceSlot = mutableListOf<TermsAcceptance>()
+            every { termsAcceptanceRepository.save(capture(termsAcceptanceSlot)) } answers { firstArg() }
+
+            Then("it silently ignores the unknown id rather than 500ing registration over it") {
+                service.register(RegisterRequest("+250788000023", null, "Jean", "B", "123456", acceptedTermsIds = requiredTermsIds + "some_removed_terms_id"))
+                termsAcceptanceSlot.map { it.termsId }.toSet() shouldBe requiredTermsIds.toSet()
             }
         }
 
@@ -146,7 +381,7 @@ class AuthServiceTest : BehaviorSpec({
 
             Then("it throws before ever checking whether the phone is taken") {
                 try {
-                    service.register(RegisterRequest("+250788000003", null, "Jean", "B", "password123"))
+                    service.register(RegisterRequest("+250788000003", null, "Jean", "B", "123456"))
                     error("expected RateLimitExceededException")
                 } catch (e: RateLimitExceededException) {
                     verify(exactly = 0) { userRepository.existsByPhoneNumber(any()) }
@@ -197,6 +432,89 @@ class AuthServiceTest : BehaviorSpec({
                     error("expected InvalidCredentialsException")
                 } catch (e: InvalidCredentialsException) {
                     // expected
+                }
+            }
+        }
+
+        // Real Toss-sourced passwordless-login rollout (2026-08-24) -- see
+        // DeviceService.verifyLoginSignature's own doc comment for why this is a
+        // distinct login path. deviceService is mocked (relaxed) in this Given block,
+        // so this only asserts the real delegation + AuthResponse shape -- the actual
+        // signature-verification crypto has its own DeviceServiceTest coverage.
+        When("logging in via a device signature (passwordless)") {
+            val user = User(
+                id = "user_6", phoneNumber = "+250788000006", firstName = "Jean", lastName = "B",
+                passwordHash = "unused", createdAt = Instant.now(),
+            )
+            every { deviceService.verifyLoginSignature("+250788000006", "device_1", "sig") } returns user
+
+            val response = service.loginWithDeviceSignature(LoginWithSignatureRequest("+250788000006", "device_1", "sig"))
+
+            Then("it issues a real token for the user DeviceService's signature check resolved -- no password or PIN involved") {
+                jwtService.verify(response.accessToken)!!.userId shouldBe "user_6"
+            }
+        }
+
+        // Real Toss-sourced "set your 6-digit PIN" flow (2026-08-24) -- see
+        // AuthService.setPin's own doc comment.
+        When("a pre-PIN-era user sets their real 6-digit PIN, proving ownership with their existing password") {
+            val user = User(
+                id = "user_7", phoneNumber = "+250788000007", firstName = "Jean", lastName = "B",
+                passwordHash = passwordEncoder.encode("old-free-form-password"), pinSet = false, createdAt = Instant.now(),
+            )
+            every { userRepository.findById("user_7") } returns Optional.of(user)
+            every { userRepository.save(any()) } answers { firstArg() }
+            val notificationSlot = mutableListOf<Notification>()
+            every { notificationRepository.save(capture(notificationSlot)) } answers { firstArg() }
+
+            val result = service.setPin("user_7", SetPinRequest("old-free-form-password", "654321"))
+
+            Then("it accepts the new PIN, sets pinSet = true, and the old free-form password no longer verifies") {
+                result.pinSet shouldBe true
+                passwordEncoder.matches("654321", user.passwordHash) shouldBe true
+                passwordEncoder.matches("old-free-form-password", user.passwordHash) shouldBe false
+            }
+
+            // Real sibling-asymmetry fix (2026-09-13) -- see AuthService.setPin's own
+            // doc comment: this credential change now alerts the real owner exactly
+            // like CardService.setPin's own already-established card-PIN-changed alert.
+            Then("it real-rate-limits and sends a real security alert, matching CardService.setPin's own convention") {
+                verify(exactly = 1) { rateLimiter.checkLimit("auth:set-pin:user_7", 5, any()) }
+                notificationSlot.single().type shouldBe "PASSWORD_CHANGED"
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_7", any(), any()) }
+            }
+        }
+
+        When("setting a new PIN with the wrong current credential") {
+            val user = User(
+                id = "user_8", phoneNumber = "+250788000008", firstName = "Jean", lastName = "B",
+                passwordHash = passwordEncoder.encode("real-password"), createdAt = Instant.now(),
+            )
+            every { userRepository.findById("user_8") } returns Optional.of(user)
+
+            Then("it throws InvalidCredentialsException before ever touching the stored hash") {
+                try {
+                    service.setPin("user_8", SetPinRequest("wrong-password", "654321"))
+                    error("expected InvalidCredentialsException")
+                } catch (e: InvalidCredentialsException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+
+        When("setting a new PIN that isn't a real 6 digits") {
+            val user = User(
+                id = "user_9", phoneNumber = "+250788000009", firstName = "Jean", lastName = "B",
+                passwordHash = passwordEncoder.encode("real-password"), createdAt = Instant.now(),
+            )
+            every { userRepository.findById("user_9") } returns Optional.of(user)
+
+            Then("it throws InvalidPinException -- checked before the current-credential proof, matching register()'s own fail-fast order") {
+                try {
+                    service.setPin("user_9", SetPinRequest("real-password", "12345"))
+                    error("expected InvalidPinException")
+                } catch (e: InvalidPinException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
                 }
             }
         }
@@ -261,137 +579,9 @@ class AuthServiceTest : BehaviorSpec({
             }
         }
 
-        When("requesting email verification with no email on file") {
-            val user = User(
-                id = "user_7", phoneNumber = "+250788000009", firstName = "Jean", lastName = "B",
-                passwordHash = "unused", email = null, createdAt = Instant.now(),
-            )
-            every { userRepository.findById("user_7") } returns Optional.of(user)
-
-            Then("it throws NoEmailOnFileException before creating any token or notification") {
-                try {
-                    service.requestEmailVerification("user_7")
-                    error("expected NoEmailOnFileException")
-                } catch (e: NoEmailOnFileException) {
-                    verify(exactly = 0) { emailVerificationTokenRepository.save(any()) }
-                    verify(exactly = 0) { notificationRepository.save(any()) }
-                }
-            }
-        }
-
-        When("requesting email verification when it's already verified") {
-            val user = User(
-                id = "user_8", phoneNumber = "+250788000013", firstName = "Jean", lastName = "B",
-                passwordHash = "unused", email = "jean@itunda.rw", emailVerified = true, createdAt = Instant.now(),
-            )
-            every { userRepository.findById("user_8") } returns Optional.of(user)
-
-            Then("it throws EmailAlreadyVerifiedException") {
-                try {
-                    service.requestEmailVerification("user_8")
-                    error("expected EmailAlreadyVerifiedException")
-                } catch (e: EmailAlreadyVerifiedException) {
-                    verify(exactly = 0) { emailVerificationTokenRepository.save(any()) }
-                }
-            }
-        }
-
-        When("requesting email verification with a real, unverified email on file") {
-            val user = User(
-                id = "user_9", phoneNumber = "+250788000014", firstName = "Jean", lastName = "B",
-                passwordHash = "unused", email = "jean@itunda.rw", emailVerified = false, createdAt = Instant.now(),
-            )
-            every { userRepository.findById("user_9") } returns Optional.of(user)
-            val tokenSlot = mutableListOf<EmailVerificationToken>()
-            every { emailVerificationTokenRepository.save(capture(tokenSlot)) } answers { firstArg() }
-            val notificationSlot = mutableListOf<Notification>()
-            every { notificationRepository.save(capture(notificationSlot)) } answers { firstArg() }
-
-            service.requestEmailVerification("user_9")
-
-            Then("it saves a real single-use token and delivers it via a real in-app notification, never in this call's own return value") {
-                tokenSlot.single().userId shouldBe "user_9"
-                tokenSlot.single().usedAt shouldBe null
-                val notification = notificationSlot.single()
-                notification.userId shouldBe "user_9"
-                notification.type shouldBe "PROFILE_EMAIL_VERIFICATION"
-                notification.body.contains(tokenSlot.single().token) shouldBe true
-            }
-        }
-
-        When("confirming email verification with the real token just issued") {
-            val user = User(
-                id = "user_12", phoneNumber = "+250788000015", firstName = "Jean", lastName = "B",
-                passwordHash = "unused", email = "jean12@itunda.rw", emailVerified = false, createdAt = Instant.now(),
-            )
-            val tokenRecord = EmailVerificationToken(
-                id = "evt_1", userId = "user_12", token = "realtoken123",
-                expiresAt = Instant.now().plusSeconds(1800),
-            )
-            every { emailVerificationTokenRepository.findByToken("realtoken123") } returns tokenRecord
-            every { emailVerificationTokenRepository.save(any()) } answers { firstArg() }
-            every { userRepository.findById("user_12") } returns Optional.of(user)
-            every { userRepository.save(any()) } answers { firstArg() }
-
-            val result = service.confirmEmailVerification("user_12", "realtoken123")
-
-            Then("it flips emailVerified to true and marks the token used, once") {
-                result.emailVerified shouldBe true
-                tokenRecord.usedAt shouldNotBe null
-                verify(exactly = 1) { emailVerificationTokenRepository.save(any()) }
-            }
-        }
-
-        When("confirming email verification with a token that belongs to a different user") {
-            val tokenRecord = EmailVerificationToken(
-                id = "evt_2", userId = "user_other", token = "stolentoken",
-                expiresAt = Instant.now().plusSeconds(1800),
-            )
-            every { emailVerificationTokenRepository.findByToken("stolentoken") } returns tokenRecord
-
-            Then("it throws InvalidVerificationTokenException -- ownership is checked, not just token validity") {
-                try {
-                    service.confirmEmailVerification("user_13", "stolentoken")
-                    error("expected InvalidVerificationTokenException")
-                } catch (e: InvalidVerificationTokenException) {
-                    verify(exactly = 0) { userRepository.save(any()) }
-                }
-            }
-        }
-
-        When("confirming email verification with an expired token") {
-            val tokenRecord = EmailVerificationToken(
-                id = "evt_3", userId = "user_14", token = "expiredtoken",
-                expiresAt = Instant.now().minusSeconds(60),
-            )
-            every { emailVerificationTokenRepository.findByToken("expiredtoken") } returns tokenRecord
-
-            Then("it throws InvalidVerificationTokenException -- a stale token can't verify an email") {
-                try {
-                    service.confirmEmailVerification("user_14", "expiredtoken")
-                    error("expected InvalidVerificationTokenException")
-                } catch (e: InvalidVerificationTokenException) {
-                    verify(exactly = 0) { userRepository.save(any()) }
-                }
-            }
-        }
-
-        When("confirming email verification with an already-used token") {
-            val tokenRecord = EmailVerificationToken(
-                id = "evt_4", userId = "user_15", token = "usedtoken",
-                expiresAt = Instant.now().plusSeconds(1800), usedAt = Instant.now().minusSeconds(60),
-            )
-            every { emailVerificationTokenRepository.findByToken("usedtoken") } returns tokenRecord
-
-            Then("it throws InvalidVerificationTokenException -- a token verifies an email exactly once") {
-                try {
-                    service.confirmEmailVerification("user_15", "usedtoken")
-                    error("expected InvalidVerificationTokenException")
-                } catch (e: InvalidVerificationTokenException) {
-                    verify(exactly = 0) { userRepository.save(any()) }
-                }
-            }
-        }
+        // Email/phone OTP verification coverage (request/confirm, both flows) now lives
+        // in UserVerificationServiceTest.kt, following UserVerificationService.kt's own
+        // extraction out of AuthService.kt.
 
         When("refreshing with a valid, not-yet-used refresh token") {
             val user = User(
@@ -410,6 +600,22 @@ class AuthServiceTest : BehaviorSpec({
                 verify(exactly = 1) { tokenBlocklistService.blacklist(decoded.jti, decoded.expiresAt) }
                 jwtService.verify(response.accessToken)!!.userId shouldBe "user_5"
                 response.refreshToken shouldNotBe refreshToken
+            }
+        }
+
+        When("logging out with a valid access token") {
+            val accessToken = jwtService.issueAccessToken("user_77", "+250788000077", "USER")
+            val refreshToken = jwtService.issueRefreshToken("user_77")
+            val decodedAccess = jwtService.verify(accessToken)!!
+            val decodedRefresh = jwtService.verify(refreshToken)!!
+            every { tokenBlocklistService.blacklist(any(), any()) } returns Unit
+
+            service.logout(accessToken, refreshToken)
+
+            Then("it revokes the credentials and closes only this access token's live sockets") {
+                verify { tokenBlocklistService.blacklist(decodedAccess.jti, decodedAccess.expiresAt) }
+                verify { tokenBlocklistService.blacklist(decodedRefresh.jti, decodedRefresh.expiresAt) }
+                verify(exactly = 1) { realtimeMessagePublisher.closeSessionsForToken("user_77", decodedAccess.jti) }
             }
         }
 
@@ -468,6 +674,51 @@ class AuthServiceTest : BehaviorSpec({
                     verify(exactly = 0) { nominatimGeocodingClient.reverseGeocode(any(), any()) }
                 }
             }
+        }
+
+        When("setting a real, plausible past birth date") {
+            val user = User(id = "user_7", phoneNumber = "+250788000009", firstName = "A", lastName = "B", passwordHash = "x")
+            every { userRepository.findById("user_7") } returns Optional.of(user)
+            every { userRepository.save(any()) } answers { firstArg() }
+
+            val result = service.setBirthDate("user_7", LocalDate.of(2015, 6, 1))
+
+            Then("the real birth date is persisted and returned") {
+                result.birthDate shouldBe LocalDate.of(2015, 6, 1)
+            }
+        }
+
+        When("setting a birth date that's today or in the future") {
+            Then("it throws InvalidBirthDateException before ever touching the repository") {
+                try {
+                    service.setBirthDate("user_7", LocalDate.now(ZoneOffset.UTC).plusDays(1))
+                    error("expected InvalidBirthDateException")
+                } catch (e: InvalidBirthDateException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+
+        When("setting an implausibly old birth date") {
+            Then("it throws InvalidBirthDateException") {
+                try {
+                    service.setBirthDate("user_7", LocalDate.now(ZoneOffset.UTC).minusYears(121))
+                    error("expected InvalidBirthDateException")
+                } catch (e: InvalidBirthDateException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+    }
+
+    Given("the verification-token repositories") {
+        Then("both active-token lookups are pessimistically locked for one-time consumption") {
+            EmailVerificationTokenRepository::class.java
+                .getMethod("findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc", String::class.java)
+                .getAnnotation(Lock::class.java).value shouldBe LockModeType.PESSIMISTIC_WRITE
+            PhoneVerificationTokenRepository::class.java
+                .getMethod("findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc", String::class.java)
+                .getAnnotation(Lock::class.java).value shouldBe LockModeType.PESSIMISTIC_WRITE
         }
     }
 }) {

@@ -7,6 +7,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -40,8 +41,13 @@ interface AuthApi {
 // Mirrors rw.itunda.eats's real Rider/EatsOrder entities exactly (same field names
 // as the consumer app's own rw.itunda.app.network.ApiService equivalents) -- trimmed
 // to only the fields this app's UI actually reads.
-data class RiderDto(val id: String, val userId: String, val walletId: String, val status: String, val available: Boolean, val createdAt: String)
+data class RiderDto(val id: String, val userId: String, val accountId: String, val status: String, val available: Boolean, val createdAt: String)
 data class RiderResponse(val success: Boolean, val rider: RiderDto)
+
+// Real rider rating (item 142) -- see EatsController.getRiderRating's own doc
+// comment: a real average computed from post-delivery reviews, had zero client on
+// any platform including this dedicated rider app.
+data class RiderRatingResponse(val success: Boolean, val average: Double?, val count: Int)
 
 data class EatsOrderDto(
     val id: String,
@@ -70,6 +76,29 @@ data class UpdateEatsOrderStatusRequest(val status: String)
 data class ShoppingMerchantDto(val merchantId: String, val businessName: String)
 data class ShoppingMerchantsResponse(val success: Boolean, val merchants: List<ShoppingMerchantDto>)
 
+// Real itunda-own-fleet Commerce (Shop) delivery claim/tracking (2026-07-26 on the
+// backend, found 2026-08-04 as a real, working endpoint set with zero client anywhere
+// -- not even this dedicated rider app, which until now only ever saw Eats food
+// deliveries). Mirrors rw.itunda.core.domain.Order exactly (same field names), same
+// "a rider registers once via /eats/riders/register, no separate registration" account
+// as OrderController.getAvailableDeliveries' own doc comment. Distinct status set from
+// Eats: PACKED -> SHIPPED (claim) -> DELIVERED (complete), no RIDER_ASSIGNED/PICKED_UP
+// midpoint since Commerce doesn't model a separate pickup-confirmation step.
+data class CommerceOrderDto(
+    val id: String,
+    val buyerId: String,
+    val merchantId: String,
+    val deliveryAddress: String,
+    val totalAmount: Double,
+    val fee: Double,
+    val status: String,
+    val createdAt: String,
+    val riderId: String? = null,
+)
+
+data class CommerceOrderDetailResponse(val success: Boolean, val order: CommerceOrderDto)
+data class CommerceOrdersResponse(val success: Boolean, val orders: List<CommerceOrderDto>)
+
 // Real automatic-dispatch offer notifications (type == "DELIVERY_OFFER") carry the
 // offered order's id in dataJson (a raw JSON string, e.g. {"orderId":"..."}) -- see
 // EatsOrderService's own dispatch code. The consumer app's NotificationDto has never
@@ -89,12 +118,24 @@ data class NotificationDto(
 data class NotificationsResponse(val success: Boolean, val notifications: List<NotificationDto>, val unreadCount: Int)
 data class MarkReadResponse(val success: Boolean)
 
+// Real push device-token registration (item 130) -- see the consumer app's own
+// ApiService.kt doc comment (item 120): PushNotificationService.sendToUser silently
+// no-ops for every real user with no registered token, and this dedicated rider app --
+// the one place a rider actually needs an instant DELIVERY_OFFER/RIDE_TRIP_OFFER push,
+// a real, short accept-or-lose countdown window -- never registered one at all.
+enum class DevicePlatform { ANDROID, IOS, WEB }
+data class RegisterDeviceTokenRequest(val platform: DevicePlatform, val token: String)
+data class SuccessResponse(val success: Boolean)
+
 interface ApiService {
     @POST("api/v1/eats/riders/register")
     suspend fun registerRider(): RiderResponse
 
     @GET("api/v1/eats/riders/me")
     suspend fun getMyRiderProfile(): RiderResponse
+
+    @GET("api/v1/eats/riders/{riderId}/rating")
+    suspend fun getRiderRating(@Path("riderId") riderId: String): RiderRatingResponse
 
     @POST("api/v1/eats/riders/availability")
     suspend fun setRiderAvailability(@Body request: SetRiderAvailabilityRequest): RiderResponse
@@ -112,7 +153,7 @@ interface ApiService {
     suspend fun getOrder(@Path("id") orderId: String): EatsOrderDetailResponse
 
     @POST("api/v1/eats/orders/{id}/claim")
-    suspend fun claimDelivery(@Path("id") orderId: String): EatsOrderDetailResponse
+    suspend fun claimDelivery(@Path("id") orderId: String, @Header("Idempotency-Key") idempotencyKey: String): EatsOrderDetailResponse
 
     @POST("api/v1/eats/orders/{id}/decline")
     suspend fun declineDelivery(@Path("id") orderId: String): EatsOrderDetailResponse
@@ -123,11 +164,26 @@ interface ApiService {
     @GET("api/v1/shopping/merchants")
     suspend fun getShoppingMerchants(): ShoppingMerchantsResponse
 
+    @GET("api/v1/orders/available-deliveries")
+    suspend fun getAvailableCommerceDeliveries(@Query("size") size: Int = 20): CommerceOrdersResponse
+
+    @GET("api/v1/orders/my-deliveries")
+    suspend fun getMyCommerceDeliveries(@Query("size") size: Int = 50): CommerceOrdersResponse
+
+    @POST("api/v1/orders/{id}/claim-delivery")
+    suspend fun claimCommerceDelivery(@Path("id") orderId: String, @Header("Idempotency-Key") idempotencyKey: String): CommerceOrderDetailResponse
+
+    @POST("api/v1/orders/{id}/complete-delivery")
+    suspend fun completeCommerceDelivery(@Path("id") orderId: String): CommerceOrderDetailResponse
+
     @GET("api/v1/notifications")
     suspend fun getNotifications(): NotificationsResponse
 
     @POST("api/v1/notifications/{id}/read")
     suspend fun markNotificationRead(@Path("id") id: String): MarkReadResponse
+
+    @POST("api/v1/notifications/device-tokens")
+    suspend fun registerDeviceToken(@Body request: RegisterDeviceTokenRequest): SuccessResponse
 }
 
 /**
@@ -140,13 +196,18 @@ object NetworkClient {
     private const val BASE_URL = BuildConfig.API_BASE_URL
 
     private var tokenStore: TokenStore? = null
+    private var deviceStore: DeviceStore? = null
 
     fun init(context: Context) {
         tokenStore = TokenStore(context.applicationContext)
+        deviceStore = DeviceStore(context.applicationContext)
     }
 
     fun currentTokenStore(): TokenStore =
         tokenStore ?: throw IllegalStateException("NetworkClient.init() was never called")
+
+    fun currentDeviceStore(): DeviceStore =
+        deviceStore ?: throw IllegalStateException("NetworkClient.init() was never called")
 
     private val authInterceptor = Interceptor { chain ->
         val token = tokenStore?.getAccessToken()
@@ -170,4 +231,19 @@ object NetworkClient {
 
     val apiService: ApiService by lazy { retrofit.create(ApiService::class.java) }
     val authApi: AuthApi by lazy { retrofit.create(AuthApi::class.java) }
+}
+
+// Real backend-message pass-through (2026-08-10), mirroring core/network's own
+// apiErrorMessage -- riderapp is a standalone module with its own ApiService, so it
+// doesn't share that one. Real Toss-style discipline: a specific backend error (a real
+// stated reason, or a stable code a screen can act on) beats a generic bucket string
+// every time.
+data class ParsedApiError(val code: String?, val message: String?)
+
+fun parseApiError(e: retrofit2.HttpException): ParsedApiError = try {
+    val body = e.response()?.errorBody()?.string() ?: return ParsedApiError(null, null)
+    val json = com.google.gson.JsonParser.parseString(body).asJsonObject
+    ParsedApiError(json.get("code")?.asString, json.get("message")?.asString)
+} catch (_: Exception) {
+    ParsedApiError(null, null)
 }

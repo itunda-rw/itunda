@@ -1,0 +1,450 @@
+{
+  "version": "3.0.0",
+  "principle": "One semantic contract, native implementation",
+  "components": [
+    {
+      "id": "button",
+      "api": "flat",
+      "states": [
+        "default",
+        "pressed",
+        "focus",
+        "disabled",
+        "loading"
+      ],
+      "content": [
+        "long-label",
+        "localization",
+        "large-text"
+      ],
+      "a11y": [
+        "name",
+        "keyboard",
+        "target",
+        "motion"
+      ],
+      "platforms": [
+        "web",
+        "android",
+        "ios"
+      ],
+      "validation": {
+        "required": [
+          "states",
+          "content",
+          "a11y",
+          "motion",
+          "platforms"
+        ]
+      },
+      "guide": {
+        "name": "Button",
+        "purpose": "Commit an action with clear hierarchy and immediate feedback.",
+        "worstCase": "Long localized action label + loading + large text + reduced motion.",
+        "tokens": [
+          "brand",
+          "control-height",
+          "focus"
+        ],
+        "checklist": [
+          "stable loading footprint",
+          "visible focus",
+          "44px+ target"
+        ]
+      }
+    },
+    {
+      "id": "text-field",
+      "api": "flat",
+      "states": [
+        "empty",
+        "filled",
+        "focus",
+        "disabled",
+        "error",
+        "success"
+      ],
+      "content": [
+        "long-label",
+        "validation",
+        "localization",
+        "large-text"
+      ],
+      "a11y": [
+        "label",
+        "description",
+        "invalid",
+        "input-method",
+        "target",
+        "motion"
+      ],
+      "platforms": [
+        "web",
+        "android",
+        "ios"
+      ],
+      "validation": {
+        "required": [
+          "states",
+          "content",
+          "a11y",
+          "motion",
+          "platforms"
+        ]
+      },
+      "guide": {
+        "name": "Text field",
+        "purpose": "Collect one value with persistent context, validation, and recovery.",
+        "worstCase": "Long localized label + validation copy + 150% text + error.",
+        "tokens": [
+          "field-border",
+          "field-fill",
+          "focus"
+        ],
+        "checklist": [
+          "label stays visible",
+          "invalid is semantic",
+          "message remains associated"
+        ]
+      }
+    },
+    {
+      "id": "select",
+      "api": "flat",
+      "states": [
+        "default",
+        "focus",
+        "disabled",
+        "error",
+        "success",
+        "placeholder",
+        "option-disabled"
+      ],
+      "content": [
+        "long-label",
+        "long-option",
+        "localization",
+        "large-text"
+      ],
+      "a11y": [
+        "label",
+        "keyboard",
+        "selection",
+        "disabled-options",
+        "target",
+        "motion"
+      ],
+      "platforms": [
+        "web",
+        "android",
+        "ios"
+      ],
+      "validation": {
+        "required": [
+          "states",
+          "content",
+          "a11y",
+          "motion",
+          "platforms"
+        ]
+      },
+      "guide": {
+        "name": "Select",
+        "purpose": "Choose from a constrained set while keeping the current value visible.",
+        "worstCase": "Long localized options + placeholder + disabled options + validation + large text.",
+        "tokens": [
+          "field-border",
+          "field-fill",
+          "focus",
+          "text-secondary"
+        ],
+        "checklist": [
+          "current value readable",
+          "native keyboard/picker model",
+          "disabled options usable",
+          "validation remains associated",
+          "44px+ target"
+        ]
+      }
+    },
+    {
+      "id": "checkbox",
+      "api": "flat",
+      "states": [
+        "unchecked",
+        "checked",
+        "indeterminate",
+        "focus",
+        "disabled",
+        "error"
+      ],
+      "content": [
+        "long-label",
+        "description",
+        "localization",
+        "large-text"
+      ],
+      "a11y": [
+        "name",
+        "description",
+        "invalid",
+        "keyboard",
+        "state",
+        "target",
+        "motion"
+      ],
+      "platforms": [
+        "web",
+        "android",
+        "ios"
+      ],
+      "validation": {
+        "required": [
+          "states",
+          "content",
+          "a11y",
+          "motion",
+          "platforms"
+        ]
+      },
+      "guide": {
+        "name": "Checkbox",
+        "purpose": "Choose one or more independent options with clear state and recovery.",
+        "worstCase": "Long localized label + description + indeterminate + error + large text.",
+        "tokens": [
+          "brand",
+          "border-strong",
+          "focus"
+        ],
+        "checklist": [
+          "native state",
+          "indeterminate state is announced",
+          "description/error remains associated",
+          "44px+ target"
+        ]
+      }
+    },
+    {
+      "id": "radio",
+      "api": "flat",
+      "states": [
+        "unchecked",
+        "checked",
+        "focus",
+        "disabled",
+        "error"
+      ],
+      "content": [
+        "long-label",
+        "description",
+        "localization",
+        "large-text"
+      ],
+      "a11y": [
+        "name",
+        "description",
+        "invalid",
+        "keyboard",
+        "group",
+        "state",
+        "target",
+        "motion"
+      ],
+      "platforms": [
+        "web",
+        "android",
+        "ios"
+      ],
+      "validation": {
+        "required": [
+          "states",
+          "content",
+          "a11y",
+          "motion",
+          "platforms"
+        ]
+      },
+      "guide": {
+        "name": "Radio",
+        "purpose": "Choose exactly one option from a labelled group.",
+        "worstCase": "Long localized labels + descriptions + many options + validation + keyboard.",
+        "tokens": [
+          "brand",
+          "border-strong",
+          "focus"
+        ],
+        "checklist": [
+          "native group remains intact",
+          "group is labelled",
+          "selection is announced",
+          "validation remains associated",
+          "44px+ target"
+        ]
+      }
+    },
+    {
+      "id": "switch",
+      "api": "flat",
+      "states": [
+        "off",
+        "on",
+        "focus",
+        "disabled",
+        "loading",
+        "error"
+      ],
+      "content": [
+        "long-label",
+        "description",
+        "localization",
+        "large-text"
+      ],
+      "a11y": [
+        "name",
+        "description",
+        "invalid",
+        "keyboard",
+        "state",
+        "busy",
+        "target",
+        "motion"
+      ],
+      "platforms": [
+        "web",
+        "android",
+        "ios"
+      ],
+      "validation": {
+        "required": [
+          "states",
+          "content",
+          "a11y",
+          "motion",
+          "platforms"
+        ]
+      },
+      "guide": {
+        "name": "Switch",
+        "purpose": "Change an immediate on/off setting with explicit feedback while updating.",
+        "worstCase": "Long localized label + description + updating + error + large text.",
+        "tokens": [
+          "brand",
+          "radius-pill",
+          "focus"
+        ],
+        "checklist": [
+          "state is explicit",
+          "updating prevents conflicting input",
+          "busy state is announced",
+          "track/thumb remain legible",
+          "44px+ target"
+        ]
+      }
+    },
+    {
+      "id": "tabs",
+      "api": "compound",
+      "states": [
+        "default",
+        "selected",
+        "focus",
+        "disabled"
+      ],
+      "content": [
+        "long-label",
+        "localization",
+        "large-text"
+      ],
+      "a11y": [
+        "tablist",
+        "selection",
+        "keyboard",
+        "disabled",
+        "controls",
+        "target",
+        "motion"
+      ],
+      "platforms": [
+        "web",
+        "android",
+        "ios"
+      ],
+      "validation": {
+        "required": [
+          "states",
+          "content",
+          "a11y",
+          "motion",
+          "platforms"
+        ]
+      },
+      "guide": {
+        "name": "Tabs",
+        "purpose": "Move between peer views while preserving context and predictable keyboard focus.",
+        "worstCase": "Many long localized labels + disabled items + large text + keyboard navigation.",
+        "tokens": [
+          "surface-subtle",
+          "radius-pill",
+          "focus"
+        ],
+        "checklist": [
+          "active tab visible",
+          "disabled tabs skipped",
+          "tab-to-panel relationship available",
+          "roving keyboard focus",
+          "44px+ target"
+        ]
+      }
+    },
+    {
+      "id": "empty-state",
+      "api": "flat",
+      "states": [
+        "default"
+      ],
+      "content": [
+        "long-title",
+        "long-message",
+        "localization",
+        "large-text"
+      ],
+      "a11y": [
+        "name",
+        "message",
+        "action",
+        "target",
+        "motion"
+      ],
+      "platforms": [
+        "web",
+        "android",
+        "ios"
+      ],
+      "validation": {
+        "required": [
+          "states",
+          "content",
+          "a11y",
+          "motion",
+          "platforms"
+        ]
+      },
+      "guide": {
+        "name": "Empty state",
+        "purpose": "Explain why content is absent and offer useful recovery actions when appropriate.",
+        "worstCase": "Long localized title/message + two actions + 150% text + responsive layout.",
+        "tokens": [
+          "surface-subtle",
+          "text-secondary",
+          "control-height"
+        ],
+        "checklist": [
+          "message remains readable",
+          "action hierarchy is clear",
+          "no clipped content",
+          "44px+ targets"
+        ]
+      }
+    }
+  ]
+}

@@ -19,7 +19,7 @@ spec:
       enableServiceLinks: false
       containers:
       - name: payment-service
-        image: ghcr.io/itunda/payment-service:staging
+        image: ghcr.io/itunda-rw/payment-service:staging
         ports:
         - containerPort: 8081
         env:
@@ -50,6 +50,8 @@ spec:
             configMapKeyRef:
               name: itunda-kafka-config
               key: bootstrap-servers
+        - name: ITUNDA_PAYMENT_KAFKA_TRANSFERCONFIRMATION_ENABLED
+          value: "false"
         resources:
           requests:
             memory: "256Mi"

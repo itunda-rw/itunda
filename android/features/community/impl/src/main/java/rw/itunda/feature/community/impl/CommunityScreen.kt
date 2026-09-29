@@ -1,0 +1,791 @@
+package rw.itunda.feature.community.impl
+
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import rw.itunda.core.designsystem.components.pressScaleClickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Comment
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import retrofit2.HttpException
+import rw.itunda.core.designsystem.components.EmptyState
+import rw.itunda.core.designsystem.components.ErrorCard
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
+import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.components.HoodReportAction
+import rw.itunda.core.designsystem.components.ListingActionButton
+import rw.itunda.core.designsystem.itundaface.HeartFilled
+import rw.itunda.core.designsystem.itundaface.SpeechBubbleGlyph
+import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
+import rw.itunda.core.designsystem.components.ScrollFog
+import rw.itunda.core.designsystem.components.SkeletonBlock
+import rw.itunda.core.designsystem.components.relativeTimeAgo
+import rw.itunda.core.designsystem.components.rememberRealLocationRequester
+import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.network.CommunityCategoryDto
+import rw.itunda.core.network.CommunityPostDto
+import rw.itunda.core.network.CreateCommunityPostRequest
+import rw.itunda.core.network.FinalizeGroupBuyRequest
+import rw.itunda.core.network.MeetupSessionDto
+import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.SetCommentNotificationsEnabledRequest
+import rw.itunda.core.network.ScheduleMeetupSessionsRequest
+import rw.itunda.core.network.TokenStore
+import rw.itunda.core.network.superAppErrorMessage
+import java.io.IOException
+
+// Fourth and final Hood-mode Feature extraction (2026-07-23) after Marketplace/Jobs/
+// Property, same template -- see features/marketplace/impl/.../MarketplaceScreen.kt's
+// own header comment for the full account. Unlike the other three, Community has no
+// lat/lng "directions" feature, so there's no routeMiniMap slot to inject here -- this
+// module is fully self-sufficient with no exception.
+
+private enum class CommunityView { BROWSE, NEARBY, NEIGHBORHOOD, MINE }
+
+@Composable
+fun CommunityContent(
+    onOpenGroupChat: (String) -> Unit = {},
+    // Real hamburger-menu hand-off (2026-08-03), mirroring MarketplaceContent's own
+    // requestedView -- see that Composable's doc comment. HoodTab's menu now carries a
+    // "My posts" entry for Community mode using this exact same signal shape.
+    requestedView: Pair<Int, String> = 0 to "",
+    // Real default-feed auto-detect (2026-08-03), mirroring MarketplaceContent's own
+    // neighborhoodRefreshSignal -- see that Composable's doc comment for the real,
+    // WebSearch-verified sourcing (no Feed/Near-me/Neighborhood chip trio in real
+    // Karrot; the feed auto-scopes and you tap the neighborhood name to change it).
+    neighborhoodRefreshSignal: Int = 0,
+) {
+    var view by remember { mutableStateOf(CommunityView.BROWSE) }
+    var categories by remember { mutableStateOf<List<CommunityCategoryDto>>(emptyList()) }
+    var activeCategory by remember { mutableStateOf<String?>(null) }
+    // Real 동네생활 topic-chip filter row (2026-08-28) -- a lifestyle axis independent
+    // of the functional category above, see backend CommunityService.TOPICS' own doc
+    // comment.
+    var topics by remember { mutableStateOf<List<CommunityCategoryDto>>(emptyList()) }
+    var activeTopic by remember { mutableStateOf<String?>(null) }
+    var posts by remember { mutableStateOf<List<CommunityPostDto>?>(null) }
+    // Real 같이해요 (join-together) group join counts (2026-07-24) -- postId -> real
+    // member count of that meetup's group chat, closing docs/DESIGN_REFERENCES.md
+    // Section 4 recommendation #4.
+    var joinedCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+    // Real fix (2026-09-04): the "🎉 Meetups" pinned slot below used to be a client-side
+    // partition+sort of whatever page of the general feed happened to be loaded, with no
+    // eventDate filter at all -- so an already-happened meetup could show up pinned as
+    // "upcoming" (only sorted, never excluded), and a genuinely upcoming one could be
+    // missing if it fell off the loaded page. The real backend
+    // GET /api/v1/community/meetups/upcoming (built 2026-07-25) already excludes past
+    // eventDates and orders soonest-first, but had zero callers anywhere in this app
+    // (confirmed via repo-wide grep, matches bank-mfe's own identical dead-binding
+    // finding fixed the same day) until now.
+    var upcomingMeetups by remember { mutableStateOf<List<CommunityPostDto>>(emptyList()) }
+    var joiningPostId by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var showNewPost by remember { mutableStateOf(false) }
+    var openPostId by remember { mutableStateOf<String?>(null) }
+    var neighborhoodName by remember { mutableStateOf<String?>(null) }
+    var neighborhoodChecked by remember { mutableStateOf(false) }
+    // Real pagination-discard fix (named as the systemic sibling of the
+    // Knowledge gap fixed on web/Android/iOS 2026-09-09; ported to bank-mfe's
+    // own HoodCommunity.tsx first, commit 4ebba547) -- a request never asked
+    // past page 0 across BROWSE/MINE/NEIGHBORHOOD, so any feed with more than
+    // 20 real posts was silently unreachable beyond the first page. NEARBY is
+    // a separate location-driven flow (requestNearbyLocation below), not
+    // covered by this state.
+    var page by remember { mutableStateOf(0) }
+    var hasMore by remember { mutableStateOf(false) }
+    var loadingMore by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
+    val requestNearbyLocation = rememberRealLocationRequester(
+        onLocating = {},
+        onSuccess = { lat, lng ->
+            posts = null
+            coroutineScope.launch {
+                try {
+                    val res = NetworkClient.apiService.getNearbyCommunityPosts(lat, lng)
+                    if (res.success) { posts = res.posts; joinedCounts = res.joinedCounts }
+                    error = null
+                } catch (e: HttpException) {
+                    error = superAppErrorMessage(e)
+                    posts = emptyList()
+                } catch (e: IOException) {
+                    error = "Couldn't load nearby posts. Check your connection and try again."
+                    posts = emptyList()
+                }
+            }
+        },
+        onError = { message -> error = "$message You can still use Feed or Neighborhood."; posts = emptyList() },
+    )
+
+    LaunchedEffect(Unit) {
+        try { categories = NetworkClient.apiService.getCommunityCategories().categories } catch (e: Exception) { /* chips just won't render */ }
+        try { topics = NetworkClient.apiService.getCommunityTopics().topics } catch (e: Exception) { /* chips just won't render */ }
+    }
+
+    LaunchedEffect(requestedView) {
+        val (signal, key) = requestedView
+        if (signal > 0 && key == "MINE") view = CommunityView.MINE
+    }
+
+    val context = LocalContext.current
+    LaunchedEffect(neighborhoodRefreshSignal) {
+        try {
+            val profileRes = NetworkClient.authApi.getProfile()
+            if (profileRes.user.neighborhood != null) {
+                view = CommunityView.NEIGHBORHOOD
+                return@LaunchedEffect
+            }
+        } catch (_: Exception) {
+            // Best-effort -- falls through to the next real signal below.
+        }
+        val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        view = if (hasPermission) CommunityView.NEARBY else CommunityView.BROWSE
+    }
+
+    fun loadUpcomingMeetups() {
+        if (view == CommunityView.MINE || activeCategory == "meetup") {
+            upcomingMeetups = emptyList()
+            return
+        }
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getUpcomingMeetups()
+                if (res.success) {
+                    upcomingMeetups = res.posts
+                    joinedCounts = joinedCounts + res.joinedCounts
+                }
+            } catch (_: Exception) {
+                // Pinned strip just won't render this refresh -- main feed load is unaffected.
+            }
+        }
+    }
+
+    fun load() {
+        posts = null
+        page = 0
+        hasMore = false
+        loadUpcomingMeetups()
+        if (view == CommunityView.NEARBY) {
+            requestNearbyLocation()
+            return
+        }
+        if (view == CommunityView.NEIGHBORHOOD) {
+            neighborhoodChecked = false
+            coroutineScope.launch {
+                try {
+                    val profileRes = NetworkClient.authApi.getProfile()
+                    val res = NetworkClient.apiService.getCommunityPostsMyNeighborhood(activeCategory, page = 0)
+                    neighborhoodName = profileRes.user.neighborhood
+                    if (res.success) { posts = res.posts; joinedCounts = res.joinedCounts; hasMore = res.page + 1 < res.totalPages }
+                    error = null
+                } catch (e: HttpException) {
+                    if (e.code() == 400) {
+                        neighborhoodName = null
+                        posts = emptyList()
+                        error = null
+                    } else {
+                        error = superAppErrorMessage(e)
+                    }
+                } catch (e: IOException) {
+                    error = "Couldn't reach itunda. Check your connection and try again."
+                } finally {
+                    neighborhoodChecked = true
+                }
+            }
+            return
+        }
+        coroutineScope.launch {
+            try {
+                val res = if (view == CommunityView.BROWSE) NetworkClient.apiService.browseCommunityPosts(activeCategory, activeTopic, page = 0) else NetworkClient.apiService.getMyCommunityPosts(page = 0)
+                if (res.success) { posts = res.posts; joinedCounts = res.joinedCounts; hasMore = res.page + 1 < res.totalPages }
+                error = null
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+
+    fun loadMore() {
+        val nextPage = page + 1
+        loadingMore = true
+        coroutineScope.launch {
+            try {
+                val res = when (view) {
+                    CommunityView.NEIGHBORHOOD -> NetworkClient.apiService.getCommunityPostsMyNeighborhood(activeCategory, page = nextPage)
+                    CommunityView.BROWSE -> NetworkClient.apiService.browseCommunityPosts(activeCategory, activeTopic, page = nextPage)
+                    else -> NetworkClient.apiService.getMyCommunityPosts(page = nextPage)
+                }
+                if (res.success) {
+                    posts = (posts ?: emptyList()) + res.posts
+                    joinedCounts = joinedCounts + res.joinedCounts
+                    page = nextPage
+                    hasMore = res.page + 1 < res.totalPages
+                }
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded page stays visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMore = false
+            }
+        }
+    }
+    LaunchedEffect(view, activeCategory, activeTopic) { load() }
+
+    // Real relevance-ranked search (2026-08-14) -- see backend CommunityService
+    // .search's own doc comment; same "uncalled endpoint" gap class as
+    // MarketplaceContent's own identical addition, see its doc comment for the full
+    // account.
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<CommunityPostDto>?>(null) }
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isBlank()) {
+            searchResults = null
+            return@LaunchedEffect
+        }
+        delay(rw.itunda.core.network.SEARCH_DEBOUNCE_MS)
+        try {
+            val res = NetworkClient.apiService.searchCommunityPosts(searchQuery)
+            if (res.success) {
+                searchResults = res.posts
+                joinedCounts = res.joinedCounts
+            }
+        } catch (_: Exception) {
+            searchResults = emptyList()
+        }
+    }
+    val isSearching = searchQuery.isNotBlank()
+
+    // Real 같이해요 (join-together) explicit 참여하기 tap (2026-07-24) -- closes
+    // docs/DESIGN_REFERENCES.md Section 4 recommendation #4. Reuses the exact same
+    // onOpenGroupChat/onMessageSeller callback Marketplace/Jobs/Property already share
+    // for "hand off to Talk" -- TalkScreen.kt's own initialConversationId effect was
+    // extended to also check `groups`, so a real GroupConversation id works here too,
+    // no new navigation plumbing needed.
+    fun joinMeetup(postId: String) {
+        joiningPostId = postId
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.joinCommunityMeetup(postId)
+                if (res.success) {
+                    joinedCounts = joinedCounts + (postId to ((joinedCounts[postId] ?: 0) + 1))
+                    onOpenGroupChat(res.groupId)
+                }
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                joiningPostId = null
+            }
+        }
+    }
+
+    if (openPostId != null) {
+        CommunityPostDetailScreen(postId = openPostId!!, onBack = { openPostId = null; load() })
+        return
+    }
+
+    if (showNewPost) {
+        BackHandler { showNewPost = false }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
+        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
+    ) {
+        // Real fix, 2026-08-03: the Feed/Near me/Neighborhood/My posts chip row that
+        // used to render here is gone -- see MarketplaceContent's own doc comment for
+        // the sourcing (verified via a real daangn.com fetch of the actual 동네생활
+        // web page: its only filter row is the category chip row below, with the set
+        // neighborhood shown separately, not as a chip). Feed source is now
+        // auto-detected (see neighborhoodRefreshSignal's own doc comment above) and
+        // "My posts" moved to HoodTab's hamburger menu (requestedView above).
+        item {
+            IdsTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = "Search",
+                placeholder = "Search community posts",
+            )
+        }
+        if (isSearching) {
+            if (searchResults == null) {
+                item { SkeletonBlock() }
+            } else if (searchResults!!.isEmpty()) {
+                item { Text("No posts match \"$searchQuery\".", color = Ids.colors.textSecondary, fontSize = 14.sp) }
+            } else {
+                items(searchResults!!, key = { it.id }) { post ->
+                    CommunityPostCard(
+                        post = post,
+                        categoryLabel = categories.firstOrNull { it.id == post.category }?.label ?: post.category,
+                        isMine = post.authorId == currentUserId,
+                        joinedCount = joinedCounts[post.id] ?: 0,
+                        joining = joiningPostId == post.id,
+                        onJoin = { joinMeetup(post.id) },
+                        onOpen = { openPostId = post.id },
+                        onRemoved = ::load,
+                    )
+                }
+            }
+        } else {
+        if ((view == CommunityView.BROWSE || view == CommunityView.NEIGHBORHOOD) && categories.isNotEmpty()) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    categories.forEach { c ->
+                        val active = activeCategory == c.id
+                        Box(
+                            modifier = Modifier
+                                .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
+                                .border(1.dp, if (active) Ids.colors.brand else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
+                                .pressScaleClickable { activeCategory = if (active) null else c.id }
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                        ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary) }
+                    }
+                }
+            }
+        }
+        if (view == CommunityView.BROWSE && topics.isNotEmpty()) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    topics.forEach { t ->
+                        val active = activeTopic == t.id
+                        Box(
+                            modifier = Modifier
+                                .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
+                                .border(1.dp, if (active) Ids.colors.brand else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
+                                .pressScaleClickable { activeTopic = if (active) null else t.id }
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                        ) { Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary) }
+                    }
+                }
+            }
+        }
+        if (view == CommunityView.MINE) {
+            item { CommentNotificationToggle() }
+            item {
+                if (!showNewPost) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ids.colors.brand).pressScaleClickable { showNewPost = true }.padding(vertical = 14.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(stringResource(R.string.community_new_post_cta), color = Color.White, fontWeight = FontWeight.Bold) }
+                } else {
+                    NewCommunityPostForm(categories, onCreated = { showNewPost = false; load() }, onCancel = { showNewPost = false })
+                }
+            }
+        }
+        if (view == CommunityView.NEIGHBORHOOD && neighborhoodChecked && neighborhoodName == null) {
+            item { NeighborhoodSetupPrompt(onDone = { load() }) }
+        }
+        if (view == CommunityView.NEIGHBORHOOD && neighborhoodName != null) {
+            item { Text("Your neighborhood: $neighborhoodName", color = Ids.colors.textSecondary, fontSize = 13.sp) }
+        }
+        if (error != null) {
+            item { ErrorCard(error!!, onRetry = ::load) }
+        } else if (posts == null) {
+            item { SkeletonBlock() }
+        } else if (posts!!.isEmpty() && (view != CommunityView.NEIGHBORHOOD || neighborhoodName != null)) {
+            item {
+                EmptyState(
+                    // Real copy-voice fix (item 244, round 5 of the empty-state pass --
+                    // docs/COPY_VOICE.md's rules): say what's missing AND what fixes it,
+                    // per this screen's own real "+ Write a post" button above in MINE.
+                    when (view) {
+                        CommunityView.BROWSE -> "No posts yet — be the first to share something with your neighbors."
+                        CommunityView.NEARBY -> "No posts near you yet — try Browse to see posts from everywhere."
+                        CommunityView.NEIGHBORHOOD -> "No posts in your neighborhood yet — try Browse to see posts from everywhere."
+                        CommunityView.MINE -> "You haven't posted anything yet — tap \"+ Write a post\" above to share your first one."
+                    },
+                    icon = Icons.Outlined.Groups,
+                    // Real fix (2026-08-15): the copy above told the user to "try
+                    // Browse", but there was never any way to actually reach it -- this
+                    // was plain Text, not even the shared EmptyState. See
+                    // EmptyState's own doc comment for the full cross-feature account.
+                    actionLabel = if (view == CommunityView.NEARBY || view == CommunityView.NEIGHBORHOOD) "Browse everywhere" else null,
+                    onAction = if (view == CommunityView.NEARBY || view == CommunityView.NEIGHBORHOOD) { { view = CommunityView.BROWSE } } else null,
+                )
+            }
+        } else if (posts!!.isNotEmpty()) {
+            // Real 같이해요 (join-together) pinned mid-feed slot (2026-07-24) --
+            // Karrot's real board gives meetup posts a dedicated slot instead of
+            // mixing them purely chronologically into the rest of the feed (see
+            // docs/DESIGN_REFERENCES.md Section 4 recommendation #4). "My posts"
+            // stays plain chronological -- pinning your own management list would
+            // just be noise, not a discovery aid.
+            // Sourced from the real upcoming-only, soonest-first `upcomingMeetups` fetch
+            // above (not a client-side filter of this page's posts), except when
+            // explicitly browsing the Meetups category chip, which keeps the original
+            // full chronological (including past) browse -- a different intent than the
+            // passive homefeed highlight strip.
+            val regular = if (view != CommunityView.MINE) posts!!.filter { it.category != "meetup" } else posts!!
+            val meetups = if (view == CommunityView.MINE) {
+                emptyList()
+            } else if (activeCategory == "meetup") {
+                posts!!.filter { it.category == "meetup" }.sortedBy { it.eventDate ?: "9999" }
+            } else {
+                upcomingMeetups
+            }
+            if (meetups.isNotEmpty()) {
+                item {
+                    Text("🎉 Meetups", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                }
+                items(meetups, key = { "meetup_${it.id}" }) { post ->
+                    CommunityPostCard(
+                        post = post,
+                        categoryLabel = categories.firstOrNull { it.id == post.category }?.label ?: post.category,
+                        isMine = post.authorId == currentUserId,
+                        joinedCount = joinedCounts[post.id] ?: 0,
+                        joining = joiningPostId == post.id,
+                        onJoin = { joinMeetup(post.id) },
+                        onOpen = { openPostId = post.id },
+                        onRemoved = ::load,
+                    )
+                }
+            }
+            items(regular, key = { it.id }) { post ->
+                CommunityPostCard(
+                    post = post,
+                    categoryLabel = categories.firstOrNull { it.id == post.category }?.label ?: post.category,
+                    isMine = view == CommunityView.MINE || post.authorId == currentUserId,
+                    joinedCount = joinedCounts[post.id] ?: 0,
+                    joining = joiningPostId == post.id,
+                    onJoin = { joinMeetup(post.id) },
+                    onOpen = { openPostId = post.id },
+                    onRemoved = ::load,
+                )
+            }
+            if (hasMore && view != CommunityView.NEARBY) {
+                item {
+                    IdsButton(
+                        text = if (loadingMore) "Loading…" else "Load more",
+                        onClick = ::loadMore,
+                        enabled = !loadingMore,
+                        variant = IdsButtonVariant.Tinted,
+                        size = IdsButtonSize.Medium,
+                    )
+                }
+            }
+        }
+        }
+    }
+        ScrollFog(modifier = Modifier.align(Alignment.BottomCenter))
+    }
+}
+
+// Real 당근모임-style structured event date display (2026-07-25) -- falls back to the
+// raw ISO string on any parse failure, never a fabricated date.
+private fun formatMeetupDate(iso: String): String = try {
+    val instant = java.time.Instant.parse(iso)
+    val local = instant.atZone(java.time.ZoneOffset.UTC)
+    "%04d-%02d-%02d %02d:%02d".format(local.year, local.monthValue, local.dayOfMonth, local.hour, local.minute)
+} catch (e: Exception) {
+    iso
+}
+
+@Composable
+private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreated: () -> Unit, onCancel: () -> Unit) {
+    var category by remember { mutableStateOf(categories.firstOrNull()?.id ?: "") }
+    var title by remember { mutableStateOf("") }
+    var body by remember { mutableStateOf("") }
+    // Real 당근모임-style mandatory date-setting + real capacity cap (2026-07-25) --
+    // only meaningful/shown for the meetup category. See backend
+    // CommunityService.createPost's own doc comment for why eventDate is required for
+    // this one category.
+    var eventDateText by remember { mutableStateOf("") }
+    var eventTimeText by remember { mutableStateOf("") }
+    var capacityText by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var submitting by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    var shareLocation by remember { mutableStateOf(false) }
+    var myLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var locating by remember { mutableStateOf(false) }
+    val requestLocation = rememberRealLocationRequester(
+        onLocating = { locating = it },
+        onSuccess = { lat, lng -> myLocation = lat to lng; shareLocation = true },
+        onError = { error = it },
+    )
+
+    // Real fix (flat-design sweep): dropped the Card wrapper -- this form renders
+    // inline as part of the main feed's linear scroll, not a separate module.
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Write a post", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                categories.forEach { c ->
+                    val selected = category == c.id
+                    Box(
+                        modifier = Modifier
+                            .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(999.dp))
+                            .pressScaleClickable { category = c.id }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary) }
+                }
+            }
+            IdsTextField(value = title, onValueChange = { title = it }, label = stringResource(R.string.community_title_placeholder), singleLine = true, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = body, onValueChange = { body = it }, label = stringResource(R.string.community_body_placeholder), modifier = Modifier.fillMaxWidth())
+            if (category == "meetup") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    IdsTextField(
+                        value = eventDateText, onValueChange = { eventDateText = it },
+                        label = "Date (YYYY-MM-DD)", singleLine = true, modifier = Modifier.weight(1f),
+                    )
+                    IdsTextField(
+                        value = eventTimeText, onValueChange = { eventTimeText = it },
+                        label = "Time (HH:mm)", singleLine = true, modifier = Modifier.weight(1f),
+                    )
+                }
+                IdsTextField(
+                    value = capacityText, onValueChange = { capacityText = it },
+                    label = "Max people (optional -- blank means unlimited)", singleLine = true,
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            Box(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft)
+                    .pressScaleClickable(enabled = !locating) { if (shareLocation) shareLocation = false else requestLocation() }
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+            ) { Text(if (locating) "Finding your real location…" else if (shareLocation) "📍 Location shared with nearby neighbors" else "📍 Share location for nearby neighbors (optional)", fontSize = 13.sp, color = if (shareLocation) Ids.colors.brand else Ids.colors.textSecondary) }
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Cancel") }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Ids.colors.brand)
+                        .pressScaleClickable(enabled = !submitting) {
+                            if (title.isBlank() || body.isBlank() || category.isBlank()) {
+                                error = "Fill in every field."
+                                return@pressScaleClickable
+                            }
+                            var eventDateIso: String? = null
+                            var capacity: Int? = null
+                            if (category == "meetup") {
+                                if (eventDateText.isBlank() || eventTimeText.isBlank()) {
+                                    error = "A meetup needs a real date and time."
+                                    return@pressScaleClickable
+                                }
+                                eventDateIso = "${eventDateText.trim()}T${eventTimeText.trim()}:00Z"
+                                try {
+                                    java.time.Instant.parse(eventDateIso)
+                                } catch (e: Exception) {
+                                    error = "Enter a real date (YYYY-MM-DD) and time (HH:mm)."
+                                    return@pressScaleClickable
+                                }
+                                capacity = capacityText.trim().ifBlank { null }?.toIntOrNull()
+                                if (capacityText.isNotBlank() && capacity == null) {
+                                    error = "Max people must be a whole number."
+                                    return@pressScaleClickable
+                                }
+                            }
+                            submitting = true
+                            error = null
+                            coroutineScope.launch {
+                                try {
+                                    val loc = if (shareLocation) myLocation else null
+                                    val res = NetworkClient.apiService.createCommunityPost(
+                                        CreateCommunityPostRequest(category, title, body, loc?.first, loc?.second, eventDateIso, capacity),
+                                    )
+                                    if (res.success) onCreated()
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } catch (e: IOException) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
+                                } finally {
+                                    submitting = false
+                                }
+                            }
+                        }
+                        .padding(vertical = 14.dp),
+                    contentAlignment = Alignment.Center,
+                ) { Text(if (submitting) stringResource(R.string.community_posting) else stringResource(R.string.community_post), color = Color.White, fontWeight = FontWeight.Bold) }
+            }
+    }
+}
+
+@Composable
+private fun CommunityPostCard(
+    post: CommunityPostDto, categoryLabel: String, isMine: Boolean, onOpen: () -> Unit, onRemoved: () -> Unit,
+    joinedCount: Int = 0, joining: Boolean = false, onJoin: () -> Unit = {},
+) {
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    Card(
+        shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
+        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpen),
+    ) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                // Same hyperlocal-neighborhood fix as Jobs/Property -- see
+                // [[project_itunda_full_ecosystem_polish]]. Neighborhood matters
+                // especially here: a Community post is explicitly a "your neighbors"
+                // product, not generic content.
+                val categoryAndLocation = listOfNotNull(categoryLabel, post.neighborhood, relativeTimeAgo(post.createdAt)).joinToString(" · ")
+                Text(categoryAndLocation, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                if (isMine) {
+                    ListingActionButton("Remove", busy) {
+                        busy = true
+                        coroutineScope.launch {
+                            try {
+                                NetworkClient.apiService.removeCommunityPost(post.id)
+                                onRemoved()
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    }
+                }
+            }
+            Text(post.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(post.body, color = Ids.colors.textSecondary, fontSize = 13.sp, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                HeartFilled(size = 12.dp)
+                Text("${post.likeCount} ·", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                SpeechBubbleGlyph(size = 12.dp)
+                Text("${post.commentCount}", color = Ids.colors.textSecondary, fontSize = 12.sp)
+            }
+            if (!isMine && post.category == "question") {
+                ListingActionButton("Answer this question", busy, onClick = onOpen)
+            } else if (post.category == "meetup") {
+                // Real 당근모임-style structured date/capacity (2026-07-25) -- see
+                // backend CommunityPost.eventDate/capacity's own doc comment.
+                val eventDate = post.eventDate
+                if (eventDate != null) {
+                    val capacityLabel = post.capacity?.let { " · $joinedCount/$it" } ?: ""
+                    Text("🗓️ ${formatMeetupDate(eventDate)}$capacityLabel", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                }
+                // Real AI-generated 모임 summary (2026-08-28) -- see backend
+                // HoodAiSummaryService's own doc comment. Never shown without this
+                // visible "AI" disclosure badge, same convention this session's Maps
+                // AI-summary work already established.
+                post.aiSummary?.let { summary ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().background(Ids.colors.surfaceSoft, RoundedCornerShape(10.dp)).padding(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text("AI", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.background(Ids.colors.brand, RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 2.dp))
+                        Text(summary, color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    }
+                }
+                // Real 참여하기 (join) tap (2026-07-24) -- a real join, not just a
+                // "view" navigation: it adds the tapper to a real GroupConversation
+                // (see backend CommunityService.joinMeetup's own doc comment), shown
+                // with a real "N joined" count rather than a bare label.
+                if (isMine) {
+                    ListingActionButton("View meetup", busy, onClick = onOpen)
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ListingActionButton("View meetup", busy, onClick = onOpen)
+                        ListingActionButton(if (joining) "Joining…" else "참여하기 · $joinedCount joined", joining, filled = true, onClick = onJoin)
+                    }
+                }
+            }
+            if (!isMine) {
+                HoodReportAction(targetType = "COMMUNITY_POST", targetId = post.id)
+            }
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+        }
+    }
+}
+
+// Real Karrot 동네생활 "새 댓글 알림 끄기" (turn off new-comment notifications) -- ported
+// from bank-mfe (2026-09-03, real gap: fully built on the backend, wired on web, zero
+// client on native). Scoped to MY posts (the preference only affects notifications
+// about comments on posts the caller authored), same real reason this renders only
+// inside the MINE view.
+@Composable
+private fun CommentNotificationToggle() {
+    val scope = rememberCoroutineScope()
+    var enabled by remember { mutableStateOf<Boolean?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        enabled = try { NetworkClient.apiService.getCommentNotificationsEnabled().commentNotificationsEnabled } catch (_: Exception) { true }
+    }
+    val current = enabled ?: return
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column {
+            Text("Notify me about new comments", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+            Text("On your own posts, in this neighborhood", fontSize = 11.sp, color = Ids.colors.textSecondary)
+        }
+        Switch(
+            checked = current,
+            enabled = !busy,
+            onCheckedChange = { next ->
+                busy = true
+                scope.launch {
+                    try {
+                        enabled = NetworkClient.apiService.setCommentNotificationsEnabled(SetCommentNotificationsEnabledRequest(next)).commentNotificationsEnabled
+                    } catch (_: Exception) {
+                        // Best-effort -- leaves the switch at its last known real state.
+                    } finally {
+                        busy = false
+                    }
+                }
+            },
+        )
+    }
+}

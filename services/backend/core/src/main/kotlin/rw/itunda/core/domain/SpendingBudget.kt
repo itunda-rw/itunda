@@ -10,9 +10,9 @@ import java.time.Instant
 /**
  * Real monthly spending budget -- closes docs/TOSS_PARITY_MATRIX.md's Spending row's
  * own named gap ("Budgeting/limits still target"). `category` is null for an overall
- * (all-spending) budget, or one of [rw.itunda.wallet.SpendingInsightResult]'s own
+ * (all-spending) budget, or one of [rw.itunda.account.SpendingInsightResult]'s own
  * category names (e.g. "Bills", "Transfers") for a category-specific one -- reuses
- * `WalletService.getSpendingInsight`'s existing real categorization rather than a
+ * `AccountService.getSpendingInsight`'s existing real categorization rather than a
  * separate, parallel one. `month` is a real calendar month ("yyyy-MM"); a budget resets
  * every month by definition, matching how a real household budget works, not a
  * rolling window. `notifiedNear`/`notifiedOver` track whether a real threshold-crossing

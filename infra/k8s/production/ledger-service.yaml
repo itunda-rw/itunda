@@ -50,7 +50,7 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
       - name: ledger-service
-        image: ghcr.io/itunda/ledger-service:latest
+        image: ghcr.io/itunda-rw/ledger-service:latest
         ports:
         - containerPort: 8082
         env:

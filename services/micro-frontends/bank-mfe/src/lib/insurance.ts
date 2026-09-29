@@ -1,0 +1,118 @@
+// Real insurance plans/enroll/claims client -- see the backend's InsuranceService.kt
+// doc comment for the full sourced account. Found with zero bank-mfe UI beyond a
+// single read-only summary line ("Insurance: N active plan(s)" in OverviewView) --
+// browse plans, enroll, my policies, and file/view claims (GET/POST /api/v1/insurance/*)
+// had never been wired to any bank-mfe screen despite being fully real, ledger-backed
+// endpoints. Android/iOS already have plans/enroll/my-policies via the Saronite RN
+// mini-app bridge (SaroniteBridge.kt/SaroniteBrownfieldModule.swift), but claims
+// filing/viewing has zero client anywhere on any of the 3 platforms -- honestly still
+// open there, named as a follow-up rather than silently left unbuilt.
+
+import { apiFetch } from './api';
+import { randomUUID } from './uuid';
+
+export interface InsurancePlan {
+  id: string;
+  name: string;
+  category: string;
+  provider: string;
+  monthlyPremium: number;
+  coverageAmount: number;
+  description: string;
+  features: string[];
+  rating: number;
+  enrolledCount: number;
+  color: string;
+}
+
+export interface InsurancePolicy {
+  id: string;
+  planId: string;
+  planName: string;
+  category: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  monthlyPremium: number;
+  nextPaymentDate: string;
+  policyNumber: string;
+}
+
+export interface InsuranceClaim {
+  id: string;
+  policyId: string;
+  description: string;
+  amount: number;
+  status: 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+  submittedAt: string;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  decisionReason: string | null;
+}
+
+// Real Ejo Heza ya Moto-style premium savings fund -- see the backend's
+// InsuranceService.createPremiumFund doc comment for the full sourced account
+// (Africa-Press 2026: Rwanda's ~46,000 registered taxi-moto riders facing insurance
+// premiums up to RWF 250,000/year for older bikes). Lets any user (not just moto
+// riders) save toward a specific policy's next premium ahead of time, so the backend's
+// recurring collection scheduler can draw on it instead of lapsing the policy.
+export interface InsurancePremiumFund {
+  id: string;
+  policyId: string;
+  targetAmount: number;
+  currentAmount: number;
+  dailyContribution: number;
+  status: 'active' | 'cancelled';
+  createdAt: string;
+}
+
+export const fetchInsurancePlans = () =>
+  apiFetch<{ success: boolean; plans: InsurancePlan[] }>('/api/v1/insurance/plans').then((r) => r.plans);
+
+export const fetchMyPolicies = () =>
+  apiFetch<{ success: boolean; policies: InsurancePolicy[] }>('/api/v1/insurance/my-policies').then((r) => r.policies);
+
+export const enrollInPlan = (planId: string) =>
+  apiFetch<{ success: boolean; message: string; policy: InsurancePolicy }>('/api/v1/insurance/enroll', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ planId }),
+  }).then((r) => r.policy);
+
+// Real idempotency fix (item 236, found via a periodic Idempotency-Key coverage
+// audit) -- corrects this endpoint's own earlier backend reasoning that no key was
+// needed because filing a claim "isn't money-moving." A duplicate submission created
+// two separate claim rows that could each be independently approved by an admin
+// working through the queue -- a real double payout for one real incident. See
+// backend InsuranceController.submitClaim's own doc comment for the full account.
+export const submitClaim = (policyId: string, description: string, amount: number) =>
+  apiFetch<{ success: boolean; claim: InsuranceClaim }>('/api/v1/insurance/claims', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ policyId, description, amount }),
+  }).then((r) => r.claim);
+
+export const fetchMyClaims = () =>
+  apiFetch<{ success: boolean; claims: InsuranceClaim[] }>('/api/v1/insurance/claims').then((r) => r.claims);
+
+export const createPremiumFund = (policyId: string, dailyContribution: number) =>
+  apiFetch<{ success: boolean; fund: InsurancePremiumFund }>(`/api/v1/insurance/policies/${policyId}/premium-fund`, {
+    method: 'POST',
+    body: JSON.stringify({ dailyContribution }),
+  }).then((r) => r.fund);
+
+export const contributeToFund = (fundId: string, amount: number) =>
+  apiFetch<{ success: boolean; fund: InsurancePremiumFund }>(`/api/v1/insurance/premium-funds/${fundId}/contribute`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ amount }),
+  }).then((r) => r.fund);
+
+export const cancelFund = (fundId: string) =>
+  apiFetch<{ success: boolean; fund: InsurancePremiumFund }>(`/api/v1/insurance/premium-funds/${fundId}/cancel`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  }).then((r) => r.fund);
+
+export const fetchMyPremiumFunds = () =>
+  apiFetch<{ success: boolean; funds: InsurancePremiumFund[] }>('/api/v1/insurance/premium-funds').then((r) => r.funds);

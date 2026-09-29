@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreDesignSystem
 
 private struct CartLine: Identifiable {
     let product: MerchantProductDto
@@ -32,7 +33,7 @@ struct PosTab: View {
                     ScrollView {
                         if let products {
                             if products.isEmpty {
-                                Text("No products yet — add some in the Catalog tab first.").foregroundColor(.secondary).padding(16)
+                                IdsEmptyState(title: "No products yet — add some in the Catalog tab first.")
                             } else {
                                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 130))], spacing: 8) {
                                     ForEach(products) { product in
@@ -40,18 +41,22 @@ struct PosTab: View {
                                             VStack(alignment: .leading) {
                                                 Text(product.name).bold().foregroundColor(.primary)
                                                 Text("\(formattedRWF(product.price)) RWF").font(.footnote).foregroundColor(.secondary)
+                                                Text(stockLabel(product))
+                                                    .font(.footnote)
+                                                    .foregroundColor(product.stockQuantity == 0 ? .red : .secondary)
                                             }
                                             .padding(14)
                                             .frame(maxWidth: .infinity, alignment: .leading)
                                             .background(Color(.secondarySystemBackground))
                                             .cornerRadius(12)
                                         }
+                                        .disabled(product.stockQuantity == 0)
                                     }
                                 }
                                 .padding(16)
                             }
                         } else {
-                            ProgressView().padding(16)
+                            SkeletonBlock(height: 64).padding(16)
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -75,12 +80,13 @@ struct PosTab: View {
                             Spacer()
                             Text("\(formattedRWF(total)) RWF").bold()
                         }
-                        Button(action: { checkingOut = true }) {
-                            Text("Checkout").bold().foregroundColor(.white)
-                                .frame(maxWidth: .infinity).padding(.vertical, 10)
-                                .background(cart.isEmpty ? Color.gray : Color.blue).cornerRadius(10)
-                        }
-                        .disabled(cart.isEmpty)
+                        IdsButton(
+                            text: "Checkout",
+                            isEnabled: !cart.isEmpty,
+                            variant: .filled,
+                            size: .medium,
+                            action: { checkingOut = true }
+                        )
                     }
                     .padding(16)
                     .frame(width: 220)
@@ -97,10 +103,17 @@ struct PosTab: View {
 
     private func addToCart(_ product: MerchantProductDto) {
         if let index = cart.firstIndex(where: { $0.product.id == product.id }) {
-            cart[index].quantity += 1
+            let nextQuantity = cart[index].quantity + 1
+            guard product.stockQuantity == nil || nextQuantity <= product.stockQuantity! else { return }
+            cart[index].quantity = nextQuantity
         } else {
             cart.append(CartLine(product: product, quantity: 1))
         }
+    }
+
+    private func stockLabel(_ product: MerchantProductDto) -> String {
+        guard let stockQuantity = product.stockQuantity else { return "Unlimited stock" }
+        return stockQuantity == 0 ? "Out of stock" : "\(stockQuantity) in stock"
     }
 }
 
@@ -118,11 +131,13 @@ private struct CheckoutView: View {
             Text("\(formattedRWF(total)) RWF").font(.title2).bold()
             Text(description).font(.footnote).foregroundColor(.secondary)
 
-            Picker("", selection: $mode) {
-                Text("QR code").tag("QR")
-                Text("Card").tag("CARD")
-            }
-            .pickerStyle(.segmented)
+            IdsTabs(
+                ["QR code", "Card"],
+                selectedIndex: Binding(
+                    get: { mode == "CARD" ? 1 : 0 },
+                    set: { mode = $0 == 1 ? "CARD" : "QR" }
+                )
+            )
 
             if mode == "QR" {
                 QrCheckoutView(amount: total, description: description, onDone: onDone)
@@ -130,8 +145,12 @@ private struct CheckoutView: View {
                 CardCheckoutView(amount: total, description: description, onDone: onDone)
             }
 
-            Button("Back to cart", action: onCancel)
-                .frame(maxWidth: .infinity, alignment: .center)
+            IdsButton(
+                text: "Back to cart",
+                variant: .tinted,
+                size: .medium,
+                action: onCancel
+            )
 
             Spacer()
         }
@@ -151,16 +170,18 @@ private struct QrCheckoutView: View {
         VStack(alignment: .center, spacing: 12) {
             if let qrContent, let image = generateQrImage(content: qrContent) {
                 image.interpolation(.none).resizable().frame(width: 220, height: 220)
-                Button(action: onDone) {
-                    Text("Done — new sale").bold().foregroundColor(.white)
-                        .frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(Color.blue).cornerRadius(10)
-                }
+                IdsButton(text: "Done — new sale", size: .medium, action: onDone)
             } else {
                 if let error {
-                    Text(error).foregroundColor(.red).font(.footnote)
+                    IdsErrorText(error)
                 }
-                Button("Retry") { Task { await generate() } }
+                IdsButton(
+                        text: "Retry",
+                        variant: .tinted,
+                        size: .medium,
+                        fullWidth: false,
+                        action: { Task { await generate() } }
+                    )
             }
         }
         .frame(maxWidth: .infinity)
@@ -173,6 +194,8 @@ private struct QrCheckoutView: View {
         do {
             let intent = try await MerchantNetworkClient.shared.generateQr(amount: amount, description: description).paymentIntent
             qrContent = paymentIntentQrPayload(intent.id)
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not generate a QR code."
         } catch {
             self.error = "Could not generate a QR code."
         }
@@ -191,35 +214,45 @@ private struct CardCheckoutView: View {
     @State private var result: String?
     @State private var error: String?
     @State private var submitting = false
+    // Real device step-up (2026-07-28 port, item 97) -- a real 403 DEVICE_NOT_VERIFIED
+    // (this device hasn't been step-up-verified yet) gets its own case, not a generic error.
+    @State private var needsDeviceVerification = false
 
     var body: some View {
-        if let result {
+        if needsDeviceVerification {
+            ZStack {
+                Color.black.opacity(0.3).ignoresSafeArea()
+                // Real fix (2026-08-10) -- see PayrollScreen.swift's own identical fix
+                // for the full account. Card fields are unchanged while the dialog is
+                // up, so re-reading them via charge() on retry is the same charge the
+                // merchant already confirmed.
+                DeviceStepUpDialog(
+                    onVerified: { Task { await charge() } },
+                    onCancel: { needsDeviceVerification = false }
+                )
+            }
+        } else if let result {
             VStack(spacing: 12) {
                 Text("Card charged — •••• \(result)").bold()
-                Button(action: onDone) {
-                    Text("Done — new sale").bold().foregroundColor(.white)
-                        .frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(Color.blue).cornerRadius(10)
-                }
+                IdsButton(text: "Done — new sale", size: .medium, action: onDone)
             }
         } else {
             VStack(spacing: 10) {
-                TextField("Card number", text: $cardNumber).keyboardType(.numberPad).padding(10).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                IdsTextField("Card number", text: $cardNumber, keyboardType: .numberPad)
                 HStack {
-                    TextField("MM", text: $expiryMonth).keyboardType(.numberPad).padding(10).background(Color(.secondarySystemBackground)).cornerRadius(10)
-                    TextField("YYYY", text: $expiryYear).keyboardType(.numberPad).padding(10).background(Color(.secondarySystemBackground)).cornerRadius(10)
-                    TextField("CVC", text: $cvc).keyboardType(.numberPad).padding(10).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                    IdsTextField("MM", text: $expiryMonth, keyboardType: .numberPad)
+                    IdsTextField("YYYY", text: $expiryYear, keyboardType: .numberPad)
+                    IdsTextField("CVC", text: $cvc, keyboardType: .numberPad)
                 }
                 if let error {
-                    Text(error).foregroundColor(.red).font(.footnote)
+                    Text(error).foregroundColor(IDS.Colors.danger).font(.footnote)
                 }
-                Button(action: { Task { await charge() } }) {
-                    Text(submitting ? "Charging…" : "Charge \(formattedRWF(amount)) RWF")
-                        .bold().foregroundColor(.white)
-                        .frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(Color.blue).cornerRadius(10)
-                }
-                .disabled(submitting)
+                IdsButton(
+                    text: "Charge \(formattedRWF(amount)) RWF",
+                    isLoading: submitting,
+                    size: .medium,
+                    action: { Task { await charge() } }
+                )
             }
         }
     }
@@ -231,12 +264,17 @@ private struct CardCheckoutView: View {
         }
         submitting = true
         error = nil
+        needsDeviceVerification = false
         defer { submitting = false }
         do {
             let charge = try await MerchantNetworkClient.shared.chargeCard(
                 ChargeCardRequest(amount: amount, description: description, cardNumber: cardNumber.replacingOccurrences(of: " ", with: ""), expiryMonth: month, expiryYear: year, cvc: cvc)
             )
             result = charge.cardLast4
+        } catch NetworkError.deviceNotVerified {
+            needsDeviceVerification = true
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not charge this card."
         } catch {
             self.error = "Could not charge this card."
         }

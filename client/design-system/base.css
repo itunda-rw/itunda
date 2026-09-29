@@ -1,0 +1,5 @@
+/* Itunda Design System — base */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;color:var(--itunda-color-text,var(--itunda-ink,#191F28));font-family:var(--itunda-font-body,var(--ids-font-sans,-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,system-ui,sans-serif));-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+a{text-decoration:none;color:inherit}

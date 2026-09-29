@@ -1,0 +1,28 @@
+# Real port of .github/workflows/ci-cd.yml's lint-and-typecheck job -- same
+# commands, run on itunda's own Woodpecker infrastructure instead of a GitHub-hosted
+# runner. See infra/ci/docker-compose.yml's doc comment for the overall
+# GitHub-Actions-stays / Woodpecker-runs-in-parallel architecture.
+labels:
+  backend: docker
+
+steps:
+  - name: lint-and-typecheck
+    image: node:20
+    commands:
+      # node:20 (Debian) doesn't ship python3 by default, unlike GitHub's own
+      # ubuntu-latest runner -- the 4 scripts below need it.
+      - apt-get update -qq && apt-get install -y -qq python3
+      # Real fix this repo's own GitHub Actions workflow already needed and
+      # documents (package.json pins a Corepack-managed yarn, node:20's image ships
+      # a different default yarn) -- same reasoning applies here.
+      - corepack enable
+      - yarn install --immutable
+      - yarn lint
+      - yarn tsc --noEmit
+      - yarn depcruise
+      - python3 scripts/ios-silo-boundary-check.py
+      - python3 scripts/accessibility-lint.py
+      - python3 scripts/file-size-lint.py
+      - python3 scripts/verify-map-category-parity.py
+    when:
+      - event: [push, pull_request]

@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#7472F4">
+<meta name="description" content="Itunda Design System — the current Web IDS visual showcase and component contract.">
+<title>Itunda Design System · Showcase</title>
+<style>
+:root{
+  --brand:#7472F4;--brand-strong:#625FE6;--brand-soft:#F0EFFF;
+  --bg:#fff;--surface:#fff;--surface-subtle:#F7F8FA;--surface-raised:#fff;
+  --ink:#191F28;--secondary:#4E5968;--tertiary:#6B7684;--disabled:#B0B8C1;
+  --line:#E5E8EB;--line-strong:#D1D6DB;--success:#04C065;--error:#F04452;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.08);--shadow-md:0 4px 16px rgba(0,0,0,.04);--shadow-lg:0 12px 32px rgba(0,0,0,.10);
+  --radius-sm:8px;--radius-md:12px;--radius-lg:16px;--radius-xl:20px;--pill:999px;
+  --focus:0 0 0 3px rgba(116,114,244,.28);--sidebar:224px;--max:1080px;
+}
+[data-theme="dark"]{
+  --bg:#090B0F;--surface:#11151A;--surface-subtle:#15191F;--surface-raised:#171C22;
+  --ink:#F7F8FA;--secondary:#D1D6DB;--tertiary:#AEB5BD;--disabled:#6B7684;
+  --line:#2A3038;--line-strong:#3A424D;--brand:#9B98FF;--brand-strong:#B0AEFF;
+  --brand-soft:#27244A;--focus:0 0 0 3px rgba(176,174,255,.3);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:76px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}
+.top{position:sticky;top:0;z-index:50;height:64px;background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(18px)}
+.topin{height:100%;max-width:1400px;margin:auto;padding:0 24px;display:flex;align-items:center;gap:12px}
+.top .brand{display:flex;align-items:center;gap:9px;font-size:20px;font-weight:750;letter-spacing:-.8px}.menu{display:none;width:40px;height:40px;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--ink);cursor:pointer}.menu:focus-visible,.theme:focus-visible{outline:0;box-shadow:var(--focus)}
+.mark{width:26px;height:26px}.crumb{font-size:13px;color:var(--tertiary)}
+.spacer{flex:1}.theme{width:40px;height:40px;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--ink);cursor:pointer}
+.layout{display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr);max-width:1400px;margin:auto}
+.side{position:sticky;top:64px;height:calc(100vh - 64px);overflow:auto;border-right:1px solid var(--line);padding:24px 14px;background:var(--bg)}
+.side-group{margin-bottom:24px}.side-title{padding:0 10px 7px;color:var(--tertiary);font-size:10px;font-weight:750;letter-spacing:.09em;text-transform:uppercase}
+.side a{display:block;padding:9px 10px;border-radius:10px;color:var(--secondary);font-size:13px;font-weight:600}
+.side a:hover,.side a.active{background:var(--surface-subtle);color:var(--ink)}.mobile-nav{display:none}
+.main{min-width:0}.wrap{max-width:var(--max);margin:auto;padding:0 34px}
+.skip{position:fixed;left:16px;top:8px;z-index:100;padding:10px 14px;border-radius:var(--pill);background:var(--brand);color:#fff;transform:translateY(-140%);transition:transform 140ms ease}.skip:focus{transform:translateY(0);outline:0;box-shadow:var(--focus)}.hero{padding:96px 0 88px}
+.kicker,.eyebrow{color:var(--brand-strong);font-size:11px;font-weight:750;letter-spacing:.1em;text-transform:uppercase}
+.hero h1{max-width:760px;margin:16px 0 20px;font-size:clamp(42px,5.8vw,64px);line-height:1.02;letter-spacing:-.055em}
+.hero p{max-width:620px;margin:0;color:var(--secondary);font-size:18px;line-height:1.65}
+.hero-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:26px}
+.chip{display:inline-flex;align-items:center;min-height:30px;padding:0 10px;border:1px solid var(--line);border-radius:var(--pill);background:var(--surface-subtle);color:var(--secondary);font-size:12px;font-weight:650}
+.section{padding:88px 0}.head{max-width:680px;margin-bottom:32px}
+.head h2{margin:8px 0 12px;font-size:34px;line-height:1.12;letter-spacing:-.045em}.head h2,.hero h1{font-weight:750}.heading-scale{display:grid;gap:10px}.heading-scale div{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--line)}.heading-scale b{letter-spacing:-.03em}.heading-scale span{color:var(--tertiary);font:11px ui-monospace,monospace}.head p{margin:0;color:var(--secondary);font-size:15px;line-height:1.65}
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}.card{grid-column:span 6;min-width:0;border:0;border-radius:0;padding:28px 0;background:transparent}
+.card.wide{grid-column:span 8}.card.third{grid-column:span 4}.card.full{grid-column:1/-1}
+.card h3{margin:0 0 7px;font-size:17px;letter-spacing:-.02em}.card>p{margin:0 0 16px;color:var(--secondary);font-size:13px;line-height:1.6}
+.stage{padding:28px;border-radius:var(--radius-lg);background:var(--surface-subtle)}
+.token{font:12px/1.8 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--secondary)}.token b{color:var(--ink)}
+.swatches{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.swatch{min-height:104px;padding:12px;border-radius:var(--radius-md);display:flex;align-items:flex-end;font:11px/1.35 ui-monospace,monospace;font-weight:700;position:relative;cursor:pointer}.swatch:hover,.swatch:focus-visible{outline:0;box-shadow:var(--focus)}.swatch::after{content:"Copy";position:absolute;top:8px;right:8px;padding:4px 7px;border-radius:var(--pill);background:color-mix(in srgb,var(--surface) 86%,transparent);color:var(--ink);font:600 10px ui-monospace,monospace;opacity:0;transition:opacity 140ms ease}.swatch:hover::after,.swatch:focus-visible::after{opacity:1}.swatch[data-copied]::after{content:"Copied"}.swatch[data-copied]{box-shadow:var(--focus)}
+.swatch.itunda-brand{background:#7472F4;color:#fff}.swatch.strong{background:#625FE6;color:#fff}.swatch.soft{background:#F0EFFF;color:#625FE6}.swatch.ink{background:#191F28;color:#fff}.swatch.surface{background:#F7F8FA;color:#4E5968;border:1px solid #E5E8EB}\n[data-theme="dark"] .swatch.soft{background:#27244A;color:#B0AEFF}.swatch.surface{color:#4E5968}
+.type-display{font-size:46px;line-height:1;letter-spacing:-.05em;font-weight:700;margin:4px 0 20px}.type-row{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line);font-size:13px}.type-row span{color:var(--tertiary);font:11px ui-monospace,monospace}
+.scale{display:grid;gap:9px}.scale-row{display:flex;align-items:center;gap:12px;color:var(--secondary);font-size:12px}.bar{height:8px;border-radius:var(--pill);background:var(--brand);display:block}
+.button-row{display:flex;gap:10px;flex-wrap:wrap}
+.ids-btn{position:relative;min-height:52px;min-width:44px;padding:0 20px;border:0;border-radius:var(--radius-md);background:var(--brand);color:#fff;font-weight:650;cursor:pointer;transition:background 140ms ease,transform 140ms ease,opacity 140ms ease}
+.ids-btn.secondary{background:var(--surface);color:var(--ink);border:1px solid var(--line-strong)}.ids-btn.tertiary{background:transparent;color:var(--brand-strong)}.ids-btn.secondary:hover:not(:disabled){background:var(--surface-subtle)}.ids-btn.tertiary:hover:not(:disabled){background:var(--brand-soft)}.ids-btn.danger{background:var(--error)}
+.ids-btn.sm{min-height:40px;font-size:14px}.ids-btn.lg{min-height:56px;font-size:17px}.ids-btn:active{transform:scale(.985)}.ids-btn:hover:not(:disabled){filter:brightness(.98)}.ids-btn:focus-visible{outline:0;box-shadow:var(--focus)}.ids-btn:disabled{opacity:.48;cursor:not-allowed}.ids-btn:disabled:active{transform:none}.ids-btn.loading{opacity:.78}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;vertical-align:-3px;margin-right:7px;animation:spin 700ms linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.field{display:grid;gap:7px}.field label{font-size:13px;font-weight:650}.input,.select{width:100%;min-height:48px;border:1px solid var(--line-strong);border-radius:var(--radius-md);padding:0 14px;background:var(--surface);color:var(--ink);outline:0}.input:focus,.select:focus{box-shadow:var(--focus);border-color:var(--brand)}.input:disabled,.select:disabled{background:var(--surface-subtle);color:var(--disabled);cursor:not-allowed}.help{color:var(--tertiary);font-size:12px;line-height:18px}.error{color:var(--error);font-size:12px}.input.invalid{border-color:var(--error)}.input.invalid:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--error) 24%,transparent)}
+.control-list{display:grid;gap:12px}.check,.switch{position:relative;display:flex;align-items:center;gap:11px;min-height:48px;color:var(--ink);cursor:pointer}.check input,.switch input{position:absolute;opacity:0}.check:focus-within,.switch:focus-within{outline:0;box-shadow:var(--focus);border-radius:var(--radius-md)}.box,.radio{width:22px;height:22px;flex:0 0 22px;border:2px solid var(--line-strong);display:grid;place-items:center}.box{border-radius:6px}.radio{border-radius:50%}.check input:checked+.box{background:var(--brand);border-color:var(--brand)}.check input:checked+.box:after{content:"";width:9px;height:5px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg) translateY(-1px)}.check input:indeterminate+.box{background:var(--brand);border-color:var(--brand)}
+.switch-track{width:50px;height:30px;padding:3px;border-radius:var(--pill);background:#D1D6DB;transition:background 140ms ease}.switch-thumb{display:block;width:24px;height:24px;border-radius:50%;background:var(--surface);box-shadow:var(--shadow-sm);transition:transform 140ms ease}.switch input:checked+.switch-track{background:var(--brand)}.switch input:checked+.switch-track .switch-thumb{transform:translateX(20px)}
+.control-copy{display:grid;gap:2px}.control-copy small{color:var(--tertiary);font-size:12px}
+.tabs{display:flex;gap:4px;padding:4px;background:var(--surface-subtle);border-radius:var(--pill);overflow:auto}.tab{min-height:44px;flex:1;min-width:96px;padding:0 15px;border:0;border-radius:var(--pill);background:transparent;color:var(--secondary);font-weight:650;cursor:pointer}.tab[aria-selected=true]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm)}.tab:focus-visible{outline:0;box-shadow:var(--focus)}
+.list{overflow:hidden;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--surface)}.row{display:flex;align-items:center;gap:16px;min-height:76px;padding:18px 4px;border-bottom:1px solid var(--line)}.row:last-child{border:0}.avatar{width:44px;height:44px;border-radius:14px;background:var(--brand-soft);color:var(--brand-strong);display:grid;place-items:center;font-weight:750}.grow{flex:1;min-width:0}.title{font-size:13px;font-weight:650}.meta{margin-top:2px;color:var(--tertiary);font-size:11px}.amount{font-size:15px;font-weight:750;letter-spacing:-.01em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.alert{padding:14px;border-radius:var(--radius-md);background:color-mix(in srgb,var(--success) 10%,var(--surface));color:var(--success);font-size:13px;font-weight:650}.alert.error{background:color-mix(in srgb,var(--error) 9%,var(--surface));color:var(--error)}
+.state-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.state{padding:16px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-subtle);font-size:12px}.state b{display:block;margin-bottom:4px}.state span{color:var(--tertiary)}
+.platform{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.platform div{padding:18px;border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--surface)}.platform strong{display:block;margin-bottom:5px}.platform span{color:var(--tertiary);font-size:12px;line-height:1.5}
+.motion-demo{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.motion-demo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px;border-radius:var(--radius-lg);background:var(--surface-subtle)}.motion-dot{min-height:40px;padding:0 12px;border:1px solid var(--line);border-radius:var(--pill);background:var(--surface);color:var(--ink);cursor:pointer}.motion-dot:hover{transform:translateY(-2px)}.motion-dot:active{transform:translateY(-8px)}.motion-dot.fast{transition:transform 140ms ease}.motion-dot.normal{transition:transform 220ms ease}.motion-dot.slow{transition:transform 420ms ease}.motion-dot:focus-visible{outline:0;box-shadow:var(--focus)}.motion-dot[aria-pressed="true"]{background:var(--brand-soft);border-color:var(--brand);color:var(--brand-strong);font-weight:700}.swatch:focus-visible{outline:0;box-shadow:var(--focus)}.footer{padding:64px 0;color:var(--tertiary);font-size:12px;border-top:1px solid var(--line)}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.side{display:none}.menu{display:block}.mobile-nav{position:fixed;top:64px;left:12px;right:12px;z-index:60;display:none;padding:8px;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow-md)}.mobile-nav.open{display:grid;gap:2px}.mobile-nav a{padding:11px 12px;border-radius:10px;color:var(--secondary);font-size:13px;font-weight:650}.mobile-nav a:hover,.mobile-nav a:focus-visible{background:var(--surface-subtle);color:var(--ink)}.mobile-nav a:focus-visible{outline:0;box-shadow:var(--focus)}.wrap{padding:0 20px}.card,.card.wide,.card.third{grid-column:1/-1}.swatches{grid-template-columns:repeat(3,1fr)}.platform{grid-template-columns:1fr}}
+@media(max-width:560px){.hero{padding-top:64px}.hero h1{font-size:48px}.section{padding:64px 0}.swatches{grid-template-columns:repeat(2,1fr)}.state-grid{grid-template-columns:1fr 1fr}.head h2{font-size:30px}.card{padding:22px 0}.stage{padding:22px}.ids-btn{min-height:48px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}.ids-btn:active,.motion-dot:hover,.motion-dot:active{transform:none!important}}
+</style>
+</head>
+<body><a class="skip" href="#main-content">Skip to content</a>
+<header class="top"><div class="topin">
+<a class="brand" href="./"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><path fill="var(--brand)" d="M32 4c8 0 13 8 12 16 8-1 16 4 16 12s-8 13-16 12c1 8-4 16-12 16s-13-8-12-16C12 45 4 40 4 32s8-13 16-12C19 12 24 4 32 4Z"/><circle cx="32" cy="32" r="9" fill="white"/></svg>itunda.</a>
+<span class="crumb">/ Design System / Showcase</span><span class="spacer"></span><button class="menu" aria-expanded="false" aria-controls="mobile-nav" id="menu" type="button" aria-label="Open design system navigation">☰</button><button class="theme" id="theme" type="button" aria-label="Switch to dark mode" aria-pressed="false">☾</button>
+</div></header><nav id="mobile-nav" class="mobile-nav" aria-label="Mobile design system navigation" hidden><a href="#overview">Introduction</a><a href="#principles">Principles</a><a href="#foundations">Foundations</a><a href="#components">Components</a><a href="#accessibility">Accessibility</a><a href="#platforms">Platforms</a></nav>
+<div class="layout">
+<aside class="side">
+<div class="side-group"><div class="side-title">Overview</div><a class="active" href="#overview">Introduction</a><a href="#principles">Principles</a><a href="#foundations">Foundations</a><a href="#components">Components</a></div>
+<div class="side-group"><div class="side-title">Foundations</div><a href="#color">Color</a><a href="#type">Typography</a><a href="#spacing">Spacing</a><a href="#motion">Motion</a></div>
+<div class="side-group"><div class="side-title">Components</div><a href="#actions">Actions</a><a href="#forms">Forms</a><a href="#selection">Selection</a><a href="#navigation">Navigation</a><a href="#feedback">Feedback</a><a href="#states">States</a></div>
+<div class="side-group"><div class="side-title">Quality</div><a href="#accessibility">Accessibility</a><a href="#platforms">Platforms</a><a href="../components/">Component catalog →</a><a href="../patterns/">Patterns →</a><a href="https://itunda-rw.github.io/itundaface/">ItundaFace →</a></div>
+</aside>
+<main class="main" id="main-content"><div class="wrap">
+<section class="hero" id="overview">
+<div class="kicker">Itunda · IDS 3.1</div>
+<h1>The current Itunda visual language.</h1>
+<p>This showcase applies product-first hierarchy, generous rhythm, precise typography and quiet surfaces inspired by modern Korean fintech systems—while keeping Itunda Indigo, our identity, semantics and platform contracts distinctly Itunda.</p>
+<div class="hero-meta"><span class="chip brand-chip"><i aria-hidden="true"></i>Itunda Indigo #7472F4</span><span class="chip">4px spacing rhythm</span><span class="chip">Pretendard</span><span class="chip">Semantic tokens</span><span class="chip">Native behavior</span><span class="chip">Web · Android · iOS</span></div>
+</section>
+
+<section class="section" id="principles">
+<div class="head"><div class="eyebrow">01 · Principles</div><h2>Inspired by the discipline, not the identity.</h2><p>Itunda borrows proven design-system principles—clear hierarchy, compact type steps, consistent spacing, calm surfaces and obvious actions—then applies them to its own product language.</p></div>
+<div class="grid">
+<article class="card third"><h3>One core message</h3><p>Every product surface should make its purpose obvious before the user studies the controls.</p><div class="token"><b>purpose → context → action</b></div></article>
+<article class="card third"><h3>Hierarchy first</h3><p>Large type is reserved for meaningful product moments. Most UI stays compact and scannable.</p><div class="token"><b>display → title → body → caption</b></div></article>
+<article class="card third"><h3>Rhythm over decoration</h3><p>A 4px base and predictable 8/12/16/24/32 steps create structure without excessive containers.</p><div class="token"><b>4 · 8 · 12 · 16 · 24 · 32</b></div></article>
+<article class="card third"><h3>One decision at a time</h3><p>Each surface gets a clear primary action. Secondary choices stay quiet until they are needed.</p><div class="token"><b>primary → secondary → tertiary</b></div></article>
+<article class="card third"><h3>Context before controls</h3><p>Explain what is happening before asking for a choice. Controls should answer a known question, not create one.</p><div class="token"><b>context → choice → confirmation</b></div></article>
+<article class="card third"><h3>Itunda signature</h3><p>Indigo remains the brand anchor. Reference-inspired neutrals never replace the Itunda identity.</p><div class="token"><b>#7472F4 · #625FE6</b></div></article>
+<article class="card third"><h3>Value before action</h3><p>Show why a task matters before presenting the control. The user should understand the benefit before committing attention.</p><div class="token"><b>value → context → action</b></div></article>
+<article class="card third"><h3>Explain why</h3><p>When a request needs trust, give the reason close to the decision. Explanation should reduce uncertainty, not add another step.</p><div class="token"><b>reason → choice → recovery</b></div></article>
+</div>
+</section>
+
+<section class="section" id="foundations">
+<div class="head"><div class="eyebrow">02 · Foundations</div><h2>Small decisions, repeated consistently.</h2><p>The showcase uses the current IDS token language rather than the older standalone blue palette. Brand color is an identity role; components consume semantic roles. Layout stays intentionally quiet so hierarchy comes from content, not chrome.</p></div>
+<div class="grid">
+<article class="card wide" id="color"><h3>Color roles</h3><p>Indigo is the current Itunda brand role. Neutrals carry most of the interface; semantic colors communicate intent.</p><div class="swatches"><button class="swatch itunda-brand" type="button" aria-label="Copy Itunda Indigo #7472F4" data-copy="#7472F4">brand<br>#7472F4</button><button class="swatch strong" type="button" aria-label="Copy strong indigo #625FE6" data-copy="#625FE6">strong<br>#625FE6</button><button class="swatch soft" type="button" aria-label="Copy brand soft #F0EFFF" data-copy="#F0EFFF">brand soft<br>#F0EFFF</button><button class="swatch ink" type="button" aria-label="Copy text #191F28" data-copy="#191F28">text<br>#191F28</button><button class="swatch surface" type="button" aria-label="Copy surface #F7F8FA" data-copy="#F7F8FA">surface<br>#F7F8FA</button></div></article>
+<article class="card" id="type"><h3>Typography</h3><p>Pretendard-first typography with explicit scale and line-height.</p><div class="type-display">RWF 248,000</div><div class="type-row"><b>Display</b><span>24 / 32 · 700</span></div><div class="type-row"><b>Body</b><span>16 / 24 · 400</span></div><div class="type-row"><b>Label</b><span>15 / 20 · 500</span></div><div class="type-row"><b>Caption</b><span>13 / 18 · 400</span></div><div class="heading-scale" style="margin-top:18px"><div><b style="font-size:32px">H1</b><span>32 / 40 · 700</span></div><div><b style="font-size:24px">H2</b><span>24 / 32 · 700</span></div><div><b style="font-size:18px">H3</b><span>18 / 24 · 700</span></div></div></article>
+<article class="card" id="spacing"><h3>Spacing</h3><p>4px base rhythm, from micro gaps to major sections.</p><div class="scale"><div class="scale-row"><i class="bar" style="width:4px"></i>4 · micro</div><div class="scale-row"><i class="bar" style="width:8px"></i>8 · control</div><div class="scale-row"><i class="bar" style="width:12px"></i>12 · inline</div><div class="scale-row"><i class="bar" style="width:16px"></i>16 · content</div><div class="scale-row"><i class="bar" style="width:24px"></i>24 · group</div><div class="scale-row"><i class="bar" style="width:32px"></i>32 · major group</div><div class="scale-row"><i class="bar" style="width:40px"></i>40 · section</div><div class="scale-row"><i class="bar" style="width:64px"></i>64 · major</div></div></article>
+<article class="card" id="motion"><h3>Motion</h3><p>Motion communicates cause and effect and respects reduced-motion preferences.</p><div class="token"><b>fast</b> 140ms<br><b>normal</b> 220ms<br><b>slow</b> 420ms<br><b>reduced</b> 0ms</div><div class="motion-demo" role="group" aria-label="Motion timing preview"><span class="help">Preview timing</span><button class="motion-dot fast" type="button" aria-pressed="false">Fast</button><button class="motion-dot normal" type="button" aria-pressed="true">Normal</button><button class="motion-dot slow" type="button" aria-pressed="false">Slow</button><button class="motion-dot reduced" type="button" aria-pressed="false">Reduced</button></div></article>
+</div>
+</section>
+
+<section class="section" id="components">
+<div class="head"><div class="eyebrow">03 · Components</div><h2>Real component states, not static mockups.</h2><p>These examples intentionally show the updated component contract: hierarchy, state, validation, selection and accessibility behavior.</p></div>
+<div class="grid">
+<article class="card wide" id="actions"><h3>Actions have a clear order.</h3><p>Primary actions carry the task forward. Secondary actions remain available without competing for attention; destructive actions are unmistakable.</p><div class="stage"><div class="button-row"><button class="ids-btn">Continue</button><button class="ids-btn secondary">Secondary</button><button class="ids-btn tertiary">Tertiary</button><button class="ids-btn danger">Delete</button><button class="ids-btn" disabled>Disabled</button><button class="ids-btn loading"><span class="spinner" aria-hidden="true"></span>Updating</button></div></div></article>
+<article class="card" id="forms"><h3>Inputs explain themselves.</h3><p>Labels, help, validation and recovery stay close to the value they describe.</p><div class="field"><label for="phone">Phone number</label><input id="phone" class="input" value="+250 788 123 456" autocomplete="tel" inputmode="tel"><span class="help">Used to identify your Itunda account.</span></div><div style="height:14px"></div><div class="field"><label for="amount">Amount</label><input id="amount" class="input invalid" value="RWF -500" aria-invalid="true" aria-describedby="amount-error"><span class="error" id="amount-error" role="alert">Enter an amount greater than zero.</span></div></article>
+<article class="card" id="selection"><h3>State is always legible.</h3><p>Checkbox, radio and switch expose state through native semantics, shape and position—not color alone.</p><div class="control-list">
+<label class="check"><input type="checkbox" checked><span class="box" aria-hidden="true"></span><span class="control-copy"><b>Remember this device</b><small>Stay signed in on this phone.</small></span></label>
+<label class="check"><input type="checkbox"><span class="box" aria-hidden="true"></span><span class="control-copy"><b>Send notifications</b><small>Receive account activity alerts.</small></span></label>
+<label class="switch"><input id="demo-switch" type="checkbox" checked><span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span><span class="control-copy"><b>Biometric unlock</b><small>Use device security to unlock Itunda.</small></span></label>
+</div></article>
+<article class="card" id="navigation"><h3>Navigation stays lightweight.</h3><p>Selected state is explicit while the content remains the focus of the screen.</p><div class="tabs" role="tablist" aria-label="Account views"><button class="tab" id="tab-overview" role="tab" aria-selected="true" aria-controls="tab-panel-overview" tabindex="0">Overview</button><button class="tab" id="tab-activity" role="tab" aria-selected="false" aria-controls="tab-panel-activity" tabindex="-1">Activity</button><button class="tab" id="tab-settings" role="tab" aria-selected="false" aria-controls="tab-panel-settings" tabindex="-1">Settings</button></div><div class="stage" style="margin-top:14px"><div id="tab-panel-overview" role="tabpanel" tabindex="0"><b>Overview</b><p style="margin:6px 0 0;color:var(--secondary);font-size:13px">Your current balance and account summary.</p></div><div id="tab-panel-activity" role="tabpanel" tabindex="0" hidden><b>Activity</b><p style="margin:6px 0 0;color:var(--secondary);font-size:13px">Recent account activity and transaction history.</p></div><div id="tab-panel-settings" role="tabpanel" tabindex="0" hidden><b>Settings</b><p style="margin:6px 0 0;color:var(--secondary);font-size:13px">Account preferences and security controls.</p></div></div></article>
+<article class="card wide" id="feedback"><h3>Feedback leads to recovery.</h3><p>Success confirms the result. Errors explain the problem and point toward the next useful action.</p><div class="grid" style="gap:10px"><div class="card" style="grid-column:span 6;padding:16px"><div class="alert">Identity verified. Your account is ready.</div></div><div class="card" style="grid-column:span 6;padding:16px"><div class="alert error" role="alert">We couldn't verify the phone number. Check the number and try again.</div></div></div></article>
+<article class="card full" id="states"><h3>Design for the whole state.</h3><p>Component completeness includes loading, disabled, error and recovery—not only the happy path.</p><div class="state-grid"><div class="state"><b>Default</b><span>Ready for interaction</span></div><div class="state"><b>Loading</b><span>Progress without layout jump</span></div><div class="state"><b>Disabled</b><span>Unavailable but understandable</span></div><div class="state"><b>Error</b><span>Recovery is explained</span></div></div><div class="stage" style="margin-top:16px"><b>Recovery pattern</b><p style="margin:6px 0 0;color:var(--secondary);font-size:13px">Name the problem → explain what happened → give one clear next action.</p><div class="button-row" style="margin-top:14px"><button class="ids-btn">Try again</button><button class="ids-btn tertiary">Use another method</button></div></div></article>
+<article class="card full">
+<h3>List rows and financial information</h3><p>Primary content, metadata and values align for quick scanning.</p>
+<div class="list"><div class="row"><div class="avatar" aria-hidden="true">M</div><div class="grow"><div class="title">Mobile money</div><div class="meta">Today · 14:20</div></div><div class="amount" aria-label="Minus 8,500 Rwandan francs">− RWF 8,500</div></div><div class="row"><div class="avatar" aria-hidden="true">C</div><div class="grow"><div class="title">Card payment</div><div class="meta">Yesterday · 09:10</div></div><div class="amount" aria-label="42,000 Rwandan francs">RWF 42,000</div></div><div class="row"><div class="avatar" aria-hidden="true">R</div><div class="grow"><div class="title">Rwanda Utilities</div><div class="meta">Sep 25 · Electricity</div></div><div class="amount" aria-label="Minus 18,300 Rwandan francs">− RWF 18,300</div></div></div>
+</article>
+</div>
+</section>
+
+<section class="section" id="accessibility">
+<div class="head"><div class="eyebrow">04 · Quality</div><h2>Quality is what still works under pressure.</h2><p>The same product quality rules should be visible to designers and developers: semantics, focus, content resilience, reduced motion and platform parity.</p></div>
+<div class="grid">
+<article class="card"><h3>Accessibility</h3><div id="ids-status" class="help" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Ready</div><div class="token">native semantics<br>accessible names<br>descriptions + errors<br>44px minimum target<br>keyboard focus<br>screen-reader state<br>large-text resilience</div><div class="stage" style="margin-top:16px"><b>WCAG 2.2 AA target</b><p style="margin:6px 0 0;color:var(--secondary);font-size:13px;line-height:1.6">Design and implementation target WCAG 2.2 AA. This showcase documents the contract; product releases still require platform-specific accessibility verification.</p></div></article>
+<article class="card"><h3>Elevation & surfaces</h3><div class="token">surface 0 · no elevation<br>surface 1 · subtle card separation<br>surface 2 · overlay / floating content</div><div style="display:flex;gap:10px;margin-top:14px"><div style="width:52px;height:40px;border-radius:var(--radius-md);background:var(--surface);box-shadow:var(--shadow-sm)"></div><div style="width:52px;height:40px;border-radius:var(--radius-md);background:var(--surface);box-shadow:var(--shadow-md)"></div><div style="width:52px;height:40px;border-radius:var(--radius-md);background:var(--surface);box-shadow:var(--shadow-lg)"></div></div></article><article class="card"><h3>Content resilience</h3><div class="token">long labels wrap<br>localized strings expand<br>amounts remain readable<br>validation stays visible<br>large text preserves hierarchy<br>RTL-safe expansion<br>no color-only meaning</div></article>
+<article class="card full" id="platforms"><h3>One contract, native implementations</h3><p>The visual language is shared, while platform behavior stays native.</p><div class="platform"><div><strong>Web</strong><span>React + Web IDS<br>semantic HTML · keyboard · responsive layout</span></div><div><strong>Android</strong><span>Kotlin + Jetpack Compose<br>TalkBack · font scaling · native motion</span></div><div><strong>iOS</strong><span>Swift + SwiftUI<br>VoiceOver · Dynamic Type · native controls</span></div></div></article>
+</div>
+</section>
+
+<section class="section">
+<div class="head"><div class="eyebrow">05 · Product language</div><h2>Make the next step obvious.</h2><p>IDS should disappear into the product. The customer should understand the value, the context and the next action without learning the interface first.</p></div>
+<div class="stage"><div style="max-width:560px"><div class="chip">Neighborhood Marketplace</div><h3 style="font-size:28px;letter-spacing:-.04em;margin:14px 0 8px">Find what you need nearby.</h3><p style="color:var(--secondary);line-height:1.6;margin:0 0 18px">Simple hierarchy, familiar controls and clear next actions — with Itunda Indigo reserved for moments that need attention.</p><div class="button-row"><button class="ids-btn">Explore marketplace</button><button class="ids-btn secondary">View saved items</button></div></div></div>
+</section>
+
+<div class="footer">Itunda Design System · IDS 3.1 · current Web showcase · semantic brand role #7472F4</div>
+</div></main></div>
+<script>
+(function(){
+  const root=document.documentElement;
+  const button=document.getElementById('theme');
+  const saved=localStorage.getItem('itunda-ids-theme');
+  if(saved==='dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) root.dataset.theme='dark';
+
+  function syncTheme(){
+    const dark=root.dataset.theme==='dark';
+    button.textContent=dark?'☀':'☾';
+    button.setAttribute('aria-pressed',String(dark));
+    button.setAttribute('aria-label',dark?'Switch to light mode':'Switch to dark mode');
+  }
+  syncTheme();
+  const menu=document.getElementById('menu');
+  const mobileNav=document.getElementById('mobile-nav');
+  if(menu&&mobileNav){
+    menu.addEventListener('click',function(){
+      const open=menu.getAttribute('aria-expanded')==='true';
+      menu.setAttribute('aria-expanded',String(!open));
+      menu.setAttribute('aria-label',open?'Open design system navigation':'Close design system navigation');
+      menu.textContent=open?'☰':'×';
+      mobileNav.hidden=open;
+      mobileNav.classList.toggle('open',!open);
+      if(!open) mobileNav.querySelector('a')?.focus();
+    });
+    mobileNav.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{
+      mobileNav.hidden=true;
+      mobileNav.classList.remove('open');
+      menu.setAttribute('aria-expanded','false');
+      menu.setAttribute('aria-label','Open design system navigation');
+      menu.textContent='☰';
+    }));
+  }
+  button.addEventListener('click',function(){
+    root.dataset.theme=root.dataset.theme==='dark'?'light':'dark';
+    if(status)status.textContent=root.dataset.theme==='dark'?'Dark mode enabled':'Light mode enabled';
+    localStorage.setItem('itunda-ids-theme',root.dataset.theme);
+    syncTheme();
+  });
+
+  const status=document.getElementById('ids-status');const selectTab=(tab,focus=true)=>{const tabs=[...document.querySelectorAll('.tab')];tabs.forEach(t=>{const selected=t===tab;t.setAttribute('aria-selected',String(selected));t.tabIndex=selected?0:-1;const panel=document.getElementById(t.getAttribute('aria-controls'));if(panel)panel.hidden=!selected;});if(focus)tab.focus();if(status)status.textContent=tab.textContent+' tab selected';};document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=>selectTab(tab,false));tab.addEventListener('keydown',e=>{const tabs=[...document.querySelectorAll('.tab')];const i=tabs.indexOf(tab);let next=null;if(e.key==='ArrowRight')next=tabs[(i+1)%tabs.length];if(e.key==='ArrowLeft')next=tabs[(i-1+tabs.length)%tabs.length];if(e.key==='Home')next=tabs[0];if(e.key==='End')next=tabs[tabs.length-1];if(next){e.preventDefault();selectTab(next);}});});
+  document.querySelectorAll('.motion-dot').forEach(button=>button.addEventListener('click',()=>{
+    document.querySelectorAll('.motion-dot').forEach(b=>b.setAttribute('aria-pressed','false'));
+    button.setAttribute('aria-pressed','true');
+    const ms=button.classList.contains('fast')?140:button.classList.contains('normal')?220:button.classList.contains('slow')?420:0;
+    const demo=document.querySelector('.motion-demo');
+    if(ms>0) demo?.animate([{transform:'translateY(0)'},{transform:'translateY(-3px)'},{transform:'translateY(0)'}],{duration:ms,iterations:1,easing:'ease-out'});
+    if(status) status.textContent=button.textContent.trim()+' motion preview';
+  }));
+  document.querySelectorAll('.swatch').forEach(swatch=>{swatch.tabIndex=0;swatch.setAttribute('role','button');const copy=async()=>{const match=swatch.textContent.match(/#[0-9A-Fa-f]{6}/);if(match&&navigator.clipboard){try{await navigator.clipboard.writeText(match[0]);swatch.dataset.copied='true';if(status)status.textContent=match[0]+' copied';setTimeout(()=>delete swatch.dataset.copied,1000);}catch(_){}}};swatch.addEventListener('click',copy);swatch.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();copy();}});});
+  const links=[...document.querySelectorAll('.side a[href^="#"]')];
+  const sections=links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+  if('IntersectionObserver' in window){
+    const observer=new IntersectionObserver(entries=>{
+      entries.forEach(entry=>{
+        if(!entry.isIntersecting) return;
+        links.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+entry.target.id));
+      });
+    },{rootMargin:'-18% 0px -68% 0px',threshold:0});
+    sections.forEach(section=>observer.observe(section));
+  }
+})();
+
+</script>
+</body>
+</html>

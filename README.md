@@ -15,22 +15,38 @@ Toss's actual architecture in [docs/TOSS_ARCHITECTURE_FACTS.md](docs/TOSS_ARCHIT
 Top-level layout (restructured 2026-07-11 for naming clarity — see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §5):
 
-- `services/backend/`: the canonical backend — real Kotlin + Spring Boot + MySQL, covering
-  auth/wallet/transfer/bills/loans/contacts/stocks/savings/insurance/notifications/discover/system,
-  verified live against real MySQL.
+- `services/backend/`: the canonical backend — real Kotlin + Spring Boot + Spring Data JPA +
+  MySQL + Flyway, covering every product vertical (auth/wallet/transfer/bills/loans/contacts/
+  stocks/savings/insurance/eats/commerce+shop/marketplace+hood/rideshare/transit/certificate/
+  agents/partners/identity/knowledge/notifications/discover/system and more), verified live
+  against real MySQL. 13 of its modules (card/insurance/agents/transit/certificate/bills/
+  vehicle/partners/identity/overview/knowledge/notifications/analytics) are also independently
+  deployable as their own Spring Boot services — see `docs/DEPLOYMENT.md`.
 - `services/microservices/`: a real, independently-deployable per-bounded-context MSA
   prototype (`payment-service`, `ledger-service`) — less feature coverage than `services/backend`
   but architecturally closer to Toss's actual documented MSA pattern. Not reconciled with
   `services/backend` yet.
-- `services/micro-frontends/`, `services/api-gateway/`: web/BFF surfaces, demo-to-stub depth.
+- `services/micro-frontends/`: 7 real Vite/Module-Federation apps — `bank-mfe` (the real,
+  deployed consumer super-app), `host-app` (a mostly-unused 2-tab demo shell), `kyc-mfe`,
+  `ops-mfe` (the real internal admin/ops frontend), `merchant-mfe`, `maps-mfe`, `pay-checkout`.
+- `services/api-gateway/`: a real Express reverse proxy — rate limiting (incl. a stricter
+  money-movement limiter), a hand-rolled per-target circuit breaker, `X-Request-ID`
+  propagation, security headers, Prometheus metrics, bounded upstream timeouts with fail-fast
+  503/504 — not a stub.
 - `services/blog/`: the `tech.itunda.rw` engineering blog, modeled on toss.tech.
+- `services/developer-docs/`: the public "Pay with itunda" API reference for external
+  integrators, modeled on docs.tosspayments.com — a small static site (same pattern as
+  `services/blog`), not yet deployed anywhere. Content is a direct port of
+  `docs/PAYMENTS.md`'s own accurate internal reference; update that file first, then this one.
 - `packages/saronite/`: mini-app SDK modeled on Toss's real open-source `granite` — currently a
   hand-rolled approximation, not yet built on Granite itself.
 - `android/`, `ios/`: native mobile shells with real bounded-context modules (design system,
-  ledger, risk, identity, banking, payments) — Android verified compiling and running on-device;
-  iOS ported but not build-verified in this environment (see docs/ARCHITECTURE.md §3). Each
-  platform's own `sdk/pay`/`SDK/Pay` module holds itunda's own (in-progress) payment SDK,
-  `ItundaPayments`.
+  ledger, risk, identity, banking, payments) — both platforms verified building and running
+  (Android: `./gradlew :app:compileDebugKotlin` / real on-device runs; iOS: full `ItundaApp`
+  scheme `xcodebuild` against the Simulator, `BUILD SUCCEEDED`, a routine part of this repo's
+  own verification habit — see `docs/ARCHITECTURE.md` §3 for the fuller per-Feature-module
+  breakdown). Each platform's own `sdk/pay`/`SDK/Pay` module holds itunda's own (in-progress)
+  payment SDK, `ItundaPayments`.
 - `infra/`: Kubernetes manifests and other infrastructure config.
 
 ## Toss-Aligned Product System
@@ -76,8 +92,8 @@ The repository currently demonstrates the product shape and system contracts. Tr
 ## Local Development
 
 Install JS dependencies (root workspace covers `packages/shared-utils`,
-`services/micro-frontends/*`, `services/api-gateway`; `packages/saronite` and `services/blog` are
-separate npm workspaces, install those independently):
+`services/micro-frontends/*`, `services/api-gateway`; `packages/saronite`, `services/blog`, and
+`services/developer-docs` are separate npm workspaces, install those independently):
 
 ```bash
 yarn install
@@ -111,8 +127,23 @@ yarn dev:ecosystem:local
 That starts `infra/docker-compose.yml` first and maps MySQL/Redis/Kafka to `3307`, `16379`,
 and `9092`.
 
-If you only want the web shell, `yarn dev` now starts `bank-mfe`, `kyc-mfe`, and `host-app`
-together instead of only the host shell.
+### Logging in locally
+
+`SeedDataRunner` (`services/backend/app/src/main/kotlin/rw/itunda/app/SeedDataRunner.kt`) seeds
+two real accounts on every backend startup — the same two logins on web, Android, and iOS:
+
+| Phone number      | Password      | What it is                                         |
+| ------------------ | ------------- | --------------------------------------------------- |
+| `+250788123456`    | `password123` | Demo consumer account — funded balances, contacts, an active loan, a savings goal |
+| `+250788999000`    | `admin123`    | Admin account — the only way to reach `/api/v1/system/**` locally without hand-editing the database |
+
+These aren't secrets worth protecting — itunda has no real production/live tier yet (see
+"Reality Check" above), so every credential in this repo is honestly a sandbox one. Don't reuse
+either password anywhere real.
+
+If you only want the web shell, `yarn dev` now starts `bank-mfe`, `kyc-mfe`, `ops-mfe`, and
+`host-app` together instead of only the host shell. `merchant-mfe`/`maps-mfe`/`pay-checkout`
+are 3 more real micro-frontends, run individually (`yarn workspace <name> run dev`).
 
 Manual pieces, if you want them separately:
 
@@ -128,6 +159,45 @@ Build the full web surface:
 ```bash
 yarn build
 ```
+
+### Android
+
+```bash
+cd android
+./gradlew :app:compileDebugKotlin   # verify it compiles
+./gradlew :app:assembleDebug        # build a real debug APK
+./gradlew :architecture-test:test   # Konsist Feature-module boundary check
+```
+
+Open the `android/` directory in Android Studio for day-to-day work; the Gradle sync there
+covers the same modules. The app talks to whatever backend `NetworkClient`'s base URL points
+to — a real device needs `adb reverse` (or an equivalent tunnel) to reach a backend running on
+your machine, since `10.0.2.2` only resolves from the emulator.
+
+### iOS
+
+```bash
+cd ios
+tuist generate --no-open   # regenerate Itunda.xcworkspace from Project.swift
+pod install                # after every tuist generate, not just the first time
+```
+
+Then open `Itunda.xcworkspace` (not `Itunda.xcodeproj`) in Xcode and run the `ItundaApp`
+scheme. From the command line:
+
+```bash
+xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp \
+  -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO
+```
+
+A new `.swift` file needs `tuist generate` re-run before Xcode will see it — this is the most
+common "why won't this compile" surprise on this platform.
+
+### CI
+
+`.github/workflows/ci-cd.yml` is the primary pipeline. `.woodpecker/*.yml` is a parallel,
+independent, open-source (Apache 2.0) CI path running on itunda-owned infrastructure instead
+of GitHub-hosted runners — see [docs/CI_WOODPECKER_SETUP.md](docs/CI_WOODPECKER_SETUP.md).
 
 ## Design Principles
 

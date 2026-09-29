@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Real localization for :features:wealth:impl (Stocks product-completeness pass,
+     2026-09-08): this module had zero string-resource localization at all (every UI
+     string was a raw Kotlin literal), unlike sibling feature modules
+     (:features:banking:impl, :features:home:impl, :features:maps:impl all ship real
+     values-rw/values-fr). Deliberately scoped to the primary, always-visible surface
+     (the Market/Portfolio/Watchlist tab labels, the Buy/Sell trade button and its
+     working state, the "Add funds" CTA), not every secondary/edge-case string on
+     these screens, matching the Hood/Maps i18n passes' own scoping precedent. All
+     translations here are a good-faith, careful effort, NOT verified by a native
+     speaker of either language, and should get real native-speaker review before
+     being treated as production-final, same honesty standard every other localized
+     module in this repo already holds itself to. -->
+<resources>
+    <string name="invest_tab_market">Market</string>
+    <string name="invest_tab_portfolio">Portfolio</string>
+    <string name="invest_tab_watchlist">Watchlist</string>
+    <string name="invest_buy">Buy</string>
+    <string name="invest_sell">Sell</string>
+    <string name="invest_working">Working…</string>
+    <string name="invest_add_funds">Add funds</string>
+</resources>

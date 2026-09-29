@@ -1,6 +1,8 @@
 package rw.itunda.app.miniapps
 
 import android.app.Application
+import coil.ImageLoader
+import coil.ImageLoaderFactory
 import com.brickmodule.BrickModulePackage
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
@@ -8,8 +10,13 @@ import com.facebook.react.ReactHost
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import rw.itunda.app.BuildConfig
-import rw.itunda.app.network.NetworkClient
-import rw.itunda.app.network.SessionManager
+import rw.itunda.app.push.NotificationChannels
+import rw.itunda.core.network.AppLocalePreference
+import rw.itunda.core.network.MapConfig
+import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.SessionManager
+import rw.itunda.core.network.TextScalePreference
+import rw.itunda.core.network.ThemePreference
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -40,7 +47,20 @@ import java.util.concurrent.TimeUnit
  * `getDefaultReactHost`'s `jsBundleFilePath` parameter, which accepts a real file
  * path directly -- the modern equivalent of the old `getJSBundleFile()` override.
  */
-class ItundaApplication : Application(), ReactApplication {
+class ItundaApplication : Application(), ReactApplication, ImageLoaderFactory {
+
+    // Real Toss motion research (2026-08-12): "loading moments get softened," the same
+    // principle this session already applied to skeleton loading/celebration screens,
+    // extended here to real image loads -- 18 real AsyncImage call sites across 6
+    // modules (Marketplace/Shop/Eats/Talk/Maps listings, avatars) all used Coil's raw
+    // defaults with no crossfade, a hard pop-in the moment each image finished
+    // downloading. Coil's own documented ImageLoaderFactory mechanism applies this
+    // app-wide from one place -- every AsyncImage call automatically picks up
+    // Context.imageLoader, so no per-call-site changes were needed or made.
+    override fun newImageLoader(): ImageLoader =
+        ImageLoader.Builder(this)
+            .crossfade(true)
+            .build()
 
     override val reactHost: ReactHost by lazy {
         // Same conditional logic as the pre-rewrite getJSBundleFile() override:
@@ -87,8 +107,16 @@ class ItundaApplication : Application(), ReactApplication {
         loadReactNative(this)
         // Real login/session flow (2026-07-11) -- must run before any screen can make
         // an authenticated request. See network/NetworkClient.kt/SessionManager.kt.
-        NetworkClient.init(this)
+        NetworkClient.init(this, rw.itunda.app.BuildConfig.API_BASE_URL)
+        // Real BuildConfig-avoidance (2026-07-23) -- see MapConfig.kt's own doc comment.
+        MapConfig.init(rw.itunda.app.BuildConfig.TILES_BASE_URL, rw.itunda.app.BuildConfig.GLYPHS_BASE_URL)
         SessionManager.restoreSession()
+        ThemePreference.restore()
+        AppLocalePreference.restore(this)
+        TextScalePreference.restore()
+        // Real push notifications (2026-08-12) -- channels must exist before any
+        // notification can post; see NotificationChannels.kt's own doc comment.
+        NotificationChannels.createAll(this)
     }
 }
 

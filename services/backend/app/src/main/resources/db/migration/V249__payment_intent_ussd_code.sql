@@ -1,0 +1,1 @@
+ALTER TABLE payment_intents ADD COLUMN ussd_code VARCHAR(6) NULL UNIQUE;

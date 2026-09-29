@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="overview_card_number">Carte •••• %1$s</string>
+    <string name="overview_card_active">Active</string>
+    <string name="overview_card_frozen">Bloquée</string>
+    <string name="overview_teaser_cards">Pas encore de carte</string>
+    <string name="overview_teaser_cards_cta">Obtenir une carte</string>
+    <string name="pay_points_pay_money_row">Points · Pay Money</string>
+    <string name="pay_your_coupons_row">Vos coupons</string>
+    <string name="pay_request_money_row">Demander de l’argent</string>
+    <string name="pay_coupon_box_title">Boîte à coupons</string>
+    <string name="pay_coupons_received">Coupons reçus %1$d</string>
+    <string name="pay_coupons_used_expired">Utilisés / expirés %1$d</string>
+    <string name="pay_coupons_empty_title">Vous n\'avez aucun coupon</string>
+    <string name="pay_coupons_empty_subtitle">Envie de coupons disponibles maintenant ?</string>
+    <string name="pay_coupons_find_new">Trouver de nouveaux coupons</string>
+    <string name="pay_coupons_none_used">Vous n\'avez encore utilisé aucun coupon.</string>
+    <string name="pay_membership_title">Adhésion</string>
+    <string name="pay_membership_total">Adhésions liées</string>
+    <string name="pay_membership_available_points">Points disponibles</string>
+    <string name="pay_membership_pay_money">Pay Money</string>
+    <string name="pay_membership_store_points">Points en magasin</string>
+    <string name="home_cash_out">Retirer</string>
+    <string name="home_send">Envoyer</string>
+    <string name="back">Retour</string>
+    <string name="pay_money_detail_title">itunda Pay Money</string>
+    <string name="pay_money_add">Ajouter de l\'argent</string>
+    <string name="pay_money_history_only">Voir uniquement l\'historique des paiements</string>
+    <string name="pay_money_empty">Aucun détail trouvé</string>
+    <string name="add_money_title">Ajouter de l\'argent</string>
+    <string name="add_money_from">Depuis</string>
+    <string name="add_money_amount">Montant (RWF)</string>
+    <string name="add_money_no_source">Vous n\'avez pas encore d\'autre compte itunda pour recharger.</string>
+    <string name="add_money_submit">Ajouter de l\'argent</string>
+    <string name="add_money_submitting">Ajout en cours…</string>
+    <string name="add_money_error">Impossible de terminer cette recharge.</string>
+    <string name="pay_picker_title">Choisissez comment payer</string>
+    <string name="pay_picker_recent">Récent</string>
+    <string name="pay_picker_account">Compte</string>
+    <string name="pay_picker_card">Carte</string>
+    <string name="pay_picker_linked_accounts">Comptes liés</string>
+</resources>

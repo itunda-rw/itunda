@@ -11,6 +11,7 @@ import rw.itunda.core.domain.GroupConversationMember
 import rw.itunda.core.domain.GroupMessage
 import rw.itunda.core.domain.GroupMessageReaction
 import rw.itunda.core.domain.Notification
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.realtime.ReactionGroup
 import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.GroupConversationMemberRepository
@@ -19,6 +20,7 @@ import rw.itunda.core.repository.GroupMessageReactionRepository
 import rw.itunda.core.repository.GroupMessageRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
+import java.security.SecureRandom
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
@@ -31,8 +33,14 @@ class AlreadyGroupMemberException(message: String) : RuntimeException(message)
 class EmptyGroupMessageException(message: String) : RuntimeException(message)
 class GroupMessageTooLongException(message: String) : RuntimeException(message)
 class GroupNameTooLongException(message: String) : RuntimeException(message)
+class GroupPhotoUrlTooLongException(message: String) : RuntimeException(message)
+class GroupDescriptionTooLongException(message: String) : RuntimeException(message)
 class GroupMessageNotFoundException(message: String) : RuntimeException(message)
+class GroupMessageDeleteForbiddenException(message: String) : RuntimeException(message)
 class InvalidGroupReactionException(message: String) : RuntimeException(message)
+class InvalidGroupMessageImageException(message: String) : RuntimeException(message)
+class InvalidGroupJoinCodeException(message: String) : RuntimeException(message)
+class InvalidGroupMessageSearchException(message: String) : RuntimeException(message)
 
 data class GroupSummary(
     val groupId: String,
@@ -53,17 +61,21 @@ data class GroupMemberInfo(val userId: String, val name: String)
  * widened `Conversation`.
  *
  * Real membership (`GroupConversationMember`), real per-member read cursors
- * (`lastReadAt`, not a per-message-per-member row -- an explicit v1 simplification,
- * see `GroupConversationMember`'s own doc comment), real notifications on every new
+ * (`lastReadAt`, which also now drives a real Kakao-style per-message read-receipt
+ * countdown -- see `getUnreadCounts`'s own doc comment), real notifications on every new
  * message to every other real member, and a real live push over the same
  * `RealtimeMessagePublisher` 1:1 messaging just added, fanned out to every member
  * instead of a single recipient. Reuses the exact same `RateLimiter` per-sender
  * convention 1:1 `MessagingService.sendMessage` already established.
  *
- * Honestly scoped v1: a group's membership is flat (no admin/owner role beyond
- * `createdBy` being recorded, no kick/promote), and there's no group photo/description
- * -- real, deliberately not attempted in this pass since the defining gap was "can more
- * than two people chat at once at all," not group-management tooling.
+ * Honestly scoped v1: a group's membership is flat -- no admin/owner role beyond
+ * `createdBy` being recorded, no kick/promote -- real, deliberately not attempted in
+ * this pass since the defining gap was "can more than two people chat at once at all,"
+ * not group-management tooling; this remains the one still-open follow-up. **Group
+ * photo/description closed 2026-07-28** -- see `setGroupPhotoUrl`/`setGroupDescription`'s
+ * own doc comments, open to any real member (same flat-membership discipline
+ * `setPinnedMessage` already established, not gated to `createdBy` since this codebase
+ * doesn't have a real admin/owner concept yet).
  */
 @Service
 class GroupMessagingService(
@@ -75,7 +87,14 @@ class GroupMessagingService(
     private val groupMessageReactionRepository: GroupMessageReactionRepository,
     private val rateLimiter: RateLimiter,
     private val realtimeMessagePublisher: RealtimeMessagePublisher,
+    private val pushNotificationService: PushNotificationService,
 ) {
+    private val secureRandom = SecureRandom()
+    // Excludes visually ambiguous characters (0/O, 1/I) -- a real, spoken/typed-aloud
+    // share code, same alphabet GroupEatsOrderService.joinCodeAlphabet already uses for
+    // an identical real invite-code convention.
+    private val joinCodeAlphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+
     @Transactional
     fun createGroup(creatorUserId: String, name: String, memberUserIds: List<String>): GroupConversation {
         val trimmedName = name.trim()
@@ -93,9 +112,15 @@ class GroupMessagingService(
         if (distinctOtherMembers.isEmpty()) {
             throw GroupNeedsMoreMembersException("A group needs at least one other real member")
         }
+        // Real bug found live (2026-08-02): group creation had shipped with zero rate
+        // limiting -- every other real content-creation endpoint in this codebase
+        // (MessagingService.sendMessage/toggleReaction, FamilyLinkService.inviteChild,
+        // GiftService.sendGift, etc) already has one; an authenticated caller could
+        // otherwise spam unlimited GroupConversation + member rows.
+        rateLimiter.checkLimit("messaging:group-create:$creatorUserId", limit = 20, window = Duration.ofHours(1))
         // Real N+1 fix (2026-07-19 sweep): one batch findAllById instead of one
         // findById call per invited member, same convention as
-        // WalletRepository.findByUserIdInAndType/UserRepository.findAllByPhoneNumberIn.
+        // AccountRepository.findByUserIdInAndType/UserRepository.findAllByPhoneNumberIn.
         val foundIds = userRepository.findAllById(distinctOtherMembers).map { it.id }.toSet()
         if (foundIds.size != distinctOtherMembers.size) {
             throw GroupMemberNotFoundException("No itunda account found for one of the invited members")
@@ -132,20 +157,186 @@ class GroupMessagingService(
         if (distinctOtherMembers.isEmpty()) {
             throw GroupNeedsMoreMembersException("A group needs at least one other real member")
         }
+        // Real bug found live (2026-08-02) -- see createGroup's own identical fix just
+        // above; this is the other real entry point into the same unguarded creation path.
+        rateLimiter.checkLimit("messaging:group-create:$creatorUserId", limit = 20, window = Duration.ofHours(1))
         return createGroupInternal(creatorUserId, trimmedName, distinctOtherMembers)
     }
 
-    private fun createGroupInternal(creatorUserId: String, trimmedName: String, distinctOtherMembers: List<String>): GroupConversation {
+    private fun createGroupInternal(creatorUserId: String, trimmedName: String, distinctOtherMembers: List<String>, isDirect: Boolean = false): GroupConversation {
         val group = groupConversationRepository.save(
-            GroupConversation(id = "group_${UUID.randomUUID()}", name = trimmedName, createdBy = creatorUserId),
+            GroupConversation(id = "group_${UUID.randomUUID()}", name = trimmedName, createdBy = creatorUserId, isDirect = isDirect),
         )
         val now = Instant.now()
         val members = (distinctOtherMembers + creatorUserId).map { userId ->
             GroupConversationMember(id = "group_member_${UUID.randomUUID()}", groupConversationId = group.id, userId = userId, joinedAt = now)
         }
         groupConversationMemberRepository.saveAll(members)
+        // A hidden direct-split group (isDirect) is an internal bookkeeping construct
+        // created silently the moment either participant opens their 1:1 split-bill
+        // tab -- see getOrCreateDirectSplitGroup's own doc comment. Notifying "added
+        // you to a group" for that would be a premature, confusing push before any
+        // real bill/split action has happened; only a genuinely user-facing group
+        // (createGroup/createGroupByPhoneNumbers) gets this treatment.
+        if (!isDirect) notifyAddedToGroup(distinctOtherMembers, creatorUserId, group)
         return group
     }
+
+    // Real gap found live (sibling comparison against this same class's own
+    // sendMessage/toggleReaction notification convention, 2026-09-13): a brand-new
+    // group's invited members and an existing group's newly added member both got zero
+    // notification of any kind -- no in-app Notification row, no push -- despite an
+    // ordinary group message or reaction already getting full treatment. Being invited
+    // into a conversation is objectively higher-signal than either of those.
+    private fun notifyAddedToGroup(recipientIds: List<String>, addedByUserId: String, group: GroupConversation) {
+        if (recipientIds.isEmpty()) return
+        val addedByName = userRepository.findById(addedByUserId).map { "${it.firstName} ${it.lastName}" }.orElse("Someone")
+        val title = "$addedByName added you to ${group.name}"
+        // Real N+1 fix, same batch-saveAll convention sendMessage's own identical
+        // per-recipient notification fan-out already establishes just above.
+        notificationRepository.saveAll(
+            recipientIds.map { recipientId ->
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = recipientId, type = "ADDED_TO_GROUP",
+                    title = title, body = "Tap to open the group.",
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"groupConversationId\":\"${group.id}\"}",
+                )
+            },
+        )
+        recipientIds.forEach { recipientId ->
+            runAfterCommit {
+                pushNotificationService.sendToUser(recipientId, title, "Tap to open the group.", mapOf("groupConversationId" to group.id))
+            }
+        }
+    }
+
+    // Real, unpredictable, human-shareable 6-character code -- retried on the rare
+    // collision, same defensive-uniqueness discipline
+    // GroupEatsOrderService.generateUniqueJoinCode already establishes for an identical
+    // real invite-code shape.
+    private fun generateUniqueJoinCode(): String {
+        repeat(20) {
+            val code = (1..6).map { joinCodeAlphabet[secureRandom.nextInt(joinCodeAlphabet.length)] }.joinToString("")
+            if (!groupConversationRepository.existsByJoinCode(code)) return code
+        }
+        throw IllegalStateException("Could not generate a unique join code")
+    }
+
+    /**
+     * Real KakaoTalk 오픈채팅 (Open Chat)-style public room -- anyone with the real,
+     * shareable [GroupConversation.joinCode] can join without the creator inviting them
+     * by userId/phone number first, unlike every other group creation path in this
+     * class. Sourced from KakaoTalk's own real join-by-link/search room type
+     * (kakaocorp.com/page/service/service/KakaoTalk).
+     *
+     * Deliberately does NOT port Kakao's own real "Open Profile" pseudonymous-identity
+     * layer (up to 3 per user, participate under a name distinct from your real
+     * KakaoTalk identity) -- itunda's entire identity model is KYC-verified real names
+     * tied to a real account, unlike Kakao's separate pseudonymous layer; porting that
+     * honestly needs an explicit scoping decision about whether pseudonymous
+     * participation belongs in a real-money app at all, not something to build
+     * silently as a side effect of this feature. Every open-group member here is a
+     * real, real-name itunda user, same as every other group. The 4,000-member cap and
+     * search/recommendation indexing from Kakao's own real feature are also
+     * deliberately left out of this first pass -- real scope-growers, not needed for
+     * the core "join without an invite" mechanic this closes.
+     */
+    @Transactional
+    fun createOpenGroup(creatorUserId: String, name: String): GroupConversation {
+        val trimmedName = name.trim()
+        if (trimmedName.isEmpty()) {
+            throw GroupNameRequiredException("A group needs a name")
+        }
+        if (trimmedName.length > 100) {
+            throw GroupNameTooLongException("Group name must be 100 characters or fewer")
+        }
+        rateLimiter.checkLimit("messaging:group-create:$creatorUserId", limit = 20, window = Duration.ofHours(1))
+        val group = groupConversationRepository.save(
+            GroupConversation(id = "group_${UUID.randomUUID()}", name = trimmedName, createdBy = creatorUserId, joinCode = generateUniqueJoinCode()),
+        )
+        groupConversationMemberRepository.save(
+            GroupConversationMember(id = "group_member_${UUID.randomUUID()}", groupConversationId = group.id, userId = creatorUserId, joinedAt = Instant.now()),
+        )
+        return group
+    }
+
+    /** Real join-by-code -- the other real half of [createOpenGroup]. Idempotent
+     * re-join, same "already a member" quiet-success convention
+     * `GroupEatsOrderService.join`'s own doc comment already establishes for an
+     * identical real invite-code flow, rather than erroring on a member who taps the
+     * same link twice. */
+    @Transactional
+    fun joinByCode(userId: String, joinCode: String): GroupConversation {
+        val normalized = joinCode.trim().uppercase()
+        if (normalized.isEmpty()) throw InvalidGroupJoinCodeException("A join code is required")
+        val group = groupConversationRepository.findByJoinCode(normalized)
+            ?: throw InvalidGroupJoinCodeException("No open group found for this code")
+        if (groupConversationMemberRepository.findByGroupConversationIdAndUserId(group.id, userId) == null) {
+            groupConversationMemberRepository.save(
+                GroupConversationMember(id = "group_member_${UUID.randomUUID()}", groupConversationId = group.id, userId = userId, joinedAt = Instant.now()),
+            )
+        }
+        return group
+    }
+
+    /**
+     * Real 1:1-chat split-bill support (2026-08-09, docs/DESIGN_REFERENCES.md Section
+     * 19) -- resolves (or creates) a synthetic, hidden 2-person [GroupConversation]
+     * between [userId] and [otherUserId] so `rw.itunda.splitbill.SplitBillService
+     * .createSplitBill` can back a bill split between two people talking 1:1, reusing
+     * 100% of its existing group logic unmodified rather than building a second,
+     * parallel split-bill code path for pairs.
+     *
+     * This was investigated twice before and shelved both times over the same concrete
+     * problem: a synthetic group created via the ordinary, public [createGroup] would
+     * show up in both people's real "My Groups" list -- a confusing, generically-named
+     * group neither of them asked to create. [GroupConversation.isDirect] (and
+     * [GroupConversationRepository.findByMember]'s own exclusion of it) is what actually
+     * closes that gap -- a real group row exists (SplitBillService needs one to attach
+     * to), it's just never surfaced as one.
+     *
+     * Idempotent per pair: [GroupConversationRepository.findDirectGroupBetween] reuses
+     * an existing direct group between the same two people rather than spawning a new
+     * hidden group -- and therefore a second, disconnected settlement thread -- every
+     * time they split another bill together.
+     *
+     * Real gap caught while re-reading this file's own rate-limiting discipline
+     * (2026-08-09): [createGroup]/[createGroupByPhoneNumbers] both rate-limit real group
+     * creation, but this method's first version didn't -- calling
+     * `createSplitBill.createDirectSplitBill` with a different real `otherUserId` each
+     * time would have created an unlimited number of hidden groups + member rows with no
+     * throttle at all, unlike every other creation path in this file. Rate-limited on
+     * the "creating a new one" branch only, not the "reusing an existing pair" branch,
+     * so two people who've already split a bill together aren't throttled by their own
+     * repeat, legitimate usage -- `createSplitBill`'s own `splitbill:create` limit
+     * already covers that case.
+     */
+    @Transactional
+    fun getOrCreateDirectSplitGroup(userId: String, otherUserId: String): GroupConversation {
+        if (userId == otherUserId) {
+            throw GroupNeedsMoreMembersException("A group needs at least one other real member")
+        }
+        groupConversationRepository.findDirectGroupBetween(userId, otherUserId)?.let { return it }
+        rateLimiter.checkLimit("messaging:group-create:$userId", limit = 20, window = Duration.ofHours(1))
+        val otherUser = userRepository.findById(otherUserId)
+            .orElseThrow { GroupMemberNotFoundException("No itunda account found for that user") }
+        return createGroupInternal(
+            creatorUserId = userId,
+            trimmedName = "Split with ${otherUser.firstName}",
+            distinctOtherMembers = listOf(otherUserId),
+            isDirect = true,
+        )
+    }
+
+    /**
+     * Real read-only peek at whether [userId] and [otherUserId] already have a hidden
+     * direct-split group (2026-08-09) -- unlike [getOrCreateDirectSplitGroup], never
+     * creates one. Backs a client's "show my past split bills with this person" view:
+     * opening a 1:1 conversation's split-bill tab shouldn't itself create a hidden
+     * group before any real bill exists between them.
+     */
+    fun findDirectGroup(userId: String, otherUserId: String): GroupConversation? =
+        groupConversationRepository.findDirectGroupBetween(userId, otherUserId)
 
     /** Real 404 (not 403) for a non-member -- same "don't reveal a resource exists to
      * someone who shouldn't see it" discipline `MessagingService.requireParticipant`
@@ -164,9 +355,55 @@ class GroupMessagingService(
      * group" without duplicating this same IDOR check. */
     fun getGroupForMember(userId: String, groupId: String): GroupConversation = requireMember(userId, groupId)
 
+    // Real message forwarding (2026-07-25) -- see MessageForwardService.forward's own
+    // doc comment; identical shape to MessagingService.getMessageForParticipant.
+    fun getMessageForMember(userId: String, messageId: String): GroupMessage {
+        val message = groupMessageRepository.findById(messageId).orElseThrow { GroupMessageNotFoundException("Message not found") }
+        requireMember(userId, message.groupConversationId)
+        if (message.deletedAt != null) throw GroupMessageNotFoundException("Message not found")
+        return message
+    }
+
+    /**
+     * Real @mention resolution (2026-07-25) -- see `GroupMessage.mentionedUserIds`'s own
+     * doc comment. Extracts `@Token` runs from [body] with a real regex, then resolves
+     * each token against [memberIds]'s actual first names (case-insensitive exact
+     * match) -- never trusts a client-supplied user-id list, since that would let a
+     * message claim to mention anyone, including a non-member, which would be a real
+     * IDOR-adjacent spoof (a fabricated "you were mentioned" notification to someone who
+     * never actually appeared in this conversation). A first-name collision between two
+     * real members resolves to whichever member matches first (itunda's own honest v1
+     * scoping choice -- Kakao's own product disambiguates via a real tap-to-select
+     * autocomplete in the composer, which is a client-side UI concern, not something
+     * this server-side parser can decide on the sender's behalf).
+     */
+    internal fun parseMentions(body: String, memberIds: List<String>): Set<String> {
+        if (memberIds.isEmpty()) return emptySet()
+        val members = userRepository.findAllById(memberIds).associateBy { it.firstName.lowercase() }
+        val tokens = Regex("@(\\w+)").findAll(body).map { it.groupValues[1].lowercase() }
+        return tokens.mapNotNull { token -> members[token]?.id }.toSet()
+    }
+
     @Transactional
-    fun sendMessage(userId: String, groupId: String, body: String): GroupMessage {
-        val trimmed = body.trim()
+    fun sendMessage(
+        userId: String,
+        groupId: String,
+        body: String,
+        replyToMessageId: String? = null,
+        forwardedFromMessageId: String? = null,
+        forwardedFromType: String? = null,
+        imageUrl: String? = null,
+        // Real Emoticon Store send (2026-07-26) -- see MessagingService.sendMessage's
+        // own doc comment on the identical trust boundary here (ownership already
+        // verified by EmoticonService before this is ever invoked).
+        emoticonId: String? = null,
+    ): GroupMessage {
+        // Real composer photo send (2026-07-25) -- see MessagingService.sendMessage's
+        // own doc comment for the full account; identical shape here.
+        if (imageUrl != null && !imageUrl.startsWith("/api/v1/uploads/")) {
+            throw InvalidGroupMessageImageException("imageUrl must be a real uploaded file from /api/v1/uploads")
+        }
+        val trimmed = body.trim().ifEmpty { if (emoticonId != null) "😀 Emoticon" else if (imageUrl != null) "📷 Photo" else "" }
         if (trimmed.isEmpty()) {
             throw EmptyGroupMessageException("Message body cannot be empty")
         }
@@ -179,8 +416,20 @@ class GroupMessagingService(
         rateLimiter.checkLimit("messaging:group-send:$userId", limit = 30, window = Duration.ofMinutes(1))
 
         val group = requireMember(userId, groupId)
+        replyToMessageId?.let { replyId ->
+            val replied = groupMessageRepository.findById(replyId).orElseThrow { GroupMessageNotFoundException("Message not found") }
+            if (replied.groupConversationId != groupId) throw GroupMessageNotFoundException("Message not found")
+        }
+        val memberIds = groupConversationMemberRepository.findByGroupConversationId(groupId).map { it.userId }
+        val mentionedUserIds = parseMentions(trimmed, memberIds)
         val message = groupMessageRepository.save(
-            GroupMessage(id = "group_message_${UUID.randomUUID()}", groupConversationId = groupId, senderId = userId, body = trimmed),
+            GroupMessage(
+                id = "group_message_${UUID.randomUUID()}", groupConversationId = groupId, senderId = userId, body = trimmed,
+                replyToMessageId = replyToMessageId,
+                forwardedFromMessageId = forwardedFromMessageId, forwardedFromType = forwardedFromType,
+                mentionedUserIds = mentionedUserIds.takeIf { it.isNotEmpty() }?.joinToString(","),
+                imageUrl = imageUrl, emoticonId = emoticonId,
+            ),
         )
         group.lastMessageAt = message.sentAt
         groupConversationRepository.save(group)
@@ -194,15 +443,51 @@ class GroupMessagingService(
         // uses just above.
         notificationRepository.saveAll(
             recipientIds.map { recipientId ->
+                // Real @mention-aware notification (2026-07-25) -- a mentioned recipient
+                // gets a distinctly-titled, higher-signal notification, matching Kakao's
+                // own real "mention" treatment as more attention-worthy than an ordinary
+                // new message in a group they're already in.
+                val mentioned = recipientId in mentionedUserIds
                 Notification(
-                    id = "notif_${UUID.randomUUID()}", userId = recipientId, type = "NEW_GROUP_MESSAGE",
-                    title = "${group.name}: $senderName", body = trimmed.take(120),
+                    id = "notif_${UUID.randomUUID()}", userId = recipientId,
+                    type = if (mentioned) "GROUP_MENTION" else "NEW_GROUP_MESSAGE",
+                    title = if (mentioned) "$senderName mentioned you in ${group.name}" else "${group.name}: $senderName",
+                    body = trimmed.take(120),
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"groupConversationId\":\"$groupId\"}",
                 )
             },
         )
-        realtimeMessagePublisher.publishNewGroupMessage(groupId, recipientIds, message)
+        // Real push wired in (2026-07-28) -- deliberately mention-only, not every
+        // ordinary group message: a busy group can send dozens of messages an hour, and
+        // pushing for each one would be exactly the notification spam real messaging
+        // apps (Slack, KakaoTalk) avoid by pushing only for an explicit @mention, same
+        // "higher-signal" reasoning the GROUP_MENTION notification type above already
+        // establishes.
+        recipientIds.filter { it in mentionedUserIds }.forEach { recipientId ->
+            runAfterCommit {
+                pushNotificationService.sendToUser(
+                    recipientId, "$senderName mentioned you in ${group.name}", trimmed.take(120),
+                    mapOf("groupConversationId" to groupId),
+                )
+            }
+        }
+        runAfterCommit {
+            realtimeMessagePublisher.publishNewGroupMessage(groupId, recipientIds, message)
+        }
         return message
+    }
+
+    @Transactional
+    fun deleteMessage(userId: String, groupId: String, messageId: String) {
+        requireMember(userId, groupId)
+        val message = groupMessageRepository.findById(messageId).orElseThrow { GroupMessageNotFoundException("Message not found") }
+        if (message.groupConversationId != groupId) throw GroupMessageNotFoundException("Message not found")
+        if (message.senderId != userId) throw GroupMessageDeleteForbiddenException("Only the sender can delete this message")
+        if (message.deletedAt == null) {
+            message.deletedAt = Instant.now()
+            message.deletedByUserId = userId
+            groupMessageRepository.save(message)
+        }
     }
 
     @Transactional
@@ -210,9 +495,48 @@ class GroupMessagingService(
         requireMember(userId, groupId)
         val page = groupMessageRepository.findByGroupConversationIdOrderBySentAtDesc(groupId, pageable)
         val member = groupConversationMemberRepository.findByGroupConversationIdAndUserId(groupId, userId)!!
-        member.lastReadAt = Instant.now()
+        val now = Instant.now()
+        member.lastReadAt = now
         groupConversationMemberRepository.save(member)
+
+        // Real live read-receipt countdown (2026-07-26) -- see getUnreadCounts's own
+        // doc comment. Pushed to every other real member so an open thread's per-message
+        // countdown decrements live, not only on their own next refetch.
+        val otherMemberIds = groupConversationMemberRepository.findByGroupConversationId(groupId)
+            .map { it.userId }
+            .filter { it != userId }
+        realtimeMessagePublisher.publishGroupReadReceiptChange(groupId, otherMemberIds, userId, now)
         return page
+    }
+
+    /** Search stays strictly inside one group after the normal membership check --
+     * same real shape as MessagingService.searchMessages for 1:1 threads. */
+    fun searchMessages(userId: String, groupId: String, query: String, pageable: Pageable): Page<GroupMessage> {
+        requireMember(userId, groupId)
+        val trimmed = query.trim()
+        if (trimmed.length < 2 || trimmed.length > 120) {
+            throw InvalidGroupMessageSearchException("Search must be between 2 and 120 characters")
+        }
+        return groupMessageRepository.searchByGroupConversationIdAndBody(groupId, trimmed, pageable)
+    }
+
+    /**
+     * Real per-message unread countdown -- see `GroupConversationMember.lastReadAt`'s
+     * own doc comment, which named this exact upgrade path. Reuses the existing
+     * per-member cursor rather than a new per-message-per-member row: since opening a
+     * thread always marks it read up through "now" (this service's own `getMessages`
+     * convention), a message's real remaining-unread count is exactly how many OTHER
+     * members (excluding the sender, who trivially "read" their own message) have a
+     * `lastReadAt` earlier than that message's `sentAt`, or `null` (never opened this
+     * thread at all) -- the exact real cursor state, not a best-effort estimate.
+     */
+    fun getUnreadCounts(groupId: String, messages: List<GroupMessage>): Map<String, Int> {
+        if (messages.isEmpty()) return emptyMap()
+        val members = groupConversationMemberRepository.findByGroupConversationId(groupId)
+        return messages.associate { message ->
+            val unread = members.count { it.userId != message.senderId && (it.lastReadAt == null || it.lastReadAt!!.isBefore(message.sentAt)) }
+            message.id to unread
+        }
     }
 
     // Real batch fetch (2026-07-19, found in a security/performance sweep) -- was a real
@@ -246,12 +570,19 @@ class GroupMessagingService(
                 name = group.name,
                 memberCount = (memberCountByGroupId[group.id] ?: 0L).toInt(),
                 lastMessageAt = group.lastMessageAt,
-                lastMessagePreview = lastMessageByGroupId[group.id]?.body,
+                lastMessagePreview = lastMessageByGroupId[group.id]?.let { if (it.deletedAt == null) it.body else "This message was deleted" },
                 unreadCount = groupMessageRepository.countUnread(group.id, userId, member.lastReadAt),
             )
         }
         return PageImpl(summaries, pageable, page.totalElements)
     }
+
+    // Real total-unread-count fix (2026-09-11) -- see MessagingService
+    // .getTotalUnreadCount's own doc comment for the full account (same
+    // gap, group-chat side) and GroupMessageRepository
+    // .countTotalUnreadForUser's own doc comment for the exact correlated-
+    // subquery this uses.
+    fun getTotalUnreadCount(userId: String): Long = groupMessageRepository.countTotalUnreadForUser(userId, Instant.EPOCH)
 
     /**
      * Real member list with real resolved display names (2026-07-18) -- closes the
@@ -309,6 +640,21 @@ class GroupMessagingService(
             .mapValues { (_, reactions) -> groupReactions(reactions.map { it.emoji to it.userId }) }
     }
 
+    // Real Thread support (2026-08-05) -- see MessageReplyCount's own doc comment
+    // (rw.itunda.core.repository) for the full sourced account; identical shape here.
+    fun getReplyCounts(groupMessageIds: List<String>): Map<String, Long> {
+        if (groupMessageIds.isEmpty()) return emptyMap()
+        return groupMessageRepository.countRepliesByMessageIds(groupMessageIds).associate { it.rootMessageId to it.replyCount }
+    }
+
+    fun getThread(userId: String, groupId: String, rootMessageId: String): List<GroupMessage> {
+        requireMember(userId, groupId)
+        val root = groupMessageRepository.findById(rootMessageId).orElseThrow { GroupMessageNotFoundException("Message not found") }
+        if (root.groupConversationId != groupId) throw GroupMessageNotFoundException("Message not found")
+        val replies = groupMessageRepository.findByReplyToMessageIdAndDeletedAtIsNullOrderBySentAtAsc(rootMessageId)
+        return listOf(root) + replies
+    }
+
     private fun groupReactions(emojiAndUserIds: List<Pair<String, String>>): List<ReactionGroup> =
         emojiAndUserIds.groupBy({ it.first }, { it.second }).map { (emoji, userIds) -> ReactionGroup(emoji, userIds) }
 
@@ -322,7 +668,68 @@ class GroupMessagingService(
         groupConversationMemberRepository.save(
             GroupConversationMember(id = "group_member_${UUID.randomUUID()}", groupConversationId = groupId, userId = newUserId),
         )
+        notifyAddedToGroup(listOf(newUserId), requesterId, group)
         return group
+    }
+
+    /**
+     * Real group-chat pin (2026-07-26) -- closes the "pin" half of
+     * docs/DESIGN_REFERENCES.md's Talk long-press-menu recommendation for group chats;
+     * 1:1 conversations already had this (`MessagingService.setPinnedMessage`), whose
+     * exact same "any real member can pin/unpin, no owner-only restriction" shape this
+     * mirrors -- a shared conversation has one shared pin, same as Kakao's own real
+     * behavior.
+     */
+    @Transactional
+    fun setPinnedMessage(userId: String, groupId: String, messageId: String?) {
+        val group = requireMember(userId, groupId)
+        if (messageId != null) {
+            val message = groupMessageRepository.findById(messageId).orElseThrow { GroupMessageNotFoundException("Message not found") }
+            if (message.groupConversationId != groupId || message.deletedAt != null) throw GroupMessageNotFoundException("Message not found")
+        }
+        group.pinnedMessageId = messageId
+        groupConversationRepository.save(group)
+    }
+
+    /**
+     * Real group photo (2026-07-28), open to any real member -- same flat-membership
+     * discipline `setPinnedMessage` already establishes, since this codebase has no
+     * real admin/owner concept yet (see this class's own doc comment). A URL, not a
+     * binary upload -- this backend has no file-storage layer, same honest
+     * simplification `AuthService.updateProfilePhoto`/`SplitBillService.attachReceipt`
+     * already use. Blank clears it back to unset.
+     */
+    @Transactional
+    fun setGroupPhotoUrl(userId: String, groupId: String, photoUrl: String): GroupConversation {
+        val group = requireMember(userId, groupId)
+        val trimmed = photoUrl.trim()
+        if (trimmed.length > 2048) {
+            throw GroupPhotoUrlTooLongException("Group photo URL must be 2048 characters or fewer")
+        }
+        group.photoUrl = trimmed.ifEmpty { null }
+        return groupConversationRepository.save(group)
+    }
+
+    /** Real group description (2026-07-28) -- see `setGroupPhotoUrl`'s own doc comment
+     * for the shared open-to-any-member/no-file-storage/blank-clears conventions. */
+    @Transactional
+    fun setGroupDescription(userId: String, groupId: String, description: String): GroupConversation {
+        val group = requireMember(userId, groupId)
+        val trimmed = description.trim()
+        if (trimmed.length > 500) {
+            throw GroupDescriptionTooLongException("Group description must be 500 characters or fewer")
+        }
+        group.description = trimmed.ifEmpty { null }
+        return groupConversationRepository.save(group)
+    }
+
+    /** Resolves the shared pin only after the usual non-disclosing membership check. */
+    fun getPinnedMessage(userId: String, groupId: String): GroupMessage? {
+        val group = requireMember(userId, groupId)
+        return group.pinnedMessageId?.let { messageId ->
+            // A stale legacy reference must not make the group inaccessible.
+            groupMessageRepository.findById(messageId).orElse(null)?.takeIf { it.groupConversationId == groupId }
+        }
     }
 
     @Transactional

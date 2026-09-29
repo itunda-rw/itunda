@@ -67,9 +67,13 @@ The full operator flow is in [PRIVATE_CLOUD_OPERATIONS.md](PRIVATE_CLOUD_OPERATI
 yarn dev
 ```
 
-Unlike the old setup, `yarn dev` now starts all three required Vite apps together
-(`bank-mfe`, `kyc-mfe`, and `host-app`). The host shell depends on the two remotes, so
-starting only `host-app` was not a complete local run.
+Unlike the old setup, `yarn dev` now starts all four required Vite apps together
+(`bank-mfe`, `kyc-mfe`, `ops-mfe`, and `host-app` -- see `scripts/local-ecosystem.sh`'s own
+`web-dev` mode). The host shell depends on the remotes, so starting only `host-app` was not a
+complete local run. `services/micro-frontends/` also has 3 more real, independently-run
+micro-frontends not part of this bundled command -- `merchant-mfe`, `maps-mfe`, and
+`pay-checkout` -- run those individually with `yarn workspace <name> run dev` when working on
+them specifically.
 
 ## Run the canonical backend
 
@@ -145,34 +149,38 @@ adb shell am instrument -w -e class rw.itunda.app.ui.FocusOrderTest \
 
 ## iOS
 
-Needs full Xcode (not just Command Line Tools) and Tuist 3.x — this repo's
-`ios/Project.swift` uses the `platform: .iOS`/`Target(name:platform:product:...)`
-manifest API, which Tuist 4.0+ replaced with `destinations:` as a breaking change, so
-the latest Tuist will fail with confusing `ProjectDescription` type errors against
-this file. If `xcode-select -p` reports the Command Line Tools instead of a full
-Xcode install, check `/Applications/Xcode.app` before assuming Xcode isn't
-available — point at it for just your shell session, no `sudo`/system-wide
-`xcode-select -s` needed:
+Needs full Xcode (not just Command Line Tools) and Tuist 4.x. **Updated 2026-09-03**: this
+section previously said the manifest needed Tuist 3.x specifically (`platform: .iOS`/
+`Target(name:platform:product:...)`, with Tuist 4.0+'s `destinations:` API as a breaking
+change) -- that's stale. `ios/Project.swift` has since been migrated to Tuist 4.x's own
+`destinations: .iOS` API throughout; a plain Homebrew-installed Tuist 4.x (confirmed working:
+4.202.5) generates the workspace cleanly with no `mise`/version-pin needed at all. If
+`xcode-select -p` reports the Command Line Tools instead of a full Xcode install, check
+`/Applications/Xcode.app` before assuming Xcode isn't available — point at it for just your
+shell session, no `sudo`/system-wide `xcode-select -s` needed:
 
 ```bash
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 ```
 
-Install a compatible Tuist via [mise](https://mise.jdx.dev/) (any 3.x release; 3.42.3
-is confirmed working):
+Install Tuist (Homebrew is the simplest path; any 4.x release works):
 
 ```bash
-mise install tuist@3.42.3
+brew install tuist
 ```
 
 Generate the real Xcode workspace and build against a simulator:
 
 ```bash
 cd ios
-mise exec tuist@3.42.3 -- tuist generate --no-open
+tuist generate --no-open
+pod install
 xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp \
-  -destination 'platform=iOS Simulator,name=iPhone 14' build
+  -destination 'platform=iOS Simulator,name=<your simulator>' build
 ```
+
+`pod install` must be re-run after every `tuist generate`, not just the first time a new
+source file is added -- `tuist generate` invalidates CocoaPods integration every time.
 
 `Itunda.xcodeproj`/`Itunda.xcworkspace`/`Derived/` are Tuist output, gitignored —
 regenerate with the command above rather than expecting them to already exist.
@@ -198,10 +206,13 @@ itunda/
 │   ├── shared-utils/         # shared JS/TS utils (real es-toolkit dependency)
 │   └── saronite/              # mini-app host + native bridge (own npm workspace)
 ├── services/
-│   ├── backend/               # canonical Kotlin/Spring Boot backend
+│   ├── backend/               # canonical Kotlin/Spring Boot backend, plus 13 independently-
+│   │                          #   deployable product services (card/insurance/agents/etc.,
+│   │                          #   see docs/DEPLOYMENT.md)
 │   ├── microservices/         # ledger-service, payment-service, core-libs
 │   ├── api-gateway/           # thin Express reverse proxy
-│   ├── micro-frontends/       # host-app, bank-mfe, kyc-mfe (Vite Module Federation)
+│   ├── micro-frontends/       # host-app, bank-mfe, kyc-mfe, ops-mfe, merchant-mfe,
+│   │                          #   maps-mfe, pay-checkout (Vite Module Federation)
 │   └── blog/                  # tech.itunda.rw engineering blog (own npm workspace)
 ├── infra/                    # docker-compose, k8s manifests
 ├── scripts/                  # one-off root-level scripts

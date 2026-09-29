@@ -13,6 +13,22 @@ object BillsCatalog {
         BillProvider("b5", "Irembo Services", "government", "🏛️"),
         BillProvider("b6", "DSTV", "entertainment", "📺"),
         BillProvider("b7", "Startimes", "entertainment", "📡"),
+        // Real RRA tax payment (2026-08-27, direct user follow-up: "now we can make
+        // pay for tax and moto as well") -- same real model Toss itself uses for
+        // 국세/지방세 (national/local tax): the taxpayer looks up what they owe on the
+        // real government system first (Rwanda's own etax.rra.gov.rw, or the real
+        // MTN/Airtel Mobile Money *182# "Rwanda Revenue" pay-bill menu, which already
+        // requires entering a real RRA billing number the exact same way this
+        // payBill(accountNumber) flow already does), then pays it through whichever
+        // rail they prefer -- itunda is just a new rail, same as REG/WASAC above, not
+        // a tax authority itself and not auto-looking-up what's owed (itunda has no
+        // real RRA API partnership). No backend logic changes needed beyond this
+        // catalog entry: payBill/BillsController are already fully generic over
+        // (billId, accountNumber, amount), and web/Android/iOS all fetch this list
+        // dynamically from GET /api/v1/bills/providers.
+        BillProvider("b8", "RRA - Income Tax", "tax", "🧾"),
+        BillProvider("b9", "RRA - VAT", "tax", "🧾"),
+        BillProvider("b10", "RRA - Trading License", "tax", "🧾"),
     )
 
     val pendingBills = listOf(

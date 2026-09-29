@@ -20,18 +20,18 @@ func makeMicroFeature(
     let hasRealExampleContent = exampleFiles.contains { $0 != "Dummy.swift" }
 
     var targets: [Target] = [
-        Target(
+        Target.target(
             name: "Feature\(name)Interface",
-            platform: .iOS,
+            destinations: .iOS,
             product: .framework,
             bundleId: "rw.itunda.feature.\(name.lowercased()).interface",
             infoPlist: .default,
             sources: ["Features/\(name)/Interface/Sources/**"],
             dependencies: []
         ),
-        Target(
+        Target.target(
             name: "Feature\(name)",
-            platform: .iOS,
+            destinations: .iOS,
             product: .framework,
             bundleId: "rw.itunda.feature.\(name.lowercased())",
             infoPlist: .default,
@@ -40,9 +40,9 @@ func makeMicroFeature(
                 .target(name: "Feature\(name)Interface")
             ] + dependencies
         ),
-        Target(
+        Target.target(
             name: "Feature\(name)Testing",
-            platform: .iOS,
+            destinations: .iOS,
             product: .framework,
             bundleId: "rw.itunda.feature.\(name.lowercased()).testing",
             infoPlist: .default,
@@ -51,9 +51,9 @@ func makeMicroFeature(
                 .target(name: "Feature\(name)Interface")
             ]
         ),
-        Target(
+        Target.target(
             name: "Feature\(name)Tests",
-            platform: .iOS,
+            destinations: .iOS,
             product: .unitTests,
             bundleId: "rw.itunda.feature.\(name.lowercased()).tests",
             infoPlist: .default,
@@ -67,9 +67,9 @@ func makeMicroFeature(
 
     if hasRealExampleContent {
         targets.append(
-            Target(
+            Target.target(
                 name: "Feature\(name)Example",
-                platform: .iOS,
+                destinations: .iOS,
                 product: .app,
                 bundleId: "rw.itunda.feature.\(name.lowercased()).example",
                 infoPlist: .default,
@@ -87,12 +87,12 @@ func makeMicroFeature(
 
 var allTargets: [Target] = []
 
-let coreModules = ["SDUI", "DesignSystem", "Network", "Testing", "Identity", "Consent", "Ledger", "Risk"]
+let coreModules = ["DesignSystem", "Network", "Testing", "Identity", "Consent", "Ledger", "Risk"]
 for core in coreModules {
     allTargets.append(
-        Target(
+        Target.target(
             name: "Core\(core)",
-            platform: .iOS,
+            destinations: .iOS,
             product: .framework,
             bundleId: "rw.itunda.core.\(core.lowercased())",
             infoPlist: .default,
@@ -110,7 +110,7 @@ for core in coreModules {
             // a target's own declared dependencies. Fixed at the source (declare
             // CoreDesignSystem's own real dependency) rather than patching every
             // consumer to redundantly re-declare it.
-            dependencies: core == "DesignSystem" ? [.target(name: "CoreSDUI")] : core == "Network" ? [.target(name: "CoreSDUI")] : []
+            dependencies: core == "DesignSystem" ? [.target(name: "CoreNetwork")] : []
         )
     )
 }
@@ -121,15 +121,119 @@ let featureDependencies: [TargetDependency] = [
     .target(name: "CoreIdentity")
 ]
 
-let featureModules = ["Payments", "Bills", "Merchant", "Credit", "Wealth", "Insurance", "Engagement", "Assets", "Banking"]
+// "Maps" added 2026-08-19 -- reopens the multi-agent isolation initiative for iOS
+// (Android's own :features:maps was already extracted 2026-07-23, see
+// android/features/maps/impl's own header comment). MapScreenView.swift/
+// RecentMapSearchesStore.swift moved from App/Sources -- confirmed via a real
+// dependency audit before moving anything (matching Android's own precedent): neither
+// depends on RouteMiniMap/LiveRiderMiniMap/SimpleLiveRiderMiniMap (still App/Sources-
+// only, consumed by EatsScreen/HoodScreen/ShopScreen, which are themselves still
+// un-extracted App-level screens -- promoting those into a shared Core module is a
+// separate, not-yet-needed step, same reasoning Android's own RouteMiniMap ->
+// core/designsystem promotion only happened once a real cross-Feature need existed).
+// No MainViewModel/AppState/@EnvironmentObject coupling, no injected callback needed
+// (unlike Android's real onOrderDelivery callback for the Delivery pill) -- this
+// extraction is fully self-contained.
+// "Certificate"/"Identity"/"Support" added 2026-08-30 -- real, sourced Toss precedent
+// (toss.tech/article/slash23-iOS's own example Microfeature list names "본인확인"
+// (identity verification) as its own standalone module, not folded into a generic
+// bucket) -- one module per real feature, matching Toss's own granularity, rather
+// than guessing a shared "Engagement" home for three unrelated concerns. `Identity`
+// here means KYC personal-identity submission, a different concern than
+// `CoreIdentity`'s device/biometric identity -- kept as two separate modules
+// deliberately, same real distinction Toss's own device-binding vs.
+// 본인확인(identity verification) draw.
+// "Home" added 2026-09-02 -- iOS parity pass for Android's own :features:home:impl
+// extraction (see [[project_itunda_feature_isolation]]). HomeTabContent.swift moved
+// from App/Sources, same confirmed-self-contained-after-decoupling pattern "Maps"
+// used above: was @ObservedObject-coupled to BankViewModel (App/Sources-only, the
+// same App-target-local view-model Android's own MainViewModel decoupling
+// addressed), narrowed to plain params. DiscoverRowData (was FeatureBanking-only)
+// promoted to CoreDesignSystem instead of FeatureHome depending on FeatureBanking
+// directly, which scripts/ios-silo-boundary-check.py forbids -- no extra
+// cross-feature dependency needed, just the standard featureDependencies set.
+// "Pay" added 2026-09-02 -- iOS parity pass continued (see "Home"'s own comment
+// above). PayScreen (App/Sources/PayHomeExtras.swift) + ShopPay.swift/
+// CouponBoxScreenView.swift/MembershipScreenView.swift moved. Real blockers found:
+// CardScreenView (shared with ContentView.swift/BenefitsShopAllScreens.swift, stays
+// in :App) and SupportScreenView (FeatureSupport's own Sources, not Interface --
+// a direct import would be a forbidden cross-Feature dependency) both switched to
+// generic @ViewBuilder injection, matching this codebase's own established
+// `<Content: View>` pattern (RoomLockGate/EatsOrderRow/CommerceOrderRow); Saronite's
+// reward-tasks mini-app (:App-only) switched to a plain onOpenRewardsMiniApp
+// callback, matching FeatureAssets' OverviewScreenView's own onOpenRewards
+// precedent exactly.
+// "Menu" added 2026-09-02 -- iOS parity pass continued (see "Home"/"Pay"'s own
+// comments above), matching Android's own already-real :features:menu:impl
+// exactly. EntireMenuScreen (App/Sources/BenefitsShopAllScreens.swift) is a
+// catalog of ~45 destinations spanning nearly every product in the app -- unlike
+// Home/Pay's handful of App-only dependencies, a generic-ViewBuilder-injection
+// signature here would need 45+ type parameters, far less readable than the
+// alternative. Converted every destination to a plain `onOpenX: () -> Void`
+// callback instead, mirroring Android's real MenuScreen.kt signature exactly
+// (same real screen, same real architecture on both platforms) -- ContentView.swift
+// now owns every destination's state + presentation, the same role
+// ItundaAppScreen.kt already plays on Android.
+// "My" added 2026-09-02 -- iOS parity pass CLOSES here (see "Home"/"Pay"/"Menu"'s
+// own comments above), matching Android's own already-real :features:my:impl.
+// MyTabView (App/Sources/BenefitsShopAllScreens.swift) was the cleanest of the
+// four: only plain `onSwitchToX: () -> Void` callbacks, no App-only screen type
+// injected directly. Real blockers found anyway: SessionManager/AuthResult (the
+// app's own central session/auth orchestrator, tied to ItundaApp.swift's own
+// lifecycle -- not a design-system component) replaced with a plain
+// `onUpdatePin: (String, String) async -> String?` callback on the moved
+// PinUpgradeCard; AccountPinPad (shared with LoginScreen, which stays in :App)
+// promoted to CoreDesignSystem; WishlistHeart (shared with 6 other App-only
+// screens) and its whole ItundaFaceHearts.swift file promoted too -- the doc
+// comment there had explicitly deferred this exact move "because... iOS hasn't
+// split those domains into separate Feature modules yet"; TalkScreen.errorMessage
+// (App-only, 23 other real callers) got its own local per-file copy, same
+// established convention as this file's own formatAmount duplication.
+// "Eats" added 2026-09-06 (Eats product-completeness pass) -- iOS was the only
+// platform with zero Features/Eats module at all (not even an empty placeholder
+// like Bills/Insurance), despite the functionality being fully real (10
+// App/Sources files). EatsContent (the one real external call site, from
+// ContentView.swift) made public. Real blocker found and fixed: EatsOrders.swift's
+// live rider-tracking uses RouteMiniMap (also used by 3 still-App-only Hood
+// screens -- Jobs/Marketplace/Property) and LiveRiderMiniMap (Eats-only, verified
+// via a real per-symbol grep, not assumed from the "Maps" 2026-08-19 comment's own
+// prediction that this promotion would eventually be needed). RouteMiniMap.swift
+// promoted to Core/DesignSystem/Sources/Components (its own real MapLibre pod
+// dependency now needs a CoreDesignSystem Podfile target too); LiveRiderMiniMap.swift
+// moved into FeatureEats alongside the other 10 files, since nothing outside Eats
+// uses it. EatsReviews.swift's `import FeatureMaps` was dead (zero real symbol use,
+// confirmed via grep) -- dropped, not carried over.
+// "Ride" added 2026-09-06 (Rideshare product-completeness pass) -- same real gap
+// class as Eats: iOS had zero Features/Ride module despite ~1,511 real lines
+// (RideScreenView.swift/RideSharedComponents.swift/DesignatedDriverScreenView.swift)
+// living in App/Sources. RideScreenView (the one real external call site, from
+// MenuTabContent.swift) made public.
+// "Shop" added 2026-09-07 (Shop/Commerce product-completeness pass) -- same real gap
+// class as Eats/Ride: iOS had zero Features/Shop module despite ~3,281 real lines
+// across 13 files living in App/Sources. CommerceShopContent (the one real external
+// call site, from ContentView.swift) made public. RecentlyViewedStores.swift (by
+// this point already Shop-only -- its Eats half moved out during the Eats pass) came
+// along too, renamed ShopRecentlyViewedStore.swift to match that same convention.
+// A real, deliberate NON-move found and corrected before executing: an earlier
+// research pass assumed Features/Pay/Sources/ShopPay.swift was misplaced purely from
+// its name, but its real content (PayAMerchantSection/FacePaySettingsCard/
+// PayByCodeCard/PayByStaticQrCard) is consumed by PayHomeExtras.swift, which lives in
+// that same FeaturePay module -- moving it would either violate the real Feature-
+// isolation boundary (scripts/ios-silo-boundary-check.py forbids a cross-Feature-impl
+// import) or need disproportionate Interface-layer restructuring for what are
+// concrete SwiftUI Views, not thin contracts. Android's own :features:shop:impl
+// groups the identical real content under Shop, so this is a genuine naming
+// inconsistency between platforms -- but the file's current iOS placement is
+// structurally correct, not a bug, so it was deliberately left in Pay.
+let featureModules = ["Payments", "Bills", "Merchant", "Credit", "Wealth", "Insurance", "Engagement", "Assets", "Banking", "Maps", "Certificate", "Identity", "Support", "Home", "Pay", "Menu", "My", "Eats", "Ride", "Shop"]
 for feature in featureModules {
     allTargets.append(contentsOf: makeMicroFeature(name: feature, dependencies: featureDependencies))
 }
 
 allTargets.append(
-    Target(
+    Target.target(
         name: "ItundaPaymentsSDK",
-        platform: .iOS,
+        destinations: .iOS,
         product: .framework,
         bundleId: "rw.itunda.sdk.pay",
         infoPlist: .default,
@@ -152,11 +256,20 @@ appDependencies.append(.target(name: "CoreDesignSystem"))
 // (NIDABiometricAuth) -- App needs its own direct dependency declared, not just
 // transitive access through FeaturePayments's own internal use of the same module.
 appDependencies.append(.target(name: "CoreIdentity"))
+// Added 2026-07-23: NetworkClient.swift/KeychainTokenStore.swift promoted from App
+// to CoreNetwork (App/Sources -> Core/Network/Sources), mirroring Android's
+// ApiService relocation ([[itunda-feature-isolation]]) -- Feature modules can't
+// depend back on App, so any Feature that calls the network needs NetworkClient to
+// live somewhere Features can reach. App itself was previously getting CoreNetwork
+// only transitively (via CoreDesignSystem's own dependency on it); declare it
+// directly rather than relying on transitive linking, the same lesson the
+// CoreDesignSystem->CoreNetwork dependency comment above already documents.
+appDependencies.append(.target(name: "CoreNetwork"))
 
 allTargets.append(
-    Target(
+    Target.target(
         name: "ItundaApp",
-        platform: .iOS,
+        destinations: .iOS,
         product: .app,
         bundleId: "rw.itunda.app",
         // Real login/session flow (2026-07-11, see App/Sources/NetworkClient.swift)
@@ -172,9 +285,61 @@ allTargets.append(
             // requested via CLLocationManager, never assumed granted -- see
             // MapScreenView.swift's own doc comment.
             "NSLocationWhenInUseUsageDescription": "itunda uses your real location to show it on the map and give you directions.",
+            // `itunda://maps` opens Itunda's authenticated, self-hosted map from
+            // another Itunda surface or a partner app. Do not advertise unsupported
+            // route/place parameters before their complete contract exists.
+            "CFBundleURLTypes": [[
+                "CFBundleURLSchemes": ["itunda"],
+            ]],
+            // Real camera QR scanning (product-feel/Pay-parity port, §237) -- first
+            // camera capability anywhere in this app target. Without this key iOS
+            // crashes immediately on the first AVCaptureDevice access rather than
+            // showing a permission prompt; matches bank-mfe's/Android's own real
+            // "point your camera at the merchant's QR code" copy.
+            "NSCameraUsageDescription": "itunda uses your camera to scan a merchant's payment QR code.",
+            // Real NFC "collect a transit fare by tapping a rider's phone" (2026-08-27,
+            // direct user follow-up: "for simplification we need nfc") -- see
+            // TransitCollectScreenView.swift's own doc comment. iOS can only ever be
+            // the reader side (third-party card emulation is Apple-restricted to
+            // Apple Pay/Wallet), so this app only ever needs NFCTagReaderSession, not
+            // HostApduService's iOS equivalent, which doesn't exist for third-party
+            // apps. select-identifiers must list the exact same self-assigned AID
+            // Android's apduservice.xml/TransitHceService.kt declare -- Apple requires
+            // every ISO 7816 AID a reader session may select to be pre-declared here.
+            "NFCReaderUsageDescription": "itunda uses NFC to collect a transit fare when a rider taps their phone.",
+            "com.apple.developer.nfc.readersession.iso7816.select-identifiers": ["F04954554E4441"],
+            // Real typeface fix (2026-08-13, direct user feedback: "we are still far away
+            // from toss") -- see Android's identical Pretendard.kt for the full sourced
+            // account (github.com/orioncactus/pretendard, SIL Open Font License 1.1). iOS
+            // was rendering every IDS.Typography style in the plain system font
+            // (UIFont.systemFont, confirmed via grep before this fix, not an Android-only
+            // gap). UIAppFonts must list every embedded font file by its real filename --
+            // iOS won't discover bundled TTFs on its own the way it does with `resources:`
+            // for other asset types.
+            "UIAppFonts": [
+                "Pretendard-Regular.ttf",
+                "Pretendard-Medium.ttf",
+                "Pretendard-SemiBold.ttf",
+                "Pretendard-Bold.ttf",
+            ],
         ]),
         sources: ["App/Sources/**"],
-        resources: ["App/Resources/**"],
+        // Real app icon (2026-08-22, direct user identity work): the app previously
+        // had no AppIcon.appiconset at all -- ItundaApp built and ran fine with
+        // Xcode/Tuist's blank default, so the gap was never caught by a build
+        // failure. "petal" shape in indigo, same mark as Android's
+        // ic_launcher_foreground.xml and web's favicon.svg -- see
+        // App/Resources/Assets.xcassets/AppIcon.appiconset and
+        // project_itunda_brand_identity.md for the full derivation.
+        resources: ["App/Resources/Fonts/**", "App/Resources/Assets.xcassets/**"],
+        // Real code-signing entitlement NFCTagReaderSession requires (2026-08-27) --
+        // see the infoPlist select-identifiers comment above for the full account.
+        // Without this, an NFCTagReaderSession fails to start on a real device even
+        // with NFCReaderUsageDescription present; that key alone covers the older
+        // NDEF-reading API, not ISO 7816 tag polling.
+        entitlements: .dictionary([
+            "com.apple.developer.nfc.readersession.formats": ["TAG"],
+        ]),
         dependencies: appDependencies,
         // Real granite mini-app host (2026-07-16, see App/Sources/Saronite/) needs one
         // small ObjC helper (SaroniteBrickBridge.m) for two RN-internal APIs Swift's
@@ -184,7 +349,7 @@ allTargets.append(
         // the way adding an ObjC file via Xcode normally would; set explicitly instead.
         settings: .settings(base: [
             "SWIFT_OBJC_BRIDGING_HEADER": "App/Sources/Saronite/Itunda-Bridging-Header.h",
-            "ASSETCATALOG_COMPILER_APPICON_NAME": "ItundaIcon",
+            "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
         ])
     )
 )
@@ -200,9 +365,9 @@ allTargets.append(
 // for shared visual tokens, mirroring Android's own :riderapp -> :core:designsystem
 // dependency choice exactly.
 allTargets.append(
-    Target(
+    Target.target(
         name: "ItundaRiderApp",
-        platform: .iOS,
+        destinations: .iOS,
         product: .app,
         bundleId: "rw.itunda.rider",
         infoPlist: .extendingDefault(with: [
@@ -223,9 +388,9 @@ allTargets.append(
 // Same rationale as ItundaRiderApp: same workspace, no dependency on ItundaApp, no
 // Podfile entry (so none of its RN/Saronite/MapLibre pods), only CoreDesignSystem.
 allTargets.append(
-    Target(
+    Target.target(
         name: "ItundaMerchantApp",
-        platform: .iOS,
+        destinations: .iOS,
         product: .app,
         bundleId: "rw.itunda.merchant",
         infoPlist: .extendingDefault(with: [
@@ -240,15 +405,45 @@ allTargets.append(
     )
 )
 
+// Real standalone agent-operator app (item 131) -- the physical cash-in/cash-out till
+// operator's own app, the third slice of the "dedicated app per role" effort (rider
+// and merchant apps already done). An agent operator is assigned via ops-mfe's Agents
+// tab (item 129), then signs in here with their existing itunda account -- this app
+// has no register/onboarding screen of its own, matching RiderApp's own precedent.
+// Same rationale as ItundaRiderApp/ItundaMerchantApp: same workspace, no dependency
+// on ItundaApp, no Podfile entry, only CoreDesignSystem. Ported from Android's own
+// :agentapp module, which already had this real cash-in/cash-out/till-count feature
+// set built and working.
+allTargets.append(
+    Target.target(
+        name: "ItundaAgentApp",
+        destinations: .iOS,
+        product: .app,
+        bundleId: "rw.itunda.agent",
+        infoPlist: .extendingDefault(with: [
+            "NSAppTransportSecurity": [
+                "NSAllowsArbitraryLoads": true,
+            ],
+            // Added 2026-08-30 (no-manual-code-UX sweep) alongside AgentApp's first
+            // camera capability -- CashOperationScreen's own QrScanCameraView.
+            "NSCameraUsageDescription": "itunda Agent uses your camera to scan a customer's withdrawal code QR.",
+        ]),
+        sources: ["AgentApp/Sources/**"],
+        dependencies: [
+            .target(name: "CoreDesignSystem"),
+        ]
+    )
+)
+
 // Added 2026-07-11 to actually check accessibility focus order (docs/
 // ACCESSIBILITY.md's one remaining open item) against the app's real accessibility
 // tree via XCUITest -- the same underlying tree VoiceOver reads -- rather than
 // leaving it as "no live device, can't check" indefinitely. See
 // App/UITests/FocusOrderTests.swift.
 allTargets.append(
-    Target(
+    Target.target(
         name: "ItundaAppUITests",
-        platform: .iOS,
+        destinations: .iOS,
         product: .uiTests,
         bundleId: "rw.itunda.app.uitests",
         infoPlist: .default,

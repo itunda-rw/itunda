@@ -9,4 +9,8 @@ interface StockWatchlistRepository : JpaRepository<StockWatchlist, String> {
     fun findByUserIdOrderByCreatedAtDesc(userId: String): List<StockWatchlist>
 
     fun deleteByUserIdAndStockId(userId: String, stockId: String): Long
+
+    // Real Toss Securities target-price-alert candidates -- see
+    // StockWatchlist.targetPrice's own doc comment. A real, not-yet-fired active alert.
+    fun findByTargetPriceIsNotNullAndAlertTriggeredAtIsNull(): List<StockWatchlist>
 }

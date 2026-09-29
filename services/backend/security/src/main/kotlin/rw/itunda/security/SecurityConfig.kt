@@ -1,0 +1,183 @@
+package rw.itunda.security
+
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import org.springframework.security.config.annotation.web.builders.HttpSecurity
+import org.springframework.security.config.http.SessionCreationPolicy
+import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.access.AccessDeniedHandler
+import org.springframework.security.web.authentication.HttpStatusEntryPoint
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.http.HttpMethod
+import org.springframework.http.HttpStatus
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.CorsConfigurationSource
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
+
+/**
+ * Every route requires a verified JWT except register/login/health — the opposite
+ * default of how the Express backend started (nothing required auth until it was added
+ * route-by-route, and even then no controller used the verified identity; see
+ * SECURITY.md). Stateless: no server-side session, matching the token-based design.
+ *
+ * Moved here from app/src/main/kotlin/rw/itunda/app/security/ (2026-09-01, unchanged
+ * except its package) so card-service -- the first independently-deployable product,
+ * see docs/ARCHITECTURE.md -- validates JWTs through the exact same filter chain as
+ * :app, rather than a second, driftable copy.
+ */
+@Configuration
+class SecurityConfig(
+    private val jwtAuthenticationFilter: JwtAuthenticationFilter,
+    private val deviceVerificationFilter: DeviceVerificationFilter,
+    // No CORS config existed anywhere in this backend until ops-mfe (2026-07-16) --
+    // bank-mfe/kyc-mfe never actually called it from a browser (mocked fetch only), so
+    // the gap was never hit. Origins are the micro-frontends' Vite dev ports; override
+    // via ITUNDA_CORS_ALLOWED_ORIGINS (comma-separated) for non-local environments.
+    // Port 5004 added 2026-07-17 for merchant-mfe. Port 5005 added 2026-07-21 for
+    // pay-checkout -- see PaymentsApiController's own doc comment. This is the one
+    // origin in this list that isn't itunda's own team's dev server in production (a
+    // real external merchant's customer's browser loads it) -- CORS here only matters
+    // for local dev against this same-origin page anyway, since /api/v1/pay/checkout
+    // is a public GET with no credentials to protect.
+    @Value("\${itunda.cors.allowed-origins:http://localhost:5000,http://localhost:5001,http://localhost:5002,http://localhost:5003,http://localhost:5004,http://localhost:5005}")
+    private val allowedOrigins: List<String>,
+) {
+
+    @Bean
+    fun corsConfigurationSource(): CorsConfigurationSource {
+        val config = CorsConfiguration()
+        config.allowedOrigins = allowedOrigins
+        config.allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+        // Real bug found live (2026-07-17): merchant-mfe's card-charge screen was the
+        // first browser-based flow in this repo to ever send the real Idempotency-Key
+        // header itunda's own money-moving POST endpoints require -- every prior MFE
+        // flow either didn't need it (QR generation) or was only ever exercised via
+        // curl, not a real browser, so this CORS preflight failure was never hit before.
+        // A real headless-Chromium check caught a real net::ERR_FAILED, not a guess.
+        config.allowedHeaders = listOf("Authorization", "Content-Type", "Idempotency-Key")
+        config.allowCredentials = true
+        val source = UrlBasedCorsConfigurationSource()
+        source.registerCorsConfiguration("/**", config)
+        return source
+    }
+
+    @Bean
+    fun filterChain(http: HttpSecurity): SecurityFilterChain {
+        http
+            .csrf { it.disable() }
+            .cors { it.configurationSource(corsConfigurationSource()) }
+            .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
+            .authorizeHttpRequests { auth ->
+                auth
+                    // "/health" was already permitAll here but nothing ever implemented
+                    // it -- k8s readiness/liveness probes need a real endpoint, so
+                    // "/actuator/health" was added alongside it (2026-07-11) rather than
+                    // building a bespoke one; see infra/k8s/production/backend.yaml.
+                    // "/error" added (2026-07-11, found live): sendError(403)/401 from
+                    // accessDeniedHandler/authenticationEntryPoint triggers Spring Boot's
+                    // BasicErrorController via an internal servlet forward to /error --
+                    // which re-enters this exact same filter chain as a fresh request. If
+                    // /error itself isn't permitted, it hits .anyRequest().authenticated(),
+                    // fails (the forward reaches AuthorizationFilter before any per-filter
+                    // JWT re-authentication resolves), and *that* failure's response is what
+                    // the client actually receives -- silently overriding whatever status the
+                    // original handler set. Confirmed live: a valid USER-role token denied
+                    // ADMIN-only /api/v1/system/** came back 401 instead of 403 until this
+                    // was added.
+                    // Real passwordless-login rollout (2026-08-24) -- login/device/challenge
+                    // and login/device/verify are unauthenticated by definition (there's no
+                    // JWT yet, that's the entire point of a brand-new-session flow), same as
+                    // register/login/refresh above.
+                    .requestMatchers("/health", "/actuator/health", "/actuator/prometheus", "/error", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/login/device/challenge", "/api/v1/auth/login/device/verify", "/api/v1/auth/refresh", "/api/v1/auth/check-phone", "/api/v1/auth/terms", "/api/v1/auth/legal-documents").permitAll()
+                    // Real WebSocket live-transport for messaging (2026-07-18) -- the
+                    // handshake carries its own JWT as a `?token=` query param (a native
+                    // WebSocket client can't set a custom Authorization header), verified
+                    // by MessagingWebSocketConfig's own HandshakeInterceptor before the
+                    // upgrade completes. permitAll here just skips this filter chain's
+                    // header-based JWT check for this one path -- it is NOT unauthenticated,
+                    // the interceptor is the real gate, same as PartnerController's own
+                    // API-key-based permitAll above.
+                    .requestMatchers("/ws/**").permitAll()
+                    // Partner-facing endpoints authenticate with a real partner API key
+                    // (X-Api-Key header, checked inside PartnerService.resolvePartner),
+                    // not a itunda-user JWT -- a partner has no itunda user account.
+                    // permitAll here just means "skip JWT auth for this prefix"; every
+                    // endpoint but /register still real-401s without a valid key. See
+                    // PartnerController's own doc comment.
+                    .requestMatchers("/api/v1/partners/**").permitAll()
+                    // Real "Pay with itunda" external checkout API (2026-07-21) -- same
+                    // exact reasoning as /api/v1/partners/** above (a real merchant's own
+                    // backend server, or a paying customer's browser, has no itunda user
+                    // JWT at all). /payments/** is API-key gated inside
+                    // PaymentsApiController/MerchantService.resolveMerchantByApiKey;
+                    // /checkout/{paymentKey} is deliberately public (a browser never holds
+                    // the merchant's secret key) -- see PaymentsApiController's own doc
+                    // comment for the full account.
+                    .requestMatchers("/api/v1/pay/**").permitAll()
+                    // Real public-key signature verification/status lookup never needs a
+                    // secret -- a real third party checking a document someone signed
+                    // with their itunda certificate has no itunda account of their own.
+                    // See CertificateController's own doc comment: a real bug this
+                    // pass's own live verification caught (both real-401'd every caller
+                    // before this fix). /issue, /me, /revoke stay behind the default
+                    // JWT gate below -- those manage a real user's own certificate.
+                    .requestMatchers("/api/v1/certificate/verify", "/api/v1/certificate/status/**").permitAll()
+                    // Real photo upload (2026-07-24) -- see UploadController's own doc
+                    // comment. A listing photo is meant to be viewed by any browser of
+                    // Hood, not just the uploader -- same "public read, authenticated
+                    // write" shape as itunda's self-hosted tiles/glyphs. GET only;
+                    // POST (creating an upload) stays behind the default JWT gate below.
+                    .requestMatchers(HttpMethod.GET, "/api/v1/uploads/**").permitAll()
+                    // Real Naver Map-style public/private saved-place folder share link
+                    // (2026-08-04) -- see MapBookmark.isPublic's own doc comment. Whoever
+                    // opens a real share link genuinely has no itunda session of their
+                    // own yet (the whole point of sharing); MapsService.getPublicFolder
+                    // itself only ever returns bookmarks the owner explicitly marked
+                    // public, so this permitAll never exposes a private folder.
+                    .requestMatchers(HttpMethod.GET, "/api/v1/maps/shared/**").permitAll()
+                    // Real USSD gateway webhook (item 231, 2026-08-02) -- same exact
+                    // reasoning as /api/v1/partners/**/pay/** above: the real USSD gateway
+                    // itself (Africa's Talking-style, the real East African regional
+                    // standard) has no itunda user JWT at all, it's a server-to-server
+                    // webhook keyed on the caller's real phoneNumber + an in-flow PIN, not
+                    // a Bearer token. See UssdController's own doc comment.
+                    .requestMatchers("/api/v1/ussd/session").permitAll()
+                    // Fixed (2026-07-11): previously any authenticated user -- not just an
+                    // operator -- could read fraud/compliance/reconciliation data from
+                    // /api/v1/system/**, exactly the gap SECURITY.md names as still open.
+                    // Requires the "role":"ADMIN" JWT claim (see JwtAuthenticationFilter);
+                    // there's no self-service promotion flow yet, see
+                    // V4__user_role.sql's comment.
+                    .requestMatchers("/api/v1/system/**").hasRole("ADMIN")
+                    // Real product-analytics summary (2026-08-10) -- exposes aggregate
+                    // usage/retention data, same protection level as /api/v1/system/**
+                    // above. Recording an event (POST /api/v1/analytics/events) stays
+                    // under the generic authenticated() catch-all below -- any real
+                    // logged-in user can report their own usage, same as every other
+                    // write endpoint in this backend.
+                    .requestMatchers("/api/v1/analytics/summary").hasRole("ADMIN")
+                    .anyRequest().authenticated()
+            }
+            // Spring Security's default for an unauthenticated request with no configured
+            // entry point is 403; Express's requireAuth returns 401 for a missing/invalid
+            // token. Matching that exactly rather than leaving an incidental difference.
+            //
+            // Real bug found deploying this (2026-07-11): a *valid* USER-role token hitting
+            // an ADMIN-only /api/v1/system/** route also came back 401, not 403 -- wrongly
+            // implying "you're not logged in" to someone who very much is, just isn't
+            // allowed here. Only authenticationEntryPoint was ever customized; explicitly
+            // wiring accessDeniedHandler too, rather than trusting Spring Security's default
+            // wiring to already separate the two cases correctly.
+            .exceptionHandling {
+                it.authenticationEntryPoint(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+                it.accessDeniedHandler(AccessDeniedHandler { _, response, _ -> response.sendError(HttpStatus.FORBIDDEN.value()) })
+            }
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
+            // Real device binding (2026-07-20) -- must run after JWT auth (needs the
+            // CurrentUser principal it sets) but before the request reaches any
+            // money-moving controller. See DeviceVerificationFilter's own doc comment.
+            .addFilterAfter(deviceVerificationFilter, JwtAuthenticationFilter::class.java)
+        return http.build()
+    }
+}

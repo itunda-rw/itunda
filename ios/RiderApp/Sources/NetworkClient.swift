@@ -29,12 +29,17 @@ struct AuthResponse: Decodable {
 struct RiderDto: Decodable {
     let id: String
     let userId: String
-    let walletId: String
+    let accountId: String
     let status: String
     let available: Bool
     let createdAt: String
 }
 struct RiderResponse: Decodable { let success: Bool; let rider: RiderDto }
+
+// Real rider rating (item 142) -- see EatsController.getRiderRating's own doc
+// comment: a real average computed from post-delivery reviews, real, had zero client
+// on any platform including this dedicated rider app.
+struct RiderRatingResponse: Decodable { let success: Bool; let average: Double?; let count: Int }
 
 struct EatsOrderDto: Decodable, Identifiable {
     let id: String
@@ -62,6 +67,27 @@ struct UpdateEatsOrderStatusRequest: Encodable { let status: String }
 struct ShoppingMerchantDto: Decodable { let merchantId: String; let businessName: String }
 struct ShoppingMerchantsResponse: Decodable { let success: Bool; let merchants: [ShoppingMerchantDto] }
 
+// Real itunda-own-fleet Commerce (Shop) delivery claim/tracking -- see Android
+// riderapp's ApiService.kt CommerceOrderDto doc comment (2026-08-04) for the full
+// backend account this ports: a real, working endpoint set with zero client anywhere,
+// not even this dedicated rider app, which until now only ever saw Eats food
+// deliveries. Mirrors rw.itunda.core.domain.Order exactly. Distinct status set from
+// Eats: PACKED -> SHIPPED (claim) -> DELIVERED (complete), no RIDER_ASSIGNED/PICKED_UP
+// midpoint.
+struct CommerceOrderDto: Decodable, Identifiable, Equatable {
+    let id: String
+    let buyerId: String
+    let merchantId: String
+    let deliveryAddress: String
+    let totalAmount: Double
+    let fee: Double
+    let status: String
+    let createdAt: String
+    let riderId: String?
+}
+struct CommerceOrderDetailResponse: Decodable { let success: Bool; let order: CommerceOrderDto }
+struct CommerceOrdersResponse: Decodable { let success: Bool; let orders: [CommerceOrderDto] }
+
 // Real automatic-dispatch offer notifications (type == "DELIVERY_OFFER") carry the
 // offered order's id in dataJson (a raw JSON string, e.g. {"orderId":"..."}) -- see
 // EatsOrderService's own dispatch code. Neither the consumer app nor bank-mfe has
@@ -78,10 +104,33 @@ struct NotificationDto: Decodable, Identifiable {
 }
 struct NotificationsResponse: Decodable { let success: Bool; let notifications: [NotificationDto]; let unreadCount: Int }
 
+// Real push device-token registration (item 130) -- see the consumer app's own
+// NetworkClient.swift doc comment (items 119-121): PushNotificationService.sendToUser
+// silently no-ops for every real user with no registered token, and this dedicated
+// rider app -- the one place a rider actually needs an instant DELIVERY_OFFER/
+// RIDE_TRIP_OFFER push, given its own real short accept-or-lose countdown window --
+// never registered one at all. Reuses the same real, stable, per-install device id
+// convention (see RiderKeychainTokenStore.getOrCreateDeviceId) as this demo's
+// client-generated token.
+struct RegisterDeviceTokenRequest: Encodable { let platform: String; let token: String }
+struct SuccessResponse: Decodable { let success: Bool }
+
 enum NetworkError: Error {
     case invalidResponse
     case httpError(statusCode: Int)
+    // Real gap found 2026-09-04 (same pass that fixed the identical gap on the main
+    // app's and MerchantApp's own separate NetworkClient copies -- see
+    // MerchantApp's own httpErrorWithMessage doc comment for the full account):
+    // sendRequest below only ever threw the bare, message-less httpError case, so
+    // this app's screens fell back to one hardcoded string per failure, never the
+    // backend's own real, specific message (e.g. RiderService's
+    // "This account is already registered as a rider"). Purely additive -- the one
+    // real UI pattern-match on the bare case (LoginScreen.swift) is updated in the
+    // same commit, not left to silently degrade.
+    case httpErrorWithMessage(statusCode: Int, message: String?)
 }
+
+private struct ApiErrorBody: Decodable { let message: String? }
 
 /**
  * Real, minimal URLSession client, mirroring the consumer app's own
@@ -110,6 +159,8 @@ final class RiderNetworkClient {
 
     func getMyRiderProfile() async throws -> RiderResponse { try await get("api/v1/eats/riders/me") }
 
+    func getRiderRating(riderId: String) async throws -> RiderRatingResponse { try await get("api/v1/eats/riders/\(riderId)/rating") }
+
     func setRiderAvailability(_ available: Bool) async throws -> RiderResponse {
         try await post("api/v1/eats/riders/availability", body: SetRiderAvailabilityRequest(available: available))
     }
@@ -128,7 +179,9 @@ final class RiderNetworkClient {
 
     func getOrder(_ orderId: String) async throws -> EatsOrderDetailResponse { try await get("api/v1/eats/orders/\(orderId)") }
 
-    func claimDelivery(_ orderId: String) async throws -> EatsOrderDetailResponse { try await postEmpty("api/v1/eats/orders/\(orderId)/claim") }
+    func claimDelivery(_ orderId: String) async throws -> EatsOrderDetailResponse {
+        try await postEmpty("api/v1/eats/orders/\(orderId)/claim", idempotencyKey: UUID().uuidString)
+    }
 
     func declineDelivery(_ orderId: String) async throws -> EatsOrderDetailResponse { try await postEmpty("api/v1/eats/orders/\(orderId)/decline") }
 
@@ -138,10 +191,28 @@ final class RiderNetworkClient {
 
     func getShoppingMerchants() async throws -> ShoppingMerchantsResponse { try await get("api/v1/shopping/merchants") }
 
+    func getAvailableCommerceDeliveries() async throws -> CommerceOrdersResponse {
+        try await get("api/v1/orders/available-deliveries", query: [URLQueryItem(name: "size", value: "20")])
+    }
+
+    func getMyCommerceDeliveries() async throws -> CommerceOrdersResponse {
+        try await get("api/v1/orders/my-deliveries", query: [URLQueryItem(name: "size", value: "50")])
+    }
+
+    func claimCommerceDelivery(_ orderId: String) async throws -> CommerceOrderDetailResponse {
+        try await postEmpty("api/v1/orders/\(orderId)/claim-delivery", idempotencyKey: UUID().uuidString)
+    }
+
+    func completeCommerceDelivery(_ orderId: String) async throws -> CommerceOrderDetailResponse { try await postEmpty("api/v1/orders/\(orderId)/complete-delivery") }
+
     func getNotifications() async throws -> NotificationsResponse { try await get("api/v1/notifications") }
 
     @discardableResult
     func markNotificationRead(_ id: String) async throws -> Data { try await sendRequest(method: "POST", path: "api/v1/notifications/\(id)/read", body: Optional<EmptyBody>.none) }
+
+    func registerDeviceToken(_ request: RegisterDeviceTokenRequest) async throws -> SuccessResponse {
+        try await post("api/v1/notifications/device-tokens", body: request)
+    }
 
     // MARK: - Helpers
 
@@ -164,17 +235,20 @@ final class RiderNetworkClient {
         return try decoder.decode(Response.self, from: data)
     }
 
-    private func postEmpty<Response: Decodable>(_ path: String) async throws -> Response {
-        let data = try await sendRequest(method: "POST", path: path, body: Optional<EmptyBody>.none)
+    private func postEmpty<Response: Decodable>(_ path: String, idempotencyKey: String? = nil) async throws -> Response {
+        let data = try await sendRequest(method: "POST", path: path, body: Optional<EmptyBody>.none, idempotencyKey: idempotencyKey)
         return try decoder.decode(Response.self, from: data)
     }
 
     @discardableResult
-    private func sendRequest<Body: Encodable>(method: String, path: String, body: Body?, authenticated: Bool = true) async throws -> Data {
+    private func sendRequest<Body: Encodable>(method: String, path: String, body: Body?, authenticated: Bool = true, idempotencyKey: String? = nil) async throws -> Data {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = method
         if authenticated, let token = RiderKeychainTokenStore.shared.getAccessToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        if let idempotencyKey {
+            request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
         }
         if let body {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -182,7 +256,10 @@ final class RiderNetworkClient {
         }
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
-        guard (200...299).contains(httpResponse.statusCode) else { throw NetworkError.httpError(statusCode: httpResponse.statusCode) }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let message = try? decoder.decode(ApiErrorBody.self, from: data).message
+            throw NetworkError.httpErrorWithMessage(statusCode: httpResponse.statusCode, message: message ?? nil)
+        }
         return data
     }
 }

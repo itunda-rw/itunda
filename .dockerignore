@@ -1,0 +1,17 @@
+# Backend Docker build only needs services/backend (and its Gradle root config).
+# Without this, the build context included the entire monorepo -- android/ios's
+# build output directories especially, which carry large native (.so) artifacts
+# and once exhausted host disk space mid-build.
+android
+ios
+node_modules
+packages
+docs
+infra
+.git
+.claude
+dump.rdb
+**/build
+**/.gradle
+**/*.apk
+**/*.ipa

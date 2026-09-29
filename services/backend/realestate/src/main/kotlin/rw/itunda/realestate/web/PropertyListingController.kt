@@ -15,14 +15,28 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.core.domain.HoodTransactionType
 import rw.itunda.core.domain.PropertyListingType
+import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.review.HoodReviewAlreadySubmittedException
+import rw.itunda.core.review.HoodReviewNoCounterpartyException
+import rw.itunda.core.review.HoodReviewNotPartyException
+import rw.itunda.core.review.HoodReviewService
+import rw.itunda.core.review.HoodReviewTransactionNotCompletedException
+import rw.itunda.core.review.HoodReviewTransactionNotFoundException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
+import rw.itunda.core.web.toResponseDto
+import rw.itunda.core.web.trustScores
+import rw.itunda.realestate.CounterpartyNotFoundException
+import rw.itunda.realestate.FavoritePropertyListingNotFoundException
+import rw.itunda.realestate.InsufficientComparablesException
 import rw.itunda.realestate.InvalidPropertyCoordinatesException
 import rw.itunda.realestate.InvalidPropertyListingException
 import rw.itunda.realestate.InvalidPropertyOfferAmountException
 import rw.itunda.realestate.OwnPropertyListingException
+import rw.itunda.realestate.PropertyListingFavoriteService
 import rw.itunda.realestate.OwnPropertyOfferException
 import rw.itunda.realestate.PropertyListingNotAvailableException
 import rw.itunda.realestate.PropertyListingNotFoundException
@@ -30,6 +44,8 @@ import rw.itunda.realestate.PropertyListingService
 import rw.itunda.realestate.PropertyOfferAlreadyResolvedException
 import rw.itunda.realestate.PropertyOfferNotFoundException
 import rw.itunda.realestate.PropertyOfferResponseAction
+import rw.itunda.realestate.PropertyOwnershipService
+import rw.itunda.realestate.PropertyOwnershipSubmissionAlreadyPendingException
 import rw.itunda.realestate.PropertyPriceOfferService
 import rw.itunda.realestate.RealEstateNeighborhoodNotSetException
 import java.math.BigDecimal
@@ -50,6 +66,10 @@ data class CreatePropertyListingRequest(
 // own doc comment. Mirrors MarketplaceController's MakeOfferRequest/RespondToOfferRequest exactly.
 data class MakePropertyOfferRequest(val amount: BigDecimal)
 data class RespondToPropertyOfferRequest(val action: PropertyOfferResponseAction, val counterAmount: BigDecimal? = null)
+data class MarkTakenRequest(val counterpartyPhoneNumber: String? = null)
+data class UpdatePropertyPriceRequest(val price: BigDecimal)
+data class SubmitHoodReviewRequest(val goodPoints: List<String> = emptyList(), val uncomfortablePoints: List<String> = emptyList())
+data class SubmitOwnershipVerificationRequest(val documentUrl: String)
 
 // Real 당근부동산-style property board -- see PropertyListingService's own doc comment.
 // Normal itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
@@ -58,6 +78,10 @@ data class RespondToPropertyOfferRequest(val action: PropertyOfferResponseAction
 class PropertyListingController(
     private val propertyListingService: PropertyListingService,
     private val propertyPriceOfferService: PropertyPriceOfferService,
+    private val propertyListingFavoriteService: PropertyListingFavoriteService,
+    private val userRepository: UserRepository,
+    private val hoodReviewService: HoodReviewService,
+    private val propertyOwnershipService: PropertyOwnershipService,
 ) {
 
     @GetMapping("/property-types")
@@ -83,7 +107,10 @@ class PropertyListingController(
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
         val page = propertyListingService.browse(pageable, listingType, propertyType)
-        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content) + pageMeta(page))
+        // Real Karrot-Score-style trust badge (2026-07-21) -- see trustScores' own doc
+        // comment. One batch findAllById, not one query per listing's lister.
+        val scores = trustScores(userRepository, page.content.map { it.listerId })
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
     }
 
     @GetMapping("/listings/nearby")
@@ -94,7 +121,8 @@ class PropertyListingController(
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
         val page = propertyListingService.nearby(latitude, longitude, radiusKm, pageable)
-        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content) + pageMeta(page))
+        val scores = trustScores(userRepository, page.content.map { it.listerId })
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
     }
 
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see
@@ -105,7 +133,20 @@ class PropertyListingController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val page = propertyListingService.myNeighborhood(currentUser.userId, pageable)
-        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content) + pageMeta(page))
+        val scores = trustScores(userRepository, page.content.map { it.listerId })
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
+    }
+
+    // Real relevance-ranked search (2026-08-14) -- see PropertyListingService.search's
+    // own doc comment.
+    @GetMapping("/listings/search")
+    fun search(
+        @RequestParam q: String,
+        @PageableDefault(size = 20) pageable: Pageable,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = propertyListingService.search(q, pageable)
+        val scores = trustScores(userRepository, page.content.map { it.listerId })
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
     }
 
     @GetMapping("/my-listings")
@@ -114,19 +155,105 @@ class PropertyListingController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val page = propertyListingService.getMyListings(currentUser.userId, pageable)
-        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content) + pageMeta(page))
+        val scores = trustScores(userRepository, page.content.map { it.listerId })
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
+    }
+
+    // Real "Places I got" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+    // recommendation #6. See PropertyListingRepository.
+    // findByCounterpartyIdOrderByCreatedAtDesc's own doc comment for the full account.
+    @GetMapping("/my-acquired-listings")
+    fun myAcquiredListings(
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = propertyListingService.getMyAcquiredListings(currentUser.userId, pageable)
+        val scores = trustScores(userRepository, page.content.map { it.listerId })
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
+    }
+
+    // Real Toss Bank 우리집 시세 (my home's estimated value, item 228) -- see
+    // PropertyListingService.estimateValue's own doc comment for the full sourced
+    // account. Read-only, no persistence -- computed fresh from real comparable
+    // listings on every call.
+    @GetMapping("/valuation")
+    fun estimateValue(
+        @RequestParam latitude: Double,
+        @RequestParam longitude: Double,
+        @RequestParam propertyType: String,
+        @RequestParam listingType: PropertyListingType,
+        @RequestParam sizeSqm: Double,
+        @RequestParam(required = false, defaultValue = "5.0") radiusKm: Double,
+    ): ResponseEntity<Map<String, Any?>> {
+        val estimate = propertyListingService.estimateValue(latitude, longitude, propertyType, listingType, sizeSqm, radiusKm)
+        return ResponseEntity.ok(mapOf("success" to true, "estimate" to estimate))
     }
 
     @GetMapping("/listings/{propertyListingId}")
-    fun getListing(@PathVariable propertyListingId: String): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "listing" to propertyListingService.getListing(propertyListingId)))
+    fun getListing(@PathVariable propertyListingId: String): ResponseEntity<Map<String, Any?>> {
+        val listing = propertyListingService.getListing(propertyListingId)
+        val listerTrustScore = trustScores(userRepository, listOf(listing.listerId))[listing.listerId]
+        return ResponseEntity.ok(mapOf("success" to true, "listing" to listing, "listerTrustScore" to listerTrustScore))
+    }
 
     @PostMapping("/listings/{propertyListingId}/mark-taken")
     fun markTaken(
         @PathVariable propertyListingId: String,
+        @RequestBody(required = false) request: MarkTakenRequest?,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "listing" to propertyListingService.markTaken(currentUser.userId, propertyListingId)))
+        ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "listing" to propertyListingService.markTaken(currentUser.userId, propertyListingId, request?.counterpartyPhoneNumber),
+            ),
+        )
+
+    // Real Karrot(당근마켓)-style price-drop notification -- see
+    // PropertyListingService.updatePrice's own doc comment.
+    @PostMapping("/listings/{propertyListingId}/price")
+    fun updatePrice(
+        @PathVariable propertyListingId: String,
+        @RequestBody request: UpdatePropertyPriceRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "listing" to propertyListingService.updatePrice(currentUser.userId, propertyListingId, request.price)))
+
+    // Real ownership verification (2026-07-25) -- see PropertyOwnershipService's own doc
+    // comment. Document should already be a real /api/v1/uploads/{name} URL from
+    // UploadController; review happens via /api/v1/system/property-verification (ADMIN).
+    @PostMapping("/listings/{propertyListingId}/verify-ownership")
+    fun submitOwnershipVerification(
+        @PathVariable propertyListingId: String,
+        @RequestBody request: SubmitOwnershipVerificationRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val submission = propertyOwnershipService.submit(currentUser.userId, propertyListingId, request.documentUrl)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "submission" to submission))
+    }
+
+    // Real post-transaction review with asymmetric public/private visibility
+    // (2026-07-24) -- see HoodReviewService's own doc comment for the full account.
+    @PostMapping("/listings/{propertyListingId}/review")
+    fun submitReview(
+        @PathVariable propertyListingId: String,
+        @RequestBody request: SubmitHoodReviewRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val review = hoodReviewService.submitReview(
+            currentUser.userId, HoodTransactionType.PROPERTY_LISTING, propertyListingId, request.goodPoints, request.uncomfortablePoints,
+        )
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "review" to review.toResponseDto()))
+    }
+
+    @GetMapping("/listings/{propertyListingId}/review")
+    fun getReviews(
+        @PathVariable propertyListingId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val reviews = hoodReviewService.getTransactionReviews(currentUser.userId, HoodTransactionType.PROPERTY_LISTING, propertyListingId).map { it.toResponseDto() }
+        return ResponseEntity.ok(mapOf("success" to true, "reviews" to reviews))
+    }
 
     @DeleteMapping("/listings/{propertyListingId}")
     fun removeListing(
@@ -134,6 +261,36 @@ class PropertyListingController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "listing" to propertyListingService.removeListing(currentUser.userId, propertyListingId)))
+
+    // Real 당근부동산 property-listing wishlist (2026-07-22) -- see
+    // PropertyListingFavoriteService's own doc comment. Mirrors MarketplaceController's
+    // own favorite-listing endpoints field-for-field.
+    @PostMapping("/listings/{propertyListingId}/favorite")
+    fun addFavorite(
+        @PathVariable propertyListingId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val favorite = propertyListingFavoriteService.addFavorite(currentUser.userId, propertyListingId)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "favorite" to favorite))
+    }
+
+    @DeleteMapping("/listings/{propertyListingId}/favorite")
+    fun removeFavorite(
+        @PathVariable propertyListingId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Boolean>> {
+        propertyListingFavoriteService.removeFavorite(currentUser.userId, propertyListingId)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    @GetMapping("/listings/favorites")
+    fun getMyFavoriteListings(
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = propertyListingFavoriteService.getMyFavorites(currentUser.userId, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "favorites" to page.content) + pageMeta(page))
+    }
 
     @PostMapping("/listings/{propertyListingId}/contact-lister")
     fun contactLister(
@@ -215,4 +372,45 @@ class PropertyListingController(
     @ExceptionHandler(RealEstateNeighborhoodNotSetException::class)
     fun handleNeighborhoodNotSet(ex: RealEstateNeighborhoodNotSetException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("NEIGHBORHOOD_NOT_SET", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(FavoritePropertyListingNotFoundException::class)
+    fun handleFavoriteNotFound(ex: FavoritePropertyListingNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("PROPERTY_LISTING_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(CounterpartyNotFoundException::class)
+    fun handleCounterpartyNotFound(ex: CounterpartyNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("COUNTERPARTY_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(HoodReviewTransactionNotFoundException::class)
+    fun handleReviewTransactionNotFound(ex: HoodReviewTransactionNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("PROPERTY_LISTING_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(HoodReviewTransactionNotCompletedException::class)
+    fun handleReviewTransactionNotCompleted(ex: HoodReviewTransactionNotCompletedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("REVIEW_TRANSACTION_NOT_COMPLETED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(HoodReviewNoCounterpartyException::class)
+    fun handleReviewNoCounterparty(ex: HoodReviewNoCounterpartyException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("REVIEW_NO_COUNTERPARTY", ex.message ?: "Bad request"))
+
+    // Real IDOR fix (2026-08-30, wholesale FORBIDDEN-handler sweep): was
+    // HttpStatus.FORBIDDEN -- a stranger supplying any real transactionId could
+    // distinguish "exists, you weren't a party" (403) from "doesn't exist" (404,
+    // HoodReviewTransactionNotFoundException just above). Same existence-oracle
+    // class as this session's other fixes (Loan/Ikimina/GroupAccount/etc).
+    @ExceptionHandler(HoodReviewNotPartyException::class)
+    fun handleReviewNotParty(ex: HoodReviewNotPartyException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("REVIEW_NOT_PARTY", ex.message ?: "Not found"))
+
+    @ExceptionHandler(HoodReviewAlreadySubmittedException::class)
+    fun handleReviewAlreadySubmitted(ex: HoodReviewAlreadySubmittedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("REVIEW_ALREADY_SUBMITTED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(PropertyOwnershipSubmissionAlreadyPendingException::class)
+    fun handleOwnershipAlreadyPending(ex: PropertyOwnershipSubmissionAlreadyPendingException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("OWNERSHIP_VERIFICATION_ALREADY_PENDING", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(InsufficientComparablesException::class)
+    fun handleInsufficientComparables(ex: InsufficientComparablesException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_COMPARABLES", ex.message ?: "Unprocessable"))
 }

@@ -13,9 +13,12 @@ import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.web.ApiError
 import rw.itunda.partners.InvalidApiKeyException
+import rw.itunda.partners.InvalidMiniAppCategoryException
+import rw.itunda.partners.InvalidMiniAppDecisionReasonException
 import rw.itunda.partners.InvalidMiniAppSubmissionException
 import rw.itunda.partners.InvalidPermissionScopeException
 import rw.itunda.partners.PartnerEmailAlreadyRegisteredException
+import rw.itunda.partners.InvalidPartnerEmailException
 import rw.itunda.partners.PartnerMiniAppPermissions
 import rw.itunda.partners.PartnerService
 import rw.itunda.partners.PartnerSuspendedException
@@ -23,6 +26,7 @@ import rw.itunda.partners.PartnerSuspendedException
 data class RegisterPartnerRequest(val companyName: String, val contactEmail: String)
 data class SubmitMiniAppRequest(
     val name: String, val description: String, val iconUrl: String? = null, val bundleUrl: String, val permissions: List<String>,
+    val category: String? = null,
 )
 
 // Partner-facing developer platform -- mapped outside /api/v1/system/** since a partner
@@ -55,6 +59,7 @@ class PartnerController(private val partnerService: PartnerService) {
     ): ResponseEntity<Map<String, Any?>> {
         val miniApp = partnerService.submitMiniApp(
             apiKey, request.name, request.description, request.iconUrl, request.bundleUrl, request.permissions,
+            request.category,
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "miniApp" to miniApp))
     }
@@ -70,6 +75,10 @@ class PartnerController(private val partnerService: PartnerService) {
     @ExceptionHandler(PartnerEmailAlreadyRegisteredException::class)
     fun handleAlreadyRegistered(ex: PartnerEmailAlreadyRegisteredException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("PARTNER_EMAIL_ALREADY_REGISTERED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(InvalidPartnerEmailException::class)
+    fun handleInvalidEmail(ex: InvalidPartnerEmailException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_EMAIL", ex.message ?: "Bad request"))
 
     @ExceptionHandler(InvalidApiKeyException::class)
     fun handleInvalidApiKey(ex: InvalidApiKeyException) =
@@ -94,4 +103,12 @@ class PartnerController(private val partnerService: PartnerService) {
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =
         ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
+
+    @ExceptionHandler(InvalidMiniAppDecisionReasonException::class)
+    fun handleInvalidDecisionReason(ex: InvalidMiniAppDecisionReasonException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_DECISION_REASON", ex.message ?: "Invalid decision reason"))
+
+    @ExceptionHandler(InvalidMiniAppCategoryException::class)
+    fun handleInvalidCategory(ex: InvalidMiniAppCategoryException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MINI_APP_CATEGORY", ex.message ?: "Invalid category"))
 }

@@ -10,6 +10,7 @@ import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.Message
 import rw.itunda.core.domain.MessageReaction
 import rw.itunda.core.domain.Notification
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.realtime.ReactionGroup
 import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.ConversationRepository
@@ -17,6 +18,9 @@ import rw.itunda.core.repository.MessageReactionRepository
 import rw.itunda.core.repository.MessageRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.repository.UserBlockRepository
+import rw.itunda.core.repository.ContactRepository
+import rw.itunda.core.repository.ConversationPreferenceRepository
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
@@ -27,8 +31,12 @@ class SelfConversationException(message: String) : RuntimeException(message)
 class ConversationNotFoundException(message: String) : RuntimeException(message)
 class EmptyMessageException(message: String) : RuntimeException(message)
 class MessageTooLongException(message: String) : RuntimeException(message)
+class InvalidMessageImageException(message: String) : RuntimeException(message)
 class MessageNotFoundException(message: String) : RuntimeException(message)
 class InvalidReactionException(message: String) : RuntimeException(message)
+class InvalidMessageSearchException(message: String) : RuntimeException(message)
+class UserBlockedException(message: String) : RuntimeException(message)
+class MessageDeleteForbiddenException(message: String) : RuntimeException(message)
 
 data class ConversationSummary(
     val conversationId: String,
@@ -37,7 +45,13 @@ data class ConversationSummary(
     val lastMessageAt: Instant,
     val lastMessagePreview: String?,
     val unreadCount: Long,
+    val quiet: Boolean,
+    val pinnedMessageId: String?,
+    val archived: Boolean,
+    val pinnedToTop: Boolean,
+    val favorite: Boolean,
 )
+data class TalkContact(val userId: String, val name: String)
 
 /**
  * Real 1:1 messaging -- the foundational Kakao-style chat primitive named in the
@@ -49,7 +63,7 @@ data class ConversationSummary(
  *
  * Honestly scoped like every other module this session: real conversations, real
  * persisted messages, real unread tracking, real spam rate-limiting. This pass also
- * reuses the existing real `Notification` system (the same one `WalletService`'s
+ * reuses the existing real `Notification` system (the same one `AccountService`'s
  * budget alerts already use) so a new message always surfaces as a real in-app
  * notification, regardless of whether the recipient has a live connection open.
  *
@@ -70,7 +84,17 @@ class MessagingService(
     private val messageReactionRepository: MessageReactionRepository,
     private val rateLimiter: RateLimiter,
     private val realtimeMessagePublisher: RealtimeMessagePublisher,
+    private val userBlockRepository: UserBlockRepository,
+    private val contactRepository: ContactRepository,
+    private val conversationPreferenceRepository: ConversationPreferenceRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
+    private fun requireNotBlocked(userId: String, otherUserId: String) {
+        if (
+            userBlockRepository.existsByBlockerUserIdAndBlockedUserId(userId, otherUserId) ||
+            userBlockRepository.existsByBlockerUserIdAndBlockedUserId(otherUserId, userId)
+        ) throw UserBlockedException("This conversation is unavailable")
+    }
     /** Canonical ordering so a real DB unique constraint on (participantAId,
      * participantBId) can enforce "at most one conversation per pair" without a
      * racy check-then-insert -- whichever id sorts first is always stored as A. */
@@ -84,6 +108,7 @@ class MessagingService(
         }
         userRepository.findById(otherUserId)
             .orElseThrow { RecipientNotFoundException("No itunda account found for this user") }
+        requireNotBlocked(userId, otherUserId)
 
         val (a, b) = canonicalPair(userId, otherUserId)
         conversationRepository.findByParticipantAIdAndParticipantBId(a, b)?.let { return it }
@@ -122,9 +147,43 @@ class MessagingService(
     fun getConversationForParticipant(userId: String, conversationId: String): Conversation =
         requireParticipant(userId, conversationId)
 
+    // Real message forwarding (2026-07-25) -- see MessageForwardService.forward's own
+    // doc comment. Resolves the source message server-side, verifying real read access.
+    fun getMessageForParticipant(userId: String, messageId: String): Message {
+        val message = messageRepository.findById(messageId).orElseThrow { MessageNotFoundException("Message not found") }
+        requireParticipant(userId, message.conversationId)
+        if (message.deletedAt != null) throw MessageNotFoundException("Message not found")
+        return message
+    }
+
     @Transactional
-    fun sendMessage(userId: String, conversationId: String, body: String): Message {
-        val trimmed = body.trim()
+    fun sendMessage(
+        userId: String,
+        conversationId: String,
+        body: String,
+        replyToMessageId: String? = null,
+        forwardedFromMessageId: String? = null,
+        forwardedFromType: String? = null,
+        imageUrl: String? = null,
+        // Real Emoticon Store send (2026-07-26) -- see EmoticonService's own doc
+        // comment. Ownership of the emoticon's pack is verified by the caller
+        // (EmoticonService.requireOwnedEmoticon) BEFORE this method is ever invoked --
+        // this method trusts the id it's given the same way it already trusts a
+        // pre-validated imageUrl, rather than re-deriving ownership here and coupling
+        // this already-tested method to the Emoticon repositories.
+        emoticonId: String? = null,
+    ): Message {
+        // Real composer photo send (2026-07-25) -- an image-only send is real ("📷
+        // Photo" is what every preview/notification surface shows), not an empty
+        // message; only reject a genuinely empty send when there's no image either.
+        // Only ever a real /api/v1/uploads/ URL from our own UploadController -- never
+        // an arbitrary client-asserted URL, the same discipline this codebase already
+        // applies to every other "the client points at content it already uploaded
+        // through our own pipeline" field.
+        if (imageUrl != null && !imageUrl.startsWith("/api/v1/uploads/")) {
+            throw InvalidMessageImageException("imageUrl must be a real uploaded file from /api/v1/uploads")
+        }
+        val trimmed = body.trim().ifEmpty { if (emoticonId != null) "😀 Emoticon" else if (imageUrl != null) "📷 Photo" else "" }
         if (trimmed.isEmpty()) {
             throw EmptyMessageException("Message body cannot be empty")
         }
@@ -143,39 +202,167 @@ class MessagingService(
         rateLimiter.checkLimit("messaging:send:$userId", limit = 30, window = Duration.ofMinutes(1))
 
         val conversation = requireParticipant(userId, conversationId)
+        replyToMessageId?.let { replyId ->
+            val repliedMessage = messageRepository.findById(replyId).orElseThrow { MessageNotFoundException("Message not found") }
+            if (repliedMessage.conversationId != conversationId) throw MessageNotFoundException("Message not found")
+        }
+        val recipientId = if (conversation.participantAId == userId) conversation.participantBId else conversation.participantAId
+        requireNotBlocked(userId, recipientId)
         val message = messageRepository.save(
-            Message(id = "message_${UUID.randomUUID()}", conversationId = conversationId, senderId = userId, body = trimmed),
+            Message(
+                id = "message_${UUID.randomUUID()}", conversationId = conversationId, senderId = userId, body = trimmed,
+                replyToMessageId = replyToMessageId,
+                forwardedFromMessageId = forwardedFromMessageId, forwardedFromType = forwardedFromType,
+                imageUrl = imageUrl, emoticonId = emoticonId,
+            ),
         )
         conversation.lastMessageAt = message.sentAt
         conversationRepository.save(conversation)
 
-        val recipientId = if (conversation.participantAId == userId) conversation.participantBId else conversation.participantAId
         val senderName = userRepository.findById(userId).map { "${it.firstName} ${it.lastName}" }.orElse("Someone")
-        notificationRepository.save(
-            Notification(
-                id = "notif_${UUID.randomUUID()}", userId = recipientId, type = "NEW_MESSAGE",
-                title = senderName, body = trimmed.take(120),
-                isRead = false, createdAt = Instant.now(), dataJson = "{\"conversationId\":\"$conversationId\"}",
-            ),
-        )
-        // Real live push, on a best-effort basis -- the message is already durably
-        // persisted above regardless of whether anyone is listening right now.
-        realtimeMessagePublisher.publishNewMessage(conversationId, recipientId, message)
+        // A quiet room is explicitly an auto-mute decision made by this recipient.
+        // Keep the message durable and live-delivered if they are already viewing it,
+        // but don't create a notification that would surface it outside the room.
+        //
+        // Real mobile push wired in (2026-07-28), gated by the exact same real quiet-room
+        // check as the in-app notification above -- a 1:1 direct message is the single
+        // most foundational push case in any messaging app; a muted room correctly stays
+        // muted for push too, not just in-app.
+        if (conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, recipientId)?.quiet != true) {
+            val body = trimmed.take(120)
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = recipientId, type = "NEW_MESSAGE",
+                    title = senderName, body = body,
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"conversationId\":\"$conversationId\"}",
+                ),
+            )
+            runAfterCommit {
+                pushNotificationService.sendToUser(recipientId, senderName, body, mapOf("conversationId" to conversationId))
+            }
+        }
+        // A live frame is an external, irreversible effect. Send it only after the
+        // message and notification rows are durable; the REST history endpoint remains
+        // the recovery path if a recipient was offline or delivery fails.
+        runAfterCommit {
+            realtimeMessagePublisher.publishNewMessage(conversationId, recipientId, message)
+        }
         return message
     }
 
+    /** Delete-for-everyone is a soft delete: only its author may invoke it; the original
+     * body stays in the protected datastore for compliance, but is never returned again. */
+    @Transactional
+    fun deleteMessage(userId: String, conversationId: String, messageId: String) {
+        requireParticipant(userId, conversationId)
+        val message = messageRepository.findById(messageId).orElseThrow { MessageNotFoundException("Message not found") }
+        if (message.conversationId != conversationId) throw MessageNotFoundException("Message not found")
+        if (message.senderId != userId) throw MessageDeleteForbiddenException("Only the sender can delete this message")
+        if (message.deletedAt == null) {
+            message.deletedAt = Instant.now()
+            message.deletedByUserId = userId
+            messageRepository.save(message)
+        }
+    }
+
+    @Transactional
+    fun blockConversationParticipant(userId: String, conversationId: String) {
+        val conversation = requireParticipant(userId, conversationId)
+        val otherUserId = if (conversation.participantAId == userId) conversation.participantBId else conversation.participantAId
+        if (!userBlockRepository.existsByBlockerUserIdAndBlockedUserId(userId, otherUserId)) {
+            userBlockRepository.save(rw.itunda.core.domain.UserBlock(
+                id = "user_block_${UUID.randomUUID()}", blockerUserId = userId, blockedUserId = otherUserId,
+            ))
+        }
+    }
+
+    @Transactional
+    fun unblockConversationParticipant(userId: String, conversationId: String) {
+        val conversation = requireParticipant(userId, conversationId)
+        val otherUserId = if (conversation.participantAId == userId) conversation.participantBId else conversation.participantAId
+        userBlockRepository.findByBlockerUserIdAndBlockedUserId(userId, otherUserId)?.let(userBlockRepository::delete)
+    }
+
+    /**
+     * A quiet room is private to one participant: it is removed from their active
+     * attention surface and notifications should be suppressed by clients, without
+     * leaving, deleting history, or affecting the other participant.
+     */
+    @Transactional
+    fun setConversationQuiet(userId: String, conversationId: String, quiet: Boolean) {
+        requireParticipant(userId, conversationId)
+        val preference = conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, userId)
+        if (preference == null) {
+            if (quiet) conversationPreferenceRepository.save(
+                rw.itunda.core.domain.ConversationPreference(
+                    id = "conversation_preference_${UUID.randomUUID()}",
+                    conversationId = conversationId,
+                    userId = userId,
+                    quiet = true,
+                ),
+            )
+        } else {
+            preference.quiet = quiet
+            preference.updatedAt = Instant.now()
+            conversationPreferenceRepository.save(preference)
+        }
+    }
+
+    fun isConversationQuiet(userId: String, conversationId: String): Boolean {
+        requireParticipant(userId, conversationId)
+        return conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, userId)?.quiet ?: false
+    }
+
+    @Transactional
+    fun setPinnedMessage(userId: String, conversationId: String, messageId: String?) {
+        val conversation = requireParticipant(userId, conversationId)
+        if (messageId != null) {
+            val message = messageRepository.findById(messageId).orElseThrow { MessageNotFoundException("Message not found") }
+            if (message.conversationId != conversationId || message.deletedAt != null) throw MessageNotFoundException("Message not found")
+        }
+        conversation.pinnedMessageId = messageId
+        conversationRepository.save(conversation)
+    }
+
+    /** Resolves the shared pin only after the usual non-disclosing membership check. */
+    fun getPinnedMessage(userId: String, conversationId: String): Message? {
+        val conversation = requireParticipant(userId, conversationId)
+        return conversation.pinnedMessageId?.let { messageId ->
+            // A stale legacy reference must not make the conversation inaccessible.
+            messageRepository.findById(messageId).orElse(null)?.takeIf { it.conversationId == conversationId }
+        }
+    }
+
     // Real online/offline presence (2026-07-19) -- reads the real WebSocket session
-    // registry via RealtimeMessagePublisher.isOnline, never a fabricated status. No
-    // participant/membership check on the requested ids -- presence is a real,
-    // low-sensitivity signal (same as any messaging app showing a contact's online
-    // dot without requiring an existing conversation first).
+    // registry, never fabricated. No membership check -- low-sensitivity signal.
     fun getPresence(userIds: List<String>): Map<String, Boolean> =
         userIds.distinct().associateWith { realtimeMessagePublisher.isOnline(it) }
 
-    // Real emoji reactions (2026-07-19) -- closes the "message reactions" item on the
-    // Talk polish roadmap. Deliberately a toggle: tapping an already-active reaction
-    // removes it rather than erroring, the same "add is idempotent-by-toggling, not by
-    // 409ing" UX [[project_itunda_toss_parity]] already established for Eats favorites.
+    /** A contact directory based only on the caller's own saved contacts, never a public user search. */
+    fun listTalkContacts(userId: String): List<TalkContact> {
+        val contacts = contactRepository.findByUserId(userId)
+        val usersByPhone = userRepository.findAllByPhoneNumberIn(contacts.map { it.phoneNumber }.distinct()).associateBy { it.phoneNumber }
+        return contacts.mapNotNull { contact -> usersByPhone[contact.phoneNumber]?.takeIf { it.id != userId }?.let { TalkContact(it.id, contact.name) } }
+            .distinctBy { it.userId }.sortedBy { it.name.lowercase() }
+    }
+
+    // Real KakaoTalk "오늘의 생일" (Today's Birthday) (2026-08-17) -- reuses the same
+    // real Talk-contact pool listTalkContacts establishes (never a public search) and
+    // the real User.birthDate. Only ever compares month+day (Africa/Kigali local date).
+    fun getTodaysBirthdays(userId: String): List<TalkContact> {
+        val contacts = contactRepository.findByUserId(userId)
+        val usersByPhone = userRepository.findAllByPhoneNumberIn(contacts.map { it.phoneNumber }.distinct()).associateBy { it.phoneNumber }
+        val today = java.time.LocalDate.now(java.time.ZoneId.of("Africa/Kigali"))
+        return contacts.mapNotNull { contact ->
+            usersByPhone[contact.phoneNumber]
+                ?.takeIf { it.id != userId }
+                ?.takeIf { it.birthDate?.monthValue == today.monthValue && it.birthDate?.dayOfMonth == today.dayOfMonth }
+                ?.let { TalkContact(it.id, contact.name) }
+        }.distinctBy { it.userId }.sortedBy { it.name.lowercase() }
+    }
+
+    // Real emoji reactions (2026-07-19) -- deliberately a toggle: tapping an
+    // already-active reaction removes it rather than erroring (idempotent-by-toggling).
     @Transactional
     fun toggleReaction(userId: String, messageId: String, emoji: String): List<ReactionGroup> {
         val trimmedEmoji = emoji.trim()
@@ -206,13 +393,41 @@ class MessagingService(
         return reactions
     }
 
-    // Real batch fetch (2026-07-19) -- backs attaching a reaction summary to every
-    // message in a fetched page with a single query, not one query per message.
+    // Real batch fetch (2026-07-19) -- one query for every message's reactions, not one per message.
     fun getReactionSummaries(messageIds: List<String>): Map<String, List<ReactionGroup>> {
         if (messageIds.isEmpty()) return emptyMap()
         return messageReactionRepository.findByMessageIdIn(messageIds)
             .groupBy { it.messageId }
             .mapValues { (_, reactions) -> groupReactions(reactions.map { it.emoji to it.userId }) }
+    }
+
+    // Real Thread support (2026-08-05) -- see MessageReplyCount's own doc comment for
+    // the full sourced account. Same batch shape as getReactionSummaries: one query for
+    // a whole page of messages rather than one COUNT per message.
+    fun getReplyCounts(messageIds: List<String>): Map<String, Long> {
+        if (messageIds.isEmpty()) return emptyMap()
+        return messageRepository.countRepliesByMessageIds(messageIds).associate { it.rootMessageId to it.replyCount }
+    }
+
+    /** The root message plus every direct reply to it, oldest first -- a real
+     * sub-conversation view, not just the inline "replying to" tag the flat timeline
+     * already had. Participant-gated the same way as every other conversation read. */
+    fun getThread(userId: String, conversationId: String, rootMessageId: String): List<Message> {
+        requireParticipant(userId, conversationId)
+        val root = messageRepository.findById(rootMessageId).orElseThrow { MessageNotFoundException("Message not found") }
+        if (root.conversationId != conversationId) throw MessageNotFoundException("Message not found")
+        val replies = messageRepository.findByReplyToMessageIdAndDeletedAtIsNullOrderBySentAtAsc(rootMessageId)
+        return listOf(root) + replies
+    }
+
+    /** Search stays strictly inside one conversation after the normal participant check. */
+    fun searchMessages(userId: String, conversationId: String, query: String, pageable: Pageable): Page<Message> {
+        requireParticipant(userId, conversationId)
+        val trimmed = query.trim()
+        if (trimmed.length < 2 || trimmed.length > 120) {
+            throw InvalidMessageSearchException("Search must be between 2 and 120 characters")
+        }
+        return messageRepository.searchByConversationIdAndBody(conversationId, trimmed, pageable)
     }
 
     private fun groupReactions(emojiAndUserIds: List<Pair<String, String>>): List<ReactionGroup> =
@@ -233,16 +448,11 @@ class MessagingService(
         return page
     }
 
-    // Real batch fetch (2026-07-19, found in a security/performance sweep) -- was a real
-    // N+1: up to 3 queries per conversation (other-user lookup, last message, unread
-    // count), so a real 20-item page cost up to 60 queries. Now 4 queries total
-    // regardless of page size: the page itself, one batched `findAllById` for every
-    // other-participant's real name, one batched ordered fetch for last messages
-    // (grouped in-app to "first per conversationId", see
-    // MessageRepository.findByConversationIdInOrderBySentAtDesc's own doc comment for
-    // the real bound this relies on), and one batched GROUP BY for unread counts.
-    fun listConversations(userId: String, pageable: Pageable): Page<ConversationSummary> {
-        val page = conversationRepository.findByParticipant(userId, pageable)
+    // Real batch fetch (2026-07-19): 4 queries total regardless of page size (was
+    // up to 3/conversation). `archived` (2026-08-05) toggles the DB-level query.
+    fun listConversations(userId: String, pageable: Pageable, archived: Boolean = false): Page<ConversationSummary> {
+        val page = if (archived) conversationRepository.findByParticipantArchived(userId, pageable)
+        else conversationRepository.findByParticipantNotArchived(userId, pageable)
         val conversations = page.content
         if (conversations.isEmpty()) return PageImpl(emptyList(), pageable, page.totalElements)
 
@@ -257,19 +467,117 @@ class MessagingService(
             .mapValues { (_, messages) -> messages.first() }
         val unreadCountByConversationId = messageRepository.countUnreadByConversationIds(conversationIds, userId)
             .associate { it.conversationId to it.unreadCount }
+        val preferencesByConversationId = conversationPreferenceRepository.findByUserIdAndConversationIdIn(userId, conversationIds)
+            .associateBy { it.conversationId }
 
         val summaries = conversations.map { conversation ->
             val otherUserId = otherUserIdByConversationId.getValue(conversation.id)
             val otherUser = otherUsersById[otherUserId]
+            val preference = preferencesByConversationId[conversation.id]
             ConversationSummary(
                 conversationId = conversation.id,
                 otherUserId = otherUserId,
                 otherUserName = otherUser?.let { "${it.firstName} ${it.lastName}" } ?: "Unknown user",
                 lastMessageAt = conversation.lastMessageAt,
-                lastMessagePreview = lastMessageByConversationId[conversation.id]?.body,
+                lastMessagePreview = lastMessageByConversationId[conversation.id]?.let { if (it.deletedAt == null) it.body else "This message was deleted" },
                 unreadCount = unreadCountByConversationId[conversation.id] ?: 0L,
+                quiet = preference?.quiet ?: false,
+                pinnedMessageId = conversation.pinnedMessageId,
+                archived = preference?.archived ?: false,
+                pinnedToTop = preference?.pinned ?: false,
+                favorite = preference?.favorite ?: false,
             )
         }
         return PageImpl(summaries, pageable, page.totalElements)
+    }
+
+    // Real total-unread-count fix (2026-09-11) -- see
+    // project_itunda_pagination_discard_sweep memory's own "Messaging"
+    // section: the web tab badge used to sum unreadCount across only
+    // listConversations' own first page (20 rows), undercounting for any
+    // real user with more than 20 conversations. This is a genuine
+    // unbounded aggregate, not a page -- see MessageRepository
+    // .countTotalUnreadForUser's own doc comment for the exact query.
+    fun getTotalUnreadCount(userId: String): Long = messageRepository.countTotalUnreadForUser(userId)
+
+    // Same private-to-one-participant model as setConversationQuiet above -- see
+    // ConversationPreference.archived's own doc comment for the full reasoning.
+    @Transactional
+    fun setConversationArchived(userId: String, conversationId: String, archived: Boolean) {
+        requireParticipant(userId, conversationId)
+        val preference = conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, userId)
+        if (preference == null) {
+            if (archived) conversationPreferenceRepository.save(
+                rw.itunda.core.domain.ConversationPreference(
+                    id = "conversation_preference_${UUID.randomUUID()}",
+                    conversationId = conversationId,
+                    userId = userId,
+                    archived = true,
+                ),
+            )
+        } else {
+            preference.archived = archived
+            preference.updatedAt = Instant.now()
+            conversationPreferenceRepository.save(preference)
+        }
+    }
+
+    fun isConversationArchived(userId: String, conversationId: String): Boolean {
+        requireParticipant(userId, conversationId)
+        return conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, userId)?.archived ?: false
+    }
+
+    // Real KakaoTalk 채팅방 상단 고정 (pin chat room to top) -- see
+    // ConversationPreference.pinned's own doc comment. Same private-to-one-participant
+    // shape as setConversationQuiet/setConversationArchived above.
+    @Transactional
+    fun setConversationPinnedToTop(userId: String, conversationId: String, pinned: Boolean) {
+        requireParticipant(userId, conversationId)
+        val preference = conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, userId)
+        if (preference == null) {
+            if (pinned) conversationPreferenceRepository.save(
+                rw.itunda.core.domain.ConversationPreference(
+                    id = "conversation_preference_${UUID.randomUUID()}",
+                    conversationId = conversationId,
+                    userId = userId,
+                    pinned = true,
+                ),
+            )
+        } else {
+            preference.pinned = pinned
+            preference.updatedAt = Instant.now()
+            conversationPreferenceRepository.save(preference)
+        }
+    }
+
+    fun isConversationPinnedToTop(userId: String, conversationId: String): Boolean {
+        requireParticipant(userId, conversationId)
+        return conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, userId)?.pinned ?: false
+    }
+
+    // Real "favorite" chat (2026-08-28) -- see ConversationPreference.favorite.
+    @Transactional
+    fun setConversationFavorite(userId: String, conversationId: String, favorite: Boolean) {
+        requireParticipant(userId, conversationId)
+        val preference = conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, userId)
+        if (preference == null) {
+            if (favorite) conversationPreferenceRepository.save(
+                rw.itunda.core.domain.ConversationPreference(
+                    id = "conversation_preference_${UUID.randomUUID()}",
+                    conversationId = conversationId,
+                    userId = userId,
+                    favorite = true,
+                ),
+            )
+        } else {
+            preference.favorite = favorite
+            preference.updatedAt = Instant.now()
+            conversationPreferenceRepository.save(preference)
+        }
+    }
+
+    fun isConversationFavorite(userId: String, conversationId: String): Boolean {
+        requireParticipant(userId, conversationId)
+        return conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, userId)?.favorite ?: false
     }
 }

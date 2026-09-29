@@ -15,8 +15,10 @@ import org.springframework.web.bind.annotation.RestController
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
+import rw.itunda.identity.DuplicateDocumentNumberException
 import rw.itunda.identity.IdentityService
 import rw.itunda.identity.IdentityUserNotFoundException
+import rw.itunda.identity.InvalidDecisionReasonException
 import rw.itunda.identity.SubmissionNotFoundException
 import rw.itunda.identity.SubmissionNotPendingException
 
@@ -56,4 +58,12 @@ class ComplianceController(private val identityService: IdentityService) {
     @ExceptionHandler(IdentityUserNotFoundException::class)
     fun handleUserNotFound(ex: IdentityUserNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("USER_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(InvalidDecisionReasonException::class)
+    fun handleInvalidDecisionReason(ex: InvalidDecisionReasonException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_DECISION_REASON", ex.message ?: "Invalid decision reason"))
+
+    @ExceptionHandler(DuplicateDocumentNumberException::class)
+    fun handleDuplicateDocumentNumber(ex: DuplicateDocumentNumberException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("DUPLICATE_DOCUMENT_NUMBER", ex.message ?: "Conflict"))
 }

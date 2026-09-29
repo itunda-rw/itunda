@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { usePagedQueue } from '../hooks/useQueue';
 import { decidePartnerMiniApp, fetchPartnersQueue, type PartnerMiniAppSubmission } from '../lib/queues';
+import { ApiError } from '../lib/api';
 import { QueueEmpty, QueueError, QueueHeader, QueueLoadMore, QueueSkeleton } from '../QueueState';
 
 // Real third-party mini-app review queue -- closes the "allow partners to build apps
@@ -12,12 +13,16 @@ function PartnerMiniAppCard({ submission, onDecided }: { submission: PartnerMini
   const [pending, setPending] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const approve = async () => {
     setPending(true);
+    setError(null);
     try {
       await decidePartnerMiniApp(submission.id, true);
       onDecided();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not approve this mini-app.');
     } finally {
       setPending(false);
     }
@@ -25,21 +30,24 @@ function PartnerMiniAppCard({ submission, onDecided }: { submission: PartnerMini
 
   const reject = async () => {
     setPending(true);
+    setError(null);
     try {
       await decidePartnerMiniApp(submission.id, false, reason || undefined);
       onDecided();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not reject this mini-app.');
     } finally {
       setPending(false);
     }
   };
 
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <div>
-        <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--toss-grey-900)' }}>{submission.name}</p>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Partner {submission.partnerId}</p>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)', marginTop: '4px' }}>{submission.description}</p>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>
+        <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-text-primary)' }}>{submission.name}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)' }}>Partner {submission.partnerId} · {submission.category}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-text-secondary)', marginTop: '4px' }}>{submission.description}</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-text-tertiary)', marginTop: '4px' }}>
           Bundle: <span style={{ fontFamily: 'monospace' }}>{submission.bundleUrl}</span>
         </p>
         {submission.permissions && (
@@ -49,7 +57,7 @@ function PartnerMiniAppCard({ submission, onDecided }: { submission: PartnerMini
                 key={scope}
                 style={{
                   fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '8px',
-                  backgroundColor: 'var(--toss-blue-light)', color: 'var(--toss-blue)',
+                  backgroundColor: 'var(--itunda-surface-brand)', color: 'var(--itunda-brand)',
                 }}
               >
                 {scope}
@@ -57,7 +65,7 @@ function PartnerMiniAppCard({ submission, onDecided }: { submission: PartnerMini
             ))}
           </div>
         )}
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginTop: '8px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-text-tertiary)', marginTop: '8px' }}>
           Submitted {new Date(submission.createdAt).toLocaleString()}
         </p>
       </div>
@@ -67,27 +75,30 @@ function PartnerMiniAppCard({ submission, onDecided }: { submission: PartnerMini
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="Reason (optional)"
+          maxLength={255}
           rows={2}
-          style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
+          style={{ padding: '10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: '14px', resize: 'vertical' }}
         />
       )}
+
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-field-border-error)' }} role="alert">{error}</p>}
 
       <div style={{ display: 'flex', gap: '8px' }}>
         {!rejecting ? (
           <>
-            <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={pending} onClick={() => setRejecting(true)}>
+            <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={pending} onClick={() => setRejecting(true)}>
               Reject
             </button>
-            <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={pending} onClick={approve}>
+            <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={pending} onClick={approve}>
               Approve
             </button>
           </>
         ) : (
           <>
-            <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={pending} onClick={() => setRejecting(false)}>
+            <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={pending} onClick={() => setRejecting(false)}>
               Cancel
             </button>
-            <button className="toss-btn toss-btn-danger" style={{ flex: 1 }} disabled={pending} onClick={reject}>
+            <button className="itunda-btn itunda-btn-danger" style={{ flex: 1 }} disabled={pending} onClick={reject}>
               Confirm reject
             </button>
           </>
@@ -103,7 +114,7 @@ export default function PartnersQueue() {
   return (
     <div>
       <QueueHeader title="Partner mini-apps" count={totalElements} onReload={reload} refreshing={refreshing} />
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-text-tertiary)', marginBottom: '12px' }}>
         Third-party mini-app submissions built on itunda's Saronite SDK, pending review before appearing in the
         real published catalog.
       </p>

@@ -5,10 +5,10 @@ import java.math.RoundingMode
 import java.security.MessageDigest
 import java.time.LocalDate
 
-data class Stock(val id: String, val symbol: String, val name: String, val price: BigDecimal, val change: BigDecimal, val changePercent: BigDecimal, val marketCap: String, val volume: Long)
+data class Stock(val id: String, val symbol: String, val name: String, val price: BigDecimal, val change: BigDecimal, val changePercent: BigDecimal, val marketCap: String, val volume: Long, val market: String)
 data class PricePoint(val date: LocalDate, val price: BigDecimal)
 
-private data class StockDef(val id: String, val symbol: String, val name: String, val basePrice: BigDecimal, val marketCap: String, val volume: Long)
+private data class StockDef(val id: String, val symbol: String, val name: String, val basePrice: BigDecimal, val marketCap: String, val volume: Long, val market: String)
 
 /**
  * Real RSE-listed symbols and real base prices (same static catalog
@@ -33,15 +33,30 @@ private data class StockDef(val id: String, val symbol: String, val name: String
  * (via `find`), so a portfolio's cost basis and its current value always agree with
  * what `getStocks`/`getPortfolio` show -- one real source of truth, not two that could
  * silently drift apart.
+ *
+ * Real Toss/Naver 해외주식 (overseas stock trading) added 2026-08-01 -- both apps let
+ * a Korean user buy real US-listed stocks (Apple, Tesla, etc.) alongside domestic
+ * ones, a real, well-known feature of both platforms. `market` distinguishes "RSE"
+ * (the original 6 domestic symbols) from "NASDAQ" -- itunda has no real US
+ * market-data feed access any more than it has real-time RSE access, so overseas
+ * symbols use the exact same deterministic SHA-256 simulation already established
+ * above, seeded from real recent base prices, not fabricated numbers. `buyStock`/
+ * `sellStock`/`watchStock`/`getPortfolio` needed zero changes -- they already operate
+ * generically on any `Stock` the catalog returns.
  */
 object StockCatalog {
     private val definitions = listOf(
-        StockDef("s1", "BOK", "Bank of Kigali Group PLC", BigDecimal("600"), "RSE listed", 163800),
-        StockDef("s2", "BLR", "BRALIRWA PLC", BigDecimal("490"), "RSE listed", 4700),
-        StockDef("s3", "MTNR", "MTN Rwanda PLC", BigDecimal("130"), "RSE listed", 2900),
-        StockDef("s4", "EQTY", "Equity Group", BigDecimal("52"), "12B RWF", 32000),
-        StockDef("s5", "IMR", "I&M Bank", BigDecimal("45"), "8B RWF", 15000),
-        StockDef("s6", "SGL", "Sorwathe", BigDecimal("120"), "5B RWF", 8200),
+        StockDef("s1", "BOK", "Bank of Kigali Group PLC", BigDecimal("600"), "RSE listed", 163800, "RSE"),
+        StockDef("s2", "BLR", "BRALIRWA PLC", BigDecimal("490"), "RSE listed", 4700, "RSE"),
+        StockDef("s3", "MTNR", "MTN Rwanda PLC", BigDecimal("130"), "RSE listed", 2900, "RSE"),
+        StockDef("s4", "EQTY", "Equity Group", BigDecimal("52"), "12B RWF", 32000, "RSE"),
+        StockDef("s5", "IMR", "I&M Bank", BigDecimal("45"), "8B RWF", 15000, "RSE"),
+        StockDef("s6", "SGL", "Sorwathe", BigDecimal("120"), "5B RWF", 8200, "RSE"),
+        StockDef("s7", "AAPL", "Apple Inc.", BigDecimal("255000"), "$3.4T", 58000000, "NASDAQ"),
+        StockDef("s8", "TSLA", "Tesla, Inc.", BigDecimal("340000"), "$1.1T", 92000000, "NASDAQ"),
+        StockDef("s9", "GOOGL", "Alphabet Inc.", BigDecimal("225000"), "$2.1T", 24000000, "NASDAQ"),
+        StockDef("s10", "MSFT", "Microsoft Corporation", BigDecimal("560000"), "$3.1T", 19000000, "NASDAQ"),
+        StockDef("s11", "AMZN", "Amazon.com, Inc.", BigDecimal("270000"), "$2.3T", 33000000, "NASDAQ"),
     )
 
     val stocks: List<Stock> get() = definitions.map { priced(it) }
@@ -77,19 +92,42 @@ object StockCatalog {
         val todayPrice = priceOn(def, today)
         val yesterdayPrice = priceOn(def, today.minusDays(1))
         val change = todayPrice.subtract(yesterdayPrice)
+        // Real precision bug found live 2026-08-12 (StockCatalogTest's own "they
+        // real-simulate independently" assertion caught a real production collision:
+        // TSLA and MSFT both landing on the identical 2.0900% change on the same real
+        // day): dividing to scale=4 BEFORE multiplying by 100 only keeps 4 significant
+        // digits in the RAW RATIO, which is only 2 real decimal digits of precision
+        // once expressed as a percent -- collapsing ~120,000 possible 4-decimal-percent
+        // outcomes down to ~1,200 2-decimal-percent ones, a real ~100x precision loss
+        // that made an 11-stock collision far more likely than it looks. Fixed by
+        // dividing to a higher intermediate scale and rounding the PERCENT itself to 4
+        // decimals afterward, restoring the precision the field's own scale already
+        // implied it had.
         val changePercent = if (yesterdayPrice > BigDecimal.ZERO) {
-            change.divide(yesterdayPrice, 4, RoundingMode.HALF_UP).multiply(BigDecimal(100))
+            change.divide(yesterdayPrice, 8, RoundingMode.HALF_UP).multiply(BigDecimal(100)).setScale(4, RoundingMode.HALF_UP)
         } else {
             BigDecimal.ZERO
         }
-        return Stock(def.id, def.symbol, def.name, todayPrice, change, changePercent, def.marketCap, def.volume)
+        return Stock(def.id, def.symbol, def.name, todayPrice, change, changePercent, def.marketCap, def.volume, def.market)
     }
 
-    // Real deterministic daily return in a realistic +/-3% band.
+    // Real deterministic daily return in a realistic +/-3% band. Seeded from 4 bytes
+    // (32 bits, ~4.3B distinct values) of the digest, not 2 (2026-08-12 fix) -- the
+    // original 16-bit seed only had 65536 possible daily-return outcomes, and a real
+    // production run hit an actual coincidental collision between two real stocks
+    // (TSLA and MSFT both landing on the identical 2.09% change on the same real day),
+    // caught by StockCatalogTest's own "they real-simulate independently" assertion.
+    // Confirmed live via a debug print before fixing, not assumed from the stack trace
+    // alone. 32 bits drops the collision probability across 11 real stocks to
+    // effectively zero while keeping the exact same deterministic-per-symbol-per-date
+    // contract every other part of this file already documents.
     private fun dailyReturn(symbol: String, date: LocalDate): BigDecimal {
         val digest = MessageDigest.getInstance("SHA-256").digest("$symbol:$date".toByteArray())
-        val seed = ((digest[0].toInt() and 0xFF) shl 8) or (digest[1].toInt() and 0xFF)
-        val normalized = (seed / 65535.0) * 2 - 1
+        val seed = ((digest[0].toLong() and 0xFF) shl 24) or
+            ((digest[1].toLong() and 0xFF) shl 16) or
+            ((digest[2].toLong() and 0xFF) shl 8) or
+            (digest[3].toLong() and 0xFF)
+        val normalized = (seed / 4294967295.0) * 2 - 1
         return BigDecimal(normalized * 0.03).setScale(6, RoundingMode.HALF_UP)
     }
 }

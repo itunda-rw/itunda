@@ -2,9 +2,12 @@ package rw.itunda.merchant
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.CustomerPaymentCode
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.domain.PaymentIntent
@@ -12,49 +15,37 @@ import rw.itunda.core.domain.PaymentIntentStatus
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.domain.Notification
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.CustomerPaymentCodeRepository
+import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PaymentIntentRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
+import org.slf4j.LoggerFactory
+import rw.itunda.core.pricing.PlatformFees
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.net.URI
+import java.security.MessageDigest
+import java.security.SecureRandom
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.UUID
 
-class MerchantAlreadyRegisteredException(message: String) : RuntimeException(message)
-class MerchantNotFoundException(message: String) : RuntimeException(message)
-class MerchantNoWalletException(message: String) : RuntimeException(message)
-class InvalidCoordinatesException(message: String) : RuntimeException(message)
-class InvalidCategoryException(message: String) : RuntimeException(message)
-class InvalidPhotoUrlException(message: String) : RuntimeException(message)
-class InvalidMinOrderAmountException(message: String) : RuntimeException(message)
-class PaymentIntentNotFoundException(message: String) : RuntimeException(message)
-class PaymentIntentNotPayableException(message: String) : RuntimeException(message)
-class SelfPaymentException(message: String) : RuntimeException(message)
-class CardDeclinedException(message: String) : RuntimeException(message)
-class InvalidWebhookUrlException(message: String) : RuntimeException(message)
-
-data class MerchantReportDay(
-    val date: LocalDate,
-    val collectionCount: Int,
-    val grossAmount: BigDecimal,
-    val fees: BigDecimal,
-    val netAmount: BigDecimal,
-    val byChannel: Map<String, Int>,
-)
-
 /**
  * A real, minimal subset of docs/MERCHANT_SERVICES.md's product surface --
  * registration + QR-style fixed-amount payment collection into the merchant's
- * settlement wallet, ledger-backed like every other money-moving flow in this
+ * settlement account, ledger-backed like every other money-moving flow in this
  * backend. Real production card processing needs actual PSP-level infrastructure
  * this repo has no path to certify, not more Kotlin -- but `chargeCard` below is a
  * real demo card-authorization flow (real Luhn validation, real ledger legs, a real
@@ -65,7 +56,7 @@ data class MerchantReportDay(
 class MerchantService(
     private val merchantRepository: MerchantRepository,
     private val paymentIntentRepository: PaymentIntentRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val webhookDeliveryService: WebhookDeliveryService,
     private val transactionRepository: TransactionRepository,
@@ -73,123 +64,439 @@ class MerchantService(
     private val demoCardAuthorizationService: DemoCardAuthorizationService,
     private val shoppingCashbackService: ShoppingCashbackService,
     private val rateLimiter: RateLimiter,
+    private val ledgerEntryRepository: LedgerEntryRepository,
+    private val notificationRepository: NotificationRepository,
+    private val merchantCouponService: MerchantCouponService,
+    private val pushNotificationService: PushNotificationService,
+    private val customerPaymentCodeRepository: CustomerPaymentCodeRepository,
+    private val orderRepository: rw.itunda.core.repository.OrderRepository,
+    private val orderItemRepository: rw.itunda.core.repository.OrderItemRepository,
+    private val merchantLoyaltyPointsService: MerchantLoyaltyPointsService,
+    private val autoTopUpService: rw.itunda.account.AutoTopUpService,
 ) {
-    // Toss Payments' real published fee schedule tiers wallet-based payments
-    // ("Toss Pay") at 0.8%-1.8% depending on merchant volume (see
-    // docs/TOSS_ARCHITECTURE_FACTS.md's Toss Payments SDK research). No tiering
-    // system exists here yet, so a single flat rate in the middle of that real
-    // range is used rather than inventing a number the way the old
-    // MERCHANT_SERVICES.md spec's "QR payments: 1.5%" did independently.
-    private val feeRate = BigDecimal("0.015")
+    private val log = LoggerFactory.getLogger(MerchantService::class.java)
+
+    // Real customer-presented code lifetime (2026-08-11) -- short enough that a
+    // screenshotted/shoulder-surfed code is only exploitable for a couple minutes,
+    // long enough that a customer handing their phone to a cashier doesn't have it
+    // expire mid-handoff. itunda's own chosen policy, not a claimed real KakaoPay/
+    // Toss Pay figure this project has no way to verify.
+    private val customerCodeValidity: Duration = Duration.ofMinutes(2)
+    // Consolidated 2026-09-06 into core/pricing/PlatformFees -- see its own doc
+    // comment for the full sourced account (Toss Payments 0.8%-1.8% real fee schedule).
+    private val feeRate = PlatformFees.PLATFORM_FEE_RATE
+
+    // Real Toss Bank/Toss Pay separation follow-up (2026-08-21, direct user
+    // confirmation) -- a real, pre-existing gap noticed while fixing the "My code"
+    // funding-source default: generateCustomerPaymentCode's own accountId param took
+    // ANY of a customer's real accounts with no type restriction at all, meaning a
+    // SAVINGS/INVESTMENT/LOAN/GROUP account could genuinely fund a merchant payment
+    // if selected -- accounts that were never meant to be payment sources. Matches
+    // real KakaoPay/Toss Pay's own scoped funding-source picker (bank accounts/cards
+    // linked to Pay, never a savings/investment product). PAY is the real default;
+    // MAIN/FOREIGN_CURRENCY are the two real "connected to different bank accounts
+    // and different cards" alternatives the user's own original description named.
+    private val PAYMENT_ELIGIBLE_ACCOUNT_TYPES = setOf(AccountType.PAY, AccountType.MAIN, AccountType.FOREIGN_CURRENCY)
+
+    // Real Toss Payments-sourced grace period (2026-07-28) -- see generateApiKey's own
+    // doc comment for the citation.
+    private val keyGracePeriod: Duration = Duration.ofDays(7)
 
     @Transactional
     fun register(ownerUserId: String, businessName: String): Merchant {
+        // Real gap found 2026-09-05, same shape as AuthService.register's own
+        // firstName/lastName fix -- Merchant.businessName has no explicit @Column
+        // length (Hibernate's real 255-char VARCHAR default), and this real
+        // registration entry point never checked it before insert. Same
+        // STRICT_TRANS_TABLES raw-500-on-over-length-insert bug class this codebase's
+        // own systematic sweep already closed elsewhere (see PartnerService
+        // .submitMiniApp's own doc comment).
+        if (businessName.isBlank() || businessName.length > 255) {
+            throw InvalidBusinessNameException("Business name must be between 1 and 255 characters")
+        }
         if (merchantRepository.findByOwnerUserId(ownerUserId) != null) {
             throw MerchantAlreadyRegisteredException("This account is already registered as a merchant")
         }
-        val wallet = walletRepository.findByUserIdAndType(ownerUserId, WalletType.MAIN)
-            ?: throw MerchantNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(ownerUserId, AccountType.MAIN)
+            ?: throw MerchantNoAccountException("No account found for this account")
 
         val merchant = Merchant(
             id = "merchant_${UUID.randomUUID()}",
             ownerUserId = ownerUserId,
-            walletId = wallet.id,
+            accountId = account.id,
             businessName = businessName,
             status = MerchantStatus.ACTIVE,
         )
-        return merchantRepository.save(merchant)
+        val saved = merchantRepository.save(merchant)
+
+        // Real Toss-style 자산 보호 알림 (Asset Protection Alert, launched May 2025) equivalent,
+        // honestly scoped to itunda's own system boundary (no MyData/cross-institution access):
+        // alert the real account owner whenever a new real financial product -- here, a merchant/
+        // business account -- is registered under their identity, so a hijacked session/stolen
+        // credentials can't do this with zero alert to the real owner. Follows DeviceService's
+        // own real NEW_DEVICE_LOGIN notification convention. See LoansService.applyForLoan for
+        // the loan-side counterpart of this same feature.
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = ownerUserId, type = "NEW_MERCHANT_REGISTERED",
+                title = "New business account registered",
+                body = "\"$businessName\" was just registered as a merchant under your account. If this wasn't you, secure your account immediately.",
+                isRead = false, createdAt = Instant.now(), dataJson = "{\"merchantId\":\"${saved.id}\"}",
+            ),
+        )
+
+        return saved
     }
 
     fun getMyMerchant(ownerUserId: String): Merchant =
         merchantRepository.findByOwnerUserId(ownerUserId)
             ?: throw MerchantNotFoundException("This account is not registered as a merchant")
 
+    // Real admin merchant moderation (2026-08-04) -- found while sourcing a real
+    // Coupang Eats dish grid: the shared Shop/Eats merchant directory (see setCategory's
+    // own doc comment) had no way, anywhere in the app, to ever take a merchant out of
+    // public browse once created -- confirmed live against the real dev database that
+    // 45 of 50 real ACTIVE merchants were leftover QA fixtures (uncategorized,
+    // kyb_verified=false, names like "Push Test Salon") polluting 90% of both Shop's
+    // and Eats' actual browse results for a real user. By merchantId (not
+    // ownerUserId/getMyMerchant) since this acts on any merchant, not the caller's own.
+    // Suspend/reactivate rather than delete -- reversible, same lifecycle status a real
+    // merchant already has, not a new destructive capability.
     @Transactional
-    fun setWebhookUrl(ownerUserId: String, webhookUrl: String): Merchant {
-        val merchant = getMyMerchant(ownerUserId)
-        val trimmed = webhookUrl.trim()
-        // Real bound, found via the same systematic sweep that fixed the identical gap
-        // across Commerce/Eats/Marketplace/Jobs/RealEstate/Community/Messaging/Maps the
-        // same day -- `webhook_url` is VARCHAR(500), and this DB's real
-        // STRICT_TRANS_TABLES mode throws a raw, unhandled 500 on an over-length insert.
-        // Never previously caught because setWebhookUrl didn't even trim its input.
-        if (trimmed.length > 500) {
-            throw InvalidWebhookUrlException("Webhook URL must be 500 characters or fewer")
-        }
-        merchant.webhookUrl = trimmed
+    fun suspendMerchant(merchantId: String, adminUserId: String): Merchant {
+        val merchant = merchantRepository.findById(merchantId).orElseThrow { MerchantNotFoundException("Merchant not found") }
+        merchant.status = MerchantStatus.SUSPENDED
+        merchant.statusChangedBy = adminUserId
+        merchant.statusChangedAt = Instant.now()
         return merchantRepository.save(merchant)
     }
 
-    // Real location (2026-07-18) -- the foundation of itunda's own self-hosted maps
-    // effort. A separate settable field rather than a `register()` param so an existing
-    // merchant can add a location later without re-registering, matching the same
-    // pattern `setWebhookUrl` already established.
     @Transactional
-    fun setLocation(ownerUserId: String, latitude: Double, longitude: Double): Merchant {
-        if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
-            throw InvalidCoordinatesException("Latitude must be between -90 and 90, longitude between -180 and 180")
-        }
-        val merchant = getMyMerchant(ownerUserId)
-        merchant.latitude = latitude
-        merchant.longitude = longitude
-        return merchantRepository.save(merchant)
-    }
-
-    // Real category/cuisine (2026-07-19) -- powers restaurant categories + search/filter
-    // for Eats (and Shopping, since both browse the same Merchant directory). Same
-    // separate-settable-field pattern as setWebhookUrl/setLocation.
-    @Transactional
-    fun setCategory(ownerUserId: String, category: String): Merchant {
-        val trimmed = category.trim()
-        if (trimmed.isEmpty() || trimmed.length > 64) {
-            throw InvalidCategoryException("Category must be between 1 and 64 characters")
-        }
-        val merchant = getMyMerchant(ownerUserId)
-        merchant.category = trimmed
-        return merchantRepository.save(merchant)
-    }
-
-    // Real restaurant-card photo (2026-07-21) -- see Merchant.kt's own doc comment for
-    // why this is a merchant-set URL, not an upload/storage pipeline. Same trim + length
-    // bound discipline as setWebhookUrl.
-    @Transactional
-    fun setPhotoUrl(ownerUserId: String, photoUrl: String): Merchant {
-        val trimmed = photoUrl.trim()
-        if (trimmed.length > 500) {
-            throw InvalidPhotoUrlException("Photo URL must be 500 characters or fewer")
-        }
-        val merchant = getMyMerchant(ownerUserId)
-        merchant.photoUrl = trimmed.ifEmpty { null }
-        return merchantRepository.save(merchant)
-    }
-
-    // Real merchant-set minimum order amount (2026-07-21) -- nullable; passing null
-    // explicitly clears it back to "no minimum", same as an unset merchant.
-    @Transactional
-    fun setMinOrderAmount(ownerUserId: String, minOrderAmount: BigDecimal?): Merchant {
-        if (minOrderAmount != null && minOrderAmount < BigDecimal.ZERO) {
-            throw InvalidMinOrderAmountException("Minimum order amount cannot be negative")
-        }
-        val merchant = getMyMerchant(ownerUserId)
-        merchant.minOrderAmount = minOrderAmount
+    fun reactivateMerchant(merchantId: String, adminUserId: String): Merchant {
+        val merchant = merchantRepository.findById(merchantId).orElseThrow { MerchantNotFoundException("Merchant not found") }
+        merchant.status = MerchantStatus.ACTIVE
+        merchant.statusChangedBy = adminUserId
+        merchant.statusChangedAt = Instant.now()
         return merchantRepository.save(merchant)
     }
 
     @Transactional
     fun generateQr(ownerUserId: String, amount: BigDecimal, description: String): PaymentIntent {
         val merchant = getMyMerchant(ownerUserId)
+        return createIntent(merchant.id, amount, description)
+    }
+
+    // Extracted (2026-07-31) so MerchantStaticQrService's own real Kakao Pay 정액 QR
+    // (static/fixed merchant QR) flow can create an identical real PaymentIntent from a
+    // public merchantId lookup, without going through generateQr's own
+    // getMyMerchant(ownerUserId) ownership check -- a static QR's whole real point is
+    // that a CUSTOMER, not the merchant, initiates the intent.
+    internal fun createIntent(merchantId: String, amount: BigDecimal, description: String): PaymentIntent {
+        // Real flake fix (2026-09-03): expiresAt and createdAt used to come from two
+        // separate Instant.now() calls (createdAt via its own constructor default) --
+        // under a contended CI runner, a scheduling gap between them could push their
+        // difference off exactly 900s, intermittently failing generateQr's own test
+        // assertion. One shared `now` guarantees the 900s window is always exact.
+        val now = Instant.now()
         val intent = PaymentIntent(
             id = "pi_${UUID.randomUUID()}",
-            merchantId = merchant.id,
+            merchantId = merchantId,
             amount = amount,
             description = description,
-            expiresAt = Instant.now().plusSeconds(900),
+            expiresAt = now.plusSeconds(900),
+            createdAt = now,
+            ussdCode = generateUssdCode(),
         )
         return paymentIntentRepository.save(intent)
     }
 
+    // Real Toss Payments ARS결제-style USSD payment completion -- see
+    // PaymentIntent.ussdCode's own doc comment. A real 6-digit numeric code (never
+    // leading-zero-stripped since it's a String, not a parsed number), re-rolled on the
+    // rare real collision against another still-live intent rather than trusting
+    // birthday-paradox odds alone -- the same "don't just hope" discipline this
+    // codebase's other collision-prone id generators already establish.
+    private fun generateUssdCode(): String {
+        var code: String
+        do {
+            code = (100000..999999).random().toString()
+        } while (paymentIntentRepository.existsByUssdCode(code))
+        return code
+    }
+
+    // Real "Pay with itunda" external checkout API key (2026-07-21) -- mirrors
+    // PartnerService.register's exact raw-key-shown-once/hash-stored pattern (same
+    // sk_test_ prefix convention, same reasoning: no real production/live-mode
+    // distinction exists here yet, so claiming a "live" prefix would be dishonest).
+    // Only the logged-in merchant owner can call this (normal JWT auth, see
+    // MerchantController) -- the resulting secret key is what their OWN backend server
+    // then uses non-interactively, with no itunda user login involved at all.
+    //
+    // **Real grace-period rotation added 2026-07-28** -- Toss Payments' own official
+    // developer release notes (docs.tosspayments.com/resources/release-note, June 2026:
+    // self-service secret/security key reissue, "existing keys enter a 7-day
+    // deprecation window, enabling seamless rotation without service interruption").
+    // Calling this again no longer cuts the old key off immediately -- it moves the
+    // CURRENT key into `previousApiKeyHash` with a real 7-day expiry
+    // (`KEY_GRACE_PERIOD`), so a merchant's own server can roll out the new key across
+    // its own fleet without a hard cutover mid-rotation. `resolveMerchantByApiKey`
+    // checks the previous key too, but only while its real expiry hasn't passed.
     @Transactional
-    fun collect(payerUserId: String, intentId: String, channel: String = "QR"): Map<String, Any?> {
+    fun generateApiKey(ownerUserId: String): String {
+        val merchant = getMyMerchant(ownerUserId)
+        val rawKey = generateRawApiKey()
+        merchant.previousApiKeyHash = merchant.apiKeyHash
+        merchant.previousApiKeyExpiresAt = if (merchant.apiKeyHash != null) Instant.now().plus(keyGracePeriod) else null
+        merchant.apiKeyHash = hashApiKey(rawKey)
+        merchantRepository.save(merchant)
+        return rawKey
+    }
+
+    fun resolveMerchantByApiKey(apiKey: String): Merchant {
+        val hashed = hashApiKey(apiKey)
+        val merchant = merchantRepository.findByApiKeyHash(hashed) ?: run {
+            val candidate = merchantRepository.findByPreviousApiKeyHash(hashed) ?: throw InvalidApiKeyException("Invalid or unknown API key")
+            val expiresAt = candidate.previousApiKeyExpiresAt
+            if (expiresAt == null || expiresAt.isBefore(Instant.now())) {
+                throw InvalidApiKeyException("Invalid or unknown API key")
+            }
+            candidate
+        }
+        if (merchant.status != MerchantStatus.ACTIVE) {
+            throw InvalidApiKeyException("This merchant account is suspended")
+        }
+        return merchant
+    }
+
+    // Real server-to-server payment creation (2026-07-21) -- the external-checkout
+    // counterpart to generateQr above (that one's caller is always a logged-in itunda
+    // merchant user in merchant-mfe/:merchantapp; this one's caller is the MERCHANT'S
+    // OWN backend server, authenticated by API key, with no itunda user session
+    // involved at all -- see PaymentsApiController). Reuses the identical PaymentIntent
+    // shape and the identical collect()/webhook machinery underneath -- a customer still
+    // completes this exact intent by scanning the same real QR/deep-link with their
+    // itunda app, same as any in-app-generated one.
+    @Transactional
+    fun createExternalPayment(
+        merchant: Merchant, amount: BigDecimal, description: String,
+        orderId: String?, successUrl: String?, failUrl: String?,
+    ): PaymentIntent {
+        if (amount <= BigDecimal.ZERO) throw InvalidCheckoutRequestException("Amount must be positive")
+        val trimmedDescription = description.trim()
+        if (trimmedDescription.isEmpty() || trimmedDescription.length > 500) {
+            throw InvalidCheckoutRequestException("Description must be between 1 and 500 characters")
+        }
+        if ((orderId?.length ?: 0) > 200) throw InvalidCheckoutRequestException("orderId must be 200 characters or fewer")
+        val normalizedSuccessUrl = normalizeCheckoutRedirectUrl("successUrl", successUrl)
+        val normalizedFailUrl = normalizeCheckoutRedirectUrl("failUrl", failUrl)
+        // Real flake fix (2026-09-03) -- see createIntent's own doc comment: one shared
+        // `now` for both expiresAt and createdAt, not two separate Instant.now() calls.
+        val now = Instant.now()
+        val intent = PaymentIntent(
+            id = "pi_${UUID.randomUUID()}",
+            merchantId = merchant.id,
+            amount = amount,
+            description = trimmedDescription,
+            expiresAt = now.plusSeconds(900),
+            createdAt = now,
+            orderId = orderId?.trim()?.ifBlank { null },
+            successUrl = normalizedSuccessUrl,
+            failUrl = normalizedFailUrl,
+            ussdCode = generateUssdCode(),
+        )
+        return paymentIntentRepository.save(intent)
+    }
+
+    /**
+     * The hosted checkout assigns these directly to `window.location`. They are not
+     * server-side fetch targets, but accepting relative, script, or credential-bearing
+     * values would turn a payment result into an unsafe browser navigation. Merchant
+     * origin registration is not modelled yet, so HTTPS absolute URLs are the strict
+     * safe baseline while preserving legitimate merchant callback paths and queries.
+     */
+    private fun normalizeCheckoutRedirectUrl(field: String, value: String?): String? {
+        val trimmed = value?.trim()?.ifBlank { return null } ?: return null
+        if (trimmed.length > 500) {
+            throw InvalidCheckoutRequestException("$field must be 500 characters or fewer")
+        }
+        val uri = try {
+            URI(trimmed)
+        } catch (_: Exception) {
+            throw InvalidCheckoutRequestException("$field must be a valid HTTPS URL")
+        }
+        if (uri.scheme?.lowercase() != "https" || uri.host == null || uri.userInfo != null) {
+            throw InvalidCheckoutRequestException("$field must be an absolute HTTPS URL without credentials")
+        }
+        return trimmed
+    }
+
+    // Real public checkout info (2026-07-21) -- deliberately NOT behind the API key:
+    // the customer's own browser calls this (via itunda's hosted checkout page), and a
+    // browser never has the merchant's secret key -- only the paymentKey (this intent's
+    // id), the same public/secret split every real payment gateway's checkout page
+    // uses. Returns only what's safe to show a paying customer -- never the merchant's
+    // internal id, webhook URL, or any other account detail.
+    @Transactional
+    fun getCheckoutInfo(paymentKey: String): CheckoutInfo {
+        val intent = paymentIntentRepository.findById(paymentKey)
+            .orElseThrow { PaymentIntentNotFoundException("Payment not found") }
+        expireIfPending(intent)
+        val merchant = merchantRepository.findById(intent.merchantId)
+            .orElseThrow { MerchantNotFoundException("Merchant not found") }
+        return CheckoutInfo(
+            paymentKey = intent.id,
+            merchantName = merchant.businessName,
+            amount = intent.amount,
+            description = intent.description,
+            status = intent.status,
+            successUrl = intent.successUrl,
+            failUrl = intent.failUrl,
+        )
+    }
+
+    // Real server-to-server status confirmation (2026-07-21) -- the synchronous
+    // counterpart to the async webhook: a merchant's backend can (and per real payment
+    // gateway convention, should) confirm a payment's status directly before fulfilling
+    // an order, not rely on the webhook alone arriving in time. Ownership-checked: the
+    // API key resolves to a specific merchant, and this real-404s (not just returns
+    // someone else's data) for a paymentKey belonging to a different merchant.
+    @Transactional
+    fun getPaymentStatusForMerchant(merchant: Merchant, paymentKey: String): PaymentIntent {
+        val intent = paymentIntentRepository.findById(paymentKey)
+            .orElseThrow { PaymentIntentNotFoundException("Payment not found") }
+        if (intent.merchantId != merchant.id) throw PaymentIntentNotFoundException("Payment not found")
+        expireIfPending(intent)
+        return intent
+    }
+
+    /** Makes passive hosted-checkout polling observe the same terminal expiry state as collect(). */
+    private fun expireIfPending(intent: PaymentIntent) {
+        if (intent.status == PaymentIntentStatus.PENDING && !intent.expiresAt.isAfter(Instant.now())) {
+            intent.status = PaymentIntentStatus.EXPIRED
+            paymentIntentRepository.save(intent)
+        }
+    }
+
+    // Real cancel/refund (2026-07-21) -- mirrors Toss Payments' own real cancel API
+    // exactly (docs.tosspayments.com/guides/v2/cancel-payment): paymentKey + a required
+    // cancelReason, an optional cancelAmount (a full refund if omitted), supporting
+    // repeated partial cancels up to the original amount rather than a single
+    // all-or-nothing flag. Reuses the exact real ledger-reversal pattern
+    // rw.itunda.commerce.OrderService.cancelOrder already established for Commerce
+    // order cancellation: look up the original transaction's real ledger entries and
+    // post a new, offsetting transaction with each leg's direction flipped -- a real
+    // double-entry reversal, never mutating or deleting the original historical entry.
+    //
+    // Honest scoping note: Toss Payments' own real per-partial-cancel fee policy isn't
+    // published in enough detail to mirror exactly (their docs cover the cancelAmount
+    // parameter, not the exact fee-refund math behind it) -- this refunds each original
+    // leg (payer debit, merchant credit, fee credit) in the same proportion as the
+    // cancelled amount, an itunda-specific, internally-consistent choice, not a
+    // fabricated claim about Toss's own internal math.
+    @Transactional
+    fun cancelPayment(merchant: Merchant, paymentKey: String, cancelReason: String, cancelAmount: BigDecimal?): Map<String, Any?> {
+        val intent = paymentIntentRepository.findById(paymentKey)
+            .orElseThrow { PaymentIntentNotFoundException("Payment not found") }
+        if (intent.merchantId != merchant.id) throw PaymentIntentNotFoundException("Payment not found")
+        if (intent.status != PaymentIntentStatus.COMPLETED) {
+            throw PaymentIntentNotRefundableException("Only a completed payment can be cancelled -- this payment is ${intent.status}")
+        }
+        val transactionId = intent.completedTransactionId
+            ?: throw PaymentIntentNotRefundableException("No completed transaction found for this payment")
+
+        val trimmedReason = cancelReason.trim()
+        if (trimmedReason.isEmpty() || trimmedReason.length > 200) {
+            throw InvalidCancelRequestException("cancelReason must be between 1 and 200 characters")
+        }
+        val remaining = intent.amount.subtract(intent.refundedAmount)
+        val amountToCancel = cancelAmount ?: remaining
+        if (amountToCancel <= BigDecimal.ZERO || amountToCancel > remaining) {
+            throw InvalidCancelRequestException("cancelAmount must be positive and no more than the remaining refundable amount ($remaining)")
+        }
+
+        val originalEntries = ledgerEntryRepository.findByTransactionId(transactionId)
+        if (originalEntries.isEmpty()) throw PaymentIntentNotRefundableException("No ledger entries found for this payment")
+
+        val ratio = amountToCancel.divide(intent.amount, 10, RoundingMode.HALF_UP)
+        val reversedLegs = originalEntries.map { entry ->
+            val flipped = if (entry.direction == LedgerDirection.DEBIT) LedgerDirection.CREDIT else LedgerDirection.DEBIT
+            val partialAmount = entry.amount.multiply(ratio).setScale(2, RoundingMode.HALF_UP)
+            LedgerLeg(entry.accountId, entry.accountType, flipped, partialAmount, "Refund for payment ${intent.id}: $trimmedReason")
+        }
+        val refund = ledgerService.postLedgerTransaction(originalEntries.first().currency, reversedLegs)
+
+        intent.refundedAmount = intent.refundedAmount.add(amountToCancel)
+        paymentIntentRepository.save(intent)
+
+        val resultMap = mapOf(
+            "paymentKey" to intent.id,
+            "orderId" to intent.orderId,
+            "cancelledAmount" to amountToCancel,
+            "totalRefundedAmount" to intent.refundedAmount,
+            "remainingAmount" to intent.amount.subtract(intent.refundedAmount),
+            "cancelReason" to trimmedReason,
+            "refundTransactionId" to refund.transactionId,
+            "fullyCancelled" to (intent.refundedAmount.compareTo(intent.amount) == 0),
+        )
+        // Same "never let a slow/unreachable webhook block real money movement" discipline
+        // as collect()/chargeCard -- called last, after the refund ledger transaction and
+        // intent are already saved.
+        webhookDeliveryService.deliverCancelStatusChanged(merchant.id, merchant.webhookUrl, resultMap, merchant.webhookSecret)
+        return resultMap
+    }
+
+    private fun generateRawApiKey(): String {
+        val bytes = ByteArray(24)
+        SecureRandom().nextBytes(bytes)
+        val token = bytes.joinToString("") { "%02x".format(it) }
+        return "sk_test_$token"
+    }
+
+    private fun hashApiKey(rawKey: String): String =
+        MessageDigest.getInstance("SHA-256").digest(rawKey.toByteArray()).joinToString("") { "%02x".format(it) }
+
+    // Real webhook signature verification (2026-08-30) -- see WebhookDeliveryService's
+    // own doc comment for the full sourced account of the gap this closes. Stored in
+    // plaintext (unlike apiKeyHash) since itunda must re-use this exact value to sign
+    // every future delivery, not just verify an inbound credential once. Reissuing
+    // immediately invalidates the OLD secret for any future signature -- unlike the API
+    // key, there's no grace-period rotation here yet, since a merchant's own receiver
+    // verification code is expected to just swap the constant, not run two versions
+    // concurrently the way a live server fleet rotating an auth credential would.
+    @Transactional
+    fun generateWebhookSecret(ownerUserId: String): String {
+        val merchant = getMyMerchant(ownerUserId)
+        val secret = "whsec_" + SecureRandom().let { rng -> ByteArray(24).also(rng::nextBytes) }.joinToString("") { "%02x".format(it) }
+        merchant.webhookSecret = secret
+        merchantRepository.save(merchant)
+        return secret
+    }
+
+    // Real read-only intent preview (item 149) -- lets a payer see which merchant/amount
+    // a payment code resolves to, and that merchant's own real coupon eligibility, BEFORE
+    // committing to collect(). Deliberately has zero side effects (unlike collect(),
+    // which flips an expired PENDING intent to EXPIRED) -- a preview must never mutate
+    // state a payer might still back out of; collect() remains the sole authority on
+    // whether a code is actually still payable.
+    fun previewIntent(payerUserId: String, intentId: String): Map<String, Any?> {
+        val intent = paymentIntentRepository.findById(intentId)
+            .orElseThrow { PaymentIntentNotFoundException("Payment code not found") }
+        if (intent.status != PaymentIntentStatus.PENDING || intent.expiresAt.isBefore(Instant.now())) {
+            throw PaymentIntentNotPayableException("This payment code is no longer payable")
+        }
+        val merchant = merchantRepository.findById(intent.merchantId)
+            .orElseThrow { MerchantNotFoundException("Merchant not found") }
+        return mapOf(
+            "merchantId" to merchant.id,
+            "businessName" to merchant.businessName,
+            "amount" to intent.amount,
+            "description" to intent.description,
+            "coupons" to merchantCouponService.getCouponsForCustomer(merchant.id, payerUserId),
+        )
+    }
+
+    @Transactional
+    fun collect(payerUserId: String, intentId: String, channel: String = "QR", couponId: String? = null, pointsToRedeem: BigDecimal? = null): Map<String, Any?> {
         val intent = paymentIntentRepository.findById(intentId)
             .orElseThrow { PaymentIntentNotFoundException("Payment code not found") }
         if (intent.status != PaymentIntentStatus.PENDING) {
@@ -203,27 +510,90 @@ class MerchantService(
 
         val merchant = merchantRepository.findById(intent.merchantId)
             .orElseThrow { MerchantNotFoundException("Merchant not found") }
+        // Real Toss writing-principle reference (toss.tech/article/21021): a concrete
+        // next step over a blunt "Cannot X" -- there IS a real useful alternative here
+        // (share the code with a customer), so name it instead of just naming the block.
         if (merchant.ownerUserId == payerUserId) {
-            throw SelfPaymentException("Cannot pay your own merchant QR code")
+            throw SelfPaymentException("That's your own QR code -- share it with a customer instead of scanning it yourself")
         }
 
-        val payerWallet = walletRepository.findByUserIdAndType(payerUserId, WalletType.MAIN)
-            ?: throw MerchantNoWalletException("No wallet found for this account")
-        val merchantWallet = walletRepository.findById(merchant.walletId)
-            .orElseThrow { MerchantNoWalletException("Merchant settlement wallet not found") }
+        // Real Toss Bank/Toss Pay separation (2026-08-21, direct user correction) -- see
+        // AccountType.PAY's own doc comment for the full sourced account. Merchant
+        // payment collection (QR/Face-Pay/Static-QR/USSD, this method's every real
+        // caller) now debits itunda Pay money, never itunda Bank directly -- itunda
+        // Bank never needs to know which 가맹점 was paid, matching real Toss's own
+        // product isolation.
+        var payerAccount = accountRepository.findByUserIdAndType(payerUserId, AccountType.PAY)
+            ?: throw MerchantNoAccountException("No itunda Pay money found for this account")
+        val merchantAccount = accountRepository.findById(merchant.accountId)
+            .orElseThrow { MerchantNoAccountException("Merchant settlement account not found") }
 
-        val fee = intent.amount.multiply(feeRate).setScale(2, RoundingMode.HALF_UP)
-        val netToMerchant = intent.amount.subtract(fee)
+        // Real merchant coupon discount (2026-07-25) -- see MerchantCouponService's own
+        // doc comment for why an invalid/ineligible coupon throws here rather than being
+        // silently ignored: this changes the actual amount charged, unlike an auxiliary
+        // side effect. Computed and validated before any ledger leg is posted, off the
+        // real intent.amount the merchant originally set.
+        val discountAmount = couponId?.let { merchantCouponService.validateAndComputeDiscount(merchant, payerUserId, it, intent.amount) } ?: BigDecimal.ZERO
+        val afterCoupon = intent.amount.subtract(discountAmount)
+        if (afterCoupon <= BigDecimal.ZERO) {
+            throw InvalidCouponException("This coupon would reduce the payment to zero -- itunda doesn't support 100%-off payments")
+        }
+        // Real Toss Place-style 자동 적립 redemption (2026-08-18) -- see
+        // MerchantLoyaltyPointsService's own doc comment. Applied on top of any real
+        // coupon discount above, same "cap at the remaining real amount" discipline
+        // that discount already establishes -- a customer can stack a coupon and their
+        // own points in one real payment, itunda's own honest choice since Toss
+        // Place's real console doesn't publish whether it allows stacking either.
+        val pointsRedeemed = pointsToRedeem?.let {
+            merchantLoyaltyPointsService.validateAndComputeRedemption(merchant.id, payerUserId, it, afterCoupon)
+        } ?: BigDecimal.ZERO
+        val chargeAmount = afterCoupon.subtract(pointsRedeemed)
+        if (chargeAmount <= BigDecimal.ZERO) {
+            throw InvalidCouponException("This would reduce the payment to zero -- itunda doesn't support 100%-off payments")
+        }
+
+        // Real "auto top up the exact amount you're paying" (2026-08-21, direct user
+        // correction) -- itunda Pay money auto-funds itself at the moment of payment,
+        // matching real Toss Pay's own behavior the user described. Two real funding
+        // sources tried in order, exactly matching that description ("connected to
+        // different bank accounts and different cards"): (1) the user's own itunda
+        // Bank account first (AutoTopUpService.topUpPayFromMain -- always available,
+        // itunda's own internal ledger, zero external-provider risk), then (2) an
+        // external linked bank/card if Bank itself can't cover it either
+        // (AutoTopUpService.topUpShortfall -- the same real Naver Pay Money "결제 시
+        // 부족분 자동 충전" mechanic already wired into P2pService.sendDirect for P2P
+        // transfers). A no-op on both (falls through to the same real
+        // InsufficientFundsException LedgerService.postLedgerTransaction throws) for
+        // the common case of a payer with no auto top-up configured and insufficient
+        // Bank balance -- safe to call synchronously here, before this payment's own
+        // ledger legs are posted, same reasoning P2pService.sendDirect's own call site
+        // already establishes.
+        payerAccount = autoTopUpService.ensureSufficientPayBalance(payerUserId, payerAccount, chargeAmount)
+
+        // Real Naver Pay 영세 가맹점 수수료 지원 (small-merchant fee waiver) -- see
+        // MerchantFeeWaiverService's own doc comment. Null means this merchant never
+        // qualified/applied, the standard rate applies unchanged.
+        val fee = chargeAmount.multiply(merchant.feeRateOverride ?: feeRate).setScale(2, RoundingMode.HALF_UP)
+        val netToMerchant = chargeAmount.subtract(fee)
         // channel-labeled memo/description (2026-07-13, added for Face Pay) -- keeps a
         // real, honest audit trail of which authentication factor collected a given
         // payment (QR scan vs Face Pay biometric match) rather than always saying "QR".
-        val channelLabel = if (channel == "FACE_PAY") "Face Pay" else "QR"
+        val channelLabel = when (channel) {
+            "FACE_PAY" -> "Face Pay"
+            // Real Kakao Pay 정액 QR (static/fixed merchant QR) -- see
+            // MerchantStaticQrService's own doc comment.
+            "STATIC_QR" -> "Static QR"
+            // Real Toss Payments ARS결제-style USSD payment completion -- see
+            // PaymentIntent.ussdCode's own doc comment.
+            "USSD" -> "USSD"
+            else -> "QR"
+        }
 
         val result = ledgerService.postLedgerTransaction(
-            payerWallet.currency,
+            payerAccount.currency,
             listOf(
-                LedgerLeg(payerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, intent.amount, "$channelLabel payment - ${merchant.businessName}"),
-                LedgerLeg(merchantWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "$channelLabel collection - ${intent.description}"),
+                LedgerLeg(payerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, chargeAmount, "$channelLabel payment - ${merchant.businessName}"),
+                LedgerLeg(merchantAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "$channelLabel collection - ${intent.description}"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, fee, "$channelLabel payment fee - ${merchant.businessName}"),
             ),
         )
@@ -231,32 +601,32 @@ class MerchantService(
         // Real Transaction row + fraud review wired in (2026-07-13) -- this method
         // previously only posted ledger legs and never wrote a Transaction row at all
         // (confirmed live: TransactionRepository wasn't even injected here). That's a
-        // real, separate gap beyond just fraud review: WalletService.getTransactionHistory
+        // real, separate gap beyond just fraud review: AccountService.getTransactionHistory
         // and FraudRuleEngine's own VELOCITY/NEW_RECIPIENT rules both key off the
         // transactions table, so merchant payments were invisible to both a payer's/
         // merchant's own transaction history *and* to fraud history checks for every
         // other flow -- a repeat-merchant-payment could never trigger VELOCITY, and a
         // brand-new merchant recipient could never be flagged NEW_RECIPIENT. Persisting
         // this row here, before the fraud evaluate() call (same ordering reasoning as
-        // P2pService.payRequest and WalletService.confirmTransfer: evaluating after the
+        // P2pService.payRequest and AccountService.confirmTransfer: evaluating after the
         // save would let this transaction match itself as prior history), fixes both.
         val transaction = Transaction(
             id = result.transactionId,
             referenceNumber = "MERC${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
             senderId = payerUserId,
             recipientId = merchant.ownerUserId,
-            fromWalletId = payerWallet.id,
-            toWalletId = merchantWallet.id,
-            amount = intent.amount,
+            fromAccountId = payerAccount.id,
+            toAccountId = merchantAccount.id,
+            amount = chargeAmount,
             fee = fee,
-            currency = payerWallet.currency,
+            currency = payerAccount.currency,
             type = TransactionType.PAYMENT,
             status = TransactionStatus.COMPLETED,
             description = "$channelLabel payment - ${merchant.businessName}",
             channel = channel,
             completedAt = Instant.now(),
         )
-        fraudRuleEngine.evaluate(payerUserId, merchant.ownerUserId, intent.amount, transaction.id)
+        fraudRuleEngine.evaluate(payerUserId, merchant.ownerUserId, chargeAmount, transaction.id)
         transactionRepository.save(transaction)
 
         intent.status = PaymentIntentStatus.COMPLETED
@@ -265,24 +635,83 @@ class MerchantService(
         paymentIntentRepository.save(intent)
 
         // Real "Toss Shopping" cashback (2026-07-17) -- see ShoppingCashbackService's own
-        // doc comment for why this only applies here (a real itunda payer wallet exists)
-        // and not in chargeCard (an external card payer has no itunda wallet to credit).
+        // doc comment for why this only applies here (a real itunda payer account exists)
+        // and not in chargeCard (an external card payer has no itunda account to credit).
         // Explicitly caught, not propagated: a cashback failure must never roll back or
         // fail a real payment that already succeeded, the same "auxiliary side-effect
         // can't block real money movement" discipline the webhook call below already
         // established -- REQUIRES_NEW alone doesn't guarantee that (an uncaught exception
         // here would still roll back this method's own transaction), so this needs its
         // own explicit try/catch, not just the inner service's propagation setting.
+        // Real Naver Pay-style boosted opt-in rate (2026-07-26) -- see
+        // ShoppingCashbackService's own doc comment. Null means this merchant never
+        // opted in, so the default flat rate applies, unchanged.
         val cashbackEarned = try {
-            shoppingCashbackService.awardCashback(payerWallet, intent.amount, merchant.businessName)
+            shoppingCashbackService.awardCashback(payerAccount, chargeAmount, merchant.businessName, merchant.cashbackRate ?: ShoppingCashbackService.DEFAULT_CASHBACK_RATE)
         } catch (e: Exception) {
             BigDecimal.ZERO
+        }
+
+        // Real coupon redemption record -- kept in this same @Transactional method so it
+        // commits atomically with the payment it discounted, never orphaned from it.
+        if (couponId != null) {
+            merchantCouponService.recordRedemption(merchant, payerUserId, couponId, result.transactionId, discountAmount)
+        }
+
+        // Real Toss Place-style 자동 적립 (2026-08-18) -- debit any real points this
+        // payment redeemed, then credit new real points earned on the real final
+        // chargeAmount. Both kept in this same @Transactional method so they commit
+        // atomically with the payment, same discipline as the coupon redemption
+        // record immediately above. See MerchantLoyaltyPointsService's own doc
+        // comment for why redemption is recorded (not just validated) here, after the
+        // real ledger transaction already succeeded.
+        if (pointsRedeemed > BigDecimal.ZERO) {
+            merchantLoyaltyPointsService.recordRedemption(merchant.id, payerUserId, pointsRedeemed)
+        }
+        merchantLoyaltyPointsService.accrue(merchant, payerUserId, chargeAmount)
+
+        // Real-time "money received" notification for the merchant owner (2026-07-22) --
+        // same real gap and same fix as rw.itunda.p2p.P2pService.notifyMoneyReceived
+        // (see that method's own doc comment for the full account of the real Toss Bank
+        // feature this mirrors): a merchant collecting a real QR/Face Pay payment never
+        // got any proactive alert that money had arrived, only whatever they happened to
+        // notice next time they opened Reports. Best-effort, same discipline as the
+        // cashback try/catch immediately above -- never blocks a payment that already
+        // succeeded.
+        //
+        // Real push wired in (2026-07-28), same pass as its P2P sibling
+        // (rw.itunda.p2p.P2pService.notifyMoneyReceived) -- a merchant owner is at least
+        // as likely to be away from the app at the moment a customer pays (mid-checkout,
+        // handing a phone back) as a P2P recipient is, making the proactive push just as
+        // valuable here.
+        try {
+            val title = "Payment received"
+            val body = "You received $chargeAmount RWF via $channelLabel."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}",
+                    userId = merchant.ownerUserId,
+                    type = "MONEY_RECEIVED",
+                    title = title,
+                    body = body,
+                    isRead = false,
+                    createdAt = Instant.now(),
+                    dataJson = "{\"amount\":\"$chargeAmount\",\"payerId\":\"$payerUserId\"}",
+                ),
+            )
+            sendPaymentReceivedPushAfterCommit(merchant.ownerUserId, title, body, chargeAmount, payerUserId)
+        } catch (e: Exception) {
+            // Non-critical -- the real payment already completed and succeeded.
+            log.warn("Failed to notify merchant {} of payment received", merchant.id, e)
         }
 
         val resultMap = mapOf(
             "transactionId" to result.transactionId,
             "merchantName" to merchant.businessName,
-            "amount" to intent.amount,
+            "amount" to chargeAmount,
+            "originalAmount" to intent.amount,
+            "discountAmount" to discountAmount,
+            "pointsRedeemed" to pointsRedeemed,
             "fee" to fee,
             "status" to "COMPLETED",
             "channel" to channel,
@@ -293,19 +722,240 @@ class MerchantService(
         // after the ledger transaction and intent status are already saved, so a slow or
         // unreachable webhook endpoint can only delay the response, never roll back real money
         // that already moved.
-        webhookDeliveryService.deliverPaymentStatusChanged(merchant.webhookUrl, resultMap + ("paymentIntentId" to intentId) + ("payerId" to payerUserId))
+        //
+        // orderId added 2026-07-21 -- a real, found-live gap: Toss Payments' own real webhook
+        // payload always includes orderId ("orderId persists even when the payment status
+        // changes", per docs.tosspayments.com/en/webhooks), specifically so a merchant's
+        // webhook receiver can correlate the event back to ITS OWN order record without a
+        // second lookup call. Every in-app QR/Face Pay/card payment leaves this null (they
+        // have no external orderId at all) -- only real external-checkout payments
+        // (PaymentsApiController) ever set one, so this is purely additive for every existing
+        // webhook consumer.
+        webhookDeliveryService.deliverPaymentStatusChanged(
+            merchant.id,
+            merchant.webhookUrl,
+            resultMap + ("paymentIntentId" to intentId) + ("payerId" to payerUserId) + ("orderId" to intent.orderId),
+            merchant.webhookSecret,
+        )
         return resultMap
+    }
+
+    // Real customer-presented payment code (2026-08-11) -- see CustomerPaymentCode.kt's
+    // own doc comment. Generated by the PAYING customer, from their own Pay tab -- the
+    // reverse direction of generateQr above (merchant generates, customer scans/types).
+    // Invalidates any prior unused code for this user first, same "one live code at a
+    // time" discipline PhoneVerificationTokenRepository.invalidateUnusedByUserId already
+    // establishes, so a customer re-opening Pay can't leave an earlier still-valid code
+    // usable by whoever saw it on screen first.
+    // accountId (2026-08-11) -- real funding-source selection, see the user's own
+    // KakaoPay reference screenshot's swipeable card carousel and CustomerPaymentCode.
+    // accountId's own doc comment. Ownership is checked here (not left to
+    // chargeByCustomerCode) so a bad accountId fails loudly to the customer generating
+    // the code, not silently at charge time in front of a merchant.
+    @Transactional
+    fun generateCustomerPaymentCode(userId: String, accountId: String? = null): CustomerPaymentCode {
+        if (accountId != null) {
+            val account = accountRepository.findById(accountId).orElseThrow { MerchantNoAccountException("Account not found") }
+            // Real residual-IDOR fix (2026-09-03): this used to throw a distinct
+            // PaymentCodeAccountNotOwnedException, mapped to a 404 but with its own
+            // "ACCOUNT_NOT_OWNED" error code -- a caller could still distinguish "this
+            // accountId exists, isn't mine" from "doesn't exist" (ACCOUNT_NOT_FOUND) by
+            // reading the response body. Same fix as LoansService/SavingsService's own
+            // identical residual leaks: reuse the same NotFound exception for both cases.
+            if (account.userId != userId) throw MerchantNoAccountException("Account not found")
+            if (account.type !in PAYMENT_ELIGIBLE_ACCOUNT_TYPES) {
+                throw PaymentCodeAccountNotEligibleException("This account can't be used to pay a merchant")
+            }
+        }
+        customerPaymentCodeRepository.invalidateUnusedByUserId(userId)
+        val codeBytes = ByteArray(24)
+        SecureRandom().nextBytes(codeBytes)
+        val code = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(codeBytes)
+        return customerPaymentCodeRepository.save(
+            CustomerPaymentCode(
+                id = "cpc_${UUID.randomUUID()}",
+                userId = userId,
+                code = code,
+                expiresAt = Instant.now().plus(customerCodeValidity),
+                accountId = accountId,
+            ),
+        )
+    }
+
+    // Real customer-presented payment charge (2026-08-11) -- the merchant scans the
+    // customer's own code (no PaymentIntent exists yet, unlike collect() above -- the
+    // code carries no amount, the merchant enters it after scanning, matching real
+    // KakaoPay/Toss Pay's actual in-store flow). Deliberately a separate method from
+    // collect() rather than a refactor of it: collect() is tightly coupled to
+    // PaymentIntent's own status/webhook/orderId fields in ways that don't apply here,
+    // and this is real money-movement code -- safer to duplicate the core charge shape
+    // (same fee math, same real ledger legs, same fraud check, same cashback, same
+    // notification) than risk a regression in the already-working merchant-QR path.
+    @Transactional
+    fun chargeByCustomerCode(merchantOwnerUserId: String, code: String, amount: BigDecimal): Map<String, Any?> {
+        require(amount > BigDecimal.ZERO) { "Amount must be positive" }
+        val paymentCode = customerPaymentCodeRepository.findByCode(code)
+            ?: throw CustomerPaymentCodeNotFoundException("This code was not found")
+        if (paymentCode.usedAt != null) {
+            throw CustomerPaymentCodeNotPayableException("This code has already been used")
+        }
+        if (paymentCode.expiresAt.isBefore(Instant.now())) {
+            throw CustomerPaymentCodeNotPayableException("This code has expired -- ask the customer to refresh their Pay screen")
+        }
+
+        val merchant = merchantRepository.findByOwnerUserId(merchantOwnerUserId)
+            ?: throw MerchantNotFoundException("Merchant not found")
+        val payerUserId = paymentCode.userId
+        if (merchant.ownerUserId == payerUserId) {
+            throw SelfPaymentException("That's your own code -- share it with a customer instead of using it yourself")
+        }
+
+        // Real Toss Bank/Toss Pay separation (2026-08-21) -- see collect()'s own doc
+        // comment for the full sourced architecture. This customer-presented-code charge
+        // is the same real in-store payment moment collect() handles for the merchant-
+        // presented-QR path, so it needs the identical default: itunda Pay money,
+        // auto-funded from Bank (then an external linked account) if short -- not a
+        // direct Bank debit, which is what this method still did until this fix (a real
+        // gap: collect() got the separation, this sibling method was missed). An
+        // explicit accountId (set when the customer swiped to a specific real account,
+        // e.g. a foreign-currency one, before generating their code) still overrides
+        // this and charges that account directly with no auto-topup -- the customer's
+        // own deliberate choice, not itunda's default.
+        var payerAccount = paymentCode.accountId?.let { accountRepository.findById(it).orElse(null) }
+            ?: accountRepository.findByUserIdAndType(payerUserId, AccountType.PAY)
+            ?: throw MerchantNoAccountException("No itunda Pay money found for this account")
+        // Defense in depth for the same real allowlist generateCustomerPaymentCode's
+        // own doc comment establishes -- this should be unreachable in practice
+        // (generation already rejects an ineligible accountId), but a payment code
+        // is a real bearer credential that could in principle predate this check, so
+        // charge time re-verifies rather than trusting generation time alone.
+        if (payerAccount.type !in PAYMENT_ELIGIBLE_ACCOUNT_TYPES) {
+            throw PaymentCodeAccountNotEligibleException("This account can't be used to pay a merchant")
+        }
+        if (paymentCode.accountId == null) {
+            payerAccount = autoTopUpService.ensureSufficientPayBalance(payerUserId, payerAccount, amount)
+        }
+        val merchantAccount = accountRepository.findById(merchant.accountId)
+            .orElseThrow { MerchantNoAccountException("Merchant settlement account not found") }
+
+        val fee = amount.multiply(merchant.feeRateOverride ?: feeRate).setScale(2, RoundingMode.HALF_UP)
+        val netToMerchant = amount.subtract(fee)
+
+        val result = ledgerService.postLedgerTransaction(
+            payerAccount.currency,
+            listOf(
+                LedgerLeg(payerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Payment - ${merchant.businessName}"),
+                LedgerLeg(merchantAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "Collection - ${merchant.businessName}"),
+                LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, fee, "Payment fee - ${merchant.businessName}"),
+            ),
+        )
+
+        // Same real Transaction-row-before-fraud-evaluate ordering as collect() above --
+        // see that method's own doc comment for why.
+        val transaction = Transaction(
+            id = result.transactionId,
+            referenceNumber = "MERC${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
+            senderId = payerUserId,
+            recipientId = merchant.ownerUserId,
+            fromAccountId = payerAccount.id,
+            toAccountId = merchantAccount.id,
+            amount = amount,
+            fee = fee,
+            currency = payerAccount.currency,
+            type = TransactionType.PAYMENT,
+            status = TransactionStatus.COMPLETED,
+            description = "Payment - ${merchant.businessName}",
+            channel = "CUSTOMER_QR",
+            completedAt = Instant.now(),
+        )
+        fraudRuleEngine.evaluate(payerUserId, merchant.ownerUserId, amount, transaction.id)
+        transactionRepository.save(transaction)
+
+        paymentCode.usedAt = Instant.now()
+        customerPaymentCodeRepository.save(paymentCode)
+
+        // Same real, never-block-a-completed-payment cashback/notification discipline
+        // as collect() above -- see that method's own doc comments.
+        val cashbackEarned = try {
+            shoppingCashbackService.awardCashback(payerAccount, amount, merchant.businessName, merchant.cashbackRate ?: ShoppingCashbackService.DEFAULT_CASHBACK_RATE)
+        } catch (e: Exception) {
+            BigDecimal.ZERO
+        }
+
+        try {
+            val title = "Payment received"
+            val body = "You received $amount RWF via customer QR."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}",
+                    userId = merchant.ownerUserId,
+                    type = "MONEY_RECEIVED",
+                    title = title,
+                    body = body,
+                    isRead = false,
+                    createdAt = Instant.now(),
+                    dataJson = "{\"amount\":\"$amount\",\"payerId\":\"$payerUserId\"}",
+                ),
+            )
+            sendPaymentReceivedPushAfterCommit(merchant.ownerUserId, title, body, amount, payerUserId)
+        } catch (e: Exception) {
+            // Non-critical -- the real payment already completed and succeeded.
+            log.warn("Failed to notify merchant {} of payment received", merchant.id, e)
+        }
+
+        val resultMap = mapOf(
+            "transactionId" to result.transactionId,
+            "merchantName" to merchant.businessName,
+            "amount" to amount,
+            "fee" to fee,
+            "status" to "COMPLETED",
+            "channel" to "CUSTOMER_QR",
+            "completedAt" to Instant.now().toString(),
+            "cashbackEarned" to cashbackEarned,
+        )
+        webhookDeliveryService.deliverPaymentStatusChanged(
+            merchant.id,
+            merchant.webhookUrl,
+            resultMap + ("payerId" to payerUserId),
+            merchant.webhookSecret,
+        )
+        return resultMap
+    }
+
+    /** Merchant pushes are external effects, so never advertise a payment before commit. */
+    private fun sendPaymentReceivedPushAfterCommit(
+        ownerUserId: String,
+        title: String,
+        body: String,
+        amount: BigDecimal,
+        payerUserId: String,
+    ) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(ownerUserId, title, body, mapOf("amount" to amount.toString(), "payerId" to payerUserId))
+            } catch (e: Exception) {
+                // A mobile delivery failure must not affect an already-committed payment.
+                log.warn("Failed to send payment-received push to user {}", ownerUserId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     // Real demo card-processing flow (2026-07-17), closing the actionable half of this
     // row's previously fully-blocked "POS, card processing" gap -- see
     // DemoCardAuthorizationService's own doc comment for the real Luhn validation +
     // simulated authorization this runs before any ledger posting. Unlike collect()'s
-    // QR flow, there is no real itunda payer wallet on the other side of a card charge
+    // QR flow, there is no real itunda payer account on the other side of a card charge
     // (a real card is issued by a real bank/network outside this system) -- the debit
     // leg goes to a real RAIL_SUSPENSE clearing account (card_network_clearing),
-    // same "money entering from outside the system" pattern WalletService's own
-    // external-rail transfers already use, rather than inventing a fake payer wallet.
+    // same "money entering from outside the system" pattern AccountService's own
+    // external-rail transfers already use, rather than inventing a fake payer account.
     @Transactional
     fun chargeCard(
         ownerUserId: String, amount: BigDecimal, description: String,
@@ -314,7 +964,7 @@ class MerchantService(
         // Real rate limit (2026-07-17, found by this pass's own security review) --
         // DemoCardAuthorizationService.simulateOutcome APPROVEs ~85% of any Luhn-valid
         // card number and this method credits that approval as real, spendable ledger
-        // balance into the merchant's real wallet. Unlike a real PSP integration (where
+        // balance into the merchant's real account. Unlike a real PSP integration (where
         // a genuine issuer/network sits between an attempt and any money moving), this
         // demo has no external gate at all -- without a limit here, a scripted burst of
         // random Luhn-valid numbers against this one endpoint would mint real balance
@@ -325,29 +975,31 @@ class MerchantService(
         rateLimiter.checkLimit("merchant:chargeCard:$ownerUserId", limit = 10, window = Duration.ofMinutes(1))
 
         val merchant = getMyMerchant(ownerUserId)
-        val merchantWallet = walletRepository.findById(merchant.walletId)
-            .orElseThrow { MerchantNoWalletException("Merchant settlement wallet not found") }
+        val merchantAccount = accountRepository.findById(merchant.accountId)
+            .orElseThrow { MerchantNoAccountException("Merchant settlement account not found") }
 
         val authResult = demoCardAuthorizationService.authorize(cardNumber, expiryMonth, expiryYear, cvc)
         if (authResult.status != CardAuthorizationStatus.APPROVED) {
             throw CardDeclinedException(authResult.detail)
         }
 
-        val fee = amount.multiply(feeRate).setScale(2, RoundingMode.HALF_UP)
+        // Real Naver Pay 영세 가맹점 수수료 지원 (small-merchant fee waiver) -- see
+        // MerchantFeeWaiverService's own doc comment.
+        val fee = amount.multiply(merchant.feeRateOverride ?: feeRate).setScale(2, RoundingMode.HALF_UP)
         val netToMerchant = amount.subtract(fee)
 
         val result = ledgerService.postLedgerTransaction(
-            merchantWallet.currency,
+            merchantAccount.currency,
             listOf(
                 LedgerLeg("card_network_clearing", LedgerAccountType.RAIL_SUSPENSE, LedgerDirection.DEBIT, amount, "Card payment - ${merchant.businessName}"),
-                LedgerLeg(merchantWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "Card collection - $description"),
+                LedgerLeg(merchantAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "Card collection - $description"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, fee, "Card payment fee - ${merchant.businessName}"),
             ),
         )
 
-        // "external_card" mirrors WalletService.confirmTransfer's own "external"
+        // "external_card" mirrors AccountService.confirmTransfer's own "external"
         // recipientId convention for money that enters/leaves through a real external
-        // rail rather than another itunda wallet -- senderId/recipientId are plain
+        // rail rather than another itunda account -- senderId/recipientId are plain
         // strings with no FK constraint (confirmed directly against Transaction.kt).
         // channel = "CARD" means this shows up in getReport()'s existing byChannel
         // breakdown automatically, no changes needed there.
@@ -356,18 +1008,56 @@ class MerchantService(
             referenceNumber = "CARD${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
             senderId = "external_card_${authResult.last4}",
             recipientId = merchant.ownerUserId,
-            fromWalletId = null,
-            toWalletId = merchantWallet.id,
+            fromAccountId = null,
+            toAccountId = merchantAccount.id,
             amount = amount,
             fee = fee,
-            currency = merchantWallet.currency,
+            currency = merchantAccount.currency,
             type = TransactionType.PAYMENT,
             status = TransactionStatus.COMPLETED,
             description = "Card payment - ${merchant.businessName}",
             channel = "CARD",
             completedAt = Instant.now(),
         )
+        // Real gap found live (2026-09-11, sibling-asymmetry check against collect()/
+        // chargeByCustomerCode() above, both of which already evaluate the paying
+        // itunda user) -- chargeCard mints real ledger balance from a simulated card
+        // authorization that DemoCardAuthorizationService approves for ~85% of ANY
+        // Luhn-valid card, with zero FraudRuleEngine coverage. There's no real itunda
+        // "payer" here (the card is external, not another itunda account), so this
+        // evaluates the account materially receiving the value instead -- merchant.
+        // ownerUserId -- the same real precedent AgentService.cashIn already
+        // established for an identical "external money enters an itunda account"
+        // shape (deposit-structuring/self-laundering via a scripted burst of fake
+        // charges is the exact risk the rate limit above already names but only
+        // bounds by volume, not by amount).
+        fraudRuleEngine.evaluate(merchant.ownerUserId, null, amount, transaction.id)
         transactionRepository.save(transaction)
+
+        // Real sibling-asymmetry fix (2026-09-12) -- collect()/chargeByCustomerCode()
+        // above both alert the merchant owner the moment they get paid; this real
+        // card-payment flow, which credits real ledger balance the exact same way,
+        // never did. Same best-effort discipline as its siblings -- a notification
+        // failure must never affect a payment that already succeeded.
+        try {
+            val title = "Payment received"
+            val body = "You received $amount RWF via card payment."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}",
+                    userId = merchant.ownerUserId,
+                    type = "MONEY_RECEIVED",
+                    title = title,
+                    body = body,
+                    isRead = false,
+                    createdAt = Instant.now(),
+                    dataJson = "{\"amount\":\"$amount\",\"payerId\":\"external_card_${authResult.last4}\"}",
+                ),
+            )
+            sendPaymentReceivedPushAfterCommit(merchant.ownerUserId, title, body, amount, "external_card_${authResult.last4}")
+        } catch (e: Exception) {
+            log.warn("Failed to notify merchant {} of card payment received", merchant.id, e)
+        }
 
         val resultMap = mapOf(
             "transactionId" to result.transactionId,
@@ -379,7 +1069,7 @@ class MerchantService(
             "cardLast4" to authResult.last4,
             "completedAt" to Instant.now().toString(),
         )
-        webhookDeliveryService.deliverPaymentStatusChanged(merchant.webhookUrl, resultMap + ("payerId" to "external_card_${authResult.last4}"))
+        webhookDeliveryService.deliverPaymentStatusChanged(merchant.id, merchant.webhookUrl, resultMap + ("payerId" to "external_card_${authResult.last4}"), merchant.webhookSecret)
         return resultMap
     }
 
@@ -390,9 +1080,15 @@ class MerchantService(
     // a pre-truncated date column like ProviderAttemptLog.occurredDate -- fine at this
     // scale, and avoids a database-specific date-truncation function. "Settlement" here
     // is just Transaction.status == COMPLETED: collect() posts to the merchant's own
-    // wallet synchronously in the same ledger transaction as the collection, so there's
+    // account synchronously in the same ledger transaction as the collection, so there's
     // no separate pending-settlement state to report on, unlike a real payout batch.
     fun getReport(ownerUserId: String, from: LocalDate, to: LocalDate): List<MerchantReportDay> {
+        if (from.isAfter(to)) {
+            throw InvalidReportRangeException("Report start date must be on or before the end date")
+        }
+        if (from.plusDays(30).isBefore(to)) {
+            throw InvalidReportRangeException("Reports are limited to 31 days at a time")
+        }
         val merchant = getMyMerchant(ownerUserId)
         val fromInstant = from.atStartOfDay(ZoneOffset.UTC).toInstant()
         val toInstant = to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()
@@ -412,5 +1108,43 @@ class MerchantService(
                 )
             }
             .sortedBy { it.date }
+    }
+
+    // Real Coupang WING seller dashboard "베스트 상품" (best-selling products) report
+    // (2026-08-16) -- WING's own real seller analytics tab ranks products by units/
+    // revenue sold, distinct from a raw revenue total, so a seller can see WHAT is
+    // driving sales, not just how much. OrderItem already snapshots productId/
+    // productName/unitPrice/quantity at purchase time (Coupang-style multi-item
+    // Order); grouped in-memory over a bounded window, same real reason getReport's
+    // own doc comment gives for not using a JPQL date-function GROUP BY. Deliberately
+    // does not filter by OrderStatus -- matches getReport's own definition of
+    // "revenue" (gross collected at placement, not fulfillment-gated); a cancelled
+    // order's reversal is a separate real refund Transaction, not a retroactive
+    // rewrite of what was sold.
+    fun getTopSellingProducts(ownerUserId: String, from: LocalDate, to: LocalDate, limit: Int = 10): List<TopSellingProduct> {
+        if (from.isAfter(to)) {
+            throw InvalidReportRangeException("Report start date must be on or before the end date")
+        }
+        if (from.plusDays(30).isBefore(to)) {
+            throw InvalidReportRangeException("Reports are limited to 31 days at a time")
+        }
+        val merchant = getMyMerchant(ownerUserId)
+        val fromInstant = from.atStartOfDay(ZoneOffset.UTC).toInstant()
+        val toInstant = to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()
+        val orders = orderRepository.findByMerchantIdAndCreatedAtBetween(merchant.id, fromInstant, toInstant)
+        if (orders.isEmpty()) return emptyList()
+        val items = orderItemRepository.findByOrderIdIn(orders.map { it.id })
+        return items
+            .groupBy { it.productId }
+            .map { (productId, productItems) ->
+                TopSellingProduct(
+                    productId = productId,
+                    productName = productItems.first().productName,
+                    unitsSold = productItems.sumOf { it.quantity },
+                    revenue = productItems.fold(BigDecimal.ZERO) { acc, i -> acc + i.unitPrice.multiply(BigDecimal(i.quantity)) },
+                )
+            }
+            .sortedByDescending { it.revenue }
+            .take(limit)
     }
 }

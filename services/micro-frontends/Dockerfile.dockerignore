@@ -1,0 +1,30 @@
+# Frontend (micro-frontends) Docker build only needs services/micro-frontends,
+# packages/design-tokens + packages/shared-utils + packages/itunda-pay-widget, and
+# root workspace config -- NOT packages/saronite (2.5GB, React Native mini-apps,
+# irrelevant to any web build) or any native mobile/backend tree. Mirrors the root
+# .dockerignore's own real reasoning (see its own header comment) for the backend
+# build, adapted for what a frontend build actually needs.
+#
+# services/api-gateway is NOT excluded (real bug hit building this, 2026-08-19):
+# it's a real root package.json workspaces member (36KB, trivially cheap to keep) --
+# excluding its source made `yarn install --immutable` think that workspace had been
+# deleted and want to rewrite yarn.lock to drop it, which --immutable then refuses to
+# do silently, so the build failed with "The lockfile would have been modified by
+# this install, which is explicitly forbidden" even though nothing about this
+# frontend build actually touches api-gateway's own code.
+android
+ios
+services/backend
+services/microservices
+packages/saronite
+docs
+infra
+.git
+.claude
+dump.rdb
+**/build
+**/.gradle
+**/*.apk
+**/*.ipa
+**/node_modules
+**/dist

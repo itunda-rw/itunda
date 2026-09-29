@@ -1,0 +1,1056 @@
+package rw.itunda.rideshare
+
+import org.slf4j.LoggerFactory
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
+import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.LedgerAccountType
+import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Message
+import rw.itunda.core.domain.Notification
+import rw.itunda.core.domain.RideDriver
+import rw.itunda.core.domain.RideTrip
+import rw.itunda.core.domain.RideTripStatus
+import rw.itunda.core.domain.RideTripStop
+import rw.itunda.core.domain.Transaction
+import rw.itunda.core.domain.TransactionStatus
+import rw.itunda.core.domain.TransactionType
+import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
+import rw.itunda.core.geo.GeoUtils
+import rw.itunda.core.geo.OsrmRoutingClient
+import rw.itunda.core.geo.TravelMode
+import rw.itunda.core.ledger.InsufficientFundsException
+import rw.itunda.core.ledger.LedgerLeg
+import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
+import rw.itunda.core.repository.RideDriverRepository
+import rw.itunda.core.repository.RideTripRepository
+import rw.itunda.core.repository.RideTripStopRepository
+import rw.itunda.core.repository.TransactionRepository
+import rw.itunda.core.repository.AccountRepository
+import rw.itunda.messaging.MessagingService
+import rw.itunda.core.pricing.CancellationPolicy
+import rw.itunda.core.pricing.PlatformFees
+import rw.itunda.core.pricing.TipPolicy
+import java.math.BigDecimal
+import java.math.RoundingMode
+import java.time.Duration
+import java.time.Instant
+import java.util.UUID
+
+/**
+ * Real Kakao T-style ride-hailing (2026-07-26) -- closes `docs/DESIGN_REFERENCES.md`'s
+ * own remaining round-2 candidate. Sourced directly from Kakao Mobility's own official
+ * page (kakaomobility.com/contents/taxi-dispatch): real dispatch ranks candidate
+ * drivers by acceptance-prediction, daily completion volume, rating, real acceptance
+ * rate, and finally ETA among qualifying candidates; a real, documented finding that
+ * cancellation rate jumps from 9.8% to 28.8% once a wait crosses 15-18 seconds; AI
+ * dispatch cut average wait time ~39% and grew daily riders by ~250,000.
+ *
+ * **Honest v1 scope**: no real ML acceptance-prediction model exists here (Kakao's own
+ * sourced >90% ROC-AUC figure describes a trained model this repo has no data or
+ * infrastructure to build) -- this is the honest, rule-based proxy for the same real
+ * signals: real acceptance rate (`RideDriver.totalAccepted`/`totalOffers`, an exact
+ * computed ratio, not a prediction) as a real minimum-quality filter, then real
+ * `GeoUtils.haversineKm` distance (a proxy for ETA, same "straight-line, not real road
+ * distance" honesty `GeoUtils.kt`'s own doc comment already names) as the tiebreaker
+ * among qualifying candidates -- structurally the same real "coarse filter, real rank"
+ * shape `EatsOrderService.rankNearbyRiders` already established, just reused for a
+ * genuinely distinct domain (a passenger trip, not a food delivery).
+ *
+ * The real 15-second offer window (`RideTrip.OFFER_WINDOW`) isn't an invented number --
+ * it's directly Kakao's own sourced cancellation-surge threshold, chosen so itunda's own
+ * dispatch reassigns before a real passenger would be likely to bail. Real push wired
+ * into the ride-offer notification (2026-07-28, see `dispatchToNextDriver`'s own doc
+ * comment) -- the single most time-critical notification site in this backend, since a
+ * driver who misses it within the 15-second window loses the offer entirely.
+ *
+ * Fare escrow/payout/refund mirrors `EatsOrderService`'s own delivery-fee-holding
+ * pattern exactly (a real, already-proven shape, not reinvented): held in `ride_holding`
+ * from request time, paid to the driver net of `platformFee` at `COMPLETED`, refunded in
+ * full if `CANCELLED` while still `REQUESTED` (before any driver has committed).
+ *
+ * 2026-08-17: the real fare distance itself now prefers `OsrmRoutingClient.routeThrough`
+ * -- itunda's own self-hosted OSRM instance, already proven in
+ * `EatsOrderService`/`MarketplaceService` -- over the straight-line
+ * `GeoUtils.haversineKm` sum this class's own doc comment above used to name as the
+ * fare's only source. `GeoUtils.kt`'s own doc comment named this exact gap as "a real,
+ * named follow-up once this lands" back when no self-hosted routing existed; it has
+ * since landed for delivery fees and marketplace meetup distances, but ride fares --
+ * itunda's single largest real per-trip charge -- were never updated to use it. A
+ * single `routeThrough` call replaces the old per-leg haversine stitching (itself
+ * already correct for multi-stop trips, just straight-line), same never-fail `null`
+ * fallback discipline every other real OSRM caller in this codebase already follows:
+ * unconfigured, unreachable, or no real route found all fall back to the exact same
+ * haversine sum this class always computed before, so a real trip is never blocked or
+ * degraded by OSRM being unavailable. Dispatch's own driver-ranking tiebreaker (an ETA
+ * proxy, not a fare) deliberately keeps using haversine unchanged -- that's a coarse,
+ * cheap in-memory filter across every candidate driver, not the one real per-trip
+ * distance a passenger is actually charged for.
+ */
+data class RideDriverLocationView(val latitude: Double, val longitude: Double, val updatedAt: Instant)
+
+@Service
+class RideTripService(
+    private val rideDriverRepository: RideDriverRepository,
+    private val rideTripRepository: RideTripRepository,
+    private val rideTripStopRepository: RideTripStopRepository,
+    private val accountRepository: AccountRepository,
+    private val ledgerService: LedgerService,
+    private val transactionRepository: TransactionRepository,
+    private val notificationRepository: NotificationRepository,
+    private val rateLimiter: RateLimiter,
+    private val pushNotificationService: PushNotificationService,
+    private val messagingService: MessagingService,
+    private val fraudRuleEngine: FraudRuleEngine,
+    private val osrmRoutingClient: OsrmRoutingClient,
+) {
+    companion object {
+        // Consolidated 2026-09-06 into core/pricing/PlatformFees -- see its own doc comment.
+        private val platformFeeRate = PlatformFees.PLATFORM_FEE_RATE
+
+        // itunda's own honest fare-structure choice -- Kakao Mobility's own page
+        // explicitly discloses no fare/surge pricing mechanics to reuse. Reuses the
+        // exact same real per-km rate EatsOrderService.perKmDeliveryRate already
+        // established (itunda's one real, precedented distance rate) rather than
+        // inventing a second one; the base fare is higher, reflecting a real taxi
+        // meter's flag-fall convention (the whole trip's fare, not a secondary
+        // delivery add-on fee).
+        private val baseFare = BigDecimal("1000")
+        private val perKmRate = BigDecimal("250")
+        private val minFare = BigDecimal("1500")
+
+        // Real minimum sample size before a driver's own acceptance rate is trusted
+        // enough to filter them out -- a brand-new driver with zero history must never
+        // be unfairly excluded for lack of data.
+        private const val MIN_OFFERS_FOR_ACCEPTANCE_FILTER = 5
+        private val MIN_ACCEPTANCE_RATE = BigDecimal("0.3")
+
+        // Real Kakao T 예약 호출 (scheduled ride booking) -- see RideTrip.scheduledFor's
+        // own doc comment. Same 2-day bound EatsOrderService.SCHEDULED_ORDER_MAX_WINDOW
+        // already established for Baemin-style 예약주문, itunda's own consistent choice.
+        val SCHEDULED_RIDE_MAX_WINDOW: Duration = Duration.ofDays(2)
+
+        // Real dispatch only starts shortly before a scheduled trip's real requested
+        // time -- dispatching hours or days early would offer a driver a trip nobody
+        // wants picked up yet. Kakao's own real lead time isn't published; itunda's own
+        // honest choice, not a fabricated real number.
+        val SCHEDULED_RIDE_DISPATCH_LEAD_TIME: Duration = Duration.ofMinutes(10)
+
+        // Real Kakao T-style multi-stop rides (item 214) -- Kakao T's own real,
+        // currently-live cap on extra waypoints between pickup and dropoff.
+        const val MAX_STOPS = 3
+
+        // Consolidated 2026-09-06 into core/pricing/TipPolicy, corrected 2026-09-08
+        // (see TipPolicy's own doc comment -- ride and Eats tip windows are genuinely
+        // different real Uber policies, not one shared value). itunda's real trip has
+        // no separate completedAt column -- updatedAt is only ever touched again after
+        // COMPLETED by a tip itself, so it's the honest real completion timestamp to
+        // measure from.
+        val TIP_WINDOW: Duration = TipPolicy.RIDE_TIP_WINDOW
+
+        // Consolidated 2026-09-06 into core/pricing/CancellationPolicy -- see its own doc comment.
+        val CANCELLATION_FEE_GRACE_PERIOD: Duration = CancellationPolicy.CANCELLATION_FEE_GRACE_PERIOD
+
+        // Real Uber policy states the fee "pay[s] drivers for the time and effort they
+        // spend getting to your location" but publishes no fixed real number (it "varies
+        // by location"). itunda's own honest modeled choice: the driver's real flag-fall
+        // (`baseFare`) -- roughly what they'd have earned just for showing up, the same
+        // reasoning Uber's own stated rationale describes, not a fabricated real figure.
+        val CANCELLATION_FEE = baseFare
+    }
+
+    private val log = LoggerFactory.getLogger(RideTripService::class.java)
+
+    private fun getMyDriver(userId: String) =
+        rideDriverRepository.findByUserId(userId)
+            ?: throw RideDriverNotRegisteredException("This account is not registered as a driver")
+
+    private fun calculateFare(routePoints: List<Pair<Double, Double>>): Pair<BigDecimal, BigDecimal> =
+        calculateRideFare(osrmRoutingClient, routePoints, baseFare, perKmRate, minFare)
+
+    // Real Uber "Upfront Fare" simplification (2026-08-24, uber.com/gb/en/blog/
+    // understanding-your-upfront-fare-when-it-can-change-and-what-extra-fees-may-apply --
+    // "you know what you're paying before you ride"). Found a real, confirmed gap: this
+    // controller had no fare-preview endpoint at all -- `requestTrip` was the ONLY entry
+    // point that computed a fare, meaning a passenger only learned the price at the exact
+    // moment real money was already held in escrow. Every real client (bank-mfe's own
+    // "Request a ride" form) showed pickup/dropoff/timing with a bare "Request ride"
+    // button and zero fare anywhere on screen. This is a pure, side-effect-free
+    // read -- no rate limit, no auth-scoped state touched, matches every other
+    // real *estimate/*preview-shaped endpoint in this codebase (e.g.
+    // WeatherIndexInsuranceController's own quote endpoint).
+    fun estimateFare(
+        pickupLatitude: Double,
+        pickupLongitude: Double,
+        dropoffLatitude: Double,
+        dropoffLongitude: Double,
+        stops: List<RideStopInput> = emptyList(),
+    ): BigDecimal {
+        if (!GeoUtils.isValidCoordinate(pickupLatitude, pickupLongitude) || !GeoUtils.isValidCoordinate(dropoffLatitude, dropoffLongitude)) {
+            throw InvalidRideLocationException("Invalid pickup or dropoff coordinate")
+        }
+        if (stops.size > MAX_STOPS) {
+            throw RideTooManyStopsException("A trip can have at most $MAX_STOPS extra stops")
+        }
+        stops.forEach {
+            if (!GeoUtils.isValidCoordinate(it.latitude, it.longitude)) {
+                throw InvalidRideLocationException("Invalid stop coordinate")
+            }
+        }
+        val routePoints = listOf(pickupLatitude to pickupLongitude) + stops.map { it.latitude to it.longitude } + listOf(dropoffLatitude to dropoffLongitude)
+        val (_, fare) = calculateFare(routePoints)
+        return fare
+    }
+
+    @Transactional
+    fun requestTrip(
+        passengerId: String,
+        pickupAddress: String,
+        pickupLatitude: Double,
+        pickupLongitude: Double,
+        dropoffAddress: String,
+        dropoffLatitude: Double,
+        dropoffLongitude: Double,
+        // Real Kakao T 예약 호출 (scheduled ride booking) -- null (the default) means
+        // ASAP, every existing caller's behavior completely unchanged. See
+        // RideTrip.scheduledFor's own doc comment for the real bound/lead-time rules.
+        scheduledFor: Instant? = null,
+        // Real Kakao T-style multi-stop rides (item 214) -- empty (the default) means a
+        // direct pickup-to-dropoff trip, every existing caller's behavior completely
+        // unchanged. See RideTripStop.kt's own doc comment.
+        stops: List<RideStopInput> = emptyList(),
+    ): RideTrip {
+        if (!GeoUtils.isValidCoordinate(pickupLatitude, pickupLongitude) || !GeoUtils.isValidCoordinate(dropoffLatitude, dropoffLongitude)) {
+            throw InvalidRideLocationException("Invalid pickup or dropoff coordinate")
+        }
+        if (stops.size > MAX_STOPS) {
+            throw RideTooManyStopsException("A trip can have at most $MAX_STOPS extra stops")
+        }
+        stops.forEach {
+            if (!GeoUtils.isValidCoordinate(it.latitude, it.longitude)) {
+                throw InvalidRideLocationException("Invalid stop coordinate")
+            }
+        }
+        if (scheduledFor != null) {
+            val now = Instant.now()
+            if (!scheduledFor.isAfter(now)) {
+                throw InvalidScheduledRideTimeException("Scheduled time must be in the future")
+            }
+            if (scheduledFor.isAfter(now.plus(SCHEDULED_RIDE_MAX_WINDOW))) {
+                throw InvalidScheduledRideTimeException("Scheduled time must be within ${SCHEDULED_RIDE_MAX_WINDOW.toDays()} days")
+            }
+        }
+        val trimmedPickup = pickupAddress.trim().ifEmpty { throw InvalidRideLocationException("Pickup address is required") }.take(500)
+        val trimmedDropoff = dropoffAddress.trim().ifEmpty { throw InvalidRideLocationException("Dropoff address is required") }.take(500)
+
+        // Real anti-spam limit, same convention every other real money-moving creation
+        // endpoint in this codebase uses.
+        rateLimiter.checkLimit("rideshare:request:$passengerId", limit = 20, window = Duration.ofHours(1))
+
+        val passengerAccount = accountRepository.findByUserIdAndType(passengerId, AccountType.MAIN)
+            ?: throw RideDriverNoAccountException("No account found for this account")
+
+        // Real multi-stop distance -- pickup -> stop 1 -> ... -> dropoff. Prefers one
+        // real OSRM routeThrough call across the whole itinerary (real road distance,
+        // the same never-fail-null-falls-back-to-haversine discipline
+        // EatsOrderService/MarketplaceService already establish for this exact client);
+        // falls back to summing consecutive real GeoUtils.haversineKm legs (straight-line
+        // honesty GeoUtils.kt's own doc comment already names) when OSRM is unconfigured,
+        // unreachable, or finds no route -- never blocks a real trip request either way.
+        val routePoints = listOf(pickupLatitude to pickupLongitude) + stops.map { it.latitude to it.longitude } + listOf(dropoffLatitude to dropoffLongitude)
+        val (distanceKm, fare) = calculateFare(routePoints)
+        val platformFee = fare.multiply(platformFeeRate).setScale(2, RoundingMode.HALF_UP)
+
+        if (passengerAccount.availableBalance < fare) {
+            throw InsufficientFundsException("Insufficient available balance for this trip")
+        }
+
+        // Real escrow hold -- the passenger's fare leaves their account right now, held
+        // until the trip completes. Same "hold, don't move directly" shape
+        // EatsOrder's own delivery-fee escrow already establishes.
+        val holdResult = ledgerService.postLedgerTransaction(
+            passengerAccount.currency,
+            listOf(
+                LedgerLeg(passengerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, fare, "Ride requested"),
+                LedgerLeg("ride_holding", LedgerAccountType.RIDE_HOLDING, LedgerDirection.CREDIT, fare, "Ride fare held in escrow"),
+            ),
+        )
+        val holdTransaction = Transaction(
+            id = holdResult.transactionId,
+            referenceNumber = "RIDE${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
+            senderId = passengerId,
+            recipientId = passengerId,
+            fromAccountId = passengerAccount.id,
+            amount = fare,
+            fee = platformFee,
+            currency = passengerAccount.currency,
+            type = TransactionType.TRANSFER,
+            status = TransactionStatus.COMPLETED,
+            description = "Ride requested",
+            completedAt = Instant.now(),
+        )
+        // Real, sourced follow-up named in FraudRuleEngine's own doc comment: a ride
+        // fare hold is a real money-leaving-account flow. recipientUserId is null --
+        // no driver has been matched yet at request time (dispatch happens after), same
+        // shape as BillsService's external-recipient payments, so only HIGH_VALUE/
+        // VELOCITY apply here, not NEW_RECIPIENT.
+        fraudRuleEngine.evaluate(passengerId, null, fare, holdResult.transactionId)
+        transactionRepository.save(holdTransaction)
+
+        val trip = rideTripRepository.save(
+            RideTrip(
+                id = "ride_trip_${UUID.randomUUID()}", passengerId = passengerId, pickupAddress = trimmedPickup,
+                pickupLatitude = pickupLatitude, pickupLongitude = pickupLongitude, dropoffAddress = trimmedDropoff,
+                dropoffLatitude = dropoffLatitude, dropoffLongitude = dropoffLongitude, distanceKm = distanceKm,
+                fare = fare, platformFee = platformFee, transactionId = holdTransaction.id, scheduledFor = scheduledFor,
+                pin = generatePin(),
+            ),
+        )
+        stops.forEachIndexed { index, stop ->
+            rideTripStopRepository.save(
+                RideTripStop(
+                    id = "ride_trip_stop_${UUID.randomUUID()}", tripId = trip.id, sequence = index,
+                    address = stop.address.trim().take(500), latitude = stop.latitude, longitude = stop.longitude,
+                ),
+            )
+        }
+        // Real Kakao T 예약 호출 -- a trip scheduled well ahead is not dispatched now;
+        // RideDispatchScheduler starts real dispatch once it's within
+        // SCHEDULED_RIDE_DISPATCH_LEAD_TIME of the requested time (see
+        // activateScheduledDispatch's own doc comment). A near-future or ASAP request
+        // dispatches immediately, completely unchanged.
+        if (scheduledFor == null || !scheduledFor.isAfter(Instant.now().plus(SCHEDULED_RIDE_DISPATCH_LEAD_TIME))) {
+            dispatchToNextDriver(trip)
+        }
+        return trip
+    }
+
+    // Real acceptance-rate-filtered, distance-ranked candidate pool -- see this class's
+    // own doc comment for the full honest-v1 account of what real Kakao dispatch signal
+    // each piece stands in for.
+    //
+    // Real Uber "Destination Filter" restriction (2026-08-16, help.uber.com/en-GB/
+    // driving-and-delivering/article/driver-destination-filter) -- Uber's own real
+    // account: "the dropoff location should bring you closer to your final
+    // destination." A driver with an active filter is excluded from a trip's candidate
+    // pool unless this trip's real dropoff genuinely reduces their real haversine
+    // distance to their own chosen destination versus their current position -- never a
+    // driver preference boost (this backend has no real signal to honestly weight one),
+    // just the same real eligibility restriction Uber's own help article describes. A
+    // driver with no active filter (the default, `destinationLatitude == null`) is
+    // completely unaffected, same backward-compatible shape every other real toggle in
+    // this class already establishes.
+    private fun rankNearbyDrivers(
+        pickupLat: Double,
+        pickupLng: Double,
+        dropoffLat: Double,
+        dropoffLng: Double,
+        excludedUserIds: Set<String> = emptySet(),
+        candidatePool: List<RideDriver>? = null,
+        busyDriverIds: Set<String>? = null,
+    ): List<Pair<RideDriver, Double>> {
+        val actuallyBusy = busyDriverIds
+            ?: rideTripRepository.findDistinctDriverIdsByStatusIn(listOf(RideTripStatus.DRIVER_ASSIGNED, RideTripStatus.IN_PROGRESS)).toSet()
+        val candidates = candidatePool ?: rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull()
+        return rankRideDriverCandidates(
+            pickupLat, pickupLng, dropoffLat, dropoffLng, excludedUserIds, candidates, actuallyBusy,
+            MIN_OFFERS_FOR_ACCEPTANCE_FILTER, MIN_ACCEPTANCE_RATE,
+        )
+    }
+
+    private fun dispatchToNextDriver(trip: RideTrip, candidatePool: List<RideDriver>? = null, busyDriverIds: Set<String>? = null) {
+        try {
+            val excluded = trip.excludedDriverUserIds?.split(",")?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
+            val ranked = rankNearbyDrivers(trip.pickupLatitude, trip.pickupLongitude, trip.dropoffLatitude, trip.dropoffLongitude, excluded, candidatePool, busyDriverIds)
+            val next = ranked.firstOrNull()?.first
+
+            if (next == null) {
+                // Real open-list fallback -- no real candidate could be exclusively
+                // offered the trip (none online, or all excluded/busy/filtered), so it
+                // stays REQUESTED with no active offer; any online driver can browse and
+                // claim it via getAvailableTrips. Itunda's own honest v1 scoping choice
+                // to skip a separate broadcast notification here (unlike Eats' own
+                // notifyNearestRiders fallback) -- an online driver is already expected
+                // to check the open list.
+                trip.offeredDriverId = null
+                trip.offerExpiresAt = null
+                rideTripRepository.save(trip)
+                return
+            }
+            trip.offeredDriverId = next.id
+            trip.offerExpiresAt = Instant.now().plus(RideTrip.OFFER_WINDOW)
+            rideTripRepository.save(trip)
+            next.totalOffers += 1
+            rideDriverRepository.save(next)
+            val title = "New ride request"
+            val body = "Pickup at ${trip.pickupAddress} -- ${trip.fare} RWF fare."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = next.userId, type = "RIDE_TRIP_OFFER",
+                    title = title, body = body,
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${trip.id}\"}",
+                ),
+            )
+            // Real push wired in (2026-07-28) -- of every notification site in this
+            // backend, this is the single most time-critical: the real 15-second
+            // OFFER_WINDOW above means a driver who doesn't see this within seconds
+            // loses the offer to the next-ranked driver entirely, not just "misses it
+            // for a while" the way every other in-app-only notification here does.
+            // PushNotificationService.sendToUser never throws (best-effort per-token
+            // internally), so this can't turn a successful dispatch into a logged
+            // "dispatch failed" warning below.
+            sendTripPushAfterCommit(next.userId, title, body, trip.id)
+        } catch (e: Exception) {
+            log.warn("Ride dispatch failed for trip {}: {}", trip.id, e.message)
+        }
+    }
+
+    @Transactional
+    fun acceptTrip(driverUserId: String, tripId: String): RideTrip {
+        val driver = getMyDriver(driverUserId)
+        if (!driver.available) {
+            throw RideDriverNotAvailableException("Go online before accepting a trip")
+        }
+        if (rideTripRepository.existsByDriverIdAndStatusIn(driver.id, listOf(RideTripStatus.DRIVER_ASSIGNED, RideTripStatus.IN_PROGRESS))) {
+            throw RideDriverAlreadyOnTripException("Finish your current trip before accepting another -- itunda drivers carry one trip at a time")
+        }
+        val trip = rideTripRepository.findById(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
+        if (trip.status != RideTripStatus.REQUESTED || trip.driverId != null) {
+            throw RideTripAlreadyClaimedException("This trip is no longer available")
+        }
+        val offerStillActive = trip.offerExpiresAt?.isAfter(Instant.now()) == true
+        if (offerStillActive && trip.offeredDriverId != driver.id) {
+            throw RideTripAlreadyClaimedException("This trip is no longer available")
+        }
+        if (trip.passengerId == driverUserId) throw RideSelfTripException("Cannot accept your own trip")
+
+        trip.driverId = driver.id
+        trip.status = RideTripStatus.DRIVER_ASSIGNED
+        trip.offeredDriverId = null
+        trip.offerExpiresAt = null
+        trip.driverAssignedAt = Instant.now()
+        trip.updatedAt = Instant.now()
+        val saved = rideTripRepository.save(trip)
+
+        driver.totalAccepted += 1
+        rideDriverRepository.save(driver)
+
+        run {
+            val title = "Driver assigned"
+            val body = "A driver is on the way to ${trip.pickupAddress}."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = trip.passengerId, type = "RIDE_TRIP_UPDATE",
+                    title = title, body = body,
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${trip.id}\"}",
+                ),
+            )
+            // Real push (item 124) -- same "passenger waiting on a real-time status
+            // update" urgency as this row's own already-pushed RIDE_TRIP_OFFER (driver
+            // side); this closes the matching passenger-side gap.
+            sendTripPushAfterCommit(trip.passengerId, title, body, trip.id)
+        }
+        return saved
+    }
+
+    /** Real explicit decline -- the offered driver proactively passes rather than
+     * silently letting the real 15-second offer window expire, immediately triggering
+     * real reassignment to the next candidate instead of waiting out the timeout. */
+    @Transactional
+    fun declineTrip(driverUserId: String, tripId: String): RideTrip {
+        val driver = getMyDriver(driverUserId)
+        val trip = rideTripRepository.findById(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
+        val offerStillActive = trip.offerExpiresAt?.isAfter(Instant.now()) == true
+        if (!offerStillActive || trip.offeredDriverId != driver.id) {
+            throw RideNoActiveOfferException("You don't have an active offer for this trip")
+        }
+        trip.excludedDriverUserIds = (
+            (trip.excludedDriverUserIds?.split(",")?.filter { it.isNotBlank() } ?: emptyList()) + driverUserId
+            ).distinct().joinToString(",")
+        trip.offeredDriverId = null
+        trip.offerExpiresAt = null
+        val saved = rideTripRepository.save(trip)
+        dispatchToNextDriver(saved)
+        return saved
+    }
+
+    /** Real driver-side cancel-after-acceptance -- a real gap found during the
+     * Rideshare product-completeness pass: declineTrip above only ever covers
+     * PRE-acceptance (an active offer), and cancelTrip is passenger-only, so a driver
+     * who accepted and then genuinely can't make the pickup had no way back out. Only
+     * valid while DRIVER_ASSIGNED (not IN_PROGRESS -- once a trip is under way, a
+     * driver bailing is a materially bigger problem needing its own real handling,
+     * correctly out of scope here). Reuses declineTrip's own real redispatch
+     * mechanism exactly (exclude this driver, dispatchToNextDriver) -- no fee applies
+     * to the passenger, since the driver initiated it, not them. findByIdForUpdate,
+     * same real lost-update-fix discipline cancelTrip's own doc comment already
+     * establishes for this exact class of check-then-act race. */
+    @Transactional
+    fun driverCancelTrip(driverUserId: String, tripId: String): RideTrip {
+        val driver = getMyDriver(driverUserId)
+        val trip = rideTripRepository.findByIdForUpdate(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
+        if (trip.driverId != driver.id) {
+            throw RideTripNotFoundException("Trip not found")
+        }
+        if (trip.status != RideTripStatus.DRIVER_ASSIGNED) {
+            throw InvalidRideTripStatusTransitionException("Only a DRIVER_ASSIGNED trip can be cancelled by its driver -- this one is already ${trip.status}")
+        }
+        trip.excludedDriverUserIds = (
+            (trip.excludedDriverUserIds?.split(",")?.filter { it.isNotBlank() } ?: emptyList()) + driverUserId
+            ).distinct().joinToString(",")
+        trip.driverId = null
+        trip.status = RideTripStatus.REQUESTED
+        trip.driverAssignedAt = null
+        trip.updatedAt = Instant.now()
+        val saved = rideTripRepository.save(trip)
+        dispatchToNextDriver(saved)
+
+        // Real sibling-asymmetry fix (2026-09-13) -- acceptTrip above notifies the
+        // passenger the moment a driver is assigned ("Driver assigned"); this is the
+        // real undo of that exact same state, yet sent nothing. A passenger just told
+        // "a driver is on the way" otherwise sees the app silently searching again
+        // with no explanation for why.
+        run {
+            val title = "Finding a new driver"
+            val body = "Your driver had to cancel. We're finding you another one."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = saved.passengerId, type = "RIDE_TRIP_UPDATE",
+                    title = title, body = body,
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${saved.id}\"}",
+                ),
+            )
+            sendTripPushAfterCommit(saved.passengerId, title, body, saved.id)
+        }
+        return saved
+    }
+
+    // Real Kakao T-style multi-stop rides (item 214) -- every real waypoint recorded for
+    // a trip, in real visit order.
+    fun getTripStops(tripId: String): List<RideTripStop> = rideTripStopRepository.findByTripIdOrderBySequenceAsc(tripId)
+
+    /**
+     * Real driver-marks-arrival at the next unvisited stop, in order -- can't skip ahead
+     * to a later stop before an earlier one is real-marked arrived. See
+     * `RideTripStop.kt`'s own doc comment.
+     */
+    @Transactional
+    fun arriveAtStop(driverUserId: String, tripId: String): RideTripStop {
+        val driver = getMyDriver(driverUserId)
+        val trip = getOwnedTrip(tripId, driver.id)
+        if (trip.status != RideTripStatus.IN_PROGRESS) {
+            throw InvalidRideTripStatusTransitionException("Only an IN_PROGRESS trip can have a stop marked arrived")
+        }
+        val nextStop = rideTripStopRepository.findByTripIdOrderBySequenceAsc(tripId).firstOrNull { it.arrivedAt == null }
+            ?: throw RideNoRemainingStopsException("This trip has no remaining stops")
+        nextStop.arrivedAt = Instant.now()
+        return rideTripStopRepository.save(nextStop)
+    }
+
+    // Real Uber "Verify Your Ride" PIN (uber.com/pl/en/blog/pin-number) -- not a secret
+    // requiring cryptographic randomness, just a real-time verbal-confirmation code the
+    // passenger reads aloud to the driver, same threat model/generation convention
+    // MerchantService.generateUssdCode already established for a similar short numeric
+    // code. No collision check needed -- unlike the USSD merchant code, this is scoped
+    // to one trip, never looked up globally.
+    private fun generatePin(): String = (1000..9999).random().toString()
+
+    /** Real passenger-only PIN lookup -- a stranger, or even the trip's own driver, gets
+     * a real 404 (same IDOR discipline as every other resource-ownership check in this
+     * codebase). The driver is never shown this via any API response (see
+     * RideTrip.pin's own @JsonIgnore); they can only learn it verbally from the
+     * passenger, which is the entire real point of the check in startTrip below. */
+    fun getTripPin(passengerUserId: String, tripId: String): String {
+        val trip = rideTripRepository.findById(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
+        if (trip.passengerId != passengerUserId) throw RideTripNotFoundException("Trip not found")
+        return trip.pin ?: ""
+    }
+
+    /** Real live driver-location tracking during an active ride trip -- the same
+     * "watch your ride approach/arrive" moment EatsOrderService.getRiderLocation
+     * already established for Eats delivery, mirrored exactly (same participant-only
+     * IDOR discipline, same real-404-not-403 on a stranger, same "only while the trip
+     * is actually active" null-instead-of-stale-data guard). Found missing on all 3
+     * clients during the Rideshare product-completeness pass despite every real field
+     * this needs already existing (RideDriver.currentLatitude/currentLongitude/
+     * locationUpdatedAt, already set by the real RideDriverService.updateLocation). */
+    fun getDriverLocation(requesterId: String, tripId: String): RideDriverLocationView? {
+        val trip = rideTripRepository.findById(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
+        val isPassenger = trip.passengerId == requesterId
+        val isDriver = trip.driverId?.let { rideDriverRepository.findById(it).orElse(null)?.userId == requesterId } == true
+        if (!isPassenger && !isDriver) {
+            throw RideTripNotFoundException("Trip not found")
+        }
+        if (trip.status != RideTripStatus.DRIVER_ASSIGNED && trip.status != RideTripStatus.IN_PROGRESS) {
+            return null
+        }
+        val driver = trip.driverId?.let { rideDriverRepository.findById(it).orElse(null) } ?: return null
+        val lat = driver.currentLatitude
+        val lng = driver.currentLongitude
+        val updatedAt = driver.locationUpdatedAt
+        if (lat == null || lng == null || updatedAt == null) return null
+        return RideDriverLocationView(lat, lng, updatedAt)
+    }
+
+    // Real Uber "Share Trip Status" (2026-08-16, help.uber.com/en/riders/article/
+    // sharing-your-trip-status-faq) -- Uber's own real feature sends an unauthenticated
+    // public link (no app required) showing a live map + driver name/plate to up to 5
+    // contacts. itunda has no public, unauthenticated share-link surface anywhere (every
+    // screen is auth-gated, same real constraint EatsFavoriteService
+    // .shareFavoritesToConversation's own doc comment already names for an identical
+    // gap), so the honest analogue is itunda's own established "send a real message into
+    // a real Talk conversation" convention -- same shape that favorites-sharing already
+    // uses, just a plain formatted text snapshot rather than a live-updating link (no
+    // push-driven message-edit infrastructure exists to keep it live either). Also
+    // honestly scoped to what RideDriver actually has: no name/vehicle-plate field
+    // exists on this entity at all (the same real limitation DriverRatingSection's own
+    // doc comment already names), so the shared message includes trip status, pickup/
+    // dropoff addresses, and the driver's real current coordinates (if assigned) --
+    // never a fabricated name or plate.
+    @Transactional
+    fun shareTripStatus(passengerUserId: String, tripId: String, conversationId: String): Message {
+        val trip = rideTripRepository.findById(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
+        if (trip.passengerId != passengerUserId) throw RideTripNotFoundException("Trip not found")
+        messagingService.getConversationForParticipant(passengerUserId, conversationId)
+
+        val driverLocation = trip.driverId?.let { driverId ->
+            rideDriverRepository.findById(driverId).orElse(null)
+                ?.takeIf { it.currentLatitude != null && it.currentLongitude != null }
+        }
+        val locationLine = driverLocation?.let {
+            "\nDriver's last known location: ${it.currentLatitude}, ${it.currentLongitude}"
+        } ?: ""
+        val body = "🚗 My ride status: ${trip.status}\n" +
+            "From: ${trip.pickupAddress}\n" +
+            "To: ${trip.dropoffAddress}$locationLine"
+        return messagingService.sendMessage(passengerUserId, conversationId, body)
+    }
+
+    @Transactional
+    fun startTrip(driverUserId: String, tripId: String, pin: String): RideTrip {
+        val driver = getMyDriver(driverUserId)
+        val trip = getOwnedTrip(tripId, driver.id)
+        if (trip.status != RideTripStatus.DRIVER_ASSIGNED) {
+            throw InvalidRideTripStatusTransitionException("Only a DRIVER_ASSIGNED trip can be started")
+        }
+        // A trip requested before this feature shipped has no real PIN to check against
+        // (trip.pin is null) -- skip rather than permanently lock out an in-flight trip
+        // that predates it.
+        if (trip.pin != null) {
+            // Real gap found live (2026-09-14, rate-limiter sweep continuation): a
+            // 4-digit PIN (10,000 combinations) had zero attempt throttling, unlike
+            // every other real secret-verification check in this codebase
+            // (AuthService.login rate-limits PIN attempts at 5/minute) -- a driver
+            // already assigned to this exact trip could otherwise brute-force it in
+            // seconds, defeating the PIN's real safety purpose (confirming the
+            // passenger getting in is who they claim, not a wrong-car mixup).
+            rateLimiter.checkLimit("rideshare:start-trip-pin:$tripId", limit = 5, window = Duration.ofMinutes(1))
+            if (trip.pin != pin.trim()) {
+                throw RidePinMismatchException("Incorrect PIN -- ask your passenger for the 4-digit code shown in their app")
+            }
+        }
+        trip.status = RideTripStatus.IN_PROGRESS
+        trip.updatedAt = Instant.now()
+        return rideTripRepository.save(trip)
+    }
+
+    @Transactional
+    fun completeTrip(driverUserId: String, tripId: String): RideTrip {
+        val driver = getMyDriver(driverUserId)
+        val trip = getOwnedTrip(tripId, driver.id)
+        if (trip.status != RideTripStatus.IN_PROGRESS) {
+            throw InvalidRideTripStatusTransitionException("Only an IN_PROGRESS trip can be completed")
+        }
+        val driverAccount = accountRepository.findById(driver.accountId)
+            .orElseThrow { RideDriverNoAccountException("Driver settlement account not found") }
+        val netToDriver = trip.fare.subtract(trip.platformFee)
+        val result = ledgerService.postLedgerTransaction(
+            driverAccount.currency,
+            listOf(
+                LedgerLeg("ride_holding", LedgerAccountType.RIDE_HOLDING, LedgerDirection.DEBIT, trip.fare, "Ride fare released"),
+                LedgerLeg(driverAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToDriver, "Ride fare payout"),
+                LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, trip.platformFee, "Ride platform fee"),
+            ),
+        )
+        // Real gap found live (2026-09-14, FraudRuleEngine per-call-site sweep):
+        // requestTrip's own evaluate deliberately passes recipientUserId = null since
+        // no driver is assigned yet at hold time (see its own doc comment) -- meaning
+        // the driver who actually ends up receiving the fare here is NEVER evaluated
+        // as a fraud counterparty at any point in the trip lifecycle. Distinct from a
+        // release-of-already-vetted-escrow shape (VehicleInspectionService/
+        // MerchantBookingService, where the counterparty IS chosen and evaluated at
+        // hold time) -- same "new counterparty revealed partway through the flow"
+        // shape tipDriver/tipRider were already fixed for, just for the mandatory fare
+        // itself instead of an optional tip.
+        // Real gap found live (2026-09-14, FraudRuleEngine per-call-site sweep):
+        // requestTrip's own evaluate deliberately passes recipientUserId = null since
+        // no driver is assigned yet at hold time (see its own doc comment) -- meaning
+        // the driver who actually ends up receiving the fare here is NEVER evaluated
+        // as a fraud counterparty at any point in the trip lifecycle. Distinct from a
+        // release-of-already-vetted-escrow shape (VehicleInspectionService/
+        // MerchantBookingService, where the counterparty IS chosen and evaluated at
+        // hold time) -- same "new counterparty revealed partway through the flow"
+        // shape tipDriver/tipRider were already fixed for, just for the mandatory fare
+        // itself instead of an optional tip.
+        fraudRuleEngine.evaluate(trip.passengerId, driver.userId, trip.fare, result.transactionId)
+        trip.status = RideTripStatus.COMPLETED
+        trip.payoutTransactionId = result.transactionId
+        trip.updatedAt = Instant.now()
+        val saved = rideTripRepository.save(trip)
+        run {
+            val title = "Trip completed"
+            val body = "You arrived at ${trip.dropoffAddress}. Fare: ${trip.fare} RWF."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = trip.passengerId, type = "RIDE_TRIP_UPDATE",
+                    title = title, body = body,
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${trip.id}\"}",
+                ),
+            )
+            // Real push (item 124) -- see acceptTrip's own doc comment above.
+            sendTripPushAfterCommit(trip.passengerId, title, body, trip.id)
+        }
+        return saved
+    }
+
+    /**
+     * Real Uber post-trip tipping (2026-08-16, uber.com/us/en/ride/how-it-works/tips) --
+     * "Tips go directly to drivers; Uber doesn't charge service fees on tips." A direct
+     * real passenger-account-to-driver-account transfer, never routed through
+     * `ride_holding` (unlike the fare itself) since a tip isn't itunda's revenue to hold
+     * or take a cut of. Real once-only ([RideTripAlreadyTippedException]) and real
+     * 30-day-window ([RideTripTipWindowExpiredException]) enforcement, matching Uber's
+     * own real published rules exactly.
+     */
+    // Real lost-update fix (concurrency sweep, §236) -- see EatsOrderService.tipRider's
+    // identical fix and doc comment (this method was ported to Eats from this one, so
+    // it carried the same missing-lock check-then-act-then-write shape on `tipAmount`).
+    @Transactional
+    fun tipDriver(passengerUserId: String, tripId: String, amount: BigDecimal): RideTrip {
+        val trip = rideTripRepository.findByIdForUpdate(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
+        if (trip.passengerId != passengerUserId) {
+            throw RideTripNotFoundException("Trip not found")
+        }
+        if (amount <= BigDecimal.ZERO) {
+            throw InvalidTipAmountException("Tip amount must be greater than zero")
+        }
+        if (trip.status != RideTripStatus.COMPLETED) {
+            throw RideTripNotCompletedException("Only a completed trip can be tipped")
+        }
+        if (trip.tipAmount != null) {
+            throw RideTripAlreadyTippedException("This trip has already been tipped")
+        }
+        if (Instant.now().isAfter(trip.updatedAt.plus(TIP_WINDOW))) {
+            throw RideTripTipWindowExpiredException("Tips can only be added within ${TIP_WINDOW.toDays()} days of trip completion")
+        }
+        val driverId = trip.driverId ?: throw RideDriverNotRegisteredException("Driver not found")
+        val driver = rideDriverRepository.findById(driverId).orElseThrow { RideDriverNotRegisteredException("Driver not found") }
+        val passengerAccount = accountRepository.findByUserIdAndType(passengerUserId, AccountType.MAIN)
+            ?: throw RideDriverNoAccountException("No account found for this account")
+        val driverAccount = accountRepository.findById(driver.accountId)
+            .orElseThrow { RideDriverNoAccountException("Driver settlement account not found") }
+        if (passengerAccount.availableBalance < amount) {
+            throw InsufficientFundsException("Insufficient available balance for this tip")
+        }
+        val result = ledgerService.postLedgerTransaction(
+            passengerAccount.currency,
+            listOf(
+                LedgerLeg(passengerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Tip for ride to ${trip.dropoffAddress}"),
+                LedgerLeg(driverAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Tip received"),
+            ),
+        )
+        // Real gap found live (2026-09-14, FraudRuleEngine-verify sweep): requestTrip's
+        // own evaluate call is always against a null counterparty (no driver assigned
+        // yet at request time), so a tip is real new money to a real counterparty (the
+        // driver) that has never once been evaluated anywhere in this trip's whole
+        // lifecycle. Same "new counterparty enters the picture" shape
+        // MerchantService.chargeCard/EmoticonService.giftPack already cover.
+        fraudRuleEngine.evaluate(passengerUserId, driver.userId, amount, result.transactionId)
+        trip.tipAmount = amount
+        trip.tipTransactionId = result.transactionId
+        val saved = rideTripRepository.save(trip)
+        val title = "You received a tip"
+        val body = "You received a ${amount} RWF tip for a recent trip."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = driver.userId, type = "RIDE_TIP_RECEIVED",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${trip.id}\"}",
+            ),
+        )
+        sendTripPushAfterCommit(driver.userId, title, body, trip.id)
+        return saved
+    }
+
+    // Real Uber cancellation-fee policy (help.uber.com/riders/article/cancellation-fees-explained)
+    // -- see RideTripStatus's own doc comment for why DRIVER_ASSIGNED only recently
+    // became cancellable at all. A REQUESTED trip (no driver has committed yet) still
+    // always refunds in full, completely unchanged. A DRIVER_ASSIGNED trip cancelled
+    // within CANCELLATION_FEE_GRACE_PERIOD of driverAssignedAt also refunds in full,
+    // matching Uber's own real "2+ minutes after requesting" threshold; past that
+    // window, CANCELLATION_FEE is carved out of the refund and paid straight to the
+    // driver's settlement account -- Uber's own stated rationale ("pay drivers for the
+    // time and effort they spend getting to your location"), not a punitive platform
+    // fee, so platformFee itself is never charged on a cancellation either way.
+    // Real lost-update fix (2026-09-03) -- same check-then-act-then-refund shape this
+    // session's OrderReturnService.decide/DesignatedDriverService.cancelTrip fixes
+    // already close: unlocked findById meant two concurrent cancelTrip calls (a
+    // passenger double-tapping cancel, or a client retry) could both pass the status
+    // check before either commits, double-refunding the passenger out of ride_holding.
+    @Transactional
+    fun cancelTrip(passengerId: String, tripId: String): RideTrip {
+        val trip = rideTripRepository.findByIdForUpdate(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
+        if (trip.passengerId != passengerId) {
+            throw RideTripNotFoundException("Trip not found")
+        }
+        if (trip.status != RideTripStatus.REQUESTED && trip.status != RideTripStatus.DRIVER_ASSIGNED) {
+            throw InvalidRideTripStatusTransitionException("Only a REQUESTED or DRIVER_ASSIGNED trip can be cancelled -- this one is already ${trip.status}")
+        }
+        val passengerAccount = accountRepository.findByUserIdAndType(passengerId, AccountType.MAIN)
+            ?: throw RideDriverNoAccountException("No account found for this account")
+
+        val assignedAt = trip.driverAssignedAt
+        val withinGracePeriod = assignedAt == null || !Instant.now().isAfter(assignedAt.plus(CANCELLATION_FEE_GRACE_PERIOD))
+        val cancellationFee = if (trip.status == RideTripStatus.DRIVER_ASSIGNED && !withinGracePeriod) {
+            CANCELLATION_FEE.min(trip.fare)
+        } else {
+            BigDecimal.ZERO
+        }
+        val refundAmount = trip.fare.subtract(cancellationFee)
+
+        val driver = trip.driverId?.let { rideDriverRepository.findById(it).orElse(null) }
+        val driverAccount = if (cancellationFee > BigDecimal.ZERO) {
+            driver?.let { accountRepository.findById(it.accountId).orElse(null) }
+        } else {
+            null
+        }
+
+        val legs = mutableListOf(
+            LedgerLeg("ride_holding", LedgerAccountType.RIDE_HOLDING, LedgerDirection.DEBIT, trip.fare, "Ride fare refunded"),
+            LedgerLeg(passengerAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, refundAmount, "Ride cancelled -- refund"),
+        )
+        if (cancellationFee > BigDecimal.ZERO && driverAccount != null) {
+            legs.add(LedgerLeg(driverAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, cancellationFee, "Cancellation fee"))
+        } else if (cancellationFee > BigDecimal.ZERO) {
+            // Driver's own settlement account is somehow gone -- never strand escrow money
+            // mid-refund; fall back to refunding the passenger in full rather than
+            // leaving the fee portion unaccounted for.
+            legs[1] = LedgerLeg(passengerAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, trip.fare, "Ride cancelled -- refund")
+        }
+        val result = ledgerService.postLedgerTransaction(passengerAccount.currency, legs)
+        // Real gap found live (2026-09-14, same sweep as completeTrip's own fix above):
+        // this specific leg is real money moving to the driver, who requestTrip never
+        // evaluated (recipientUserId = null pre-dispatch) -- only fire it when the fee
+        // leg actually landed (the account-gone fallback above collapses to a pure
+        // passenger refund, so there's no driver payment to evaluate in that branch).
+        // Real gap found live (2026-09-14, same sweep as completeTrip's own fix above):
+        // this specific leg is real money moving to the driver, who requestTrip never
+        // evaluated (recipientUserId = null pre-dispatch) -- only fire it when the fee
+        // leg actually landed (the account-gone fallback above collapses to a pure
+        // passenger refund, so there's no driver payment to evaluate in that branch).
+        if (cancellationFee > BigDecimal.ZERO && driverAccount != null && driver != null) {
+            fraudRuleEngine.evaluate(passengerId, driver.userId, cancellationFee, result.transactionId)
+        }
+
+        trip.status = RideTripStatus.CANCELLED
+        trip.refundTransactionId = result.transactionId
+        trip.updatedAt = Instant.now()
+        val saved = rideTripRepository.save(trip)
+
+        if (cancellationFee > BigDecimal.ZERO && driverAccount != null && driver != null) {
+            val title = "Rider cancelled -- you were paid a cancellation fee"
+            val body = "The rider cancelled after you were already on the way. You received a ${cancellationFee} RWF cancellation fee."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = driver.userId, type = "RIDE_CANCELLATION_FEE_PAID",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${trip.id}\"}",
+                ),
+            )
+            sendTripPushAfterCommit(driver.userId, title, body, trip.id)
+        } else if (driver != null) {
+            val title = "Trip cancelled"
+            val body = "The rider cancelled this trip."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = driver.userId, type = "RIDE_TRIP_UPDATE",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${trip.id}\"}",
+                ),
+            )
+            sendTripPushAfterCommit(driver.userId, title, body, trip.id)
+        }
+        return saved
+    }
+
+    fun getAvailableTrips(driverUserId: String): List<RideTrip> {
+        val driver = getMyDriver(driverUserId)
+        val now = Instant.now()
+        return rideTripRepository.findAll()
+            .filter { it.status == RideTripStatus.REQUESTED && it.driverId == null }
+            .filter { it.offerExpiresAt == null || it.offerExpiresAt!!.isBefore(now) || it.offeredDriverId == driver.id }
+            // Real Kakao T 예약 호출 -- a scheduled trip whose real dispatch hasn't
+            // started yet (RideDispatchScheduler.activateScheduledDispatch) must never
+            // appear in open browse hours or days early.
+            .filter { it.scheduledFor == null || it.scheduledDispatchStartedAt != null }
+    }
+
+    fun getMyTrips(passengerId: String, pageable: Pageable): Page<RideTrip> =
+        rideTripRepository.findByPassengerIdOrderByCreatedAtDesc(passengerId, pageable)
+
+    fun getMyDriverTrips(driverUserId: String, pageable: Pageable): Page<RideTrip> {
+        val driver = getMyDriver(driverUserId)
+        return rideTripRepository.findByDriverIdOrderByCreatedAtDesc(driver.id, pageable)
+    }
+
+    // Real Uber Driver app-style earnings report (2026-08-16) -- Uber's own real
+    // driver-facing "Earnings" tab shows a day-by-day trip count and net-of-platform-fee
+    // total, not just a raw trip list. `completeTrip` already computes the exact real
+    // `netToDriver = fare - platformFee` split at settlement time; this just aggregates
+    // it per real COMPLETED day. Same bounded-31-day-window + in-memory-grouping shape
+    // MerchantService.getReport's own doc comment already justifies (RideTrip.createdAt
+    // is a timestamp, not a pre-truncated date column). Grouped by request date
+    // (createdAt), same convention getReport itself uses -- no separate completedAt
+    // column exists on this entity either.
+    fun getMyEarnings(driverUserId: String, from: java.time.LocalDate, to: java.time.LocalDate): List<DriverEarningsDay> {
+        if (from.isAfter(to)) {
+            throw InvalidEarningsRangeException("Report start date must be on or before the end date")
+        }
+        if (from.plusDays(30).isBefore(to)) {
+            throw InvalidEarningsRangeException("Earnings reports are limited to 31 days at a time")
+        }
+        val driver = getMyDriver(driverUserId)
+        val fromInstant = from.atStartOfDay(java.time.ZoneOffset.UTC).toInstant()
+        val toInstant = to.plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant()
+        val trips = rideTripRepository.findByDriverIdAndStatusAndCreatedAtBetween(driver.id, RideTripStatus.COMPLETED, fromInstant, toInstant)
+        return trips
+            .groupBy { java.time.LocalDate.ofInstant(it.createdAt, java.time.ZoneOffset.UTC) }
+            .map { (date, dayTrips) ->
+                val gross = dayTrips.fold(BigDecimal.ZERO) { acc, t -> acc + t.fare }
+                val fees = dayTrips.fold(BigDecimal.ZERO) { acc, t -> acc + t.platformFee }
+                DriverEarningsDay(
+                    date = date, tripCount = dayTrips.size, grossFare = gross, platformFees = fees,
+                    netEarnings = gross.subtract(fees),
+                )
+            }
+            .sortedBy { it.date }
+    }
+
+    /** Dispatch and passenger updates must reflect committed trip and settlement state. */
+    private fun sendTripPushAfterCommit(userId: String, title: String, body: String, tripId: String) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body, mapOf("tripId" to tripId))
+            } catch (e: Exception) {
+                log.warn("Could not send ride-trip push for trip {}", tripId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
+    }
+
+    // Real lost-update fix (2026-09-03): completeTrip's own check-then-act-then-payout had
+    // no row lock via this shared helper -- two concurrent completeTrip calls (a driver
+    // double-tapping "Complete trip", or a network retry) could both pass the
+    // IN_PROGRESS check before either commits, double-paying out the same ride's fare.
+    // Same findByIdForUpdate convention this class's own tipDriver already establishes.
+    // Every caller (arriveAtStop, startTrip, completeTrip) is already @Transactional.
+    private fun getOwnedTrip(tripId: String, driverId: String): RideTrip {
+        val trip = rideTripRepository.findByIdForUpdate(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
+        if (trip.driverId != driverId) {
+            throw RideTripNotFoundException("Trip not found")
+        }
+        return trip
+    }
+
+    fun getExpiredOffers(): List<RideTrip> = rideTripRepository.findByOfferExpiresAtBeforeAndDriverIdIsNull(Instant.now())
+
+    /**
+     * Real once-per-tick candidate pool, shared by `reassignExpiredOffer` and
+     * `activateScheduledDispatchOne` -- preserves the "compute the pool once per tick,
+     * reuse across every trip" performance discipline the old batched
+     * `reassignExpiredOffers(trips: List<RideTrip>)` established, without requiring the
+     * per-trip work itself to live inside a shared transaction (see that method's own
+     * removal note below for why).
+     */
+    fun computeDispatchPools(): DispatchPools {
+        val candidatePool = rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull()
+        val busyDriverIds = rideTripRepository.findDistinctDriverIdsByStatusIn(listOf(RideTripStatus.DRIVER_ASSIGNED, RideTripStatus.IN_PROGRESS)).toSet()
+        return DispatchPools(candidatePool, busyDriverIds)
+    }
+
+    /**
+     * Called by RideDispatchScheduler, once per expired offer -- see that class's own
+     * doc comment for the real batch-transaction-poisoning bug this closes
+     * (docs/DESIGN_REFERENCES.md Section 180). This used to be
+     * `reassignExpiredOffers(trips: List<RideTrip>)`, a single `@Transactional` method
+     * that looped over EVERY expired offer network-wide in one shared transaction; the
+     * `rideTripRepository.save(trip)` bookkeeping write ahead of `dispatchToNextDriver`
+     * was not itself guarded by a try/catch the way `dispatchToNextDriver`'s own body
+     * already is. `RideTrip` carries a real `@Version` column, so a genuine concurrent
+     * `acceptTrip`/`declineTrip` racing this exact trip between the scheduler's read and
+     * this save throws a real `ObjectOptimisticLockingFailureException` -- uncaught, that
+     * would have rolled back every OTHER already-reassigned trip's real offer/exclusion
+     * update (and any already-committed dispatch-to-next-driver work) from that same
+     * poll tick too, not just the racing trip's. `RideDispatchScheduler` polls every 3
+     * real seconds against a real 15-second offer window, so this race was genuinely
+     * reachable, not theoretical. The re-check below (still expired, still unclaimed) is
+     * the same re-check-before-act guard `MerchantBookingService.processNoShow`/
+     * `ParkingService.forceEndAbandonedSession` already establish -- a trip a driver
+     * claimed in that same gap safely no-ops here instead of throwing.
+     */
+    @Transactional
+    fun reassignExpiredOffer(tripId: String, pools: DispatchPools) {
+        val trip = rideTripRepository.findById(tripId).orElse(null) ?: return
+        if (trip.driverId != null || trip.offerExpiresAt == null || trip.offerExpiresAt!!.isAfter(Instant.now())) return
+        val expiredDriverUserId = trip.offeredDriverId?.let { offeredId -> rideDriverRepository.findById(offeredId).orElse(null)?.userId }
+        trip.excludedDriverUserIds = (
+            (trip.excludedDriverUserIds?.split(",")?.filter { it.isNotBlank() } ?: emptyList()) + listOfNotNull(expiredDriverUserId)
+            ).distinct().joinToString(",")
+        trip.offeredDriverId = null
+        trip.offerExpiresAt = null
+        rideTripRepository.save(trip)
+        dispatchToNextDriver(trip, pools.candidatePool, pools.busyDriverIds)
+    }
+
+    // Real Kakao T 예약 호출 (scheduled ride booking) -- every real scheduled trip
+    // whose SCHEDULED_RIDE_DISPATCH_LEAD_TIME threshold has just been crossed.
+    fun getDueScheduledTrips(): List<RideTrip> =
+        rideTripRepository.findByStatusAndScheduledForIsNotNullAndScheduledForBeforeAndScheduledDispatchStartedAtIsNull(
+            RideTripStatus.REQUESTED,
+            Instant.now().plus(SCHEDULED_RIDE_DISPATCH_LEAD_TIME),
+        )
+
+    /**
+     * Called by RideDispatchScheduler, once per due scheduled trip -- see that class's
+     * own doc comment for the real batch-transaction-poisoning bug this closes
+     * (docs/DESIGN_REFERENCES.md Section 180), the identical shape/fix
+     * `reassignExpiredOffer`'s own doc comment above just established.
+     * `scheduledDispatchStartedAt` is still set unconditionally here (whether or not a
+     * real candidate driver is actually found), so a trip with no online driver nearby
+     * still falls through to the real open-list fallback rather than being re-processed
+     * every scheduler tick forever; the re-check below (still REQUESTED, still not yet
+     * started) guards against double-processing the same trip across overlapping polls.
+     */
+    @Transactional
+    fun activateScheduledDispatchOne(tripId: String, pools: DispatchPools) {
+        val trip = rideTripRepository.findById(tripId).orElse(null) ?: return
+        if (trip.status != RideTripStatus.REQUESTED || trip.scheduledDispatchStartedAt != null) return
+        trip.scheduledDispatchStartedAt = Instant.now()
+        rideTripRepository.save(trip)
+        dispatchToNextDriver(trip, pools.candidatePool, pools.busyDriverIds)
+    }
+}
+
+/** Real once-per-tick dispatch candidate pool -- see `RideTripService.computeDispatchPools`'s
+ * own doc comment. */
+data class DispatchPools(val candidatePool: List<RideDriver>, val busyDriverIds: Set<String>)

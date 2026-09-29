@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- White background + colored mark on top (2026-08-22, direct user identity work:
+     petal-shape mark + indigo, see ic_launcher_foreground.xml's own doc comment) -
+     matches Toss's real published App Store icon exactly (apps.apple.com
+     id839333328, fetched and inspected directly at 512x512): white canvas, the
+     gradient mark rendered edge-to-edge on top, no colored background square. The
+     old scheme (solid brand-blue background, white shield foreground) was the
+     inverse of Toss's real convention. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <gradient
-        android:angle="315"
-        android:startColor="#BFA7FF"
-        android:centerColor="#863BFF"
-        android:endColor="#4810B8"
-        android:type="linear" />
+    <solid android:color="#FFFFFF" />
 </shape>

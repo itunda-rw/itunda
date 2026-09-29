@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="gift_composer_title">Envoyer un cadeau</string>
+    <string name="gift_menu_item">Cadeau</string>
+
+    <string name="splitbill_title_group">Partage de factures</string>
+    <string name="splitbill_title_direct">Partage de factures avec %1$s</string>
+    <string name="splitbill_cta">Partager une facture</string>
+    <string name="splitbill_creating">Création…</string>
+    <string name="splitbill_create">Créer le partage</string>
+    <string name="splitbill_paying">Paiement…</string>
+    <string name="splitbill_pay_share">Payer ma part (%1$s RWF)</string>
+    <string name="splitbill_empty_group">Aucun partage de facture dans ce groupe pour le moment.</string>
+    <string name="splitbill_empty_direct">Aucun partage de facture avec %1$s pour le moment.</string>
+</resources>

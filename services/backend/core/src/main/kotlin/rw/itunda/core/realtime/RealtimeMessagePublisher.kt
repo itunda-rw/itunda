@@ -1,7 +1,9 @@
 package rw.itunda.core.realtime
 
+import rw.itunda.core.domain.CallType
 import rw.itunda.core.domain.GroupMessage
 import rw.itunda.core.domain.Message
+import java.time.Instant
 
 /** Real per-emoji reaction breakdown (2026-07-19) -- a raw list of who reacted with
  * each emoji, never a pre-computed "reactedByMe"/count on the wire: every recipient of
@@ -34,8 +36,22 @@ data class ReactionGroup(val emoji: String, val userIds: List<String>)
  * future multi-instance/horizontally-scaled deployment (a session-affinity load
  * balancer or a pub/sub fan-out across instances would be the right fix then, not
  * attempted here since itunda currently runs single-instance).
+ *
+ * Real fix (2026-08-28): production/backend.yaml actually ran `replicas: 2` up
+ * until this date, meaning the "single-instance" assumption above was NOT true in
+ * the real deployed cluster and this silently broke real-time delivery for any
+ * two users whose sockets landed on different pods. Corrected to `replicas: 1`
+ * (see that manifest's own doc comment for the full account) -- this interface's
+ * own single-instance design is now actually matched by what's deployed.
  */
 interface RealtimeMessagePublisher {
+    /**
+     * Terminates sockets authenticated with one specific access-token ID. This lets a
+     * logout revoke its own live sessions without disconnecting the user's other
+     * devices, which may hold independently issued access tokens.
+     */
+    fun closeSessionsForToken(userId: String, tokenId: String)
+
     fun publishNewMessage(conversationId: String, recipientUserId: String, message: Message)
 
     /** Same real push, fanned out to every other real member of a group conversation
@@ -65,4 +81,31 @@ interface RealtimeMessagePublisher {
 
     /** Same real push, fanned out to every other real member of a group conversation. */
     fun publishGroupReactionChange(groupId: String, recipientUserIds: List<String>, groupMessageId: String, reactions: List<ReactionGroup>)
+
+    /**
+     * Real KakaoTalk-style group read-receipt push (2026-07-26) -- see
+     * `GroupMessagingService.getUnreadCounts`'s own doc comment for the real per-member
+     * cursor this is built on. Fired every time a real member's `lastReadAt` cursor
+     * advances (i.e. they open the thread), fanned out to every other real member so an
+     * open thread's per-message countdown decrements live instead of only on next
+     * refetch -- the same "live, not polled" bar every other real-time push in this
+     * interface already holds itself to.
+     */
+    fun publishGroupReadReceiptChange(groupId: String, recipientUserIds: List<String>, readByUserId: String, lastReadAt: Instant)
+
+    /**
+     * Real 1:1 calling (itunda Talk redesign, 2026-08-28) -- these two are the only
+     * REST-triggered call pushes; the real SDP offer/answer/ICE-candidate signaling
+     * exchange is relayed entirely inline inside `MessagingWebSocketHandler
+     * .handleTextMessage`, the exact same client-originated-frame relay shape
+     * `typing` already established (never going through this interface, since the
+     * server never needs to interpret that payload, only verify + forward it).
+     * `publishCallRing` fires when a real `CallSession` row is created
+     * (`POST /api/v1/calls`); `publishCallEnded` fires on any real state transition
+     * to `endedAt` (answered-elsewhere, declined, cancelled, hung up) so the OTHER
+     * party's UI updates even when they never sent a WS frame themselves.
+     */
+    fun publishCallRing(recipientUserId: String, callId: String, callerId: String, callType: CallType)
+
+    fun publishCallEnded(recipientUserId: String, callId: String, reason: String)
 }

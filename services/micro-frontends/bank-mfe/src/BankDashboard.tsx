@@ -1,102 +1,216 @@
-import { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowUpRight, Bike, Heart, LogOut, MessageCircle, Plus, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
+import { lazy, Suspense, useEffect, useId, useRef, useState, type ComponentType, type ReactElement } from 'react';
+import { IconShieldCheck, IconStar } from './icons/ItundaIcons';
+import { motion } from 'framer-motion';
+import { Bike, Check, Clock, Landmark, LogOut, Sprout, Users } from 'lucide-react';
+import { BankCardChip, CardContactlessGlyph } from './BankCardChip';import { IconBack, IconChevronRight, IconClose, IconSearch } from './icons/ItundaIcons';
+import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/ItundaIcons';
+import { GiftGlyph, GiftBox } from './icons/ItundaFaceGifts';
+import { WishlistHeart } from './icons/ItundaFaceHearts';
+import { LockGlyph } from './icons/ItundaFaceSecurity';
+import { PinGlyph, GlobeGlyph, MoneyBagGlyph, ShoppingBagGlyph, BikeGlyph, SpeechBubbleGlyph } from './icons/ItundaFaceMisc';
+import { PlaceRestaurant, PlaceMarket, PlaceBusStop, PlaceItundaAgent } from './icons/ItundaFacePlaces';
+// Real Explore-tab icons (2026-08-29, closing [[project_itunda_pure_tossface_icons]]'s
+// "(c)" open item) -- reuses the exact same glyph choices Android's MenuScreen already
+// made and live-verified against real Toss reference screenshots, not new choices.
+import { ParkingGlyph } from './icons/ItundaFaceHome';
+import { TravelCar, TravelHouse } from './icons/ItundaFaceTravel';
+import { BriefcaseGlyph, ChartIncreasingGlyph } from './icons/ItundaFaceWork';
+import { NatureStar, NatureGlowingStar } from './icons/ItundaFaceNature';
+import { ObjectKey, ObjectPen } from './icons/ItundaFaceObjects';
 import { getStoredUser, logout, ApiError } from './lib/api';
-import { fetchTransactions, fetchWallets, type Transaction, type Wallet } from './lib/wallet';
-import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
-import { claimInterest, createGoal, depositToGoal, fetchGoals, fetchInterestJar, type InterestJar, type SavingsGoal } from './lib/savings';
+import { DeviceStepUpPrompt } from './DeviceStepUpPrompt';
+import { MyView } from './MyView';
+import { CardExplainer } from './CardExplainer';
+import { OverviewAssetsView } from './OverviewAssetsView';
+import { TransitScreen } from './TransitScreen';
+import { TransitCollectScreen } from './TransitCollectScreen';
+import { MotoFareCollectScreen } from './MotoFareCollectScreen';
+import { recordEvent } from './lib/analytics';
+import { useI18n } from './i18n/I18nContext';
+import { LOCALES, type TranslationKey } from './i18n/translations';
+import { IdsButton } from './IdsButton';
+import { EmptyState, ErrorCard } from './EmptyState';
+import { useDeferredLoading } from './useDeferredLoading';
+import { ShopView } from './ShopView';
+import { MessagesView } from './TalkGroupsAndFriends';
+import { fetchAccountTransactions, fetchAccounts, type Account } from './lib/account';
+import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, type TrustedDevice } from './lib/device';
+import { fetchNotifications } from './lib/notifications';
+import { fetchDiscoverItems, type DiscoverItem } from './lib/discover';
+import { cardDesign, chargeCard, closeMyCard, fetchCardTransactions, fetchMyCard, freezeCard, issueCard, reissueCard, reportLostCard, setCardLimits, setCardPin, unfreezeCard, type Card, type CardFundingAccountType, type CardTransaction } from './lib/card';
+import { BucketDetailScreen } from './BucketDetailScreen';
+import { transactionsToBucketTransactions } from './lib/bucketTransaction';
+import { resolveRecipient, sendDirect, type P2pRecipientPreview } from './lib/p2p';
+import { CertificateView } from './CertificateView';
+import { IdentityVerificationConsentView } from './IdentityVerificationConsentView';
+import { LoansView, type LoansMode } from './LoansView';
+import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreFactor, type CreditScoreSuggestion } from './lib/creditScore';
+import { CreditScoreView, TrustScoreView } from './ScoreViews';
+import { RewardsView } from './RewardsView';
+import { BillsView } from './BillsView';
+import { AgentOperatorView } from './AgentOperatorView';
+import { UssdSettingsView } from './UssdSettingsView';
+import { ForeignCurrencyView } from './ForeignCurrencyView';
+import { FullScreenFlow } from './FullScreenFlow';
+import { submitHoodReport, type HoodReportTargetType } from './lib/hoodReport';
+import { IdentityView } from './IdentityView';
+import { addContact, fetchContacts, type Contact } from './lib/contacts';
+import { SupportView } from './SupportView';
+import type { SupportTicketCategory } from './lib/support';
+import { SpendingInsightView } from './SpendingInsightView';
+import { SubscriptionsView } from './SubscriptionsView';
+import { StocksView } from './StocksView';
+import { fetchConversations, fetchUnreadCount, type ConversationSummary } from './lib/messaging';
 import {
-  createGroupAccount, depositToGroupAccount, fetchGroupAccount, fetchMyGroupAccounts, inviteGroupAccountMember, withdrawFromGroupAccount,
-  type GroupAccount, type GroupAccountDetail,
-} from './lib/groupAccounts';
-import { collectWithFacePay, enrollFacePay, fetchFacePayStatus, revokeFacePay } from './lib/facepay';
-import { sendDirect } from './lib/p2p';
-import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
-import { collectPayment, fetchMerchantCategories, fetchShoppingCatalog, searchProducts, type CollectPaymentResult, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
-import {
-  buyStock, fetchPortfolio, fetchPortfolioHistory, fetchStockHistory, fetchStocks, fetchWatchlist,
-  sellStock, unwatchStock, watchStock,
-  type Portfolio, type PortfolioValuePoint, type PricePoint, type Stock,
-} from './lib/stocks';
-import {
-  connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages,
-  fetchPresence, sendGroupMessage, sendMessage, startConversation, toggleGroupReaction, toggleReaction,
-  type ConversationSummary, type GroupMember, type GroupMessage,
-  type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup,
-} from './lib/messaging';
-import {
-  addListingFavorite, contactSeller, createListing, fetchListings, fetchListingsMyNeighborhood, fetchMyFavoriteListings,
-  fetchMyListings, fetchOffersForConversation, makeOffer, markListingSold, removeListing, removeListingFavorite,
-  respondToOffer, type FavoriteListing, type Listing, type PriceOffer,
+  type HoodReview,
 } from './lib/marketplace';
-import { fetchProfile, setNeighborhood } from './lib/neighborhood';
-import { claimGift, fetchGiftsForConversation, sendGiftInConversation, type Gift, type GiftStatus } from './lib/gift';
+import { clearSecondNeighborhood, setBirthDate, setNeighborhood, setSecondNeighborhood } from './lib/neighborhood';
+import { depositToYouthAccount, openYouthAccount } from './lib/youthAccount';
+import { sendGift, GIFT_THEME_LABELS, type Gift, type GiftTheme } from './lib/gift';
+import { searchDeliveryAddress, type AddressSuggestion, type MenuItem } from './lib/eats';
+import { captureReferralCodeFromUrl } from './lib/affiliate';
+// Real fix (2026-08-10): MapView pulls in the full maplibre-gl WebGL engine (+CSS)
+// at module scope -- a static import here meant every user downloaded and parsed
+// that whole library on first load, whether or not they ever open the Map tab. Real
+// fintech UX research is explicit that speed is the #2 factor after security, with
+// users trained to expect sub-3-second interactions -- for a product built around
+// Rwanda's real mobile-network conditions, shipping a full map engine nobody asked
+// for yet on every cold load is a direct, measurable cost against that. Lazy-loaded
+// instead: maplibre-gl now only downloads when a user actually opens Map.
+//
+// Real maps-mfe split (2026-08-19) -- MapView now lives in its own federated remote
+// (see maps-mfe/src/MapView.tsx + this package's own vite.config.ts remotes.maps_mfe
+// block), the first real Module Federation *consumption* by this app (previously only
+// ever exposed, never consumed) -- lazy-loading a federated remote is the same import()
+// call as lazy-loading a local module, so this line barely changes.
+const MapView = lazy(() => import('maps_mfe/MapView'));
+// Real fix (Maps product-completeness pass, 2026-09-07) -- MapView's own useI18n()
+// call binds to maps-mfe's own bundled Context object, which THIS app's I18nProvider
+// cannot satisfy even though both share the same React instance (same real fix
+// host-app's own App.tsx already documents for bank_mfe/kyc_mfe).
+const MapsI18nProvider = lazy(() => import('maps_mfe/I18nProvider'));
+const InsuranceView = lazy(() => import('./InsuranceView'));
+const BikeShareView = lazy(() => import('./BikeShareView'));
+const ParkingView = lazy(() => import('./ParkingView'));
+const BusView = lazy(() => import('./BusView'));
+import { fetchMyMapBookmarks, searchPlaces, type MapBookmark, type PlaceSearchResult } from './lib/maps';
+import { checkScamStatus, reportScam, type ScamCheckResult } from './lib/scamReports';
+// Real bank-mfe extraction-prep (itunda Hood redesign, 2026-08-28) -- BankDashboard.tsx
+// was 24,653/24,708 lines against its frozen file-size-lint baseline (only ~55 lines of
+// headroom), the same "one file doing everything" shape flagged repo-wide by
+// docs/ARCHITECTURE_GUIDELINES.md §2. Marketplace/Community/Jobs/Property's real view
+// assemblies + their domain-only card components move into their own files here,
+// mirroring iOS's already-proven per-domain HoodScreen.swift split -- genuinely shared
+// cross-domain pieces (NeighborhoodSetupPrompt/NeighborhoodSwitcherRow/WishlistButton/
+// TrustBadge/HoodReportButton/HoodReviewForm/HoodReviewResultView) stay here, exported,
+// since moving them would just relocate the "which domain owns this" question rather
+// than answer it.
+import { MarketplaceView } from './HoodMarketplace';
+import { CommunityView } from './HoodCommunity';
+import { JobsView } from './HoodJobs';
+import { PropertyView } from './HoodProperty';
+import { subscribeToProduct } from './lib/productSubscriptions';
 import {
-  addCommunityComment, createCommunityPost, fetchCommunityCategories, fetchCommunityComments, fetchCommunityPost,
-  fetchCommunityPosts, fetchCommunityPostsMyNeighborhood, fetchMyCommunityPosts, removeCommunityPost, toggleCommunityLike,
-  type CommunityCategory, type CommunityComment, type CommunityPost,
-} from './lib/community';
-import {
-  contactPoster, createJobPost, fetchJobCategories, fetchJobPosts, fetchJobPostsMyNeighborhood, fetchMyJobPosts,
-  markJobPostFilled, removeJobPost, type JobCategory, type JobPayType, type JobPost,
-} from './lib/jobs';
-import {
-  contactLister, createPropertyListing, fetchMyPropertyListings, fetchPropertyListings, fetchPropertyListingsMyNeighborhood,
-  fetchPropertyOffersForConversation, fetchPropertyTypes, makePropertyOffer, markPropertyListingTaken, removePropertyListing,
-  respondToPropertyOffer, type PropertyListing, type PropertyListingType, type PropertyPriceOffer, type PropertyType,
-} from './lib/realestate';
-import {
-  addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, fetchAvailableDeliveries,
-  fetchEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyRiderProfile, fetchRestaurantCategories,
-  fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRiderDeliveries, placeEatsOrder, registerRider,
-  removeFavoriteRestaurant, searchDeliveryAddress, setRiderAvailability, submitEatsReview,
-  type AddressSuggestion, type EatsOrder, type EatsOrderStatus, type FavoriteRestaurant, type MenuItem, type RatingSummary, type Rider,
-} from './lib/eats';
-import {
-  addProductFavorite, advanceOrderStatus, cancelOrder, fetchMerchantOrders, fetchMerchantProducts, fetchMyFavoriteProducts, fetchMyOrders, fetchOrderDetail,
-  fetchProductRating, fetchProductReviews, placeOrder, removeProductFavorite, submitProductReview,
-  type CommerceOrder, type CommerceOrderItem, type CommerceOrderStatus, type CommerceProduct, type FavoriteProduct, type ProductReview,
-} from './lib/commerce';
-import MapView from './MapView';
-import RouteMiniMap from './RouteMiniMap';
-import LiveRiderMap from './LiveRiderMap';
+  cancelAutoTransfer, createAutoTransfer, fetchMyAutoTransfers, pauseAutoTransfer, resumeAutoTransfer,
+  type AutoTransfer, type AutoTransferFrequency,
+} from './lib/autoTransfers';
+// RidesView moved to its own file (2026-09-02, itunda-vs-Toss architecture
+// comparison thread) -- see RidesView.tsx's own header for the full account.
+import { RidesView } from './RidesView';
+import { DesignatedDriverView } from './DesignatedDriverView';
+import { EatsView } from './EatsView';
+// KnowledgeView moved to its own file (2026-09-02, itunda-vs-Toss architecture
+// comparison thread) -- see KnowledgeView.tsx's own header for the full account.
+import { KnowledgeView } from './KnowledgeView';
+import { useCountUp } from './hooks/useCountUp';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'MAP' | 'DEVICES';
+// Consumer navigation is organised around jobs, not the repository's feature
+// inventory: Home / Pay / Explore / Messages / You (2026-08-10, explicit product
+// decision after directly comparing this against Home/Shop/Hood/Talk/All -- see
+// docs/DESIGN_REFERENCES.md Section 41 for the full research this was weighed
+// against). Pay and You get dedicated primary slots.
+//
+// Real correction, same day: Shop/Eats and Marketplace/Community/Jobs/Property were
+// first reached through Explore as two entries (Shop, Hood) each opening a
+// segmented-toggle sub-screen -- the ShopHub/HoodHub shape that's the *correct* one
+// for a primary tab (mirrors Android's real Shop/Eats row, iOS HoodScreen's real
+// Picker), but wrong once nested inside Explore: a tab bar inside a tab is exactly
+// the noise a flat catalog is supposed to avoid. Toss's own real 전체 screen is a
+// flat list of individual rows, not nested toggles -- so Shop/Eats/Marketplace/
+// Community/Jobs/Property are each their own flat Tab id and their own flat row in
+// EXPLORE_TAB_GROUPS, same as every other Explore destination. ShopHub/HoodHub are
+// retired; ShopView/EatsView/MarketplaceView/CommunityView/JobsView/PropertyView
+// render directly, exactly as they did before either hub existed.
+export type Tab = 'HOME' | 'PAY' | 'EXPLORE' | 'YOU' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'EATS' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'BUS' | 'KNOWLEDGE' | 'MAP' | 'DEVICES' | 'CARD' | 'TRANSIT' | 'TRANSIT_COLLECT' | 'MOTO_FARE_COLLECT' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT' | 'USSD';
 
-function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="toss-card"
-      style={{ padding: '28px', position: 'relative', overflow: 'hidden' }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <p style={{ color: 'var(--toss-grey-700)', fontSize: '15px', fontWeight: '600' }}>{wallet?.accountName ?? 'Main Account'}</p>
-        <ShieldCheck size={20} color="var(--toss-green)" />
-      </div>
+// Real Explore-tab icons (2026-08-29, closing [[project_itunda_pure_tossface_icons]]'s
+// "(c)" open item: "the real, larger, unscoped redesign: giving web's Explore screen
+// actual per-row icons in the first place"). ExploreHub's pill buttons had no icon of
+// any kind, unlike Android/iOS's real, live-verified illustrated MenuScreen/
+// EntireMenuScreen rows -- reuses the EXACT SAME glyph choice already made and
+// verified there for each concept, not a new choice invented for web.
+// 22 of 24 real Explore tabs now covered (EATS/MARKETPLACE/COMMUNITY/BUS/KNOWLEDGE/
+// AGENT closed same day by porting the missing "Place*"/speech-bubble glyphs from
+// Android's features/maps/impl/ItundaFacePlaces.kt + core/designsystem/itundaface/
+// ItundaFaceMisc.kt -- see icons/ItundaFacePlaces.tsx's own doc comment for why the
+// port source was Android/iOS's byte-identical shape data, not the disputed
+// bank-mfe-origin citation in those files' own headers). Only INSURANCE (Android uses
+// a bespoke IdsIcons.ShieldCheck, not an itundaface glyph) and USSD (no established
+// Android choice exists at all) are left on the plain pill deliberately, not guessed.
+const EXPLORE_TAB_ICONS: Partial<Record<Tab, ComponentType<{ size?: number }>>> = {
+  SHOP: ShoppingBagGlyph,
+  EATS: PlaceRestaurant,
+  RIDES: TravelCar,
+  MAP: PinGlyph,
+  MARKETPLACE: PlaceMarket,
+  COMMUNITY: SpeechBubbleGlyph,
+  JOBS: BriefcaseGlyph,
+  PROPERTY: TravelHouse,
+  DESIGNATED_DRIVER: ObjectKey,
+  BIKESHARE: BikeGlyph,
+  PARKING: ParkingGlyph,
+  BUS: PlaceBusStop,
+  SAVINGS: MoneyBagGlyph,
+  STOCKS: ChartIncreasingGlyph,
+  LOANS: MoneyBagGlyph,
+  CREDIT_SCORE: NatureGlowingStar,
+  FOREIGN_CURRENCY: GlobeGlyph,
+  TRUST_SCORE: NatureStar,
+  KNOWLEDGE: SpeechBubbleGlyph,
+  REWARDS: GiftBox,
+  CERTIFICATE: ObjectPen,
+  AGENT: PlaceItundaAgent,
+};
 
-      <h1 style={{ color: 'var(--toss-grey-900)', fontSize: '36px', fontWeight: '700', margin: '0 0 28px 0', letterSpacing: '-0.5px', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-        {(wallet?.balance ?? 0).toLocaleString()} <span style={{ fontSize: '20px', color: 'var(--toss-grey-500)', fontWeight: '600' }}>{wallet?.currency ?? 'RWF'}</span>
-      </h1>
-
-      <div style={{ display: 'flex', gap: '12px' }}>
-        <motion.button whileTap={{ scale: 0.96 }} className="toss-btn toss-btn-primary" style={{ flex: 1, gap: '8px' }} onClick={onTransferClick}>
-          <ArrowUpRight size={18} /> Transfer
-        </motion.button>
-        <motion.button whileTap={{ scale: 0.96 }} className="toss-btn toss-btn-secondary" style={{ flex: 1, gap: '8px' }} disabled title="Real mobile-money top-up needs a live MTN/Airtel/bank provider relationship this backend doesn't have yet -- see docs/TOSS_PARITY_MATRIX.md's Transfer row">
-          <Plus size={18} /> Top up
-        </motion.button>
-      </div>
-    </motion.div>
-  );
-}
+// Real gap named in docs/DESIGN_REFERENCES.md's own IA research (Section 41 item 6):
+// `tab` lived only in local useState, never in the URL -- refreshing the page or
+// sharing a link always landed back on Home, unlike every native app's own real
+// itunda:// deep-link scheme (Section 1). This is the runtime mirror of the `Tab`
+// union above (TypeScript types don't exist at runtime, so an incoming `?tab=` value
+// needs a real Set to validate against, not just a cast) -- kept next to the type so
+// the two can't silently drift apart when a tab is added or removed.
+const ALL_TAB_IDS = new Set<Tab>(['HOME', 'PAY', 'EXPLORE', 'YOU', 'CERTIFICATE', 'SHOPPING', 'SHOP', 'EATS', 'MARKETPLACE', 'COMMUNITY', 'JOBS', 'PROPERTY', 'STOCKS', 'SAVINGS', 'MESSAGES', 'RIDES', 'DESIGNATED_DRIVER', 'BIKESHARE', 'PARKING', 'BUS', 'KNOWLEDGE', 'MAP', 'DEVICES', 'CARD', 'TRANSIT', 'TRANSIT_COLLECT', 'MOTO_FARE_COLLECT', 'OVERVIEW', 'LOANS', 'CREDIT_SCORE', 'TRUST_SCORE', 'IDENTITY', 'SUPPORT', 'MY', 'SUBSCRIPTIONS', 'SPENDING', 'FOREIGN_CURRENCY', 'REWARDS', 'INSURANCE', 'BILLS', 'AGENT', 'USSD']);
+const TAB_QUERY_PARAM = 'tab';
+const readTabFromUrl = (): Tab => {
+  try {
+    const raw = new URLSearchParams(window.location.search).get(TAB_QUERY_PARAM);
+    if (!raw || !ALL_TAB_IDS.has(raw as Tab)) return 'HOME';
+    // Real retirement of the legacy 'SHOPPING' tab (itunda Shopping redesign,
+    // 2026-08-28) -- 'SHOPPING' stays in ALL_TAB_IDS/Tab purely so an old
+    // bookmarked/shared `?tab=SHOPPING` link still validates and lands somewhere
+    // real (the redesigned ShopView, its real successor) rather than rendering
+    // blank content.
+    if (raw === 'SHOPPING') return 'SHOP';
+    return raw as Tab;
+  } catch {
+    return 'HOME';
+  }
+};
 
 // Real direct itunda-to-itunda push-transfer (2026-07-20) -- closes a real gap found
-// live while first wiring this exact button: WalletController's quote/confirm transfer
+// live while first wiring this exact button: AccountController's quote/confirm transfer
 // (used by Android/iOS's sendTransfer) always routes through a simulated external rail
-// and never actually credits another itunda user's wallet, even when the recipient is a
+// and never actually credits another itunda user's account, even when the recipient is a
 // real itunda account (confirmed via direct MySQL query: recipientId stayed "external").
 // This now calls the new real rw.itunda.p2p.sendDirect instead -- a real recipient
 // resolved by phone number or account number, credited immediately, no fee (nothing
@@ -104,2242 +218,1307 @@ function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; on
 // there's no rail decision to quote) -- the review screen below is a client-side
 // confirmation only, same inline-card-replaces-trigger convention every other flow in
 // this file already uses, not a modal overlay.
-// Real device binding step-up (2026-07-20) -- shown wherever a money-moving call
-// real-403s with DEVICE_NOT_VERIFIED. Re-proves password ownership on THIS device
-// (resolved server-side from the caller's own JWT, never a client-supplied id) and
-// marks it trusted, matching the same real re-verification Toss requires before a
-// new device can move money. See lib/device.ts's own doc comment for the full account.
-function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () => void; onCancel: () => void }) {
-  const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+// Real Toss 사기계좌 조회-style report action -- see lib/scamReports.ts's own doc
+// comment.
+// Localized 2026-08-09 -- explicitly named as a known, out-of-scope English gap two
+// localization passes ago (see docs/DESIGN_REFERENCES.md Section 19, the web
+// transfer-flow pass): closing it now while finishing the rest of HomeView.
+function ReportScamLink({ identifier }: { identifier: string }) {
+  const { t } = useI18n();
+  const [reporting, setReporting] = useState(false);
+  const [done, setDone] = useState(false);
 
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setBusy(true);
+  const handleReport = async () => {
+    const reason = window.prompt(t('scamReport.promptQuestion', { identifier }));
+    if (!reason || !reason.trim()) return;
+    setReporting(true);
     try {
-      await verifyDevice(password);
-      onVerified();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not verify this device.');
+      await reportScam(identifier, reason.trim());
+      setDone(true);
+    } catch {
+      // Real, non-critical from the sender's own transfer flow's point of view --
+      // a failed report shouldn't block or disrupt the transfer screen around it.
     } finally {
-      setBusy(false);
+      setReporting(false);
     }
   };
 
+  if (done) return <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>{t('scamReport.thanks')}</p>;
+
   return (
-    <form onSubmit={handleVerify} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>🔒 Verify this device</p>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
-        This is a new device for your account. Re-enter your password to allow it to send money, then try again.
-      </p>
-      <input
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        placeholder="Password"
-        required
-        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
-      />
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onCancel} disabled={busy}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>
-          {busy ? 'Verifying…' : 'Verify device'}
-        </button>
-      </div>
-    </form>
+    <button type="button" onClick={handleReport} disabled={reporting} style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)', textAlign: 'left' }}>
+      {reporting ? t('scamReport.reporting') : t('scamReport.reportLink')}
+    </button>
   );
 }
 
-function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+// Real Toss "송금" flow -- recipient picker, then amount entry with a numeric keypad,
+// then a confirm sheet ("Send X RWF to [name] now"), then a sending spinner, then a
+// success screen -- rebuilt 2026-08-18 to match Toss's own real send-money screens
+// exactly (reference: screenshots the user supplied directly, per this session's own
+// "don't imagine, use real reference" rule) instead of the prior single-card form.
+// The backend calls underneath are unchanged: this is a UI/flow rebuild, not a new
+// capability, except for resolveRecipient (lib/p2p.ts), which already existed on the
+// backend (P2pService.resolveRecipient) with zero client caller until now -- it's what
+// lets the amount/confirm screens show the real resolved "To [name]" the same way the
+// reference screenshots do.
+
+// Real Toss ProgressStepper component, compact variant -- see
+// tossmini-docs.toss.im/tds-mobile/components/progress-stepper's own real API shape
+// (`<ProgressStepper variant="compact" activeStepIndex={N}><ProgressStep title="..."
+// />...</ProgressStepper>`) -- mirrored here as a flat `steps` prop instead of
+// compound children, matching this codebase's own established "Flat API over Compound
+// API" convention (see `IdsButton`'s own header comment for the identical real
+// precedent already applied once in this file). Was missing entirely from itunda's own
+// new multi-step flows (`TransferFlow` below, `CreateGoalForm`, Section 198) -- a real,
+// sourced gap found 2026-08-19: a user had no visual sense of how many steps remained
+// or where they were in the flow. Only rendered on real navigable decision steps, not
+// on a flow's transient/terminal states (a "sending" spinner or a "success" screen
+// isn't a step to track progress toward, it's the destination).
+export function ProgressStepper({ activeStepIndex, steps }: { activeStepIndex: number; steps: string[] }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', paddingTop: '4px', paddingBottom: '12px' }}>
+      {steps.map((label, i) => (
+        <div key={label} style={{ display: 'flex', alignItems: 'center', flex: i < steps.length - 1 ? 1 : '0 0 auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+            <div
+              style={{
+                width: '8px', height: '8px', borderRadius: '50%',
+                backgroundColor: i <= activeStepIndex ? 'var(--itunda-indigo)' : 'var(--itunda-border-strong)',
+              }}
+            />
+            <span
+              style={{
+                fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: i === activeStepIndex ? 700 : 500, whiteSpace: 'nowrap',
+                color: i === activeStepIndex ? 'var(--itunda-indigo)' : i < activeStepIndex ? 'var(--itunda-text-secondary)' : 'var(--itunda-text-disabled)',
+              }}
+            >
+              {label}
+            </span>
+          </div>
+          {i < steps.length - 1 && (
+            <div
+              style={{
+                flex: 1, height: '1px', marginBottom: '17px', marginLeft: '4px', marginRight: '4px',
+                backgroundColor: i < activeStepIndex ? 'var(--itunda-indigo)' : 'var(--itunda-border-default)',
+              }}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+type TransferStep = 'recipient' | 'amount' | 'confirm' | 'sending' | 'success';
+
+// Exported (2026-08-31) so OverviewAssetsView.tsx -- a standalone file, see its own
+// header comment on why -- can reuse this exact real send flow for its own per-account
+// "Send" action, rather than duplicating it.
+export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBalance, fromAccountId, fromAccountName }: { onClose: () => void; onSuccess: () => void; onBalanceRefresh?: () => void; accountBalance: number; fromAccountId?: string; fromAccountName?: string }) {
+  const { t } = useI18n();
+  const TRANSFER_STEP_LABELS = [t('transfer.stepRecipient'), t('transfer.stepAmount'), t('transfer.stepConfirm')];
+  const [step, setStep] = useState<TransferStep>('recipient');
   const [recipient, setRecipient] = useState('');
+  const [recipientPreview, setRecipientPreview] = useState<P2pRecipientPreview | null>(null);
   const [amount, setAmount] = useState('');
-  const [reviewing, setReviewing] = useState(false);
-  const [result, setResult] = useState<{ message: string; newBalance: number } | null>(null);
+  const [memo, setMemo] = useState('');
+  const [result, setResult] = useState<{ message: string; newBalance: number; fraudWarnings: string[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // Real device binding (2026-07-20) -- a real 403 DEVICE_NOT_VERIFIED (this device
   // hasn't been step-up-verified yet) gets its own real prompt, not just a generic
   // error string, since the user has a real, actionable next step.
   const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+  // Real saved-contacts list (found 2026-07-22 fully built on the backend with zero
+  // client UI anywhere) -- this form previously had no recipient picker at all, just
+  // a bare phone/account text field.
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [showAddContact, setShowAddContact] = useState(false);
+  const [newContactName, setNewContactName] = useState('');
+  const [newContactPhone, setNewContactPhone] = useState('');
+  // Real Toss 사기계좌 조회-style pre-transfer warning -- see lib/scamReports.ts's own
+  // doc comment. A warning, not a hard block -- Toss's own real feature lets a sender
+  // proceed past it too, it just withdraws their fraud-reimbursement protection for
+  // doing so (this codebase has no such protection scheme to withdraw, so proceeding
+  // here is simply the sender's own informed choice).
+  const [scamCheck, setScamCheck] = useState<ScamCheckResult | null>(null);
+  // Real standalone "gift" send (KakaoTalk 선물하기-style, GiftController's own
+  // POST /api/v1/gifts) -- found fully built server-side with zero client caller
+  // anywhere; only the chat-embedded sibling had a UI. Money moves into escrow, not
+  // straight to the recipient's account, until they explicitly claim it -- so this
+  // reuses the same recipient/amount fields as a plain transfer but branches at
+  // confirm-time into a different backend call and a different result panel.
+  const [isGift, setIsGift] = useState(false);
+  const [giftTheme, setGiftTheme] = useState<GiftTheme | ''>('');
+  const [giftNote, setGiftNote] = useState('');
+  const [giftResult, setGiftResult] = useState<Gift | null>(null);
 
-  const handleReview = (e: React.FormEvent) => {
+  const loadContacts = () => fetchContacts().then(setContacts).catch(() => {});
+  useEffect(() => { loadContacts(); }, []);
+
+  const handleAddContact = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setReviewing(true);
+    try {
+      await addContact(newContactName, newContactPhone);
+      setNewContactName(''); setNewContactPhone(''); setShowAddContact(false);
+      loadContacts();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    }
   };
+
+  // Real gap found live (2026-08-10), applying Toss Tech's own "the best error is
+  // one that never occurs" principle (toss.tech/article/21021, "좋은 에러 메시지를
+  // 만드는 6가지 원칙"): accountBalance is already known here (AccountBalance renders
+  // it right above this form), yet an amount larger than it previously round-tripped
+  // to the backend's 422 before saying anything. Same fix as Android/iOS.
+  const insufficientBalance = Number(amount || 0) > 0 && Number(amount || 0) > accountBalance;
+  const recipientName = recipientPreview?.displayName ?? recipient;
+
+  const selectRecipient = (identifier: string) => {
+    const trimmed = identifier.trim();
+    if (!trimmed) return;
+    setError(null);
+    setRecipient(trimmed);
+    setRecipientPreview(null);
+    setScamCheck(null);
+    checkScamStatus(trimmed).then(setScamCheck).catch(() => {
+      // Real, non-critical -- a failed safety check must never block a real transfer
+      // the sender is otherwise entitled to make.
+    });
+    if (!isGift) {
+      // Real Toss/Kakao Bank-style recipient-name confirmation -- resolves before the
+      // amount screen renders "To [name]", matching the reference screenshots. A
+      // failed lookup is non-fatal here (falls back to showing the raw identifier):
+      // sendDirect itself still does the real, authoritative resolution at send time.
+      resolveRecipient(trimmed).then(setRecipientPreview).catch(() => {});
+    }
+    setStep('amount');
+  };
+
+  // Real Toss/Kakao keypad shape (…7 8 9 / 00 0 backspace) -- RWF has no minor unit in
+  // this codebase (every amount elsewhere is a whole-number toLocaleString()), so
+  // there's no decimal-point key. Capped at 9 digits (under 1 billion RWF) purely as a
+  // fat-finger guard, not a real product limit.
+  const appendDigit = (d: string) => {
+    setAmount((prev) => {
+      if (d === '00') return prev === '' || prev === '0' ? prev : (prev + '00').slice(0, 9);
+      return (prev === '0' ? d : prev + d).slice(0, 9);
+    });
+  };
+  const backspace = () => setAmount((prev) => prev.slice(0, -1));
 
   const handleConfirm = async () => {
     setError(null);
     setNeedsDeviceVerification(false);
     setBusy(true);
+    setStep('sending');
     try {
-      const res = await sendDirect(recipient.trim(), Number(amount), '');
-      setResult({ message: res.message, newBalance: res.newBalance });
+      if (isGift) {
+        const gift = await sendGift(recipient.trim(), Number(amount), giftNote, giftTheme || null);
+        setGiftResult(gift);
+        onBalanceRefresh?.();
+        setStep('success');
+        return;
+      }
+      const res = await sendDirect(recipient.trim(), Number(amount), memo.trim(), fromAccountId);
+      setResult({ message: res.message, newBalance: res.newBalance, fraudWarnings: res.fraudWarnings });
+      // Real fix (2026-08-13, direct live-testing catch): the top-level balance
+      // (AccountBalance, rendered above this whole form) previously only refreshed
+      // when onSuccess fired on the "Done" button -- but this confirmation panel
+      // already has the real, correct new balance the instant the transfer succeeds.
+      // For that whole in-between window, the two numbers visibly disagreed on the
+      // same screen (this panel said the new balance, the balance above still showed
+      // the pre-transfer one). Refresh in the background now, without closing this
+      // panel -- onSuccess (Done) still fires its own close-and-reload afterward.
+      onBalanceRefresh?.();
+      setStep('success');
     } catch (err) {
+      // Real device step-up retries this exact same handleConfirm call once verified
+      // (DeviceStepUpPrompt's own doc comment), so it needs to land back on the
+      // 'confirm' step rather than staying on the transient 'sending' one.
+      setStep('confirm');
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         setNeedsDeviceVerification(true);
       } else {
         // A real, honest error surfaces here as-is -- e.g. a recipient that doesn't
         // match any real itunda account real-404s rather than silently doing nothing.
-        setError(err instanceof ApiError ? err.message : 'Could not complete this transfer.');
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
       }
     } finally {
       setBusy(false);
     }
   };
 
-  if (result) {
+  // Step 5: success -- checkmark, "Sent X RWF to [name]," fee-covered subtitle, Share
+  // (real Web Share API where supported) + Done. Matches the reference screenshots'
+  // "Sent" screen; gift's own distinct escrow-pending message is a separate branch
+  // since it's a real, different outcome (held, not delivered, until claimed).
+  if (step === 'success') {
+    if (giftResult) {
+      return (
+        <FullScreenFlow bottomCTA={<IdsButton fullWidth onClick={onSuccess}>{t('transfer.done')}</IdsButton>}>
+          <div style={{ textAlign: 'center', padding: '32px 0' }}>
+            <span style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}><GiftGlyph theme={giftResult.theme} size={40} /></span>
+            <h3 style={{ fontSize: 'var(--itunda-type-scale-19-size)', fontWeight: 800, marginBottom: '6px' }}>Gift sent!</h3>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-tertiary)' }}>
+              {giftResult.amount.toLocaleString('en-US')} RWF is held until {recipient.trim()} claims it -- auto-refunded to you after 7 days if unclaimed.
+            </p>
+          </div>
+        </FullScreenFlow>
+      );
+    }
+    if (!result) return null;
     return (
-      <div className="toss-card" style={{ textAlign: 'center', padding: '28px', marginBottom: '16px' }}>
-        <ShieldCheck size={36} color="var(--toss-green)" style={{ marginBottom: '10px' }} />
-        <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '4px' }}>{result.message}</h3>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
-          New balance: {result.newBalance.toLocaleString()} RWF
-        </p>
-        <button className="toss-btn toss-btn-secondary" onClick={onSuccess}>Done</button>
-      </div>
-    );
-  }
-
-  if (reviewing) {
-    return (
-      <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Confirm transfer</h3>
-        <div style={{ fontSize: '13px', color: 'var(--toss-grey-700)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <span>To {recipient}</span>
-          <span style={{ fontWeight: 700 }}>Amount: {Number(amount).toLocaleString()} RWF</span>
-        </div>
-        {needsDeviceVerification ? (
-          <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={onClose} />
-        ) : (
-          <>
+      <FullScreenFlow
+        bottomCTA={
+          <div>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onClose} disabled={busy}>Cancel</button>
-              <button type="button" className="toss-btn toss-btn-primary" style={{ flex: 1 }} onClick={handleConfirm} disabled={busy}>
-                {busy ? 'Sending…' : 'Confirm'}
-              </button>
+              {typeof navigator !== 'undefined' && !!navigator.share && (
+                <IdsButton
+                  variant="tinted" fullWidth style={{ flex: 1 }}
+                  onClick={() => navigator.share({ text: `Sent ${Number(amount).toLocaleString('en-US')} RWF to ${recipientName} via itunda` }).catch(() => {})}
+                >
+                  Share
+                </IdsButton>
+              )}
+              <IdsButton fullWidth style={{ flex: 1 }} onClick={onSuccess}>{t('transfer.done')}</IdsButton>
             </div>
-            {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
-          </>
-        )}
-      </div>
+            {/* Real Toss reference screenshot (2026-08-23, user-supplied): the fee-
+                covered reassurance sits on its own line BELOW the buttons, not crammed
+                into the same line as other info -- moved here from the content area to
+                match. */}
+            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)', textAlign: 'center', marginTop: '10px' }}>
+              {t('transfer.feeCovered')}
+            </p>
+          </div>
+        }
+      >
+        {/* Real Toss "Sent" screen (2026-08-23, user-supplied reference screenshot):
+            a distinct "Sent" headline (not the generic "Done" this used to share with
+            the button below it), amount and recipient as their own clear stacked
+            lines rather than crammed onto one "{amount} → {name}" row, and a real
+            spring entrance on the icon -- itunda had zero animation on this screen
+            before. Solid green circle + plain white check (not this draft's earlier
+            indigo/ShieldCheck attempt) to match Android's own already-shipped, more
+            established IdsCelebrationScreen pattern (real haptics + spring + confetti,
+            reused across 4 real success moments) -- found while porting this same
+            screen to Android/iOS the same session: itunda's real identity for THIS
+            specific moment is green+check, not a one-off invented here. Literal white,
+            not the --itunda-white token, which flips to a dark grey in dark mode and
+            would go invisible against the green circle. */}
+        <div style={{ textAlign: 'center', padding: '32px 0' }}>
+          <motion.div
+            initial={{ scale: 0.4, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 340, damping: 22 }}
+            style={{ width: '72px', height: '72px', borderRadius: '36px', backgroundColor: 'var(--itunda-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}
+          >
+            <Check size={38} color="#ffffff" />
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12, duration: 0.3, ease: 'easeOut' }}>
+            <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, color: 'var(--itunda-text-tertiary)', marginBottom: '8px' }}>{t('transfer.sentHeadline')}</h3>
+            <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, marginBottom: '4px' }}>{Number(amount).toLocaleString('en-US')} RWF</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: 'var(--itunda-text-secondary)' }}>{t('transfer.toLabel')} {recipientName}</p>
+            {memo.trim() && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-tertiary)', marginTop: '10px' }}>&ldquo;{memo.trim()}&rdquo;</p>}
+            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-disabled)', marginTop: '14px' }}>
+              {t('transfer.newBalance', { amount: result.newBalance.toLocaleString('en-US') })}
+            </p>
+            {/* Real Toss "Fraud Suspicion Siren" (사기의심 사이렌) parity -- see
+                lib/p2p.ts's own doc comment. Purely informational: the transfer this
+                warning is attached to has already completed by the time it's shown,
+                same as Toss's own post-payment FDS notice. */}
+            {result.fraudWarnings.length > 0 && (
+              <div style={{ backgroundColor: 'var(--itunda-red-light)', border: '1px solid var(--itunda-red)', borderRadius: '8px', padding: '10px 12px', marginTop: '14px', textAlign: 'left' }}>
+                {result.fraudWarnings.map((warning, i) => (
+                  <p key={i} style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', margin: i === 0 ? 0 : '4px 0 0' }}>
+                    {warning}
+                  </p>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        </div>
+      </FullScreenFlow>
     );
   }
 
+  // Step 4: sending -- a brief transient screen while handleConfirm's await is
+  // in flight, matching the reference screenshots' own loading screen between confirm
+  // and success. Full-screen too (no bottomCTA -- nothing to press while it's in
+  // flight), matching Toss's own real loan-review loading screen precedent
+  // (toss.tech/article/interaction) of a dedicated, real loading PAGE, not an inline
+  // spinner competing with unrelated content.
+  if (step === 'sending') {
+    return (
+      <FullScreenFlow>
+        <div style={{ textAlign: 'center', padding: '48px 0' }}>
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+            style={{ width: '40px', height: '40px', margin: '0 auto 16px', border: '3px solid var(--itunda-indigo-light)', borderTopColor: 'var(--itunda-indigo)', borderRadius: '50%' }}
+          />
+          <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: 'var(--itunda-text-secondary)' }}>{t('transfer.sending')}</p>
+        </div>
+      </FullScreenFlow>
+    );
+  }
+
+  // Step 3: confirm -- "Send X RWF to [name] now" full-screen flow, matching the
+  // reference screenshots. Cancel returns to the amount screen (not a full close) so a
+  // sender can fix a typo'd amount without re-picking the recipient. The real
+  // Cancel/Send pair moves to the pinned FixedBottomCTA; DeviceStepUpPrompt (when it
+  // takes over) stays in the scrollable content area instead -- it's a real,
+  // self-contained component with its own submit button already, not a page-level
+  // action this flow's own CTA bar should duplicate.
+  if (step === 'confirm') {
+    return (
+      <FullScreenFlow
+        bottomCTA={
+          !needsDeviceVerification && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <IdsButton variant="tinted" fullWidth style={{ flex: 1 }} onClick={() => setStep('amount')} disabled={busy}>{t('transfer.cancel')}</IdsButton>
+                {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): a
+                    bare "Confirm" doesn't state the outcome -- Toss's own dark-pattern-
+                    prevention rules require CTA labels to name the specific action, not a
+                    generic verb, matching the "Clear Action" principle. */}
+                <IdsButton fullWidth style={{ flex: 1 }} onClick={handleConfirm} disabled={busy}>
+                  {isGift ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                      <GiftGlyph theme={null} size={16} /> Send gift · {Number(amount).toLocaleString('en-US')} RWF
+                    </span>
+                  ) : t('transfer.send', { amount: Number(amount).toLocaleString('en-US') })}
+                </IdsButton>
+              </div>
+              {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+              <ReportScamLink identifier={recipient.trim()} />
+            </div>
+          )
+        }
+      >
+        <ProgressStepper activeStepIndex={2} steps={TRANSFER_STEP_LABELS} />
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 800 }}>
+          {t('transfer.confirmSendNow', { amount: Number(amount).toLocaleString('en-US'), recipient: recipientName })}
+        </h3>
+        <div style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
+          <span>{recipient.trim()}</span>
+          {memo.trim() && <span>&ldquo;{memo.trim()}&rdquo;</span>}
+        </div>
+        {scamCheck?.warn && (
+          <div style={{ backgroundColor: 'var(--itunda-red-light)', border: '1px solid var(--itunda-red)', borderRadius: '8px', padding: '10px 12px', marginTop: '12px' }}>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-red)' }}>{t('transfer.scamWarningTitle')}</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', marginTop: '2px' }}>
+              {t('transfer.scamWarningBody', { count: scamCheck.reportCount })}
+            </p>
+          </div>
+        )}
+        {needsDeviceVerification && (
+          // Real fix (2026-08-10): re-entering a password to verify the device already
+          // proves who's asking -- making the user then tap "Send" a second time for
+          // the exact transfer they just reviewed and confirmed adds friction, not
+          // security. handleConfirm resets needsDeviceVerification itself, so calling
+          // it directly both clears the prompt and retries the same transfer.
+          <div style={{ marginTop: '12px' }}>
+            <DeviceStepUpPrompt onVerified={handleConfirm} onCancel={onClose} />
+          </div>
+        )}
+      </FullScreenFlow>
+    );
+  }
+
+  // Step 2: amount -- "To [name]" header with a back arrow, a big centered amount
+  // readout, a tap-to-fill balance line, an optional memo, and a numeric keypad,
+  // matching the reference screenshots' amount-entry screen.
+  if (step === 'amount') {
+    return (
+      <FullScreenFlow
+        bottomCTA={
+          <>
+            {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
+            <IdsButton
+              fullWidth
+              disabled={!amount || Number(amount) <= 0 || insufficientBalance}
+              onClick={() => { setError(null); setStep('confirm'); }}
+            >
+              {t('transfer.next')}
+            </IdsButton>
+          </>
+        }
+      >
+        <ProgressStepper activeStepIndex={1} steps={TRANSFER_STEP_LABELS} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button type="button" aria-label={t('transfer.cancel')} onClick={() => setStep('recipient')} style={{ background: 'none', border: 'none', padding: '4px', display: 'flex' }}>
+            <IconBack size={22} color="var(--itunda-text-secondary)" />
+          </button>
+          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-tertiary)' }}>{t('transfer.toLabel')}</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{recipientName}</span>
+          {recipientPreview && <IconShieldCheck size={15} color="var(--itunda-indigo)" />}
+          <button type="button" aria-label={t('transfer.cancel')} onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', padding: '4px', display: 'flex' }}>
+            <IconClose size={20} color="var(--itunda-text-tertiary)" />
+          </button>
+        </div>
+
+        <div style={{ textAlign: 'center', padding: '20px 0 8px' }}>
+          {/* Real Toss largeAmount token (34px/41px/700, same value Android's
+              IdsTypography.LargeAmount and iOS's IDS.swift already agree on --
+              see project_itunda_product_feel's own doc comment) -- this was the
+              app's single largest, most prominent number on screen but used an
+              invented 38px/800 pair matching no real Toss/itunda token. */}
+          <span style={{ fontSize: 'var(--itunda-type-large-amount-size)', lineHeight: 'var(--itunda-type-large-amount-line-height)', fontWeight: 'var(--itunda-type-large-amount-weight)' }}>
+            {amount === '' ? '0' : Number(amount).toLocaleString('en-US')} <span style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: 'var(--itunda-text-tertiary)' }}>RWF</span>
+          </span>
+          <div>
+            {/* Real gap found live (2026-08-31, direct user reference of their own
+                Toss app's "which account should the money come from" picker): a
+                specific non-default source account (passed in from Overview's or the
+                Bank hub's own account detail screen -- see OverviewAssetsView.tsx and
+                SavingsView's onSend) previously had no visible confirmation anywhere
+                on this screen that it, not the sender's MAIN account, is what's about
+                to be debited. */}
+            {fromAccountName && (
+              <p style={{ margin: '0 0 2px', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>
+                From {fromAccountName}
+              </p>
+            )}
+            <button type="button" onClick={() => setAmount(String(accountBalance))} style={{ marginTop: '6px', background: 'none', border: 'none', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-text-tertiary)' }}>
+              {t('transfer.balanceLabel', { amount: accountBalance.toLocaleString('en-US') })}
+            </button>
+          </div>
+          {insufficientBalance && (
+            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', margin: '4px 0 0' }}>
+              {t('transfer.insufficientBalance', { amount: accountBalance.toLocaleString('en-US') })}
+            </p>
+          )}
+        </div>
+
+        {isGift ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <input
+              type="text" value={giftNote} onChange={(e) => setGiftNote(e.target.value)} placeholder="Add a note (optional)" maxLength={200}
+              style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-14-size)', textAlign: 'center' }}
+            />
+            <select
+              value={giftTheme} onChange={(e) => setGiftTheme(e.target.value as GiftTheme | '')}
+              style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-14-size)' }}
+            >
+              <option value="">No theme (plain gift)</option>
+              {(Object.keys(GIFT_THEME_LABELS) as GiftTheme[]).map((theme) => (
+                <option key={theme} value={theme}>{GIFT_THEME_LABELS[theme]}</option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <input
+            type="text" value={memo} onChange={(e) => setMemo(e.target.value)} placeholder={t('transfer.memoPlaceholder')} maxLength={200}
+            style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)', textAlign: 'center', width: '100%', boxSizing: 'border-box' }}
+          />
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2px', marginTop: '8px' }}>
+          {['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', '⌫'].map((k) => (
+            <button
+              key={k} type="button"
+              onClick={() => (k === '⌫' ? backspace() : appendDigit(k))}
+              aria-label={k === '⌫' ? 'Backspace' : `Enter ${k}`}
+              style={{ padding: '16px 0', background: 'none', border: 'none', fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 600, color: 'var(--itunda-text-primary)', borderRadius: 'var(--itunda-control-radius, 12px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              {/* Real gap found live (2026-08-31, direct user correction: "backspace
+                  button of keyboard should be horizontal arrow (toss style) instead
+                  of those weird icons") -- the raw "⌫" text glyph renders
+                  inconsistently across fonts/platforms; reuses the same real,
+                  already-cross-platform-shared IconBack chevron the app's own back
+                  buttons use, instead of a second, different icon concept. */}
+              {k === '⌫' ? <IconBack size={20} color="var(--itunda-text-primary)" /> : k}
+            </button>
+          ))}
+        </div>
+      </FullScreenFlow>
+    );
+  }
+
+  // Step 1: recipient -- search/manual-entry field, gift toggle, and the real saved-
+  // contacts "Recent" list, matching the reference screenshots' recipient screen. No
+  // bottomCTA here -- "Continue" is a search-submit action tightly coupled to the
+  // search field beside it, not a standalone page-level confirmation the FixedBottomCTA
+  // pattern is meant for (Toss's own real SearchField-adjacent buttons work the same
+  // inline way).
   return (
-    <form onSubmit={handleReview} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-      <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Transfer</h3>
-      <input
-        type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="Recipient phone or account number" required
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-      />
-      <input
-        type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount (RWF)" required min="1"
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-      />
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }}>Continue</button>
+    <FullScreenFlow>
+      <ProgressStepper activeStepIndex={0} steps={TRANSFER_STEP_LABELS} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 800 }}>{t('transfer.recipientStepTitle')}</h3>
+        <button type="button" aria-label={t('transfer.cancel')} onClick={onClose} style={{ background: 'none', border: 'none', padding: '4px', display: 'flex' }}>
+          <IconClose size={20} color="var(--itunda-text-tertiary)" />
+        </button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
-    </form>
+      <form onSubmit={(e) => { e.preventDefault(); selectRecipient(recipient); }} style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+        <div style={{ position: 'relative', flex: 1 }}>
+          <IconSearch size={16} color="var(--itunda-text-disabled)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+          <input
+            type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)}
+            placeholder={t('transfer.recipientPlaceholder')} required
+            style={{ width: '100%', padding: '12px 14px 12px 36px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-14-size)', boxSizing: 'border-box' }}
+          />
+        </div>
+        {/* Real fix (2026-08-18, direct live-testing catch): IdsButton's own Large-size
+            default (width: fullWidth ?? size === 'large' ? '100%' : undefined) claims
+            100% width even without fullWidth set -- fine standalone, but fatal as a
+            flex sibling of the search input's own flex:1 wrapper, which collapsed to
+            icon-width because this button's width:100% left it no room to grow into.
+            IdsButton spreads its own `style` prop last, so an explicit width here wins
+            over that default. */}
+        <IdsButton type="submit" style={{ width: 'auto' }} disabled={!recipient.trim()}>{t('transfer.continue')}</IdsButton>
+      </form>
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, marginTop: '12px' }}>
+        <input type="checkbox" checked={isGift} onChange={(e) => setIsGift(e.target.checked)} />
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><GiftGlyph theme={null} size={16} /> Send as a gift instead</span>
+      </label>
+      {isGift && (
+        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>
+          Held until they claim it -- auto-refunded to you after 7 days if unclaimed. Enter their
+          phone number above -- gifts can't be sent to an account number.
+        </p>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
+        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-text-tertiary)' }}>{t('transfer.recentLabel')}</p>
+        <button type="button" onClick={() => setShowAddContact((v) => !v)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)', fontWeight: 700, background: 'none', border: 'none' }}>
+          {showAddContact ? t('transfer.cancel') : t('transfer.addContact')}
+        </button>
+      </div>
+      {showAddContact && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <input
+            type="text" value={newContactName} onChange={(e) => setNewContactName(e.target.value)} placeholder={t('transfer.namePlaceholder')}
+            style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+          />
+          <input
+            type="text" value={newContactPhone} onChange={(e) => setNewContactPhone(e.target.value)} placeholder={t('transfer.phonePlaceholder')}
+            style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+          />
+          <button type="button" className="itunda-btn itunda-btn-secondary" disabled={!newContactName || !newContactPhone} onClick={handleAddContact}>
+            {t('transfer.saveContact')}
+          </button>
+        </div>
+      )}
+      {contacts.length === 0 && !showAddContact && (
+        <EmptyState message={t('transfer.noContacts')} />
+      )}
+      {contacts.map((c) => (
+        <button
+          type="button" key={c.id}
+          onClick={() => selectRecipient(c.phoneNumber)}
+          style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', background: 'none', border: 'none', textAlign: 'left', width: '100%' }}
+        >
+          <div style={{ width: '38px', height: '38px', borderRadius: '19px', backgroundColor: 'var(--itunda-indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-indigo)', flexShrink: 0 }}>
+            {c.name.slice(0, 1).toUpperCase()}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{c.name}</span>
+            <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>{c.bank} · {c.phoneNumber}</span>
+          </div>
+        </button>
+      ))}
+      {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+    </FullScreenFlow>
   );
 }
 
-function QuickActions() {
-  const actions = [
-    { title: 'Scan to Pay', icon: <ScanFace size={24} color="var(--toss-blue)" />, bg: 'var(--toss-blue-light)' },
-    { title: 'Cards', icon: <WalletIcon size={24} color="#8A2BE2" />, bg: 'rgba(138, 43, 226, 0.1)' },
+export function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode, onNavigateToSavingsTarget }: { onNavigateToTab: (tab: Tab) => void; onNavigateToLoansMode: (mode: LoansMode) => void; onNavigateToSavingsTarget: (target: 'sacco' | 'ikimina') => void }) {
+  const { t } = useI18n();
+  const items: { key: string; title: string; subtitle: string; icon: ReactElement; tint: string; tab: Tab; loansMode?: LoansMode; savingsTarget?: 'sacco' | 'ikimina' }[] = [
+    { key: 'sacco', title: t('coopRail.sacco.title'), subtitle: t('coopRail.sacco.subtitle'), icon: <Landmark size={20} color="#7C5CFC" />, tint: 'rgba(124, 92, 252, 0.12)', tab: 'SAVINGS', savingsTarget: 'sacco' },
+    { key: 'ikimina', title: t('coopRail.ikimina.title'), subtitle: t('coopRail.ikimina.subtitle'), icon: <Users size={20} color="#14AE85" />, tint: 'rgba(20, 174, 133, 0.12)', tab: 'SAVINGS', savingsTarget: 'ikimina' },
+    // Real gap found live (2026-08-10) while checking these two links for the first
+    // time: onNavigateToTab alone only lands on LoansView's generic Offers catalog --
+    // its own `mode` is separate internal state. loansMode threads the real specific
+    // product through (see LoansView's own initialMode doc comment).
+    { key: 'moto_ownership', title: t('coopRail.motoOwnership.title'), subtitle: t('coopRail.motoOwnership.subtitle'), icon: <Bike size={20} color="var(--itunda-indigo)" />, tint: 'var(--itunda-indigo-light)', tab: 'LOANS', loansMode: 'MOTO_OWNERSHIP' },
+    { key: 'harvest_advance', title: t('coopRail.harvestAdvance.title'), subtitle: t('coopRail.harvestAdvance.subtitle'), icon: <Sprout size={20} color="#F2A93B" />, tint: 'rgba(242, 169, 59, 0.14)', tab: 'LOANS', loansMode: 'HARVEST_ADVANCE' },
   ];
 
   return (
-    <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-      {actions.map((action, i) => (
-        <motion.div
-          key={i}
-          whileTap={{ scale: 0.96 }}
-          className="toss-card"
-          style={{ flex: 1, padding: '20px', margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '16px', cursor: 'pointer' }}
+    <div className="itunda-flat-section">
+      <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700, margin: 0, color: 'var(--itunda-text-primary)' }}>{t('coopRail.title')}</h3>
+      <p style={{ fontSize: '12.5px', color: 'var(--itunda-text-tertiary)', marginTop: '2px', marginBottom: '16px' }}>{t('coopRail.subtitle')}</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        {items.map((item) => (
+          <button
+            key={item.key}
+            onClick={() => {
+              recordEvent('coop_rail_tap', item.key);
+              if (item.loansMode) onNavigateToLoansMode(item.loansMode);
+              // Real gap found live (2026-08-10), same investigation that found the
+              // loansMode gap above: SACCO/Ikimina are sections ~45-55% of the way
+              // down SavingsView's long page, not a separate mode -- see SavingsView's
+              // own initialScrollTarget doc comment for the measured offsets.
+              if (item.savingsTarget) onNavigateToSavingsTarget(item.savingsTarget);
+              onNavigateToTab(item.tab);
+            }}
+            style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 8px', borderRadius: 'var(--itunda-control-radius, 12px)', textAlign: 'left', width: '100%' }}
+          >
+            <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: item.tint, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {item.icon}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '14.5px', fontWeight: 650, color: 'var(--itunda-text-primary)' }}>{item.title}</div>
+              <div style={{ fontSize: '12.5px', color: 'var(--itunda-text-tertiary)' }}>{item.subtitle}</div>
+            </div>
+          </button>
+        ))}
+        <button
+          onClick={() => { recordEvent('coop_rail_tap', 'see_all'); onNavigateToTab('SAVINGS'); }}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 8px', borderRadius: 'var(--itunda-control-radius, 12px)', textAlign: 'left', width: '100%', marginTop: '4px' }}
         >
-          <div style={{ width: '48px', height: '48px', borderRadius: '16px', backgroundColor: action.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {action.icon}
+          <span style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--itunda-indigo)' }}>{t('coopRail.seeAll')}</span>
+          <IconChevronRight size={16} color="var(--itunda-indigo)" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Real architectural fix (2026-08-13, matching the identical Android/iOS fix same
+// session, direct user directive): "all itunda product features are independent
+// and isolated -- itunda bank is a complete product... tabs are not products, are
+// just access points." This tab used to render the account balance, transfer flow,
+// quick actions, coop-savings teaser, transaction history, scheduled/auto
+// transfers, auto top-up, request-money, and the Youth account card directly --
+// real Bank- and Pay-product content baked into what's meant to be a generic
+// access point. AccountBalance/QuickActions/TransactionHistory/RequestMoneyCard/
+// AutoTopUpCard/ScheduledTransfersCard moved into PayHub (itunda's real,
+// self-contained account product); AutoTransfersCard/YouthAccountCard moved into
+// SavingsView ("itunda Bank"); CooperativeSavingsRail was only ever a teaser
+// linking into SavingsView's own already-complete SaccoSection/IkiminaSection, so
+// it's removed outright rather than moved -- nothing it showed was unique.
+function HomeView() {
+  // Real, minimal usage signal (2026-08-10) -- see lib/analytics.ts's own doc comment.
+  // Fired once per real mount of Home, the baseline every retention question in the
+  // "itunda: the wedge, not the mirror" memo is measured against.
+  useEffect(() => { recordEvent('home_view'); }, []);
+
+  return (
+    <div>
+      <DiscoverSection />
+    </div>
+  );
+}
+
+export function ProductPageHeader({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div style={{ margin: '4px 0 16px' }}>
+      <h1 style={{ margin: 0, color: 'var(--itunda-text-primary)', fontSize: 'var(--itunda-type-scale-24-size)', letterSpacing: '-0.5px' }}>{title}</h1>
+      <p style={{ margin: '5px 0 0', color: 'var(--itunda-text-tertiary)', fontSize: 'var(--itunda-type-scale-13-size)', lineHeight: 1.45 }}>{subtitle}</p>
+    </div>
+  );
+}
+
+function ExploreTabPill({ id, label, icon: Icon, onSelect }: { id: Tab; label: string; icon?: ComponentType<{ size?: number }>; onSelect: (id: Tab) => void }) {
+  return (
+    <button
+      className="itunda-btn itunda-btn-secondary"
+      style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--itunda-type-scale-13-size)', padding: '8px 12px', borderRadius: '999px' }}
+      onClick={() => onSelect(id)}
+    >
+      {Icon && <Icon size={16} />}
+      {label}
+    </button>
+  );
+}
+
+function ExploreHub({ groups, tabLabel, tabIcon, recentTabs, onSelect, autoFocusSearch, onConsumedAutoFocus }: {
+  groups: { title: string; ids: Tab[] }[];
+  tabLabel: (id: Tab) => string;
+  tabIcon?: (id: Tab) => ComponentType<{ size?: number }> | undefined;
+  recentTabs: Tab[];
+  onSelect: (id: Tab) => void;
+  autoFocusSearch?: boolean;
+  onConsumedAutoFocus?: () => void;
+}) {
+  const [search, setSearch] = useState('');
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const allIds = groups.flatMap((g) => g.ids);
+  const matches = search.trim()
+    ? allIds.filter((id) => tabLabel(id).toLowerCase().includes(search.trim().toLowerCase()))
+    : [];
+
+  // Real hand-off from the header search icon (docs/DESIGN_REFERENCES.md Section 41
+  // item 3) -- focuses this same real search box the moment ExploreHub mounts from
+  // that entry point, rather than making the user find it again themselves.
+  useEffect(() => {
+    if (autoFocusSearch) {
+      searchInputRef.current?.focus();
+      onConsumedAutoFocus?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFocusSearch]);
+
+  return (
+    <div>
+      <ProductPageHeader title="Explore" subtitle="Everything beyond your everyday money tasks, in one searchable place." />
+      <div style={{ position: 'relative', marginBottom: '14px' }}>
+        <IconSearch size={15} color="var(--itunda-text-tertiary)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+        <input
+          ref={searchInputRef}
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search all services"
+          aria-label="Search all services"
+          style={{ width: '100%', padding: '10px 32px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)', background: 'var(--itunda-surface-default)', color: 'var(--itunda-text-primary)' }}
+        />
+        {search && (
+          <button onClick={() => setSearch('')} aria-label="Clear search" style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--itunda-text-tertiary)', display: 'flex' }}>
+            <IconClose size={15} />
+          </button>
+        )}
+      </div>
+
+      {search.trim() ? (
+        matches.length > 0 ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {matches.map((id) => (
+              <ExploreTabPill key={id} id={id} label={tabLabel(id)} icon={tabIcon?.(id)} onSelect={onSelect} />
+            ))}
           </div>
-          <span style={{ fontWeight: '600', fontSize: '15px', color: 'var(--toss-grey-900)' }}>{action.title}</span>
-        </motion.div>
+        ) : (
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-tertiary)', padding: '4px 0' }}>No match for "{search.trim()}".</p>
+        )
+      ) : (
+        <>
+          {recentTabs.length > 0 && (
+            <section className="itunda-flat-section">
+              <h2 style={{ margin: '0 0 10px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <Clock size={12} /> Recently used
+              </h2>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {recentTabs.map((id) => (
+                  <ExploreTabPill key={id} id={id} label={tabLabel(id)} icon={tabIcon?.(id)} onSelect={onSelect} />
+                ))}
+              </div>
+            </section>
+          )}
+          {/* Real Toss reference (16 screenshots, 2026-08-12 -- see Android's identical
+              MenuScreen fix, docs/DESIGN_REFERENCES.md Section 49): every category's
+              items are always fully visible in the real 전체 screen, zero collapse/
+              expand mechanic anywhere. This accordion (tap-to-expand, was the only real
+              way to see a group's own items) was the same over-applied Hick's Law
+              pattern Android's MenuScreen had before that fix -- web just never got the
+              same correction until now. */}
+          {groups.map((group) => (
+            <section key={group.title} className="itunda-flat-section">
+              <h2 style={{ margin: '0 0 12px', fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: 'var(--itunda-text-primary)' }}>
+                {group.title} <span style={{ color: 'var(--itunda-text-disabled)', fontWeight: 500, fontSize: 'var(--itunda-type-scale-12-size)' }}>· {group.ids.length}</span>
+              </h2>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {group.ids.map((id) => (
+                  <ExploreTabPill key={id} id={id} label={tabLabel(id)} icon={tabIcon?.(id)} onSelect={onSelect} />
+                ))}
+              </div>
+            </section>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
+// The You tab: profile up front (mirrors the native "profile icon" placement
+// itunda's own Android/iOS All screens use for My), then Insights (Overview/
+// Spending/Subscriptions -- flat rows, matching how Android's MenuScreen/iOS's
+// EntireMenuScreen expose these) and Account & security as their own groups.
+function YouHub({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) {
+  return (
+    <div>
+      <ProductPageHeader title="You" subtitle="Your profile, insights, and account security in one place." />
+      <MyView />
+      <div className="itunda-flat-section">
+        <h2 style={{ margin: 0, fontSize: 'var(--itunda-type-scale-16-size)' }}>Insights</h2>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
+          {[
+            { label: 'Overview', tab: 'OVERVIEW' as Tab },
+            { label: 'Spending insights', tab: 'SPENDING' as Tab },
+            { label: 'Subscriptions', tab: 'SUBSCRIPTIONS' as Tab },
+          ].map((item) => (
+            <button key={item.tab} className="itunda-btn itunda-btn-secondary" style={{ fontSize: 'var(--itunda-type-scale-13-size)', padding: '8px 10px' }} onClick={() => onNavigateToTab(item.tab)}>{item.label}</button>
+          ))}
+        </div>
+      </div>
+      <div className="itunda-flat-section">
+        <h2 style={{ margin: 0, fontSize: 'var(--itunda-type-scale-16-size)' }}>Account & security</h2>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
+          {[
+            { label: 'Cards', tab: 'CARD' as Tab },
+            { label: 'Devices', tab: 'DEVICES' as Tab },
+            { label: 'Verify identity', tab: 'IDENTITY' as Tab },
+            { label: 'Get support', tab: 'SUPPORT' as Tab },
+          ].map((item) => (
+            <button key={item.tab} className="itunda-btn itunda-btn-secondary" style={{ fontSize: 'var(--itunda-type-scale-13-size)', padding: '8px 10px' }} onClick={() => onNavigateToTab(item.tab)}>{item.label}</button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Real curated promo rail -- see lib/discover.ts's own doc comment. Android already has
+// this (DiscoverSection in ItundaAppScreen.kt, found real on backend + Android with zero
+// client anywhere else); this is the first bank-mfe/iOS client. Purely informational --
+// no click-through action or money movement, mirroring Android's own honest scope.
+function DiscoverSection() {
+  const { t } = useI18n();
+  const [items, setItems] = useState<DiscoverItem[]>([]);
+
+  useEffect(() => {
+    // Real server-side ranking (2026-08-11) -- see DiscoverItem's own doc comment.
+    // Backend already returns items sorted by priority; re-sorting here just makes
+    // that explicit and correct even if a future backend response ever isn't
+    // pre-sorted, same defensive-but-cheap sort Android's heroDiscoverItem uses.
+    fetchDiscoverItems()
+      .then((fetched) => setItems([...fetched].sort((a, b) => b.priority - a.priority)))
+      .catch(() => {});
+  }, []);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: '16px' }}>
+      <h3 style={{ fontSize: 'var(--itunda-type-scale-19-size)', fontWeight: 700, marginBottom: '10px' }}>{t('discover.title')}</h3>
+      {/* Real flat-design fix (docs/UI_UX_GUIDELINES.md rule 10, "Flat over
+          card-heavy") -- full-app audit found Home's own Discover section was still
+          boxing every row in .itunda-card, missed by the 2026-08-24 flat-design
+          sweep since this section wasn't touched that pass. Rows now sit directly
+          on the page with a divider between them, matching every other
+          already-flattened list in this file. */}
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {items.map((item, i) => (
+          <div
+            key={item.id}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0',
+              borderBottom: i < items.length - 1 ? '1px solid var(--itunda-border-default)' : 'none',
+            }}
+          >
+            <div style={{ width: '8px', height: '8px', borderRadius: '4px', backgroundColor: item.color, flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 600 }}>{item.title}</span>
+                {item.isNew && <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: item.color }}>{t('discover.new')}</span>}
+              </div>
+              <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-text-tertiary)' }}>{item.subtitle}</p>
+            </div>
+            {item.badge && <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: item.color }}>{item.badge}</span>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Real KakaoBank mini-style capped starter account -- see lib/youthAccount.ts's own doc
+// comment. First client UI for this backend feature on any platform (item 99, found
+// with zero client anywhere despite the backend being real and live since 2026-07-28).
+export function YouthAccountCard() {
+  const { t } = useI18n();
+  const [youthAccount, setYouthAccount] = useState<Account | null | undefined>(undefined);
+  const [needsBirthDate, setNeedsBirthDate] = useState(false);
+  const [birthDate, setBirthDateInput] = useState('');
+  const [amount, setAmount] = useState('');
+  const [showDeposit, setShowDeposit] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Real per-bucket detail screen (2026-08-31) -- see BucketDetailScreen.tsx's own doc
+  // comment. Unlike every other bucket, Youth is a real Account, so its history comes
+  // from the existing per-account transactions endpoint via transactionsToBucketTransactions.
+  const [showDetail, setShowDetail] = useState(false);
+
+  const load = () => {
+    fetchAccounts().then((accounts) => setYouthAccount(accounts.find((w) => w.type === 'MINI') ?? null)).catch(() => setYouthAccount(null));
+  };
+
+  useEffect(load, []);
+  // Real Toss motion pattern -- see useCountUp's own doc comment.
+  const animatedBalance = useCountUp(youthAccount?.balance ?? 0);
+
+  const handleOpen = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const account = await openYouthAccount();
+      setYouthAccount(account);
+      setNeedsBirthDate(false);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'YOUTH_ACCOUNT_BIRTH_DATE_REQUIRED') {
+        setNeedsBirthDate(true);
+      } else if (err instanceof ApiError && err.code === 'YOUTH_ACCOUNT_AGE_INELIGIBLE') {
+        setError(t('youthAccount.ageIneligible'));
+      } else {
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSetBirthDateAndOpen = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!birthDate) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await setBirthDate(birthDate);
+      await handleOpen();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+      setBusy(false);
+    }
+  };
+
+  const handleDeposit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsedAmount = Number(amount);
+    if (!(parsedAmount > 0)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await depositToYouthAccount(parsedAmount);
+      setAmount('');
+      setShowDeposit(false);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (youthAccount === undefined) return null;
+
+  return (
+    <div className="itunda-flat-section">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{t('youthAccount.title')}</h3>
+        {youthAccount && (
+          <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowDeposit((v) => !v)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>
+            {showDeposit ? t('youthAccount.cancel') : t('youthAccount.addMoney')}
+          </button>
+        )}
+      </div>
+
+      {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
+
+      {!youthAccount && !needsBirthDate && (
+        <div>
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-tertiary)', marginBottom: '10px' }}>
+            {t('youthAccount.description')}
+          </p>
+          <button className="itunda-btn itunda-btn-primary" onClick={handleOpen} disabled={busy}>{busy ? t('youthAccount.opening') : t('youthAccount.open')}</button>
+        </div>
+      )}
+
+      {!youthAccount && needsBirthDate && (
+        <form onSubmit={handleSetBirthDateAndOpen} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-tertiary)' }}>{t('youthAccount.birthDatePrompt')}</p>
+          <input
+            type="date" value={birthDate} onChange={(e) => setBirthDateInput(e.target.value)} required
+            style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+          />
+          {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): "Continue"
+              doesn't say what happens next -- the paragraph above already names the real
+              outcome ("check eligibility"), so the button says it too. */}
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('youthAccount.checking') : t('youthAccount.checkEligibility')}</button>
+        </form>
+      )}
+
+      {youthAccount && showDetail && (
+        <BucketDetailScreen
+          title={t('youthAccount.title')}
+          subtitle={youthAccount.accountNumber}
+          balanceText={`${youthAccount.balance.toLocaleString('en-US')} RWF`}
+          fetchTransactions={() => fetchAccountTransactions(youthAccount.id).then((txs) => transactionsToBucketTransactions(txs, youthAccount.id, youthAccount.balance))}
+          onBack={() => setShowDetail(false)}
+        />
+      )}
+      {youthAccount && (
+        <div>
+          <button onClick={() => setShowDetail(true)} style={{ textAlign: 'left', display: 'block' }}>
+            <p style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700 }}>{animatedBalance.toLocaleString('en-US')} RWF</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)', marginBottom: showDeposit ? '10px' : 0 }}>{youthAccount.accountNumber}</p>
+          </button>
+          {showDeposit && (
+            <form onSubmit={handleDeposit} style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="number" placeholder={t('youthAccount.amountPlaceholder')} value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
+                style={{ flex: 1, padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+              />
+              <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('youthAccount.adding') : t('youthAccount.add')}</button>
+            </form>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const AUTO_TRANSFER_STATUS_KEY: Record<AutoTransfer['status'], TranslationKey> = {
+  ACTIVE: 'autoTransfers.statusActive', PAUSED: 'autoTransfers.statusPaused', CANCELLED: 'autoTransfers.statusCancelled',
+};
+const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const WEEKDAY_KEYS: TranslationKey[] = ['weekday.monday', 'weekday.tuesday', 'weekday.wednesday', 'weekday.thursday', 'weekday.friday', 'weekday.saturday', 'weekday.sunday'];
+
+// Real Toss Bank 자동이체 (auto-transfer) -- see lib/autoTransfers.ts's own doc
+// comment. Recurring, genuinely distinct from ScheduledTransfersCard's own one-time
+// 예약송금 above (now in PayTransferCards.tsx). First bank-mfe client for a backend
+// that previously had none.
+export function AutoTransfersCard() {
+  const { t } = useI18n();
+  const [transfers, setTransfers] = useState<AutoTransfer[] | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [recipient, setRecipient] = useState('');
+  const [amount, setAmount] = useState('');
+  const [frequency, setFrequency] = useState<AutoTransferFrequency>('MONTHLY');
+  const [dayOfWeek, setDayOfWeek] = useState('1');
+  const [dayOfMonth, setDayOfMonth] = useState('1');
+  const [description, setDescription] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    fetchMyAutoTransfers().then(setTransfers).catch(() => {});
+  };
+
+  useEffect(load, []);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsedAmount = Number(amount);
+    if (!recipient.trim() || !(parsedAmount > 0)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await createAutoTransfer(
+        recipient.trim(), parsedAmount, frequency,
+        frequency === 'WEEKLY' ? Number(dayOfWeek) : null,
+        frequency === 'MONTHLY' ? Number(dayOfMonth) : null,
+        description,
+      );
+      setRecipient('');
+      setAmount('');
+      setDescription('');
+      setShowCreate(false);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleToggle = async (at: AutoTransfer) => {
+    setBusyId(at.id);
+    setError(null);
+    try {
+      if (at.status === 'ACTIVE') await pauseAutoTransfer(at.id);
+      else await resumeAutoTransfer(at.id);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleCancel = async (id: string) => {
+    setBusyId(id);
+    setError(null);
+    try {
+      await cancelAutoTransfer(id);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const active = (transfers ?? []).filter((at) => at.status !== 'CANCELLED');
+  const cancelled = (transfers ?? []).filter((at) => at.status === 'CANCELLED');
+
+  return (
+    <div className="itunda-flat-section">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{t('autoTransfers.title')}</h3>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>
+          {showCreate ? t('autoTransfers.cancel') : t('autoTransfers.setUp')}
+        </button>
+      </div>
+
+      {showCreate && (
+        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+          <input
+            type="text" placeholder={t('autoTransfers.recipientPlaceholder')} value={recipient} onChange={(e) => setRecipient(e.target.value)} required
+            style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+          />
+          <input
+            type="number" placeholder={t('autoTransfers.amountPlaceholder')} value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
+            style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+          />
+          <select
+            value={frequency} onChange={(e) => setFrequency(e.target.value as AutoTransferFrequency)}
+            style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+          >
+            <option value="WEEKLY">{t('autoTransfers.weekly')}</option>
+            <option value="MONTHLY">{t('autoTransfers.monthly')}</option>
+          </select>
+          {frequency === 'WEEKLY' ? (
+            <select
+              value={dayOfWeek} onChange={(e) => setDayOfWeek(e.target.value)}
+              style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+            >
+              {WEEKDAY_NAMES.map((name, i) => <option key={name} value={i + 1}>{t(WEEKDAY_KEYS[i])}</option>)}
+            </select>
+          ) : (
+            <select
+              value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)}
+              style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+            >
+              {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{t('autoTransfers.dayOfMonth', { day: d })}</option>)}
+            </select>
+          )}
+          <input
+            type="text" placeholder={t('autoTransfers.descriptionPlaceholder')} value={description} onChange={(e) => setDescription(e.target.value)}
+            style={{ padding: '10px 12px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+          />
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('autoTransfers.settingUp') : t('autoTransfers.setUpButton')}</button>
+        </form>
+      )}
+
+      {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
+
+      {active.length === 0 && cancelled.length === 0 && (
+        <EmptyState message={t('autoTransfers.noTransfers')} />
+      )}
+
+      {[...active, ...cancelled.slice(0, 2)].map((at) => (
+        <div key={at.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--itunda-surface-subtle)' }}>
+          <div>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{at.recipientName} · {at.amount.toLocaleString('en-US')} RWF</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-text-tertiary)' }}>
+              {at.frequency === 'WEEKLY' ? t('autoTransfers.weeklyLabel', { day: t(WEEKDAY_KEYS[(at.dayOfWeek ?? 1) - 1]) }) : t('autoTransfers.monthlyLabel', { day: at.dayOfMonth ?? 1 })} · {t(AUTO_TRANSFER_STATUS_KEY[at.status])}
+              {at.lastFailureReason && ` · ${at.lastFailureReason}`}
+            </p>
+          </div>
+          {at.status !== 'CANCELLED' && (
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button className="itunda-btn itunda-btn-secondary" disabled={busyId === at.id} onClick={() => handleToggle(at)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>
+                {busyId === at.id ? '…' : at.status === 'ACTIVE' ? t('autoTransfers.pause') : t('autoTransfers.resume')}
+              </button>
+              <button className="itunda-btn itunda-btn-secondary" disabled={busyId === at.id} onClick={() => handleCancel(at.id)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>
+                {t('autoTransfers.cancelAction')}
+              </button>
+            </div>
+          )}
+        </div>
       ))}
     </div>
   );
 }
 
-function TransactionHistory({ transactions }: { transactions: Transaction[] }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.1, ease: 'easeOut' }}
-      className="toss-card"
-      style={{ padding: '24px 20px' }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', padding: '0 4px' }}>
-        <h3 style={{ color: 'var(--toss-grey-900)', margin: 0, fontSize: '18px', fontWeight: '700' }}>Recent Activity</h3>
-      </div>
-
-      {transactions.length === 0 ? (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', padding: '0 4px' }}>No transactions yet.</p>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <AnimatePresence>
-            {transactions.slice(0, 10).map((tx, idx) => {
-              const isCredit = tx.channel === 'CASHBACK' || tx.type === 'DEPOSIT';
-              return (
-                <motion.div
-                  key={tx.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.05 }}
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px' }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-grey-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, color: 'var(--toss-grey-500)' }}>
-                      {tx.channel ? tx.channel.slice(0, 2) : tx.type.slice(0, 2)}
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ color: 'var(--toss-grey-900)', fontWeight: '600', fontSize: '16px' }}>{tx.description}</span>
-                      <span style={{ color: 'var(--toss-grey-500)', fontSize: '13px', fontWeight: '500' }}>{new Date(tx.createdAt).toLocaleString()}</span>
-                    </div>
-                  </div>
-                  <span style={{ fontWeight: '700', fontSize: '16px', color: isCredit ? 'var(--toss-blue)' : 'var(--toss-grey-900)' }}>
-                    {isCredit ? '+' : ''}{tx.amount.toLocaleString()} RWF
-                  </span>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
-function HomeView() {
-  const [wallet, setWallet] = useState<Wallet | null | undefined>(undefined);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [showTransfer, setShowTransfer] = useState(false);
-
-  const load = () => {
-    setError(null);
-    Promise.all([fetchWallets(), fetchTransactions()])
-      .then(([wallets, txs]) => {
-        setWallet(wallets.find((w) => w.type === 'MAIN') ?? wallets[0] ?? null);
-        setTransactions(txs);
-      })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your account.'));
-  };
-
-  useEffect(load, []);
-
-  if (error) {
-    return (
-      <div className="toss-card" style={{ padding: '24px' }}>
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
-    );
-  }
-
-  if (wallet === undefined) {
-    return (
-      <div>
-        <div className="toss-card skeleton" style={{ height: '180px', marginBottom: '16px' }} />
-        <div className="toss-card skeleton" style={{ height: '300px' }} />
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <AccountBalance wallet={wallet} onTransferClick={() => setShowTransfer(true)} />
-      {showTransfer && (
-        <TransferFlow
-          onClose={() => setShowTransfer(false)}
-          onSuccess={() => {
-            setShowTransfer(false);
-            load();
-          }}
-        />
-      )}
-      <QuickActions />
-      <TransactionHistory transactions={transactions} />
-    </div>
-  );
-}
-
-function CertificateView() {
-  const [certificate, setCertificate] = useState<Certificate | null | undefined>(undefined);
-  const [issuedPrivateKey, setIssuedPrivateKey] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function SubscribeAndSaveButton({ merchantId, productId }: { merchantId: string; productId: string }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const load = () => {
-    setError(null);
-    getMyCertificate()
-      .then(setCertificate)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your certificate.'));
-  };
-
-  useEffect(load, []);
-
-  const handleIssue = async () => {
+  const handleSubscribe = async () => {
+    const address = window.prompt('Delivery address for this recurring order');
+    if (!address) return;
     setBusy(true);
     setError(null);
     try {
-      const result = await issueCertificate();
-      setCertificate(result.certificate);
-      setIssuedPrivateKey(result.privateKey);
+      await subscribeToProduct(merchantId, productId, 1, 30, address);
+      setDone(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not issue a certificate.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
   };
 
-  const handleRevoke = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const revoked = await revokeCertificate();
-      setCertificate(revoked);
-      setIssuedPrivateKey(null);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not revoke your certificate.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (certificate === undefined) {
-    return <div className="toss-card skeleton" style={{ height: '220px' }} />;
+  if (done) {
+    return <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)', textAlign: 'center' }}>Subscribed -- 5% off every delivery, every 30 days.</p>;
   }
 
   return (
-    <div className="toss-card" style={{ padding: '28px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-        <ShieldCheck size={22} color={certificate?.status === 'ACTIVE' ? 'var(--toss-green)' : 'var(--toss-grey-500)'} />
-        <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Itunda Certificate</h2>
-      </div>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '20px' }}>
-        A digital certificate you can use to sign agreements in Itunda. You'll need a verified identity first.
-      </p>
-
-      {certificate && certificate.status === 'ACTIVE' ? (
-        <div>
-          <p style={{ fontSize: '13px', color: 'var(--toss-green)', fontWeight: 700, marginBottom: '8px' }}>Active</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', fontFamily: 'monospace', marginBottom: '4px' }}>
-            Serial {certificate.serialNumber}
-          </p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '20px' }}>
-            Expires {new Date(certificate.expiresAt).toLocaleDateString()}
-          </p>
-          <button className="toss-btn toss-btn-secondary" onClick={handleRevoke} disabled={busy}>
-            {busy ? 'Revoking…' : 'Revoke certificate'}
-          </button>
-        </div>
-      ) : (
-        <div>
-          {certificate && (
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
-              Your previous certificate was {certificate.status.toLowerCase()}.
-            </p>
-          )}
-          <button className="toss-btn toss-btn-primary" onClick={handleIssue} disabled={busy}>
-            {busy ? 'Issuing…' : 'Issue a certificate'}
-          </button>
-        </div>
-      )}
-
-      {issuedPrivateKey && (
-        <div style={{ marginTop: '20px', padding: '16px', borderRadius: '12px', backgroundColor: '#FFF4E5' }}>
-          <p style={{ fontSize: '13px', fontWeight: 700, color: '#B25E09', marginBottom: '6px' }}>
-            Save this private key now — you won't be able to see it again.
-          </p>
-          <p style={{ fontSize: '11px', fontFamily: 'monospace', wordBreak: 'break-all', color: '#B25E09' }}>{issuedPrivateKey}</p>
-        </div>
-      )}
-
-      {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', marginTop: '16px' }} role="alert">{error}</p>
-      )}
+    <div style={{ textAlign: 'center' }}>
+      <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={handleSubscribe} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '8px 14px' }}>
+        {busy ? 'Setting up…' : 'Subscribe & save 5% (every 30 days)'}
+      </button>
+      {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', marginTop: '4px' }} role="alert">{error}</p>}
     </div>
   );
 }
 
 // Real Face Pay enroll/revoke toggle -- see lib/facepay.ts's doc comment for the full
-// account of the gap this closes (backend fully real since 2026-07-13, zero UI until now).
-// `enrolled`/`onChanged` are lifted to ShoppingView -- found live that this card and
-// PayByCodeCard each fetching their own status independently meant PayByCodeCard never
-// learned about an enrollment that happened in the same session until a full reload.
-function FacePaySettingsCard({ enrolled, onChanged }: { enrolled: boolean | null; onChanged: () => void }) {
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+// Real fix (2026-08-25, direct user follow-up: "why do we have pay in there?"):
+// this card was only ever rendered from ShoppingView (the Shop tab), which just
+// got its whole Pay-a-merchant block removed for the same reason. It's now a true
+// dead duplicate, not a real gap -- the Pay tab's own real Face Pay toggle is
+// FacePayStatusRow (PayHomeExtras.tsx), already wired into PayHub above.
 
-  const handleToggle = async () => {
-    setBusy(true);
-    setError(null);
+// Real correction (2026-08-19, same session as QrScanCamera above): a QR code only
+// works between two people physically in front of each other -- someone can't point
+// their camera at a code that's on their OWN phone screen. QR-scanning is genuinely
+// right for the payment cards above (paying a merchant you're standing in front of),
+// but Open Chat/Group Eats "join" invites are normally sent to a friend who ISN'T in
+// the room, over itunda talk or any other messenger -- exactly Kakao's own real invite
+// pattern (a tap-to-join link sent in chat, not a QR held up to a camera). Reuses the
+// existing `?tab=` deep-link convention (see readTabFromUrl's own doc comment) so the
+// link both switches to the right tab AND carries the join code; the joining screen's
+// own mount effect below strips the param and completes the join automatically.
+export function buildJoinUrl(tab: Tab, param: string, code: string): string {
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.searchParams.set(TAB_QUERY_PARAM, tab);
+  url.searchParams.set(param, code);
+  return url.toString();
+}
+
+export async function shareOrCopyLink(url: string, title: string, text: string): Promise<'shared' | 'copied' | 'failed'> {
+  if (navigator.share) {
     try {
-      if (enrolled) await revokeFacePay();
-      else await enrollFacePay();
-      onChanged();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update Face Pay.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (enrolled === null) return <div className="toss-card skeleton" style={{ height: '64px', marginBottom: '16px' }} />;
-
-  return (
-    <div className="toss-card" style={{ marginBottom: '16px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <p style={{ fontSize: '14px', fontWeight: 700 }}>😊 Face Pay</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
-            {enrolled ? 'Enabled — authorize payment codes with your face, no code re-entry needed' : 'Not enabled on this account'}
-          </p>
-        </div>
-        <button
-          className={`toss-btn ${enrolled ? 'toss-btn-danger' : 'toss-btn-primary'}`}
-          onClick={handleToggle}
-          disabled={busy}
-          style={{ padding: '8px 14px', fontSize: '12px' }}
-        >
-          {busy ? '…' : enrolled ? 'Disable' : 'Enable'}
-        </button>
-      </div>
-      {error && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '8px' }} role="alert">{error}</p>}
-    </div>
-  );
-}
-
-function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPaymentResult) => void; facePayEnrolled: boolean }) {
-  const [code, setCode] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  // Real device binding (2026-07-20) -- found while wiring Face Pay into this card:
-  // like TransferFlow, a code payment carries a real Idempotency-Key and can real-403
-  // with DEVICE_NOT_VERIFIED on a device's first money-moving action, but this card
-  // never handled it -- it just showed the raw error string with no actionable next
-  // step. Same fix as TransferFlow/Savings: a real step-up prompt, not a dead end.
-  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setNeedsDeviceVerification(false);
-    setSubmitting(true);
-    try {
-      const result = facePayEnrolled ? await collectWithFacePay(code.trim()) : await collectPayment(code.trim());
-      onPaid(result);
-    } catch (err) {
-      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
-        setNeedsDeviceVerification(true);
-      } else {
-        setError(err instanceof ApiError ? err.message : 'Could not complete this payment.');
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="toss-card" style={{ marginBottom: '16px' }}>
-      <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Pay by code</h3>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '14px' }}>
-        {facePayEnrolled
-          ? 'Face Pay is on — enter the code the merchant shows you to authorize with your face.'
-          : 'No scanner handy? Enter the payment code the merchant shows you to pay instantly and earn cashback.'}
-      </p>
-      {needsDeviceVerification ? (
-        <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
-      ) : (
-        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px' }}>
-          <input
-            type="text"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="Payment code"
-            required
-            style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-          />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
-            {submitting ? (facePayEnrolled ? 'Authorizing…' : 'Paying…') : facePayEnrolled ? '😊 Pay' : 'Pay'}
-          </button>
-        </form>
-      )}
-      {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', marginTop: '10px' }} role="alert">{error}</p>
-      )}
-    </div>
-  );
-}
-
-function PaymentConfirmation({ result, onDone }: { result: CollectPaymentResult; onDone: () => void }) {
-  return (
-    <div className="toss-card" style={{ textAlign: 'center', padding: '28px' }}>
-      <ShieldCheck size={36} color="var(--toss-green)" style={{ marginBottom: '10px' }} />
-      <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '4px' }}>Paid {result.merchantName}</h3>
-      <p style={{ fontSize: '22px', fontWeight: 700, marginBottom: '4px' }}>{result.amount.toLocaleString()} RWF</p>
-      {result.channel === 'FACE_PAY' && (
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px' }}>😊 Authorized with Face Pay</p>
-      )}
-      {result.cashbackEarned > 0 && (
-        <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-green)', marginBottom: '16px' }}>
-          +{result.cashbackEarned.toLocaleString()} RWF cashback earned
-        </p>
-      )}
-      <button className="toss-btn toss-btn-secondary" onClick={onDone} style={{ marginTop: '8px' }}>Done</button>
-    </div>
-  );
-}
-
-function ShoppingView() {
-  const [merchants, setMerchants] = useState<ShoppingMerchant[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [paymentResult, setPaymentResult] = useState<CollectPaymentResult | null>(null);
-  const [facePayEnrolled, setFacePayEnrolled] = useState<boolean | null>(null);
-
-  const load = () => {
-    setError(null);
-    fetchShoppingCatalog()
-      .then(setMerchants)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load the shopping catalog.'));
-  };
-  const loadFacePayStatus = () => {
-    fetchFacePayStatus().then((r) => setFacePayEnrolled(r.enrolled)).catch(() => setFacePayEnrolled(false));
-  };
-
-  useEffect(load, []);
-  useEffect(loadFacePayStatus, []);
-
-  if (paymentResult) {
-    return <PaymentConfirmation result={paymentResult} onDone={() => setPaymentResult(null)} />;
-  }
-
-  if (error) {
-    return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
-    );
-  }
-
-  if (merchants === null) {
-    return <div className="toss-card skeleton" style={{ height: '220px' }} />;
-  }
-
-  return (
-    <div>
-      <FacePaySettingsCard enrolled={facePayEnrolled} onChanged={loadFacePayStatus} />
-      <PayByCodeCard onPaid={setPaymentResult} facePayEnrolled={facePayEnrolled ?? false} />
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px', padding: '0 4px' }}>
-        Earn cashback every time you shop with Itunda merchants.
-      </p>
-      {merchants.length === 0 ? (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No merchants registered yet.</p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {merchants.map((m) => (
-            <div key={m.merchantId} className="toss-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px' }}>
-              <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <ShoppingBag size={20} color="var(--toss-blue)" />
-              </div>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{m.businessName}</p>
-                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Pay by QR or code to earn cashback</p>
-              </div>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-green)' }}>{m.cashbackRate} back</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Lightweight dependency-free bar sparkline -- no charting library exists anywhere in
-// this app yet, and pulling one in just for this would be disproportionate to a real
-// MVP chart. Real values, real relative scaling, just rendered as flexbox bars instead
-// of an SVG line chart.
-function Sparkline({ values, positive }: { values: number[]; positive: boolean }) {
-  if (values.length === 0) return null;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', height: '48px' }}>
-      {values.map((v, i) => (
-        <div
-          key={i}
-          style={{
-            flex: 1,
-            height: `${Math.max(8, ((v - min) / range) * 100)}%`,
-            backgroundColor: positive ? 'var(--toss-green)' : '#E53935',
-            borderRadius: '2px',
-            opacity: 0.3 + (0.7 * i) / values.length,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
-function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled }: {
-  stock: Stock;
-  isWatched: boolean;
-  onClose: () => void;
-  onTraded: () => void;
-  onWatchToggled: () => void;
-}) {
-  const [history, setHistory] = useState<PricePoint[] | null>(null);
-  const [shares, setShares] = useState('');
-  const [mode, setMode] = useState<'BUY' | 'SELL'>('BUY');
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [watching, setWatching] = useState(isWatched);
-  const [watchBusy, setWatchBusy] = useState(false);
-
-  useEffect(() => {
-    fetchStockHistory(stock.id, 14).then(setHistory).catch(() => setHistory([]));
-  }, [stock.id]);
-
-  const handleTrade = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    const shareCount = Number(shares);
-    if (!shareCount || shareCount <= 0) {
-      setError('Enter a real number of shares.');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      if (mode === 'BUY') await buyStock(stock.id, shareCount);
-      else await sellStock(stock.id, shareCount);
-      setShares('');
-      onTraded();
-      onClose();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : `Could not ${mode === 'BUY' ? 'buy' : 'sell'} this stock.`);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleToggleWatch = async () => {
-    setWatchBusy(true);
-    try {
-      if (watching) {
-        await unwatchStock(stock.id);
-        setWatching(false);
-      } else {
-        await watchStock(stock.id);
-        setWatching(true);
-      }
-      onWatchToggled();
+      await navigator.share({ title, text, url });
+      return 'shared';
     } catch {
-      // Non-critical -- the star just doesn't flip, no error surfaced for a real
-      // watch/unwatch toggle failure.
-    } finally {
-      setWatchBusy(false);
+      // User cancelled the native share sheet, or it's unsupported for this payload --
+      // fall through to clipboard rather than treating cancel as an error.
     }
-  };
-
-  const positive = stock.changePercent >= 0;
-
-  return (
-    <div className="toss-card" style={{ marginBottom: '16px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-        <button onClick={onClose} style={{ color: 'var(--toss-grey-500)', display: 'flex' }} aria-label="Back">
-          <ArrowLeft size={18} />
-        </button>
-        <button onClick={handleToggleWatch} disabled={watchBusy} style={{ color: watching ? '#FFC107' : 'var(--toss-grey-300)', display: 'flex' }} aria-label="Toggle watch">
-          <Star size={20} fill={watching ? '#FFC107' : 'none'} />
-        </button>
-      </div>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', fontWeight: 600 }}>{stock.symbol} · {stock.marketCap}</p>
-      <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '6px' }}>{stock.name}</h3>
-      <p style={{ fontSize: '26px', fontWeight: 700, marginBottom: '4px' }}>{stock.price.toLocaleString()} RWF</p>
-      <p style={{ fontSize: '14px', fontWeight: 700, color: positive ? 'var(--toss-green)' : '#E53935', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '16px' }}>
-        {positive ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-        {positive ? '+' : ''}{stock.change.toLocaleString()} ({positive ? '+' : ''}{stock.changePercent.toFixed(2)}%) today
-      </p>
-
-      {history === null ? (
-        <div className="skeleton" style={{ height: '48px', borderRadius: '8px', marginBottom: '16px' }} />
-      ) : history.length > 0 ? (
-        <div style={{ marginBottom: '16px' }}>
-          <Sparkline values={history.map((h) => h.price)} positive={positive} />
-          <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>Last 14 days -- real deterministic simulation, not live RSE data</p>
-        </div>
-      ) : null}
-
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '12px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BUY', 'SELL'] as const).map((m) => (
-          <button
-            key={m}
-            onClick={() => setMode(m)}
-            style={{
-              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: mode === m ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: mode === m ? (m === 'BUY' ? 'var(--toss-blue)' : '#E53935') : 'transparent',
-            }}
-          >
-            {m === 'BUY' ? 'Buy' : 'Sell'}
-          </button>
-        ))}
-      </div>
-      <form onSubmit={handleTrade} style={{ display: 'flex', gap: '10px' }}>
-        <input
-          type="number" min="0.0001" step="any" value={shares} onChange={(e) => setShares(e.target.value)}
-          placeholder="Shares" required
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-        />
-        <button type="submit" className={mode === 'BUY' ? 'toss-btn toss-btn-primary' : 'toss-btn'} style={mode === 'SELL' ? { backgroundColor: '#E53935', color: 'white' } : undefined} disabled={submitting}>
-          {submitting ? 'Working…' : mode === 'BUY' ? 'Buy' : 'Sell'}
-        </button>
-      </form>
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginTop: '10px' }} role="alert">{error}</p>}
-    </div>
-  );
-}
-
-function StocksView() {
-  const [subTab, setSubTab] = useState<'MARKET' | 'PORTFOLIO' | 'WATCHLIST'>('MARKET');
-  const [stocks, setStocks] = useState<Stock[] | null>(null);
-  const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
-  const [portfolioHistory, setPortfolioHistory] = useState<PortfolioValuePoint[] | null>(null);
-  const [watchlist, setWatchlist] = useState<Stock[] | null>(null);
-  const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadMarket = () => {
-    setError(null);
-    fetchStocks().then(setStocks).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load the real market.'));
-  };
-  const loadPortfolio = () => {
-    setError(null);
-    Promise.all([fetchPortfolio(), fetchPortfolioHistory(30)])
-      .then(([p, h]) => { setPortfolio(p); setPortfolioHistory(h); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your real portfolio.'));
-  };
-  const loadWatchlist = () => {
-    setError(null);
-    fetchWatchlist().then(setWatchlist).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your real watchlist.'));
-  };
-
-  useEffect(() => {
-    if (subTab === 'MARKET') loadMarket();
-    else if (subTab === 'PORTFOLIO') loadPortfolio();
-    else loadWatchlist();
-    setSelectedStock(null);
-  }, [subTab]);
-
-  const watchedIds = new Set((watchlist ?? []).map((s) => s.id));
-
-  const renderStockRow = (stock: Stock) => {
-    const positive = stock.changePercent >= 0;
-    return (
-      <div
-        key={stock.id}
-        onClick={() => setSelectedStock(stock)}
-        className="toss-card"
-        style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px 18px', cursor: 'pointer' }}
-      >
-        <div style={{ flex: 1 }}>
-          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{stock.symbol}</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{stock.name}</p>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <p style={{ fontSize: '15px', fontWeight: 700 }}>{stock.price.toLocaleString()} RWF</p>
-          <p style={{ fontSize: '12px', fontWeight: 700, color: positive ? 'var(--toss-green)' : '#E53935', display: 'flex', alignItems: 'center', gap: '2px', justifyContent: 'flex-end' }}>
-            {positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-            {positive ? '+' : ''}{stock.changePercent.toFixed(2)}%
-          </p>
-        </div>
-      </div>
-    );
-  };
-
-  if (selectedStock) {
-    return (
-      <StockDetailSheet
-        stock={selectedStock}
-        isWatched={watchedIds.has(selectedStock.id)}
-        onClose={() => setSelectedStock(null)}
-        onTraded={() => { loadPortfolio(); if (subTab === 'MARKET') loadMarket(); }}
-        onWatchToggled={loadWatchlist}
-      />
-    );
   }
-
-  return (
-    <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {([{ id: 'MARKET', label: 'Market' }, { id: 'PORTFOLIO', label: 'Portfolio' }, { id: 'WATCHLIST', label: 'Watchlist' }] as const).map(({ id, label }) => (
-          <button
-            key={id}
-            onClick={() => setSubTab(id)}
-            style={{
-              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: subTab === id ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: subTab === id ? 'var(--toss-blue)' : 'transparent',
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {error && (
-        <div className="toss-card" style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-          <button className="toss-btn toss-btn-secondary" onClick={subTab === 'MARKET' ? loadMarket : subTab === 'PORTFOLIO' ? loadPortfolio : loadWatchlist} style={{ marginTop: '12px' }}>Retry</button>
-        </div>
-      )}
-
-      {subTab === 'MARKET' && (
-        stocks === null ? <div className="toss-card skeleton" style={{ height: '220px' }} /> : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {stocks.map(renderStockRow)}
-          </div>
-        )
-      )}
-
-      {subTab === 'PORTFOLIO' && (
-        portfolio === null ? <div className="toss-card skeleton" style={{ height: '220px' }} /> : (
-          <div>
-            <div className="toss-card" style={{ marginBottom: '16px' }}>
-              <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', fontWeight: 600 }}>Total value</p>
-              <p style={{ fontSize: '26px', fontWeight: 700, marginBottom: '4px' }}>{portfolio.totalValue.toLocaleString()} RWF</p>
-              <p style={{ fontSize: '14px', fontWeight: 700, color: portfolio.totalReturn >= 0 ? 'var(--toss-green)' : '#E53935', marginBottom: '12px' }}>
-                {portfolio.totalReturn >= 0 ? '+' : ''}{portfolio.totalReturn.toLocaleString()} RWF ({portfolio.totalReturn >= 0 ? '+' : ''}{portfolio.totalReturnPercent.toFixed(2)}%)
-              </p>
-              {portfolioHistory && portfolioHistory.length > 0 && (
-                <div>
-                  <Sparkline values={portfolioHistory.map((h) => h.value)} positive={portfolio.totalReturn >= 0} />
-                  <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>
-                    Last 30 days -- based on your current holdings applied to real historical prices, not a full historical reconstruction
-                  </p>
-                </div>
-              )}
-            </div>
-            {portfolio.holdings.length === 0 ? (
-              <div className="toss-card">
-                <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>You don't hold any real shares yet. Browse the Market tab to buy some.</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {portfolio.holdings.map((h) => (
-                  <div key={h.stockId} className="toss-card" style={{ padding: '16px 18px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <p style={{ fontSize: '15px', fontWeight: 700 }}>{h.symbol}</p>
-                      <p style={{ fontSize: '15px', fontWeight: 700 }}>{h.value.toLocaleString()} RWF</p>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{h.shares} shares @ {h.avgPrice.toLocaleString()} avg</p>
-                      <p style={{ fontSize: '12px', fontWeight: 700, color: h.return >= 0 ? 'var(--toss-green)' : '#E53935' }}>
-                        {h.return >= 0 ? '+' : ''}{h.return.toFixed(2)}%
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )
-      )}
-
-      {subTab === 'WATCHLIST' && (
-        watchlist === null ? <div className="toss-card skeleton" style={{ height: '220px' }} /> : watchlist.length === 0 ? (
-          <div className="toss-card">
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No stocks watched yet. Tap the star on any stock in the Market tab to follow it.</p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {watchlist.map(renderStockRow)}
-          </div>
-        )
-      )}
-    </div>
-  );
-}
-
-function NewChatCard({ onStarted }: { onStarted: (conversationId: string) => void }) {
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSubmitting(true);
-    try {
-      const conversation = await startConversation(phoneNumber.trim());
-      setPhoneNumber('');
-      onStarted(conversation.id);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not start this chat.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="toss-card" style={{ marginBottom: '16px' }}>
-      <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>New chat</h3>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '14px' }}>
-        Enter their phone number to start a conversation.
-      </p>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px' }}>
-        <input
-          type="tel"
-          value={phoneNumber}
-          onChange={(e) => setPhoneNumber(e.target.value)}
-          placeholder="+250788123456"
-          required
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-        />
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
-          {submitting ? 'Starting…' : 'Chat'}
-        </button>
-      </form>
-      {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', marginTop: '10px' }} role="alert">{error}</p>
-      )}
-    </div>
-  );
-}
-
-function NewGroupCard({ onCreated }: { onCreated: (groupId: string) => void }) {
-  const [name, setName] = useState('');
-  const [phoneNumbers, setPhoneNumbers] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    const numbers = phoneNumbers.split(',').map((n) => n.trim()).filter(Boolean);
-    if (numbers.length === 0) {
-      setError('Enter at least one phone number, separated by commas.');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const group = await createGroup(name.trim(), numbers);
-      setName('');
-      setPhoneNumbers('');
-      onCreated(group.id);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create this group.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="toss-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <h3 style={{ fontSize: '15px', fontWeight: 700 }}>New group</h3>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
-        Name your group and add real members by phone number, separated by commas.
-      </p>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Group name"
-          required
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-        />
-        <input
-          type="text"
-          value={phoneNumbers}
-          onChange={(e) => setPhoneNumbers(e.target.value)}
-          placeholder="+250788123456, +250788654321"
-          required
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-        />
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
-          {submitting ? 'Creating…' : 'Create group'}
-        </button>
-      </form>
-      {error && (
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-      )}
-    </div>
-  );
-}
-
-// Real quick-react palette -- a small fixed set (matching most real chat apps' own
-// "long-press to react" quick palette) rather than a full emoji picker, kept simple
-// since this web client has no native emoji-keyboard integration to lean on.
-const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢'];
-
-// Real emoji reactions (2026-07-19) -- shared between 1:1 and group threads, which
-// differ only in which toggle call they make. Tapping an existing reaction badge
-// toggles the current user's own reaction for that emoji (the fast, one-tap path real
-// chat apps use); the smile button opens the quick palette for a first reaction.
-function MessageReactions({
-  reactions, currentUserId, onToggle, isMine,
-}: {
-  reactions: ReactionGroup[]; currentUserId: string | undefined; onToggle: (emoji: string) => void; isMine: boolean;
-}) {
-  const [pickerOpen, setPickerOpen] = useState(false);
-  return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
-      {reactions.filter((r) => r.userIds.length > 0).map((r) => {
-        const mine = !!currentUserId && r.userIds.includes(currentUserId);
-        return (
-          <button
-            key={r.emoji}
-            onClick={() => onToggle(r.emoji)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '12px', fontSize: '12px',
-              border: mine ? '1px solid var(--toss-blue)' : '1px solid var(--toss-grey-200)',
-              backgroundColor: mine ? 'var(--toss-blue-light)' : 'var(--toss-white)',
-            }}
-          >
-            <span>{r.emoji}</span>
-            <span style={{ color: 'var(--toss-grey-700)' }}>{r.userIds.length}</span>
-          </button>
-        );
-      })}
-      <div style={{ position: 'relative' }}>
-        <button
-          onClick={() => setPickerOpen((v) => !v)}
-          aria-label="Add reaction"
-          style={{ display: 'flex', padding: '2px 6px', borderRadius: '12px', border: '1px solid var(--toss-grey-200)', color: 'var(--toss-grey-500)' }}
-        >
-          <SmilePlus size={14} />
-        </button>
-        {pickerOpen && (
-          <div
-            style={{
-              position: 'absolute', bottom: '28px', display: 'flex', gap: '4px', padding: '6px 8px',
-              borderRadius: '12px', backgroundColor: 'var(--toss-white)', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', zIndex: 10,
-              left: isMine ? undefined : 0, right: isMine ? 0 : undefined,
-            }}
-          >
-            {QUICK_REACTIONS.map((emoji) => (
-              <button
-                key={emoji}
-                onClick={() => { onToggle(emoji); setPickerOpen(false); }}
-                style={{ fontSize: '18px', padding: '2px' }}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Real 당근-style price-offer bubble -- see PriceOfferService's own doc comment.
-// Renders inline wherever a message carries a real offer, replacing the plain-text
-// bubble with amount + status + real Accept/Reject/Counter actions (only shown to
-// whichever participant did NOT propose the current pending amount). Prop type
-// deliberately narrowed to just the fields this component actually reads (not the full
-// `PriceOffer` shape) so it structurally accepts both Marketplace's `PriceOffer` and
-// Real Estate's `PropertyPriceOffer` (2026-07-19) without duplicating this component --
-// the two types have different field names for listing/buyer/seller (irrelevant here),
-// but identical id/amount/status/proposedByUserId shapes.
-interface OfferBubbleData {
-  id: string;
-  amount: number;
-  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTERED';
-  proposedByUserId: string;
-}
-
-function OfferBubble({
-  offer, isMine, currentUserId, onRespond,
-}: {
-  offer: OfferBubbleData; isMine: boolean; currentUserId: string | undefined; onRespond: (offerId: string, action: 'ACCEPT' | 'REJECT' | 'COUNTER', counterAmount?: number) => void;
-}) {
-  const [countering, setCountering] = useState(false);
-  const [counterAmount, setCounterAmount] = useState('');
-  const canRespond = offer.status === 'PENDING' && currentUserId && currentUserId !== offer.proposedByUserId;
-  const statusLabel: Record<OfferBubbleData['status'], string> = {
-    PENDING: 'Pending', ACCEPTED: 'Accepted', REJECTED: 'Declined', COUNTERED: 'Countered',
-  };
-
-  return (
-    <div
-      style={{
-        maxWidth: '75%', padding: '12px 14px', borderRadius: '16px', fontSize: '14px',
-        backgroundColor: isMine ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
-        color: isMine ? 'var(--toss-white)' : 'var(--toss-grey-900)',
-        display: 'flex', flexDirection: 'column', gap: '6px',
-      }}
-    >
-      <p style={{ fontWeight: 700 }}>💰 {offer.amount.toLocaleString()} RWF</p>
-      <p style={{ fontSize: '12px', opacity: 0.8 }}>{statusLabel[offer.status]}</p>
-      {canRespond && !countering && (
-        <div style={{ display: 'flex', gap: '6px' }}>
-          <button className="toss-btn toss-btn-secondary" style={{ fontSize: '12px', padding: '6px 10px' }} onClick={() => onRespond(offer.id, 'ACCEPT')}>
-            Accept
-          </button>
-          <button className="toss-btn toss-btn-secondary" style={{ fontSize: '12px', padding: '6px 10px' }} onClick={() => onRespond(offer.id, 'REJECT')}>
-            Decline
-          </button>
-          <button className="toss-btn toss-btn-secondary" style={{ fontSize: '12px', padding: '6px 10px' }} onClick={() => setCountering(true)}>
-            Counter
-          </button>
-        </div>
-      )}
-      {canRespond && countering && (
-        <div style={{ display: 'flex', gap: '6px' }}>
-          <input
-            type="number"
-            value={counterAmount}
-            onChange={(e) => setCounterAmount(e.target.value)}
-            placeholder="Counter (RWF)"
-            style={{ flex: 1, padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)', fontSize: '12px' }}
-          />
-          <button
-            className="toss-btn toss-btn-secondary"
-            style={{ fontSize: '12px', padding: '6px 10px' }}
-            disabled={!counterAmount || Number(counterAmount) <= 0}
-            onClick={() => {
-              onRespond(offer.id, 'COUNTER', Number(counterAmount));
-              setCountering(false);
-              setCounterAmount('');
-            }}
-          >
-            Send
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Real KakaoTalk-style gift bubble -- renders inline wherever a message carries a real
-// gift (see GiftService's own doc comment), with a real Claim button shown only to the
-// recipient of a still-PENDING, not-yet-expired gift.
-function GiftBubble({
-  gift, isMine, currentUserId, onClaim,
-}: {
-  gift: Gift; isMine: boolean; currentUserId: string | undefined; onClaim: (giftId: string) => void;
-}) {
-  const canClaim = gift.status === 'PENDING' && currentUserId === gift.recipientId && new Date(gift.expiresAt).getTime() > Date.now();
-  const statusLabel: Record<GiftStatus, string> = {
-    PENDING: isMine ? 'Waiting to be opened' : 'Tap to open',
-    CLAIMED: 'Opened',
-    EXPIRED: 'Expired — refunded',
-  };
-
-  return (
-    <div
-      style={{
-        maxWidth: '75%', padding: '14px 16px', borderRadius: '16px', fontSize: '14px',
-        backgroundColor: isMine ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
-        color: isMine ? 'var(--toss-white)' : 'var(--toss-grey-900)',
-        display: 'flex', flexDirection: 'column', gap: '6px',
-      }}
-    >
-      <p style={{ fontWeight: 700, fontSize: '16px' }}>🎁 {gift.amount.toLocaleString()} RWF</p>
-      {gift.note && <p style={{ fontStyle: 'italic', opacity: 0.9 }}>&ldquo;{gift.note}&rdquo;</p>}
-      <p style={{ fontSize: '12px', opacity: 0.8 }}>{statusLabel[gift.status]}</p>
-      {canClaim && (
-        <button
-          className="toss-btn toss-btn-secondary"
-          style={{ fontSize: '12px', padding: '6px 10px', alignSelf: 'flex-start' }}
-          onClick={() => onClaim(gift.id)}
-        >
-          Open gift
-        </button>
-      )}
-    </div>
-  );
-}
-
-function ConversationThread({ conversation, onBack }: { conversation: ConversationSummary; onBack: () => void }) {
-  const [messages, setMessages] = useState<Message[] | null>(null);
-  const [offersByMessageId, setOffersByMessageId] = useState<Record<string, OfferBubbleData>>({});
-  const [giftsByMessageId, setGiftsByMessageId] = useState<Record<string, Gift>>({});
-  const [error, setError] = useState<string | null>(null);
-  const [draft, setDraft] = useState('');
-  const [sending, setSending] = useState(false);
-  const [giftComposerOpen, setGiftComposerOpen] = useState(false);
-  const [giftAmount, setGiftAmount] = useState('');
-  const [giftNote, setGiftNote] = useState('');
-  const [sendingGift, setSendingGift] = useState(false);
-  const [otherOnline, setOtherOnline] = useState<boolean | null>(null);
-  const [otherTyping, setOtherTyping] = useState(false);
-  const currentUser = getStoredUser();
-  const bottomRef = useRef<HTMLDivElement | null>(null);
-  const socketRef = useRef<MessagingSocketHandle | null>(null);
-  const typingClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastTypingSentAt = useRef(0);
-
-  useEffect(() => {
-    fetchPresence([conversation.otherUserId]).then((p) => setOtherOnline(p[conversation.otherUserId] ?? null)).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversation.otherUserId]);
-
-  // Real-fetches both Marketplace and Real Estate offer history for this conversation --
-  // a given real conversation only ever carries one type in practice (a listing/property
-  // negotiation thread), but fetching both is cheap and correct rather than guessing
-  // which one applies; each failure is independently non-critical.
-  const loadOffers = () => {
-    Promise.all([
-      fetchOffersForConversation(conversation.conversationId).catch(() => [] as PriceOffer[]),
-      fetchPropertyOffersForConversation(conversation.conversationId).catch(() => [] as PropertyPriceOffer[]),
-    ]).then(([marketplaceOffers, propertyOffers]) => {
-      setOffersByMessageId(
-        Object.fromEntries([...marketplaceOffers, ...propertyOffers].map((o) => [o.messageId, o])),
-      );
-    });
-  };
-
-  const loadGifts = () => {
-    fetchGiftsForConversation(conversation.conversationId)
-      .then((gifts) => setGiftsByMessageId(Object.fromEntries(gifts.map((g) => [g.messageId, g]))))
-      .catch(() => {});
-  };
-
-  const load = () => {
-    fetchMessages(conversation.conversationId)
-      .then(setMessages)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this conversation.'));
-    loadOffers();
-    loadGifts();
-  };
-
-  const handleSendGift = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const amount = Number(giftAmount);
-    if (!amount || amount <= 0) return;
-    setSendingGift(true);
-    setError(null);
-    try {
-      await sendGiftInConversation(conversation.conversationId, amount, giftNote);
-      setGiftAmount('');
-      setGiftNote('');
-      setGiftComposerOpen(false);
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send this gift.');
-    } finally {
-      setSendingGift(false);
-    }
-  };
-
-  const handleClaimGift = async (giftId: string) => {
-    try {
-      await claimGift(giftId);
-      loadGifts();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not open this gift.');
-    }
-  };
-
-  const handleRespondToOffer = async (offerId: string, action: 'ACCEPT' | 'REJECT' | 'COUNTER', counterAmount?: number) => {
-    try {
-      // Real offer ids are stably prefixed by their real owning service
-      // ("price_offer_"/"property_offer_"), a reliable dispatch key -- avoids needing
-      // the thread to already know which listing type this conversation is about.
-      if (offerId.startsWith('property_offer_')) {
-        await respondToPropertyOffer(offerId, action, counterAmount);
-      } else {
-        await respondToOffer(offerId, action, counterAmount);
-      }
-      loadOffers();
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not respond to this offer.');
-    }
-  };
-
-  useEffect(() => {
-    load();
-    // Real 4s poll as an always-correct fallback (kept even now that a live socket
-    // exists below -- if the socket never connects, silently errors, or the server
-    // restarts mid-conversation, this alone still delivers messages correctly, just
-    // slower). See connectMessagingSocket's own doc comment for why it's designed as
-    // a latency improvement layered on top of this, not a replacement for it.
-    const interval = setInterval(load, 4000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversation.conversationId]);
-
-  useEffect(() => {
-    // Real WebSocket live delivery (2026-07-18) -- appends a pushed message straight
-    // into state the moment it arrives, rather than waiting for the next poll tick.
-    // De-duped by id since the next 4s poll will also fetch the same message.
-    const socket = connectMessagingSocket((payload) => {
-      if (payload.type === 'presence') {
-        if (payload.userId === conversation.otherUserId) setOtherOnline(payload.online);
-        return;
-      }
-      if (payload.type === 'typing') {
-        if (payload.conversationId !== conversation.conversationId || payload.userId !== conversation.otherUserId) return;
-        setOtherTyping(true);
-        if (typingClearTimer.current) clearTimeout(typingClearTimer.current);
-        // Real, client-side "stopped typing" inference (2026-07-19) -- there's no
-        // explicit "stopped typing" event, same convention every real chat app uses:
-        // clear the indicator if no new typing ping arrives within a few seconds.
-        typingClearTimer.current = setTimeout(() => setOtherTyping(false), 3000);
-        return;
-      }
-      if (payload.type === 'reaction') {
-        if (payload.conversationId !== conversation.conversationId) return;
-        setMessages((prev) => prev?.map((m) => (m.id === payload.messageId ? { ...m, reactions: payload.reactions } : m)) ?? prev);
-        return;
-      }
-      if (payload.type !== 'message' || payload.conversationId !== conversation.conversationId) return;
-      setOtherTyping(false);
-      setMessages((prev) => {
-        if (!prev) return prev;
-        if (prev.some((m) => m.id === payload.message.id)) return prev;
-        return [...prev, payload.message];
-      });
-      // A pushed message might be a real offer/counter/accept/reject -- refresh the
-      // offer history so it renders as an offer bubble immediately rather than waiting
-      // for the next 4s poll.
-      loadOffers();
-    });
-    socketRef.current = socket;
-    return () => {
-      socket.close();
-      socketRef.current = null;
-      if (typingClearTimer.current) clearTimeout(typingClearTimer.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversation.conversationId, conversation.otherUserId]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const body = draft.trim();
-    if (!body) return;
-    setSending(true);
-    setError(null);
-    try {
-      const sent = await sendMessage(conversation.conversationId, body);
-      setMessages((prev) => [...(prev ?? []), sent]);
-      setDraft('');
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send this message.');
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const handleToggleReaction = async (messageId: string, emoji: string) => {
-    try {
-      const reactions = await toggleReaction(messageId, emoji);
-      setMessages((prev) => prev?.map((m) => (m.id === messageId ? { ...m, reactions } : m)) ?? prev);
-    } catch {
-      // Best-effort -- a failed reaction toggle just leaves the badge as it was, never
-      // blocks the thread.
-    }
-  };
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100svh - 180px)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to conversations">
-          <ArrowLeft size={20} />
-        </button>
-        <div>
-          <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{conversation.otherUserName}</h3>
-          {otherOnline !== null && (
-            <p style={{ fontSize: '12px', color: otherOnline ? 'var(--toss-green)' : 'var(--toss-grey-500)' }}>
-              {otherOnline ? 'Online' : 'Offline'}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px' }}>
-        {messages === null && <div className="toss-card skeleton" style={{ height: '120px' }} />}
-        {messages !== null && messages.length === 0 && (
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', textAlign: 'center', marginTop: '20px' }}>
-            Say hello — no messages yet.
-          </p>
-        )}
-        {messages?.map((m) => {
-          const isMine = m.senderId === currentUser?.id;
-          const offer = offersByMessageId[m.id];
-          const gift = giftsByMessageId[m.id];
-          return (
-            <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
-              {gift ? (
-                <GiftBubble gift={gift} isMine={isMine} currentUserId={currentUser?.id} onClaim={handleClaimGift} />
-              ) : offer ? (
-                <OfferBubble offer={offer} isMine={isMine} currentUserId={currentUser?.id} onRespond={handleRespondToOffer} />
-              ) : (
-                <div
-                  style={{
-                    maxWidth: '75%',
-                    padding: '10px 14px',
-                    borderRadius: '16px',
-                    fontSize: '14px',
-                    backgroundColor: isMine ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
-                    color: isMine ? 'var(--toss-white)' : 'var(--toss-grey-900)',
-                  }}
-                >
-                  {m.body}
-                </div>
-              )}
-              <MessageReactions
-                reactions={m.reactions}
-                currentUserId={currentUser?.id}
-                isMine={isMine}
-                onToggle={(emoji) => handleToggleReaction(m.id, emoji)}
-              />
-            </div>
-          );
-        })}
-        <div ref={bottomRef} />
-      </div>
-
-      {otherTyping && (
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px', fontStyle: 'italic' }}>
-          {conversation.otherUserName} is typing…
-        </p>
-      )}
-
-      {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>
-      )}
-
-      {giftComposerOpen && (
-        <form
-          onSubmit={handleSendGift}
-          style={{
-            display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px',
-            borderRadius: '12px', border: '1px solid var(--toss-grey-200)', marginBottom: '10px',
-          }}
-        >
-          <p style={{ fontSize: '13px', fontWeight: 700 }}>🎁 Send a gift</p>
-          <input
-            type="number"
-            value={giftAmount}
-            onChange={(e) => setGiftAmount(e.target.value)}
-            placeholder="Amount (RWF)"
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-          />
-          <input
-            type="text"
-            value={giftNote}
-            onChange={(e) => setGiftNote(e.target.value)}
-            placeholder="Add a note (optional)"
-            maxLength={200}
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-          />
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              type="submit"
-              className="toss-btn toss-btn-primary"
-              disabled={sendingGift || !giftAmount || Number(giftAmount) <= 0}
-              style={{ flex: 1, padding: '10px' }}
-            >
-              Send gift
-            </button>
-            <button
-              type="button"
-              className="toss-btn toss-btn-secondary"
-              style={{ padding: '10px 16px' }}
-              onClick={() => setGiftComposerOpen(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
-
-      <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px' }}>
-        <button
-          type="button"
-          aria-label="Send a gift"
-          onClick={() => setGiftComposerOpen((v) => !v)}
-          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '18px' }}
-        >
-          🎁
-        </button>
-        <input
-          type="text"
-          value={draft}
-          onChange={(e) => {
-            setDraft(e.target.value);
-            // Real typing indicator send (2026-07-19), client-throttled to match the
-            // server's own 1-per-2s rate limit so every keystroke isn't a wasted send.
-            const now = Date.now();
-            if (now - lastTypingSentAt.current > 2000) {
-              lastTypingSentAt.current = now;
-              socketRef.current?.sendTyping({ conversationId: conversation.conversationId });
-            }
-          }}
-          placeholder="Message"
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-        />
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={sending || !draft.trim()} style={{ padding: '10px 16px' }}>
-          <Send size={16} />
-        </button>
-      </form>
-    </div>
-  );
-}
-
-function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => void }) {
-  const [messages, setMessages] = useState<GroupMessage[] | null>(null);
-  const [members, setMembers] = useState<GroupMember[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [draft, setDraft] = useState('');
-  const [sending, setSending] = useState(false);
-  const [typingUserIds, setTypingUserIds] = useState<Record<string, boolean>>({});
-  const currentUser = getStoredUser();
-  const bottomRef = useRef<HTMLDivElement | null>(null);
-  const socketRef = useRef<MessagingSocketHandle | null>(null);
-  const typingClearTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const lastTypingSentAt = useRef(0);
-
-  const load = () =>
-    fetchGroupMessages(group.groupId)
-      .then(setMessages)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this group.'));
-
-  useEffect(() => {
-    load();
-    // Real 4s poll as an always-correct fallback, same reasoning as ConversationThread's
-    // own identical poll -- kept even with the live socket below.
-    const interval = setInterval(load, 4000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [group.groupId]);
-
-  useEffect(() => {
-    // Real member list with real resolved display names (2026-07-18), fetched once per
-    // thread open -- closes the honest, named limitation this UI carried since group
-    // chat first shipped (a truncated sender id instead of a real name).
-    fetchGroupMembers(group.groupId).then(setMembers).catch(() => {
-      // Real, non-critical -- a failed member-list fetch shouldn't block the thread;
-      // bubbles just fall back to a truncated sender id below.
-    });
-  }, [group.groupId]);
-
-  const nameForSender = (senderId: string) => members.find((m) => m.userId === senderId)?.name ?? senderId.slice(0, 12);
-
-  useEffect(() => {
-    // Real WebSocket live delivery for group chat (2026-07-18) -- same real push
-    // GroupMessagingService.sendMessage fans out to every other real member.
-    const socket = connectMessagingSocket((payload) => {
-      if (payload.type === 'typing') {
-        if (payload.groupConversationId !== group.groupId) return;
-        const userId = payload.userId;
-        setTypingUserIds((prev) => ({ ...prev, [userId]: true }));
-        if (typingClearTimers.current[userId]) clearTimeout(typingClearTimers.current[userId]);
-        typingClearTimers.current[userId] = setTimeout(() => {
-          setTypingUserIds((prev) => {
-            const next = { ...prev };
-            delete next[userId];
-            return next;
-          });
-        }, 3000);
-        return;
-      }
-      if (payload.type === 'reaction') {
-        if (payload.groupConversationId !== group.groupId) return;
-        setMessages((prev) => prev?.map((m) => (m.id === payload.messageId ? { ...m, reactions: payload.reactions } : m)) ?? prev);
-        return;
-      }
-      if (payload.type !== 'group_message' || payload.groupConversationId !== group.groupId) return;
-      setTypingUserIds((prev) => {
-        if (!(payload.message.senderId in prev)) return prev;
-        const next = { ...prev };
-        delete next[payload.message.senderId];
-        return next;
-      });
-      setMessages((prev) => {
-        if (!prev) return prev;
-        if (prev.some((m) => m.id === payload.message.id)) return prev;
-        return [...prev, payload.message];
-      });
-    });
-    socketRef.current = socket;
-    return () => {
-      socket.close();
-      socketRef.current = null;
-      Object.values(typingClearTimers.current).forEach(clearTimeout);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [group.groupId]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const body = draft.trim();
-    if (!body) return;
-    setSending(true);
-    setError(null);
-    try {
-      const sent = await sendGroupMessage(group.groupId, body);
-      setMessages((prev) => [...(prev ?? []), sent]);
-      setDraft('');
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send this message.');
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const handleToggleReaction = async (groupMessageId: string, emoji: string) => {
-    try {
-      const reactions = await toggleGroupReaction(groupMessageId, emoji);
-      setMessages((prev) => prev?.map((m) => (m.id === groupMessageId ? { ...m, reactions } : m)) ?? prev);
-    } catch {
-      // Best-effort -- a failed reaction toggle just leaves the badge as it was, never
-      // blocks the thread.
-    }
-  };
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100svh - 180px)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to conversations">
-          <ArrowLeft size={20} />
-        </button>
-        <div>
-          <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{group.name}</h3>
-          <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{group.memberCount} members</p>
-        </div>
-      </div>
-
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px' }}>
-        {messages === null && <div className="toss-card skeleton" style={{ height: '120px' }} />}
-        {messages !== null && messages.length === 0 && (
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', textAlign: 'center', marginTop: '20px' }}>
-            Say hello — no messages yet.
-          </p>
-        )}
-        {messages?.map((m) => {
-          const isMine = m.senderId === currentUser?.id;
-          return (
-            <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
-              {!isMine && (
-                <span style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginBottom: '2px', marginLeft: '4px' }}>
-                  {nameForSender(m.senderId)}
-                </span>
-              )}
-              <div
-                style={{
-                  maxWidth: '75%',
-                  padding: '10px 14px',
-                  borderRadius: '16px',
-                  fontSize: '14px',
-                  backgroundColor: isMine ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
-                  color: isMine ? 'var(--toss-white)' : 'var(--toss-grey-900)',
-                }}
-              >
-                {m.body}
-              </div>
-              <MessageReactions
-                reactions={m.reactions}
-                currentUserId={currentUser?.id}
-                isMine={isMine}
-                onToggle={(emoji) => handleToggleReaction(m.id, emoji)}
-              />
-            </div>
-          );
-        })}
-        <div ref={bottomRef} />
-      </div>
-
-      {Object.keys(typingUserIds).length > 0 && (
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px', fontStyle: 'italic' }}>
-          {Object.keys(typingUserIds).map(nameForSender).join(', ')} {Object.keys(typingUserIds).length === 1 ? 'is' : 'are'} typing…
-        </p>
-      )}
-
-      {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>
-      )}
-
-      <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px' }}>
-        <input
-          type="text"
-          value={draft}
-          onChange={(e) => {
-            setDraft(e.target.value);
-            const now = Date.now();
-            if (now - lastTypingSentAt.current > 2000) {
-              lastTypingSentAt.current = now;
-              socketRef.current?.sendTyping({ groupConversationId: group.groupId });
-            }
-          }}
-          placeholder="Message"
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-        />
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={sending || !draft.trim()} style={{ padding: '10px 16px' }}>
-          <Send size={16} />
-        </button>
-      </form>
-    </div>
-  );
-}
-
-function DirectMessagesList({ initialConversationId, onConsumedInitial }: { initialConversationId?: string | null; onConsumedInitial?: () => void }) {
-  const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [openConversationId, setOpenConversationId] = useState<string | null>(null);
-  const [presence, setPresence] = useState<Record<string, boolean>>({});
-
-  const load = () => {
-    setError(null);
-    fetchConversations()
-      .then(setConversations)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your conversations.'));
-  };
-
-  useEffect(load, []);
-
-  // Real online/offline presence for the list view (2026-07-19) -- a bulk on-demand
-  // check for every listed contact, refreshed on a 10s cadence (a real, coarser-grained
-  // signal than the 4s message poll -- presence doesn't need to be as fresh as message
-  // delivery). No live WebSocket connection is opened just for this list view; the
-  // per-thread real-time push happens in ConversationThread once a thread is open.
-  useEffect(() => {
-    if (!conversations || conversations.length === 0) return;
-    const otherIds = conversations.map((c) => c.otherUserId);
-    const refresh = () => fetchPresence(otherIds).then(setPresence).catch(() => {});
-    refresh();
-    const interval = setInterval(refresh, 10000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversations?.map((c) => c.otherUserId).join(',')]);
-
-  // Real "jump straight into the chat" hand-off from MarketplaceView's "Message
-  // seller" button -- contactSeller() returns a real conversation id (either freshly
-  // created or an existing one reused), which this opens directly once it shows up in
-  // the real conversation list, rather than making the buyer find it themselves.
-  useEffect(() => {
-    if (initialConversationId && conversations?.some((c) => c.conversationId === initialConversationId)) {
-      setOpenConversationId(initialConversationId);
-      onConsumedInitial?.();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialConversationId, conversations]);
-
-  const openConversation = conversations?.find((c) => c.conversationId === openConversationId);
-  if (openConversation) {
-    return (
-      <ConversationThread
-        conversation={openConversation}
-        onBack={() => {
-          setOpenConversationId(null);
-          load();
-        }}
-      />
-    );
+  try {
+    await navigator.clipboard.writeText(url);
+    return 'copied';
+  } catch {
+    return 'failed';
   }
-
-  if (error) {
-    return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
-    );
-  }
-
-  if (conversations === null) {
-    return <div className="toss-card skeleton" style={{ height: '220px' }} />;
-  }
-
-  return (
-    <div>
-      <NewChatCard onStarted={(id) => { load(); setOpenConversationId(id); }} />
-      {conversations.length === 0 ? (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No conversations yet.</p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {conversations.map((c) => (
-            <button
-              key={c.conversationId}
-              onClick={() => setOpenConversationId(c.conversationId)}
-              className="toss-card"
-              style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%' }}
-            >
-              <div style={{ position: 'relative', width: '44px', height: '44px', flexShrink: 0 }}>
-                <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <MessageCircle size={20} color="var(--toss-blue)" />
-                </div>
-                {presence[c.otherUserId] && (
-                  <span
-                    style={{
-                      position: 'absolute', bottom: 0, right: 0, width: '12px', height: '12px', borderRadius: '6px',
-                      backgroundColor: 'var(--toss-green)', border: '2px solid var(--toss-white)',
-                    }}
-                  />
-                )}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{c.otherUserName}</p>
-                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {c.lastMessagePreview ?? 'No messages yet'}
-                </p>
-              </div>
-              {c.unreadCount > 0 && (
-                <span
-                  style={{
-                    fontSize: '11px', fontWeight: 700, color: 'var(--toss-white)', backgroundColor: 'var(--toss-blue)',
-                    borderRadius: '10px', padding: '2px 8px', flexShrink: 0,
-                  }}
-                >
-                  {c.unreadCount}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
-function GroupsList() {
-  const [groups, setGroups] = useState<GroupSummary[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [openGroupId, setOpenGroupId] = useState<string | null>(null);
-
-  const load = () => {
-    setError(null);
-    fetchGroups()
-      .then(setGroups)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your groups.'));
-  };
-
-  useEffect(load, []);
-
-  const openGroup = groups?.find((g) => g.groupId === openGroupId);
-  if (openGroup) {
-    return (
-      <GroupThread
-        group={openGroup}
-        onBack={() => {
-          setOpenGroupId(null);
-          load();
-        }}
-      />
-    );
+export function readAndClearUrlParam(key: string): string | null {
+  const params = new URLSearchParams(window.location.search);
+  const value = params.get(key);
+  if (value) {
+    params.delete(key);
+    const next = params.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${next ? `?${next}` : ''}`);
   }
-
-  if (error) {
-    return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
-    );
-  }
-
-  if (groups === null) {
-    return <div className="toss-card skeleton" style={{ height: '220px' }} />;
-  }
-
-  return (
-    <div>
-      <NewGroupCard onCreated={(id) => { load(); setOpenGroupId(id); }} />
-      {groups.length === 0 ? (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No groups yet.</p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {groups.map((g) => (
-            <button
-              key={g.groupId}
-              onClick={() => setOpenGroupId(g.groupId)}
-              className="toss-card"
-              style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%' }}
-            >
-              <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Users size={20} color="var(--toss-blue)" />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{g.name} · {g.memberCount}</p>
-                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {g.lastMessagePreview ?? 'No messages yet'}
-                </p>
-              </div>
-              {g.unreadCount > 0 && (
-                <span
-                  style={{
-                    fontSize: '11px', fontWeight: 700, color: 'var(--toss-white)', backgroundColor: 'var(--toss-blue)',
-                    borderRadius: '10px', padding: '2px 8px', flexShrink: 0,
-                  }}
-                >
-                  {g.unreadCount}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  return value;
 }
 
-// Real group chat (2026-07-18) folded in via a Direct/Groups toggle -- the single most
-// defining KakaoTalk capability the original 1:1-only Messages tab didn't cover, added
-// at the user's direct request. See GroupMessagingService.kt's own doc comment.
-function MessagesView({ initialConversationId, onConsumedInitial }: { initialConversationId?: string | null; onConsumedInitial?: () => void }) {
-  const [mode, setMode] = useState<'DIRECT' | 'GROUPS'>('DIRECT');
-
-  return (
-    <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['DIRECT', 'GROUPS'] as const).map((v) => (
-          <button
-            key={v}
-            onClick={() => setMode(v)}
-            style={{
-              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: mode === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: mode === v ? 'var(--toss-blue)' : 'transparent',
-            }}
-          >
-            {v === 'DIRECT' ? 'Direct' : 'Groups'}
-          </button>
-        ))}
-      </div>
-      {mode === 'DIRECT' ? (
-        <DirectMessagesList initialConversationId={initialConversationId} onConsumedInitial={onConsumedInitial} />
-      ) : (
-        <GroupsList />
-      )}
-    </div>
-  );
-}
-
-function NewListingCard({ onCreated }: { onCreated: () => void }) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [price, setPrice] = useState('');
-  const [category, setCategory] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [open, setOpen] = useState(false);
-  // Real optional seller location (2026-07-18 backend support, 2026-07-19 this UI) --
-  // powers real proximity search and "Directions to this seller"; a listing without it
-  // simply doesn't appear in either, an honest opt-in, never assumed.
-  const [shareLocation, setShareLocation] = useState(false);
-  const [myLocation, setMyLocation] = useState<[number, number] | null>(null); // [lat, lng]
-  const [locating, setLocating] = useState(false);
-
-  const handleToggleShareLocation = () => {
-    if (shareLocation) {
-      setShareLocation(false);
-      return;
-    }
-    if (!navigator.geolocation) {
-      setError('This browser does not support real location access.');
-      return;
-    }
-    setLocating(true);
-    setError(null);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocating(false);
-        setMyLocation([position.coords.latitude, position.coords.longitude]);
-        setShareLocation(true);
-      },
-      () => {
-        setLocating(false);
-        setError('Could not access your real location. Check your browser permissions.');
-      },
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSubmitting(true);
-    try {
-      const [lat, lng] = shareLocation && myLocation ? myLocation : [undefined, undefined];
-      await createListing(title, description, Number(price), category, lat, lng);
-      setTitle('');
-      setDescription('');
-      setPrice('');
-      setCategory('');
-      setShareLocation(false);
-      setMyLocation(null);
-      setOpen(false);
-      onCreated();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create this listing.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (!open) {
-    return (
-      <button className="toss-btn toss-btn-primary" style={{ width: '100%', marginBottom: '16px' }} onClick={() => setOpen(true)}>
-        + List an item
-      </button>
-    );
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="toss-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <h3 style={{ fontSize: '15px', fontWeight: 700 }}>List an item</h3>
-      <input
-        type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What are you selling?" required
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-      />
-      <textarea
-        value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" required rows={3}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
-      />
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <input
-          type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Price (RWF)" required min="1"
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-        />
-        <input
-          type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Category" required
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-        />
-      </div>
-      <button
-        type="button"
-        className="toss-btn toss-btn-secondary"
-        disabled={locating}
-        onClick={handleToggleShareLocation}
-        style={{ fontSize: '13px' }}
-      >
-        {locating ? 'Finding your real location…' : shareLocation ? '📍 Real location shared -- buyers can see distance & get directions' : '📍 Share my real location (optional)'}
-      </button>
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
-          {submitting ? 'Listing…' : 'List it'}
-        </button>
-      </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
-    </form>
-  );
-}
-
-function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, favoriteBusy, onToggleFavorite }: {
-  listing: Listing;
-  isMine: boolean;
-  onChanged: () => void;
-  onMessageSeller: (conversationId: string) => void;
-  favorited: boolean;
-  favoriteBusy: boolean;
-  onToggleFavorite: () => void;
-}) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [offering, setOffering] = useState(false);
-  const [offerAmount, setOfferAmount] = useState('');
-  const [myLocation, setMyLocation] = useState<[number, number] | null>(null); // [lat, lng]
-  const [showRoute, setShowRoute] = useState(false);
-  const [locating, setLocating] = useState(false);
-
-  const handleShowDirections = () => {
-    if (showRoute) {
-      setShowRoute(false);
-      return;
-    }
-    if (myLocation) {
-      setShowRoute(true);
-      return;
-    }
-    if (!navigator.geolocation) {
-      setError('This browser does not support real location access.');
-      return;
-    }
-    setLocating(true);
-    setError(null);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocating(false);
-        setMyLocation([position.coords.latitude, position.coords.longitude]);
-        setShowRoute(true);
-      },
-      () => {
-        setLocating(false);
-        setError('Could not access your real location. Check your browser permissions.');
-      },
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
-  };
-
-  const handleMarkSold = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      await markListingSold(listing.id);
-      onChanged();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this listing.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleRemove = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      await removeListing(listing.id);
-      onChanged();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not remove this listing.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleMessage = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const conversation = await contactSeller(listing.id);
-      onMessageSeller(conversation.id);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not message this seller.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleMakeOffer = async () => {
-    const amount = Number(offerAmount);
-    if (!amount || amount <= 0) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const offer = await makeOffer(listing.id, amount);
-      setOffering(false);
-      setOfferAmount('');
-      onMessageSeller(offer.conversationId);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send this offer.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
-            {listing.title}
-            {listing.status === 'SOLD' && (
-              <span style={{ marginLeft: '8px', fontSize: '11px', fontWeight: 700, color: 'var(--toss-grey-500)', backgroundColor: 'var(--toss-grey-100)', padding: '2px 8px', borderRadius: '8px' }}>
-                SOLD
-              </span>
-            )}
-          </p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{listing.category}</p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {!isMine && <WishlistButton favorited={favorited} busy={favoriteBusy} onToggle={onToggleFavorite} />}
-          <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{listing.price.toLocaleString()} RWF</span>
-        </div>
-      </div>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>{listing.description}</p>
-      {offering && (
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <input
-            type="number"
-            value={offerAmount}
-            onChange={(e) => setOfferAmount(e.target.value)}
-            placeholder="Your offer (RWF)"
-            style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-          />
-          <button className="toss-btn toss-btn-primary" disabled={busy || !offerAmount} onClick={handleMakeOffer}>
-            Send
-          </button>
-        </div>
-      )}
-      <div style={{ display: 'flex', gap: '8px' }}>
-        {isMine ? (
-          <>
-            {listing.status === 'ACTIVE' && (
-              <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={handleMarkSold}>
-                Mark sold
-              </button>
-            )}
-            {listing.status !== 'REMOVED' && (
-              <button className="toss-btn toss-btn-danger" style={{ flex: 1 }} disabled={busy} onClick={handleRemove}>
-                Remove
-              </button>
-            )}
-          </>
-        ) : (
-          listing.status === 'ACTIVE' && !offering && (
-            <>
-              <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={handleMessage}>
-                {busy ? 'Starting…' : 'Message seller'}
-              </button>
-              <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={() => setOffering(true)}>
-                Make an offer
-              </button>
-            </>
-          )
-        )}
-      </div>
-      {!isMine && listing.status === 'ACTIVE' && listing.latitude != null && listing.longitude != null && (
-        <button className="toss-btn toss-btn-secondary" disabled={locating} onClick={handleShowDirections}>
-          {locating ? 'Finding your real location…' : showRoute ? 'Hide directions' : '🚗 Directions to this seller'}
-        </button>
-      )}
-      {showRoute && myLocation && listing.latitude != null && listing.longitude != null && (
-        <RouteMiniMap
-          fromLat={myLocation[0]}
-          fromLng={myLocation[1]}
-          toLat={listing.latitude}
-          toLng={listing.longitude}
-          fromLabel="You"
-          toLabel={listing.title}
-        />
-      )}
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
-    </div>
-  );
-}
-
-// Real hyperlocal neighborhood setup (2026-07-20) -- shared across every Hood-tab
-// module (Marketplace/Community/Jobs/Property), same "one small component, four real
-// call sites" shape this project already uses for offer bubbles etc. See
-// lib/neighborhood.ts's own doc comment for the full backend account.
-function NeighborhoodSetupPrompt({ onDone }: { onDone: (neighborhood: string) => void }) {
+export function NeighborhoodSetupPrompt({ isSecond = false, onDone }: { isSecond?: boolean; onDone: (neighborhood: string) => void }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -2352,14 +1531,15 @@ function NeighborhoodSetupPrompt({ onDone }: { onDone: (neighborhood: string) =>
     setError(null);
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setNeighborhood(position.coords.latitude, position.coords.longitude)
+        (isSecond ? setSecondNeighborhood(position.coords.latitude, position.coords.longitude) : setNeighborhood(position.coords.latitude, position.coords.longitude))
           .then((user) => {
             setBusy(false);
-            if (user.neighborhood) onDone(user.neighborhood);
+            const value = isSecond ? (user as { secondNeighborhood: string | null }).secondNeighborhood : (user as { neighborhood: string | null }).neighborhood;
+            if (value) onDone(value);
           })
           .catch((err) => {
             setBusy(false);
-            setError(err instanceof ApiError ? err.message : 'Could not determine your neighborhood.');
+            setError(err instanceof ApiError ? err.message : t('common.actionError'));
           });
       },
       () => {
@@ -2370,1431 +1550,106 @@ function NeighborhoodSetupPrompt({ onDone }: { onDone: (neighborhood: string) =>
   };
 
   return (
-    <div className="toss-card" style={{ textAlign: 'center', padding: '28px' }}>
-      <p style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>Set your neighborhood</p>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
-        Share your real location once to see what's happening near you.
+    <div className="itunda-flat-section" style={{ textAlign: 'center' }}>
+      <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '8px' }}>{isSecond ? 'Add a second neighborhood' : 'Set your neighborhood'}</p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-tertiary)', marginBottom: '16px' }}>
+        {isSecond ? "Share a second real place -- like work -- to see what's happening there too." : "Share your real location once to see what's happening near you."}
       </p>
-      <button className="toss-btn toss-btn-primary" onClick={handleShare} disabled={busy}>
+      <button className="itunda-btn itunda-btn-primary" onClick={handleShare} disabled={busy}>
         {busy ? 'Finding your neighborhood…' : '📍 Share my location'}
       </button>
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginTop: '12px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginTop: '12px' }} role="alert">{error}</p>}
     </div>
   );
 }
 
-function ListingWishlistView() {
-  const [favorites, setFavorites] = useState<FavoriteListing[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [removingId, setRemovingId] = useState<string | null>(null);
-
-  const load = () => {
-    setError(null);
-    fetchMyFavoriteListings().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your wishlist.'));
-  };
-  useEffect(load, []);
-
-  const handleRemove = async (listingId: string) => {
-    setRemovingId(listingId);
-    try {
-      await removeListingFavorite(listingId);
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not remove this item.');
-    } finally {
-      setRemovingId(null);
-    }
-  };
-
-  if (error) {
-    return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
-    );
-  }
-  if (favorites === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
-  if (favorites.length === 0) return <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No saved listings yet -- tap ♡ on any listing to save it here.</p></div>;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      {favorites.map((f) => (
-        <div key={f.listingId} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <p style={{ fontSize: '15px', fontWeight: 700 }}>{f.title}</p>
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{f.category} · {f.price.toLocaleString()} RWF</p>
-          </div>
-          <button
-            className="toss-btn toss-btn-secondary"
-            disabled={removingId === f.listingId}
-            onClick={() => handleRemove(f.listingId)}
-            style={{ padding: '8px 12px', fontSize: '12px' }}
-          >
-            {removingId === f.listingId ? 'Removing…' : 'Remove'}
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId: string) => void }) {
-  const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD' | 'WISHLIST'>('BROWSE');
-  const [listings, setListings] = useState<Listing[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
-  const [favoritingId, setFavoritingId] = useState<string | null>(null);
-  const currentUser = getStoredUser();
-
-  const loadFavoriteIds = () => {
-    fetchMyFavoriteListings().then((favs) => setFavoriteIds(new Set(favs.map((f) => f.listingId)))).catch(() => {
-      // Real, non-critical -- a wishlist-status fetch failure shouldn't block browsing.
-    });
-  };
-
-  const load = () => {
-    setError(null);
-    setListings(null);
-    loadFavoriteIds();
-    if (view === 'NEIGHBORHOOD') {
-      Promise.all([fetchProfile(), fetchListingsMyNeighborhood()])
-        .then(([profile, items]) => {
-          setNeighborhoodName(profile.neighborhood);
-          setListings(items);
-        })
-        .catch((err) => {
-          if (err instanceof ApiError && err.code === 'NEIGHBORHOOD_NOT_SET') {
-            setNeighborhoodName(null);
-            setListings([]);
-          } else {
-            setError(err instanceof ApiError ? err.message : 'Could not load your neighborhood.');
-          }
-        });
-      return;
-    }
-    if (view === 'WISHLIST') return;
-    const fetcher = view === 'BROWSE' ? fetchListings() : fetchMyListings();
-    fetcher
-      .then(setListings)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load listings.'));
-  };
-
-  useEffect(load, [view]);
-
-  // Real Marketplace listing wishlist (2026-07-21) -- mirrors Shop's own product
-  // wishlist toggle (ProductCatalogView.toggleFavorite) field-for-field.
-  const toggleFavorite = async (listingId: string) => {
-    setFavoritingId(listingId);
-    try {
-      if (favoriteIds.has(listingId)) {
-        await removeListingFavorite(listingId);
-        setFavoriteIds((prev) => { const next = new Set(prev); next.delete(listingId); return next; });
-      } else {
-        await addListingFavorite(listingId);
-        setFavoriteIds((prev) => new Set(prev).add(listingId));
-      }
-    } catch {
-      // Real, non-critical -- a wishlist toggle failure shouldn't block browsing.
-    } finally {
-      setFavoritingId(null);
-    }
-  };
-
-  return (
-    <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'WISHLIST'] as const).map((v) => (
-          <button
-            key={v}
-            onClick={() => setView(v)}
-            style={{
-              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: view === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
-            }}
-          >
-            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : '♡ Wishlist'}
-          </button>
-        ))}
-      </div>
-
-      {view === 'WISHLIST' ? (
-        <ListingWishlistView />
-      ) : (
-        <>
-          {view === 'MINE' && <NewListingCard onCreated={load} />}
-
-          {view === 'NEIGHBORHOOD' && neighborhoodName === null && (
-            <NeighborhoodSetupPrompt onDone={() => load()} />
-          )}
-
-          {view === 'NEIGHBORHOOD' && neighborhoodName && (
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
-              Your neighborhood: <strong style={{ color: 'var(--toss-grey-900)' }}>{neighborhoodName}</strong>
-            </p>
-          )}
-
-          {error && (
-            <div className="toss-card">
-              <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-              <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-            </div>
-          )}
-          {!error && listings === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
-          {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
-            <div className="toss-card">
-              <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-                {view === 'BROWSE' ? 'No listings yet.' : view === 'NEIGHBORHOOD' ? 'No listings in your neighborhood yet.' : "You haven't listed anything yet."}
-              </p>
-            </div>
-          )}
-          {!error && listings !== null && listings.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {listings.map((listing) => (
-                <ListingCard
-                  key={listing.id}
-                  listing={listing}
-                  isMine={view === 'MINE' || listing.sellerId === currentUser?.id}
-                  onChanged={load}
-                  onMessageSeller={onMessageSeller}
-                  favorited={favoriteIds.has(listing.id)}
-                  favoriteBusy={favoritingId === listing.id}
-                  onToggleFavorite={() => toggleFavorite(listing.id)}
-                />
-              ))}
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-// ============================== COMMUNITY (동네생활) ==============================
-
-function NewCommunityPostCard({ categories, onCreated }: { categories: CommunityCategory[]; onCreated: () => void }) {
-  const [category, setCategory] = useState(categories[0]?.id ?? '');
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [open, setOpen] = useState(false);
-  // Real optional post location (opt-in, same pattern NewListingCard already
-  // established) -- powers a real "near me" browse.
-  const [shareLocation, setShareLocation] = useState(false);
-  const [myLocation, setMyLocation] = useState<[number, number] | null>(null);
-  const [locating, setLocating] = useState(false);
-
-  const handleToggleShareLocation = () => {
-    if (shareLocation) {
-      setShareLocation(false);
-      return;
-    }
-    if (!navigator.geolocation) {
-      setError('This browser does not support real location access.');
-      return;
-    }
-    setLocating(true);
-    setError(null);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocating(false);
-        setMyLocation([position.coords.latitude, position.coords.longitude]);
-        setShareLocation(true);
-      },
-      () => {
-        setLocating(false);
-        setError('Could not access your real location. Check your browser permissions.');
-      },
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSubmitting(true);
-    try {
-      const [lat, lng] = shareLocation && myLocation ? myLocation : [undefined, undefined];
-      await createCommunityPost(category, title, body, lat, lng);
-      setTitle('');
-      setBody('');
-      setShareLocation(false);
-      setMyLocation(null);
-      setOpen(false);
-      onCreated();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create this post.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (!open) {
-    return (
-      <button className="toss-btn toss-btn-primary" style={{ width: '100%', marginBottom: '16px' }} onClick={() => setOpen(true)}>
-        + Write a post
-      </button>
-    );
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="toss-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Write a post</h3>
-      <select
-        value={category} onChange={(e) => setCategory(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-      >
-        {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-      </select>
-      <input
-        type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" required
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-      />
-      <textarea
-        value={body} onChange={(e) => setBody(e.target.value)} placeholder="What's going on in the neighborhood?" required rows={4}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
-      />
-      <button
-        type="button"
-        className="toss-btn toss-btn-secondary"
-        disabled={locating}
-        onClick={handleToggleShareLocation}
-        style={{ fontSize: '13px' }}
-      >
-        {locating ? 'Finding your real location…' : shareLocation ? '📍 Real location shared -- others nearby can find this post' : '📍 Share my real location (optional)'}
-      </button>
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
-          {submitting ? 'Posting…' : 'Post'}
-        </button>
-      </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
-    </form>
-  );
-}
-
-function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChanged }: {
-  post: CommunityPost; categoryLabel: string; isMine: boolean; onOpen: () => void; onChanged: () => void;
+// Real dual-neighborhood add/change/remove row (2026-08-04) -- mirrors Android
+// SuperAppTabs.kt's HoodTab showNeighborhoodPrompt second-neighborhood card and iOS's
+// own NeighborhoodSwitcherOverlay exactly. Shown alongside the primary
+// NeighborhoodSetupPrompt in every Hood-tab module's NEIGHBORHOOD view.
+export function NeighborhoodSwitcherRow({
+  secondNeighborhoodName,
+  onAddTapped,
+  onRemoved,
+}: {
+  secondNeighborhoodName: string | null;
+  onAddTapped: () => void;
+  onRemoved: (neighborhood: string | null) => void;
 }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
 
-  const handleRemove = async () => {
-    setBusy(true);
-    try {
-      await removeCommunityPost(post.id);
-      onChanged();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not remove this post.');
-    } finally {
-      setBusy(false);
-    }
+  const handleRemove = () => {
+    setRemoving(true);
+    clearSecondNeighborhood()
+      .then((user) => onRemoved(user.secondNeighborhood))
+      .catch(() => {
+        // Best-effort -- the row stays as-is so the user can retry.
+      })
+      .finally(() => setRemoving(false));
   };
 
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px', cursor: 'pointer' }} onClick={onOpen}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--toss-blue)' }}>{categoryLabel}</span>
-        {isMine && (
-          <button
-            className="toss-btn toss-btn-secondary"
-            style={{ fontSize: '11px', padding: '4px 10px' }}
-            disabled={busy}
-            onClick={(e) => { e.stopPropagation(); void handleRemove(); }}
-          >
-            {busy ? 'Removing…' : 'Remove'}
-          </button>
-        )}
-      </div>
-      <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{post.title}</p>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
-        {post.body}
-      </p>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-400)' }}>
-        ❤️ {post.likeCount} · 💬 {post.commentCount}
-      </p>
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
-    </div>
-  );
-}
-
-function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: () => void }) {
-  const [post, setPost] = useState<CommunityPost | null>(null);
-  const [authorName, setAuthorName] = useState('');
-  const [likedByMe, setLikedByMe] = useState(false);
-  const [comments, setComments] = useState<{ comment: CommunityComment; authorName: string }[] | null>(null);
-  const [commentBody, setCommentBody] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [liking, setLiking] = useState(false);
-  const [commenting, setCommenting] = useState(false);
-
-  const load = () => {
-    setError(null);
-    fetchCommunityPost(postId)
-      .then((r) => { setPost(r.post); setAuthorName(r.authorName); setLikedByMe(r.likedByMe); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this post.'));
-    fetchCommunityComments(postId)
-      .then(setComments)
-      .catch(() => { /* non-critical -- the post itself still renders */ });
-  };
-
-  useEffect(load, [postId]);
-
-  const handleLike = async () => {
-    setLiking(true);
-    try {
-      const liked = await toggleCommunityLike(postId);
-      setLikedByMe(liked);
-      setPost((p) => (p ? { ...p, likeCount: p.likeCount + (liked ? 1 : -1) } : p));
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update your like.');
-    } finally {
-      setLiking(false);
-    }
-  };
-
-  const handleComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!commentBody.trim()) return;
-    setCommenting(true);
-    setError(null);
-    try {
-      await addCommunityComment(postId, commentBody);
-      setCommentBody('');
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not post your comment.');
-    } finally {
-      setCommenting(false);
-    }
-  };
-
-  return (
-    <div>
-      <button className="toss-btn toss-btn-secondary" style={{ marginBottom: '12px' }} onClick={onBack}>← Back</button>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
-      {!post && !error && <div className="toss-card skeleton" style={{ height: '160px' }} />}
-      {post && (
-        <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-          <p style={{ fontSize: '17px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{post.title}</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>by {authorName}</p>
-          <p style={{ fontSize: '14px', color: 'var(--toss-grey-700)', whiteSpace: 'pre-wrap' }}>{post.body}</p>
-          <button
-            className="toss-btn toss-btn-secondary"
-            disabled={liking}
-            onClick={handleLike}
-            style={{ alignSelf: 'flex-start', fontSize: '13px' }}
-          >
-            {likedByMe ? '❤️' : '🤍'} {post.likeCount}
-          </button>
-        </div>
-      )}
-      <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Comments</h3>
-      {comments === null && <div className="toss-card skeleton" style={{ height: '80px' }} />}
-      {comments !== null && comments.length === 0 && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>No comments yet -- be the first to reply.</p>
-      )}
-      {comments !== null && comments.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
-          {comments.map(({ comment, authorName: name }) => (
-            <div key={comment.id} className="toss-card" style={{ padding: '10px 14px' }}>
-              <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-700)' }}>{name}</p>
-              <p style={{ fontSize: '13px', color: 'var(--toss-grey-900)' }}>{comment.body}</p>
-            </div>
-          ))}
-        </div>
-      )}
-      <form onSubmit={handleComment} style={{ display: 'flex', gap: '8px' }}>
-        <input
-          type="text" value={commentBody} onChange={(e) => setCommentBody(e.target.value)} placeholder="Add a comment"
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-        />
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={commenting || !commentBody.trim()}>
-          {commenting ? '…' : 'Send'}
+    <div className="itunda-flat-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600 }}>{secondNeighborhoodName ? `Second: ${secondNeighborhoodName}` : 'Add a second neighborhood'}</span>
+      <div style={{ display: 'flex', gap: '12px' }}>
+        <button style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-indigo)' }} onClick={onAddTapped}>
+          {secondNeighborhoodName ? 'Change' : 'Add'}
         </button>
-      </form>
-    </div>
-  );
-}
-
-function CommunityView() {
-  const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD'>('BROWSE');
-  const [categories, setCategories] = useState<CommunityCategory[]>([]);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [posts, setPosts] = useState<CommunityPost[] | null>(null);
-  const [openPostId, setOpenPostId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
-  const currentUser = getStoredUser();
-
-  useEffect(() => {
-    fetchCommunityCategories().then(setCategories).catch(() => { /* chips just won't render, browse still works */ });
-  }, []);
-
-  const load = () => {
-    setError(null);
-    setPosts(null);
-    if (view === 'NEIGHBORHOOD') {
-      Promise.all([fetchProfile(), fetchCommunityPostsMyNeighborhood(activeCategory ?? undefined)])
-        .then(([profile, items]) => {
-          setNeighborhoodName(profile.neighborhood);
-          setPosts(items);
-        })
-        .catch((err) => {
-          if (err instanceof ApiError && err.code === 'NEIGHBORHOOD_NOT_SET') {
-            setNeighborhoodName(null);
-            setPosts([]);
-          } else {
-            setError(err instanceof ApiError ? err.message : 'Could not load your neighborhood.');
-          }
-        });
-      return;
-    }
-    const fetcher = view === 'BROWSE' ? fetchCommunityPosts(activeCategory ?? undefined) : fetchMyCommunityPosts();
-    fetcher
-      .then(setPosts)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load posts.'));
-  };
-
-  useEffect(load, [view, activeCategory]);
-
-  if (openPostId) {
-    return <CommunityPostDetailView postId={openPostId} onBack={() => { setOpenPostId(null); load(); }} />;
-  }
-
-  const categoryLabel = (id: string) => categories.find((c) => c.id === id)?.label ?? id;
-
-  return (
-    <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'NEIGHBORHOOD', 'MINE'] as const).map((v) => (
-          <button
-            key={v}
-            onClick={() => setView(v)}
-            style={{
-              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: view === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
-            }}
-          >
-            {v === 'BROWSE' ? 'Feed' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : 'My posts'}
+        {secondNeighborhoodName && (
+          <button style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-red)' }} onClick={handleRemove} disabled={removing}>
+            Remove
           </button>
-        ))}
-      </div>
-
-      {(view === 'BROWSE' || view === 'NEIGHBORHOOD') && categories.length > 0 && (
-        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '12px', paddingBottom: '2px' }}>
-          {categories.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setActiveCategory(activeCategory === c.id ? null : c.id)}
-              style={{
-                whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
-                border: `1px solid ${activeCategory === c.id ? 'var(--toss-blue)' : 'var(--toss-grey-200)'}`,
-                color: activeCategory === c.id ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-                backgroundColor: activeCategory === c.id ? 'var(--toss-blue)' : 'transparent',
-              }}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {view === 'MINE' && <NewCommunityPostCard categories={categories} onCreated={load} />}
-
-      {view === 'NEIGHBORHOOD' && neighborhoodName === null && (
-        <NeighborhoodSetupPrompt onDone={() => load()} />
-      )}
-
-      {view === 'NEIGHBORHOOD' && neighborhoodName && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
-          Your neighborhood: <strong style={{ color: 'var(--toss-grey-900)' }}>{neighborhoodName}</strong>
-        </p>
-      )}
-
-      {error && (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-          <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-        </div>
-      )}
-      {!error && posts === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
-      {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && posts !== null && posts.length === 0 && (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-            {view === 'BROWSE' ? 'No posts yet.' : view === 'NEIGHBORHOOD' ? 'No posts in your neighborhood yet.' : "You haven't posted anything yet."}
-          </p>
-        </div>
-      )}
-      {!error && posts !== null && posts.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {posts.map((post) => (
-            <CommunityPostCard
-              key={post.id}
-              post={post}
-              categoryLabel={categoryLabel(post.category)}
-              isMine={view === 'MINE' || post.authorId === currentUser?.id}
-              onOpen={() => setOpenPostId(post.id)}
-              onChanged={load}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ============================== JOBS (당근알바) ==============================
-
-function NewJobPostCard({ categories, onCreated }: { categories: JobCategory[]; onCreated: () => void }) {
-  const [category, setCategory] = useState(categories[0]?.id ?? '');
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [payType, setPayType] = useState<JobPayType>('HOURLY');
-  const [payAmount, setPayAmount] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [open, setOpen] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSubmitting(true);
-    try {
-      await createJobPost(category, title, description, payType, Number(payAmount));
-      setTitle('');
-      setDescription('');
-      setPayAmount('');
-      setOpen(false);
-      onCreated();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not post this job.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (!open) {
-    return (
-      <button className="toss-btn toss-btn-primary" style={{ width: '100%', marginBottom: '16px' }} onClick={() => setOpen(true)}>
-        + Post a job
-      </button>
-    );
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="toss-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Post a job</h3>
-      <select
-        value={category} onChange={(e) => setCategory(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-      >
-        {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-      </select>
-      <input
-        type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What do you need done?" required
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-      />
-      <textarea
-        value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the work" required rows={3}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
-      />
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <select
-          value={payType} onChange={(e) => setPayType(e.target.value as JobPayType)}
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-        >
-          <option value="HOURLY">Per hour</option>
-          <option value="FIXED">Fixed price</option>
-        </select>
-        <input
-          type="number" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} placeholder="Pay (RWF)" required min="1"
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-        />
-      </div>
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
-          {submitting ? 'Posting…' : 'Post job'}
-        </button>
-      </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
-    </form>
-  );
-}
-
-function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact }: {
-  post: JobPost; categoryLabel: string; isMine: boolean; onChanged: () => void; onContact: () => void;
-}) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const payLabel = `${post.payAmount.toLocaleString()} RWF${post.payType === 'HOURLY' ? '/hr' : ''}`;
-
-  return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--toss-blue)' }}>{categoryLabel}</span>
-          {post.status === 'FILLED' && (
-            <span style={{ marginLeft: '8px', fontSize: '10px', fontWeight: 700, color: 'var(--toss-grey-500)', backgroundColor: 'var(--toss-grey-100)', padding: '2px 8px', borderRadius: '8px' }}>
-              FILLED
-            </span>
-          )}
-        </div>
-        <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{payLabel}</span>
-      </div>
-      <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{post.title}</p>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{post.description}</p>
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
-      <div style={{ display: 'flex', gap: '10px' }}>
-        {isMine ? (
-          <>
-            {post.status === 'OPEN' && (
-              <button
-                className="toss-btn toss-btn-secondary"
-                disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  try { await markJobPostFilled(post.id); onChanged(); }
-                  catch (err) { setError(err instanceof ApiError ? err.message : 'Could not update this job.'); }
-                  finally { setBusy(false); }
-                }}
-              >
-                Mark filled
-              </button>
-            )}
-            {post.status !== 'REMOVED' && (
-              <button
-                className="toss-btn toss-btn-secondary"
-                disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  try { await removeJobPost(post.id); onChanged(); }
-                  catch (err) { setError(err instanceof ApiError ? err.message : 'Could not remove this job.'); }
-                  finally { setBusy(false); }
-                }}
-              >
-                Remove
-              </button>
-            )}
-          </>
-        ) : (
-          post.status === 'OPEN' && (
-            <button className="toss-btn toss-btn-primary" disabled={busy} onClick={onContact}>
-              Message poster
-            </button>
-          )
         )}
       </div>
     </div>
   );
 }
 
-function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: string) => void }) {
-  const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD'>('BROWSE');
-  const [categories, setCategories] = useState<JobCategory[]>([]);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [posts, setPosts] = useState<JobPost[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
-  const currentUser = getStoredUser();
-
-  useEffect(() => {
-    fetchJobCategories().then(setCategories).catch(() => { /* chips just won't render, browse still works */ });
-  }, []);
-
-  const load = () => {
-    setError(null);
-    setPosts(null);
-    if (view === 'NEIGHBORHOOD') {
-      Promise.all([fetchProfile(), fetchJobPostsMyNeighborhood(activeCategory ?? undefined)])
-        .then(([profile, items]) => {
-          setNeighborhoodName(profile.neighborhood);
-          setPosts(items);
-        })
-        .catch((err) => {
-          if (err instanceof ApiError && err.code === 'NEIGHBORHOOD_NOT_SET') {
-            setNeighborhoodName(null);
-            setPosts([]);
-          } else {
-            setError(err instanceof ApiError ? err.message : 'Could not load your neighborhood.');
-          }
-        });
-      return;
-    }
-    const fetcher = view === 'BROWSE' ? fetchJobPosts(activeCategory ?? undefined) : fetchMyJobPosts();
-    fetcher
-      .then(setPosts)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load jobs.'));
-  };
-
-  useEffect(load, [view, activeCategory]);
-
-  const categoryLabel = (id: string) => categories.find((c) => c.id === id)?.label ?? id;
-
-  const handleContact = async (jobPostId: string) => {
-    try {
-      const conversation = await contactPoster(jobPostId);
-      onMessagePoster(conversation.id);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not message this poster.');
-    }
-  };
-
-  return (
-    <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'NEIGHBORHOOD', 'MINE'] as const).map((v) => (
-          <button
-            key={v}
-            onClick={() => setView(v)}
-            style={{
-              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: view === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
-            }}
-          >
-            {v === 'BROWSE' ? 'Find work' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : 'My posts'}
-          </button>
-        ))}
-      </div>
-
-      {(view === 'BROWSE' || view === 'NEIGHBORHOOD') && categories.length > 0 && (
-        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '12px', paddingBottom: '2px' }}>
-          {categories.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setActiveCategory(activeCategory === c.id ? null : c.id)}
-              style={{
-                whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
-                border: `1px solid ${activeCategory === c.id ? 'var(--toss-blue)' : 'var(--toss-grey-200)'}`,
-                color: activeCategory === c.id ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-                backgroundColor: activeCategory === c.id ? 'var(--toss-blue)' : 'transparent',
-              }}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {view === 'MINE' && <NewJobPostCard categories={categories} onCreated={load} />}
-
-      {view === 'NEIGHBORHOOD' && neighborhoodName === null && (
-        <NeighborhoodSetupPrompt onDone={() => load()} />
-      )}
-
-      {view === 'NEIGHBORHOOD' && neighborhoodName && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
-          Your neighborhood: <strong style={{ color: 'var(--toss-grey-900)' }}>{neighborhoodName}</strong>
-        </p>
-      )}
-
-      {error && (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-          <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-        </div>
-      )}
-      {!error && posts === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
-      {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && posts !== null && posts.length === 0 && (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-            {view === 'BROWSE' ? 'No jobs posted yet.' : view === 'NEIGHBORHOOD' ? 'No jobs in your neighborhood yet.' : "You haven't posted any jobs yet."}
-          </p>
-        </div>
-      )}
-      {!error && posts !== null && posts.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {posts.map((post) => (
-            <JobPostCard
-              key={post.id}
-              post={post}
-              categoryLabel={categoryLabel(post.category)}
-              isMine={view === 'MINE' || post.posterId === currentUser?.id}
-              onChanged={load}
-              onContact={() => handleContact(post.id)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ============================== PROPERTY (당근부동산) ==============================
-
-function NewPropertyListingCard({ propertyTypes, onCreated }: { propertyTypes: PropertyType[]; onCreated: () => void }) {
-  const [listingType, setListingType] = useState<PropertyListingType>('RENT');
-  const [propertyType, setPropertyType] = useState(propertyTypes[0]?.id ?? '');
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [price, setPrice] = useState('');
-  const [bedrooms, setBedrooms] = useState('');
-  const [sizeSqm, setSizeSqm] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [open, setOpen] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSubmitting(true);
-    try {
-      await createPropertyListing(
-        listingType, propertyType, title, description, Number(price),
-        bedrooms ? Number(bedrooms) : undefined, sizeSqm ? Number(sizeSqm) : undefined,
-      );
-      setTitle('');
-      setDescription('');
-      setPrice('');
-      setBedrooms('');
-      setSizeSqm('');
-      setOpen(false);
-      onCreated();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create this listing.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (!open) {
-    return (
-      <button className="toss-btn toss-btn-primary" style={{ width: '100%', marginBottom: '16px' }} onClick={() => setOpen(true)}>
-        + List a property
-      </button>
-    );
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="toss-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <h3 style={{ fontSize: '15px', fontWeight: 700 }}>List a property</h3>
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <select
-          value={listingType} onChange={(e) => setListingType(e.target.value as PropertyListingType)}
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-        >
-          <option value="RENT">For rent</option>
-          <option value="SALE">For sale</option>
-        </select>
-        <select
-          value={propertyType} onChange={(e) => setPropertyType(e.target.value)}
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-        >
-          {propertyTypes.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
-        </select>
-      </div>
-      <input
-        type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. 2-bedroom apartment in Kacyiru" required
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-      />
-      <textarea
-        value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the property" required rows={3}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
-      />
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <input
-          type="number" value={price} onChange={(e) => setPrice(e.target.value)}
-          placeholder={listingType === 'RENT' ? 'Rent per month (RWF)' : 'Price (RWF)'} required min="1"
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-        />
-        <input
-          type="number" value={bedrooms} onChange={(e) => setBedrooms(e.target.value)} placeholder="Bedrooms" min="0"
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-        />
-        <input
-          type="number" value={sizeSqm} onChange={(e) => setSizeSqm(e.target.value)} placeholder="Size (m²)" min="1"
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-        />
-      </div>
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
-          {submitting ? 'Listing…' : 'List it'}
-        </button>
-      </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
-    </form>
-  );
-}
-
-function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, onContact, onMessageLister }: {
-  listing: PropertyListing; propertyTypeLabel: string; isMine: boolean; onChanged: () => void; onContact: () => void;
-  onMessageLister: (conversationId: string) => void;
-}) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // Real 당근-style price-offer negotiation (2026-07-19) -- see PropertyPriceOfferService's
-  // own doc comment; mirrors ListingCard's own offering state exactly.
-  const [offering, setOffering] = useState(false);
-  const [offerAmount, setOfferAmount] = useState('');
-
-  const priceLabel = `${listing.price.toLocaleString()} RWF${listing.listingType === 'RENT' ? '/mo' : ''}`;
-  const detailsLabel = [
-    listing.bedrooms != null ? `${listing.bedrooms} bd` : null,
-    listing.sizeSqm != null ? `${listing.sizeSqm} m²` : null,
-  ].filter(Boolean).join(' · ');
-
-  const handleMakeOffer = async () => {
-    const amount = Number(offerAmount);
-    if (!amount || amount <= 0) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const offer = await makePropertyOffer(listing.id, amount);
-      setOffering(false);
-      setOfferAmount('');
-      onMessageLister(offer.conversationId);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send this offer.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--toss-blue)' }}>
-            {listing.listingType === 'RENT' ? 'For rent' : 'For sale'} · {propertyTypeLabel}
-          </span>
-          {listing.status === 'TAKEN' && (
-            <span style={{ marginLeft: '8px', fontSize: '10px', fontWeight: 700, color: 'var(--toss-grey-500)', backgroundColor: 'var(--toss-grey-100)', padding: '2px 8px', borderRadius: '8px' }}>
-              TAKEN
-            </span>
-          )}
-        </div>
-        <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{priceLabel}</span>
-      </div>
-      <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{listing.title}</p>
-      {detailsLabel && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{detailsLabel}</p>}
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{listing.description}</p>
-      {offering && (
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <input
-            type="number"
-            value={offerAmount}
-            onChange={(e) => setOfferAmount(e.target.value)}
-            placeholder="Your offer (RWF)"
-            style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-          />
-          <button className="toss-btn toss-btn-primary" disabled={busy || !offerAmount} onClick={handleMakeOffer}>
-            Send
-          </button>
-        </div>
-      )}
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
-      <div style={{ display: 'flex', gap: '10px' }}>
-        {isMine ? (
-          <>
-            {listing.status === 'AVAILABLE' && (
-              <button
-                className="toss-btn toss-btn-secondary"
-                disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  try { await markPropertyListingTaken(listing.id); onChanged(); }
-                  catch (err) { setError(err instanceof ApiError ? err.message : 'Could not update this listing.'); }
-                  finally { setBusy(false); }
-                }}
-              >
-                Mark taken
-              </button>
-            )}
-            {listing.status !== 'REMOVED' && (
-              <button
-                className="toss-btn toss-btn-secondary"
-                disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  try { await removePropertyListing(listing.id); onChanged(); }
-                  catch (err) { setError(err instanceof ApiError ? err.message : 'Could not remove this listing.'); }
-                  finally { setBusy(false); }
-                }}
-              >
-                Remove
-              </button>
-            )}
-          </>
-        ) : (
-          listing.status === 'AVAILABLE' && !offering && (
-            <>
-              <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={onContact}>
-                Message lister
-              </button>
-              <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={() => setOffering(true)}>
-                Make an offer
-              </button>
-            </>
-          )
-        )}
-      </div>
-    </div>
-  );
-}
-
-function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: string) => void }) {
-  const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD'>('BROWSE');
-  const [propertyTypes, setPropertyTypes] = useState<PropertyType[]>([]);
-  const [listingTypeFilter, setListingTypeFilter] = useState<PropertyListingType | null>(null);
-  const [propertyTypeFilter, setPropertyTypeFilter] = useState<string | null>(null);
-  const [listings, setListings] = useState<PropertyListing[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
-  const currentUser = getStoredUser();
-
-  useEffect(() => {
-    fetchPropertyTypes().then(setPropertyTypes).catch(() => { /* chips just won't render, browse still works */ });
-  }, []);
-
-  const load = () => {
-    setError(null);
-    setListings(null);
-    if (view === 'NEIGHBORHOOD') {
-      Promise.all([fetchProfile(), fetchPropertyListingsMyNeighborhood()])
-        .then(([profile, items]) => {
-          setNeighborhoodName(profile.neighborhood);
-          setListings(items);
-        })
-        .catch((err) => {
-          if (err instanceof ApiError && err.code === 'NEIGHBORHOOD_NOT_SET') {
-            setNeighborhoodName(null);
-            setListings([]);
-          } else {
-            setError(err instanceof ApiError ? err.message : 'Could not load your neighborhood.');
-          }
-        });
-      return;
-    }
-    const fetcher = view === 'BROWSE'
-      ? fetchPropertyListings(listingTypeFilter ?? undefined, propertyTypeFilter ?? undefined)
-      : fetchMyPropertyListings();
-    fetcher
-      .then(setListings)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load listings.'));
-  };
-
-  useEffect(load, [view, listingTypeFilter, propertyTypeFilter]);
-
-  const propertyTypeLabel = (id: string) => propertyTypes.find((t) => t.id === id)?.label ?? id;
-
-  const handleContact = async (propertyListingId: string) => {
-    try {
-      const conversation = await contactLister(propertyListingId);
-      onMessageLister(conversation.id);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not message this lister.');
-    }
-  };
-
-  return (
-    <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'NEIGHBORHOOD', 'MINE'] as const).map((v) => (
-          <button
-            key={v}
-            onClick={() => setView(v)}
-            style={{
-              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: view === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
-            }}
-          >
-            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : 'My listings'}
-          </button>
-        ))}
-      </div>
-
-      {view === 'BROWSE' && (
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
-          {(['RENT', 'SALE'] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setListingTypeFilter(listingTypeFilter === t ? null : t)}
-              style={{
-                padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
-                border: `1px solid ${listingTypeFilter === t ? 'var(--toss-blue)' : 'var(--toss-grey-200)'}`,
-                color: listingTypeFilter === t ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-                backgroundColor: listingTypeFilter === t ? 'var(--toss-blue)' : 'transparent',
-              }}
-            >
-              {t === 'RENT' ? 'For rent' : 'For sale'}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {view === 'BROWSE' && propertyTypes.length > 0 && (
-        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '12px', paddingBottom: '2px' }}>
-          {propertyTypes.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setPropertyTypeFilter(propertyTypeFilter === t.id ? null : t.id)}
-              style={{
-                whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
-                border: `1px solid ${propertyTypeFilter === t.id ? 'var(--toss-blue)' : 'var(--toss-grey-200)'}`,
-                color: propertyTypeFilter === t.id ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-                backgroundColor: propertyTypeFilter === t.id ? 'var(--toss-blue)' : 'transparent',
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {view === 'MINE' && <NewPropertyListingCard propertyTypes={propertyTypes} onCreated={load} />}
-
-      {view === 'NEIGHBORHOOD' && neighborhoodName === null && (
-        <NeighborhoodSetupPrompt onDone={() => load()} />
-      )}
-
-      {view === 'NEIGHBORHOOD' && neighborhoodName && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
-          Your neighborhood: <strong style={{ color: 'var(--toss-grey-900)' }}>{neighborhoodName}</strong>
-        </p>
-      )}
-
-      {error && (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-          <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-        </div>
-      )}
-      {!error && listings === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
-      {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-            {view === 'BROWSE' ? 'No properties listed yet.' : view === 'NEIGHBORHOOD' ? 'No properties in your neighborhood yet.' : "You haven't listed any properties yet."}
-          </p>
-        </div>
-      )}
-      {!error && listings !== null && listings.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {listings.map((listing) => (
-            <PropertyListingCard
-              key={listing.id}
-              listing={listing}
-              propertyTypeLabel={propertyTypeLabel(listing.propertyType)}
-              isMine={view === 'MINE' || listing.listerId === currentUser?.id}
-              onChanged={load}
-              onContact={() => handleContact(listing.id)}
-              onMessageLister={onMessageLister}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-const EATS_STATUS_LABEL: Record<EatsOrderStatus, string> = {
-  PLACED: 'Placed',
-  ACCEPTED: 'Accepted by restaurant',
-  PREPARING: 'Preparing',
-  READY_FOR_PICKUP: 'Ready for pickup',
-  RIDER_ASSIGNED: 'Rider on the way to restaurant',
-  PICKED_UP: 'Picked up — on the way',
-  DELIVERED: 'Delivered',
-  CANCELLED: 'Cancelled — refunded',
-};
-
-const RESTAURANT_STATUS_CHAIN: EatsOrderStatus[] = ['PLACED', 'ACCEPTED', 'PREPARING', 'READY_FOR_PICKUP'];
-const RIDER_STATUS_CHAIN: EatsOrderStatus[] = ['RIDER_ASSIGNED', 'PICKED_UP', 'DELIVERED'];
-
-function nextInChain<T>(chain: T[], current: T): T | null {
+export function nextInChain<T>(chain: T[], current: T): T | null {
   const idx = chain.indexOf(current);
   return idx >= 0 && idx + 1 < chain.length ? chain[idx + 1] : null;
 }
 
-function EatsOrderCard({ order, restaurant, action }: { order: EatsOrder; restaurant?: ShoppingMerchant; action?: React.ReactNode }) {
-  const [showRoute, setShowRoute] = useState(false);
-  const [showLiveTracking, setShowLiveTracking] = useState(false);
-  const canShowRoute = restaurant?.latitude != null && restaurant?.longitude != null && order.deliveryLatitude != null && order.deliveryLongitude != null;
-  // Real live rider tracking (2026-07-20) -- only meaningful while a real rider is
-  // actually en route, matching EatsOrderService.getRiderLocation's own real state gate
-  // (RIDER_ASSIGNED/PICKED_UP only; before/after that there's honestly nothing to show).
-  const canShowLiveTracking = canShowRoute && (order.status === 'RIDER_ASSIGNED' || order.status === 'PICKED_UP');
-
-  return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-blue)' }}>{EATS_STATUS_LABEL[order.status]}</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{order.deliveryAddress}</p>
-        </div>
-        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{order.totalAmount.toLocaleString()} RWF</span>
-      </div>
-      {order.deliveryNotes && (
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)', backgroundColor: 'var(--toss-grey-100)', borderRadius: '8px', padding: '8px 10px' }}>
-          Note: {order.deliveryNotes}
-        </p>
-      )}
-      {canShowLiveTracking && (
-        <button className="toss-btn toss-btn-primary" onClick={() => { setShowLiveTracking((v) => !v); setShowRoute(false); }}>
-          {showLiveTracking ? 'Hide live tracking' : '🛵 Track your rider live'}
-        </button>
-      )}
-      {showLiveTracking && restaurant?.latitude != null && restaurant?.longitude != null && order.deliveryLatitude != null && order.deliveryLongitude != null && (
-        <LiveRiderMap
-          orderId={order.id}
-          fromLat={restaurant.latitude}
-          fromLng={restaurant.longitude}
-          toLat={order.deliveryLatitude}
-          toLng={order.deliveryLongitude}
-          fromLabel={restaurant.businessName}
-          toLabel="Delivery address"
-        />
-      )}
-      {canShowRoute && !showLiveTracking && (
-        <button className="toss-btn toss-btn-secondary" onClick={() => setShowRoute((v) => !v)}>
-          {showRoute ? 'Hide route' : '🚗 View real delivery route'}
-        </button>
-      )}
-      {showRoute && !showLiveTracking && restaurant?.latitude != null && restaurant?.longitude != null && order.deliveryLatitude != null && order.deliveryLongitude != null && (
-        <RouteMiniMap
-          fromLat={restaurant.latitude}
-          fromLng={restaurant.longitude}
-          toLat={order.deliveryLatitude}
-          toLng={order.deliveryLongitude}
-          fromLabel={restaurant.businessName}
-          toLabel="Delivery address"
-        />
-      )}
-      {action}
-    </div>
-  );
-}
-
-function StarRatingInput({ value, onChange }: { value: number; onChange: (rating: number) => void }) {
+export function StarRatingInput({ value, onChange }: { value: number; onChange: (rating: number) => void }) {
   return (
     <div style={{ display: 'flex', gap: '4px' }}>
       {[1, 2, 3, 4, 5].map((n) => (
         <button key={n} type="button" onClick={() => onChange(n)} style={{ display: 'flex', padding: 0 }} aria-label={`${n} star${n === 1 ? '' : 's'}`}>
-          <Star size={22} color={n <= value ? '#F5A623' : 'var(--toss-grey-200)'} fill={n <= value ? '#F5A623' : 'none'} />
+          <IconStar size={22} color={n <= value ? '#F5A623' : 'var(--itunda-border-default)'} fill={n <= value ? '#F5A623' : 'none'} />
         </button>
       ))}
     </div>
   );
 }
 
-function RestaurantRatingBadge({ restaurantId }: { restaurantId: string }) {
-  const [rating, setRating] = useState<RatingSummary | null>(null);
-
-  useEffect(() => {
-    fetchRestaurantRating(restaurantId).then(setRating).catch(() => {
-      // Real, non-critical -- a rating fetch failure shouldn't block browsing the menu.
-    });
-  }, [restaurantId]);
-
-  if (!rating || rating.count === 0) return null;
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', color: 'var(--toss-grey-700)' }}>
-      <Star size={14} color="#F5A623" fill="#F5A623" />
-      {rating.average?.toFixed(1)} ({rating.count})
-    </span>
-  );
-}
-
-function ReviewOrderCard({ order, onSubmitted }: { order: EatsOrder; onSubmitted: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [restaurantRating, setRestaurantRating] = useState(0);
-  const [restaurantComment, setRestaurantComment] = useState('');
-  const [riderRating, setRiderRating] = useState(0);
-  const [riderComment, setRiderComment] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (restaurantRating === 0 || riderRating === 0) {
-      setError('Rate both the restaurant and the rider.');
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
-    try {
-      await submitEatsReview(order.id, restaurantRating, restaurantComment, riderRating, riderComment);
-      setDone(true);
-      onSubmitted();
-    } catch (err) {
-      if (err instanceof ApiError && err.code === 'ORDER_ALREADY_REVIEWED') {
-        setDone(true);
-      } else {
-        setError(err instanceof ApiError ? err.message : 'Could not submit this review.');
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (done) {
-    return <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Thanks for your review!</p>;
-  }
-
-  if (!open) {
-    return (
-      <button className="toss-btn toss-btn-secondary" onClick={() => setOpen(true)}>
-        Rate this order
-      </button>
-    );
-  }
-
-  return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
-      <div>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px' }}>Restaurant</p>
-        <StarRatingInput value={restaurantRating} onChange={setRestaurantRating} />
-        <input
-          type="text"
-          value={restaurantComment}
-          onChange={(e) => setRestaurantComment(e.target.value)}
-          placeholder="How was the food? (optional)"
-          style={{ marginTop: '6px', width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
-        />
-      </div>
-      <div>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px' }}>Rider</p>
-        <StarRatingInput value={riderRating} onChange={setRiderRating} />
-        <input
-          type="text"
-          value={riderComment}
-          onChange={(e) => setRiderComment(e.target.value)}
-          placeholder="How was the delivery? (optional)"
-          style={{ marginTop: '6px', width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
-        />
-      </div>
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
-          {submitting ? 'Submitting…' : 'Submit review'}
-        </button>
-      </div>
-    </form>
-  );
-}
-
-function AddressAutocomplete({
-  value, onChangeText, onSelectSuggestion,
+// Exported 2026-09-02 (Rides domain-split thread) -- RidesView.tsx's own driver
+// "Destination Filter" also needs this, same real cross-domain shared-helper
+// pattern as MarketplaceView/CommunityView/JobsView/PropertyView's own export
+// above.
+export function AddressAutocomplete({
+  value, onChangeText, onSelectSuggestion, placeholder = 'Delivery address',
 }: {
   value: string;
   onChangeText: (text: string) => void;
   onSelectSuggestion: (suggestion: AddressSuggestion) => void;
+  placeholder?: string;
 }) {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [searching, setSearching] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Real Uber/Kakao T-style saved-places quick-select (2026-08-23) -- same real gap
+  // already closed for ride booking (ShopView's PlaceSearchInput) and Android's Eats
+  // AddressAutocompleteField: itunda's own "map bookmarks" feature (the Maps tab's
+  // star/save) was never surfaced here either, despite a delivery address being an
+  // even more universal need than a ride destination. No new backend work -- the same
+  // existing GET /api/v1/maps/bookmarks this field's own search suggestions already
+  // sit alongside.
+  const [bookmarks, setBookmarks] = useState<MapBookmark[]>([]);
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    fetchMyMapBookmarks().then(setBookmarks).catch(() => {});
+  }, []);
 
   const handleChange = (text: string) => {
     onChangeText(text);
@@ -3827,17 +1682,36 @@ function AddressAutocomplete({
     <div style={{ position: 'relative' }}>
       <input
         type="text" value={value} onChange={(e) => handleChange(e.target.value)}
-        onFocus={() => setOpen(suggestions.length > 0)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        placeholder="Delivery address" required autoComplete="off"
-        style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        onFocus={() => { setFocused(true); setOpen(suggestions.length > 0); }}
+        onBlur={() => setTimeout(() => { setFocused(false); setOpen(false); }, 150)}
+        placeholder={placeholder} required autoComplete="off"
+        style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-14-size)' }}
       />
       {searching && (
-        <span style={{ position: 'absolute', right: '12px', top: '12px', fontSize: '12px', color: 'var(--toss-grey-500)' }}>…</span>
+        <span style={{ position: 'absolute', right: '12px', top: '12px', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>…</span>
+      )}
+      {!open && focused && !value.trim() && bookmarks.length > 0 && (
+        <div
+          className="itunda-card"
+          style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', padding: '6px', zIndex: 10, maxHeight: '220px', overflowY: 'auto' }}
+        >
+          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-text-tertiary)', fontWeight: 700, padding: '4px 6px 2px' }}>Saved places</p>
+          {bookmarks.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              onMouseDown={() => { onSelectSuggestion({ displayName: b.displayName, latitude: b.latitude, longitude: b.longitude }); onChangeText(b.displayName); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', textAlign: 'left', padding: '8px 6px', fontSize: 'var(--itunda-type-scale-13-size)', borderRadius: 'var(--itunda-control-radius, 12px)' }}
+            >
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: b.color, flexShrink: 0 }} />
+              {b.displayName}
+            </button>
+          ))}
+        </div>
       )}
       {open && (
         <div
-          className="toss-card"
+          className="itunda-card"
           style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', padding: '6px', zIndex: 10, maxHeight: '220px', overflowY: 'auto' }}
         >
           {suggestions.map((s, i) => (
@@ -3845,7 +1719,7 @@ function AddressAutocomplete({
               key={i}
               type="button"
               onMouseDown={() => { onSelectSuggestion(s); setOpen(false); }}
-              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 6px', fontSize: '13px', borderRadius: '6px' }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 6px', fontSize: 'var(--itunda-type-scale-13-size)', borderRadius: 'var(--itunda-control-radius, 12px)' }}
             >
               {s.displayName}
             </button>
@@ -3862,16 +1736,16 @@ function AddressAutocomplete({
 // with no option groups -- the pre-existing, unaffected case. Two lines for the same
 // productId with DIFFERENT choiceIds are genuinely distinct cart entries (e.g. a
 // Regular and a Large of the same burger, side by side).
-interface EatsCartLine { productId: string; quantity: number; choiceIds: string[] }
+export interface EatsCartLine { productId: string; quantity: number; choiceIds: string[] }
 
-function eatsCartKey(productId: string, choiceIds: string[]): string {
+export function eatsCartKey(productId: string, choiceIds: string[]): string {
   return choiceIds.length === 0 ? productId : `${productId}::${[...choiceIds].sort().join(',')}`;
 }
 
 // Real, human-readable summary of a resolved cart line's selected options -- mirrors
 // the backend's own EatsOrderService.buildSelectedOptionsJson, but purely for display;
 // pricing always comes from the real menu item + real choice deltas, never this string.
-function eatsOptionsSummary(item: MenuItem, choiceIds: string[]): string {
+export function eatsOptionsSummary(item: MenuItem, choiceIds: string[]): string {
   if (choiceIds.length === 0) return '';
   const names = (item.optionGroups ?? [])
     .flatMap((g) => g.choices)
@@ -3880,7 +1754,7 @@ function eatsOptionsSummary(item: MenuItem, choiceIds: string[]): string {
   return names.length ? ` (${names.join(', ')})` : '';
 }
 
-function eatsLineUnitPrice(item: MenuItem, choiceIds: string[]): number {
+export function eatsLineUnitPrice(item: MenuItem, choiceIds: string[]): number {
   const delta = (item.optionGroups ?? [])
     .flatMap((g) => g.choices)
     .filter((c) => choiceIds.includes(c.id))
@@ -3888,358 +1762,12 @@ function eatsLineUnitPrice(item: MenuItem, choiceIds: string[]): number {
   return item.price + delta;
 }
 
-function MenuView({
-  restaurant, onBack, onOrderPlaced, initialCart,
-}: {
-  restaurant: ShoppingMerchant; onBack: () => void; onOrderPlaced: (order: EatsOrder) => void; initialCart?: Record<string, number>;
-}) {
-  const [menu, setMenu] = useState<{ businessName: string; products: MenuItem[] } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [cart, setCart] = useState<Record<string, EatsCartLine>>(
-    () => Object.fromEntries(Object.entries(initialCart ?? {}).map(([productId, quantity]) => [productId, { productId, quantity, choiceIds: [] }])),
-  );
-  // Real menu-options selection UI (2026-07-21, v1: required single-select only) -- see
-  // MenuOptionGroup.kt's own doc comment on the backend for the full account. Only one
-  // item's option panel is expanded at a time, matching this file's own established
-  // "inline-card-replaces-trigger" convention (no modal-overlay pattern exists anywhere
-  // in this codebase).
-  const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
-  const [pendingChoices, setPendingChoices] = useState<Record<string, string>>({});
-  const [address, setAddress] = useState('');
-  const [addressCoords, setAddressCoords] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [deliveryNotes, setDeliveryNotes] = useState('');
-  const [placing, setPlacing] = useState(false);
-  const [showCheckout, setShowCheckout] = useState(false);
-
-  const load = () => {
-    setError(null);
-    fetchMenu(restaurant.merchantId)
-      .then((r) => {
-        setMenu({ businessName: r.merchant.businessName, products: r.products });
-        // Real reorder-cart sanitization (2026-07-21) -- a reordered past order's cart is
-        // rebuilt from plain product ids with no option selections (see OrderFoodView's
-        // handleReorder, unchanged). If a product now genuinely requires an option
-        // selection, that bare line can never check out -- drop it rather than let
-        // checkout silently fail, same "discontinued item silently dropped" precedent
-        // handleReorder itself already established for a menu item that's gone entirely.
-        setCart((prev) => {
-          const next = { ...prev };
-          for (const [key, line] of Object.entries(prev)) {
-            const product = r.products.find((p) => p.id === line.productId);
-            if (product && (product.optionGroups?.length ?? 0) > 0 && line.choiceIds.length === 0) {
-              delete next[key];
-            }
-          }
-          return next;
-        });
-      })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this menu.'));
-  };
-
-  useEffect(load, [restaurant.merchantId]);
-
-  const cartItems = Object.entries(cart).filter(([, line]) => line.quantity > 0);
-  const cartCount = cartItems.reduce((sum, [, line]) => sum + line.quantity, 0);
-
-  // For a no-option item only -- the original single-stepper interaction, completely
-  // unchanged for the overwhelming majority of menu items that have no option groups.
-  const setSimpleQty = (productId: string, qty: number) => {
-    const key = eatsCartKey(productId, []);
-    setCart((c) => ({ ...c, [key]: { productId, quantity: Math.max(0, qty), choiceIds: [] } }));
-  };
-
-  const setLineQty = (key: string, line: EatsCartLine, qty: number) => {
-    setCart((c) => ({ ...c, [key]: { ...line, quantity: Math.max(0, qty) } }));
-  };
-
-  const toggleExpand = (productId: string) => {
-    setPendingChoices({});
-    setExpandedProductId((current) => (current === productId ? null : productId));
-  };
-
-  const addConfiguredToCart = (item: MenuItem) => {
-    const groups = item.optionGroups ?? [];
-    const choiceIds = groups.map((g) => pendingChoices[g.id]).filter((id): id is string => Boolean(id));
-    if (choiceIds.length !== groups.length) return; // one real required choice per group, enforced client-side too
-    const key = eatsCartKey(item.id, choiceIds);
-    setCart((c) => ({ ...c, [key]: { productId: item.id, quantity: (c[key]?.quantity ?? 0) + 1, choiceIds } }));
-    setPendingChoices({});
-    setExpandedProductId(null);
-  };
-
-  const handlePlaceOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!menu) return;
-    setPlacing(true);
-    setError(null);
-    try {
-      const items = cartItems.map(([, line]) => ({
-        menuItemId: line.productId, quantity: line.quantity,
-        selectedChoiceIds: line.choiceIds.length ? line.choiceIds : undefined,
-      }));
-      const result = await placeEatsOrder(
-        restaurant.merchantId, items, address.trim(), addressCoords?.latitude, addressCoords?.longitude,
-        deliveryNotes.trim() || undefined,
-      );
-      onOrderPlaced(result.order);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not place this order.');
-    } finally {
-      setPlacing(false);
-    }
-  };
-
-  if (error) {
-    return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
-    );
-  }
-
-  if (menu === null) {
-    return <div className="toss-card skeleton" style={{ height: '220px' }} />;
-  }
-
-  if (showCheckout) {
-    return (
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-          <button onClick={() => setShowCheckout(false)} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to menu">
-            <ArrowLeft size={20} />
-          </button>
-          <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Checkout</h3>
-        </div>
-        <form onSubmit={handlePlaceOrder} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {cartItems.map(([key, line]) => {
-            const item = menu.products.find((p) => p.id === line.productId);
-            if (!item) return null;
-            const unitPrice = eatsLineUnitPrice(item, line.choiceIds);
-            return (
-              <div key={key} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                <span>{item.name}{eatsOptionsSummary(item, line.choiceIds)} x{line.quantity}</span>
-                <span>{(unitPrice * line.quantity).toLocaleString()} RWF</span>
-              </div>
-            );
-          })}
-          <AddressAutocomplete
-            value={address}
-            onChangeText={(text) => { setAddress(text); setAddressCoords(null); }}
-            onSelectSuggestion={(s) => { setAddress(s.displayName); setAddressCoords({ latitude: s.latitude, longitude: s.longitude }); }}
-          />
-          {addressCoords && (
-            <p style={{ fontSize: '12px', color: 'var(--toss-green)' }}>Pinned -- real distance-based delivery fee applies</p>
-          )}
-          <textarea
-            value={deliveryNotes}
-            onChange={(e) => setDeliveryNotes(e.target.value.slice(0, 500))}
-            placeholder="Delivery notes (optional) -- e.g. Leave at the gate, call on arrival"
-            rows={2}
-            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'none', fontFamily: 'inherit' }}
-          />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={placing || !address.trim()}>
-            {placing ? 'Placing order…' : 'Place order'}
-          </button>
-          {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
-        </form>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to restaurants">
-          <ArrowLeft size={20} />
-        </button>
-        <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{menu.businessName}</h3>
-      </div>
-      <div style={{ marginBottom: '12px' }}>
-        <RestaurantRatingBadge restaurantId={restaurant.merchantId} />
-      </div>
-      {menu.products.length === 0 ? (
-        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No menu items yet.</p></div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: cartCount > 0 ? '80px' : 0 }}>
-          {menu.products.map((item) => {
-            const groups = item.optionGroups ?? [];
-            const hasOptions = groups.length > 0;
-            const simpleKey = eatsCartKey(item.id, []);
-            const simpleQty = hasOptions ? 0 : (cart[simpleKey]?.quantity ?? 0);
-            const isExpanded = expandedProductId === item.id;
-            const allGroupsChosen = groups.every((g) => Boolean(pendingChoices[g.id]));
-            return (
-              <div key={item.id} className="toss-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <p style={{ fontSize: '15px', fontWeight: 700 }}>{item.name}</p>
-                    <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-                      {item.price.toLocaleString()} RWF{hasOptions ? ' · options required' : ''}
-                    </p>
-                  </div>
-                  {hasOptions ? (
-                    <button onClick={() => toggleExpand(item.id)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }}>
-                      {isExpanded ? 'Close' : 'Choose options'}
-                    </button>
-                  ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <button onClick={() => setSimpleQty(item.id, simpleQty - 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>−</button>
-                      <span style={{ minWidth: '16px', textAlign: 'center', fontWeight: 700 }}>{simpleQty}</span>
-                      <button onClick={() => setSimpleQty(item.id, simpleQty + 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>+</button>
-                    </div>
-                  )}
-                </div>
-                {hasOptions && isExpanded && (
-                  <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--toss-grey-200)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {groups.map((group) => (
-                      <div key={group.id}>
-                        <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
-                          {group.name} <span style={{ color: 'var(--toss-grey-400)', fontWeight: 400 }}>· choose 1</span>
-                        </p>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {group.choices.map((choice) => (
-                            <label key={choice.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
-                              <input
-                                type="radio"
-                                name={`eats-option-group-${group.id}`}
-                                checked={pendingChoices[group.id] === choice.id}
-                                onChange={() => setPendingChoices((p) => ({ ...p, [group.id]: choice.id }))}
-                              />
-                              {choice.name}{choice.priceDelta > 0 ? ` (+${choice.priceDelta.toLocaleString()} RWF)` : ''}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      className="toss-btn toss-btn-primary"
-                      disabled={!allGroupsChosen}
-                      onClick={() => addConfiguredToCart(item)}
-                    >
-                      Add to cart
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-      {cartCount > 0 && (
-        <div className="toss-card" style={{ marginBottom: '80px', marginTop: '-2px' }}>
-          <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '10px' }}>Your cart</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {cartItems.map(([key, line]) => {
-              const item = menu.products.find((p) => p.id === line.productId);
-              if (!item) return null;
-              return (
-                <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '13px' }}>{item.name}{eatsOptionsSummary(item, line.choiceIds)}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button onClick={() => setLineQty(key, line, line.quantity - 1)} className="toss-btn toss-btn-secondary" style={{ padding: '4px 10px' }}>−</button>
-                    <span style={{ minWidth: '14px', textAlign: 'center', fontWeight: 700, fontSize: '13px' }}>{line.quantity}</span>
-                    <button onClick={() => setLineQty(key, line, line.quantity + 1)} className="toss-btn toss-btn-secondary" style={{ padding: '4px 10px' }}>+</button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      {cartCount > 0 && (
-        <button
-          className="toss-btn toss-btn-primary"
-          style={{ position: 'fixed', bottom: '24px', left: '20px', right: '20px', maxWidth: '440px', margin: '0 auto' }}
-          onClick={() => setShowCheckout(true)}
-        >
-          Checkout ({cartCount} item{cartCount === 1 ? '' : 's'})
-        </button>
-      )}
-    </div>
-  );
-}
-
-function MyEatsOrdersView({ onReorder, reorderingId, restaurants }: { onReorder: (order: EatsOrder) => void; reorderingId: string | null; restaurants: ShoppingMerchant[] | null }) {
-  const [orders, setOrders] = useState<EatsOrder[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [cancellingId, setCancellingId] = useState<string | null>(null);
-
-  const load = () => {
-    setError(null);
-    fetchMyEatsOrders().then(setOrders).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your orders.'));
-  };
-
-  useEffect(() => {
-    load();
-    // Real poll for order-tracking status, same 4s cadence as the Messages tab's
-    // poll-based delivery -- no live push transport exists here either.
-    const interval = setInterval(load, 4000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleCancel = async (orderId: string) => {
-    setCancellingId(orderId);
-    setError(null);
-    try {
-      await cancelEatsOrder(orderId);
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not cancel this order.');
-    } finally {
-      setCancellingId(null);
-    }
-  };
-
-  if (error) {
-    return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
-    );
-  }
-  if (orders === null) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
-  if (orders.length === 0) return <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No orders yet.</p></div>;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      {orders.map((o) => (
-        <EatsOrderCard
-          key={o.id}
-          order={o}
-          restaurant={restaurants?.find((r) => r.merchantId === o.restaurantId)}
-          action={
-            o.status === 'PLACED' ? (
-              <button className="toss-btn toss-btn-danger" disabled={cancellingId === o.id} onClick={() => handleCancel(o.id)}>
-                {cancellingId === o.id ? 'Cancelling…' : 'Cancel order'}
-              </button>
-            ) : o.status === 'DELIVERED' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <ReviewOrderCard order={o} onSubmitted={load} />
-                <button className="toss-btn toss-btn-secondary" disabled={reorderingId === o.id} onClick={() => onReorder(o)}>
-                  {reorderingId === o.id ? 'Reordering…' : 'Reorder'}
-                </button>
-              </div>
-            ) : o.status === 'CANCELLED' ? (
-              <button className="toss-btn toss-btn-secondary" disabled={reorderingId === o.id} onClick={() => onReorder(o)}>
-                {reorderingId === o.id ? 'Reordering…' : 'Reorder'}
-              </button>
-            ) : undefined
-          }
-        />
-      ))}
-    </div>
-  );
-}
-
 // Real shared browse-header component (2026-07-21) -- extracted from Eats'
 // OrderFoodView (the only place this pattern previously existed) so Shop's
 // merchant browse can reuse the identical search+chips interaction instead of a
 // second bespoke implementation. Callers own their own debounce/state; this just
 // renders the field + optional chip row.
-function SearchAndCategoryChips({
+export function SearchAndCategoryChips({
   searchInput,
   onSearchChange,
   placeholder,
@@ -4261,17 +1789,17 @@ function SearchAndCategoryChips({
         value={searchInput}
         onChange={(e) => onSearchChange(e.target.value)}
         placeholder={placeholder}
-        className="toss-card"
-        style={{ width: '100%', padding: '12px 16px', fontSize: '14px', marginBottom: '10px', border: 'none' }}
+        className="itunda-card"
+        style={{ width: '100%', padding: '12px 16px', fontSize: 'var(--itunda-type-scale-14-size)', marginBottom: '10px', border: 'none' }}
       />
       {categories.length > 0 && (
         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '14px' }}>
           <button
             onClick={() => onSelectCategory(null)}
             style={{
-              flexShrink: 0, padding: '6px 14px', borderRadius: '16px', fontSize: '12px', fontWeight: 700,
-              color: selectedCategory === null ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: selectedCategory === null ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+              flexShrink: 0, padding: '6px 14px', borderRadius: 'var(--itunda-radius-pill, 999px)', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
+              color: selectedCategory === null ? 'var(--itunda-surface-default)' : 'var(--itunda-text-secondary)',
+              backgroundColor: selectedCategory === null ? 'var(--itunda-indigo)' : 'var(--itunda-surface-subtle)',
             }}
           >
             All
@@ -4281,9 +1809,9 @@ function SearchAndCategoryChips({
               key={c}
               onClick={() => onSelectCategory(c === selectedCategory ? null : c)}
               style={{
-                flexShrink: 0, padding: '6px 14px', borderRadius: '16px', fontSize: '12px', fontWeight: 700,
-                color: selectedCategory === c ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-                backgroundColor: selectedCategory === c ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+                flexShrink: 0, padding: '6px 14px', borderRadius: 'var(--itunda-radius-pill, 999px)', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
+                color: selectedCategory === c ? 'var(--itunda-surface-default)' : 'var(--itunda-text-secondary)',
+                backgroundColor: selectedCategory === c ? 'var(--itunda-indigo)' : 'var(--itunda-surface-subtle)',
               }}
             >
               {c}
@@ -4295,1550 +1823,351 @@ function SearchAndCategoryChips({
   );
 }
 
-function OrderFoodView() {
-  const [view, setView] = useState<'BROWSE' | 'FAVORITES' | 'ORDERS'>('BROWSE');
-  const [restaurants, setRestaurants] = useState<ShoppingMerchant[] | null>(null);
-  // Unfiltered, fetched once -- used to resolve a past order's restaurant for Reorder
-  // even when that restaurant has been filtered out of the currently-browsed list.
-  const [allRestaurants, setAllRestaurants] = useState<ShoppingMerchant[] | null>(null);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [searchInput, setSearchInput] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<ShoppingMerchant | null>(null);
-  const [confirmed, setConfirmed] = useState<EatsOrder | null>(null);
-  const [reorderCart, setReorderCart] = useState<Record<string, number> | null>(null);
-  const [reorderingId, setReorderingId] = useState<string | null>(null);
-  const [reorderError, setReorderError] = useState<string | null>(null);
-  // Real bookmarked/favorited restaurants (2026-07-19) -- a set of restaurant ids for a
-  // fast star-toggle lookup on each browse card.
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
-  const [favoritingId, setFavoritingId] = useState<string | null>(null);
-
-  const loadFavorites = () => {
-    fetchMyFavoriteRestaurants().then((favs) => setFavoriteIds(new Set(favs.map((f) => f.restaurantId)))).catch(() => {});
-  };
+// Real Baemin-style 찜 리스트 공유하기 (share favorites list, 2026-08-16) -- DIRECT-only
+// (unlike ForwardPickerModal's DIRECT+GROUP picker), matching backend
+// EatsFavoriteService.shareFavoritesToConversation's own 1:1-conversation-only
+// capability (built on MessagingService, not GroupMessagingService).
+// Exported 2026-09-02 (Rides domain-split thread) -- RidesView.tsx's own
+// "Share Trip Status" also needs this, same real cross-domain shared-helper
+// pattern as AddressAutocomplete's own export above.
+export function ShareFavoritesModal({
+  onShare, onClose, title = 'Share favorites to…',
+}: { onShare: (conversationId: string) => void; onClose: () => void; title?: string }) {
+  const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
+  const showSkeleton = useDeferredLoading(conversations === null);
 
   useEffect(() => {
-    fetchRestaurants().then(setAllRestaurants).catch(() => {});
-    fetchRestaurantCategories().then(setCategories).catch(() => {});
-    loadFavorites();
+    fetchConversations().then((r) => setConversations(r.conversations)).catch(() => setConversations([]));
   }, []);
 
-  const toggleFavorite = async (restaurantId: string) => {
-    setFavoritingId(restaurantId);
-    try {
-      if (favoriteIds.has(restaurantId)) {
-        await removeFavoriteRestaurant(restaurantId);
-        setFavoriteIds((prev) => { const next = new Set(prev); next.delete(restaurantId); return next; });
-      } else {
-        await addFavoriteRestaurant(restaurantId);
-        setFavoriteIds((prev) => new Set(prev).add(restaurantId));
-      }
-    } catch {
-      // Real, non-critical -- a failed toggle just leaves the star as-is; the user can retry.
-    } finally {
-      setFavoritingId(null);
-    }
-  };
-
-  // Real category/search filter (2026-07-19), debounced so a search box doesn't
-  // re-fetch on every keystroke.
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchInput.trim()), 300);
-    return () => clearTimeout(timer);
-  }, [searchInput]);
-
-  const load = () => {
-    setError(null);
-    fetchRestaurants(selectedCategory ?? undefined, debouncedSearch || undefined)
-      .then(setRestaurants)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load restaurants.'));
-  };
-
-  useEffect(load, [selectedCategory, debouncedSearch]);
-
-  // Real "Reorder" (2026-07-19): re-populates a fresh cart from a real past order's
-  // real items, filtered to whatever's still real and active on the restaurant's
-  // current menu -- a discontinued item is silently dropped rather than added as a
-  // phantom line the buyer can't actually check out with.
-  const handleReorder = async (order: EatsOrder) => {
-    setReorderingId(order.id);
-    setReorderError(null);
-    try {
-      const restaurant = allRestaurants?.find((r) => r.merchantId === order.restaurantId);
-      if (!restaurant) {
-        setReorderError('This restaurant is no longer available.');
-        return;
-      }
-      const [{ items }, menu] = await Promise.all([fetchEatsOrder(order.id), fetchMenu(order.restaurantId)]);
-      const activeProductIds = new Set(menu.products.filter((p) => p.active).map((p) => p.id));
-      const cart: Record<string, number> = {};
-      items.forEach((item) => {
-        if (activeProductIds.has(item.productId)) {
-          cart[item.productId] = (cart[item.productId] ?? 0) + item.quantity;
-        }
-      });
-      if (Object.keys(cart).length === 0) {
-        setReorderError('None of the items from that order are on the menu anymore.');
-        return;
-      }
-      setReorderCart(cart);
-      setSelected(restaurant);
-      setView('BROWSE');
-    } catch (err) {
-      setReorderError(err instanceof ApiError ? err.message : 'Could not reorder.');
-    } finally {
-      setReorderingId(null);
-    }
-  };
-
-  if (confirmed) {
-    return (
-      <div className="toss-card" style={{ textAlign: 'center', padding: '28px' }}>
-        <ShieldCheck size={36} color="var(--toss-green)" style={{ marginBottom: '10px' }} />
-        <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '4px' }}>Order placed</h3>
-        <p style={{ fontSize: '22px', fontWeight: 700, marginBottom: '4px' }}>{confirmed.totalAmount.toLocaleString()} RWF</p>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>Delivering to {confirmed.deliveryAddress}</p>
-        <button
-          className="toss-btn toss-btn-secondary"
-          onClick={() => { setConfirmed(null); setSelected(null); setView('ORDERS'); }}
-        >
-          Track order
-        </button>
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', zIndex: 1000 }}
+      onClick={onClose}
+    >
+      <div
+        className="itunda-card"
+        style={{ width: '100%', maxHeight: '60vh', overflowY: 'auto', borderRadius: '16px 16px 0 0', margin: 0 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '12px' }}>{title}</p>
+        {conversations === null ? (
+          showSkeleton ? <div className="skeleton" style={{ height: '100px', borderRadius: 'var(--itunda-radius-md)' }} /> : null
+        ) : conversations.length === 0 ? (
+          <EmptyState message="No conversations to share to yet — start a chat first." />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {conversations.map((c) => (
+              <button
+                key={c.conversationId}
+                style={{ width: '100%', textAlign: 'left', padding: '10px 0' }}
+                onClick={() => onShare(c.conversationId)}
+              >
+                {c.otherUserName}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
-    );
-  }
+    </div>
+  );
+}
 
-  if (selected) {
-    return (
-      <MenuView
-        restaurant={selected}
-        onBack={() => { setSelected(null); setReorderCart(null); }}
-        onOrderPlaced={setConfirmed}
-        initialCart={reorderCart ?? undefined}
-      />
-    );
-  }
+// Exported 2026-09-02 (Rides domain-split thread) -- RidesView.tsx's own
+// pickup/dropoff pickers also need this, same real cross-domain shared-helper
+// pattern as AddressAutocomplete/ShareFavoritesModal's own exports above.
+export function PlaceSearchInput({ label, placeholder, value, onSelect }: {
+  label: string; placeholder: string; value: PlaceSearchResult | null; onSelect: (place: PlaceSearchResult) => void;
+}) {
+  const [query, setQuery] = useState(value?.displayName ?? '');
+  const [results, setResults] = useState<PlaceSearchResult[] | null>(null);
+  // Real a11y fix (item 244, web accessibility sweep -- docs/ACCESSIBILITY.md had
+  // never covered the web micro-frontends at all before this pass): the <label>
+  // above used to be a plain sibling of <input>, with no htmlFor/id association at
+  // all -- unlike every other form field in this codebase (LoginPage/RegisterPage/
+  // merchant-mfe screens), which wrap the input as the label's own descendant.
+  // Neither clicking the label nor a screen reader's field name worked here. This
+  // component is real, live UI used 5 times across ride/rental pickup+dropoff
+  // fields (BankDashboard.tsx), not dead code.
+  const inputId = useId();
+
+  // Real Uber/Kakao T-style saved-places quick-select (2026-08-23) -- itunda already
+  // has a real, backend-synced "map bookmarks" feature (the Maps tab's own star/save,
+  // folders/colors and all), never surfaced anywhere in ride booking despite being
+  // exactly the real "Home"/"Work" shortcut every real ride-hailing app shows before
+  // you type anything -- a real, confirmed gap (grep found zero references to
+  // bookmarks anywhere in the ride-booking code). Fetched once per mount (a small,
+  // per-account list, no pagination needed) rather than threaded in as a prop, so all
+  // 5 existing call sites of this shared component (ride + rental pickup/dropoff/stops)
+  // get it for free.
+  const [bookmarks, setBookmarks] = useState<MapBookmark[]>([]);
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    fetchMyMapBookmarks().then(setBookmarks).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!query || query === value?.displayName) { setResults(null); return; }
+    const handle = setTimeout(() => {
+      searchPlaces(query).then(setResults).catch(() => setResults([]));
+    }, 350);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+
+  const selectBookmark = (b: MapBookmark) => {
+    onSelect({ displayName: b.displayName, latitude: b.latitude, longitude: b.longitude });
+    setQuery(b.displayName);
+    setFocused(false);
+  };
 
   return (
-    <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'FAVORITES', 'ORDERS'] as const).map((v) => (
-          <button
-            key={v}
-            onClick={() => setView(v)}
-            style={{
-              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: view === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
-            }}
-          >
-            {v === 'BROWSE' ? 'Restaurants' : v === 'FAVORITES' ? 'Favorites' : 'My orders'}
-          </button>
-        ))}
-      </div>
-
-      {view === 'ORDERS' ? (
-        <>
-          {reorderError && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '10px' }} role="alert">{reorderError}</p>}
-          <MyEatsOrdersView onReorder={handleReorder} reorderingId={reorderingId} restaurants={allRestaurants} />
-        </>
-      ) : view === 'FAVORITES' ? (
-        <FavoriteRestaurantsView
-          onOpen={(r) => setSelected({ merchantId: r.restaurantId, businessName: r.businessName, category: r.category, cashbackRate: '1%' })}
-          onChanged={loadFavorites}
-        />
-      ) : (
-        <>
-          <SearchAndCategoryChips
-            searchInput={searchInput}
-            onSearchChange={setSearchInput}
-            placeholder="Search restaurants"
-            categories={categories}
-            selectedCategory={selectedCategory}
-            onSelectCategory={setSelectedCategory}
-          />
-          {error ? (
-            <div className="toss-card">
-              <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-              <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-            </div>
-          ) : restaurants === null ? (
-            <div className="toss-card skeleton" style={{ height: '220px' }} />
-          ) : restaurants.length === 0 ? (
-            <div className="toss-card">
-              <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-                {selectedCategory || debouncedSearch ? 'No restaurants match your search.' : 'No restaurants registered yet.'}
-              </p>
-            </div>
-          ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {restaurants.map((r) => (
-            <div
-              key={r.merchantId}
-              role="button"
-              tabIndex={0}
-              onClick={() => setSelected(r)}
-              onKeyDown={(e) => { if (e.key === 'Enter') setSelected(r); }}
-              className="toss-card"
-              style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%', cursor: 'pointer' }}
+    <div style={{ position: 'relative', marginBottom: '12px' }}>
+      <label htmlFor={inputId} style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)', fontWeight: 700, display: 'block', marginBottom: '4px' }}>{label}</label>
+      <input
+        id={inputId}
+        type="text" value={query} placeholder={placeholder}
+        onChange={(e) => setQuery(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setTimeout(() => setFocused(false), 150)}
+        style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)', fontSize: 'var(--itunda-type-scale-14-size)' }}
+      />
+      {results && results.length > 0 && (
+        <div className="itunda-card" style={{ position: 'absolute', zIndex: 10, width: '100%', marginTop: '4px', padding: '4px', maxHeight: '220px', overflowY: 'auto' }}>
+          {results.map((r, i) => (
+            <button
+              key={`${r.latitude}-${r.longitude}-${i}`} type="button"
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px', fontSize: 'var(--itunda-type-scale-13-size)', borderRadius: 'var(--itunda-control-radius, 12px)' }}
+              onClick={() => { onSelect(r); setQuery(r.displayName); setResults(null); }}
             >
-              {r.photoUrl ? (
-                <img
-                  src={r.photoUrl} alt=""
-                  style={{ width: '44px', height: '44px', borderRadius: '12px', objectFit: 'cover', flexShrink: 0, backgroundColor: 'var(--toss-blue-light)' }}
-                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                />
-              ) : (
-                <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Utensils size={20} color="var(--toss-blue)" />
-                </div>
-              )}
-              <div style={{ flex: 1 }}>
-                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{r.businessName}</p>
-                {/* Real browse-card enrichment (2026-07-21) -- rating/reviewCount/distance/
-                    delivery-time estimate/min order, closing docs/DESIGN_REFERENCES.md's
-                    Eats recommendations #1/#2. Every clause is conditionally rendered on
-                    real data being present -- never a fabricated placeholder. */}
-                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                  {r.category && <span>{r.category}</span>}
-                  {r.rating != null && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                      <Star size={11} color="#F5A623" fill="#F5A623" /> {r.rating.toFixed(1)} ({r.reviewCount})
-                    </span>
-                  )}
-                  {r.distanceKm != null && <span>· {r.distanceKm.toFixed(1)} km</span>}
-                  {r.deliveryTimeMinutes != null && <span>· ~{r.deliveryTimeMinutes} min</span>}
-                  {r.minOrderAmount != null && <span>· Min {r.minOrderAmount.toLocaleString()} RWF</span>}
-                  {!r.category && r.rating == null && r.distanceKm == null && <span>Real menu, real delivery</span>}
-                </p>
-              </div>
-              <button
-                onClick={(e) => { e.stopPropagation(); toggleFavorite(r.merchantId); }}
-                disabled={favoritingId === r.merchantId}
-                aria-label={favoriteIds.has(r.merchantId) ? 'Remove from favorites' : 'Add to favorites'}
-                style={{ padding: '6px', flexShrink: 0 }}
-              >
-                <Heart size={20} color={favoriteIds.has(r.merchantId) ? '#E53935' : 'var(--toss-grey-400)'} fill={favoriteIds.has(r.merchantId) ? '#E53935' : 'none'} />
-              </button>
-            </div>
+              {r.displayName}
+            </button>
           ))}
         </div>
-          )}
-        </>
       )}
-    </div>
-  );
-}
-
-// Real bookmarked/favorited restaurants (2026-07-19) -- self-contained, mirroring
-// MyEatsOrdersView's own load/local-state pattern; onChanged resyncs OrderFoodView's
-// favoriteIds set so the Browse tab's stars stay correct after an unfavorite here.
-function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: FavoriteRestaurant) => void; onChanged: () => void }) {
-  const [favorites, setFavorites] = useState<FavoriteRestaurant[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [removingId, setRemovingId] = useState<string | null>(null);
-
-  const load = () => {
-    setError(null);
-    fetchMyFavoriteRestaurants().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load favorites.'));
-  };
-
-  useEffect(load, []);
-
-  const handleRemove = async (restaurantId: string) => {
-    setRemovingId(restaurantId);
-    try {
-      await removeFavoriteRestaurant(restaurantId);
-      setFavorites((prev) => prev?.filter((f) => f.restaurantId !== restaurantId) ?? prev);
-      onChanged();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not remove favorite.');
-    } finally {
-      setRemovingId(null);
-    }
-  };
-
-  if (error) {
-    return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
-    );
-  }
-  if (favorites === null) {
-    return <div className="toss-card skeleton" style={{ height: '220px' }} />;
-  }
-  if (favorites.length === 0) {
-    return <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No favorite restaurants yet. Tap the heart on a restaurant to save it here.</p></div>;
-  }
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      {favorites.map((f) => (
-        <div
-          key={f.restaurantId}
-          role="button"
-          tabIndex={0}
-          onClick={() => onOpen(f)}
-          onKeyDown={(e) => { if (e.key === 'Enter') onOpen(f); }}
-          className="toss-card"
-          style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%', cursor: 'pointer' }}
-        >
-          <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Utensils size={20} color="var(--toss-blue)" />
-          </div>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{f.businessName}</p>
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{f.category ? `${f.category} · Real menu, real delivery` : 'Real menu, real delivery'}</p>
-          </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); handleRemove(f.restaurantId); }}
-            disabled={removingId === f.restaurantId}
-            aria-label="Remove from favorites"
-            style={{ padding: '6px', flexShrink: 0 }}
-          >
-            <Heart size={20} color="#E53935" fill="#E53935" />
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function DeliverView() {
-  const [rider, setRider] = useState<Rider | null | undefined>(undefined);
-  const [error, setError] = useState<string | null>(null);
-  const [registering, setRegistering] = useState(false);
-  const [available, setAvailable] = useState<EatsOrder[] | null>(null);
-  const [mine, setMine] = useState<EatsOrder[] | null>(null);
-  const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
-
-  const loadRider = () => {
-    setError(null);
-    fetchMyRiderProfile()
-      .then(setRider)
-      .catch((err) => {
-        if (err instanceof ApiError && err.code === 'RIDER_NOT_REGISTERED') {
-          setRider(null);
-        } else {
-          setError(err instanceof ApiError ? err.message : 'Could not load your rider profile.');
-        }
-      });
-  };
-
-  useEffect(loadRider, []);
-
-  const loadDeliveries = () => {
-    Promise.all([fetchAvailableDeliveries(), fetchRiderDeliveries()])
-      .then(([a, m]) => { setAvailable(a); setMine(m); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load deliveries.'));
-  };
-
-  useEffect(() => {
-    if (!rider) return;
-    loadDeliveries();
-    const interval = setInterval(loadDeliveries, 4000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rider?.id]);
-
-  const handleRegister = async () => {
-    setRegistering(true);
-    setError(null);
-    try {
-      setRider(await registerRider());
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not register as a rider.');
-    } finally {
-      setRegistering(false);
-    }
-  };
-
-  const handleToggleAvailable = async () => {
-    if (!rider) return;
-    try {
-      setRider(await setRiderAvailability(!rider.available));
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update your availability.');
-    }
-  };
-
-  const handleClaim = async (orderId: string) => {
-    setBusyOrderId(orderId);
-    setError(null);
-    try {
-      await claimDelivery(orderId);
-      loadDeliveries();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not claim this delivery.');
-    } finally {
-      setBusyOrderId(null);
-    }
-  };
-
-  const handleAdvance = async (order: EatsOrder) => {
-    const next = nextInChain(RIDER_STATUS_CHAIN, order.status);
-    if (!next) return;
-    setBusyOrderId(order.id);
-    setError(null);
-    try {
-      await advanceRiderOrder(order.id, next);
-      loadDeliveries();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this delivery.');
-    } finally {
-      setBusyOrderId(null);
-    }
-  };
-
-  if (rider === undefined) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
-
-  if (rider === null) {
-    return (
-      <div className="toss-card" style={{ textAlign: 'center', padding: '28px' }}>
-        <Bike size={32} color="var(--toss-blue)" style={{ marginBottom: '10px' }} />
-        <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>Deliver with Itunda</h3>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
-          Earn a real delivery fee for every order you deliver, paid straight to your wallet.
-        </p>
-        <button className="toss-btn toss-btn-primary" onClick={handleRegister} disabled={registering}>
-          {registering ? 'Registering…' : 'Become a rider'}
-        </button>
-        {error && <p style={{ fontSize: '13px', color: '#E53935', marginTop: '12px' }} role="alert">{error}</p>}
-      </div>
-    );
-  }
-
-  const activeDeliveries = (mine ?? []).filter((o) => o.status !== 'DELIVERED');
-  const pastDeliveries = (mine ?? []).filter((o) => o.status === 'DELIVERED');
-
-  return (
-    <div>
-      <div className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <div>
-          <p style={{ fontSize: '15px', fontWeight: 700 }}>{rider.available ? "You're online" : "You're offline"}</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{rider.available ? 'Visible for new deliveries' : 'Go online to see deliveries'}</p>
-        </div>
-        <button className={rider.available ? 'toss-btn toss-btn-danger' : 'toss-btn toss-btn-primary'} onClick={handleToggleAvailable}>
-          {rider.available ? 'Go offline' : 'Go online'}
-        </button>
-      </div>
-
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '12px' }} role="alert">{error}</p>}
-
-      {activeDeliveries.length > 0 && (
-        <div style={{ marginBottom: '20px' }}>
-          <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your active deliveries</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {activeDeliveries.map((o) => {
-              const next = nextInChain(RIDER_STATUS_CHAIN, o.status);
-              return (
-                <EatsOrderCard
-                  key={o.id}
-                  order={o}
-                  action={next && (
-                    <button className="toss-btn toss-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleAdvance(o)}>
-                      {busyOrderId === o.id ? 'Updating…' : `Mark ${EATS_STATUS_LABEL[next].toLowerCase()}`}
-                    </button>
-                  )}
-                />
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {rider.available && (
-        <div style={{ marginBottom: '20px' }}>
-          <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Available deliveries</h4>
-          {available === null ? (
-            <div className="toss-card skeleton" style={{ height: '100px' }} />
-          ) : available.length === 0 ? (
-            <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No deliveries waiting right now.</p></div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {available.map((o) => (
-                <EatsOrderCard
-                  key={o.id}
-                  order={o}
-                  action={
-                    <button className="toss-btn toss-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleClaim(o.id)}>
-                      {busyOrderId === o.id ? 'Claiming…' : 'Claim delivery'}
-                    </button>
-                  }
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {pastDeliveries.length > 0 && (
-        <div>
-          <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Completed</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {pastDeliveries.map((o) => <EatsOrderCard key={o.id} order={o} />)}
-          </div>
+      {!query && focused && bookmarks.length > 0 && (
+        <div className="itunda-card" style={{ position: 'absolute', zIndex: 10, width: '100%', marginTop: '4px', padding: '4px', maxHeight: '220px', overflowY: 'auto' }}>
+          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-text-tertiary)', fontWeight: 700, padding: '6px 10px 2px' }}>Saved places</p>
+          {bookmarks.map((b) => (
+            <button
+              key={b.id} type="button"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', textAlign: 'left', padding: '10px', fontSize: 'var(--itunda-type-scale-13-size)', borderRadius: 'var(--itunda-control-radius, 12px)' }}
+              onClick={() => selectBookmark(b)}
+            >
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: b.color, flexShrink: 0 }} />
+              <span>
+                <span style={{ display: 'block', fontWeight: 700 }}>{b.displayName}</span>
+                <span style={{ display: 'block', fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-text-tertiary)' }}>{b.folderName}</span>
+              </span>
+            </button>
+          ))}
         </div>
       )}
     </div>
   );
-}
-
-function RestaurantOrdersView() {
-  const [orders, setOrders] = useState<EatsOrder[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
-
-  const load = () => {
-    fetchRestaurantOrders()
-      .then(setOrders)
-      .catch((err) => {
-        // A real, expected 404 for any account that hasn't registered as a merchant --
-        // this view stays silent rather than showing an alarming error for the common
-        // case of a buyer-only account that has no restaurant.
-        if (err instanceof ApiError && err.code === 'RESTAURANT_NOT_FOUND') {
-          setOrders([]);
-        } else {
-          setError(err instanceof ApiError ? err.message : 'Could not load your restaurant orders.');
-        }
-      });
-  };
-
-  useEffect(() => {
-    load();
-    const interval = setInterval(load, 4000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleAdvance = async (order: EatsOrder) => {
-    const next = nextInChain(RESTAURANT_STATUS_CHAIN, order.status);
-    if (!next) return;
-    setBusyOrderId(order.id);
-    setError(null);
-    try {
-      await advanceRestaurantOrder(order.id, next);
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this order.');
-    } finally {
-      setBusyOrderId(null);
-    }
-  };
-
-  if (error) {
-    return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
-    );
-  }
-  if (orders === null) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
-  if (orders.length === 0) return null;
-
-  return (
-    <div style={{ marginBottom: '20px' }}>
-      <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Orders for your restaurant</h4>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {orders.map((o) => {
-          const next = nextInChain(RESTAURANT_STATUS_CHAIN, o.status);
-          return (
-            <EatsOrderCard
-              key={o.id}
-              order={o}
-              action={next && (
-                <button className="toss-btn toss-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleAdvance(o)}>
-                  {busyOrderId === o.id ? 'Updating…' : `Mark ${EATS_STATUS_LABEL[next].toLowerCase()}`}
-                </button>
-              )}
-            />
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function EatsView() {
-  const [mode, setMode] = useState<'ORDER' | 'DELIVER'>('ORDER');
-
-  return (
-    <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['ORDER', 'DELIVER'] as const).map((v) => (
-          <button
-            key={v}
-            onClick={() => setMode(v)}
-            style={{
-              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: mode === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: mode === v ? 'var(--toss-blue)' : 'transparent',
-            }}
-          >
-            {v === 'ORDER' ? 'Order food' : 'Deliver'}
-          </button>
-        ))}
-      </div>
-      {mode === 'ORDER' ? (
-        <div>
-          <RestaurantOrdersView />
-          <OrderFoodView />
-        </div>
-      ) : (
-        <DeliverView />
-      )}
-    </div>
-  );
-}
-
-const COMMERCE_STATUS_LABEL: Record<CommerceOrderStatus, string> = {
-  PLACED: 'Placed',
-  PACKED: 'Packed',
-  SHIPPED: 'Shipped',
-  DELIVERED: 'Delivered',
-  CANCELLED: 'Cancelled — refunded',
-};
-
-const COMMERCE_STATUS_CHAIN: CommerceOrderStatus[] = ['PLACED', 'PACKED', 'SHIPPED', 'DELIVERED'];
-
-function CommerceOrderCard({ order, action }: { order: CommerceOrder; action?: React.ReactNode }) {
-  return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-blue)' }}>{COMMERCE_STATUS_LABEL[order.status]}</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{order.deliveryAddress}</p>
-        </div>
-        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{order.totalAmount.toLocaleString()} RWF</span>
-      </div>
-      {action}
-    </div>
-  );
-}
-
-// Real post-delivery product reviews (2026-07-20), mirroring Eats' own
-// RestaurantRatingBadge/ReviewOrderCard pattern -- see ProductReviewService's own doc
-// comment for the full backend account. One real review per real delivered line item.
-function ProductRatingBadge({ productId }: { productId: string }) {
-  const [rating, setRating] = useState<{ average: number | null; count: number } | null>(null);
-  const [open, setOpen] = useState(false);
-  const [reviews, setReviews] = useState<ProductReview[] | null>(null);
-
-  useEffect(() => {
-    fetchProductRating(productId).then(setRating).catch(() => {
-      // Real, non-critical -- a rating fetch failure shouldn't block browsing the catalog.
-    });
-  }, [productId]);
-
-  const toggle = () => {
-    const next = !open;
-    setOpen(next);
-    if (next && reviews === null) {
-      fetchProductReviews(productId).then(setReviews).catch(() => setReviews([]));
-    }
-  };
-
-  if (!rating || rating.count === 0) return null;
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={toggle}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--toss-grey-700)', padding: 0 }}
-      >
-        <Star size={13} color="#F5A623" fill="#F5A623" />
-        {rating.average?.toFixed(1)} ({rating.count})
-      </button>
-      {open && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
-          {reviews === null ? (
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Loading reviews…</p>
-          ) : reviews.length === 0 ? (
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No written reviews yet.</p>
-          ) : (
-            reviews.map((r) => (
-              <div key={r.id} style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>
-                <span style={{ color: '#F5A623' }}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
-                {r.comment && <span> — {r.comment}</span>}
-              </div>
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ProductReviewRow({ item }: { item: CommerceOrderItem }) {
-  const [open, setOpen] = useState(false);
-  const [rating, setRating] = useState(0);
-  const [comment, setComment] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (rating === 0) {
-      setError('Pick a star rating.');
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
-    try {
-      await submitProductReview(item.id, rating, comment);
-      setDone(true);
-    } catch (err) {
-      if (err instanceof ApiError && err.code === 'PRODUCT_ALREADY_REVIEWED') {
-        setDone(true);
-      } else {
-        setError(err instanceof ApiError ? err.message : 'Could not submit this review.');
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (done) {
-    return (
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{item.productName}: thanks for your review!</p>
-    );
-  }
-
-  if (!open) {
-    return (
-      <button className="toss-btn toss-btn-secondary" style={{ fontSize: '12px', padding: '8px 12px' }} onClick={() => setOpen(true)}>
-        Rate {item.productName}
-      </button>
-    );
-  }
-
-  return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{item.productName}</p>
-      <StarRatingInput value={rating} onChange={setRating} />
-      <input
-        type="text"
-        value={comment}
-        onChange={(e) => setComment(e.target.value)}
-        placeholder="How was it? (optional)"
-        style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
-      />
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
-          {submitting ? 'Submitting…' : 'Submit review'}
-        </button>
-      </div>
-    </form>
-  );
-}
-
-function OrderItemReviews({ order }: { order: CommerceOrder }) {
-  const [items, setItems] = useState<CommerceOrderItem[] | null>(null);
-
-  useEffect(() => {
-    fetchOrderDetail(order.id).then((r) => setItems(r.items)).catch(() => {
-      // Real, non-critical -- if item fetch fails, the order card itself still renders fine.
-    });
-  }, [order.id]);
-
-  if (!items || items.length === 0) return null;
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
-      {items.map((item) => <ProductReviewRow key={item.id} item={item} />)}
-    </div>
-  );
-}
-
-// Real cross-merchant cart (2026-07-20) -- closes the "real Coupang splits a
-// multi-seller cart into per-seller orders, not attempted here" simplification this
-// row's own text named. Keyed by merchantId so a buyer can browse merchant A, add
-// items, go back, browse merchant B, add items there too, and check out everything
-// in one pass -- each merchant's line items get a real, separate placeOrder() call
-// (the backend already only ever accepted one merchantId per order; no backend
-// change needed at all, this is purely a client-side cart-architecture change).
-interface CommerceCartGroup {
-  businessName: string;
-  lines: Record<string, { product: CommerceProduct; quantity: number }>;
-}
-type CommerceCart = Record<string, CommerceCartGroup>;
-
-function cartTotalItems(cart: CommerceCart): number {
-  return Object.values(cart).reduce((sum, group) => sum + Object.values(group.lines).reduce((s, l) => s + l.quantity, 0), 0);
 }
 
 // Real product wishlist toggle (2026-07-20) -- the real "찜하기" heart every real
 // Coupang/Naver/Kakao/Toss Shopping-style catalog card has. Purely presentational --
 // favorited-state is lifted to ProductCatalogView and fetched once for the whole
 // catalog, not once per product card, to avoid N duplicate list fetches.
-function WishlistButton({ favorited, busy, onToggle }: { favorited: boolean; busy: boolean; onToggle: () => void }) {
+export function WishlistButton({ favorited, busy, onToggle }: { favorited: boolean; busy: boolean; onToggle: () => void }) {
   return (
     <button
       type="button"
       onClick={onToggle}
       disabled={busy}
       aria-label={favorited ? 'Remove from wishlist' : 'Add to wishlist'}
-      style={{ fontSize: '18px', lineHeight: 1, color: favorited ? '#E53935' : 'var(--toss-grey-300)' }}
+      style={{ display: 'flex', lineHeight: 1 }}
     >
-      {favorited ? '♥' : '♡'}
+      <WishlistHeart favorited={favorited} size={18} />
     </button>
   );
 }
 
-// Real product-image thumbnail (2026-07-21) -- imageUrl is a merchant-supplied external
-// URL (see backend MerchantProduct.kt's own doc comment: no upload/storage layer exists
-// in this backend, so this is a real "bring your own URL" v1, not a fake pipeline). A
-// plain <img> with onError falling back to the same placeholder icon shown for a
-// product that simply has no image set at all -- both are real, valid states.
-function ProductImageThumb({ imageUrl, size = 96 }: { imageUrl?: string | null; size?: number }) {
-  const [failed, setFailed] = useState(false);
-  if (!imageUrl || failed) {
-    return (
-      <div style={{ width: size, height: size, borderRadius: '12px', background: 'var(--toss-grey-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <ShoppingBag size={size * 0.4} color="var(--toss-blue)" />
-      </div>
-    );
-  }
+// Real Karrot-Score-style numeric trust/reputation badge (2026-07-24) -- backend
+// (User.trustScore, TrustScoreService) and the trustScores map on every Hood browse
+// response have existed since 2026-07-21, and this file already fetched it into state
+// via fetchListings/fetchMyListings/etc, but never rendered it anywhere -- closes
+// docs/DESIGN_REFERENCES.md Section 4 recommendation #1. Deliberately a plain 0-1000
+// number, never a manner-temperature/Celsius metaphor (see backend User.kt's own doc
+// comment on why that's specifically wrong for a non-Korean market).
+export function TrustBadge({ score }: { score: number }) {
   return (
-    <img
-      src={imageUrl}
-      alt=""
-      onError={() => setFailed(true)}
-      style={{ width: size, height: size, borderRadius: '12px', objectFit: 'cover', background: 'var(--toss-grey-100)', flexShrink: 0 }}
-    />
+    <span
+      style={{
+        fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-grey-600)',
+        backgroundColor: 'var(--itunda-surface-subtle)', padding: '2px 8px', borderRadius: 'var(--itunda-radius-pill, 999px)',
+      }}
+    >
+      Trust {score}
+    </span>
   );
 }
 
-// Real discount-price display (2026-07-21) -- Baymard Institute's own placement
-// research (docs/DESIGN_REFERENCES.md Section 5): the discount % must sit immediately
-// next to the struck-through original price. discountPercent is always server-computed
-// (see backend doc comment), never trusted from the client -- purely a rendering of
-// numbers the server already validated.
-function ProductPriceBlock({ price, originalPrice, discountPercent }: { price: number; originalPrice?: number | null; discountPercent?: number | null }) {
-  if (originalPrice != null && discountPercent != null && discountPercent > 0) {
-    return (
-      <div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 700, color: '#E53935' }}>{discountPercent}%</span>
-          <span style={{ fontSize: '14px', fontWeight: 700 }}>{price.toLocaleString()} RWF</span>
-        </div>
-        <p style={{ fontSize: '11px', color: 'var(--toss-grey-400)', textDecoration: 'line-through' }}>{originalPrice.toLocaleString()} RWF</p>
-      </div>
-    );
-  }
-  return <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{price.toLocaleString()} RWF</p>;
-}
+// Real content-report submission (item 156) -- see lib/hoodReport.ts's own doc comment.
+// Shared across Marketplace/Community/Jobs/Property (the same 4-target scope Android's
+// own HoodReportAction/HoodShared.kt already established), same real preset reasons
+// Android's own dialog uses. Wraps its own click in stopPropagation since every caller
+// renders this inside a whole-card onClick/onOpen handler.
+export function HoodReportButton({ targetType, targetId }: { targetType: HoodReportTargetType; targetId: string }) {
+  const [showChoices, setShowChoices] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
-function ProductCatalogView({
-  merchant, cart, onSetQty, onBack, onViewCart,
-}: {
-  merchant: ShoppingMerchant;
-  cart: CommerceCart;
-  onSetQty: (merchant: ShoppingMerchant, product: CommerceProduct, quantity: number) => void;
-  onBack: () => void;
-  onViewCart: () => void;
-}) {
-  const [catalog, setCatalog] = useState<{ businessName: string; products: CommerceProduct[] } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [favoritedIds, setFavoritedIds] = useState<Set<string>>(new Set());
-  const [togglingId, setTogglingId] = useState<string | null>(null);
-
-  const load = () => {
-    setError(null);
-    fetchMerchantProducts(merchant.merchantId)
-      .then((r) => setCatalog({ businessName: r.merchant.businessName, products: r.products }))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this catalog.'));
-    fetchMyFavoriteProducts()
-      .then((favorites) => setFavoritedIds(new Set(favorites.map((f) => f.productId))))
-      .catch(() => {
-        // Real, non-critical -- a wishlist-status fetch failure shouldn't block browsing.
-      });
-  };
-
-  useEffect(load, [merchant.merchantId]);
-
-  const toggleFavorite = async (productId: string) => {
-    setTogglingId(productId);
+  const send = async (reason: string) => {
+    setShowChoices(false);
+    setSending(true);
     try {
-      if (favoritedIds.has(productId)) {
-        await removeProductFavorite(productId);
-        setFavoritedIds((prev) => { const next = new Set(prev); next.delete(productId); return next; });
-      } else {
-        await addProductFavorite(productId);
-        setFavoritedIds((prev) => new Set(prev).add(productId));
-      }
-    } catch {
-      // Real, non-critical -- a wishlist toggle failure shouldn't block browsing.
-    } finally {
-      setTogglingId(null);
-    }
-  };
-
-  const myLines = cart[merchant.merchantId]?.lines ?? {};
-  const qtyFor = (productId: string) => myLines[productId]?.quantity ?? 0;
-  const totalCartItems = cartTotalItems(cart);
-
-  if (error) {
-    return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
-    );
-  }
-
-  if (catalog === null) {
-    return <div className="toss-card skeleton" style={{ height: '220px' }} />;
-  }
-
-  return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to merchants">
-          <ArrowLeft size={20} />
-        </button>
-        <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{catalog.businessName}</h3>
-      </div>
-      {catalog.products.length === 0 ? (
-        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No products yet.</p></div>
-      ) : (
-        // Real 2-column image-led grid (2026-07-21), replacing the previous
-        // single-column text-only row -- closes docs/DESIGN_REFERENCES.md Section 5
-        // recommendation #5 (Chloe Youn's Coupang case study: real cards are
-        // image-led, with add-to-cart/wishlist directly on the card, not buried behind
-        // a detail-page visit -- recommendation #7).
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: totalCartItems > 0 ? '80px' : 0 }}>
-          {catalog.products.map((item) => (
-            <div key={item.id} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <ProductImageThumb imageUrl={item.imageUrl} />
-                <WishlistButton
-                  favorited={favoritedIds.has(item.id)}
-                  busy={togglingId === item.id}
-                  onToggle={() => toggleFavorite(item.id)}
-                />
-              </div>
-              <p style={{ fontSize: '14px', fontWeight: 700, lineHeight: 1.3 }}>{item.name}</p>
-              <ProductPriceBlock price={item.price} originalPrice={item.originalPrice} discountPercent={item.discountPercent} />
-              <ProductRatingBadge productId={item.id} />
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginTop: '4px' }}>
-                <button onClick={() => onSetQty(merchant, item, qtyFor(item.id) - 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>−</button>
-                <span style={{ minWidth: '16px', textAlign: 'center', fontWeight: 700 }}>{qtyFor(item.id)}</span>
-                <button onClick={() => onSetQty(merchant, item, qtyFor(item.id) + 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>+</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      {totalCartItems > 0 && (
-        <button
-          className="toss-btn toss-btn-primary"
-          style={{ position: 'fixed', bottom: '24px', left: '20px', right: '20px', maxWidth: '440px', margin: '0 auto' }}
-          onClick={onViewCart}
-        >
-          View cart ({totalCartItems} item{totalCartItems === 1 ? '' : 's'})
-        </button>
-      )}
-    </div>
-  );
-}
-
-interface CommerceCheckoutResult {
-  merchantId: string;
-  businessName: string;
-  success: boolean;
-  order?: CommerceOrder;
-  error?: string;
-}
-
-function MultiCartView({
-  cart, onBack, onSetQty, onCheckedOut,
-}: {
-  cart: CommerceCart;
-  onBack: () => void;
-  onSetQty: (merchantId: string, productId: string, quantity: number) => void;
-  onCheckedOut: (results: CommerceCheckoutResult[]) => void;
-}) {
-  const [address, setAddress] = useState('');
-  const [placing, setPlacing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const groups = Object.entries(cart).filter(([, g]) => Object.values(g.lines).some((l) => l.quantity > 0));
-  const grandTotal = groups.reduce(
-    (sum, [, g]) => sum + Object.values(g.lines).reduce((s, l) => s + l.product.price * l.quantity, 0),
-    0,
-  );
-
-  // Real per-seller order splitting -- each merchant group becomes its own real,
-  // independent placeOrder() call (its own Idempotency-Key, its own wallet-to-wallet
-  // ledger transaction). Sequential, not Promise.all: these are real money-moving
-  // calls against the same buyer wallet, and a clear one-at-a-time result list is
-  // more honest than a swallowed Promise.allSettled. A failure on one merchant's
-  // order does not block or roll back any other -- exactly how a real multi-seller
-  // checkout behaves (each seller is charged/fulfilled independently in real life).
-  const handlePlaceOrders = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPlacing(true);
-    setError(null);
-    const results: CommerceCheckoutResult[] = [];
-    for (const [merchantId, group] of groups) {
-      const items = Object.entries(group.lines).filter(([, l]) => l.quantity > 0).map(([productId, l]) => ({ productId, quantity: l.quantity }));
-      try {
-        const result = await placeOrder(merchantId, items, address.trim());
-        results.push({ merchantId, businessName: group.businessName, success: true, order: result.order });
-      } catch (err) {
-        results.push({ merchantId, businessName: group.businessName, success: false, error: err instanceof ApiError ? err.message : 'Could not place this order.' });
-      }
-    }
-    setPlacing(false);
-    onCheckedOut(results);
-  };
-
-  return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to shop">
-          <ArrowLeft size={20} />
-        </button>
-        <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Your cart</h3>
-      </div>
-      {groups.length === 0 ? (
-        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Your cart is empty.</p></div>
-      ) : (
-        <form onSubmit={handlePlaceOrders} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          {groups.map(([merchantId, group]) => (
-            <div key={merchantId} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <p style={{ fontSize: '14px', fontWeight: 700 }}>{group.businessName}</p>
-              {Object.entries(group.lines).filter(([, l]) => l.quantity > 0).map(([productId, l]) => (
-                <div key={productId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
-                  <span>{l.product.name} x{l.quantity}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span>{(l.product.price * l.quantity).toLocaleString()} RWF</span>
-                    <button type="button" onClick={() => onSetQty(merchantId, productId, 0)} style={{ color: 'var(--toss-grey-500)', fontSize: '12px' }}>Remove</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ))}
-          <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: 700 }}>
-              <span>Total ({groups.length} order{groups.length === 1 ? '' : 's'})</span>
-              <span>{grandTotal.toLocaleString()} RWF</span>
-            </div>
-            <input
-              type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Delivery address" required
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-            />
-            {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
-            <button type="submit" className="toss-btn toss-btn-primary" disabled={placing || !address.trim()}>
-              {placing ? 'Placing orders…' : `Place ${groups.length} order${groups.length === 1 ? '' : 's'}`}
-            </button>
-          </div>
-        </form>
-      )}
-    </div>
-  );
-}
-
-function MultiCartResultsView({ results, onDone }: { results: CommerceCheckoutResult[]; onDone: () => void }) {
-  const successCount = results.filter((r) => r.success).length;
-  return (
-    <div className="toss-card" style={{ padding: '28px' }}>
-      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-        <ShieldCheck size={36} color="var(--toss-green)" style={{ marginBottom: '10px' }} />
-        <h3 style={{ fontSize: '17px', fontWeight: 700 }}>
-          {successCount} of {results.length} order{results.length === 1 ? '' : 's'} placed
-        </h3>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-        {results.map((r) => (
-          <div key={r.merchantId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
-            <span style={{ fontWeight: 600 }}>{r.businessName}</span>
-            {r.success ? (
-              <span style={{ color: 'var(--toss-green)' }}>{r.order!.totalAmount.toLocaleString()} RWF — placed</span>
-            ) : (
-              <span style={{ color: '#E53935' }}>{r.error}</span>
-            )}
-          </div>
-        ))}
-      </div>
-      <button className="toss-btn toss-btn-secondary" style={{ width: '100%' }} onClick={onDone}>
-        {results.some((r) => !r.success) ? 'Back to cart' : 'Done'}
-      </button>
-    </div>
-  );
-}
-
-function MyCommerceOrdersView() {
-  const [orders, setOrders] = useState<CommerceOrder[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [cancellingId, setCancellingId] = useState<string | null>(null);
-
-  const load = () => {
-    setError(null);
-    fetchMyOrders().then(setOrders).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your orders.'));
-  };
-
-  useEffect(() => {
-    load();
-    const interval = setInterval(load, 4000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleCancel = async (orderId: string) => {
-    setCancellingId(orderId);
-    setError(null);
-    try {
-      await cancelOrder(orderId);
-      load();
+      await submitHoodReport(targetType, targetId, reason);
+      setMessage('Thanks. Your report was sent for review.');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not cancel this order.');
+      setMessage(err instanceof ApiError && err.code === 'HOOD_REPORT_ALREADY_OPEN' ? 'You already reported this post.' : 'Could not send the report.');
     } finally {
-      setCancellingId(null);
+      setSending(false);
     }
   };
 
-  if (error) {
-    return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
-    );
-  }
-  if (orders === null) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
-  if (orders.length === 0) return <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No orders yet.</p></div>;
+  return (
+    <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start' }}>
+      {message ? (
+        <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: message.startsWith('Thanks') ? 'var(--itunda-green)' : 'var(--itunda-red)' }}>{message}</p>
+      ) : showChoices ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <button className="itunda-btn itunda-btn-secondary" style={{ fontSize: 'var(--itunda-type-scale-11-size)', padding: '4px 10px' }} onClick={() => send('Unsafe payment, contact request, or scam')}>Unsafe or scam</button>
+          <button className="itunda-btn itunda-btn-secondary" style={{ fontSize: 'var(--itunda-type-scale-11-size)', padding: '4px 10px' }} onClick={() => send('Misleading, unavailable, or spam content')}>Misleading or spam</button>
+          <button className="itunda-btn itunda-btn-secondary" style={{ fontSize: 'var(--itunda-type-scale-11-size)', padding: '4px 10px' }} onClick={() => send('Harassment, hateful, illegal, or prohibited content')}>Abusive or illegal</button>
+          <button style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-text-tertiary)' }} onClick={() => setShowChoices(false)}>Cancel</button>
+        </div>
+      ) : (
+        <button style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-text-tertiary)' }} disabled={sending} onClick={() => setShowChoices(true)}>
+          {sending ? 'Reporting…' : 'Report'}
+        </button>
+      )}
+    </div>
+  );
+}
 
+// Real post-transaction review preset checklist labels (2026-07-24) -- ids must match
+// backend HoodReviewService.GOOD_POINTS/UNCOMFORTABLE_POINTS exactly.
+const HOOD_GOOD_POINT_LABELS: [string, string][] = [
+  ['RESPONSIVE', 'Quick to respond'], ['AS_DESCRIBED', 'As described'], ['ON_TIME', 'On time'],
+  ['FRIENDLY', 'Friendly'], ['FAIR_PRICE', 'Fair price'],
+];
+const HOOD_UNCOMFORTABLE_POINT_LABELS: [string, string][] = [
+  ['LATE', 'Was late'], ['NOT_AS_DESCRIBED', 'Not as described'], ['UNRESPONSIVE', 'Hard to reach'],
+  ['RUDE', 'Rude'], ['PRICE_ISSUE', 'Price disagreement'],
+];
+const hoodGoodPointLabel = (id: string) => HOOD_GOOD_POINT_LABELS.find(([pid]) => pid === id)?.[1] ?? id;
+const hoodUncomfortablePointLabel = (id: string) => HOOD_UNCOMFORTABLE_POINT_LABELS.find(([pid]) => pid === id)?.[1] ?? id;
+
+// Real post-transaction review with Karrot's own asymmetric public/private visibility
+// (2026-07-24) -- closes docs/DESIGN_REFERENCES.md Section 4 recommendation #2. A
+// preset checklist, not free text, matching Karrot's own real review UX: "good points"
+// are shown publicly (feed into the trust score), "uncomfortable points" stay private
+// between the two real parties to the transaction. Shared by Marketplace/Jobs/Property.
+export function HoodReviewForm({
+  selectedGoodPoints, onToggleGoodPoint, selectedUncomfortablePoints, onToggleUncomfortablePoint, submitting, onCancel, onSubmit,
+}: {
+  selectedGoodPoints: Set<string>; onToggleGoodPoint: (id: string) => void;
+  selectedUncomfortablePoints: Set<string>; onToggleUncomfortablePoint: (id: string) => void;
+  submitting: boolean; onCancel: () => void; onSubmit: () => void;
+}) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      {orders.map((o) => (
-        <CommerceOrderCard
-          key={o.id}
-          order={o}
-          action={
-            o.status === 'PLACED' ? (
-              <button className="toss-btn toss-btn-danger" disabled={cancellingId === o.id} onClick={() => handleCancel(o.id)}>
-                {cancellingId === o.id ? 'Cancelling…' : 'Cancel order'}
-              </button>
-            ) : o.status === 'DELIVERED' ? (
-              <OrderItemReviews order={o} />
-            ) : undefined
-          }
-        />
-      ))}
-    </div>
-  );
-}
-
-function MerchantOrdersView() {
-  const [orders, setOrders] = useState<CommerceOrder[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
-
-  const load = () => {
-    fetchMerchantOrders()
-      .then(setOrders)
-      .catch((err) => {
-        // A real, expected error for any account that hasn't registered as a merchant --
-        // stays silent rather than alarming the common case of a buyer-only account.
-        if (err instanceof ApiError && err.code === 'MERCHANT_NOT_FOUND') {
-          setOrders([]);
-        } else {
-          setError(err instanceof ApiError ? err.message : 'Could not load your store orders.');
-        }
-      });
-  };
-
-  useEffect(() => {
-    load();
-    const interval = setInterval(load, 4000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleAdvance = async (order: CommerceOrder) => {
-    const next = nextInChain(COMMERCE_STATUS_CHAIN, order.status);
-    if (!next) return;
-    setBusyOrderId(order.id);
-    setError(null);
-    try {
-      await advanceOrderStatus(order.id, next);
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this order.');
-    } finally {
-      setBusyOrderId(null);
-    }
-  };
-
-  if (error) {
-    return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
-    );
-  }
-  if (orders === null) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
-  if (orders.length === 0) return null;
-
-  return (
-    <div style={{ marginBottom: '20px' }}>
-      <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Orders for your store</h4>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {orders.map((o) => {
-          const next = nextInChain(COMMERCE_STATUS_CHAIN, o.status);
+      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-text-primary)' }}>What went well? (shown publicly)</p>
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        {HOOD_GOOD_POINT_LABELS.map(([id, label]) => {
+          const selected = selectedGoodPoints.has(id);
           return (
-            <CommerceOrderCard
-              key={o.id}
-              order={o}
-              action={next && (
-                <button className="toss-btn toss-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleAdvance(o)}>
-                  {busyOrderId === o.id ? 'Updating…' : `Mark ${COMMERCE_STATUS_LABEL[next].toLowerCase()}`}
-                </button>
-              )}
-            />
+            <button
+              key={id}
+              onClick={() => onToggleGoodPoint(id)}
+              style={{
+                fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, padding: '6px 12px', borderRadius: '999px',
+                color: selected ? 'var(--itunda-surface-default)' : 'var(--itunda-text-primary)',
+                backgroundColor: selected ? 'var(--itunda-indigo)' : 'var(--itunda-surface-subtle)',
+              }}
+            >
+              {label}
+            </button>
           );
         })}
       </div>
-    </div>
-  );
-}
-
-// Real product wishlist view (2026-07-20) -- lists every real favorited product,
-// tapping one opens that merchant's real catalog (same "prove once, reuse the existing
-// screen" shape as everywhere else in this file).
-function WishlistView({ onOpenMerchant }: { onOpenMerchant: (merchant: ShoppingMerchant) => void }) {
-  const [favorites, setFavorites] = useState<FavoriteProduct[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [removingId, setRemovingId] = useState<string | null>(null);
-
-  const load = () => {
-    setError(null);
-    fetchMyFavoriteProducts().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your wishlist.'));
-  };
-  useEffect(load, []);
-
-  const handleRemove = async (productId: string) => {
-    setRemovingId(productId);
-    try {
-      await removeProductFavorite(productId);
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not remove this item.');
-    } finally {
-      setRemovingId(null);
-    }
-  };
-
-  if (error) {
-    return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
-    );
-  }
-  if (favorites === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
-  if (favorites.length === 0) return <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No saved items yet -- tap ♡ on any product to save it here.</p></div>;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      {favorites.map((f) => (
-        <div key={f.productId} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-          <button
-            onClick={() => onOpenMerchant({ merchantId: f.merchantId, businessName: f.businessName, category: null, cashbackRate: '' })}
-            style={{ textAlign: 'left', flex: 1, display: 'flex', alignItems: 'center', gap: '12px' }}
-          >
-            <ProductImageThumb imageUrl={f.imageUrl} size={44} />
-            <div>
-              <p style={{ fontSize: '15px', fontWeight: 700 }}>{f.name}</p>
-              <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{f.businessName}</p>
-              <ProductPriceBlock price={f.price} originalPrice={f.originalPrice} discountPercent={f.discountPercent} />
-            </div>
-          </button>
-          <button
-            className="toss-btn toss-btn-secondary"
-            disabled={removingId === f.productId}
-            onClick={() => handleRemove(f.productId)}
-            style={{ padding: '8px 12px', fontSize: '12px' }}
-          >
-            {removingId === f.productId ? 'Removing…' : 'Remove'}
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ShopView() {
-  const [view, setView] = useState<'BROWSE' | 'ORDERS' | 'WISHLIST'>('BROWSE');
-  const [merchants, setMerchants] = useState<ShoppingMerchant[] | null>(null);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [merchantSearchInput, setMerchantSearchInput] = useState('');
-  const [debouncedMerchantSearch, setDebouncedMerchantSearch] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<ShoppingMerchant | null>(null);
-  const [cart, setCart] = useState<CommerceCart>({});
-  const [showCart, setShowCart] = useState(false);
-  const [results, setResults] = useState<CommerceCheckoutResult[] | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<ProductSearchResult[] | null>(null);
-  const [searching, setSearching] = useState(false);
-
-  // Real Coupang-style commerce (rw.itunda.commerce) -- deliberately reuses the same
-  // GET /api/v1/shopping/merchants catalog the Shopping tab (Toss Shopping cashback
-  // browsing) already uses, matching how Android/iOS's own Shop tab reuses the same
-  // merchant directory rather than inventing a second one.
-  const load = () => {
-    setError(null);
-    fetchShoppingCatalog(selectedCategory ?? undefined, debouncedMerchantSearch || undefined)
-      .then(setMerchants)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load merchants.'));
-  };
-
-  useEffect(() => {
-    fetchMerchantCategories().then(setCategories).catch(() => {});
-  }, []);
-
-  // Real category/name filter for the merchant list (2026-07-21), debounced the same
-  // way OrderFoodView's restaurant search already is -- see SearchAndCategoryChips.
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedMerchantSearch(merchantSearchInput.trim()), 300);
-    return () => clearTimeout(timer);
-  }, [merchantSearchInput]);
-
-  useEffect(load, [selectedCategory, debouncedMerchantSearch]);
-
-  // Real cross-merchant product search (2026-07-20) -- see lib/shopping.ts's own doc
-  // comment. Opening a result reuses ProductCatalogView as-is: it only ever reads
-  // merchant.merchantId (confirmed by reading the component directly), so a minimal
-  // ShoppingMerchant built from the search result -- not a second real fetch -- is
-  // honest, not a shortcut that risks showing stale/wrong data.
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSearching(true);
-    try {
-      setSearchResults(await searchProducts(searchQuery.trim()));
-    } catch {
-      setSearchResults([]);
-    } finally {
-      setSearching(false);
-    }
-  };
-  const openSearchResult = (r: ProductSearchResult) => {
-    setSelected({ merchantId: r.merchantId, businessName: r.merchantName, category: null, cashbackRate: '1%' });
-  };
-
-  const setQtyByMerchant = (merchant: ShoppingMerchant, product: CommerceProduct, quantity: number) => {
-    setCart((prev) => {
-      const next = { ...prev };
-      const existing = next[merchant.merchantId] ?? { businessName: merchant.businessName, lines: {} };
-      const lines = { ...existing.lines };
-      if (quantity <= 0) delete lines[product.id];
-      else lines[product.id] = { product, quantity };
-      if (Object.keys(lines).length === 0) delete next[merchant.merchantId];
-      else next[merchant.merchantId] = { ...existing, lines };
-      return next;
-    });
-  };
-
-  const setQtyByIds = (merchantId: string, productId: string, quantity: number) => {
-    setCart((prev) => {
-      const existing = prev[merchantId];
-      if (!existing) return prev;
-      const next = { ...prev };
-      const lines = { ...existing.lines };
-      if (quantity <= 0) delete lines[productId];
-      else if (lines[productId]) lines[productId] = { ...lines[productId], quantity };
-      if (Object.keys(lines).length === 0) delete next[merchantId];
-      else next[merchantId] = { ...existing, lines };
-      return next;
-    });
-  };
-
-  const handleCheckedOut = (checkoutResults: CommerceCheckoutResult[]) => {
-    // Only clear the merchants that actually succeeded -- a failed group's items
-    // stay in the cart so the buyer doesn't lose their selection and can retry
-    // (e.g. after fixing the delivery address or topping up their wallet).
-    setCart((prev) => {
-      const next = { ...prev };
-      checkoutResults.filter((r) => r.success).forEach((r) => delete next[r.merchantId]);
-      return next;
-    });
-    setResults(checkoutResults);
-    setShowCart(false);
-  };
-
-  if (results) {
-    return (
-      <MultiCartResultsView
-        results={results}
-        onDone={() => { setResults(null); setSelected(null); setView('ORDERS'); }}
-      />
-    );
-  }
-
-  if (showCart) {
-    return <MultiCartView cart={cart} onBack={() => setShowCart(false)} onSetQty={setQtyByIds} onCheckedOut={handleCheckedOut} />;
-  }
-
-  if (selected) {
-    return (
-      <ProductCatalogView
-        merchant={selected}
-        cart={cart}
-        onSetQty={setQtyByMerchant}
-        onBack={() => setSelected(null)}
-        onViewCart={() => setShowCart(true)}
-      />
-    );
-  }
-
-  const totalItems = cartTotalItems(cart);
-
-  return (
-    <div>
-      <MerchantOrdersView />
-
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'ORDERS', 'WISHLIST'] as const).map((v) => (
-          <button
-            key={v}
-            onClick={() => setView(v)}
-            style={{
-              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: view === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
-            }}
-          >
-            {v === 'BROWSE' ? 'Merchants' : v === 'ORDERS' ? 'My orders' : '♡ Wishlist'}
-          </button>
-        ))}
-      </div>
-
-      {view === 'BROWSE' && (
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search products across every merchant"
-            style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-          />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={searching || !searchQuery.trim()}>
-            {searching ? '…' : 'Search'}
-          </button>
-          {searchResults !== null && (
-            <button type="button" className="toss-btn toss-btn-secondary" onClick={() => { setSearchResults(null); setSearchQuery(''); }}>
-              Clear
-            </button>
-          )}
-        </form>
-      )}
-
-      {view === 'BROWSE' && searchResults === null && (
-        <SearchAndCategoryChips
-          searchInput={merchantSearchInput}
-          onSearchChange={setMerchantSearchInput}
-          placeholder="Search merchants"
-          categories={categories}
-          selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
-        />
-      )}
-
-      {view === 'ORDERS' ? (
-        <MyCommerceOrdersView />
-      ) : view === 'WISHLIST' ? (
-        <WishlistView onOpenMerchant={setSelected} />
-      ) : view === 'BROWSE' && searchResults !== null ? (
-        searchResults.length === 0 ? (
-          <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No products matched "{searchQuery}".</p></div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {searchResults.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => openSearchResult(r)}
-                className="toss-card"
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', width: '100%', gap: '12px' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <ProductImageThumb imageUrl={r.imageUrl} size={44} />
-                  <div>
-                    <p style={{ fontSize: '14px', fontWeight: 700 }}>{r.name}</p>
-                    <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Sold by {r.merchantName}</p>
-                  </div>
-                </div>
-                <ProductPriceBlock price={r.price} originalPrice={r.originalPrice} discountPercent={r.discountPercent} />
-              </button>
-            ))}
-          </div>
-        )
-      ) : error ? (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-          <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-        </div>
-      ) : merchants === null ? (
-        <div className="toss-card skeleton" style={{ height: '220px' }} />
-      ) : merchants.length === 0 ? (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-            {selectedCategory || debouncedMerchantSearch ? 'No merchants match your search.' : 'No merchants registered yet.'}
-          </p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: totalItems > 0 ? '80px' : 0 }}>
-          {merchants.map((m) => (
+      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-text-primary)' }}>Anything uncomfortable? (private -- only you two see this)</p>
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        {HOOD_UNCOMFORTABLE_POINT_LABELS.map(([id, label]) => {
+          const selected = selectedUncomfortablePoints.has(id);
+          return (
             <button
-              key={m.merchantId}
-              onClick={() => setSelected(m)}
-              className="toss-card"
-              style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%' }}
+              key={id}
+              onClick={() => onToggleUncomfortablePoint(id)}
+              style={{
+                fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, padding: '6px 12px', borderRadius: '999px',
+                color: selected ? 'var(--itunda-surface-default)' : 'var(--itunda-text-primary)',
+                backgroundColor: selected ? 'var(--itunda-red)' : 'var(--itunda-surface-subtle)',
+              }}
             >
-              <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <ShoppingBag size={20} color="var(--toss-blue)" />
-              </div>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{m.businessName}</p>
-                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Real cart checkout, real delivery tracking</p>
-              </div>
+              {label}
             </button>
-          ))}
-        </div>
-      )}
-      {view === 'BROWSE' && totalItems > 0 && (
-        <button
-          className="toss-btn toss-btn-primary"
-          style={{ position: 'fixed', bottom: '24px', left: '20px', right: '20px', maxWidth: '440px', margin: '0 auto' }}
-          onClick={() => setShowCart(true)}
-        >
-          View cart ({totalItems} item{totalItems === 1 ? '' : 's'})
+          );
+        })}
+      </div>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={submitting} onClick={onCancel}>
+          Cancel
         </button>
-      )}
+        <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={submitting} onClick={onSubmit}>
+          {submitting ? 'Submitting…' : 'Submit review'}
+        </button>
+      </div>
     </div>
   );
 }
+
+// Real read-back for a submitted Hood transaction review (item 192) -- see
+// lib/marketplace.ts's fetchListingReviews doc comment. Only ever rendered for a real
+// party to the transaction (the fetch itself real-403s otherwise), so both "your
+// review" and "their review of you" -- including its uncomfortablePoints -- are
+// honestly shown here, matching Karrot's own asymmetric visibility: private between the
+// two real parties, not public to anyone else.
+export function HoodReviewResultView({ reviews, myUserId }: { reviews: HoodReview[]; myUserId: string | undefined }) {
+  const mine = reviews.find((r) => r.reviewerId === myUserId);
+  const theirs = reviews.find((r) => r.reviewerId !== myUserId);
+  if (!mine && !theirs) return null;
+  const block = (title: string, review: HoodReview) => (
+    <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'var(--itunda-surface-subtle)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-text-primary)' }}>{title}</p>
+      {review.goodPoints.length > 0 && (
+        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-secondary)' }}>👍 {review.goodPoints.map(hoodGoodPointLabel).join(', ')}</p>
+      )}
+      {review.uncomfortablePoints.length > 0 && (
+        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }}>⚠️ {review.uncomfortablePoints.map(hoodUncomfortablePointLabel).join(', ')}</p>
+      )}
+    </div>
+  );
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {mine && block('Your review', mine)}
+      {theirs && block('Their review of you', theirs)}
+    </div>
+  );
+}
+
 
 // Real device management (2026-07-20) -- the same self-service "your devices" control
 // Toss's own security settings page offers. See lib/device.ts's own doc comment.
 function DevicesView() {
+  const { t } = useI18n();
   const [devices, setDevices] = useState<TrustedDevice[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const showSkeleton = useDeferredLoading(devices === null);
   const myDeviceId = getOrCreateDeviceId();
 
   const load = () => {
     setError(null);
-    fetchMyDevices().then(setDevices).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your devices.'));
+    fetchMyDevices().then(setDevices).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
 
@@ -5849,7 +2178,7 @@ function DevicesView() {
       await revokeDevice(deviceId);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not remove this device.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setRevokingId(null);
     }
@@ -5857,38 +2186,35 @@ function DevicesView() {
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (devices === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+  if (devices === null) return showSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', padding: '0 4px' }}>
+      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)', padding: '0 4px' }}>
         Devices that have signed in to your account. A device must be verified before it can send money.
       </p>
       {devices.length === 0 ? (
-        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No devices recorded yet.</p></div>
+        <EmptyState message="No other devices yet — this is the only one signed in right now." />
       ) : (
         devices.map((d) => (
-          <div key={d.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
             <div>
-              <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
-                {d.deviceName ?? 'Unknown device'} {d.deviceId === myDeviceId && <span style={{ color: 'var(--toss-blue)' }}>(this device)</span>}
+              <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-text-primary)' }}>
+                {d.deviceName ?? 'Unknown device'} {d.deviceId === myDeviceId && <span style={{ color: 'var(--itunda-indigo)' }}>(this device)</span>}
               </p>
-              <p style={{ fontSize: '12px', color: d.trusted ? 'var(--toss-green)' : '#E53935' }}>
+              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: d.trusted ? 'var(--itunda-green)' : 'var(--itunda-red)' }}>
                 {d.trusted ? '✓ Verified — can send money' : '⚠ Not verified — sign-in only'}
               </p>
-              <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>Last seen {new Date(d.lastSeenAt).toLocaleString()}</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-text-tertiary)' }}>Last seen {new Date(d.lastSeenAt).toLocaleString()}</p>
             </div>
             <button
-              className="toss-btn toss-btn-danger"
+              className="itunda-btn itunda-btn-danger"
               disabled={revokingId === d.deviceId}
               onClick={() => handleRevoke(d.deviceId)}
-              style={{ padding: '8px 12px', fontSize: '12px' }}
+              style={{ padding: '8px 12px', fontSize: 'var(--itunda-type-scale-12-size)' }}
             >
               {revokingId === d.deviceId ? 'Removing…' : 'Remove'}
             </button>
@@ -5899,496 +2225,614 @@ function DevicesView() {
   );
 }
 
-// Real Kakao Bank SafeBox (세이프박스) equivalent -- claim-anytime interest that grows
-// for real off the actual SAVINGS wallet balance (InterestAccrualScheduler, 2026-07-20).
-function InterestJarCard() {
-  const [jar, setJar] = useState<InterestJar | null>(null);
+// Real, sourced Toss Bank card-marketing-page rebuild (2026-08-24, direct user-supplied
+// reference: 8 real Toss Bank Debit Card screenshots -- hero headline over a card
+// illustration, a real feature-benefit list, "clear UX, clear graphics, smooth
+// animation" explaining a product before the user commits, not a bare form). itunda's
+// own pre-issue state used to be two lines of plain text and a button -- functionally
+// complete, but none of the "explain the product first" craft the reference shows.
+//
+// Deliberately does NOT copy Toss's own screenshot content literally -- their card page
+// features (K-Pass automatic transit refunds, NFC tap-to-pay-as-OTP, a choice of card
+// colors) are all real Korean-market/NFC-hardware features itunda's own CardService.kt
+// genuinely doesn't have. Every claim below is grounded in that file's own real
+// capabilities instead: free issuance (no fee field exists on DebitCard at all),
+// instant issue via one API call (no branch visit), app-controlled daily/monthly spend
+// limits, one-tap freeze/unfreeze. The illustration is a plain flat SVG card in
+// itunda's own real brand indigo (packages/design-tokens/tokens.css) -- not a
+// photorealistic 3D render, matching itundaface's own established flat/geometric
+// illustration language (see project_itunda_own_icons_graphics) rather than inventing a
+// new visual style for one screen.
+// Real Toss Bank "which color do you like?" issuance step (namu.wiki: 5 real named
+// colorways; toss.tech's own engineering post on the picker's 3D touch-and-rotate
+// interaction) -- direct user instruction 2026-08-27: "update itunda bank with all
+// those cards designs allowing users to choose from those designs... that's how toss
+// does it too". Picks from CARD_DESIGNS (lib/card.ts), itunda's own real front/back
+// colorways validated in the standalone card-lineup design pass. Front-only during
+// picking, matching that same pass's own real-photo-sourced finding: the real card's
+// front is color and chip, nothing else -- no fabricated printed number here either,
+// same "fully masked, no card exists yet" reasoning the previous single-design mockup
+// already established.
+// Real Toss Bank 체크카드 (check/debit card) -- see the backend's DebitCard.kt doc
+// comment for the full sourced account (item 207) and the honest boundary around this
+// not riding a real Visa/Mastercard rail. "Pay with card" below is itunda's own real,
+// ledger-backed simulation of a card-present purchase (real money moves, real limits
+// are enforced), the same honest "demo the part that can be real" convention
+// DemoCardAuthorizationService already established for the merchant-side equivalent.
+function CardView() {
+  const { t } = useI18n();
+  const [card, setCard] = useState<Card | null | undefined>(undefined);
+  const [transactions, setTransactions] = useState<CardTransaction[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [claiming, setClaiming] = useState(false);
-  const [claimMsg, setClaimMsg] = useState<string | null>(null);
-  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+  const showSkeleton = useDeferredLoading(card === undefined);
+  const [busy, setBusy] = useState(false);
+  const [dailyLimitInput, setDailyLimitInput] = useState('');
+  const [monthlyLimitInput, setMonthlyLimitInput] = useState('');
+  const [merchantName, setMerchantName] = useState('');
+  const [chargeAmount, setChargeAmount] = useState('');
+  // Real Toss "결제 계좌" (payment account) reference (2026-09-12) -- see
+  // lib/card.ts's chargeCard doc comment for why only MAIN/PAY are ever real here.
+  const [fundingAccountType, setFundingAccountType] = useState<CardFundingAccountType>('MAIN');
+  const [chargeError, setChargeError] = useState<string | null>(null);
+  const [chargeSuccess, setChargeSuccess] = useState<string | null>(null);
+  // Real KakaoBank 결제홈 (Payment Home)-style unified spend+benefits view (2026-08-16,
+  // launching August 2026 per KakaoBank's own H1 earnings coverage: "카드 결제 내역과
+  // 혜택을 통합 관리할 수 있는 '결제홈'") -- CreditScoreService already computes a real
+  // "Card usage" factor from real card-transaction counts (Section 76), but nothing on
+  // this screen ever surfaced it. Both endpoints already existed and are already used
+  // elsewhere (lib/creditScore.ts) -- this is purely wiring the same real data into the
+  // one screen where a cardholder would naturally look for "what is my card earning me."
+  const [cardUsageFactor, setCardUsageFactor] = useState<CreditScoreFactor | null>(null);
+  const [cardSuggestion, setCardSuggestion] = useState<CreditScoreSuggestion | null>(null);
+  // Real "카드 비밀번호 변경" (change card PIN) inline form (2026-09-01, direct
+  // user-supplied Toss Bank card-management screenshots) -- see lib/card.ts's
+  // setCardPin doc comment for the real step-up-auth this posts to.
+  const [showPinForm, setShowPinForm] = useState(false);
+  const [newPinInput, setNewPinInput] = useState('');
+  const [pinPasswordInput, setPinPasswordInput] = useState('');
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [pinSuccess, setPinSuccess] = useState(false);
 
   const load = () => {
     setError(null);
-    fetchInterestJar().then(setJar).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your Safe Box.'));
+    fetchMyCard()
+      .then((c) => {
+        setCard(c);
+        setDailyLimitInput(String(c.dailyLimit));
+        setMonthlyLimitInput(String(c.monthlyLimit));
+      })
+      .catch((err) => {
+        if (err instanceof ApiError && err.code === 'CARD_NOT_FOUND') {
+          setCard(null);
+          return;
+        }
+        setError(err instanceof ApiError ? err.message : t('common.loadError'));
+      });
+    fetchCardTransactions().then((r) => setTransactions(r.transactions)).catch(() => {});
+    fetchCreditScore()
+      .then((r) => setCardUsageFactor(r.factors.find((f) => f.name === 'Card usage') ?? null))
+      .catch(() => {});
+    fetchCreditScoreSuggestions()
+      .then((suggestions) => setCardSuggestion(suggestions.find((s) => s.action === 'Use your itunda Card more' || s.action === 'Get an itunda Card') ?? null))
+      .catch(() => {});
   };
   useEffect(load, []);
 
-  const handleClaim = async () => {
-    setClaiming(true);
+  const handleIssue = async (design: string) => {
+    setBusy(true);
     setError(null);
-    setClaimMsg(null);
-    setNeedsDeviceVerification(false);
     try {
-      const result = await claimInterest();
-      setClaimMsg(result.message);
+      await issueCard(design);
       load();
     } catch (err) {
-      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
-        setNeedsDeviceVerification(true);
-      } else {
-        setError(err instanceof ApiError ? err.message : 'Could not claim interest.');
-      }
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
-      setClaiming(false);
+      setBusy(false);
     }
   };
 
-  if (error) {
+  const handleToggleFreeze = async () => {
+    if (!card) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = card.frozen ? await unfreezeCard() : await freezeCard();
+      setCard(updated);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Real "분실신고" (report lost or stolen) -- closes the gap this file's own
+  // previous version disclosed: a distinct, one-way backend state now exists
+  // (POST /api/v1/card/report-lost), so this no longer relabels the ordinary,
+  // self-reversible freezeCard() call.
+  const handleReportLost = async () => {
+    if (!card || card.lost || card.closedAt) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setCard(await reportLostCard());
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Real "카드 해지하기" (close card) -- a deliberate, one-way retirement distinct
+  // from a lost/stolen report; only reissue below can recover from either.
+  const handleCloseCard = async () => {
+    if (!card || card.closedAt) return;
+    if (!window.confirm('Close this card? You can get a new one afterward, but this card will stop working immediately.')) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setCard(await closeMyCard());
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Real "카드 재발급" (reissue) -- the real recovery path from a lost/stolen or
+  // closed card; regenerates last4 and clears the old PIN in place (backend
+  // enforces one card per user, see CardService.reissue's own doc comment).
+  const handleReissue = async () => {
+    if (!card) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setCard(await reissueCard());
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSetPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPinError(null);
+    setPinSuccess(false);
+    setBusy(true);
+    try {
+      setCard(await setCardPin(newPinInput, pinPasswordInput));
+      setNewPinInput('');
+      setPinPasswordInput('');
+      setShowPinForm(false);
+      setPinSuccess(true);
+    } catch (err) {
+      setPinError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSaveLimits = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await setCardLimits(Number(dailyLimitInput), Number(monthlyLimitInput));
+      setCard(updated);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCharge = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setChargeError(null);
+    setChargeSuccess(null);
+    setBusy(true);
+    try {
+      const result = await chargeCard(Number(chargeAmount), merchantName, fundingAccountType);
+      setCard(result.card);
+      setChargeSuccess(`Paid ${result.transaction.amount.toLocaleString('en-US')} RWF at ${result.transaction.merchantName}`);
+      setMerchantName('');
+      setChargeAmount('');
+      load();
+    } catch (err) {
+      setChargeError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Real bug found+fixed while restructuring this screen (2026-08-23): `error` is
+  // shared between the initial load AND every later action (freeze/save-limits/
+  // report-lost/charge) -- this early-return used to fire unconditionally, so any
+  // one of those LATER action failures replaced the entire, already-loaded card
+  // screen with a full-page ErrorCard, not just an inline message next to the
+  // control that actually failed. Scoped to the real initial-load-failure case only
+  // (card never successfully loaded) -- a later action error now renders inline
+  // within the still-visible screen instead (see the error <p> below).
+  if (error && card === undefined) {
     return (
-      <div className="toss-card" style={{ marginBottom: '16px' }}>
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (jar === null) return <div className="toss-card skeleton" style={{ height: '140px', marginBottom: '16px' }} />;
+  if (card === undefined) return showSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
 
-  const canClaim = jar.earnedThisMonth > 0;
+  if (card === null) {
+    return <CardExplainer busy={busy} onIssue={handleIssue} />;
+  }
 
+  // Real Toss Bank reference (2 more screenshots, 2026-08-23, direct user
+  // instruction: "when user click on card in topbar of itunda bank this is what
+  // they should see"): real Toss's own card screen leads with a month-spend
+  // headline + a small card thumbnail, a real usage-history list, then a flat
+  // "convenient features" row list -- not the card-first, form-heavy layout this
+  // screen used to have. Restructured to that same order using itunda's own real
+  // capabilities only: no "My card number" (itunda never stores/exposes a full
+  // card number, only last4 -- a real, honest gap, not fabricated), no month
+  // navigation arrows (spentThisMonth is a live running total, no per-past-month
+  // breakdown endpoint exists), no postpaid-transit-card/reissue/ATM-guide/
+  // overseas-fee/ongoing-events rows (all genuinely Korea-transit/card-network-
+  // specific, itunda has no backend for any of them). "Report lost or stolen",
+  // "Close card", and "Card PIN" (2026-09-01) are now real, distinct backend
+  // flows -- see CardService.reportLost/closeCard/setPin's own doc comments --
+  // no longer relabeling freezeCard() the way this comment used to describe.
   return (
-    <div className="toss-card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, var(--toss-blue) 0%, #4A90E2 100%)', color: '#fff' }}>
-      <p style={{ fontSize: '13px', opacity: 0.85 }}>Safe Box · {jar.rate}% real daily interest</p>
-      <p style={{ fontSize: '28px', fontWeight: 800, margin: '6px 0' }}>{jar.balance.toLocaleString()} RWF</p>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
         <div>
-          <p style={{ fontSize: '11px', opacity: 0.8 }}>Earned, unclaimed</p>
-          <p style={{ fontSize: '16px', fontWeight: 700 }}>{jar.earnedThisMonth.toLocaleString()} RWF</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-tertiary)' }}>{t('card.thisMonth')}</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '4px 0 0' }}>{card.spentThisMonth.toLocaleString('en-US')} RWF</p>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <p style={{ fontSize: '11px', opacity: 0.8 }}>Earned all-time</p>
-          <p style={{ fontSize: '16px', fontWeight: 700 }}>{jar.earnedTotal.toLocaleString()} RWF</p>
+        <div
+          style={{
+            width: '72px', height: '46px', borderRadius: '8px', flexShrink: 0, position: 'relative', overflow: 'hidden',
+            background: card.frozen ? 'var(--itunda-text-tertiary)' : cardDesign(card.design).front,
+            border: !card.frozen && cardDesign(card.design).frontLight ? '1px solid #e2e2de' : 'none',
+            display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '6px',
+          }}
+        >
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(115deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 40%)' }} />
+          <BankCardChip size={16} />
+          {card.frozen ? (
+            <LockGlyph size={14} color="#fff" style={{ alignSelf: 'flex-end' }} />
+          ) : (
+            <CardContactlessGlyph size={12} color={cardDesign(card.design).frontLight ? 'rgba(25,31,40,0.55)' : 'rgba(255,255,255,0.85)'} />
+          )}
         </div>
       </div>
-      {needsDeviceVerification ? (
-        <div style={{ marginTop: '14px' }}>
-          <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
-        </div>
+      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)', marginBottom: '16px' }}>
+        •••• {card.last4} ·{' '}
+        {card.closedAt ? t('card.statusClosed') : card.lost ? t('card.statusLost') : card.frozen ? t('card.statusFrozen') : t('card.statusActive')}
+      </p>
+
+      {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '12px' }} role="alert">{error}</p>}
+
+      {card.lost || card.closedAt ? (
+        <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={handleReissue} style={{ marginBottom: '20px' }}>
+          {busy ? '…' : t('card.getNewCard')}
+        </button>
       ) : (
-        <button
-          className="toss-btn"
-          onClick={handleClaim}
-          disabled={!canClaim || claiming}
-          style={{ marginTop: '14px', width: '100%', backgroundColor: '#fff', color: 'var(--toss-blue)', fontWeight: 700, opacity: canClaim ? 1 : 0.6 }}
-        >
-          {claiming ? 'Claiming…' : canClaim ? `Claim ${jar.earnedThisMonth.toLocaleString()} RWF` : 'Nothing to claim yet'}
+        <button className={`itunda-btn ${card.frozen ? 'itunda-btn-primary' : 'itunda-btn-danger'}`} disabled={busy} onClick={handleToggleFreeze} style={{ marginBottom: '20px' }}>
+          {card.frozen ? t('card.unfreezeCard') : t('card.freezeCard')}
         </button>
       )}
-      {claimMsg && <p style={{ fontSize: '12px', marginTop: '8px' }}>{claimMsg}</p>}
-    </div>
-  );
-}
 
-function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => void }) {
-  const [depositing, setDepositing] = useState(false);
-  const [amount, setAmount] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
-  const pct = Math.min(100, Math.round((goal.currentAmount / goal.targetAmount) * 100));
-
-  const handleDeposit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    setNeedsDeviceVerification(false);
-    try {
-      await depositToGoal(goal.id, Number(amount));
-      setAmount('');
-      setDepositing(false);
-      onChanged();
-    } catch (err) {
-      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
-        setNeedsDeviceVerification(true);
-      } else {
-        setError(err instanceof ApiError ? err.message : 'Could not deposit.');
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="toss-card" style={{ marginBottom: '10px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <p style={{ fontSize: '14px', fontWeight: 700 }}>{goal.name}</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
-            {goal.currentAmount.toLocaleString()} / {goal.targetAmount.toLocaleString()} RWF
-            {goal.status === 'completed' && ' · Completed 🎉'}
-          </p>
-        </div>
-        {goal.status === 'active' && (
-          <button className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => setDepositing((d) => !d)}>
-            Deposit
-          </button>
+      <div className="itunda-flat-section">
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>{t('card.usageHistory')}</h3>
+        {transactions.length === 0 ? (
+          <EmptyState message={t('card.noPurchasesYet')} />
+        ) : (
+          transactions.map((t) => (
+            <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
+              <div>
+                <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t.merchantName}</p>
+                <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-text-tertiary)' }}>{new Date(t.createdAt).toLocaleString()}</p>
+              </div>
+              <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{t.amount.toLocaleString('en-US')} RWF</span>
+            </div>
+          ))
         )}
       </div>
-      <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--toss-grey-100)', marginTop: '10px', overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pct}%`, backgroundColor: 'var(--toss-blue)' }} />
-      </div>
-      {goal.monthlyContribution > 0 && (
-        <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginTop: '6px' }}>
-          Auto-saves {goal.monthlyContribution.toLocaleString()} RWF/month
-        </p>
+
+      {(cardUsageFactor || cardSuggestion) && (
+        <div className="itunda-flat-section">
+          <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>{t('card.benefitsTitle')}</h3>
+          {cardUsageFactor && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>{cardUsageFactor.description}</span>
+              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-green)' }}>{t('card.creditScorePoints', { points: cardUsageFactor.points })}</span>
+            </div>
+          )}
+          {cardSuggestion && (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>{cardSuggestion.description}</span>
+              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{t('card.morePoints', { points: cardSuggestion.pointsGain })}</span>
+            </div>
+          )}
+        </div>
       )}
-      {depositing && (
-        needsDeviceVerification ? (
-          <div style={{ marginTop: '10px' }}>
-            <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setDepositing(false)} />
-          </div>
-        ) : (
-          <form onSubmit={handleDeposit} style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+
+      <div className="itunda-flat-section">
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>{t('card.convenientFeatures')}</h3>
+        <button
+          onClick={() => document.getElementById('card-spend-limits-section')?.scrollIntoView({ behavior: 'smooth' })}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left' }}
+        >
+          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>{t('card.spendLimits')}</span>
+          <IconChevronRight size={18} color="var(--itunda-text-disabled)" />
+        </button>
+        <button
+          onClick={() => setShowPinForm((v) => !v)}
+          disabled={busy || !!card.closedAt}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left', opacity: card.closedAt ? 0.5 : 1 }}
+        >
+          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>{card.pinSet ? t('card.changePin') : t('card.setPin')}</span>
+          <IconChevronRight size={18} color="var(--itunda-text-disabled)" />
+        </button>
+        <button
+          onClick={handleReportLost}
+          disabled={busy || card.lost || !!card.closedAt}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left', opacity: card.lost || card.closedAt ? 0.5 : 1 }}
+        >
+          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>{card.lost ? t('card.statusLost') : t('card.reportLostOrStolen')}</span>
+          <IconChevronRight size={18} color="var(--itunda-text-disabled)" />
+        </button>
+        <button
+          onClick={handleCloseCard}
+          disabled={busy || !!card.closedAt}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left', opacity: card.closedAt ? 0.5 : 1 }}
+        >
+          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: card.closedAt ? 'var(--itunda-text-tertiary)' : 'var(--itunda-red)' }}>{card.closedAt ? t('card.cardClosed') : t('card.closeCard')}</span>
+          <IconChevronRight size={18} color="var(--itunda-text-disabled)" />
+        </button>
+      </div>
+
+      {showPinForm && (
+        <div className="itunda-flat-section">
+          <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>{card.pinSet ? t('card.changePin') : t('card.setPin')}</h3>
+          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-text-tertiary)', marginBottom: '10px' }}>
+            {t('card.pinFormSubtitle')}
+          </p>
+          <form onSubmit={handleSetPin} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {pinError && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{pinError}</p>}
             <input
-              type="number" min="1" required value={amount} onChange={(e) => setAmount(e.target.value)}
-              placeholder="Amount (RWF)"
-              style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+              type="password" inputMode="numeric" placeholder={t('card.newPinPlaceholder')} value={newPinInput}
+              onChange={(e) => setNewPinInput(e.target.value)} required maxLength={4} pattern="\d{4}"
+              style={{ padding: '10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)' }}
             />
-            <button type="submit" className="toss-btn toss-btn-primary" disabled={busy} style={{ padding: '8px 14px', fontSize: '13px' }}>
-              {busy ? '…' : 'Add'}
+            <input
+              type="password" placeholder={t('card.currentPasswordPlaceholder')} value={pinPasswordInput}
+              onChange={(e) => setPinPasswordInput(e.target.value)} required
+              style={{ padding: '10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)' }}
+            />
+            <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>
+              {busy ? '…' : t('card.savePin')}
             </button>
           </form>
-        )
-      )}
-      {error && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '6px' }} role="alert">{error}</p>}
-    </div>
-  );
-}
-
-function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [targetAmount, setTargetAmount] = useState('');
-  const [monthlyContribution, setMonthlyContribution] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  if (!open) {
-    return (
-      <button
-        className="toss-btn toss-btn-secondary"
-        style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-        onClick={() => setOpen(true)}
-      >
-        <Plus size={16} /> New savings goal
-      </button>
-    );
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      await createGoal(name, Number(targetAmount), monthlyContribution ? Number(monthlyContribution) : undefined);
-      setName('');
-      setTargetAmount('');
-      setMonthlyContribution('');
-      setOpen(false);
-      onCreated();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create goal.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-      <input
-        type="text" required placeholder="Goal name (e.g. Emergency Fund)" value={name} onChange={(e) => setName(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-      />
-      <input
-        type="number" min="1" required placeholder="Target amount (RWF)" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-      />
-      <input
-        type="number" min="0" placeholder="Monthly auto-save (optional)" value={monthlyContribution} onChange={(e) => setMonthlyContribution(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-      />
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
-      </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
-    </form>
-  );
-}
-
-// Real Kakao Bank 모임통장 (group/shared account) -- see lib/groupAccounts.ts's doc
-// comment. Backend enforces real owner-only withdrawal/invite authority; this view's
-// job is just to reflect that honestly (buttons the caller can't actually use are
-// hidden, not disabled-with-no-explanation).
-function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void }) {
-  const [detail, setDetail] = useState<GroupAccountDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [amount, setAmount] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
-  const myUserId = getStoredUser()?.id;
-
-  const load = () => {
-    setError(null);
-    fetchGroupAccount(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this group account.'));
-  };
-  useEffect(load, []);
-
-  const isOwner = detail?.groupAccount.ownerId === myUserId;
-
-  const handleDeposit = async () => {
-    setBusy(true);
-    setError(null);
-    setNeedsDeviceVerification(false);
-    try {
-      await depositToGroupAccount(id, Number(amount));
-      setAmount('');
-      load();
-    } catch (err) {
-      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') setNeedsDeviceVerification(true);
-      else setError(err instanceof ApiError ? err.message : 'Could not deposit.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleWithdraw = async () => {
-    setBusy(true);
-    setError(null);
-    setNeedsDeviceVerification(false);
-    try {
-      await withdrawFromGroupAccount(id, Number(amount));
-      setAmount('');
-      load();
-    } catch (err) {
-      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') setNeedsDeviceVerification(true);
-      else setError(err instanceof ApiError ? err.message : 'Could not withdraw.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      await inviteGroupAccountMember(id, phoneNumber.trim());
-      setPhoneNumber('');
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not invite this member.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (error && !detail) {
-    return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
-      </div>
-    );
-  }
-  if (detail === null) return <div className="toss-card skeleton" style={{ height: '260px' }} />;
-
-  return (
-    <div>
-      <button className="toss-btn toss-btn-secondary" onClick={onBack} style={{ marginBottom: '12px' }}>← Back to group accounts</button>
-
-      <div className="toss-card" style={{ marginBottom: '16px' }}>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{detail.groupAccount.name}</p>
-        <p style={{ fontSize: '28px', fontWeight: 800, margin: '4px 0' }}>{detail.balance.toLocaleString()} RWF</p>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{detail.members.length} member{detail.members.length === 1 ? '' : 's'}</p>
-      </div>
-
-      <div className="toss-card" style={{ marginBottom: '16px' }}>
-        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Members</h3>
-        {detail.members.map((m) => (
-          <div key={m.userId} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '13px' }}>
-            <span>{m.firstName} {m.lastName}{m.userId === myUserId ? ' (you)' : ''}</span>
-            {m.isOwner && <span style={{ color: 'var(--toss-blue)', fontWeight: 700 }}>Organizer</span>}
-          </div>
-        ))}
-      </div>
-
-      {needsDeviceVerification ? (
-        <div style={{ marginBottom: '16px' }}>
-          <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
         </div>
-      ) : (
-        <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: 700 }}>{isOwner ? 'Deposit or withdraw' : 'Deposit'}</h3>
+      )}
+      {pinSuccess && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-green)', marginBottom: '8px' }}>{t('card.pinSaved')}</p>}
+
+      <div id="card-spend-limits-section" className="itunda-flat-section">
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>{t('card.spendLimits')}</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+          <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>{t('card.today')}</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-12-size)' }}>{card.spentToday.toLocaleString('en-US')} / {card.dailyLimit.toLocaleString('en-US')} RWF</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+          <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>{t('card.thisMonth')}</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-12-size)' }}>{card.spentThisMonth.toLocaleString('en-US')} / {card.monthlyLimit.toLocaleString('en-US')} RWF</span>
+        </div>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
           <input
-            type="number" min="1" required value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount (RWF)"
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            type="number" placeholder={t('card.dailyLimitPlaceholder')} value={dailyLimitInput} onChange={(e) => setDailyLimitInput(e.target.value)}
+            style={{ flex: 1, padding: '10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)' }}
           />
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button type="button" onClick={handleDeposit} className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy || !amount}>
-              {busy ? '…' : 'Deposit'}
-            </button>
-            {isOwner && (
-              // Real Kakao Bank behavior: only the organizer can withdraw/settle --
-              // this button is only rendered for the owner, not just disabled.
-              <button type="button" onClick={handleWithdraw} className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busy || !amount}>
-                {busy ? '…' : 'Withdraw'}
-              </button>
-            )}
-          </div>
+          <input
+            type="number" placeholder={t('card.monthlyLimitPlaceholder')} value={monthlyLimitInput} onChange={(e) => setMonthlyLimitInput(e.target.value)}
+            style={{ flex: 1, padding: '10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)' }}
+          />
         </div>
-      )}
-
-      {isOwner && (
-        <form onSubmit={handleInvite} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Invite a member</h3>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <input
-              type="tel" required value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Phone number"
-              style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-            />
-            <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? '…' : 'Invite'}</button>
-          </div>
-        </form>
-      )}
-
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
-    </div>
-  );
-}
-
-function CreateGroupAccountForm({ onCreated }: { onCreated: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  if (!open) {
-    return (
-      <button
-        className="toss-btn toss-btn-secondary"
-        style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-        onClick={() => setOpen(true)}
-      >
-        <Plus size={16} /> New group account
-      </button>
-    );
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      await createGroupAccount(name);
-      setName('');
-      setOpen(false);
-      onCreated();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create this group account.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-      <input
-        type="text" required placeholder="Group name (e.g. Roommates)" value={name} onChange={(e) => setName(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-      />
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
+        <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={handleSaveLimits} style={{ width: '100%' }}>
+          {t('card.saveLimits')}
+        </button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
-    </form>
-  );
-}
 
-function GroupAccountsSection() {
-  const [accounts, setAccounts] = useState<GroupAccount[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [openId, setOpenId] = useState<string | null>(null);
-
-  const load = () => {
-    setError(null);
-    fetchMyGroupAccounts().then(setAccounts).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your group accounts.'));
-  };
-  useEffect(load, []);
-
-  if (openId) {
-    return <GroupAccountDetailView id={openId} onBack={() => { setOpenId(null); load(); }} />;
-  }
-
-  return (
-    <div>
-      <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '4px 4px 10px' }}>Group accounts</h3>
-      <CreateGroupAccountForm onCreated={load} />
-      {error && (
-        <div className="toss-card" style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        </div>
-      )}
-      {accounts === null ? (
-        <div className="toss-card skeleton" style={{ height: '64px' }} />
-      ) : accounts.length === 0 ? (
-        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No group accounts yet -- start one to save or split expenses with others.</p></div>
-      ) : (
-        accounts.map((a) => (
-          <button
-            key={a.id}
-            onClick={() => setOpenId(a.id)}
-            className="toss-card"
-            style={{ display: 'block', width: '100%', textAlign: 'left', marginBottom: '10px', border: 'none' }}
-          >
-            <p style={{ fontSize: '14px', fontWeight: 700 }}>{a.name}</p>
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Tap to view balance and members</p>
+      <div className="itunda-flat-section">
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>{t('card.payWithCard')}</h3>
+        <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-text-tertiary)', marginBottom: '10px' }}>
+          {t('card.payDisclaimer')}
+        </p>
+        <form onSubmit={handleCharge} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {chargeError && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{chargeError}</p>}
+          {chargeSuccess && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-green)' }}>{chargeSuccess}</p>}
+          <input
+            placeholder={t('card.merchantNamePlaceholder')} value={merchantName} onChange={(e) => setMerchantName(e.target.value)} required
+            style={{ padding: '10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)' }}
+          />
+          <input
+            type="number" placeholder={t('card.amountPlaceholder')} value={chargeAmount} onChange={(e) => setChargeAmount(e.target.value)} required min="1"
+            style={{ padding: '10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)' }}
+          />
+          <label style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-text-tertiary)' }}>
+            {t('card.fundingAccountLabel')}
+            <select
+              value={fundingAccountType}
+              onChange={(e) => setFundingAccountType(e.target.value as CardFundingAccountType)}
+              style={{ display: 'block', width: '100%', marginTop: '4px', padding: '10px', borderRadius: 'var(--itunda-control-radius, 12px)', border: '1px solid var(--itunda-border-default)' }}
+            >
+              <option value="MAIN">{t('card.fundingAccountMain')}</option>
+              <option value="PAY">{t('card.fundingAccountPay')}</option>
+            </select>
+          </label>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy || card.frozen}>
+            {card.closedAt ? t('card.payStateClosed') : card.lost ? t('card.payStateLost') : card.frozen ? t('card.payStateFrozen') : busy ? t('card.paying') : t('card.pay')}
           </button>
-        ))
-      )}
-    </div>
-  );
-}
-
-function SavingsView() {
-  const [goals, setGoals] = useState<SavingsGoal[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = () => {
-    setError(null);
-    fetchGoals().then(setGoals).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your goals.'));
-  };
-  useEffect(load, []);
-
-  return (
-    <div>
-      <InterestJarCard />
-      <CreateGoalForm onCreated={load} />
-      {error && (
-        <div className="toss-card" style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        </div>
-      )}
-      {goals === null ? (
-        <div className="toss-card skeleton" style={{ height: '100px' }} />
-      ) : goals.length === 0 ? (
-        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No savings goals yet.</p></div>
-      ) : (
-        goals.map((g) => <GoalCard key={g.id} goal={g} onChanged={load} />)
-      )}
-      <div style={{ marginTop: '24px' }}>
-        <GroupAccountsSection />
+        </form>
       </div>
     </div>
   );
 }
+
+// Real Kakao Bank SafeBox (세이프박스) equivalent -- claim-anytime interest that grows
+// for real off the actual SAVINGS account balance (InterestAccrualScheduler, 2026-07-20).
+// Real Kakao Pay 머니굴리기 ("rolling money") round-up auto-saving -- see
+// lib/savings.ts's own doc comment. First client UI for this feature anywhere
+import { SavingsView } from './BankHub';
+import { PayHub } from './PayHub';
+
+// Real IA fix (2026-08-10) -- see PRIMARY_TABS/EXPLORE_TAB_GROUPS's own doc comment
+// (BankDashboard) for the full account of how ExploreHub got here. Showing every
+// category expanded at once is the exact anti-pattern Hick's Law describes --
+// decision time rises with visible choice count, and UX research puts 1-5 visible
+// options as the target when speed matters, which is why ExploreHub's groups start
+// collapsed. This tracks which of the non-primary tabs a user actually opens,
+// most-recent-first, so Explore can surface what THEY use instead of a static
+// alphabetical/enum-order dump every time.
+const RECENT_TABS_KEY = 'itunda_bank_recent_more_tabs';
+const loadRecentTabs = (): Tab[] => {
+  try {
+    const raw = localStorage.getItem(RECENT_TABS_KEY);
+    return raw ? (JSON.parse(raw) as Tab[]) : [];
+  } catch {
+    return [];
+  }
+};
+const saveRecentTab = (id: Tab, current: Tab[]): Tab[] => {
+  const next = [id, ...current.filter((t) => t !== id)].slice(0, 6);
+  try {
+    localStorage.setItem(RECENT_TABS_KEY, JSON.stringify(next));
+  } catch {
+    // localStorage unavailable (private browsing, quota) -- recent row just stays empty, not fatal
+  }
+  return next;
+};
 
 export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
-  const [tab, setTab] = useState<Tab>('HOME');
+  // Real "verify with itunda" identity-verification-for-partners deep link
+  // (Partners product-completeness pass, 2026-09-07) -- web's own analog to the
+  // native apps' itunda://verify/{requestId} deep link, resolved via a
+  // `?verifyRequestId=` URL param instead (bank-mfe's own established pattern for a
+  // param-triggered full-screen view independent of `tab`, mirroring
+  // TalkGroupsAndFriends.tsx's/EatsView.tsx's own ?joinChatCode=/?joinEatsCode=
+  // precedent). The actual early return is below the rest of this component's own
+  // hooks (Rules of Hooks -- every hook here must run unconditionally on every
+  // render). All real UI lives in IdentityVerificationConsentView.tsx.
+  const [verifyRequestId, setVerifyRequestId] = useState<string | null>(
+    () => new URLSearchParams(window.location.search).get('verifyRequestId'),
+  );
+
+  const [tab, setTabState] = useState<Tab>(() => readTabFromUrl());
+  // Keeps `tab` deep-linkable: every real navigation both updates state and pushes a
+  // real URL (?tab=X) so refresh/share/back-button all land where the user actually
+  // was, not always Home. `history.pushState` (not `replaceState`) so the browser's
+  // real back button steps through tab history one screen at a time, matching every
+  // native app's own real back-stack behavior (Section 1's itunda:// deep links).
+  const setTab = (next: Tab) => {
+    setTabState(next);
+    const url = new URL(window.location.href);
+    url.searchParams.set(TAB_QUERY_PARAM, next);
+    window.history.pushState({ tab: next }, '', url);
+  };
+  useEffect(() => {
+    const onPopState = () => setTabState(readTabFromUrl());
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
   const [pendingConversationId, setPendingConversationId] = useState<string | null>(null);
+  // Real Uber "trip issue report" hand-off -- see SupportView's own doc comment on
+  // initialTransactionId. Same pending-hand-off shape as pendingConversationId above.
+  const [pendingRideIssueTransactionId, setPendingRideIssueTransactionId] = useState<string | null>(null);
+  // Real Eats order "report an issue" hand-off (2026-09-06, Eats product-completeness
+  // pass) -- same pending-hand-off shape as pendingRideIssueTransactionId above, kept
+  // as its own state rather than generalized since a user can only ever be reporting
+  // one specific completed order/trip at a time.
+  const [pendingEatsOrderIssueTransactionId, setPendingEatsOrderIssueTransactionId] = useState<string | null>(null);
+  // Real gap named in docs/DESIGN_REFERENCES.md's own IA research (Section 41 item 3):
+  // search only ever existed buried inside the Explore tab, not reachable from
+  // anywhere else without navigating there first and scrolling to find it. The
+  // sourced, named-product rule: an icon-in-header that expands search is the right
+  // choice for a super-app this size (search is secondary to browsing but genuinely
+  // needed for "I know exactly what I want"). Reuses ExploreHub's own already-real,
+  // already-working search box rather than building a second one -- this just adds a
+  // one-tap header entry point that switches tab and focuses it, same
+  // pending-hand-off pattern already used for pendingConversationId above.
+  const [focusExploreSearch, setFocusExploreSearch] = useState(false);
+  // Real gap named in docs/DESIGN_REFERENCES.md's own IA research (Section 41 item 4):
+  // ConversationSummary.unreadCount/GroupSummary.unreadCount were already fetched and
+  // rendered per-row *inside* MessagesView's own Direct/Groups lists, but neither
+  // total ever reached PRIMARY_TABS's own render, so a user got zero ambient signal
+  // that a message needed attention without opening Messages first. Named-product rule
+  // cited there: a numeric badge (not a dot) on the tab whose exact count drives the
+  // next action, capped at "99+" so a large count never pushes neighboring tab labels.
+  // Lightweight top-level poll, independent of MessagesView's own -- this only needs
+  // the two totals, not the full conversation/group lists MessagesView renders.
+  const [messagesUnreadCount, setMessagesUnreadCount] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    const poll = () => {
+      // Real accuracy fix (2026-09-11): this used to sum unreadCount across
+      // only each list's own first page (20 rows), undercounting for any
+      // real user with more than 20 conversations or groups -- see
+      // project_itunda_pagination_discard_sweep memory's own "Messaging"
+      // section. fetchUnreadCount is a real, unbounded backend aggregate
+      // covering ALL of a user's conversations/groups, not a page.
+      fetchUnreadCount()
+        .then((r) => {
+          if (cancelled) return;
+          setMessagesUnreadCount(r.total);
+        })
+        .catch(() => {
+          // Non-critical -- a poll failure just leaves the last-known badge count.
+        });
+    };
+    poll();
+    const interval = setInterval(poll, 15000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
+  // Real, smaller follow-up named alongside the Messages badge above (Section 41
+  // item 4): NotificationsCard's own real unreadCount was already fetched and shown
+  // *inside* the You tab, but never reached PRIMARY_TABS either, so opening You was
+  // the only way to learn something needed attention. Named-product rule cited in the
+  // same doc section: a plain dot (not a number) is correct here, since this is a
+  // general "something changed" signal, not an exact count that drives the next
+  // action the way an unread message count does -- deliberately not mixed with the
+  // numeric Messages badge on the same bar.
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const poll = () => {
+      fetchNotifications()
+        .then((r) => { if (!cancelled) setHasUnreadNotifications(r.unreadCount > 0); })
+        .catch(() => {
+          // Non-critical -- a poll failure just leaves the last-known dot state.
+        });
+    };
+    poll();
+    const interval = setInterval(poll, 15000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
+  // Real deep-link from the Home coop rail into LoansView's own specific mode
+  // (2026-08-10) -- see LoansView's own initialMode doc comment for the full account.
+  const [pendingLoansMode, setPendingLoansMode] = useState<LoansMode | null>(null);
+  // Real deep-link from the Home coop rail into SavingsView's own SACCO/Ikimina
+  // sections (2026-08-10) -- see SavingsView's own initialScrollTarget doc comment.
+  const [pendingSavingsTarget, setPendingSavingsTarget] = useState<'sacco' | 'ikimina' | null>(null);
   const user = getStoredUser();
+  // Real gap caught while adding Android/iOS's 4th localization screen (2026-08-08,
+  // docs/DESIGN_REFERENCES.md Section 19): LoginPage.tsx's own switcher only renders
+  // pre-login, so a signed-in user had no way to change language short of logging
+  // out -- Android had the same gap in a different shape (see
+  // the-switch-that-only-flipped-one-room.ts). This header renders on every tab, so
+  // putting it here (not buried in one tab like MyView) fixes it for the whole app in
+  // one place rather than one screen.
+  const { locale, setLocale } = useI18n();
+
+  // Real 쿠팡파트너스-style affiliate link capture (item 229) -- see
+  // lib/affiliate.ts's own doc comment. Best-effort, runs once per real page load.
+  useEffect(() => { captureReferralCodeFromUrl(); }, []);
 
   const handleLogout = () => {
     logout();
@@ -6403,22 +2847,128 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     setTab('MESSAGES');
   };
 
+  // Real "report an issue" hand-off from a completed ride: switches straight to
+  // Support with that ride's real payment transaction + RIDE_ISSUE category already
+  // selected, same shape as handleMessageSeller above.
+  const handleReportRideIssue = (transactionId: string) => {
+    setPendingRideIssueTransactionId(transactionId);
+    setTab('SUPPORT');
+  };
+
+  // Real Eats order "report an issue" hand-off (2026-09-06, Eats product-completeness
+  // pass) -- same shape as handleReportRideIssue above.
+  const handleReportEatsOrderIssue = (transactionId: string) => {
+    setPendingEatsOrderIssueTransactionId(transactionId);
+    setTab('SUPPORT');
+  };
+
+  let supportInitialCategory: SupportTicketCategory | undefined;
+  if (pendingRideIssueTransactionId) supportInitialCategory = 'RIDE_ISSUE';
+  else if (pendingEatsOrderIssueTransactionId) supportInitialCategory = 'EATS_ORDER_ISSUE';
+
   const TABS: { id: Tab; label: string }[] = [
     { id: 'HOME', label: 'Home' },
+    { id: 'PAY', label: 'Pay' },
+    { id: 'EXPLORE', label: 'Explore' },
+    { id: 'YOU', label: 'You' },
+    { id: 'MY', label: 'My' },
     { id: 'SHOP', label: 'Shop' },
     { id: 'EATS', label: 'Eats' },
-    { id: 'STOCKS', label: 'Invest' },
-    { id: 'SAVINGS', label: 'Savings' },
-    { id: 'MESSAGES', label: 'Messages' },
     { id: 'MARKETPLACE', label: 'Marketplace' },
     { id: 'COMMUNITY', label: 'Community' },
     { id: 'JOBS', label: 'Jobs' },
     { id: 'PROPERTY', label: 'Property' },
+    { id: 'STOCKS', label: 'Invest' },
+    { id: 'SAVINGS', label: 'itunda Bank' },
+    { id: 'MESSAGES', label: 'Messages' },
+    { id: 'RIDES', label: 'Rides' },
+    { id: 'DESIGNATED_DRIVER', label: 'Designated driver' },
+    { id: 'BIKESHARE', label: 'Bike' },
+    { id: 'PARKING', label: 'Parking' },
+    { id: 'BUS', label: 'Bus' },
+    { id: 'KNOWLEDGE', label: 'Q&A' },
     { id: 'MAP', label: 'Map' },
     { id: 'CERTIFICATE', label: 'Certificate' },
-    { id: 'SHOPPING', label: 'Shopping' },
     { id: 'DEVICES', label: 'Devices' },
+    { id: 'CARD', label: 'Card' },
+    { id: 'TRANSIT', label: 'Transit' },
+    { id: 'OVERVIEW', label: 'Overview' },
+    { id: 'LOANS', label: 'Loans' },
+    { id: 'CREDIT_SCORE', label: 'Credit score' },
+    { id: 'TRUST_SCORE', label: 'Trust score' },
+    { id: 'REWARDS', label: 'Rewards' },
+    { id: 'INSURANCE', label: 'Insurance' },
+    { id: 'BILLS', label: 'Pay bills' },
+    { id: 'AGENT', label: 'Agent till' },
+    { id: 'USSD', label: 'USSD access' },
+    { id: 'FOREIGN_CURRENCY', label: 'Foreign currency' },
+    { id: 'SPENDING', label: 'Spending' },
+    { id: 'SUBSCRIPTIONS', label: 'Subscriptions' },
+    { id: 'IDENTITY', label: 'Verify' },
+    { id: 'SUPPORT', label: 'Support' },
   ];
+
+  // Real gap found live (2026-08-10) via an actual headless-Chrome screenshot (through
+  // a real CDP device-metrics capture, not code review): all 36 entries in TABS above
+  // rendered as one `display:flex` row with `flex:1` on every button and no
+  // overflow-x/wrap -- at any real viewport width, the buttons hit their own text's
+  // intrinsic minimum width and the row silently overflowed with NO scroll affordance,
+  // so most tabs -- including real, fully-built features like Marketplace/Jobs/
+  // Property/Rides/Loans -- were completely unreachable on any realistic device width.
+  //
+  // A 4-primary-tabs-plus-"More" fix, then a Home/Pay/Explore/Activity/You fix, then
+  // a Home/Shop/Hood/Talk/All fix matching Android/iOS's own independently-converged
+  // 5-tab bar (both citing the real Toss reference 홈/혜택/쇼핑/페이/전체) all landed
+  // and were each superseded the same day (2026-08-10) -- see
+  // docs/DESIGN_REFERENCES.md Section 41 for the full research trail. This is the
+  // version that stuck, after directly comparing it against Home/Shop/Hood/Talk/All:
+  // HOME (unchanged), PAY (dedicated primary slot -- itunda is bank-first, and Pay
+  // was judged to deserve first-class visibility Android/iOS currently bury one tap
+  // into All), EXPLORE (Shop/Eats/Marketplace/Community/Jobs/Property each their own
+  // flat row here now, not nested behind a segmented-toggle sub-screen -- a tab bar
+  // inside a tab is real noise a flat catalog shouldn't have; the ShopHub/HoodHub
+  // toggle shape was correct when Shop/Hood were primary tabs, wrong once demoted
+  // into Explore, corrected same day -- alongside every other real destination,
+  // searchable and grouped), MESSAGES (itunda's
+  // Marketplace/Community/Jobs/Property flows lean on the same "message the other
+  // person" mechanic Karrot/당근마켓 keeps chat primary for), YOU (profile up front,
+  // matching where Android/iOS put My inside All, plus Insights and Account &
+  // security as their own groups rather than flat rows). Android
+  // (`ItundaAppScreen.kt`'s `ItundaTab` enum) and iOS (`ContentView.swift`) are being
+  // rebuilt to this same five in the same pass specifically so this doesn't reopen
+  // the cross-platform inconsistency the earlier fix closed. Every one of the
+  // original tab ids and its `{tab === 'X' && <XView />}` routing further below is
+  // unchanged -- this only changes how a destination is reached. EXPLORE_TAB_GROUPS
+  // is the single source of truth for "everything else," used by both ExploreHub's
+  // browsable groups and its search box, so a service can't be filed under one
+  // category when browsed and a different one when searched.
+  const PRIMARY_TABS: { id: Tab; label: string; icon: typeof IconHome }[] = [
+    { id: 'HOME', label: 'Home', icon: IconHome },
+    { id: 'PAY', label: 'Pay', icon: IconPay },
+    { id: 'EXPLORE', label: 'Explore', icon: IconExplore },
+    { id: 'MESSAGES', label: 'Messages', icon: IconMessages },
+    { id: 'YOU', label: 'You', icon: IconYou },
+  ];
+  const EXPLORE_TAB_GROUPS: { title: string; ids: Tab[] }[] = [
+    { title: 'Everyday', ids: ['SHOP', 'EATS', 'RIDES', 'MAP'] },
+    { title: 'Your neighbourhood', ids: ['MARKETPLACE', 'COMMUNITY', 'JOBS', 'PROPERTY'] },
+    { title: 'Get around', ids: ['DESIGNATED_DRIVER', 'BIKESHARE', 'PARKING', 'BUS'] },
+    { title: 'Money tools', ids: ['SAVINGS', 'STOCKS', 'LOANS', 'CREDIT_SCORE', 'INSURANCE', 'FOREIGN_CURRENCY'] },
+    { title: 'Trust & community', ids: ['TRUST_SCORE', 'KNOWLEDGE', 'REWARDS'] },
+    { title: 'More', ids: ['CERTIFICATE', 'AGENT', 'USSD'] },
+  ];
+  const tabLabel = (id: Tab) => TABS.find((t) => t.id === id)?.label ?? id;
+  const tabIcon = (id: Tab) => EXPLORE_TAB_ICONS[id];
+  const [recentMoreTabs, setRecentMoreTabs] = useState<Tab[]>([]);
+  useEffect(() => { setRecentMoreTabs(loadRecentTabs()); }, []);
+  const navigateFromExplore = (id: Tab) => {
+    setTab(id);
+    setRecentMoreTabs(saveRecentTab(id, recentMoreTabs));
+  };
+
+  if (verifyRequestId) {
+    return <IdentityVerificationConsentView requestId={verifyRequestId} onDone={() => setVerifyRequestId(null)} />;
+  }
 
   return (
     <div style={{ padding: '20px', paddingBottom: '100px', maxWidth: '480px', margin: '0 auto' }}>
@@ -6427,51 +2977,170 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         animate={{ opacity: 1 }}
         style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', padding: '0 8px' }}
       >
-        <h2 style={{ color: 'var(--toss-grey-900)', margin: 0, fontSize: '24px', fontWeight: '700', letterSpacing: '-0.5px' }}>Itunda</h2>
+        <h2 style={{ color: 'var(--itunda-text-primary)', margin: 0, fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: '700', letterSpacing: '-0.5px' }}>Itunda</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {user && <span style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{user.firstName}</span>}
-          <button onClick={handleLogout} style={{ color: 'var(--toss-grey-500)', display: 'flex' }} aria-label="Sign out">
+          {user && <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-tertiary)' }}>{user.firstName}</span>}
+          <button
+            onClick={() => { setFocusExploreSearch(true); setTab('EXPLORE'); }}
+            style={{ color: 'var(--itunda-text-tertiary)', display: 'flex', padding: '4px' }}
+            aria-label="Search all services"
+          >
+            <IconSearch size={18} />
+          </button>
+          <select
+            value={locale}
+            onChange={(e) => setLocale(e.target.value as 'en' | 'rw' | 'fr')}
+            aria-label="Language"
+            style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--itunda-border-default)', color: 'var(--itunda-text-secondary)', background: 'var(--itunda-surface-default)' }}
+          >
+            {LOCALES.map((l) => (
+              <option key={l.code} value={l.code}>{l.label}</option>
+            ))}
+          </select>
+          <button onClick={handleLogout} style={{ color: 'var(--itunda-text-tertiary)', display: 'flex', padding: '4px' }} aria-label="Sign out">
             <LogOut size={18} />
           </button>
         </div>
       </motion.div>
 
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {TABS.map(({ id, label }) => (
+      <div style={{ display: 'flex', gap: '2px', padding: '4px', marginBottom: '16px', backgroundColor: 'transparent', borderBottom: '1px solid var(--itunda-border-default)' }}>
+        {PRIMARY_TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
+            aria-current={tab === id ? 'page' : undefined}
             style={{
-              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: tab === id ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: tab === id ? 'var(--toss-blue)' : 'transparent',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flex: 1, padding: '7px 2px', borderRadius: 'var(--itunda-control-radius, 12px)', fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700,
+              color: tab === id ? 'var(--itunda-surface-default)' : 'var(--itunda-text-secondary)',
+              backgroundColor: tab === id ? 'var(--itunda-indigo)' : 'transparent',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px',
             }}
           >
+            <div style={{ position: 'relative' }}>
+              <Icon size={18} />
+              {id === 'MESSAGES' && messagesUnreadCount > 0 && (
+                <span
+                  style={{
+                    position: 'absolute', top: '-6px', right: '-10px', minWidth: '16px', height: '16px', padding: '0 3px',
+                    borderRadius: '999px', backgroundColor: 'var(--itunda-red)', color: 'var(--itunda-surface-default)',
+                    fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    lineHeight: 1,
+                  }}
+                >
+                  {messagesUnreadCount > 99 ? '99+' : messagesUnreadCount}
+                </span>
+              )}
+              {id === 'YOU' && hasUnreadNotifications && (
+                <span
+                  style={{
+                    position: 'absolute', top: '-2px', right: '-4px', width: '9px', height: '9px',
+                    borderRadius: '999px', backgroundColor: 'var(--itunda-red)',
+                    border: '1.5px solid var(--itunda-surface-subtle)',
+                  }}
+                  aria-label="Unread notifications"
+                />
+              )}
+            </div>
             {label}
           </button>
         ))}
       </div>
 
       {tab === 'HOME' && <HomeView />}
-      {tab === 'SHOP' && <ShopView />}
-      {tab === 'EATS' && <EatsView />}
+      {tab === 'PAY' && <PayHub onNavigateToTab={setTab} onNavigateToCard={() => setTab('CARD')} />}
+      {tab === 'EXPLORE' && (
+        <ExploreHub
+          groups={EXPLORE_TAB_GROUPS}
+          tabLabel={tabLabel}
+          tabIcon={tabIcon}
+          recentTabs={recentMoreTabs}
+          onSelect={navigateFromExplore}
+          autoFocusSearch={focusExploreSearch}
+          onConsumedAutoFocus={() => setFocusExploreSearch(false)}
+        />
+      )}
+      {tab === 'YOU' && <YouHub onNavigateToTab={setTab} />}
+      {tab === 'MY' && <MyView />}
+      {tab === 'SHOP' && <ShopView onMessageSeller={handleMessageSeller} />}
+      {tab === 'EATS' && <EatsView onMessageSeller={handleMessageSeller} onReportIssue={handleReportEatsOrderIssue} />}
+      {tab === 'MARKETPLACE' && <MarketplaceView onMessageSeller={handleMessageSeller} />}
+      {tab === 'COMMUNITY' && <CommunityView onOpenGroupChat={handleMessageSeller} />}
+      {tab === 'JOBS' && <JobsView onMessagePoster={handleMessageSeller} />}
+      {tab === 'PROPERTY' && <PropertyView onMessageLister={handleMessageSeller} />}
       {tab === 'STOCKS' && <StocksView />}
-      {tab === 'SAVINGS' && <SavingsView />}
+      {tab === 'SAVINGS' && (
+        <SavingsView
+          initialScrollTarget={pendingSavingsTarget}
+          onConsumedInitialScrollTarget={() => setPendingSavingsTarget(null)}
+          onNavigateToTab={setTab}
+          onNavigateToLoansMode={setPendingLoansMode}
+          onNavigateToSavingsTarget={setPendingSavingsTarget}
+        />
+      )}
       {tab === 'MESSAGES' && (
         <MessagesView
           initialConversationId={pendingConversationId}
           onConsumedInitial={() => setPendingConversationId(null)}
         />
       )}
-      {tab === 'MARKETPLACE' && <MarketplaceView onMessageSeller={handleMessageSeller} />}
-      {tab === 'COMMUNITY' && <CommunityView />}
-      {tab === 'JOBS' && <JobsView onMessagePoster={handleMessageSeller} />}
-      {tab === 'PROPERTY' && <PropertyView onMessageLister={handleMessageSeller} />}
-      {tab === 'MAP' && <MapView />}
+      {tab === 'RIDES' && <RidesView onReportIssue={handleReportRideIssue} />}
+      {tab === 'DESIGNATED_DRIVER' && <DesignatedDriverView />}
+      {tab === 'BIKESHARE' && (
+        <Suspense fallback={<div className="itunda-flat-section skeleton" style={{ height: '200px' }} />}>
+          <BikeShareView />
+        </Suspense>
+      )}
+      {tab === 'PARKING' && (
+        <Suspense fallback={<div className="itunda-flat-section skeleton" style={{ height: '200px' }} />}>
+          <ParkingView />
+        </Suspense>
+      )}
+      {tab === 'BUS' && (
+        <Suspense fallback={<div className="itunda-flat-section skeleton" style={{ height: '200px' }} />}>
+          <BusView />
+        </Suspense>
+      )}
+      {tab === 'KNOWLEDGE' && <KnowledgeView />}
+      {tab === 'MAP' && (
+        <Suspense fallback={<div className="itunda-flat-section skeleton" style={{ height: '300px' }} />}>
+          <MapsI18nProvider>
+            <MapView />
+          </MapsI18nProvider>
+        </Suspense>
+      )}
       {tab === 'CERTIFICATE' && <CertificateView />}
-      {tab === 'SHOPPING' && <ShoppingView />}
       {tab === 'DEVICES' && <DevicesView />}
+      {tab === 'CARD' && <CardView />}
+      {tab === 'TRANSIT' && <TransitScreen onOpenCollect={() => setTab('TRANSIT_COLLECT')} />}
+      {tab === 'TRANSIT_COLLECT' && <TransitCollectScreen />}
+      {tab === 'MOTO_FARE_COLLECT' && <MotoFareCollectScreen />}
+      {tab === 'OVERVIEW' && <OverviewAssetsView onNavigateToTab={setTab} />}
+      {tab === 'LOANS' && <LoansView initialMode={pendingLoansMode ?? undefined} onConsumedInitialMode={() => setPendingLoansMode(null)} />}
+      {tab === 'CREDIT_SCORE' && <CreditScoreView />}
+      {tab === 'TRUST_SCORE' && <TrustScoreView />}
+      {tab === 'REWARDS' && <RewardsView />}
+      {tab === 'INSURANCE' && (
+        <Suspense fallback={<div className="itunda-flat-section skeleton" style={{ height: '200px' }} />}>
+          <InsuranceView />
+        </Suspense>
+      )}
+      {tab === 'BILLS' && <BillsView />}
+      {tab === 'AGENT' && <AgentOperatorView />}
+      {tab === 'USSD' && <UssdSettingsView />}
+      {tab === 'FOREIGN_CURRENCY' && <ForeignCurrencyView />}
+      {tab === 'SPENDING' && <SpendingInsightView />}
+      {tab === 'SUBSCRIPTIONS' && <SubscriptionsView />}
+      {tab === 'IDENTITY' && <IdentityView />}
+      {tab === 'SUPPORT' && (
+        <SupportView
+          initialTransactionId={pendingRideIssueTransactionId ?? pendingEatsOrderIssueTransactionId}
+          initialCategory={supportInitialCategory}
+          onConsumedInitial={() => {
+            setPendingRideIssueTransactionId(null);
+            setPendingEatsOrderIssueTransactionId(null);
+          }}
+        />
+      )}
     </div>
   );
 }

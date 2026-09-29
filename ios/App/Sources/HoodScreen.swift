@@ -1,12 +1,53 @@
 import SwiftUI
+import UIKit
 import CoreLocation
 import CoreDesignSystem
+import CoreNetwork
+
+
+// Hood tab entry point + shared helpers (image picker, radius control,
+// neighborhood-setup prompt, skeleton). Domain content lives in
+// HoodMarketplace*.swift / HoodCommunity*.swift / HoodJobs*.swift /
+// HoodProperty*.swift (split 2026-08-19 for real file-size decomposition).
+
+/// Real photo/document picker (2026-08-01) -- UIImagePickerController wrapped for
+/// SwiftUI rather than the iOS-16-only PhotosPicker, since this project's deployment
+/// target isn't pinned to 16+ anywhere and this is the app's first photo-picker use.
+/// Used by PropertyListingCard's real ownership-verification upload; a plain, reusable
+/// callback-based wrapper if another flow needs a real picker later.
+struct ImagePickerView: UIViewControllerRepresentable {
+    let onPicked: (UIImage?) -> Void
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.delegate = context.coordinator
+        picker.sourceType = .photoLibrary
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(onPicked: onPicked) }
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let onPicked: (UIImage?) -> Void
+        init(onPicked: @escaping (UIImage?) -> Void) { self.onPicked = onPicked }
+
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            onPicked(info[.originalImage] as? UIImage)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            onPicked(nil)
+        }
+    }
+}
 
 /// Real device-location fetch, shared by NewListingForm's "share my location" toggle and
 /// ListingCard's "directions to this seller" -- same runtime-permission-gated
 /// CLLocationManager technique MapScreenView.swift's own LocationFetcher already
 /// established.
-private final class HoodLocationFetcher: NSObject, ObservableObject, CLLocationManagerDelegate {
+final class HoodLocationFetcher: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var coordinate: CLLocationCoordinate2D?
     @Published var errorMessage: String?
     private let manager = CLLocationManager()
@@ -46,13 +87,66 @@ private final class HoodLocationFetcher: NSObject, ObservableObject, CLLocationM
     }
 }
 
+/// Freshness is a practical trust signal in a local marketplace: it distinguishes a
+/// current offer from a stale listing without inventing any reputation data.
+func hoodRelativeTime(_ isoTimestamp: String) -> String {
+    let standard = ISO8601DateFormatter()
+    standard.formatOptions = [.withInternetDateTime]
+    let fractional = ISO8601DateFormatter()
+    fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    guard let date = fractional.date(from: isoTimestamp) ?? standard.date(from: isoTimestamp) else { return "" }
+    let seconds = max(0, Date().timeIntervalSince(date))
+    switch seconds {
+    case ..<60: return "Just now"
+    case ..<3_600: return "\(Int(seconds / 60))m ago"
+    case ..<86_400: return "\(Int(seconds / 3_600))h ago"
+    case ..<604_800: return "\(Int(seconds / 86_400))d ago"
+    default: return "\(Int(seconds / 604_800))w ago"
+    }
+}
+
+// Real 당근모임-style structured event date display (2026-07-25 backend/Android;
+// ported to iOS 2026-07-28) -- falls back to the raw ISO string on any parse failure,
+// never a fabricated date.
+func formatMeetupDate(_ iso: String) -> String {
+    guard let date = ISO8601DateFormatter().date(from: iso) else { return iso }
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(identifier: "UTC")!
+    let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+    guard let year = components.year, let month = components.month, let day = components.day,
+          let hour = components.hour, let minute = components.minute else { return iso }
+    return String(format: "%04d-%02d-%02d %02d:%02d", year, month, day, hour, minute)
+}
+
+/// The selected distance is sent to the existing nearby endpoints; it is not a
+/// cosmetic filter. Small preset choices keep the control usable on a phone.
+struct HoodRadiusControl: View {
+    @Binding var radiusKm: Double
+    let onChanged: () -> Void
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach([1.0, 3.0, 5.0, 10.0], id: \.self) { radius in
+                let selected = radiusKm == radius
+                Button("\(Int(radius)) km") { radiusKm = radius; onChanged() }
+                    .font(.caption).bold().foregroundColor(selected ? .white : IDS.Colors.textPrimary)
+                    .padding(.horizontal, 12).padding(.vertical, 7)
+                    .background(selected ? IDS.Colors.brand : IDS.Colors.chipBackground).cornerRadius(999)
+            }
+            Spacer()
+        }
+    }
+}
+
 /// Real hyperlocal neighborhood setup (2026-07-20) -- shared across every Hood-mode
 /// content view (Marketplace/Community/Jobs/Property), mirroring bank-mfe's
 /// NeighborhoodSetupPrompt and Android's own composable of the same name exactly.
 /// Reuses HoodLocationFetcher, the same real CLLocationManager wrapper
 /// NewListingForm's own "share my location" already established -- one location
 /// permission flow, not a second one invented for this.
-private struct NeighborhoodSetupPrompt: View {
+struct NeighborhoodSetupPrompt: View {
+    // Real second neighborhood (2026-08-04) -- see NetworkClient.setSecondNeighborhood's
+    // own doc comment; mirrors Android HoodShared.kt's own isSecond param and copy exactly.
+    var isSecond: Bool = false
     let onDone: (String) -> Void
 
     @State private var busy = false
@@ -61,32 +155,35 @@ private struct NeighborhoodSetupPrompt: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Text("Set your neighborhood").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-            Text("Share your real location once to see what's happening near you.")
+            Text(isSecond ? "Add a second neighborhood" : "Set your neighborhood").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+            Text(isSecond ? "Share a second real place -- like work -- to see what's happening there too." : "Share your real location once to see what's happening near you.")
                 .font(.caption).foregroundColor(IDS.Colors.textSecondary).multilineTextAlignment(.center)
-            Button(action: { if !busy { locationFetcher.requestLocation() } }) {
-                Text(busy ? "Finding your neighborhood…" : "📍 Share my location")
-                    .font(.subheadline).bold().foregroundColor(.white)
-                    .padding(.horizontal, 20).padding(.vertical, 12)
-                    .background(IDS.Colors.brand).cornerRadius(12)
-            }
-            .disabled(busy)
+            IdsButton(
+                text: busy ? "Finding your neighborhood…" : "📍 Share my location",
+                isEnabled: !busy,
+                isLoading: busy,
+                size: .medium,
+                action: { locationFetcher.requestLocation() }
+            )
             if let error {
-                Text(error).font(.caption).foregroundColor(.red)
+                IdsErrorText(error)
             }
         }
         .frame(maxWidth: .infinity)
         .padding(28)
         .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
+        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
         .onAppear {
             locationFetcher.onLocation = { coordinate in
                 busy = true
                 Task {
                     do {
-                        let res = try await NetworkClient.shared.setNeighborhood(latitude: coordinate.latitude, longitude: coordinate.longitude)
+                        let res = isSecond
+                            ? try await NetworkClient.shared.setSecondNeighborhood(latitude: coordinate.latitude, longitude: coordinate.longitude)
+                            : try await NetworkClient.shared.setNeighborhood(latitude: coordinate.latitude, longitude: coordinate.longitude)
                         busy = false
-                        if let neighborhood = res.user.neighborhood { onDone(neighborhood) }
+                        let value = isSecond ? res.user.secondNeighborhood : res.user.neighborhood
+                        if let value { onDone(value) }
                     } catch let NetworkError.httpError(statusCode) {
                         busy = false
                         error = TalkScreen.errorMessage(statusCode)
@@ -103,39 +200,130 @@ private struct NeighborhoodSetupPrompt: View {
     }
 }
 
+// Real dual-neighborhood switcher (2026-08-04) -- mirrors Android SuperAppTabs.kt's
+// HoodTab showNeighborhoodPrompt overlay exactly: the primary NeighborhoodSetupPrompt
+// plus an Add/Change/Remove row for the optional second neighborhood (e.g. home + work).
+struct NeighborhoodSwitcherOverlay: View {
+    let secondNeighborhoodName: String?
+    let onPrimaryDone: (String) -> Void
+    let onAddSecondTapped: () -> Void
+    let onRemoveSecond: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.32).ignoresSafeArea()
+                .onTapGesture { onDismiss() }
+            VStack(spacing: 10) {
+                NeighborhoodSetupPrompt(onDone: onPrimaryDone)
+                HStack {
+                    Text(secondNeighborhoodName.map { "Second: \($0)" } ?? "Add a second neighborhood")
+                        .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                    Spacer()
+                    HStack(spacing: 12) {
+                        IdsButton(
+                            text: secondNeighborhoodName != nil ? "Change" : "Add",
+                            variant: .tinted,
+                            size: .small,
+                            fullWidth: false,
+                            action: onAddSecondTapped
+                        )
+                        if secondNeighborhoodName != nil {
+                            IdsButton(
+                                text: "Remove",
+                                variant: .tinted,
+                                size: .small,
+                                fullWidth: false,
+                                action: onRemoveSecond
+                            )
+                        }
+                    }
+                }
+                .padding(16)
+                .background(IDS.Colors.card)
+                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+            }
+            .padding(.horizontal, IDS.Layout.screenHorizontal)
+        }
+    }
+}
+
+/// Card-shaped loading placeholders keep every Hood feed legible while its real
+/// neighborhood data is loading, instead of showing a disconnected spinner.
+struct HoodFeedSkeleton: View {
+    var body: some View {
+        VStack(spacing: IDS.Layout.cardGap) {
+            ForEach(0..<3, id: \.self) { _ in
+                VStack(alignment: .leading, spacing: 10) {
+                    RoundedRectangle(cornerRadius: 5).fill(IDS.Colors.chipBackground).frame(width: 92, height: 12)
+                    RoundedRectangle(cornerRadius: 6).fill(IDS.Colors.chipBackground).frame(maxWidth: .infinity).frame(height: 18)
+                    RoundedRectangle(cornerRadius: 5).fill(IDS.Colors.chipBackground).frame(maxWidth: .infinity).frame(height: 12)
+                    RoundedRectangle(cornerRadius: 5).fill(IDS.Colors.chipBackground).frame(width: 160, height: 12)
+                }
+                .padding(18)
+                .background(IDS.Colors.card)
+                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+            }
+        }
+        .accessibilityLabel("Loading Hood content")
+    }
+}
+
 /// Real 당근마켓 (Danggeun/Karrot Market)-style neighborhood marketplace (2026-07-18) --
 /// iOS mirror of Android's HoodTab (SuperAppTabs.kt). See NetworkClient.swift's
 /// Marketplace extension and rw.itunda.marketplace.MarketplaceService's own doc
 /// comment for the full backend account, including the honest "no real location data"
 /// scope this screen inherits unchanged.
-// Real 당근-style neighborhood-services hub (2026-07-19) -- Marketplace, Community
-// (동네생활), Jobs (당근알바), and Property (당근부동산) all fold into this one screen
-// via a segmented Picker, matching the exact "no free bottom-nav slot, fold into an
-// existing tab" pattern ShopScreen's own Shop/Eats toggle already established.
-struct HoodScreen: View {
+// HoodScreen's own segmented Picker (Market/Life/Jobs/Home) was retired 2026-08-10:
+// real user correction -- nesting Marketplace/Community/Jobs/Property behind one
+// Explore row with an internal switcher is a tab bar inside a tab, noise a flat
+// catalog shouldn't have (same fix applied to ShopScreen's Shop/Eats toggle and to
+// Android's identical HoodTab chip row -- see SuperAppTabs.kt's HoodSectionScreen
+// doc comment for the full account). The shared 당근-style shell below (neighborhood
+// name row, switcher overlay, dual-neighborhood prompt) is real, deliberately
+// Karrot-sourced UI, not a simple toggle -- kept, just parameterized by a fixed
+// `mode` instead of internal switchable state, mounted once per flat destination
+// (ContentView.swift's showMarketplace/showCommunity/showJobs/showProperty).
+enum HoodMode { case marketplace, community, jobs, property }
+
+struct HoodSectionScreen: View {
+    let mode: HoodMode
     @Binding var pendingConversationId: String?
     let onSwitchToTalk: () -> Void
 
-    private enum HoodMode { case marketplace, community, jobs, property }
-    @State private var mode: HoodMode = .marketplace
+    @State private var neighborhoodName: String?
+    @State private var neighborhoodVerificationCount = 0
+    // Real dual-neighborhood support (2026-08-04) -- see NetworkClient.setSecondNeighborhood's
+    // own doc comment; mirrors Android SuperAppTabs.kt's HoodSectionScreen exactly.
+    @State private var secondNeighborhoodName: String?
+    @State private var showNeighborhoodSwitcher = false
+    @State private var showSecondNeighborhoodPrompt = false
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("", selection: $mode) {
-                Text("Market").tag(HoodMode.marketplace)
-                Text("Life").tag(HoodMode.community)
-                Text("Jobs").tag(HoodMode.jobs)
-                Text("Home").tag(HoodMode.property)
+            HStack(spacing: 6) {
+                Text("📍")
+                Text(
+                    [neighborhoodName, secondNeighborhoodName].compactMap { $0 }.isEmpty
+                        ? "Choose your neighborhood in any Hood service"
+                        : [neighborhoodName, secondNeighborhoodName].compactMap { $0 }.joined(separator: " · ")
+                        + (neighborhoodVerificationCount > 0 ? " · confirmed \(neighborhoodVerificationCount)×" : "")
+                )
+                    .font(IDS.Typography.caption)
+                    .foregroundColor(IDS.Colors.textSecondary)
+                Spacer()
             }
-            .pickerStyle(.segmented)
             .padding(.horizontal, IDS.Layout.screenHorizontal)
             .padding(.top, IDS.Layout.screenTop)
+            .padding(.bottom, 10)
+            .contentShape(Rectangle())
+            .onTapGesture { showNeighborhoodSwitcher = true }
 
             switch mode {
             case .marketplace:
                 MarketplaceContent(pendingConversationId: $pendingConversationId, onSwitchToTalk: onSwitchToTalk)
             case .community:
-                CommunityContent()
+                CommunityContent(pendingConversationId: $pendingConversationId, onSwitchToTalk: onSwitchToTalk)
             case .jobs:
                 JobsContent(pendingConversationId: $pendingConversationId, onSwitchToTalk: onSwitchToTalk)
             case .property:
@@ -143,1626 +331,46 @@ struct HoodScreen: View {
             }
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
-    }
-}
-
-private struct MarketplaceContent: View {
-    /// Real "message seller" hand-off to TalkScreen -- see TalkScreen.swift's own
-    /// doc comment on `pendingConversationId` for the full mechanism.
-    @Binding var pendingConversationId: String?
-    let onSwitchToTalk: () -> Void
-
-    // wishlist added 2026-07-21, porting bank-mfe's Marketplace wishlist (shipped
-    // earlier the same day) to iOS -- see favoriteIds state and ListingWishlistView
-    // below for the full account.
-    private enum HoodView { case browse, neighborhood, mine, wishlist }
-
-    @State private var view: HoodView = .browse
-    @State private var listings: [ListingDto]?
-    @State private var error: String?
-    @State private var showNewListing = false
-    @State private var neighborhoodName: String?
-    @State private var neighborhoodChecked = false
-    private let currentUserId = KeychainTokenStore.shared.getUserId()
-
-    // Real Marketplace listing wishlist (2026-07-21) -- porting bank-mfe's wishlist
-    // (backend + web UI shipped earlier the same day) to iOS. Favorite state is
-    // lifted here, same as bank-mfe's own MarketplaceView, so the heart on every
-    // ListingCard in Browse/Neighborhood/My-listings stays correct after a toggle
-    // from any of them, not just the dedicated Wishlist tab.
-    @State private var favoriteIds: Set<String> = []
-    @State private var favoritingId: String?
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: IDS.Layout.cardGap) {
-                IdsPlainTopBar(title: "Hood")
-
-                Picker("", selection: $view) {
-                    Text("Browse").tag(HoodView.browse)
-                    Text("Neighborhood").tag(HoodView.neighborhood)
-                    Text("My listings").tag(HoodView.mine)
-                    Text("♡ Wishlist").tag(HoodView.wishlist)
-                }
-                .pickerStyle(.segmented)
-
-                if view == .mine {
-                    if showNewListing {
-                        NewListingForm(onCreated: {
-                            showNewListing = false
-                            Task { await load() }
-                        }, onCancel: { showNewListing = false })
-                    } else {
-                        Button(action: { showNewListing = true }) {
-                            Text("+ List an item")
-                                .font(IDS.Typography.bodyBold)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .background(IDS.Colors.brand)
-                                .cornerRadius(14)
-                        }
-                    }
-                }
-
-                if view == .neighborhood && neighborhoodChecked && neighborhoodName == nil {
-                    NeighborhoodSetupPrompt(onDone: { _ in Task { await load() } })
-                }
-                if view == .neighborhood, let neighborhoodName {
-                    Text("Your neighborhood: \(neighborhoodName)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                }
-                if view == .wishlist {
-                    ListingWishlistView(onRemoved: { Task { await loadFavoriteIds() } })
-                } else if let error {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(error).foregroundColor(.red).font(.subheadline)
-                        Button("Retry") { Task { await load() } }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20)
-                    .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius)
-                } else if listings == nil {
-                    ProgressView().frame(maxWidth: .infinity, minHeight: 120)
-                } else if listings!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
-                    Text(
-                        view == .browse ? "No listings yet."
-                            : view == .neighborhood ? "No listings in your neighborhood yet."
-                            : "You haven't listed anything yet."
-                    )
-                    .foregroundColor(IDS.Colors.textSecondary)
-                } else if !listings!.isEmpty {
-                    ForEach(listings!) { listing in
-                        ListingCard(
-                            listing: listing,
-                            isMine: view == .mine || listing.sellerId == currentUserId,
-                            onChanged: { Task { await load() } },
-                            onMessageSeller: { id in Task { await messageSeller(id) } },
-                            onMakeOffer: { id, amount in Task { await makeOffer(id, amount) } },
-                            favorited: favoriteIds.contains(listing.id),
-                            favoriteBusy: favoritingId == listing.id,
-                            onToggleFavorite: { Task { await toggleFavorite(listing.id) } }
-                        )
-                    }
-                }
-            }
-            .padding(.horizontal, IDS.Layout.screenHorizontal)
-            .padding(.top, IDS.Layout.screenTop)
-            .padding(.bottom, IDS.Layout.sectionSpacing)
-        }
-        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
-        .task { await load() }
-        .task { await loadFavoriteIds() }
-        .onChange(of: view) { _ in Task { await load() } }
-    }
-
-    private func load() async {
-        listings = nil
-        if view == .wishlist {
-            // ListingWishlistView below owns its own fetch (it needs title/price/
-            // category straight from the favorites endpoint, not the ListingDto
-            // shape) -- nothing to load into `listings` here.
-            return
-        }
-        if view == .neighborhood {
-            neighborhoodChecked = false
-            do {
-                let profile = try await NetworkClient.shared.getProfile()
-                let res = try await NetworkClient.shared.getListingsMyNeighborhood()
+        .task {
+            if let profile = try? await NetworkClient.shared.getProfile() {
                 neighborhoodName = profile.user.neighborhood
-                listings = res.listings
-                error = nil
-            } catch let NetworkError.httpError(statusCode) where statusCode == 400 {
-                neighborhoodName = nil
-                listings = []
-                error = nil
-            } catch {
-                self.error = "Couldn't reach itunda. Check your connection and try again."
+                neighborhoodVerificationCount = profile.user.neighborhoodVerificationCount ?? 0
+                secondNeighborhoodName = profile.user.secondNeighborhood
             }
-            neighborhoodChecked = true
-            return
         }
-        do {
-            let res = view == .browse ? try await NetworkClient.shared.browseListings() : try await NetworkClient.shared.getMyListings()
-            listings = res.listings
-            error = nil
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-
-    // Real Marketplace listing wishlist (2026-07-21) -- best-effort: a failure here
-    // just means hearts render as empty, the rest of the tab still works.
-    private func loadFavoriteIds() async {
-        do {
-            let res = try await NetworkClient.shared.getMyFavoriteListings()
-            favoriteIds = Set(res.favorites.map { $0.listingId })
-        } catch {
-            // Best-effort, see doc comment above.
-        }
-    }
-
-    private func toggleFavorite(_ listingId: String) async {
-        favoritingId = listingId
-        defer { favoritingId = nil }
-        do {
-            if favoriteIds.contains(listingId) {
-                _ = try await NetworkClient.shared.removeListingFavorite(listingId)
-                favoriteIds.remove(listingId)
-            } else {
-                _ = try await NetworkClient.shared.addListingFavorite(listingId)
-                favoriteIds.insert(listingId)
-            }
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-
-    private func messageSeller(_ listingId: String) async {
-        do {
-            let res = try await NetworkClient.shared.contactSeller(listingId: listingId)
-            pendingConversationId = res.conversation.id
-            onSwitchToTalk()
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-
-    private func makeOffer(_ listingId: String, _ amount: Double) async {
-        do {
-            let res = try await NetworkClient.shared.makeOffer(listingId: listingId, amount: amount)
-            pendingConversationId = res.offer.conversationId
-            onSwitchToTalk()
-        } catch {
-            self.error = "Couldn't send this offer. Check your connection and try again."
-        }
-    }
-}
-
-private struct NewListingForm: View {
-    let onCreated: () -> Void
-    let onCancel: () -> Void
-
-    @State private var title = ""
-    @State private var description = ""
-    @State private var price = ""
-    @State private var category = ""
-    @State private var error: String?
-    @State private var submitting = false
-
-    // Real optional seller location (2026-07-19) -- powers real proximity search and
-    // "Directions to this seller"; a listing without it simply doesn't appear in either,
-    // an honest opt-in, never assumed.
-    @State private var shareLocation = false
-    @State private var myLocation: CLLocationCoordinate2D?
-    @StateObject private var locationFetcher = HoodLocationFetcher()
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("List an item").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-            TextField("What are you selling?", text: $title).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-            TextField("Description", text: $description).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-            HStack {
-                TextField("Price (RWF)", text: $price).keyboardType(.numberPad).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-                TextField("Category", text: $category).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-            }
-            Button(action: {
-                if shareLocation { shareLocation = false } else { locationFetcher.requestLocation() }
-            }) {
-                Text(
-                    shareLocation
-                        ? "📍 Real location shared -- buyers can see distance & get directions"
-                        : "📍 Share my real location (optional)"
+        .overlay {
+            if showNeighborhoodSwitcher {
+                NeighborhoodSwitcherOverlay(
+                    secondNeighborhoodName: secondNeighborhoodName,
+                    onPrimaryDone: { name in
+                        neighborhoodName = name
+                        showNeighborhoodSwitcher = false
+                    },
+                    onAddSecondTapped: { showNeighborhoodSwitcher = false; showSecondNeighborhoodPrompt = true },
+                    onRemoveSecond: {
+                        Task {
+                            if let res = try? await NetworkClient.shared.clearSecondNeighborhood() {
+                                secondNeighborhoodName = res.user.secondNeighborhood
+                            }
+                        }
+                    },
+                    onDismiss: { showNeighborhoodSwitcher = false }
                 )
-                .font(.caption)
-                .foregroundColor(shareLocation ? IDS.Colors.brand : IDS.Colors.textSecondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 14).padding(.vertical, 12)
-                .background(IDS.Colors.chipBackground)
-                .cornerRadius(12)
             }
-            if let error {
-                Text(error).font(.caption).foregroundColor(.red)
-            }
-            HStack {
-                Button("Cancel", action: onCancel).frame(maxWidth: .infinity)
-                Button(action: { Task { await submit() } }) {
-                    Text(submitting ? "Listing…" : "List it")
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(IDS.Colors.brand)
-                        .cornerRadius(14)
+        }
+        .overlay {
+            if showSecondNeighborhoodPrompt {
+                ZStack {
+                    Color.black.opacity(0.32).ignoresSafeArea()
+                        .onTapGesture { showSecondNeighborhoodPrompt = false }
+                    NeighborhoodSetupPrompt(isSecond: true, onDone: { name in
+                        secondNeighborhoodName = name
+                        showSecondNeighborhoodPrompt = false
+                    })
+                    .padding(.horizontal, IDS.Layout.screenHorizontal)
                 }
-                .disabled(submitting)
             }
-        }
-        .padding(20)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
-        .onAppear {
-            locationFetcher.onLocation = { coordinate in
-                myLocation = coordinate
-                shareLocation = true
-            }
-        }
-        .onChange(of: locationFetcher.errorMessage) { newValue in
-            if let newValue { error = newValue }
-        }
-    }
-
-    private func submit() async {
-        guard let priceValue = Double(price), priceValue > 0, !title.isEmpty, !description.isEmpty, !category.isEmpty else {
-            error = "Fill in every field with a real price."
-            return
-        }
-        submitting = true
-        error = nil
-        defer { submitting = false }
-        do {
-            let loc = shareLocation ? myLocation : nil
-            _ = try await NetworkClient.shared.createListing(
-                title: title, description: description, price: priceValue, category: category,
-                latitude: loc?.latitude, longitude: loc?.longitude,
-            )
-            onCreated()
-        } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
         }
     }
 }
 
-private struct ListingCard: View {
-    let listing: ListingDto
-    let isMine: Bool
-    let onChanged: () -> Void
-    let onMessageSeller: (String) -> Void
-    let onMakeOffer: (String, Double) -> Void
-    // Real Marketplace listing wishlist (2026-07-21) -- state is lifted to
-    // MarketplaceContent (mirroring the already-real lifted-favoriteIds pattern used
-    // for Eats favorite restaurants) so the heart stays correct across Browse/
-    // Neighborhood/My-listings without a per-card refetch.
-    var favorited: Bool = false
-    var favoriteBusy: Bool = false
-    var onToggleFavorite: () -> Void = {}
-
-    @State private var busy = false
-    @State private var error: String?
-    @State private var offering = false
-    @State private var offerAmount = ""
-
-    // Real "directions to this seller" (2026-07-19, item 8 on the Maps "100%" roadmap) --
-    // reuses itunda's own self-hosted OSRM directions, same RouteMiniMap component Eats
-    // orders use.
-    @State private var myLocation: CLLocationCoordinate2D?
-    @State private var showRoute = false
-    @StateObject private var locationFetcher = HoodLocationFetcher()
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack {
-                        Text(listing.title).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                        if listing.status == "SOLD" {
-                            Text("SOLD")
-                                .font(.caption2).bold()
-                                .foregroundColor(IDS.Colors.textSecondary)
-                                .padding(.horizontal, 8).padding(.vertical, 2)
-                                .background(IDS.Colors.chipBackground)
-                                .cornerRadius(8)
-                        }
-                    }
-                    Text(listing.category).font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                }
-                Spacer()
-                if !isMine {
-                    Button(action: onToggleFavorite) {
-                        Image(systemName: favorited ? "heart.fill" : "heart")
-                            .foregroundColor(favorited ? .red : IDS.Colors.textSecondary)
-                    }
-                    .disabled(favoriteBusy)
-                    .padding(.trailing, 6)
-                }
-                Text("\(Int(listing.price)) RWF").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-            }
-            Text(listing.description).font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
-            if let error {
-                Text(error).font(.caption).foregroundColor(.red)
-            }
-            if offering {
-                HStack(spacing: 10) {
-                    TextField("Your offer (RWF)", text: $offerAmount)
-                        .keyboardType(.numberPad)
-                        .padding(10)
-                        .background(IDS.Colors.chipBackground)
-                        .cornerRadius(10)
-                    Button(action: {
-                        guard let amount = Double(offerAmount) else { return }
-                        offering = false
-                        offerAmount = ""
-                        onMakeOffer(listing.id, amount)
-                    }) {
-                        Text("Send").font(.subheadline).bold().foregroundColor(.white)
-                            .padding(.horizontal, 16).padding(.vertical, 10)
-                            .background(IDS.Colors.brand).cornerRadius(12)
-                    }
-                    .disabled(Double(offerAmount) == nil)
-                }
-            }
-            HStack(spacing: 10) {
-                if isMine {
-                    if listing.status == "ACTIVE" {
-                        actionButton("Mark sold", filled: false) { await markSold() }
-                    }
-                    if listing.status != "REMOVED" {
-                        actionButton("Remove", filled: false) { await remove() }
-                    }
-                } else if listing.status == "ACTIVE" && !offering {
-                    actionButton(busy ? "Starting…" : "Message seller", filled: false) {
-                        onMessageSeller(listing.id)
-                    }
-                    actionButton("Make an offer", filled: true) { offering = true }
-                }
-            }
-            if !isMine, listing.status == "ACTIVE", let toLat = listing.latitude, let toLng = listing.longitude {
-                Button(action: {
-                    if showRoute { showRoute = false } else if myLocation != nil { showRoute = true } else { locationFetcher.requestLocation() }
-                }) {
-                    Text(showRoute ? "Hide directions" : "🚗 Directions to this seller")
-                        .font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-                        .padding(.horizontal, 16).padding(.vertical, 10)
-                        .background(IDS.Colors.chipBackground).cornerRadius(12)
-                }
-                if showRoute, let myLocation {
-                    RouteMiniMap(fromLat: myLocation.latitude, fromLng: myLocation.longitude, toLat: toLat, toLng: toLng, fromLabel: "You", toLabel: listing.title)
-                }
-            }
-        }
-        .padding(18)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
-        .onAppear {
-            locationFetcher.onLocation = { coordinate in
-                myLocation = coordinate
-                showRoute = true
-            }
-        }
-        .onChange(of: locationFetcher.errorMessage) { newValue in
-            if let newValue { error = newValue }
-        }
-    }
-
-    private func actionButton(_ label: String, filled: Bool, action: @escaping () async -> Void) -> some View {
-        Button(action: { Task { await action() } }) {
-            Text(label)
-                .font(.subheadline).bold()
-                .foregroundColor(filled ? .white : IDS.Colors.textPrimary)
-                .padding(.horizontal, 16).padding(.vertical, 10)
-                .background(filled ? IDS.Colors.brand : IDS.Colors.chipBackground)
-                .cornerRadius(12)
-        }
-        .disabled(busy)
-    }
-
-    private func markSold() async {
-        busy = true
-        defer { busy = false }
-        do {
-            _ = try await NetworkClient.shared.markListingSold(listing.id)
-            onChanged()
-        } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-
-    private func remove() async {
-        busy = true
-        defer { busy = false }
-        do {
-            _ = try await NetworkClient.shared.removeListing(listing.id)
-            onChanged()
-        } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-}
-
-// Real Marketplace listing wishlist view (2026-07-21) -- iOS port of bank-mfe's
-// ListingWishlistView, same day. Lists every real favorited listing (title/price/
-// category straight from the favorites endpoint); a favorited-then-deleted listing's
-// "no longer available" fallback is the backend's own responsibility
-// (ListingFavoriteService.kt already resolves that server-side).
-private struct ListingWishlistView: View {
-    let onRemoved: () -> Void
-
-    @State private var favorites: [FavoriteListingDto]?
-    @State private var error: String?
-    @State private var removingId: String?
-
-    var body: some View {
-        Group {
-            if let error {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(error).foregroundColor(.red).font(.subheadline)
-                    Button("Retry") { Task { await load() } }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
-                .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius)
-            } else if favorites == nil {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
-            } else if favorites!.isEmpty {
-                Text("No saved listings yet -- tap ♡ on any listing to save it here.")
-                    .foregroundColor(IDS.Colors.textSecondary)
-            } else {
-                ForEach(favorites!) { f in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(f.title).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                            Text("\(f.category) · \(Int(f.price)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                        }
-                        Spacer()
-                        Button(action: { Task { await remove(f.listingId) } }) {
-                            Text(removingId == f.listingId ? "Removing…" : "Remove")
-                                .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
-                                .padding(.horizontal, 12).padding(.vertical, 8)
-                                .background(IDS.Colors.chipBackground).cornerRadius(10)
-                        }
-                        .disabled(removingId == f.listingId)
-                    }
-                    .padding(16)
-                    .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius)
-                }
-            }
-        }
-        .task { await load() }
-    }
-
-    private func load() async {
-        do {
-            let res = try await NetworkClient.shared.getMyFavoriteListings()
-            favorites = res.favorites
-            error = nil
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-
-    private func remove(_ listingId: String) async {
-        removingId = listingId
-        defer { removingId = nil }
-        do {
-            _ = try await NetworkClient.shared.removeListingFavorite(listingId)
-            favorites = favorites?.filter { $0.listingId != listingId }
-            onRemoved()
-        } catch {
-            self.error = "Couldn't remove this item. Check your connection and try again."
-        }
-    }
-}
-
-// ============================== COMMUNITY (동네생활) ==============================
-
-private struct CommunityContent: View {
-    private enum CommunityView { case browse, neighborhood, mine }
-
-    @State private var view: CommunityView = .browse
-    @State private var categories: [CommunityCategoryDto] = []
-    @State private var activeCategory: String?
-    @State private var posts: [CommunityPostDto]?
-    @State private var error: String?
-    @State private var showNewPost = false
-    @State private var openPostId: String?
-    @State private var neighborhoodName: String?
-    @State private var neighborhoodChecked = false
-    private let currentUserId = KeychainTokenStore.shared.getUserId()
-
-    var body: some View {
-        if let openPostId {
-            CommunityPostDetailView(postId: openPostId, onBack: { self.openPostId = nil; Task { await load() } })
-        } else {
-            ScrollView {
-                VStack(spacing: IDS.Layout.cardGap) {
-                    Picker("", selection: $view) {
-                        Text("Feed").tag(CommunityView.browse)
-                        Text("Neighborhood").tag(CommunityView.neighborhood)
-                        Text("My posts").tag(CommunityView.mine)
-                    }
-                    .pickerStyle(.segmented)
-
-                    if (view == .browse || view == .neighborhood) && !categories.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 6) {
-                                ForEach(categories) { c in
-                                    let active = activeCategory == c.id
-                                    Text(c.label)
-                                        .font(.caption).bold()
-                                        .foregroundColor(active ? .white : IDS.Colors.textPrimary)
-                                        .padding(.horizontal, 12).padding(.vertical, 6)
-                                        .background(active ? IDS.Colors.brand : Color.clear)
-                                        .overlay(RoundedRectangle(cornerRadius: 999).stroke(active ? IDS.Colors.brand : IDS.Colors.textSecondary.opacity(0.3), lineWidth: 1))
-                                        .cornerRadius(999)
-                                        .onTapGesture { activeCategory = active ? nil : c.id }
-                                }
-                            }
-                        }
-                    }
-
-                    if view == .mine {
-                        if showNewPost {
-                            NewCommunityPostForm(categories: categories, onCreated: { showNewPost = false; Task { await load() } }, onCancel: { showNewPost = false })
-                        } else {
-                            Button(action: { showNewPost = true }) {
-                                Text("+ Write a post")
-                                    .font(IDS.Typography.bodyBold).foregroundColor(.white)
-                                    .frame(maxWidth: .infinity).padding(.vertical, 14)
-                                    .background(IDS.Colors.brand).cornerRadius(14)
-                            }
-                        }
-                    }
-
-                    if view == .neighborhood && neighborhoodChecked && neighborhoodName == nil {
-                        NeighborhoodSetupPrompt(onDone: { _ in Task { await load() } })
-                    }
-                    if view == .neighborhood, let neighborhoodName {
-                        Text("Your neighborhood: \(neighborhoodName)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                    }
-                    if let error {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text(error).foregroundColor(.red).font(.subheadline)
-                            Button("Retry") { Task { await load() } }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
-                    } else if posts == nil {
-                        ProgressView().frame(maxWidth: .infinity, minHeight: 120)
-                    } else if posts!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
-                        Text(
-                            view == .browse ? "No posts yet."
-                                : view == .neighborhood ? "No posts in your neighborhood yet."
-                                : "You haven't posted anything yet."
-                        ).foregroundColor(IDS.Colors.textSecondary)
-                    } else if !posts!.isEmpty {
-                        ForEach(posts!) { post in
-                            CommunityPostCard(
-                                post: post,
-                                categoryLabel: categories.first(where: { $0.id == post.category })?.label ?? post.category,
-                                isMine: view == .mine || post.authorId == currentUserId,
-                                onOpen: { openPostId = post.id },
-                                onRemoved: { Task { await load() } }
-                            )
-                        }
-                    }
-                }
-                .padding(.horizontal, IDS.Layout.screenHorizontal)
-                .padding(.top, IDS.Layout.screenTop)
-                .padding(.bottom, IDS.Layout.sectionSpacing)
-            }
-            .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
-            .task {
-                if categories.isEmpty {
-                    categories = (try? await NetworkClient.shared.getCommunityCategories().categories) ?? []
-                }
-                await load()
-            }
-            .onChange(of: view) { _ in Task { await load() } }
-            .onChange(of: activeCategory) { _ in Task { await load() } }
-        }
-    }
-
-    private func load() async {
-        posts = nil
-        if view == .neighborhood {
-            neighborhoodChecked = false
-            do {
-                let profile = try await NetworkClient.shared.getProfile()
-                let res = try await NetworkClient.shared.getCommunityPostsMyNeighborhood(category: activeCategory)
-                neighborhoodName = profile.user.neighborhood
-                posts = res.posts
-                error = nil
-            } catch let NetworkError.httpError(statusCode) where statusCode == 400 {
-                neighborhoodName = nil
-                posts = []
-                error = nil
-            } catch {
-                self.error = "Couldn't reach itunda. Check your connection and try again."
-            }
-            neighborhoodChecked = true
-            return
-        }
-        do {
-            let res = view == .browse ? try await NetworkClient.shared.browseCommunityPosts(category: activeCategory) : try await NetworkClient.shared.getMyCommunityPosts()
-            posts = res.posts
-            error = nil
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-}
-
-private struct NewCommunityPostForm: View {
-    let categories: [CommunityCategoryDto]
-    let onCreated: () -> Void
-    let onCancel: () -> Void
-
-    @State private var category: String
-    @State private var title = ""
-    @State private var postBody = ""
-    @State private var error: String?
-    @State private var submitting = false
-
-    init(categories: [CommunityCategoryDto], onCreated: @escaping () -> Void, onCancel: @escaping () -> Void) {
-        self.categories = categories
-        self.onCreated = onCreated
-        self.onCancel = onCancel
-        _category = State(initialValue: categories.first?.id ?? "")
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Write a post").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(categories) { c in
-                        let selected = category == c.id
-                        Text(c.label)
-                            .font(.caption).bold()
-                            .foregroundColor(selected ? .white : IDS.Colors.textPrimary)
-                            .padding(.horizontal, 12).padding(.vertical, 6)
-                            .background(selected ? IDS.Colors.brand : IDS.Colors.chipBackground)
-                            .cornerRadius(999)
-                            .onTapGesture { category = c.id }
-                    }
-                }
-            }
-            TextField("Title", text: $title).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-            TextField("What's going on in the neighborhood?", text: $postBody).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-            if let error {
-                Text(error).font(.caption).foregroundColor(.red)
-            }
-            HStack {
-                Button("Cancel", action: onCancel).frame(maxWidth: .infinity)
-                Button(action: { Task { await submit() } }) {
-                    Text(submitting ? "Posting…" : "Post")
-                        .foregroundColor(.white).frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(IDS.Colors.brand).cornerRadius(14)
-                }
-                .disabled(submitting)
-            }
-        }
-        .padding(20)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
-    }
-
-    private func submit() async {
-        guard !title.isEmpty, !postBody.isEmpty, !category.isEmpty else {
-            error = "Fill in every field."
-            return
-        }
-        submitting = true
-        error = nil
-        defer { submitting = false }
-        do {
-            _ = try await NetworkClient.shared.createCommunityPost(category: category, title: title, body: postBody)
-            onCreated()
-        } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-}
-
-private struct CommunityPostCard: View {
-    let post: CommunityPostDto
-    let categoryLabel: String
-    let isMine: Bool
-    let onOpen: () -> Void
-    let onRemoved: () -> Void
-
-    @State private var busy = false
-    @State private var error: String?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(categoryLabel).font(.caption2).bold().foregroundColor(IDS.Colors.brand)
-                Spacer()
-                if isMine {
-                    Button(action: { Task { await remove() } }) {
-                        Text("Remove").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
-                            .padding(.horizontal, 10).padding(.vertical, 4)
-                            .background(IDS.Colors.chipBackground).cornerRadius(10)
-                    }
-                    .disabled(busy)
-                }
-            }
-            Text(post.title).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-            Text(post.body).font(.subheadline).foregroundColor(IDS.Colors.textSecondary).lineLimit(2)
-            Text("❤️ \(post.likeCount) · 💬 \(post.commentCount)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-            if let error {
-                Text(error).font(.caption).foregroundColor(.red)
-            }
-        }
-        .padding(18)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
-        .contentShape(Rectangle())
-        .onTapGesture(perform: onOpen)
-    }
-
-    private func remove() async {
-        busy = true
-        defer { busy = false }
-        do {
-            _ = try await NetworkClient.shared.removeCommunityPost(post.id)
-            onRemoved()
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-}
-
-private struct CommunityPostDetailView: View {
-    let postId: String
-    let onBack: () -> Void
-
-    @State private var post: CommunityPostDto?
-    @State private var authorName = ""
-    @State private var likedByMe = false
-    @State private var comments: [CommunityCommentWithAuthorDto]?
-    @State private var commentBody = ""
-    @State private var error: String?
-    @State private var liking = false
-    @State private var commenting = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Button(action: onBack) { Image(systemName: "chevron.left") }
-                Text("Post").font(IDS.Typography.bodyBold)
-                Spacer()
-            }
-            .padding(.horizontal, IDS.Layout.screenHorizontal)
-            .padding(.top, IDS.Layout.screenTop)
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    if let error {
-                        Text(error).font(.caption).foregroundColor(.red)
-                    }
-                    if let post {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(post.title).font(.title3).bold().foregroundColor(IDS.Colors.textPrimary)
-                            Text("by \(authorName)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                            Text(post.body).font(.subheadline).foregroundColor(IDS.Colors.textPrimary)
-                            Button(action: { Task { await toggleLike() } }) {
-                                Text(likedByMe ? "❤️ \(post.likeCount)" : "🤍 \(post.likeCount)")
-                                    .font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-                                    .padding(.horizontal, 16).padding(.vertical, 10)
-                                    .background(IDS.Colors.chipBackground).cornerRadius(12)
-                            }
-                            .disabled(liking)
-                        }
-                        .padding(18)
-                        .background(IDS.Colors.card)
-                        .cornerRadius(IDS.Layout.cardCornerRadius)
-                    }
-
-                    Text("Comments").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                    if comments == nil {
-                        ProgressView().frame(maxWidth: .infinity, minHeight: 60)
-                    } else if comments!.isEmpty {
-                        Text("No comments yet -- be the first to reply.").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
-                    } else {
-                        ForEach(comments!) { c in
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(c.authorName).font(.caption2).bold().foregroundColor(IDS.Colors.textSecondary)
-                                Text(c.comment.body).font(.subheadline).foregroundColor(IDS.Colors.textPrimary)
-                            }
-                            .padding(12)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(IDS.Colors.chipBackground)
-                            .cornerRadius(12)
-                        }
-                    }
-                }
-                .padding(.horizontal, IDS.Layout.screenHorizontal)
-                .padding(.top, 12)
-                .padding(.bottom, 12)
-            }
-
-            HStack {
-                TextField("Add a comment", text: $commentBody)
-                    .padding(12).background(IDS.Colors.chipBackground).cornerRadius(10)
-                Button(action: { Task { await addComment() } }) {
-                    Text(commenting ? "…" : "Send").foregroundColor(.white)
-                        .padding(.horizontal, 16).padding(.vertical, 12)
-                        .background(commentBody.isEmpty ? IDS.Colors.textSecondary : IDS.Colors.brand).cornerRadius(10)
-                }
-                .disabled(commenting || commentBody.isEmpty)
-            }
-            .padding(.horizontal, IDS.Layout.screenHorizontal)
-            .padding(.bottom, IDS.Layout.sectionSpacing)
-        }
-        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
-        .task { await load() }
-    }
-
-    private func load() async {
-        do {
-            let detail = try await NetworkClient.shared.getCommunityPost(postId)
-            post = detail.post; authorName = detail.authorName; likedByMe = detail.likedByMe
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-        comments = (try? await NetworkClient.shared.getCommunityComments(postId).comments) ?? comments
-    }
-
-    private func toggleLike() async {
-        liking = true
-        defer { liking = false }
-        do {
-            let liked = try await NetworkClient.shared.toggleCommunityLike(postId).liked
-            likedByMe = liked
-            if let p = post { post = CommunityPostDto(id: p.id, authorId: p.authorId, category: p.category, title: p.title, body: p.body, status: p.status, likeCount: p.likeCount + (liked ? 1 : -1), commentCount: p.commentCount, createdAt: p.createdAt, latitude: p.latitude, longitude: p.longitude) }
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-
-    private func addComment() async {
-        commenting = true
-        defer { commenting = false }
-        do {
-            _ = try await NetworkClient.shared.addCommunityComment(postId, body: commentBody)
-            commentBody = ""
-            await load()
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-}
-
-// ============================== JOBS (당근알바) ==============================
-
-private struct JobsContent: View {
-    @Binding var pendingConversationId: String?
-    let onSwitchToTalk: () -> Void
-
-    private enum JobsView { case browse, neighborhood, mine }
-
-    @State private var view: JobsView = .browse
-    @State private var categories: [JobCategoryDto] = []
-    @State private var activeCategory: String?
-    @State private var posts: [JobPostDto]?
-    @State private var error: String?
-    @State private var showNewPost = false
-    @State private var neighborhoodName: String?
-    @State private var neighborhoodChecked = false
-    private let currentUserId = KeychainTokenStore.shared.getUserId()
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: IDS.Layout.cardGap) {
-                Picker("", selection: $view) {
-                    Text("Find work").tag(JobsView.browse)
-                    Text("Neighborhood").tag(JobsView.neighborhood)
-                    Text("My posts").tag(JobsView.mine)
-                }
-                .pickerStyle(.segmented)
-
-                if (view == .browse || view == .neighborhood) && !categories.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 6) {
-                            ForEach(categories) { c in
-                                let active = activeCategory == c.id
-                                Text(c.label)
-                                    .font(.caption).bold()
-                                    .foregroundColor(active ? .white : IDS.Colors.textPrimary)
-                                    .padding(.horizontal, 12).padding(.vertical, 6)
-                                    .background(active ? IDS.Colors.brand : Color.clear)
-                                    .overlay(RoundedRectangle(cornerRadius: 999).stroke(active ? IDS.Colors.brand : IDS.Colors.textSecondary.opacity(0.3), lineWidth: 1))
-                                    .cornerRadius(999)
-                                    .onTapGesture { activeCategory = active ? nil : c.id }
-                            }
-                        }
-                    }
-                }
-
-                if view == .mine {
-                    if showNewPost {
-                        NewJobPostForm(categories: categories, onCreated: { showNewPost = false; Task { await load() } }, onCancel: { showNewPost = false })
-                    } else {
-                        Button(action: { showNewPost = true }) {
-                            Text("+ Post a job")
-                                .font(IDS.Typography.bodyBold).foregroundColor(.white)
-                                .frame(maxWidth: .infinity).padding(.vertical, 14)
-                                .background(IDS.Colors.brand).cornerRadius(14)
-                        }
-                    }
-                }
-
-                if view == .neighborhood && neighborhoodChecked && neighborhoodName == nil {
-                    NeighborhoodSetupPrompt(onDone: { _ in Task { await load() } })
-                }
-                if view == .neighborhood, let neighborhoodName {
-                    Text("Your neighborhood: \(neighborhoodName)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                }
-                if let error {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(error).foregroundColor(.red).font(.subheadline)
-                        Button("Retry") { Task { await load() } }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
-                } else if posts == nil {
-                    ProgressView().frame(maxWidth: .infinity, minHeight: 120)
-                } else if posts!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
-                    Text(
-                        view == .browse ? "No jobs posted yet."
-                            : view == .neighborhood ? "No jobs in your neighborhood yet."
-                            : "You haven't posted any jobs yet."
-                    ).foregroundColor(IDS.Colors.textSecondary)
-                } else if !posts!.isEmpty {
-                    ForEach(posts!) { post in
-                        JobPostCard(
-                            post: post,
-                            categoryLabel: categories.first(where: { $0.id == post.category })?.label ?? post.category,
-                            isMine: view == .mine || post.posterId == currentUserId,
-                            onChanged: { Task { await load() } },
-                            onContact: { Task { await contact(post.id) } }
-                        )
-                    }
-                }
-            }
-            .padding(.horizontal, IDS.Layout.screenHorizontal)
-            .padding(.top, IDS.Layout.screenTop)
-            .padding(.bottom, IDS.Layout.sectionSpacing)
-        }
-        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
-        .task {
-            if categories.isEmpty {
-                categories = (try? await NetworkClient.shared.getJobCategories().categories) ?? []
-            }
-            await load()
-        }
-        .onChange(of: view) { _ in Task { await load() } }
-        .onChange(of: activeCategory) { _ in Task { await load() } }
-    }
-
-    private func load() async {
-        posts = nil
-        if view == .neighborhood {
-            neighborhoodChecked = false
-            do {
-                let profile = try await NetworkClient.shared.getProfile()
-                let res = try await NetworkClient.shared.getJobPostsMyNeighborhood(category: activeCategory)
-                neighborhoodName = profile.user.neighborhood
-                posts = res.posts
-                error = nil
-            } catch let NetworkError.httpError(statusCode) where statusCode == 400 {
-                neighborhoodName = nil
-                posts = []
-                error = nil
-            } catch {
-                self.error = "Couldn't reach itunda. Check your connection and try again."
-            }
-            neighborhoodChecked = true
-            return
-        }
-        do {
-            let res = view == .browse ? try await NetworkClient.shared.browseJobPosts(category: activeCategory) : try await NetworkClient.shared.getMyJobPosts()
-            posts = res.posts
-            error = nil
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-
-    private func contact(_ jobPostId: String) async {
-        do {
-            let res = try await NetworkClient.shared.contactPoster(jobPostId)
-            pendingConversationId = res.conversation.id
-            onSwitchToTalk()
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-}
-
-private struct NewJobPostForm: View {
-    let categories: [JobCategoryDto]
-    let onCreated: () -> Void
-    let onCancel: () -> Void
-
-    @State private var category: String
-    @State private var title = ""
-    @State private var description = ""
-    @State private var payType = "HOURLY"
-    @State private var payAmount = ""
-    @State private var error: String?
-    @State private var submitting = false
-
-    init(categories: [JobCategoryDto], onCreated: @escaping () -> Void, onCancel: @escaping () -> Void) {
-        self.categories = categories
-        self.onCreated = onCreated
-        self.onCancel = onCancel
-        _category = State(initialValue: categories.first?.id ?? "")
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Post a job").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(categories) { c in
-                        let selected = category == c.id
-                        Text(c.label)
-                            .font(.caption).bold()
-                            .foregroundColor(selected ? .white : IDS.Colors.textPrimary)
-                            .padding(.horizontal, 12).padding(.vertical, 6)
-                            .background(selected ? IDS.Colors.brand : IDS.Colors.chipBackground)
-                            .cornerRadius(999)
-                            .onTapGesture { category = c.id }
-                    }
-                }
-            }
-            TextField("What do you need done?", text: $title).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-            TextField("Describe the work", text: $description).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-            HStack {
-                Picker("", selection: $payType) {
-                    Text("Per hour").tag("HOURLY")
-                    Text("Fixed price").tag("FIXED")
-                }
-                .pickerStyle(.segmented)
-                TextField("Pay (RWF)", text: $payAmount).keyboardType(.numberPad).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-            }
-            if let error {
-                Text(error).font(.caption).foregroundColor(.red)
-            }
-            HStack {
-                Button("Cancel", action: onCancel).frame(maxWidth: .infinity)
-                Button(action: { Task { await submit() } }) {
-                    Text(submitting ? "Posting…" : "Post job")
-                        .foregroundColor(.white).frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(IDS.Colors.brand).cornerRadius(14)
-                }
-                .disabled(submitting)
-            }
-        }
-        .padding(20)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
-    }
-
-    private func submit() async {
-        guard let amount = Double(payAmount), amount > 0, !title.isEmpty, !description.isEmpty, !category.isEmpty else {
-            error = "Fill in every field with a real pay amount."
-            return
-        }
-        submitting = true
-        error = nil
-        defer { submitting = false }
-        do {
-            _ = try await NetworkClient.shared.createJobPost(category: category, title: title, description: description, payType: payType, payAmount: amount)
-            onCreated()
-        } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-}
-
-private struct JobPostCard: View {
-    let post: JobPostDto
-    let categoryLabel: String
-    let isMine: Bool
-    let onChanged: () -> Void
-    let onContact: () -> Void
-
-    @State private var busy = false
-    @State private var error: String?
-
-    private var payLabel: String {
-        let base = "\(Int(post.payAmount)) RWF"
-        return post.payType == "HOURLY" ? "\(base)/hr" : base
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                HStack(spacing: 6) {
-                    Text(categoryLabel).font(.caption2).bold().foregroundColor(IDS.Colors.brand)
-                    if post.status == "FILLED" {
-                        Text("FILLED").font(.caption2).bold().foregroundColor(IDS.Colors.textSecondary)
-                            .padding(.horizontal, 8).padding(.vertical, 2)
-                            .background(IDS.Colors.chipBackground).cornerRadius(8)
-                    }
-                }
-                Spacer()
-                Text(payLabel).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-            }
-            Text(post.title).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-            Text(post.description).font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
-            if let error {
-                Text(error).font(.caption).foregroundColor(.red)
-            }
-            HStack(spacing: 10) {
-                if isMine {
-                    if post.status == "OPEN" {
-                        actionButton("Mark filled", filled: false) { await markFilled() }
-                    }
-                    if post.status != "REMOVED" {
-                        actionButton("Remove", filled: false) { await remove() }
-                    }
-                } else if post.status == "OPEN" {
-                    actionButton("Message poster", filled: true) { onContact() }
-                }
-            }
-        }
-        .padding(18)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
-    }
-
-    private func actionButton(_ label: String, filled: Bool, action: @escaping () async -> Void) -> some View {
-        Button(action: { Task { await action() } }) {
-            Text(label)
-                .font(.subheadline).bold()
-                .foregroundColor(filled ? .white : IDS.Colors.textPrimary)
-                .padding(.horizontal, 16).padding(.vertical, 10)
-                .background(filled ? IDS.Colors.brand : IDS.Colors.chipBackground)
-                .cornerRadius(12)
-        }
-        .disabled(busy)
-    }
-
-    private func markFilled() async {
-        busy = true
-        defer { busy = false }
-        do {
-            _ = try await NetworkClient.shared.markJobPostFilled(post.id)
-            onChanged()
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-
-    private func remove() async {
-        busy = true
-        defer { busy = false }
-        do {
-            _ = try await NetworkClient.shared.removeJobPost(post.id)
-            onChanged()
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-}
-
-// ============================== PROPERTY (당근부동산) ==============================
-
-private struct PropertyContent: View {
-    @Binding var pendingConversationId: String?
-    let onSwitchToTalk: () -> Void
-
-    private enum PropertyView { case browse, neighborhood, mine }
-
-    @State private var view: PropertyView = .browse
-    @State private var propertyTypes: [PropertyTypeDto] = []
-    @State private var listingTypeFilter: String?
-    @State private var propertyTypeFilter: String?
-    @State private var listings: [PropertyListingDto]?
-    @State private var error: String?
-    @State private var showNewListing = false
-    @State private var neighborhoodName: String?
-    @State private var neighborhoodChecked = false
-    private let currentUserId = KeychainTokenStore.shared.getUserId()
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: IDS.Layout.cardGap) {
-                Picker("", selection: $view) {
-                    Text("Browse").tag(PropertyView.browse)
-                    Text("Neighborhood").tag(PropertyView.neighborhood)
-                    Text("My listings").tag(PropertyView.mine)
-                }
-                .pickerStyle(.segmented)
-
-                if view == .browse {
-                    HStack(spacing: 6) {
-                        ForEach([("RENT", "For rent"), ("SALE", "For sale")], id: \.0) { v, label in
-                            let active = listingTypeFilter == v
-                            Text(label)
-                                .font(.caption).bold()
-                                .foregroundColor(active ? .white : IDS.Colors.textPrimary)
-                                .padding(.horizontal, 12).padding(.vertical, 6)
-                                .background(active ? IDS.Colors.brand : Color.clear)
-                                .overlay(RoundedRectangle(cornerRadius: 999).stroke(active ? IDS.Colors.brand : IDS.Colors.textSecondary.opacity(0.3), lineWidth: 1))
-                                .cornerRadius(999)
-                                .onTapGesture { listingTypeFilter = active ? nil : v }
-                        }
-                        Spacer()
-                    }
-                    if !propertyTypes.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 6) {
-                                ForEach(propertyTypes) { t in
-                                    let active = propertyTypeFilter == t.id
-                                    Text(t.label)
-                                        .font(.caption).bold()
-                                        .foregroundColor(active ? .white : IDS.Colors.textPrimary)
-                                        .padding(.horizontal, 12).padding(.vertical, 6)
-                                        .background(active ? IDS.Colors.brand : Color.clear)
-                                        .overlay(RoundedRectangle(cornerRadius: 999).stroke(active ? IDS.Colors.brand : IDS.Colors.textSecondary.opacity(0.3), lineWidth: 1))
-                                        .cornerRadius(999)
-                                        .onTapGesture { propertyTypeFilter = active ? nil : t.id }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if view == .mine {
-                    if showNewListing {
-                        NewPropertyListingForm(propertyTypes: propertyTypes, onCreated: { showNewListing = false; Task { await load() } }, onCancel: { showNewListing = false })
-                    } else {
-                        Button(action: { showNewListing = true }) {
-                            Text("+ List a property")
-                                .font(IDS.Typography.bodyBold).foregroundColor(.white)
-                                .frame(maxWidth: .infinity).padding(.vertical, 14)
-                                .background(IDS.Colors.brand).cornerRadius(14)
-                        }
-                    }
-                }
-
-                if view == .neighborhood && neighborhoodChecked && neighborhoodName == nil {
-                    NeighborhoodSetupPrompt(onDone: { _ in Task { await load() } })
-                }
-                if view == .neighborhood, let neighborhoodName {
-                    Text("Your neighborhood: \(neighborhoodName)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                }
-                if let error {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(error).foregroundColor(.red).font(.subheadline)
-                        Button("Retry") { Task { await load() } }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
-                } else if listings == nil {
-                    ProgressView().frame(maxWidth: .infinity, minHeight: 120)
-                } else if listings!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
-                    Text(
-                        view == .browse ? "No properties listed yet."
-                            : view == .neighborhood ? "No properties in your neighborhood yet."
-                            : "You haven't listed any properties yet."
-                    ).foregroundColor(IDS.Colors.textSecondary)
-                } else if !listings!.isEmpty {
-                    ForEach(listings!) { listing in
-                        PropertyListingCard(
-                            listing: listing,
-                            propertyTypeLabel: propertyTypes.first(where: { $0.id == listing.propertyType })?.label ?? listing.propertyType,
-                            isMine: view == .mine || listing.listerId == currentUserId,
-                            onChanged: { Task { await load() } },
-                            onContact: { Task { await contact(listing.id) } },
-                            onMakeOffer: { id, amount in Task { await makeOffer(id, amount) } }
-                        )
-                    }
-                }
-            }
-            .padding(.horizontal, IDS.Layout.screenHorizontal)
-            .padding(.top, IDS.Layout.screenTop)
-            .padding(.bottom, IDS.Layout.sectionSpacing)
-        }
-        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
-        .task {
-            if propertyTypes.isEmpty {
-                propertyTypes = (try? await NetworkClient.shared.getPropertyTypes().propertyTypes) ?? []
-            }
-            await load()
-        }
-        .onChange(of: view) { _ in Task { await load() } }
-        .onChange(of: listingTypeFilter) { _ in Task { await load() } }
-        .onChange(of: propertyTypeFilter) { _ in Task { await load() } }
-    }
-
-    private func load() async {
-        listings = nil
-        if view == .neighborhood {
-            neighborhoodChecked = false
-            do {
-                let profile = try await NetworkClient.shared.getProfile()
-                let res = try await NetworkClient.shared.getPropertyListingsMyNeighborhood()
-                neighborhoodName = profile.user.neighborhood
-                listings = res.listings
-                error = nil
-            } catch let NetworkError.httpError(statusCode) where statusCode == 400 {
-                neighborhoodName = nil
-                listings = []
-                error = nil
-            } catch {
-                self.error = "Couldn't reach itunda. Check your connection and try again."
-            }
-            neighborhoodChecked = true
-            return
-        }
-        do {
-            let res = view == .browse
-                ? try await NetworkClient.shared.browsePropertyListings(listingType: listingTypeFilter, propertyType: propertyTypeFilter)
-                : try await NetworkClient.shared.getMyPropertyListings()
-            listings = res.listings
-            error = nil
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-
-    private func contact(_ propertyListingId: String) async {
-        do {
-            let res = try await NetworkClient.shared.contactLister(propertyListingId)
-            pendingConversationId = res.conversation.id
-            onSwitchToTalk()
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-
-    private func makeOffer(_ propertyListingId: String, _ amount: Double) async {
-        do {
-            let res = try await NetworkClient.shared.makePropertyOffer(listingId: propertyListingId, amount: amount)
-            pendingConversationId = res.offer.conversationId
-            onSwitchToTalk()
-        } catch {
-            self.error = "Couldn't send this offer. Check your connection and try again."
-        }
-    }
-}
-
-private struct NewPropertyListingForm: View {
-    let propertyTypes: [PropertyTypeDto]
-    let onCreated: () -> Void
-    let onCancel: () -> Void
-
-    @State private var listingType = "RENT"
-    @State private var propertyType: String
-    @State private var title = ""
-    @State private var description = ""
-    @State private var price = ""
-    @State private var bedrooms = ""
-    @State private var sizeSqm = ""
-    @State private var error: String?
-    @State private var submitting = false
-
-    init(propertyTypes: [PropertyTypeDto], onCreated: @escaping () -> Void, onCancel: @escaping () -> Void) {
-        self.propertyTypes = propertyTypes
-        self.onCreated = onCreated
-        self.onCancel = onCancel
-        _propertyType = State(initialValue: propertyTypes.first?.id ?? "")
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("List a property").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-            Picker("", selection: $listingType) {
-                Text("For rent").tag("RENT")
-                Text("For sale").tag("SALE")
-            }
-            .pickerStyle(.segmented)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(propertyTypes) { t in
-                        let selected = propertyType == t.id
-                        Text(t.label)
-                            .font(.caption).bold()
-                            .foregroundColor(selected ? .white : IDS.Colors.textPrimary)
-                            .padding(.horizontal, 12).padding(.vertical, 6)
-                            .background(selected ? IDS.Colors.brand : IDS.Colors.chipBackground)
-                            .cornerRadius(999)
-                            .onTapGesture { propertyType = t.id }
-                    }
-                }
-            }
-            TextField("e.g. 2-bedroom apartment in Kacyiru", text: $title).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-            TextField("Describe the property", text: $description).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-            HStack {
-                TextField(listingType == "RENT" ? "Rent/mo (RWF)" : "Price (RWF)", text: $price)
-                    .keyboardType(.numberPad).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-                TextField("Bedrooms", text: $bedrooms).keyboardType(.numberPad).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-                TextField("Size (m²)", text: $sizeSqm).keyboardType(.numberPad).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-            }
-            if let error {
-                Text(error).font(.caption).foregroundColor(.red)
-            }
-            HStack {
-                Button("Cancel", action: onCancel).frame(maxWidth: .infinity)
-                Button(action: { Task { await submit() } }) {
-                    Text(submitting ? "Listing…" : "List it")
-                        .foregroundColor(.white).frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(IDS.Colors.brand).cornerRadius(14)
-                }
-                .disabled(submitting)
-            }
-        }
-        .padding(20)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
-    }
-
-    private func submit() async {
-        guard let priceValue = Double(price), priceValue > 0, !title.isEmpty, !description.isEmpty, !propertyType.isEmpty else {
-            error = "Fill in every field with a real price."
-            return
-        }
-        submitting = true
-        error = nil
-        defer { submitting = false }
-        do {
-            _ = try await NetworkClient.shared.createPropertyListing(
-                listingType: listingType, propertyType: propertyType, title: title, description: description, price: priceValue,
-                bedrooms: Int(bedrooms), sizeSqm: Double(sizeSqm),
-            )
-            onCreated()
-        } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-}
-
-private struct PropertyListingCard: View {
-    let listing: PropertyListingDto
-    let propertyTypeLabel: String
-    let isMine: Bool
-    let onChanged: () -> Void
-    let onContact: () -> Void
-    let onMakeOffer: (String, Double) -> Void
-
-    @State private var busy = false
-    @State private var error: String?
-    // Real 당근-style price-offer negotiation (2026-07-19) -- see
-    // PropertyPriceOfferService's own doc comment; mirrors ListingCard's own offering
-    // state exactly.
-    @State private var offering = false
-    @State private var offerAmount = ""
-
-    private var priceLabel: String {
-        let base = "\(Int(listing.price)) RWF"
-        return listing.listingType == "RENT" ? "\(base)/mo" : base
-    }
-
-    private var detailsLabel: String {
-        var parts: [String] = []
-        if let bedrooms = listing.bedrooms { parts.append("\(bedrooms) bd") }
-        if let sizeSqm = listing.sizeSqm { parts.append("\(Int(sizeSqm)) m²") }
-        return parts.joined(separator: " · ")
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                HStack(spacing: 6) {
-                    Text("\(listing.listingType == "RENT" ? "For rent" : "For sale") · \(propertyTypeLabel)")
-                        .font(.caption2).bold().foregroundColor(IDS.Colors.brand)
-                    if listing.status == "TAKEN" {
-                        Text("TAKEN").font(.caption2).bold().foregroundColor(IDS.Colors.textSecondary)
-                            .padding(.horizontal, 8).padding(.vertical, 2)
-                            .background(IDS.Colors.chipBackground).cornerRadius(8)
-                    }
-                }
-                Spacer()
-                Text(priceLabel).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-            }
-            Text(listing.title).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-            if !detailsLabel.isEmpty {
-                Text(detailsLabel).font(.caption).foregroundColor(IDS.Colors.textSecondary)
-            }
-            Text(listing.description).font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
-            if offering {
-                HStack(spacing: 8) {
-                    TextField("Your offer (RWF)", text: $offerAmount)
-                        .keyboardType(.numberPad)
-                        .padding(10)
-                        .background(IDS.Colors.chipBackground)
-                        .cornerRadius(10)
-                    Button(action: {
-                        guard let amount = Double(offerAmount) else { return }
-                        offering = false
-                        offerAmount = ""
-                        onMakeOffer(listing.id, amount)
-                    }) {
-                        Text("Send").font(.subheadline).bold().foregroundColor(.white)
-                            .padding(.horizontal, 16).padding(.vertical, 10)
-                            .background(IDS.Colors.brand).cornerRadius(12)
-                    }
-                    .disabled(Double(offerAmount) == nil)
-                }
-            }
-            if let error {
-                Text(error).font(.caption).foregroundColor(.red)
-            }
-            HStack(spacing: 10) {
-                if isMine {
-                    if listing.status == "AVAILABLE" {
-                        actionButton("Mark taken", filled: false) { await markTaken() }
-                    }
-                    if listing.status != "REMOVED" {
-                        actionButton("Remove", filled: false) { await remove() }
-                    }
-                } else if listing.status == "AVAILABLE" && !offering {
-                    actionButton("Message lister", filled: false) { onContact() }
-                    actionButton("Make an offer", filled: true) { offering = true }
-                }
-            }
-        }
-        .padding(18)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
-    }
-
-    private func actionButton(_ label: String, filled: Bool, action: @escaping () async -> Void) -> some View {
-        Button(action: { Task { await action() } }) {
-            Text(label)
-                .font(.subheadline).bold()
-                .foregroundColor(filled ? .white : IDS.Colors.textPrimary)
-                .padding(.horizontal, 16).padding(.vertical, 10)
-                .background(filled ? IDS.Colors.brand : IDS.Colors.chipBackground)
-                .cornerRadius(12)
-        }
-        .disabled(busy)
-    }
-
-    private func markTaken() async {
-        busy = true
-        defer { busy = false }
-        do {
-            _ = try await NetworkClient.shared.markPropertyListingTaken(listing.id)
-            onChanged()
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-
-    private func remove() async {
-        busy = true
-        defer { busy = false }
-        do {
-            _ = try await NetworkClient.shared.removePropertyListing(listing.id)
-            onChanged()
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-}

@@ -1,0 +1,78 @@
+package rw.itunda.merchant.web
+
+import org.springframework.data.domain.Pageable
+import org.springframework.data.web.PageableDefault
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.ExceptionHandler
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
+import rw.itunda.core.domain.MerchantStatus
+import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.security.CurrentUser
+import rw.itunda.core.web.ApiError
+import rw.itunda.core.web.pageMeta
+import rw.itunda.merchant.MerchantFeeWaiverService
+import rw.itunda.merchant.MerchantNotFoundException
+import rw.itunda.merchant.MerchantNotWaivedException
+import rw.itunda.merchant.MerchantService
+
+// Mapped under api/v1/system/merchants specifically so it inherits SecurityConfig's
+// existing hasRole("ADMIN") rule on the system path prefix -- same real RBAC gate
+// MarketplaceEscrowAdminController/PropertyOwnershipAdminController already use, no new
+// attack surface. See MerchantService.suspendMerchant's own doc comment for why this
+// exists: there was previously no way, anywhere in the app, to take a merchant out of
+// public browse once created.
+@RestController
+@RequestMapping("/api/v1/system/merchants")
+class MerchantModerationAdminController(
+    private val merchantService: MerchantService,
+    private val merchantRepository: MerchantRepository,
+    private val merchantFeeWaiverService: MerchantFeeWaiverService,
+) {
+
+    // Real moderation queue -- see MerchantRepository.findByStatusAndCategoryIsNull's
+    // own doc comment for why "ACTIVE with no category" is the real signal.
+    @GetMapping("/uncategorized")
+    fun uncategorized(@PageableDefault(size = 50) pageable: Pageable): ResponseEntity<Map<String, Any?>> {
+        val page = merchantRepository.findByStatusAndCategoryIsNull(MerchantStatus.ACTIVE, pageable)
+        val merchants = page.content.map { mapOf("merchantId" to it.id, "businessName" to it.businessName, "kybVerified" to it.kybVerified, "createdAt" to it.createdAt.toString()) }
+        return ResponseEntity.ok(mapOf("success" to true, "merchants" to merchants) + pageMeta(page))
+    }
+
+    // Real admin-accountability gap closed (Bank/Merchant product-completeness pass,
+    // cycle 2, 2026-09-09): these 3 endpoints previously had zero record of which
+    // admin acted, unlike the identical-shape decide()-style admin actions elsewhere
+    // (VupLoanAdminController etc.) that already capture currentUser.userId -- see
+    // MerchantService.suspendMerchant/reactivateMerchant's own doc comment.
+    @PostMapping("/{merchantId}/suspend")
+    fun suspend(@PathVariable merchantId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "status" to merchantService.suspendMerchant(merchantId, currentUser.userId).status.name))
+
+    @PostMapping("/{merchantId}/reactivate")
+    fun reactivate(@PathVariable merchantId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "status" to merchantService.reactivateMerchant(merchantId, currentUser.userId).status.name))
+
+    // Real fee-waiver revocation review -- see MerchantFeeWaiverService's own doc
+    // comment: once granted, a waiver stayed in effect forever with no admin
+    // surface to catch a merchant who outgrew the small-merchant threshold.
+    @GetMapping("/fee-waiver-candidates")
+    fun feeWaiverCandidates(): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "candidates" to merchantFeeWaiverService.getRevocationCandidates()))
+
+    @PostMapping("/{merchantId}/revoke-fee-waiver")
+    fun revokeFeeWaiver(@PathVariable merchantId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "merchantId" to merchantFeeWaiverService.revokeFeeWaiver(merchantId, currentUser.userId).id))
+
+    @ExceptionHandler(MerchantNotFoundException::class)
+    fun handleNotFound(ex: MerchantNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(MerchantNotWaivedException::class)
+    fun handleNotWaived(ex: MerchantNotWaivedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("MERCHANT_NOT_WAIVED", ex.message ?: "Conflict"))
+}

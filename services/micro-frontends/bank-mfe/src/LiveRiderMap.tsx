@@ -4,6 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { TILES_SOURCE_URL, getDirections } from './lib/maps';
 import { fetchRiderLocation } from './lib/eats';
 import { ApiError } from './lib/api';
+import { useI18n } from './i18n/I18nContext';
 
 // Real live delivery tracking (2026-07-20) -- "the defining 'watch your order arrive'
 // moment every real Coupang Eats/Uber Eats-style app has," per
@@ -36,7 +37,7 @@ const LIVE_MAP_STYLE: maplibregl.StyleSpecification = {
     {
       id: 'route-line', type: 'line', source: 'route',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#3182F6', 'line-width': 5, 'line-opacity': 0.9 },
+      paint: { 'line-color': '#7472F4', 'line-width': 5, 'line-opacity': 0.9 },
     },
   ],
 };
@@ -55,6 +56,7 @@ export default function LiveRiderMap({
 }: {
   orderId: string; fromLat: number; fromLng: number; toLat: number; toLng: number; fromLabel: string; toLabel: string;
 }) {
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const riderMarkerRef = useRef<maplibregl.Marker | null>(null);
@@ -75,8 +77,8 @@ export default function LiveRiderMap({
     });
     mapRef.current = map;
 
-    new maplibregl.Marker({ color: '#3182F6' }).setLngLat([fromLng, fromLat]).setPopup(new maplibregl.Popup({ offset: 12 }).setText(fromLabel)).addTo(map);
-    new maplibregl.Marker({ color: '#E53935' }).setLngLat([toLng, toLat]).setPopup(new maplibregl.Popup({ offset: 12 }).setText(toLabel)).addTo(map);
+    new maplibregl.Marker({ color: '#7472F4' }).setLngLat([fromLng, fromLat]).setPopup(new maplibregl.Popup({ offset: 12 }).setText(fromLabel)).addTo(map);
+    new maplibregl.Marker({ color: 'var(--itunda-red)' }).setLngLat([toLng, toLat]).setPopup(new maplibregl.Popup({ offset: 12 }).setText(toLabel)).addTo(map);
 
     getDirections(fromLat, fromLng, toLat, toLng)
       .then((result) => {
@@ -133,7 +135,7 @@ export default function LiveRiderMap({
           }
         })
         .catch((err) => {
-          if (!cancelled) setError(err instanceof ApiError ? err.message : 'Could not load your rider\'s location.');
+          if (!cancelled) setError(err instanceof ApiError ? err.message : t('common.loadError'));
         });
     };
     poll();
@@ -147,9 +149,9 @@ export default function LiveRiderMap({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
       <div ref={containerRef} style={{ width: '100%', height: '200px', borderRadius: '12px', overflow: 'hidden' }} />
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
-      {available === false && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Waiting for your rider's real location…</p>}
-      {location && <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>🛵 Rider location updated {timeAgo(location.updatedAt)}</p>}
+      {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert" aria-live="polite">{error}</p>}
+      {available === false && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Waiting for your rider's real location…</p>}
+      {location && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-700)' }}>🛵 Rider location updated {timeAgo(location.updatedAt)}</p>}
     </div>
   );
 }

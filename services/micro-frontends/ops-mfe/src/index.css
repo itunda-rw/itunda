@@ -4,11 +4,15 @@
    viewport width for table-heavy queue views. */
 @import "@itunda/design-tokens/tokens.css";
 
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background-color: var(--toss-grey-100);
-  color: var(--toss-grey-900);
+  font-family: var(--itunda-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
+  background-color: var(--itunda-surface-subtle);
+  color: var(--itunda-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -16,7 +20,7 @@ body {
 #root {
   width: 100%;
   min-height: 100svh;
-  background-color: var(--toss-grey-100);
+  background-color: var(--itunda-surface-default);
 }
 
 h1, h2, h3, h4, p {
@@ -29,48 +33,80 @@ button {
   cursor: pointer;
   font-family: inherit;
   padding: 0;
-  transition: transform 0.1s ease-in-out;
+  /* Real Toss `out` curve -- see bank-mfe's own index.css doc comment for the full
+     sourced account of why plain `ease-in-out` isn't quite the real value. */
+  transition: transform 0.1s var(--itunda-ease-out);
+}
+
+/* Real Toss press-scale tactile feedback -- see bank-mfe's own index.css doc comment
+   for the full sourced account. Same gap as merchant-mfe's own identical fix. */
+button:active {
+  transform: scale(0.96);
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--itunda-brand);
+  outline-offset: 2px;
+}
+
+input, textarea, select {
+  font-family: inherit;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  border-color: var(--itunda-brand);
+  box-shadow: 0 0 0 3px var(--itunda-focus-ring, rgba(116,114,244,.18));
 }
 
 input, textarea {
   font-family: inherit;
 }
 
-.toss-card {
-  background: var(--toss-white);
-  border-radius: var(--toss-radius-md);
-  padding: 24px;
-  box-shadow: var(--toss-shadow);
-  margin-bottom: 16px;
-  transition: var(--toss-transition);
+.itunda-card {
+  /* IDS flat composition: grouping comes from spacing and a quiet divider,
+     not floating white cards and shadows. */
+  background: transparent;
+  border-radius: 0;
+  padding: var(--itunda-content-gap, 16px) 0;
+  border: 0;
+  border-bottom: 1px solid var(--itunda-border-default);
+  box-shadow: none;
+  margin-bottom: 0;
+  transition: background-color var(--itunda-motion-fast) var(--itunda-ease-out);
 }
 
-.toss-btn {
+.itunda-btn {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 48px;
   padding: 12px 20px;
-  border-radius: 14px;
+  border-radius: var(--itunda-button-radius, 16px);
   font-weight: 600;
   font-size: 15px;
 }
 
-.toss-btn-primary {
-  background-color: var(--toss-blue);
-  color: var(--toss-white);
+.itunda-btn-primary {
+  background-color: var(--itunda-brand);
+  color: var(--itunda-surface-default);
 }
 
-.toss-btn-secondary {
-  background-color: var(--toss-grey-100);
-  color: var(--toss-grey-800);
+.itunda-btn-secondary {
+  background-color: var(--itunda-surface-subtle);
+  color: var(--itunda-text-secondary);
 }
 
-.toss-btn-danger {
-  background-color: #E53935;
-  color: var(--toss-white);
+.itunda-btn-danger {
+  background-color: var(--itunda-field-border-error);
+  color: var(--itunda-surface-default);
 }
 
-.toss-btn:disabled {
+.itunda-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -86,8 +122,8 @@ input, textarea {
 }
 
 .skeleton {
-  background: #f6f7f8;
-  background-image: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%);
+  background: var(--itunda-skeleton-base);
+  background-image: linear-gradient(to right, var(--itunda-skeleton-base) 0%, var(--itunda-skeleton-highlight) 20%, var(--itunda-skeleton-base) 40%, var(--itunda-skeleton-base) 100%);
   background-repeat: no-repeat;
   background-size: 800px 100%;
   animation-duration: 1s;
@@ -95,4 +131,18 @@ input, textarea {
   animation-iteration-count: infinite;
   animation-name: shimmer;
   animation-timing-function: linear;
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  button { transition: none; }
+  button:active { transform: none; }
+  .skeleton { animation: none; }
+}
+
+
+/* Interactive controls follow the canonical IDS touch-target contract. */
+button,
+[role="button"] {
+  min-height: var(--itunda-touch-target-recommended, 48px);
 }

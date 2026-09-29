@@ -6,17 +6,29 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
 enum class GiftStatus { PENDING, CLAIMED, EXPIRED }
 
+// Real KakaoPay 송금봉투 (money envelope) themed presets (2026-07-26) -- see
+// docs/DESIGN_REFERENCES.md's own sourced account (story.kakaopay.com/
+// support.kakaopay.com): "themed presets ([축하해요]/[내마음]/[행운만땅]/[정산해요]) carry
+// occasion/message instead of free text." Exactly these 4 real, sourced presets --
+// DESIGN_REFERENCES.md itself notes "a complete, verified catalog... wasn't found," so
+// this doesn't invent a 5th one. Optional and additive alongside the pre-existing free-
+// text `note`, never replacing it -- a theme communicates occasion, a note still
+// carries an actual message, the same way KakaoPay's own envelope still shows the
+// sender's typed text alongside the preset.
+enum class GiftTheme { CONGRATULATIONS, HEARTFELT, GOOD_LUCK, SETTLE_UP }
+
 /**
  * A real KakaoTalk-style "선물하기" (gift) money gift sent within an existing 1:1 chat
  * conversation -- distinct from `P2pService.sendDirect`'s instant push-transfer: a
- * gift's money leaves the sender's wallet immediately into a real GIFT_HOLDING escrow
+ * gift's money leaves the sender's account immediately into a real GIFT_HOLDING escrow
  * account (same "hold, don't move directly" pattern `EatsOrder`'s own delivery-fee
- * escrow already established), and only actually reaches the recipient's wallet when
+ * escrow already established), and only actually reaches the recipient's account when
  * they explicitly "open"/claim it -- the same real two-step UX every KakaoPay/Toss
  * gift-money product uses, not a cosmetic delay. An unclaimed gift auto-refunds to the
  * sender after [EXPIRY] via [rw.itunda.gift.GiftExpiryScheduler], mirroring
@@ -48,6 +60,10 @@ class Gift(
     val note: String?,
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    val theme: GiftTheme? = null,
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     var status: GiftStatus = GiftStatus.PENDING,
 
@@ -65,6 +81,24 @@ class Gift(
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
+
+    // Real sibling-asymmetry fix (2026-09-13) -- GiftVoucher.expiryReminderSentAt
+    // already nudges a recipient before a real gifticon expires (KakaoTalk's own real
+    // multi-push cadence, see that field's own doc comment); this near-identical
+    // money-envelope concept had no equivalent -- a gift's creation message can get
+    // buried in an active chat thread, and today the recipient gets zero further
+    // signal for the whole [EXPIRY] window before the money silently returns to the
+    // sender with only the sender told (see GiftService.expireGift's own message).
+    // Null until a real reminder has been sent, same one-shot re-check-before-send
+    // discipline every other *ReminderSentAt field in this codebase already uses.
+    @Column(name = "expiry_reminder_sent_at")
+    var expiryReminderSentAt: Instant? = null,
+
+    // Recipient claim and scheduled expiry/refund both settle the same holding balance.
+    // Only one of them may transition this gift out of PENDING.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(
         id = "", senderId = "", recipientId = "", conversationId = "", messageId = "",
@@ -73,5 +107,11 @@ class Gift(
 
     companion object {
         val EXPIRY: java.time.Duration = java.time.Duration.ofDays(7)
+
+        // A 7-day EXPIRY window is much shorter than GiftVoucher's 180-day
+        // DEFAULT_VALIDITY, so voucher's own 7-day EXPIRY_REMINDER_WINDOW would fire
+        // immediately at creation here -- a proportionally shorter, still-meaningful
+        // nudge partway through this shorter window instead.
+        val EXPIRY_REMINDER_WINDOW: java.time.Duration = java.time.Duration.ofDays(1)
     }
 }

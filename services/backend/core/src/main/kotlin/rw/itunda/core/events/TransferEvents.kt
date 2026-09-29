@@ -8,7 +8,7 @@ import java.time.Instant
  * (2026-07-11) alongside `ledger.posted`. */
 data class TransferConfirmedEvent(
     val transactionId: String,
-    val fromWalletId: String,
+    val fromAccountId: String,
     val recipient: String,
     val amount: BigDecimal,
     val fee: BigDecimal,

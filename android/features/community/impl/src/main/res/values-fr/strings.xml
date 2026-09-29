@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="community_new_post_cta">+ Rédiger un post</string>
+    <string name="community_title_placeholder">Titre</string>
+    <string name="community_body_placeholder">Que se passe-t-il dans le quartier ?</string>
+    <string name="community_posting">Publication…</string>
+    <string name="community_post">Publier</string>
+</resources>

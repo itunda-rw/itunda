@@ -1,6 +1,54 @@
 import SwiftUI
+import CoreDesignSystem
 
-private enum MerchantTab { case orders, catalog, register, reports }
+private enum MerchantTab { case orders, catalog, register, reports, business, dineIn, reviews, coupons, followers, payroll, ads, booking, billing, cashAdvance, visitors, updates, photos, vouchers }
+
+
+private func merchantTabIndex(_ tab: MerchantTab) -> Int {
+    switch tab {
+    case .orders: return 0
+    case .catalog: return 1
+    case .register: return 2
+    case .reports: return 3
+    case .business: return 4
+    case .dineIn: return 5
+    case .reviews: return 6
+    case .coupons: return 7
+    case .followers: return 8
+    case .payroll: return 9
+    case .ads: return 10
+    case .booking: return 11
+    case .billing: return 12
+    case .cashAdvance: return 13
+    case .visitors: return 14
+    case .updates: return 15
+    case .photos: return 16
+    case .vouchers: return 17
+    }
+}
+
+private func merchantTab(at index: Int) -> MerchantTab {
+    switch index {
+    case 1: return .catalog
+    case 2: return .register
+    case 3: return .reports
+    case 4: return .business
+    case 5: return .dineIn
+    case 6: return .reviews
+    case 7: return .coupons
+    case 8: return .followers
+    case 9: return .payroll
+    case 10: return .ads
+    case 11: return .booking
+    case 12: return .billing
+    case 13: return .cashAdvance
+    case 14: return .visitors
+    case 15: return .updates
+    case 16: return .photos
+    case 17: return .vouchers
+    default: return .orders
+    }
+}
 
 struct MerchantHomeScreen: View {
     let merchant: MerchantDto
@@ -13,22 +61,32 @@ struct MerchantHomeScreen: View {
             HStack {
                 VStack(alignment: .leading) {
                     Text("Itunda Merchant").font(.title2).bold()
-                    Text(merchant.businessName).font(.caption).foregroundColor(.secondary)
+                    HStack(spacing: 6) {
+                        Text(merchant.businessName).font(.caption).foregroundColor(.secondary)
+                        // Real Coupang badge system (2026-08-05) -- see IdsBadge's own
+                        // doc comment. A real, named benefit/verification tier next to
+                        // the business name, not buried in a settings screen -- this
+                        // field existed on the DTO but was never rendered anywhere in
+                        // the iOS merchant app at all before now.
+                        if merchant.kybVerified {
+                            IdsBadge("✓ Verified", tint: IDS.Colors.brand)
+                        }
+                    }
                 }
                 Spacer()
                 Button(action: { MerchantKeychainTokenStore.shared.clearSession(); onLogout() }) {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
-                }
+                }.accessibilityLabel("Log out")
             }
             .padding(16)
 
-            Picker("", selection: $tab) {
-                Text("Orders").tag(MerchantTab.orders)
-                Text("Catalog").tag(MerchantTab.catalog)
-                Text("Register").tag(MerchantTab.register)
-                Text("Reports").tag(MerchantTab.reports)
-            }
-            .pickerStyle(.segmented)
+            IdsTabs(
+                ["Orders", "Catalog", "Register", "Reports", "Business", "Dine-in", "Reviews", "Coupons", "Followers", "Payroll", "Ads", "Booking", "Billing", "Cash advance", "Visitors", "Updates", "Photos", "Vouchers"],
+                selectedIndex: Binding(
+                    get: { merchantTabIndex(tab) },
+                    set: { tab = merchantTab(at: $0) }
+                )
+            )
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
 
@@ -37,6 +95,20 @@ struct MerchantHomeScreen: View {
             case .catalog: CatalogTab()
             case .register: PosTab()
             case .reports: ReportsTab()
+            case .business: BusinessAccountTab()
+            case .dineIn: DineInTab(restaurantId: merchant.id)
+            case .reviews: ReviewsTab(restaurantId: merchant.id)
+            case .coupons: CouponsTab()
+            case .followers: FollowersTab()
+            case .payroll: PayrollTab()
+            case .ads: AdsTab()
+            case .booking: BookingTab()
+            case .billing: BillingTab()
+            case .cashAdvance: VendorCashAdvanceTab(merchantId: merchant.id)
+            case .visitors: VisitorAnalyticsTab()
+            case .updates: UpdatesTab(merchantId: merchant.id)
+            case .photos: PhotosTab()
+            case .vouchers: VoucherRedeemTab()
             }
         }
     }
@@ -53,13 +125,13 @@ private struct OrdersTab: View {
     var body: some View {
         Group {
             if let error {
-                Text(error).foregroundColor(.red).padding(16)
+                Text(error).foregroundColor(IDS.Colors.danger).padding(16)
             }
             if let orders {
                 let active = orders.filter { ["PLACED", "ACCEPTED", "PREPARING", "READY_FOR_PICKUP"].contains($0.status) }
                 if active.isEmpty {
                     Spacer()
-                    Text("No open orders right now.").foregroundColor(.secondary)
+                    IdsEmptyState(title: "No open orders right now.")
                     Spacer()
                 } else {
                     ScrollView {
@@ -73,7 +145,7 @@ private struct OrdersTab: View {
                 }
             } else {
                 Spacer()
-                ProgressView()
+                SkeletonBlock(height: 96)
                 Spacer()
             }
         }
@@ -124,15 +196,41 @@ private struct OrderCard: View {
                 Text("Note: \(notes)").font(.footnote)
             }
             if let error {
-                Text(error).foregroundColor(.red).font(.caption)
+                Text(error).foregroundColor(IDS.Colors.danger).font(.caption)
             }
-            if let (nextStatus, label) = nextAction(for: order.status) {
+            // Real Baemin-style 포장주문 (Pickup) terminal edge (item 208) -- a PICKUP
+            // order at READY_FOR_PICKUP has no `nextAction` (there's no rider to hand
+            // off to), so it previously just sat here forever with no action anywhere
+            // to close it out.
+            if order.fulfillmentType == "PICKUP" && order.status == "READY_FOR_PICKUP" {
+                Button(action: {
+                    busy = true
+                    Task {
+                        do {
+                            _ = try await MerchantNetworkClient.shared.completePickupOrder(order.id)
+                            onAdvanced()
+                        } catch let NetworkError.httpErrorWithMessage(_, message) {
+                            self.error = message ?? "Couldn't update this order. Try again."
+                        } catch {
+                            self.error = "Couldn't update this order. Try again."
+                        }
+                        busy = false
+                    }
+                }) {
+                    Text("Mark picked up").bold().foregroundColor(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 10)
+                        .background(IDS.Colors.brand).cornerRadius(10)
+                }
+                .disabled(busy)
+            } else if let (nextStatus, label) = nextAction(for: order.status) {
                 Button(action: {
                     busy = true
                     Task {
                         do {
                             _ = try await MerchantNetworkClient.shared.advanceRestaurantOrderStatus(order.id, status: nextStatus)
                             onAdvanced()
+                        } catch let NetworkError.httpErrorWithMessage(_, message) {
+                            self.error = message ?? "Couldn't update this order. Try again."
                         } catch {
                             self.error = "Couldn't update this order. Try again."
                         }
@@ -141,7 +239,7 @@ private struct OrderCard: View {
                 }) {
                     Text(label).bold().foregroundColor(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 10)
-                        .background(Color.blue).cornerRadius(10)
+                        .background(IDS.Colors.brand).cornerRadius(10)
                 }
                 .disabled(busy)
             }
@@ -151,6 +249,295 @@ private struct OrderCard: View {
         .cornerRadius(12)
     }
 }
+
+/// Real written-review list + owner-reply management (item 184/185/186/188/189) -- see
+/// EatsReviewService.replyToRestaurantReview's own doc comment. bank-mfe (item 184) and
+/// Android (item 185) already have this; this is the first iOS client for the
+/// owner-reply side. Its own dedicated tab, unlike OrdersTab (which only ever shows
+/// ACTIVE orders -- reviews only exist once an order is DELIVERED). Also folds in
+/// Commerce product reviews (item 189, mirroring merchant-mfe's item 187 / Android's
+/// item 188): no aggregate "all my products' reviews" backend endpoint exists, so this
+/// fans out one real per-product review fetch across the merchant's own catalog.
+private struct ReviewsTab: View {
+    let restaurantId: String
+
+    @State private var restaurantReviews: [EatsReviewDto]?
+    @State private var productReviews: [(productName: String, review: ProductReviewDto)]?
+    // Real post-appointment booking reviews + owner-side reply (Merchant product-
+    // completeness pass) -- see NetworkClient's own BookingReviewDto doc comment.
+    // merchant-mfe and Android already have this; this closes the same real gap
+    // for iOS.
+    @State private var bookingReviews: [BookingReviewDto]?
+    @State private var error: String?
+
+    var body: some View {
+        Group {
+            if let error {
+                Text(error).foregroundColor(IDS.Colors.danger).padding(16)
+            }
+            if let restaurantReviews, let productReviews, let bookingReviews {
+                if restaurantReviews.isEmpty && productReviews.isEmpty && bookingReviews.isEmpty {
+                    Spacer()
+                    // Real copy-voice fix (item 244, round 7): honest about whose gap
+                    // this is -- reviews only appear once customers leave them after a
+                    // booking or purchase.
+                    IdsEmptyState(title: "No reviews yet — reviews will show up here once customers leave them after a booking or purchase.")
+                    Spacer()
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 10) {
+                            if !bookingReviews.isEmpty {
+                                Text("Booking reviews").font(.headline)
+                                ForEach(bookingReviews) { review in
+                                    BookingReviewReplyCard(review: review, onReplied: { Task { await refreshBookings() } })
+                                }
+                            }
+                            if !restaurantReviews.isEmpty {
+                                Text("Restaurant reviews").font(.headline)
+                                ForEach(restaurantReviews) { review in
+                                    ReviewReplyCard(review: review, onReplied: { Task { await refreshRestaurant() } })
+                                }
+                            }
+                            if !productReviews.isEmpty {
+                                Text("Product reviews").font(.headline)
+                                ForEach(productReviews, id: \.review.id) { entry in
+                                    ProductReviewReplyCard(productName: entry.productName, review: entry.review, onReplied: { Task { await refreshProducts() } })
+                                }
+                            }
+                        }
+                        .padding(16)
+                    }
+                }
+            } else {
+                Spacer()
+                SkeletonBlock(height: 96)
+                Spacer()
+            }
+        }
+        .task {
+            await refreshRestaurant()
+            await refreshProducts()
+            await refreshBookings()
+        }
+    }
+
+    private func refreshRestaurant() async {
+        do {
+            restaurantReviews = try await MerchantNetworkClient.shared.getRestaurantReviews(restaurantId).reviews
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func refreshBookings() async {
+        do {
+            bookingReviews = try await MerchantNetworkClient.shared.getMyBookingReviews().reviews
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func refreshProducts() async {
+        do {
+            let products = try await MerchantNetworkClient.shared.getProductCatalog().products
+            var combined: [(productName: String, review: ProductReviewDto)] = []
+            for product in products {
+                if let reviews = try? await MerchantNetworkClient.shared.getProductReviews(product.id).reviews {
+                    combined.append(contentsOf: reviews.map { (product.name, $0) })
+                }
+            }
+            productReviews = combined.sorted { $0.review.createdAt > $1.review.createdAt }
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+}
+
+private struct ReviewReplyCard: View {
+    let review: EatsReviewDto
+    let onReplied: () -> Void
+
+    @State private var replying = false
+    @State private var reply = ""
+    @State private var submitting = false
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(String(repeating: "★", count: review.restaurantRating) + String(repeating: "☆", count: 5 - review.restaurantRating))
+                .foregroundColor(.yellow)
+            if let comment = review.restaurantComment, !comment.isEmpty {
+                Text(comment).font(.subheadline)
+            }
+            if let ownerReply = review.ownerReply, !ownerReply.isEmpty {
+                Text("Your reply: \(ownerReply)").font(.footnote).foregroundColor(.secondary)
+            } else if replying {
+                HStack {
+                    IdsTextField("Write a reply…", text: $reply)
+                    Button(action: { Task { await submit() } }) {
+                        Text(submitting ? "…" : "Reply").bold().foregroundColor(.white)
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .background(IDS.Colors.brand).cornerRadius(8)
+                    }
+                    .disabled(submitting || reply.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            } else {
+                Button(action: { replying = true }) {
+                    Text("Reply").bold().foregroundColor(IDS.Colors.brand)
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                }
+            }
+            if let error {
+                Text(error).foregroundColor(IDS.Colors.danger).font(.caption)
+            }
+        }
+        .padding(16)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
+    }
+
+    private func submit() async {
+        submitting = true
+        error = nil
+        do {
+            _ = try await MerchantNetworkClient.shared.replyToRestaurantReview(review.id, reply: reply.trimmingCharacters(in: .whitespaces))
+            replying = false
+            onReplied()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not submit your reply."
+        } catch {
+            self.error = "Could not submit your reply."
+        }
+        submitting = false
+    }
+}
+
+private struct ProductReviewReplyCard: View {
+    let productName: String
+    let review: ProductReviewDto
+    let onReplied: () -> Void
+
+    @State private var replying = false
+    @State private var reply = ""
+    @State private var submitting = false
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(productName).bold()
+            Text(String(repeating: "★", count: review.rating) + String(repeating: "☆", count: 5 - review.rating))
+                .foregroundColor(.yellow)
+            if let comment = review.comment, !comment.isEmpty {
+                Text(comment).font(.subheadline)
+            }
+            if let ownerReply = review.ownerReply, !ownerReply.isEmpty {
+                Text("Your reply: \(ownerReply)").font(.footnote).foregroundColor(.secondary)
+            } else if replying {
+                HStack {
+                    IdsTextField("Write a reply…", text: $reply)
+                    Button(action: { Task { await submit() } }) {
+                        Text(submitting ? "…" : "Reply").bold().foregroundColor(.white)
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .background(IDS.Colors.brand).cornerRadius(8)
+                    }
+                    .disabled(submitting || reply.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            } else {
+                Button(action: { replying = true }) {
+                    Text("Reply").bold().foregroundColor(IDS.Colors.brand)
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                }
+            }
+            if let error {
+                Text(error).foregroundColor(IDS.Colors.danger).font(.caption)
+            }
+        }
+        .padding(16)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
+    }
+
+    private func submit() async {
+        submitting = true
+        error = nil
+        do {
+            _ = try await MerchantNetworkClient.shared.replyToProductReview(review.id, reply: reply.trimmingCharacters(in: .whitespaces))
+            replying = false
+            onReplied()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not submit your reply."
+        } catch {
+            self.error = "Could not submit your reply."
+        }
+        submitting = false
+    }
+}
+
+private struct BookingReviewReplyCard: View {
+    let review: BookingReviewDto
+    let onReplied: () -> Void
+
+    @State private var replying = false
+    @State private var reply = ""
+    @State private var submitting = false
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(review.serviceName).bold()
+            Text(String(repeating: "★", count: review.rating) + String(repeating: "☆", count: 5 - review.rating))
+                .foregroundColor(.yellow)
+            if let comment = review.comment, !comment.isEmpty {
+                Text(comment).font(.subheadline)
+            }
+            if let ownerReply = review.ownerReply, !ownerReply.isEmpty {
+                Text("Your reply: \(ownerReply)").font(.footnote).foregroundColor(.secondary)
+            } else if replying {
+                HStack {
+                    IdsTextField("Write a reply…", text: $reply)
+                    Button(action: { Task { await submit() } }) {
+                        Text(submitting ? "…" : "Reply").bold().foregroundColor(.white)
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .background(IDS.Colors.brand).cornerRadius(8)
+                    }
+                    .disabled(submitting || reply.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            } else {
+                Button(action: { replying = true }) {
+                    Text("Reply").bold().foregroundColor(IDS.Colors.brand)
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                }
+            }
+            if let error {
+                Text(error).foregroundColor(IDS.Colors.danger).font(.caption)
+            }
+        }
+        .padding(16)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
+    }
+
+    private func submit() async {
+        submitting = true
+        error = nil
+        do {
+            _ = try await MerchantNetworkClient.shared.replyToBookingReview(review.id, reply: reply.trimmingCharacters(in: .whitespaces))
+            replying = false
+            onReplied()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not submit your reply."
+        } catch {
+            self.error = "Could not submit your reply."
+        }
+        submitting = false
+    }
+}
+
+// FollowersTab moved to its own file, FollowersTab.swift, 2026-08-30 -- see that
+// file's own doc comment for why.
 
 struct MerchantStatusBadge: View {
     let status: String
@@ -173,13 +560,14 @@ struct MerchantStatusBadge: View {
         Text(label)
             .font(.caption2).bold()
             .padding(.horizontal, 8).padding(.vertical, 2)
-            .background(Color.blue.opacity(0.15))
+            .background(IDS.Colors.brand.opacity(0.15))
             .cornerRadius(8)
     }
 }
 
 func formattedRWF(_ amount: Double) -> String {
     let formatter = NumberFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
     formatter.numberStyle = .decimal
     formatter.maximumFractionDigits = 0
     formatter.groupingSeparator = ","

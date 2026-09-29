@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.Message
@@ -47,7 +48,7 @@ class PropertyPriceOfferServiceTest : BehaviorSpec({
             val offer = service.makeOffer("inquirer_1", "property_listing_1", BigDecimal("220000"))
 
             Then("it posts a real offer message and saves a real PENDING offer proposed by the inquirer") {
-                messageSlot.captured shouldBe "💰 Offered 220000 RWF for \"2-bedroom in Kacyiru\""
+                messageSlot.captured shouldBe "💰 Offered 220,000 RWF for \"2-bedroom in Kacyiru\""
                 offer.amount shouldBe BigDecimal("220000")
                 offer.inquirerId shouldBe "inquirer_1"
                 offer.listerId shouldBe "lister_1"
@@ -55,6 +56,14 @@ class PropertyPriceOfferServiceTest : BehaviorSpec({
                 offer.status shouldBe PriceOfferStatus.PENDING
                 offer.conversationId shouldBe "conversation_1"
                 offer.messageId shouldBe "message_1"
+            }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08): rateLimiter was relaxed = true with zero verify{} anywhere
+            // in this file, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("realestate:offer:inquirer_1", limit = 20, window = java.time.Duration.ofHours(1)) }
             }
         }
 
@@ -143,7 +152,15 @@ class PropertyPriceOfferServiceTest : BehaviorSpec({
             Then("status flips to ACCEPTED, respondedAt is set, and a real acceptance message is posted") {
                 result.status shouldBe PriceOfferStatus.ACCEPTED
                 (result.respondedAt != null) shouldBe true
-                bodySlot.captured shouldBe "✅ Offer accepted: 220000 RWF"
+                bodySlot.captured shouldBe "✅ Offer accepted: 220,000 RWF"
+            }
+
+            // Real gap found live (repo-wide rate-limiter-verification sweep,
+            // 2026-09-08): rateLimiter was relaxed = true with zero verify{} anywhere
+            // in this file, so a future accidental removal of the real checkLimit call
+            // would have compiled and passed silently.
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("realestate:offer-response:lister_1", limit = 30, window = java.time.Duration.ofHours(1)) }
             }
         }
 
@@ -180,7 +197,7 @@ class PropertyPriceOfferServiceTest : BehaviorSpec({
                 result.status shouldBe PriceOfferStatus.PENDING
                 result.proposedByUserId shouldBe "lister_1"
                 result.amount shouldBe BigDecimal("235000")
-                bodySlot.captured shouldBe "🔁 Countered: 235000 RWF for \"2-bedroom in Kacyiru\""
+                bodySlot.captured shouldBe "🔁 Countered: 235,000 RWF for \"2-bedroom in Kacyiru\""
             }
         }
 

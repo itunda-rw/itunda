@@ -1,0 +1,17 @@
+# Vercel Fluid Compute container for Itunda Identity Service.
+# Build context: services/backend (the Gradle multi-module root).
+FROM eclipse-temurin:17-jdk-jammy AS builder
+WORKDIR /app
+COPY . .
+RUN ./gradlew :identity-service:bootJar --no-daemon -x test \
+  -Dorg.gradle.jvmargs='-Xmx768m -XX:MaxMetaspaceSize=256m' \
+  -Dkotlin.daemon.jvm.options='-Xmx384m'
+
+FROM eclipse-temurin:17-jre-jammy
+WORKDIR /app
+RUN useradd --system --create-home --shell /usr/sbin/nologin itunda
+COPY --from=builder /app/identity-service/build/libs/*.jar app.jar
+USER itunda
+EXPOSE 4010
+# Vercel injects PORT. Keep 4010 as the local fallback used by the existing service.
+CMD ["sh", "-c", "exec java -jar app.jar --server.port=${PORT:-4010}"]

@@ -53,6 +53,15 @@ class TrustedDevice(
 
     @Column(name = "verified_at")
     var verifiedAt: Instant? = null,
+
+    // Real Keystore/Secure-Enclave-signed-challenge device verification (item 246) --
+    // see DeviceService.registerDeviceKey's own doc comment for the full account. Raw
+    // uncompressed P-256 point (0x04 || X || Y, 65 bytes), base64-encoded -- null until
+    // the user opts in to biometric device verification (a one-time, password-gated
+    // setup step), at which point password re-entry stops being the only way to prove
+    // this device on future step-ups.
+    @Column(name = "public_key", length = 200)
+    var publicKey: String? = null,
 ) {
     protected constructor() : this(id = "", userId = "", deviceId = "", deviceName = null, trusted = false)
 }

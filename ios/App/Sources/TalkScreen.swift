@@ -1,5 +1,14 @@
 import SwiftUI
+import UIKit
 import CoreDesignSystem
+import CoreNetwork
+
+
+// Talk tab entry point + tab switcher. Sub-views live in
+// TalkLists.swift / TalkGroupsBrowse.swift / TalkGroupThread.swift /
+// TalkSplitBills.swift / TalkGroupExtras.swift / TalkChatThread.swift /
+// TalkChatBubbles.swift / TalkMessageBubbles.swift / TalkEmoticons.swift
+// (split 2026-08-19 for real file-size decomposition).
 
 /// Real 1:1 messaging (Kakao-style Talk tab, 2026-07-18) -- iOS mirror of Android's
 /// TalkTab (SuperAppTabs.kt). See NetworkClient.swift's Messaging extension and
@@ -7,7 +16,7 @@ import CoreDesignSystem
 /// account, including the honest "poll-based delivery, no live transport yet" scope
 /// this screen matches exactly (a 4s poll while a thread is open, same interval
 /// bank-mfe/Android already use).
-private enum TalkView { case direct, groups }
+enum TalkView { case direct, groups, friends }
 
 // Real group chat (2026-07-18) -- itunda's own KakaoTalk-style group messaging, ported
 // to iOS from bank-mfe's own Direct/Groups toggle (the "single most defining KakaoTalk
@@ -20,40 +29,85 @@ struct TalkScreen: View {
     /// it shows up in this screen's own real conversation list, it opens directly,
     /// mirroring Android's initialConversationId/onConsumedInitial pair exactly.
     @Binding var pendingConversationId: String?
+    // Real service-channel ctaRoute navigation (itunda Talk redesign, 2026-08-28) --
+    // see ContentView.swift's own doc comment on the honest partial-router scope.
+    var onNavigateRoute: (String) -> Void = { _ in }
 
     @State private var view: TalkView = .direct
+    // Real itunda service channel + AI chatbot channel (itunda Talk redesign,
+    // 2026-08-28) -- see TalkServiceChannelThread.swift/TalkAiChatThread.swift's own
+    // doc comments. Client-side-synthesized rows, not real conversations -- neither
+    // has a persisted conversation row on the backend.
+    @State private var openServiceChannel = false
+    @State private var openAiChat = false
     @State private var conversations: [ConversationSummaryDto]?
     @State private var conversationsError: String?
+    // Real recoverable archive (2026-08-05) -- see backend ConversationPreference
+    // .archived's own doc comment. Loaded alongside the active list so the
+    // "Archived (N)" toggle has a real count without an extra round-trip.
+    @State private var archivedConversations: [ConversationSummaryDto]?
     @State private var openConversation: ConversationSummaryDto?
     @State private var groups: [GroupSummaryDto]?
     @State private var groupsError: String?
     @State private var openGroup: GroupSummaryDto?
+    // Real pagination-discard fix (same systemic gap fixed on web/Android,
+    // 2026-09-11) -- independent page/hasMore/loadingMore per list, since a
+    // request never asked past page 0 for any of the 3 real lists here.
+    @State private var conversationsPage = 0
+    @State private var conversationsHasMore = false
+    @State private var conversationsLoadingMore = false
+    @State private var archivedPage = 0
+    @State private var archivedHasMore = false
+    @State private var archivedLoadingMore = false
+    @State private var groupsPage = 0
+    @State private var groupsHasMore = false
+    @State private var groupsLoadingMore = false
     // Real online/offline presence for the list view (2026-07-19) -- a bulk on-demand
     // check for every listed contact, refreshed on a 10s cadence, a real coarser signal
     // than the 4s message poll. Per-thread real-time push happens in ChatThreadScreen.
     @State private var presence: [String: Bool] = [:]
+    // Real chat-list filter tabs (전체/안읽음/통화) (itunda Talk redesign, 2026-08-28)
+    // -- see TalkFilterTabs.swift's own doc comment.
+    @State private var listFilter: TalkListFilter = .all
+    @State private var calls: [CallSessionDto]?
+    @State private var callsError: String?
+    // Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix
+    // -- see project_itunda_pagination_discard_sweep memory).
+    @State private var callsPage = 0
+    @State private var callsHasMore = false
+    @State private var loadingMoreCalls = false
 
     var body: some View {
         Group {
             if let openConversation {
-                ChatThreadScreen(conversation: openConversation, onBack: {
-                    self.openConversation = nil
-                    Task { await loadConversations() }
-                })
+                RoomLockGate(roomId: openConversation.conversationId) {
+                    ChatThreadScreen(conversation: openConversation, onBack: {
+                        self.openConversation = nil
+                        Task { await loadConversations() }
+                    })
+                }
             } else if let openGroup {
-                GroupThreadScreen(group: openGroup, onBack: {
-                    self.openGroup = nil
-                    Task { await loadGroups() }
-                })
+                RoomLockGate(roomId: openGroup.groupId) {
+                    GroupThreadScreen(group: openGroup, onBack: {
+                        self.openGroup = nil
+                        Task { await loadGroups() }
+                    })
+                }
+            } else if openServiceChannel {
+                TalkServiceChannelThread(onBack: { openServiceChannel = false }, onNavigate: onNavigateRoute)
+            } else if openAiChat {
+                TalkAiChatThread(onBack: { openAiChat = false })
             } else {
                 listBody
             }
         }
         .task { await loadConversations() }
+        .task { await loadArchivedConversations() }
         .task { await loadGroups() }
         .task(id: conversations?.map { $0.otherUserId }) { await pollPresence() }
         .onChange(of: pendingConversationId) { _ in tryOpenPending() }
         .onChange(of: conversations?.count) { _ in tryOpenPending() }
+        .onChange(of: groups?.count) { _ in tryOpenPending() }
     }
 
     private func pollPresence() async {
@@ -74,30 +128,83 @@ struct TalkScreen: View {
                 .padding(.horizontal, IDS.Layout.screenHorizontal)
                 .padding(.top, IDS.Layout.screenTop)
 
-            Picker("", selection: $view) {
-                Text("Direct").tag(TalkView.direct)
-                Text("Groups").tag(TalkView.groups)
-            }
-            .pickerStyle(.segmented)
+            IdsTabs(
+                ["Direct", "Groups", "Friends"],
+                selectedIndex: Binding(
+                    get: {
+                        switch view {
+                        case .direct: return 0
+                        case .groups: return 1
+                        case .friends: return 2
+                        }
+                    },
+                    set: {
+                        switch $0 {
+                        case 1: view = .groups
+                        case 2: view = .friends
+                        default: view = .direct
+                        }
+                    }
+                )
+            )
             .padding(.horizontal, IDS.Layout.screenHorizontal)
             .padding(.top, 8)
 
-            if view == .direct {
-                DirectMessagesList(
-                    conversations: conversations,
-                    error: conversationsError,
-                    presence: presence,
-                    onRetry: { Task { await loadConversations() } },
-                    onStarted: { conversationId in
-                        Task {
-                            await loadConversations()
-                            if let match = conversations?.first(where: { $0.conversationId == conversationId }) {
-                                openConversation = match
-                            }
+            if view == .friends {
+                FriendsList(onStarted: { conversationId in
+                    Task {
+                        await loadConversations()
+                        if let match = conversations?.first(where: { $0.conversationId == conversationId }) {
+                            openConversation = match
                         }
-                    },
-                    onOpen: { openConversation = $0 }
-                )
+                        view = .direct
+                    }
+                })
+            } else if view == .direct {
+                TalkFilterTabsBar(selection: $listFilter)
+                if listFilter == .all {
+                    ServiceChannelRow(onOpen: { openServiceChannel = true })
+                        .padding(.horizontal, IDS.Layout.screenHorizontal)
+                    AiChatRow(onOpen: { openAiChat = true })
+                        .padding(.horizontal, IDS.Layout.screenHorizontal)
+                }
+                if listFilter == .calls {
+                    CallHistoryList(
+                        calls: calls, error: callsError, onRetry: { Task { await loadCalls() } },
+                        hasMore: callsHasMore, loadingMore: loadingMoreCalls,
+                        onLoadMore: { Task { await loadMoreCalls() } }
+                    )
+                        .task { await loadCalls() }
+                } else {
+                    DirectMessagesList(
+                        conversations: listFilter == .unread ? conversations?.filter { $0.unreadCount > 0 } : conversations,
+                        archivedConversations: archivedConversations,
+                        error: conversationsError,
+                        presence: presence,
+                        onRetry: { Task { await loadConversations() } },
+                        onStarted: { conversationId in
+                            Task {
+                                await loadConversations()
+                                if let match = conversations?.first(where: { $0.conversationId == conversationId }) {
+                                    openConversation = match
+                                }
+                            }
+                        },
+                        onOpen: { openConversation = $0 },
+                        onArchiveChanged: {
+                            Task {
+                                await loadConversations()
+                                await loadArchivedConversations()
+                            }
+                        },
+                        hasMore: conversationsHasMore,
+                        archivedHasMore: archivedHasMore,
+                        loadingMore: conversationsLoadingMore,
+                        archivedLoadingMore: archivedLoadingMore,
+                        onLoadMore: { Task { await loadMoreConversations() } },
+                        onLoadMoreArchived: { Task { await loadMoreArchivedConversations() } }
+                    )
+                }
             } else {
                 GroupsList(
                     groups: groups,
@@ -111,37 +218,133 @@ struct TalkScreen: View {
                             }
                         }
                     },
-                    onOpen: { openGroup = $0 }
+                    onOpen: { openGroup = $0 },
+                    hasMore: groupsHasMore,
+                    loadingMore: groupsLoadingMore,
+                    onLoadMore: { Task { await loadMoreGroups() } }
                 )
             }
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
     }
 
+    // Extended 2026-07-24 to also check `groups` -- Community's "join meetup" hand-off
+    // (CommunityContent's onOpenGroupChat, reusing this exact same pendingConversationId
+    // mechanism) hands off a real GroupConversation id, not a 1:1 conversation id, so
+    // this needs to open the group thread instead when that's what matches. Mirrors
+    // Android's identical TalkScreen.kt extension.
     private func tryOpenPending() {
-        guard let pending = pendingConversationId,
-              let match = conversations?.first(where: { $0.conversationId == pending }) else { return }
-        openConversation = match
-        pendingConversationId = nil
+        guard let pending = pendingConversationId else { return }
+        if let match = conversations?.first(where: { $0.conversationId == pending }) {
+            openConversation = match
+            pendingConversationId = nil
+        } else if let match = groups?.first(where: { $0.groupId == pending }) {
+            view = .groups
+            openGroup = match
+            pendingConversationId = nil
+        }
     }
 
     private func loadConversations() async {
         do {
-            let res = try await NetworkClient.shared.getConversations()
-            conversations = res.conversations
+            let res = try await NetworkClient.shared.getConversations(page: 0)
+            // Real Toss-sourced "layering illusion" reorder animation (2026-08-29,
+            // toss.tech/article/interaction's own real "Account Organization
+            // Animation" example -- reordering a list should animate the move, not
+            // jump). Pinning a conversation to the top used to snap the whole list
+            // to its new order on the next reload with zero motion -- web/Android's
+            // identical gap closed the same session. SwiftUI's List/ForEach diffing
+            // animates row moves automatically once the state change itself is
+            // wrapped in withAnimation.
+            withAnimation(.easeInOut(duration: 0.25)) { conversations = res.conversations }
+            conversationsPage = 0
+            conversationsHasMore = res.page + 1 < res.totalPages
             conversationsError = nil
         } catch {
             conversationsError = "Couldn't reach itunda. Check your connection and try again."
         }
     }
 
+    private func loadMoreConversations() async {
+        let nextPage = conversationsPage + 1
+        conversationsLoadingMore = true
+        defer { conversationsLoadingMore = false }
+        do {
+            let res = try await NetworkClient.shared.getConversations(page: nextPage)
+            conversations = (conversations ?? []) + res.conversations
+            conversationsPage = nextPage
+            conversationsHasMore = res.page + 1 < res.totalPages
+        } catch {
+            // Non-critical -- the already-loaded page stays visible; the user
+            // can retry by tapping "Load more" again.
+        }
+    }
+
+    private func loadArchivedConversations() async {
+        // Real, non-critical -- the active list and "Archived (N)" count still work
+        // even if this background fetch fails; retried on next load.
+        if let res = try? await NetworkClient.shared.getConversations(archived: true, page: 0) {
+            archivedConversations = res.conversations
+            archivedPage = 0
+            archivedHasMore = res.page + 1 < res.totalPages
+        }
+    }
+
+    private func loadMoreArchivedConversations() async {
+        let nextPage = archivedPage + 1
+        archivedLoadingMore = true
+        defer { archivedLoadingMore = false }
+        if let res = try? await NetworkClient.shared.getConversations(archived: true, page: nextPage) {
+            archivedConversations = (archivedConversations ?? []) + res.conversations
+            archivedPage = nextPage
+            archivedHasMore = res.page + 1 < res.totalPages
+        }
+    }
+
+    private func loadCalls() async {
+        do {
+            let res = try await NetworkClient.shared.getCallHistory(page: 0)
+            calls = res.calls
+            callsHasMore = res.page + 1 < res.totalPages
+            callsError = nil
+        } catch {
+            callsError = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func loadMoreCalls() async {
+        let nextPage = callsPage + 1
+        loadingMoreCalls = true
+        defer { loadingMoreCalls = false }
+        guard let res = try? await NetworkClient.shared.getCallHistory(page: nextPage) else { return }
+        calls = (calls ?? []) + res.calls
+        callsPage = nextPage
+        callsHasMore = res.page + 1 < res.totalPages
+    }
+
     private func loadGroups() async {
         do {
-            let res = try await NetworkClient.shared.getMyGroups()
+            let res = try await NetworkClient.shared.getMyGroups(page: 0)
             groups = res.groups
+            groupsPage = 0
+            groupsHasMore = res.page + 1 < res.totalPages
             groupsError = nil
         } catch {
             groupsError = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func loadMoreGroups() async {
+        let nextPage = groupsPage + 1
+        groupsLoadingMore = true
+        defer { groupsLoadingMore = false }
+        do {
+            let res = try await NetworkClient.shared.getMyGroups(page: nextPage)
+            groups = (groups ?? []) + res.groups
+            groupsPage = nextPage
+            groupsHasMore = res.page + 1 < res.totalPages
+        } catch {
+            // Non-critical, same reasoning as loadMoreConversations above.
         }
     }
 
@@ -167,1027 +370,3 @@ struct TalkScreen: View {
     }
 }
 
-private struct DirectMessagesList: View {
-    let conversations: [ConversationSummaryDto]?
-    let error: String?
-    let presence: [String: Bool]
-    let onRetry: () -> Void
-    let onStarted: (String) -> Void
-    let onOpen: (ConversationSummaryDto) -> Void
-
-    @State private var newChatPhone = ""
-    @State private var startError: String?
-    @State private var starting = false
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: IDS.Layout.cardGap) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("New chat").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                    Text("Enter their phone number to start a conversation.")
-                        .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
-                        .foregroundColor(IDS.Colors.textSecondary)
-                    HStack {
-                        TextField("+250788123456", text: $newChatPhone)
-                            .keyboardType(.phonePad)
-                            .padding(12)
-                            .background(IDS.Colors.chipBackground)
-                            .cornerRadius(12)
-                        Button(action: { Task { await startConversation() } }) {
-                            Text(starting ? "..." : "Chat")
-                                .font(IDS.Typography.bodyBold)
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 14)
-                                .background(IDS.Colors.brand)
-                                .cornerRadius(14)
-                        }
-                        .disabled(starting || newChatPhone.isEmpty)
-                    }
-                    if let startError {
-                        Text(startError).font(.caption).foregroundColor(.red)
-                    }
-                }
-                .padding(20)
-                .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius)
-
-                if let error {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(error).foregroundColor(.red).font(.subheadline)
-                        Button("Retry", action: onRetry)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20)
-                    .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius)
-                } else if conversations == nil {
-                    ProgressView().frame(maxWidth: .infinity, minHeight: 120)
-                } else if conversations!.isEmpty {
-                    Text("No conversations yet.").foregroundColor(IDS.Colors.textSecondary)
-                } else {
-                    ForEach(conversations!) { conversation in
-                        Button(action: { onOpen(conversation) }) {
-                            ConversationRow(conversation: conversation, online: presence[conversation.otherUserId] == true)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-            .padding(.horizontal, IDS.Layout.screenHorizontal)
-            .padding(.top, 12)
-            .padding(.bottom, IDS.Layout.sectionSpacing)
-        }
-    }
-
-    private func startConversation() async {
-        starting = true
-        startError = nil
-        defer { starting = false }
-        do {
-            let res = try await NetworkClient.shared.startConversation(phoneNumber: newChatPhone.trimmingCharacters(in: .whitespaces))
-            newChatPhone = ""
-            onStarted(res.conversation.id)
-        } catch let NetworkError.httpError(statusCode) {
-            startError = TalkScreen.errorMessage(statusCode)
-        } catch {
-            startError = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-}
-
-private struct GroupsList: View {
-    let groups: [GroupSummaryDto]?
-    let error: String?
-    let onRetry: () -> Void
-    let onCreated: (String) -> Void
-    let onOpen: (GroupSummaryDto) -> Void
-
-    @State private var name = ""
-    @State private var phoneNumbers = ""
-    @State private var createError: String?
-    @State private var creating = false
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: IDS.Layout.cardGap) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("New group").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                    Text("A group name and everyone's real phone number, comma-separated.")
-                        .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
-                        .foregroundColor(IDS.Colors.textSecondary)
-                    TextField("Group name", text: $name)
-                        .padding(12)
-                        .background(IDS.Colors.chipBackground)
-                        .cornerRadius(12)
-                    TextField("+250788123456, +250788987654", text: $phoneNumbers)
-                        .padding(12)
-                        .background(IDS.Colors.chipBackground)
-                        .cornerRadius(12)
-                    Button(action: { Task { await createGroup() } }) {
-                        Text(creating ? "Creating…" : "Create group")
-                            .font(IDS.Typography.bodyBold)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background((creating || name.isEmpty || phoneNumbers.isEmpty) ? IDS.Colors.textTertiary : IDS.Colors.brand)
-                            .cornerRadius(14)
-                    }
-                    .disabled(creating || name.isEmpty || phoneNumbers.isEmpty)
-                    if let createError {
-                        Text(createError).font(.caption).foregroundColor(.red)
-                    }
-                }
-                .padding(20)
-                .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius)
-
-                if let error {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(error).foregroundColor(.red).font(.subheadline)
-                        Button("Retry", action: onRetry)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20)
-                    .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius)
-                } else if groups == nil {
-                    ProgressView().frame(maxWidth: .infinity, minHeight: 120)
-                } else if groups!.isEmpty {
-                    Text("No groups yet.").foregroundColor(IDS.Colors.textSecondary)
-                } else {
-                    ForEach(groups!) { group in
-                        Button(action: { onOpen(group) }) {
-                            GroupRow(group: group)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-            .padding(.horizontal, IDS.Layout.screenHorizontal)
-            .padding(.top, 12)
-            .padding(.bottom, IDS.Layout.sectionSpacing)
-        }
-    }
-
-    private func createGroup() async {
-        creating = true
-        createError = nil
-        defer { creating = false }
-        let numbers = phoneNumbers.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-        do {
-            let res = try await NetworkClient.shared.createGroup(name: name.trimmingCharacters(in: .whitespaces), memberPhoneNumbers: numbers)
-            name = ""
-            phoneNumbers = ""
-            onCreated(res.group.groupId)
-        } catch let NetworkError.httpError(statusCode) {
-            createError = TalkScreen.errorMessage(statusCode)
-        } catch {
-            createError = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-}
-
-private struct GroupRow: View {
-    let group: GroupSummaryDto
-
-    var body: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle().fill(IDS.Colors.chipBackground)
-                Image(systemName: "person.3.fill").foregroundColor(IDS.Colors.brand)
-            }
-            .frame(width: 44, height: 44)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(group.name).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                    Text("\(group.memberCount) members").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
-                }
-                Text(group.lastMessagePreview ?? "No messages yet")
-                    .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
-                    .foregroundColor(IDS.Colors.textSecondary)
-                    .lineLimit(1)
-            }
-            Spacer()
-            if group.unreadCount > 0 {
-                Text("\(group.unreadCount)")
-                    .font(.caption).bold()
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 8).padding(.vertical, 3)
-                    .background(IDS.Colors.brand)
-                    .clipShape(Capsule())
-            }
-        }
-        .padding(18)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
-    }
-}
-
-private struct GroupThreadScreen: View {
-    let group: GroupSummaryDto
-    let onBack: () -> Void
-
-    @State private var messages: [GroupMessageDto]?
-    @State private var members: [GroupMemberDto] = []
-    @State private var draft = ""
-    @State private var sending = false
-    @State private var error: String?
-    @State private var socketTask: URLSessionWebSocketTask?
-    @State private var typingUserIds: [String: Task<Void, Never>] = [:]
-    @State private var lastTypingSentAt: Date = .distantPast
-    private let currentUserId = KeychainTokenStore.shared.getUserId()
-
-    private func name(for senderId: String) -> String {
-        members.first(where: { $0.userId == senderId })?.name ?? String(senderId.prefix(8))
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Button(action: onBack) {
-                    Image(systemName: "chevron.left").font(.system(size: 18, weight: .medium)).frame(width: 44, height: 44)
-                }
-                .accessibilityLabel("Back")
-                Text(group.name).font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
-                Spacer()
-            }
-            .padding(.horizontal, 8)
-
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 8) {
-                        if let messages {
-                            if messages.isEmpty {
-                                Text("Say hello — no messages yet.").foregroundColor(IDS.Colors.textSecondary).padding(.top, 20)
-                            }
-                            ForEach(messages) { message in
-                                GroupMessageBubble(
-                                    message: message, isMine: message.senderId == currentUserId, senderName: name(for: message.senderId),
-                                    currentUserId: currentUserId,
-                                    onToggleReaction: { emoji in Task { await toggleReaction(message.id, emoji) } },
-                                )
-                                .id(message.id)
-                            }
-                        } else {
-                            ProgressView().padding(.top, 20)
-                        }
-                    }
-                    .padding(.horizontal, IDS.Layout.screenHorizontal)
-                    .padding(.top, 12)
-                }
-                .onChange(of: messages?.count) { _ in
-                    if let last = messages?.last?.id {
-                        withAnimation { proxy.scrollTo(last, anchor: .bottom) }
-                    }
-                }
-            }
-
-            if !typingUserIds.isEmpty {
-                let names = typingUserIds.keys.map { name(for: $0) }
-                Text("\(names.joined(separator: ", ")) \(names.count == 1 ? "is" : "are") typing…")
-                    .font(.caption)
-                    .foregroundColor(IDS.Colors.textSecondary)
-                    .padding(.horizontal, IDS.Layout.screenHorizontal)
-            }
-
-            if let error {
-                Text(error).font(.caption).foregroundColor(.red).padding(.horizontal, IDS.Layout.screenHorizontal)
-            }
-
-            HStack {
-                TextField("Message", text: Binding(
-                    get: { draft },
-                    set: { newValue in
-                        draft = newValue
-                        if Date().timeIntervalSince(lastTypingSentAt) > 2 {
-                            lastTypingSentAt = Date()
-                            if let socketTask {
-                                NetworkClient.shared.sendTyping(socketTask, groupConversationId: group.groupId)
-                            }
-                        }
-                    }
-                ))
-                    .padding(12)
-                    .background(IDS.Colors.chipBackground)
-                    .cornerRadius(14)
-                Button(action: { Task { await send() } }) {
-                    Image(systemName: "paperplane.fill")
-                        .foregroundColor(.white)
-                        .frame(width: 44, height: 44)
-                        .background(draft.isEmpty || sending ? IDS.Colors.textTertiary : IDS.Colors.brand)
-                        .clipShape(Circle())
-                }
-                .disabled(draft.isEmpty || sending)
-            }
-            .padding(IDS.Layout.screenHorizontal)
-        }
-        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
-        .task { await refresh() }
-        // Real member list with real resolved display names (2026-07-18), fetched once
-        // per thread open -- closes the honest, named limitation this UI carried since
-        // group chat first shipped (a truncated sender id instead of a real name).
-        .task {
-            do {
-                members = try await NetworkClient.shared.getGroupMembers(groupId: group.groupId).members
-            } catch {
-                // Real, non-critical -- a failed member-list fetch shouldn't block the
-                // thread; bubbles just fall back to a truncated sender id.
-            }
-        }
-        // Real poll, kept as an always-correct fallback delivery path alongside the
-        // real WebSocket push below -- matches 1:1 messaging's own scope exactly.
-        .task {
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 4_000_000_000)
-                await refresh()
-            }
-        }
-        // Real WebSocket live-transport for group chat -- same socket 1:1 already
-        // uses, routing on push type via MessagingSocketPush.
-        .onAppear {
-            socketTask = NetworkClient.shared.connectMessagingSocket { push in
-                switch push {
-                case .groupMessage(let groupId, let pushedMessage) where groupId == group.groupId:
-                    Task { @MainActor in
-                        typingUserIds[pushedMessage.senderId]?.cancel()
-                        typingUserIds[pushedMessage.senderId] = nil
-                        if !(messages ?? []).contains(where: { $0.id == pushedMessage.id }) {
-                            messages = (messages ?? []) + [pushedMessage]
-                        }
-                    }
-                case .typingChange(_, let groupId, let userId) where groupId == group.groupId:
-                    Task { @MainActor in
-                        typingUserIds[userId]?.cancel()
-                        typingUserIds[userId] = Task {
-                            try? await Task.sleep(nanoseconds: 3_000_000_000)
-                            if !Task.isCancelled { typingUserIds[userId] = nil }
-                        }
-                    }
-                case .reactionChange(_, let groupId, let messageId, let reactions) where groupId == group.groupId:
-                    Task { @MainActor in
-                        messages = messages?.map { $0.id == messageId ? GroupMessageDto(id: $0.id, groupConversationId: $0.groupConversationId, senderId: $0.senderId, body: $0.body, sentAt: $0.sentAt, reactions: reactions) : $0 }
-                    }
-                default:
-                    break
-                }
-            }
-        }
-        .onDisappear {
-            socketTask?.cancel(with: .goingAway, reason: nil)
-            typingUserIds.values.forEach { $0.cancel() }
-        }
-    }
-
-    private func refresh() async {
-        do {
-            let res = try await NetworkClient.shared.getGroupMessages(groupId: group.groupId)
-            messages = res.messages.reversed()
-        } catch {
-            // Keep showing the last-known messages rather than blanking the thread on
-            // a transient poll failure.
-        }
-    }
-
-    private func toggleReaction(_ groupMessageId: String, _ emoji: String) async {
-        do {
-            let res = try await NetworkClient.shared.toggleGroupReaction(groupMessageId: groupMessageId, emoji: emoji)
-            messages = messages?.map { $0.id == groupMessageId ? GroupMessageDto(id: $0.id, groupConversationId: $0.groupConversationId, senderId: $0.senderId, body: $0.body, sentAt: $0.sentAt, reactions: res.reactions) : $0 }
-        } catch {
-            // Best-effort -- a failed reaction toggle just leaves the badge as it was.
-        }
-    }
-
-    private func send() async {
-        let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !body.isEmpty else { return }
-        sending = true
-        error = nil
-        defer { sending = false }
-        do {
-            let res = try await NetworkClient.shared.sendGroupMessage(groupId: group.groupId, body: body)
-            draft = ""
-            messages = (messages ?? []) + [res.message]
-        } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-}
-
-// Real quick-react palette (2026-07-19) -- a small fixed set matching bank-mfe's own
-// MessageReactions component exactly, kept simple rather than a full emoji picker.
-private let quickReactions = ["👍", "❤️", "😂", "😮", "😢"]
-
-// Real emoji reactions -- shared between 1:1 and group threads. Tapping an existing
-// reaction badge toggles the current user's own reaction for that emoji (the fast,
-// one-tap path real chat apps use); the smile button opens the quick palette for a
-// first reaction.
-private struct MessageReactionsRow: View {
-    let reactions: [ReactionGroupDto]
-    let currentUserId: String?
-    let isMine: Bool
-    let onToggle: (String) -> Void
-
-    @State private var pickerOpen = false
-
-    var body: some View {
-        HStack(spacing: 4) {
-            if isMine { Spacer() }
-            ForEach(reactions.filter { !$0.userIds.isEmpty }, id: \.emoji) { r in
-                let mine = currentUserId.map { r.userIds.contains($0) } ?? false
-                Button(action: { onToggle(r.emoji) }) {
-                    Text("\(r.emoji) \(r.userIds.count)")
-                        .font(.caption2)
-                        .foregroundColor(IDS.Colors.textSecondary)
-                        .padding(.horizontal, 8).padding(.vertical, 2)
-                        .background(mine ? IDS.Colors.brand.opacity(0.15) : IDS.Colors.chipBackground)
-                        .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-            }
-            Menu {
-                ForEach(quickReactions, id: \.self) { emoji in
-                    Button(emoji) { onToggle(emoji) }
-                }
-            } label: {
-                Image(systemName: "face.smiling").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-            }
-            if !isMine { Spacer() }
-        }
-    }
-}
-
-private struct GroupMessageBubble: View {
-    let message: GroupMessageDto
-    let isMine: Bool
-    let senderName: String
-    let currentUserId: String?
-    let onToggleReaction: (String) -> Void
-
-    var body: some View {
-        VStack(alignment: isMine ? .trailing : .leading, spacing: 2) {
-            HStack {
-                if isMine { Spacer() }
-                VStack(alignment: .leading, spacing: 2) {
-                    if !isMine {
-                        Text(senderName).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
-                    }
-                    Text(message.body)
-                        .font(.subheadline)
-                        .foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(isMine ? IDS.Colors.brand : IDS.Colors.chipBackground)
-                .cornerRadius(16)
-                if !isMine { Spacer() }
-            }
-            MessageReactionsRow(reactions: message.reactions, currentUserId: currentUserId, isMine: isMine, onToggle: onToggleReaction)
-        }
-    }
-}
-
-private struct ConversationRow: View {
-    let conversation: ConversationSummaryDto
-    let online: Bool
-
-    var body: some View {
-        HStack(spacing: 14) {
-            ZStack(alignment: .bottomTrailing) {
-                ZStack {
-                    Circle().fill(IDS.Colors.chipBackground)
-                    Image(systemName: "paperplane.fill").foregroundColor(IDS.Colors.brand)
-                }
-                .frame(width: 44, height: 44)
-                if online {
-                    Circle().fill(Color.green)
-                        .frame(width: 12, height: 12)
-                        .overlay(Circle().stroke(IDS.Colors.card, lineWidth: 2))
-                }
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                Text(conversation.otherUserName).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                Text(conversation.lastMessagePreview ?? "No messages yet")
-                    .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
-                    .foregroundColor(IDS.Colors.textSecondary)
-                    .lineLimit(1)
-            }
-            Spacer()
-            if conversation.unreadCount > 0 {
-                Text("\(conversation.unreadCount)")
-                    .font(.caption).bold()
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 8).padding(.vertical, 3)
-                    .background(IDS.Colors.brand)
-                    .clipShape(Capsule())
-            }
-        }
-        .padding(18)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
-    }
-}
-
-private struct ChatThreadScreen: View {
-    let conversation: ConversationSummaryDto
-    let onBack: () -> Void
-
-    @State private var messages: [MessageDto]?
-    @State private var offersByMessageId: [String: OfferBubbleData] = [:]
-    @State private var giftsByMessageId: [String: GiftDto] = [:]
-    @State private var draft = ""
-    @State private var sending = false
-    @State private var error: String?
-    @State private var socketTask: URLSessionWebSocketTask?
-    @State private var otherOnline: Bool?
-    @State private var otherTyping = false
-    @State private var typingClearTask: Task<Void, Never>?
-    @State private var lastTypingSentAt: Date = .distantPast
-    @State private var giftComposerOpen = false
-    @State private var giftAmount = ""
-    @State private var giftNote = ""
-    @State private var sendingGift = false
-    private let currentUserId = KeychainTokenStore.shared.getUserId()
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Button(action: onBack) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .medium))
-                        .frame(width: 44, height: 44)
-                }
-                .accessibilityLabel("Back")
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(conversation.otherUserName).font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
-                    if let otherOnline {
-                        Text(otherOnline ? "Online" : "Offline")
-                            .font(.caption)
-                            .foregroundColor(otherOnline ? .green : IDS.Colors.textSecondary)
-                    }
-                }
-                Spacer()
-            }
-            .padding(.horizontal, 8)
-
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 8) {
-                        if let messages {
-                            if messages.isEmpty {
-                                Text("Say hello — no messages yet.").foregroundColor(IDS.Colors.textSecondary).padding(.top, 20)
-                            }
-                            ForEach(messages) { message in
-                                MessageBubble(
-                                    message: message, isMine: message.senderId == currentUserId, currentUserId: currentUserId,
-                                    offer: offersByMessageId[message.id],
-                                    gift: giftsByMessageId[message.id],
-                                    onToggleReaction: { emoji in Task { await toggleReaction(message.id, emoji) } },
-                                    onRespondToOffer: { offerId, action, counterAmount in Task { await respondToOffer(offerId, action, counterAmount) } },
-                                    onClaimGift: { giftId in Task { await claimGift(giftId) } },
-                                )
-                                .id(message.id)
-                            }
-                        } else {
-                            ProgressView().padding(.top, 20)
-                        }
-                    }
-                    .padding(.horizontal, IDS.Layout.screenHorizontal)
-                    .padding(.top, 12)
-                }
-                .onChange(of: messages?.count) { _ in
-                    if let last = messages?.last?.id {
-                        withAnimation { proxy.scrollTo(last, anchor: .bottom) }
-                    }
-                }
-            }
-
-            if otherTyping {
-                Text("\(conversation.otherUserName) is typing…")
-                    .font(.caption)
-                    .foregroundColor(IDS.Colors.textSecondary)
-                    .padding(.horizontal, IDS.Layout.screenHorizontal)
-            }
-
-            if let error {
-                Text(error).font(.caption).foregroundColor(.red).padding(.horizontal, IDS.Layout.screenHorizontal)
-            }
-
-            if giftComposerOpen {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("🎁 Send a gift").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-                    TextField("Amount (RWF)", text: $giftAmount)
-                        .keyboardType(.numberPad)
-                        .padding(10)
-                        .background(IDS.Colors.card)
-                        .cornerRadius(8)
-                    TextField("Add a note (optional)", text: $giftNote)
-                        .padding(10)
-                        .background(IDS.Colors.card)
-                        .cornerRadius(8)
-                    HStack(spacing: 8) {
-                        Button(action: { Task { await sendGift() } }) {
-                            Text(sendingGift ? "Sending…" : "Send gift").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
-                                .padding(.horizontal, 10).padding(.vertical, 6)
-                                .background(IDS.Colors.card)
-                                .cornerRadius(10)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(sendingGift || Double(giftAmount) == nil || (Double(giftAmount) ?? 0) <= 0)
-                        Button(action: { giftComposerOpen = false }) {
-                            Text("Cancel").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
-                                .padding(.horizontal, 10).padding(.vertical, 6)
-                                .background(IDS.Colors.card)
-                                .cornerRadius(10)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(12)
-                .background(IDS.Colors.chipBackground)
-                .cornerRadius(12)
-                .padding(.horizontal, IDS.Layout.screenHorizontal)
-            }
-
-            HStack {
-                Button(action: { giftComposerOpen.toggle() }) {
-                    Text("🎁")
-                        .frame(width: 44, height: 44)
-                        .background(IDS.Colors.chipBackground)
-                        .clipShape(Circle())
-                }
-                .accessibilityLabel("Send a gift")
-                TextField("Message", text: Binding(
-                    get: { draft },
-                    set: { newValue in
-                        draft = newValue
-                        // Real typing indicator send (2026-07-19), client-throttled to
-                        // match the server's own 1-per-2s rate limit.
-                        if Date().timeIntervalSince(lastTypingSentAt) > 2 {
-                            lastTypingSentAt = Date()
-                            if let socketTask {
-                                NetworkClient.shared.sendTyping(socketTask, conversationId: conversation.conversationId)
-                            }
-                        }
-                    }
-                ))
-                    .padding(12)
-                    .background(IDS.Colors.chipBackground)
-                    .cornerRadius(14)
-                Button(action: { Task { await send() } }) {
-                    Image(systemName: "paperplane.fill")
-                        .foregroundColor(.white)
-                        .frame(width: 44, height: 44)
-                        .background(draft.isEmpty || sending ? IDS.Colors.textTertiary : IDS.Colors.brand)
-                        .clipShape(Circle())
-                }
-                .disabled(draft.isEmpty || sending)
-            }
-            .padding(IDS.Layout.screenHorizontal)
-        }
-        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
-        .task { await refresh() }
-        // Real poll, kept as an always-correct fallback delivery path alongside the
-        // real WebSocket push below -- matches bank-mfe/Android exactly (poll interval
-        // unchanged, push appended live on top).
-        .task {
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 4_000_000_000)
-                await refresh()
-            }
-        }
-        // Real online/offline presence (2026-07-19) -- initial fetch, then kept live via
-        // the same WebSocket connection's presence push below.
-        .task {
-            do {
-                otherOnline = try await NetworkClient.shared.getPresence(userIds: [conversation.otherUserId]).presence[conversation.otherUserId]
-            } catch {
-                // Real, non-critical -- only backs the header subtitle.
-            }
-        }
-        // Real WebSocket live-transport (2026-07-18) -- see
-        // NetworkClient.connectMessagingSocket's own doc comment.
-        .onAppear {
-            socketTask = NetworkClient.shared.connectMessagingSocket { push in
-                switch push {
-                case .directMessage(let conversationId, let pushedMessage) where conversationId == conversation.conversationId:
-                    Task { @MainActor in
-                        otherTyping = false
-                        if !(messages ?? []).contains(where: { $0.id == pushedMessage.id }) {
-                            messages = (messages ?? []) + [pushedMessage]
-                        }
-                        // A pushed message might be a real offer/counter/accept/reject --
-                        // refresh so it renders as an offer bubble immediately.
-                        await loadOffers()
-                        await loadGifts()
-                    }
-                case .presenceChange(let userId, let online) where userId == conversation.otherUserId:
-                    Task { @MainActor in otherOnline = online }
-                case .typingChange(let conversationId, _, let userId) where conversationId == conversation.conversationId && userId == conversation.otherUserId:
-                    Task { @MainActor in
-                        otherTyping = true
-                        typingClearTask?.cancel()
-                        typingClearTask = Task {
-                            try? await Task.sleep(nanoseconds: 3_000_000_000)
-                            if !Task.isCancelled { otherTyping = false }
-                        }
-                    }
-                case .reactionChange(let conversationId, _, let messageId, let reactions) where conversationId == conversation.conversationId:
-                    Task { @MainActor in
-                        messages = messages?.map { $0.id == messageId ? MessageDto(id: $0.id, conversationId: $0.conversationId, senderId: $0.senderId, body: $0.body, sentAt: $0.sentAt, readAt: $0.readAt, reactions: reactions) : $0 }
-                    }
-                default:
-                    break
-                }
-            }
-        }
-        .onDisappear {
-            socketTask?.cancel(with: .goingAway, reason: nil)
-            typingClearTask?.cancel()
-        }
-    }
-
-    private func refresh() async {
-        do {
-            let res = try await NetworkClient.shared.getMessages(conversationId: conversation.conversationId)
-            messages = res.messages.reversed()
-        } catch {
-            // Keep showing the last-known messages rather than blanking the thread on
-            // a transient poll failure.
-        }
-        await loadOffers()
-        await loadGifts()
-    }
-
-    // Real per-thread gift history -- fetched alongside a conversation's messages so
-    // the thread can render gift bubbles for whichever messages carry one.
-    private func loadGifts() async {
-        let gifts = (try? await NetworkClient.shared.getGiftsForConversation(conversationId: conversation.conversationId).gifts) ?? []
-        giftsByMessageId = Dictionary(uniqueKeysWithValues: gifts.map { ($0.messageId, $0) })
-    }
-
-    private func sendGift() async {
-        guard let amount = Double(giftAmount), amount > 0 else { return }
-        sendingGift = true
-        error = nil
-        defer { sendingGift = false }
-        do {
-            _ = try await NetworkClient.shared.sendGiftInConversation(
-                conversationId: conversation.conversationId,
-                amount: amount,
-                note: giftNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : giftNote
-            )
-            giftAmount = ""
-            giftNote = ""
-            giftComposerOpen = false
-            await refresh()
-        } catch {
-            self.error = "Couldn't send this gift. Check your connection and try again."
-        }
-    }
-
-    private func claimGift(_ giftId: String) async {
-        do {
-            _ = try await NetworkClient.shared.claimGift(giftId: giftId)
-            await loadGifts()
-        } catch {
-            self.error = "Couldn't open this gift. Check your connection and try again."
-        }
-    }
-
-    // Real-fetches both Marketplace and Real Estate offer history for this conversation
-    // -- a given real conversation only ever carries one type in practice, but fetching
-    // both is cheap and correct rather than guessing which one applies (mirrors
-    // bank-mfe's own ConversationThread.loadOffers).
-    private func loadOffers() async {
-        let marketplaceOffers = (try? await NetworkClient.shared.getOffersForConversation(conversationId: conversation.conversationId).offers) ?? []
-        let propertyOffers = (try? await NetworkClient.shared.getPropertyOffersForConversation(conversationId: conversation.conversationId).offers) ?? []
-        var merged: [String: OfferBubbleData] = [:]
-        for o in marketplaceOffers { merged[o.messageId] = o.toBubbleData() }
-        for o in propertyOffers { merged[o.messageId] = o.toBubbleData() }
-        offersByMessageId = merged
-    }
-
-    private func respondToOffer(_ offerId: String, _ action: String, _ counterAmount: Double?) async {
-        do {
-            // Real offer ids are stably prefixed by their real owning service
-            // ("price_offer_"/"property_offer_") -- a reliable dispatch key, matching
-            // bank-mfe's own ConversationThread.
-            if offerId.hasPrefix("property_offer_") {
-                _ = try await NetworkClient.shared.respondToPropertyOffer(offerId: offerId, action: action, counterAmount: counterAmount)
-            } else {
-                _ = try await NetworkClient.shared.respondToOffer(offerId: offerId, action: action, counterAmount: counterAmount)
-            }
-            await refresh()
-        } catch {
-            self.error = "Couldn't respond to this offer. Check your connection and try again."
-        }
-    }
-
-    private func toggleReaction(_ messageId: String, _ emoji: String) async {
-        do {
-            let res = try await NetworkClient.shared.toggleReaction(messageId: messageId, emoji: emoji)
-            messages = messages?.map { $0.id == messageId ? MessageDto(id: $0.id, conversationId: $0.conversationId, senderId: $0.senderId, body: $0.body, sentAt: $0.sentAt, readAt: $0.readAt, reactions: res.reactions) : $0 }
-        } catch {
-            // Best-effort -- a failed reaction toggle just leaves the badge as it was.
-        }
-    }
-
-    private func send() async {
-        let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !body.isEmpty else { return }
-        sending = true
-        error = nil
-        defer { sending = false }
-        do {
-            let res = try await NetworkClient.shared.sendMessage(conversationId: conversation.conversationId, body: body)
-            draft = ""
-            messages = (messages ?? []) + [res.message]
-        } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-}
-
-// Real minimal shape both PriceOfferDto (Marketplace) and PropertyPriceOfferDto (Real
-// Estate) get mapped into for display -- narrowed to just the fields OfferBubble
-// actually reads (id/amount/status/proposedByUserId), so this one view renders both
-// offer types without duplication. Mirrors bank-mfe's own OfferBubbleData narrowing
-// (2026-07-19).
-struct OfferBubbleData {
-    let id: String
-    let amount: Double
-    let status: String
-    let proposedByUserId: String
-}
-
-extension PriceOfferDto {
-    func toBubbleData() -> OfferBubbleData { OfferBubbleData(id: id, amount: amount, status: status, proposedByUserId: proposedByUserId) }
-}
-extension PropertyPriceOfferDto {
-    func toBubbleData() -> OfferBubbleData { OfferBubbleData(id: id, amount: amount, status: status, proposedByUserId: proposedByUserId) }
-}
-
-// Real 당근-style offer bubble (2026-07-19) -- see PriceOfferService's own doc comment.
-// Renders inline wherever a message carries a real offer, replacing the plain-text
-// bubble with amount + status + real Accept/Decline/Counter actions (only shown to
-// whichever participant did NOT propose the current pending amount).
-private struct OfferBubble: View {
-    let offer: OfferBubbleData
-    let isMine: Bool
-    let currentUserId: String?
-    let onRespond: (String, String, Double?) -> Void
-
-    @State private var countering = false
-    @State private var counterAmount = ""
-
-    private var canRespond: Bool { offer.status == "PENDING" && currentUserId != nil && currentUserId != offer.proposedByUserId }
-    private var statusLabel: String {
-        switch offer.status {
-        case "PENDING": return "Pending"
-        case "ACCEPTED": return "Accepted"
-        case "REJECTED": return "Declined"
-        case "COUNTERED": return "Countered"
-        default: return offer.status
-        }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("💰 \(Int(offer.amount)) RWF").font(.subheadline).bold().foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
-            Text(statusLabel).font(.caption).foregroundColor(isMine ? .white.opacity(0.85) : IDS.Colors.textSecondary)
-            if canRespond && !countering {
-                HStack(spacing: 6) {
-                    offerActionButton("Accept") { onRespond(offer.id, "ACCEPT", nil) }
-                    offerActionButton("Decline") { onRespond(offer.id, "REJECT", nil) }
-                    offerActionButton("Counter") { countering = true }
-                }
-            }
-            if canRespond && countering {
-                HStack(spacing: 6) {
-                    TextField("Counter (RWF)", text: $counterAmount)
-                        .keyboardType(.numberPad)
-                        .font(.caption)
-                        .padding(6)
-                        .background(IDS.Colors.card)
-                        .cornerRadius(8)
-                        .frame(width: 100)
-                    offerActionButton("Send") {
-                        guard let amount = Double(counterAmount) else { return }
-                        countering = false
-                        counterAmount = ""
-                        onRespond(offer.id, "COUNTER", amount)
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(isMine ? IDS.Colors.brand : IDS.Colors.chipBackground)
-        .cornerRadius(16)
-    }
-
-    private func offerActionButton(_ label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(label).font(.caption2).bold().foregroundColor(IDS.Colors.textPrimary)
-                .padding(.horizontal, 10).padding(.vertical, 6)
-                .background(IDS.Colors.card)
-                .cornerRadius(10)
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-// Real KakaoTalk-style gift bubble (2026-07-20) -- see GiftService's own doc comment.
-// Renders inline wherever a message carries a real gift, with a real Open/Claim button
-// shown only to the recipient of a still-PENDING, not-yet-expired gift.
-private struct GiftBubble: View {
-    let gift: GiftDto
-    let isMine: Bool
-    let currentUserId: String?
-    let onClaim: (String) -> Void
-
-    private static let isoFormatter = ISO8601DateFormatter(withFractionalSeconds: true)
-
-    private var canClaim: Bool {
-        guard gift.status == "PENDING", currentUserId == gift.recipientId else { return false }
-        guard let expiresAt = Self.isoFormatter.date(from: gift.expiresAt) else { return true }
-        return expiresAt > Date()
-    }
-    private var statusLabel: String {
-        switch gift.status {
-        case "PENDING": return isMine ? "Waiting to be opened" : "Tap to open"
-        case "CLAIMED": return "Opened"
-        case "EXPIRED": return "Expired — refunded"
-        default: return gift.status
-        }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("🎁 \(Int(gift.amount)) RWF").font(.headline).foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
-            if let note = gift.note {
-                Text("\"\(note)\"").font(.caption).foregroundColor(isMine ? .white.opacity(0.9) : IDS.Colors.textSecondary)
-            }
-            Text(statusLabel).font(.caption).foregroundColor(isMine ? .white.opacity(0.85) : IDS.Colors.textSecondary)
-            if canClaim {
-                Button(action: { onClaim(gift.id) }) {
-                    Text("Open gift").font(.caption2).bold().foregroundColor(IDS.Colors.textPrimary)
-                        .padding(.horizontal, 10).padding(.vertical, 6)
-                        .background(IDS.Colors.card)
-                        .cornerRadius(10)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(isMine ? IDS.Colors.brand : IDS.Colors.chipBackground)
-        .cornerRadius(16)
-    }
-}
-
-extension ISO8601DateFormatter {
-    convenience init(withFractionalSeconds: Bool) {
-        self.init()
-        if withFractionalSeconds { formatOptions.insert(.withFractionalSeconds) }
-    }
-}
-
-private struct MessageBubble: View {
-    let message: MessageDto
-    let isMine: Bool
-    let currentUserId: String?
-    let offer: OfferBubbleData?
-    let gift: GiftDto?
-    let onToggleReaction: (String) -> Void
-    let onRespondToOffer: (String, String, Double?) -> Void
-    let onClaimGift: (String) -> Void
-
-    var body: some View {
-        VStack(alignment: isMine ? .trailing : .leading, spacing: 2) {
-            HStack {
-                if isMine { Spacer() }
-                if let gift {
-                    GiftBubble(gift: gift, isMine: isMine, currentUserId: currentUserId, onClaim: onClaimGift)
-                } else if let offer {
-                    OfferBubble(offer: offer, isMine: isMine, currentUserId: currentUserId, onRespond: onRespondToOffer)
-                } else {
-                    Text(message.body)
-                        .font(.subheadline)
-                        .foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(isMine ? IDS.Colors.brand : IDS.Colors.chipBackground)
-                        .cornerRadius(16)
-                }
-                if !isMine { Spacer() }
-            }
-            MessageReactionsRow(reactions: message.reactions, currentUserId: currentUserId, isMine: isMine, onToggle: onToggleReaction)
-        }
-    }
-}

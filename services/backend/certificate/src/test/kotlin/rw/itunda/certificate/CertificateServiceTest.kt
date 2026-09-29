@@ -7,11 +7,15 @@ import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
+import io.mockk.verifyOrder
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Certificate
 import rw.itunda.core.domain.CertificateStatus
 import rw.itunda.core.domain.User
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.CertificateRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import java.security.KeyPairGenerator
 import java.security.Signature
@@ -29,9 +33,13 @@ class CertificateServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
-        val service = CertificateService(certificateRepository, userRepository, rateLimiter)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
 
         every { userRepository.findById("user_1") } returns Optional.of(kycVerifiedUser("user_1"))
+        every { userRepository.findByIdForUpdate("user_1") } returns Optional.of(kycVerifiedUser("user_1"))
         every { certificateRepository.findByUserIdAndStatus("user_1", CertificateStatus.ACTIVE) } returns null
         val savedSlot = slot<Certificate>()
         every { certificateRepository.save(capture(savedSlot)) } answers { firstArg() }
@@ -53,6 +61,10 @@ class CertificateServiceTest : BehaviorSpec({
                 val daysUntilExpiry = java.time.Duration.between(Instant.now(), certificate.expiresAt).toDays()
                 (daysUntilExpiry in 360..366) shouldBe true
             }
+            Then("a real security alert is sent -- silently reissuing a signing cert is at least as sensitive as a card PIN change") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_1" && it.type == "CERTIFICATE_ISSUED" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", "Your itunda Certificate was issued", any(), any()) }
+            }
         }
     }
 
@@ -61,7 +73,10 @@ class CertificateServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
-        val service = CertificateService(certificateRepository, userRepository, rateLimiter)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
 
         every { userRepository.findById("user_2") } returns Optional.of(unverifiedUser("user_2"))
 
@@ -82,9 +97,13 @@ class CertificateServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
-        val service = CertificateService(certificateRepository, userRepository, rateLimiter)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
 
         every { userRepository.findById("user_3") } returns Optional.of(kycVerifiedUser("user_3"))
+        every { userRepository.findByIdForUpdate("user_3") } returns Optional.of(kycVerifiedUser("user_3"))
         val existing = Certificate(id = "cert_old", userId = "user_3", serialNumber = "OLD", publicKeyBase64 = "x", expiresAt = Instant.now().plusSeconds(1000))
         every { certificateRepository.findByUserIdAndStatus("user_3", CertificateStatus.ACTIVE) } returns existing
         every { certificateRepository.save(any()) } answers { firstArg() }
@@ -96,6 +115,50 @@ class CertificateServiceTest : BehaviorSpec({
                 existing.status shouldBe CertificateStatus.REVOKED
                 existing.revokedAt shouldNotBe null
             }
+            // Real bug found live (2026-08-02): see CertificateService.issue's own doc
+            // comment. This asserts the actual fix mechanism -- the same "lock a
+            // different already-existing row" precedent AccountRepository/
+            // UserRepository.findByIdForUpdate's own identical-shaped fixes establish
+            // for a check-then-act race on a "one active row per user" invariant.
+            Then("it real-locks the user's own row before touching the certificate") {
+                io.mockk.verify(exactly = 1) { userRepository.findByIdForUpdate("user_3") }
+            }
+        }
+    }
+
+    Given("two concurrent issue() calls racing for the same user") {
+        val certificateRepository = mockk<CertificateRepository>()
+        val userRepository = mockk<UserRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
+
+        every { userRepository.findById("user_race") } returns Optional.of(kycVerifiedUser("user_race"))
+        every { userRepository.findByIdForUpdate("user_race") } returns Optional.of(kycVerifiedUser("user_race"))
+
+        // Simulates the real serialization the `findByIdForUpdate` row lock provides:
+        // the second call's `findByUserIdAndStatus` re-read only ever real-sees the
+        // first call's already-committed state, never a stale concurrent snapshot.
+        var activeCert: Certificate? = null
+        every { certificateRepository.findByUserIdAndStatus("user_race", CertificateStatus.ACTIVE) } answers { activeCert }
+        every { certificateRepository.save(any()) } answers {
+            val cert = firstArg<Certificate>()
+            if (cert.status == CertificateStatus.ACTIVE) activeCert = cert
+            cert
+        }
+
+        When("issuing twice back-to-back, simulating the lock's serialization of an interleaved race") {
+            val (first, _) = service.issue("user_race")
+            val (second, _) = service.issue("user_race")
+
+            Then("only the second, most-recent certificate ends up ACTIVE -- never both at once") {
+                first.status shouldBe CertificateStatus.REVOKED
+                second.status shouldBe CertificateStatus.ACTIVE
+                first.id shouldNotBe second.id
+            }
         }
     }
 
@@ -104,7 +167,10 @@ class CertificateServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
-        val service = CertificateService(certificateRepository, userRepository, rateLimiter)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
 
         // A genuine external keypair -- not generated by CertificateService itself --
         // proving verify() does real, standard, interoperable JCA verification, not a
@@ -128,6 +194,13 @@ class CertificateServiceTest : BehaviorSpec({
                 result.signatureValid shouldBe true
                 result.certificateStatus shouldBe CertificateStatus.ACTIVE
             }
+            // Real gap closed 2026-09-07 (Certificate product-completeness pass): this
+            // route is permitAll (public, unauthenticated) and does real Ed25519
+            // verification per call -- rate-limited by serialNumber (same reasoning as
+            // getStatus above) to bound a cheap signature-guessing target.
+            Then("the real public verification is rate-limited against the certificate's serial number") {
+                io.mockk.verify(exactly = 1) { rateLimiter.checkLimit("certificate:verify:SERIAL1", limit = 20, window = java.time.Duration.ofMinutes(1)) }
+            }
         }
 
         When("verifying a real signature against a tampered payload") {
@@ -147,12 +220,71 @@ class CertificateServiceTest : BehaviorSpec({
         }
     }
 
+    // Real gap closed 2026-09-07 (Certificate product-completeness pass): revoke() had
+    // zero test coverage before this and, separately, no rate-limiting -- unlike issue()'s
+    // own long-established rate limit.
+    Given("a user revoking their active certificate") {
+        val certificateRepository = mockk<CertificateRepository>()
+        val userRepository = mockk<UserRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
+
+        val active = Certificate(id = "cert_active", userId = "user_6", serialNumber = "SERIAL3", publicKeyBase64 = "x", expiresAt = Instant.now().plusSeconds(1000))
+        every { certificateRepository.findByUserIdAndStatus("user_6", CertificateStatus.ACTIVE) } returns active
+        every { certificateRepository.save(any()) } answers { firstArg() }
+
+        When("revoking it") {
+            val result = service.revoke("user_6")
+
+            Then("it is real-revoked with a real revokedAt timestamp") {
+                result.status shouldBe CertificateStatus.REVOKED
+                result.revokedAt shouldNotBe null
+            }
+            Then("the real revoke is rate-limited against the caller's own userId") {
+                io.mockk.verify(exactly = 1) { rateLimiter.checkLimit("certificate:revoke:user_6", limit = 10, window = java.time.Duration.ofHours(1)) }
+            }
+            Then("a real security alert is sent -- same reasoning as issue()'s own alert") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_6" && it.type == "CERTIFICATE_REVOKED" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_6", "Your itunda Certificate was revoked", any(), any()) }
+            }
+        }
+    }
+
+    Given("a user with no active certificate trying to revoke") {
+        val certificateRepository = mockk<CertificateRepository>()
+        val userRepository = mockk<UserRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
+        every { certificateRepository.findByUserIdAndStatus("user_7", CertificateStatus.ACTIVE) } returns null
+
+        When("revoking") {
+            Then("it real-404s") {
+                try {
+                    service.revoke("user_7")
+                    error("expected NoCertificateFoundException")
+                } catch (e: NoCertificateFoundException) {
+                    // expected
+                }
+            }
+        }
+    }
+
     Given("a certificate that has passed its real expiry date") {
         val certificateRepository = mockk<CertificateRepository>()
         val userRepository = mockk<UserRepository>()
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
-        val service = CertificateService(certificateRepository, userRepository, rateLimiter)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
 
         val keyPair = KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
         val publicKeyBase64 = Base64.getEncoder().encodeToString(keyPair.public.encoded)
@@ -165,6 +297,13 @@ class CertificateServiceTest : BehaviorSpec({
             Then("it reports EXPIRED even though the stored status column still says ACTIVE") {
                 result.status shouldBe CertificateStatus.EXPIRED
             }
+            // Real gap closed 2026-09-07 (Certificate product-completeness pass): this
+            // route is permitAll (public, unauthenticated), so it's rate-limited by
+            // serialNumber rather than userId -- same real precedent
+            // AuthService.checkPhone already establishes for its own public endpoints.
+            Then("the real public status check is rate-limited against the requested serial number") {
+                io.mockk.verify(exactly = 1) { rateLimiter.checkLimit("certificate:status:SERIAL2", limit = 20, window = java.time.Duration.ofMinutes(1)) }
+            }
         }
     }
 
@@ -173,7 +312,10 @@ class CertificateServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
-        val service = CertificateService(certificateRepository, userRepository, rateLimiter)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
         every { certificateRepository.findBySerialNumber("UNKNOWN") } returns null
 
         When("checking its status") {
@@ -184,6 +326,89 @@ class CertificateServiceTest : BehaviorSpec({
                 } catch (e: CertificateNotFoundException) {
                     // expected
                 }
+            }
+        }
+    }
+
+    fun certWithExpiry(id: String, userId: String, expiresAt: Instant, status: CertificateStatus = CertificateStatus.ACTIVE, renewalReminderSentAt: Instant? = null) = Certificate(
+        id = id, userId = userId, serialNumber = "SN-$id", publicKeyBase64 = "x", status = status,
+        expiresAt = expiresAt, renewalReminderSentAt = renewalReminderSentAt,
+    )
+
+    Given("real active certificates at various points in their real renewal window") {
+        val certificateRepository = mockk<CertificateRepository>()
+        val userRepository = mockk<UserRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = CertificateService(certificateRepository, userRepository, rateLimiter, notificationRepository, pushNotificationService)
+
+        When("a real active certificate's real expiresAt is already inside the 60-day renewal window") {
+            val soon = certWithExpiry("cert_soon", "user_a", Instant.now().plus(10, java.time.temporal.ChronoUnit.DAYS))
+            every { certificateRepository.findByStatusAndRenewalReminderSentAtIsNull(CertificateStatus.ACTIVE) } returns listOf(soon)
+
+            Then("it is a real due candidate") {
+                service.getCertificatesDueForRenewalReminder().map { it.id } shouldBe listOf("cert_soon")
+            }
+        }
+
+        When("a real active certificate's real expiresAt is genuinely still outside the renewal window") {
+            val far = certWithExpiry("cert_far", "user_b", Instant.now().plus(120, java.time.temporal.ChronoUnit.DAYS))
+            every { certificateRepository.findByStatusAndRenewalReminderSentAtIsNull(CertificateStatus.ACTIVE) } returns listOf(far)
+
+            Then("it is real-excluded -- not due yet") {
+                service.getCertificatesDueForRenewalReminder() shouldBe emptyList()
+            }
+        }
+
+        When("sending a real renewal reminder for a due certificate") {
+            val cert = certWithExpiry("cert_due", "user_c", Instant.now().plus(5, java.time.temporal.ChronoUnit.DAYS))
+            every { certificateRepository.findById("cert_due") } returns Optional.of(cert)
+            every { certificateRepository.save(any()) } answers { firstArg() }
+            // relaxed=true mishandles JpaRepository's generic `<S extends T> S save(S)` and
+            // returns a raw Object, ClassCastException-ing at the call site -- same fix as
+            // this codebase's other documented instances of this exact pitfall.
+            every { notificationRepository.save(any()) } answers { firstArg() }
+
+            service.sendRenewalReminder("cert_due")
+
+            Then("it real-notifies once and real-marks renewalReminderSentAt") {
+                verify(exactly = 1) { notificationRepository.save(match { it.type == "CERTIFICATE_EXPIRING_SOON" && it.userId == "user_c" }) }
+                cert.renewalReminderSentAt shouldNotBe null
+            }
+
+            // Real fix (2026-09-13, push-before-commit ordering sweep): renewalReminderSentAt
+            // must be saved BEFORE the push fires -- otherwise a rollback after the push
+            // leaves the flag unset and the next scheduler pass resends it.
+            Then("the renewalReminderSentAt flag is saved before the push is sent") {
+                verifyOrder {
+                    certificateRepository.save(any())
+                    pushNotificationService.sendToUser("user_c", any(), any(), any())
+                }
+            }
+        }
+
+        When("sending a reminder for a certificate that was already reminded") {
+            val cert = certWithExpiry("cert_already", "user_d", Instant.now().plus(3, java.time.temporal.ChronoUnit.DAYS), renewalReminderSentAt = Instant.now())
+            every { certificateRepository.findById("cert_already") } returns Optional.of(cert)
+
+            service.sendRenewalReminder("cert_already")
+
+            Then("it real-skips -- no double notification for the same real renewal") {
+                verify(exactly = 0) { notificationRepository.save(any()) }
+            }
+        }
+
+        When("sending a reminder for a certificate that's already REVOKED") {
+            val cert = certWithExpiry("cert_revoked", "user_e", Instant.now().plus(3, java.time.temporal.ChronoUnit.DAYS), status = CertificateStatus.REVOKED)
+            every { certificateRepository.findById("cert_revoked") } returns Optional.of(cert)
+
+            service.sendRenewalReminder("cert_revoked")
+
+            Then("it real-skips -- a revoked certificate is not genuinely renewing") {
+                verify(exactly = 0) { notificationRepository.save(any()) }
             }
         }
     }

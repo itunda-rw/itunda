@@ -11,32 +11,63 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
+import rw.itunda.core.domain.FraudFlag
+import rw.itunda.core.domain.FraudRule
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
+import rw.itunda.family.FamilySpendLimitExceededException
+import rw.itunda.p2p.P2pDelayedTransferNotCancellableException
+import rw.itunda.p2p.P2pDelayedTransferNotFoundException
+import rw.itunda.p2p.P2pDelayedTransferService
 import rw.itunda.p2p.P2pInvalidAmountException
-import rw.itunda.p2p.P2pNoWalletException
+import rw.itunda.p2p.P2pNoAccountException
 import rw.itunda.p2p.P2pRecipientNotFoundException
 import rw.itunda.p2p.P2pRequestNotFoundException
 import rw.itunda.p2p.P2pRequestNotPayableException
 import rw.itunda.p2p.P2pSelfPaymentException
 import rw.itunda.p2p.P2pService
+import rw.itunda.p2p.P2pTransferLimitExceededException
+import rw.itunda.p2p.P2pTransferLimitService
 import java.math.BigDecimal
 
 data class GenerateP2pRequest(val amount: BigDecimal, val description: String)
-data class SendDirectP2pRequest(val recipient: String, val amount: BigDecimal, val description: String = "")
+data class SendDirectP2pRequest(val recipient: String, val amount: BigDecimal, val description: String = "", val fromAccountId: String? = null)
+data class SendToFamilyMemberRequest(val childUserId: String, val amount: BigDecimal, val description: String = "")
+data class SendDelayedP2pRequest(val recipient: String, val amount: BigDecimal, val description: String = "")
 
 // Person-to-person QR -- see docs/API_SPECIFICATION.md's P2P section and
 // docs/TOSS_PARITY_MATRIX.md's QR Pay row.
 @RestController
 @RequestMapping("/api/v1/p2p")
-class P2pController(private val p2pService: P2pService, private val idempotencyService: IdempotencyService) {
+class P2pController(
+    private val p2pService: P2pService,
+    private val p2pDelayedTransferService: P2pDelayedTransferService,
+    private val idempotencyService: IdempotencyService,
+    private val p2pTransferLimitService: P2pTransferLimitService,
+) {
+
+    // Real "Transfer limit" row (2026-09-01, direct user-supplied Toss Bank Manage-
+    // screen screenshot) -- the flat per-transfer/daily caps P2pTransferLimitService
+    // already enforces on every real transfer, previously surfaced only reactively as
+    // a decline error. remainingToday reuses that same service's own real sum-query.
+    @GetMapping("/transfer-limit")
+    fun getTransferLimit(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "perTransferLimit" to P2pTransferLimitService.PER_TRANSFER_LIMIT,
+                "dailyLimit" to P2pTransferLimitService.DAILY_TRANSFER_LIMIT,
+                "remainingToday" to p2pTransferLimitService.getRemainingToday(currentUser.userId),
+            ),
+        )
 
     @PostMapping("/request")
     fun generateRequest(
@@ -64,6 +95,19 @@ class P2pController(private val p2pService: P2pService, private val idempotencyS
         return ResponseEntity.status(status).body(body)
     }
 
+    // Real Toss/Kakao Bank-style recipient-name confirmation ("받는분 성함 확인") -- see
+    // P2pService.resolveRecipient's own doc comment for the full sourced account. A
+    // client calls this right after the sender types a phone/account number, to show
+    // the real resolved recipient's name before rendering the final "Send X RWF to
+    // [name]?" confirmation -- catches a mistyped digit before money moves, not after.
+    // Read-only, no Idempotency-Key needed (moves no money, has no side effect to replay).
+    @GetMapping("/recipient")
+    fun resolveRecipient(
+        @RequestParam identifier: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "recipient" to p2pService.resolveRecipient(currentUser.userId, identifier)))
+
     // Real direct push-transfer (2026-07-20) -- see P2pService.sendDirect's own doc
     // comment. A real recipient in one step, no pre-existing request needed.
     @PostMapping("/send")
@@ -73,11 +117,86 @@ class P2pController(private val p2pService: P2pService, private val idempotencyS
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/p2p/send", idempotencyKey, request) {
-            val (transaction, newBalance) = p2pService.sendDirect(currentUser.userId, request.recipient, request.amount, request.description)
+            val (transaction, newBalance, fraudFlags) = p2pService.sendDirect(currentUser.userId, request.recipient, request.amount, request.description, request.fromAccountId)
+            200 to mapOf("success" to true, "message" to "Transfer successful", "transaction" to transaction, "newBalance" to newBalance, "fraudWarnings" to fraudFlags.map(::fraudWarningMessage))
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    // Real Toss "Fraud Suspicion Siren" (사기의심 사이렌) parity -- see
+    // P2pService.sendDirect's own doc comment for the full account. Friendly,
+    // non-technical wording for the sender, deliberately distinct from FraudFlag
+    // .description (written for FraudController's admin review queue, and mentions
+    // internal threshold numbers a sender doesn't need). Purely informational -- the
+    // transfer this warning is attached to has already completed by the time it's
+    // returned.
+    private fun fraudWarningMessage(flag: FraudFlag): String = when (flag.rule) {
+        FraudRule.NEW_RECIPIENT -> "You've never sent money to this recipient before. Make sure you trust them."
+        FraudRule.HIGH_VALUE -> "This is a large transfer. Double-check the recipient before sending again."
+        FraudRule.VELOCITY -> "You've sent several transfers in the last few minutes. If this wasn't you, contact support."
+    }
+
+    // Real Naver Pay "가족 공유 자산 관리" (family shared asset management) -- instant
+    // transfer to a linked family member, see P2pService.sendToFamilyMember's own doc
+    // comment.
+    @PostMapping("/send-to-family")
+    fun sendToFamilyMember(
+        @RequestBody request: SendToFamilyMemberRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/p2p/send-to-family", idempotencyKey, request) {
+            val (transaction, newBalance) = p2pService.sendToFamilyMember(currentUser.userId, request.childUserId, request.amount, request.description)
             200 to mapOf("success" to true, "message" to "Transfer successful", "transaction" to transaction, "newBalance" to newBalance)
         }
         return ResponseEntity.status(status).body(body)
     }
+
+    // Real Korean 지연이체서비스 (Delayed Transfer Service) -- see
+    // P2pDelayedTransferService.sendDelayed's own doc comment for the full sourced
+    // account. An explicit, opt-in alternative to /send: the sender's real money is
+    // held for a real window instead of landing instantly, specifically so a transfer
+    // made under active phishing pressure (or just a fat-fingered recipient) can still
+    // be cancelled before it's irreversible.
+    @PostMapping("/send-delayed")
+    fun sendDelayed(
+        @RequestBody request: SendDelayedP2pRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/p2p/send-delayed", idempotencyKey, request) {
+            val transfer = p2pDelayedTransferService.sendDelayed(currentUser.userId, request.recipient, request.amount, request.description)
+            201 to mapOf("success" to true, "message" to "Transfer held -- it'll be sent unless you cancel before it releases", "transfer" to transfer)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    @GetMapping("/delayed-transfers")
+    fun getMyDelayedTransfers(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "transfers" to p2pDelayedTransferService.getMyDelayedTransfers(currentUser.userId)))
+
+    // Real sender-initiated cancel within the real delay window -- refunds the held
+    // amount back to the sender immediately. No Idempotency-Key: this mutates a single
+    // resource by its own id into a terminal CANCELLED state, the same
+    // already-idempotent-by-nature shape RideTrustedContactService.remove's own DELETE
+    // endpoint uses (a retried cancel of an already-cancelled transfer just real-409s
+    // via P2pDelayedTransferNotCancellableException, never double-refunds).
+    @PostMapping("/delayed-transfers/{transferId}/cancel")
+    fun cancelDelayedTransfer(
+        @PathVariable transferId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val transfer = p2pDelayedTransferService.cancel(currentUser.userId, transferId)
+        return ResponseEntity.ok(mapOf("success" to true, "message" to "Transfer cancelled and refunded", "transfer" to transfer))
+    }
+
+    @ExceptionHandler(P2pDelayedTransferNotFoundException::class)
+    fun handleDelayedTransferNotFound(ex: P2pDelayedTransferNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("P2P_DELAYED_TRANSFER_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(P2pDelayedTransferNotCancellableException::class)
+    fun handleDelayedTransferNotCancellable(ex: P2pDelayedTransferNotCancellableException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("P2P_DELAYED_TRANSFER_NOT_CANCELLABLE", ex.message ?: "Conflict"))
 
     @ExceptionHandler(P2pRequestNotFoundException::class)
     fun handleNotFound(ex: P2pRequestNotFoundException) =
@@ -91,17 +210,21 @@ class P2pController(private val p2pService: P2pService, private val idempotencyS
     fun handleSelfPayment(ex: P2pSelfPaymentException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("SELF_PAYMENT_NOT_ALLOWED", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(P2pNoWalletException::class)
-    fun handleNoWallet(ex: P2pNoWalletException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    @ExceptionHandler(P2pNoAccountException::class)
+    fun handleNoAccount(ex: P2pNoAccountException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
+
+    @ExceptionHandler(FamilySpendLimitExceededException::class)
+    fun handleFamilySpendLimit(ex: FamilySpendLimitExceededException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("FAMILY_SPEND_LIMIT_EXCEEDED", ex.message ?: "Spend limit exceeded"))
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) =
@@ -126,4 +249,8 @@ class P2pController(private val p2pService: P2pService, private val idempotencyS
     @ExceptionHandler(P2pInvalidAmountException::class)
     fun handleInvalidAmount(ex: P2pInvalidAmountException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AMOUNT", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(P2pTransferLimitExceededException::class)
+    fun handleTransferLimitExceeded(ex: P2pTransferLimitExceededException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("P2P_TRANSFER_LIMIT_EXCEEDED", ex.message ?: "Transfer limit exceeded"))
 }

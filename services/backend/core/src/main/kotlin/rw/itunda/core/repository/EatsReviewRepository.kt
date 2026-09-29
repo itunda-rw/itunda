@@ -21,9 +21,20 @@ interface RestaurantRatingSummaryProjection {
 interface EatsReviewRepository : JpaRepository<EatsReview, String> {
     fun findByOrderId(orderId: String): EatsReview?
 
-    fun findByRestaurantIdOrderByCreatedAtDesc(restaurantId: String, pageable: Pageable): Page<EatsReview>
+    fun existsByBuyerIdAndPhotoUrlIsNotNull(buyerId: String): Boolean
 
-    @Query("SELECT AVG(r.restaurantRating) as average, COUNT(r) as count FROM EatsReview r WHERE r.restaurantId = :restaurantId")
+    // Renamed (2026-08-17) to exclude reports-hidden reviews -- see EatsReviewReport.kt's
+    // own doc comment. Every existing caller already only ever wanted visible reviews;
+    // this is a real behavior fix, not a widening of the method's contract.
+    fun findByRestaurantIdAndHiddenFalseOrderByCreatedAtDesc(restaurantId: String, pageable: Pageable): Page<EatsReview>
+
+    // Real unpaged variant (itunda Maps redesign, 2026-08-28) -- backs
+    // EatsReviewService.restaurantGoodPointCounts' real tag aggregation, same
+    // "unpaged for a whole-restaurant aggregate, not a page of results" shape
+    // HoodReviewService.publicGoodPointCounts' own findByRevieweeId already uses.
+    fun findByRestaurantIdAndHiddenFalse(restaurantId: String): List<EatsReview>
+
+    @Query("SELECT AVG(r.restaurantRating) as average, COUNT(r) as count FROM EatsReview r WHERE r.restaurantId = :restaurantId AND r.hidden = false")
     fun getRestaurantRatingSummary(@Param("restaurantId") restaurantId: String): RatingSummaryProjection
 
     // Real batched rating lookup (2026-07-21) -- closes docs/DESIGN_REFERENCES.md's Eats
@@ -34,10 +45,10 @@ interface EatsReviewRepository : JpaRepository<EatsReview, String> {
     // project's own sweeps already established elsewhere.
     @Query(
         "SELECT r.restaurantId as restaurantId, AVG(r.restaurantRating) as average, COUNT(r) as count " +
-            "FROM EatsReview r WHERE r.restaurantId IN :restaurantIds GROUP BY r.restaurantId",
+            "FROM EatsReview r WHERE r.restaurantId IN :restaurantIds AND r.hidden = false GROUP BY r.restaurantId",
     )
     fun getRestaurantRatingSummaries(@Param("restaurantIds") restaurantIds: List<String>): List<RestaurantRatingSummaryProjection>
 
-    @Query("SELECT AVG(r.riderRating) as average, COUNT(r) as count FROM EatsReview r WHERE r.riderId = :riderId")
+    @Query("SELECT AVG(r.riderRating) as average, COUNT(r) as count FROM EatsReview r WHERE r.riderId = :riderId AND r.hidden = false")
     fun getRiderRatingSummary(@Param("riderId") riderId: String): RatingSummaryProjection
 }

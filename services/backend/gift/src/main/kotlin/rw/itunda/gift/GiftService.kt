@@ -5,19 +5,22 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Gift
 import rw.itunda.core.domain.GiftStatus
+import rw.itunda.core.format.formatAmount
+import rw.itunda.core.domain.GiftTheme
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.GiftRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.messaging.MessagingService
 import java.math.BigDecimal
 import java.time.Duration
@@ -29,7 +32,7 @@ class GiftAlreadyResolvedException(message: String) : RuntimeException(message)
 class GiftExpiredException(message: String) : RuntimeException(message)
 class GiftNotRecipientException(message: String) : RuntimeException(message)
 class GiftSelfException(message: String) : RuntimeException(message)
-class GiftNoWalletException(message: String) : RuntimeException(message)
+class GiftNoAccountException(message: String) : RuntimeException(message)
 class GiftRecipientNotFoundException(message: String) : RuntimeException(message)
 class GiftInvalidAmountException(message: String) : RuntimeException(message)
 
@@ -44,18 +47,19 @@ private const val GIFT_HOLDING_ACCOUNT_ID = "gift_holding"
 @Service
 class GiftService(
     private val giftRepository: GiftRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val userRepository: UserRepository,
     private val transactionRepository: TransactionRepository,
     private val ledgerService: LedgerService,
     private val messagingService: MessagingService,
     private val rateLimiter: RateLimiter,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     /** Send a gift to a phone number, starting/reusing a 1:1 conversation -- the entry
      * point for a client that doesn't already have a conversation open (e.g. a
      * standalone "send a gift" flow, not initiated from an existing chat thread). */
     @Transactional
-    fun sendGift(senderUserId: String, recipientPhoneNumber: String, amount: BigDecimal, note: String?): Gift {
+    fun sendGift(senderUserId: String, recipientPhoneNumber: String, amount: BigDecimal, note: String?, theme: GiftTheme? = null): Gift {
         if (amount <= BigDecimal.ZERO) throw GiftInvalidAmountException("Amount must be greater than zero")
         val trimmedPhone = recipientPhoneNumber.trim()
         val recipientUser = userRepository.findByPhoneNumber(trimmedPhone)
@@ -66,7 +70,7 @@ class GiftService(
         // surface as an unhandled 500, not the real, honest GIFT_SELF_NOT_ALLOWED 400).
         if (recipientUser.id == senderUserId) throw GiftSelfException("Cannot send a gift to yourself")
         val conversation = messagingService.startOrGetConversation(senderUserId, recipientUser.id)
-        return createGift(senderUserId, recipientUser.id, conversation.id, amount, note)
+        return createGift(senderUserId, recipientUser.id, conversation.id, amount, note, theme)
     }
 
     /** Send a gift within an already-open conversation -- the real, natural entry
@@ -74,13 +78,13 @@ class GiftService(
      * participant isn't the caller, resolved via [MessagingService.getConversationForParticipant]'s
      * own IDOR check rather than re-validated here. */
     @Transactional
-    fun sendGiftInConversation(senderUserId: String, conversationId: String, amount: BigDecimal, note: String?): Gift {
+    fun sendGiftInConversation(senderUserId: String, conversationId: String, amount: BigDecimal, note: String?, theme: GiftTheme? = null): Gift {
         val conversation = messagingService.getConversationForParticipant(senderUserId, conversationId)
         val recipientId = if (conversation.participantAId == senderUserId) conversation.participantBId else conversation.participantAId
-        return createGift(senderUserId, recipientId, conversation.id, amount, note)
+        return createGift(senderUserId, recipientId, conversation.id, amount, note, theme)
     }
 
-    private fun createGift(senderUserId: String, recipientUserId: String, conversationId: String, amount: BigDecimal, note: String?): Gift {
+    private fun createGift(senderUserId: String, recipientUserId: String, conversationId: String, amount: BigDecimal, note: String?, theme: GiftTheme? = null): Gift {
         if (amount <= BigDecimal.ZERO) throw GiftInvalidAmountException("Amount must be greater than zero")
         if (recipientUserId == senderUserId) throw GiftSelfException("Cannot send a gift to yourself")
 
@@ -88,21 +92,21 @@ class GiftService(
         // creation endpoint in this codebase (P2P send/request, chargeCard, etc).
         rateLimiter.checkLimit("gift:send:$senderUserId", limit = 20, window = Duration.ofHours(1))
 
-        val senderWallet = walletRepository.findByUserIdAndType(senderUserId, WalletType.MAIN)
-            ?: throw GiftNoWalletException("No wallet found for this account")
-        val recipientWallet = walletRepository.findByUserIdAndType(recipientUserId, WalletType.MAIN)
-            ?: throw GiftNoWalletException("Recipient has no wallet to receive this gift")
-        if (senderWallet.availableBalance < amount) {
+        val senderAccount = accountRepository.findByUserIdAndType(senderUserId, AccountType.MAIN)
+            ?: throw GiftNoAccountException("No account found for this account")
+        val recipientAccount = accountRepository.findByUserIdAndType(recipientUserId, AccountType.MAIN)
+            ?: throw GiftNoAccountException("Recipient has no account to receive this gift")
+        if (senderAccount.availableBalance < amount) {
             throw InsufficientFundsException("Insufficient available balance for this gift")
         }
 
-        // Real escrow hold -- the sender's money leaves their wallet right now, the
+        // Real escrow hold -- the sender's money leaves their account right now, the
         // recipient doesn't receive it until they explicitly claim it below. Same
         // "hold, don't move directly" shape EatsOrder's own delivery-fee escrow uses.
         val holdResult = ledgerService.postLedgerTransaction(
-            senderWallet.currency,
+            senderAccount.currency,
             listOf(
-                LedgerLeg(senderWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Gift sent"),
+                LedgerLeg(senderAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Gift sent"),
                 LedgerLeg(GIFT_HOLDING_ACCOUNT_ID, LedgerAccountType.GIFT_HOLDING, LedgerDirection.CREDIT, amount, "Gift held in escrow"),
             ),
         )
@@ -111,20 +115,30 @@ class GiftService(
             referenceNumber = "GIFT${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
             senderId = senderUserId,
             recipientId = recipientUserId,
-            fromWalletId = senderWallet.id,
-            toWalletId = recipientWallet.id,
+            fromAccountId = senderAccount.id,
+            toAccountId = recipientAccount.id,
             amount = amount,
             fee = BigDecimal.ZERO,
-            currency = senderWallet.currency,
+            currency = senderAccount.currency,
             type = TransactionType.TRANSFER,
             status = TransactionStatus.COMPLETED,
             description = "Gift sent",
             completedAt = Instant.now(),
         )
+        // Real fraud coverage (item 247 follow-up, docs/DESIGN_REFERENCES.md §14
+        // recommendation #4): a real gap found while validating FraudRuleEngine's
+        // documented caller list still covers every money-to-another-party flow --
+        // sending a gift moves real money to a recipient by phone number, the exact
+        // shape P2pService.sendDirect's own fraud check exists for, but this hold
+        // transaction was being created and saved without ever calling it. Evaluated
+        // before save, same ordering P2pService's own inline comment already documents
+        // the reasoning for: evaluating after would let this transaction match itself
+        // as prior history and permanently mask NEW_RECIPIENT.
+        fraudRuleEngine.evaluate(senderUserId, recipientUserId, amount, holdTransaction.id)
         transactionRepository.save(holdTransaction)
 
         val trimmedNote = note?.trim()?.take(200)
-        val message = messagingService.sendMessage(senderUserId, conversationId, formatGiftBody(amount, trimmedNote))
+        val message = messagingService.sendMessage(senderUserId, conversationId, formatGiftBody(amount, trimmedNote, theme))
 
         return giftRepository.save(
             Gift(
@@ -135,6 +149,7 @@ class GiftService(
                 messageId = message.id,
                 amount = amount,
                 note = trimmedNote,
+                theme = theme,
                 holdTransactionId = holdTransaction.id,
                 expiresAt = Instant.now().plus(Gift.EXPIRY),
             ),
@@ -177,14 +192,14 @@ class GiftService(
 
         rateLimiter.checkLimit("gift:claim:$recipientUserId", limit = 30, window = Duration.ofHours(1))
 
-        val recipientWallet = walletRepository.findByUserIdAndType(gift.recipientId, WalletType.MAIN)
-            ?: throw GiftNoWalletException("No wallet found for this account")
+        val recipientAccount = accountRepository.findByUserIdAndType(gift.recipientId, AccountType.MAIN)
+            ?: throw GiftNoAccountException("No account found for this account")
 
         val claimResult = ledgerService.postLedgerTransaction(
-            recipientWallet.currency,
+            recipientAccount.currency,
             listOf(
                 LedgerLeg(GIFT_HOLDING_ACCOUNT_ID, LedgerAccountType.GIFT_HOLDING, LedgerDirection.DEBIT, gift.amount, "Gift claimed"),
-                LedgerLeg(recipientWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, gift.amount, "Gift received"),
+                LedgerLeg(recipientAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, gift.amount, "Gift received"),
             ),
         )
         transactionRepository.save(
@@ -193,11 +208,11 @@ class GiftService(
                 referenceNumber = "GIFTCLAIM${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
                 senderId = gift.senderId,
                 recipientId = gift.recipientId,
-                fromWalletId = null,
-                toWalletId = recipientWallet.id,
+                fromAccountId = null,
+                toAccountId = recipientAccount.id,
                 amount = gift.amount,
                 fee = BigDecimal.ZERO,
-                currency = recipientWallet.currency,
+                currency = recipientAccount.currency,
                 type = TransactionType.TRANSFER,
                 status = TransactionStatus.COMPLETED,
                 description = "Gift received",
@@ -208,23 +223,23 @@ class GiftService(
         gift.status = GiftStatus.CLAIMED
         gift.claimTransactionId = claimResult.transactionId
         gift.claimedAt = Instant.now()
-        messagingService.sendMessage(recipientUserId, gift.conversationId, "🎁 Gift opened — ${formatAmount(gift.amount)} RWF added to your wallet")
+        messagingService.sendMessage(recipientUserId, gift.conversationId, "🎁 Gift opened — ${formatAmount(gift.amount)} RWF added to your account")
         return giftRepository.save(gift)
     }
 
     /** Real auto-refund for an unclaimed gift, driven by [GiftExpiryScheduler]. Reverses
-     * the exact hold leg pair back to the sender's own wallet -- same reversing-ledger-
+     * the exact hold leg pair back to the sender's own account -- same reversing-ledger-
      * entry technique `SupportService.reverseTransaction`/order cancellation already use. */
     @Transactional
     fun expireGift(gift: Gift) {
         if (gift.status != GiftStatus.PENDING) return
-        val senderWallet = walletRepository.findByUserIdAndType(gift.senderId, WalletType.MAIN) ?: return
+        val senderAccount = accountRepository.findByUserIdAndType(gift.senderId, AccountType.MAIN) ?: return
 
         val refundResult = ledgerService.postLedgerTransaction(
-            senderWallet.currency,
+            senderAccount.currency,
             listOf(
                 LedgerLeg(GIFT_HOLDING_ACCOUNT_ID, LedgerAccountType.GIFT_HOLDING, LedgerDirection.DEBIT, gift.amount, "Unclaimed gift refunded"),
-                LedgerLeg(senderWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, gift.amount, "Unclaimed gift refunded"),
+                LedgerLeg(senderAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, gift.amount, "Unclaimed gift refunded"),
             ),
         )
         transactionRepository.save(
@@ -233,11 +248,11 @@ class GiftService(
                 referenceNumber = "GIFTEXP${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
                 senderId = gift.recipientId,
                 recipientId = gift.senderId,
-                fromWalletId = null,
-                toWalletId = senderWallet.id,
+                fromAccountId = null,
+                toAccountId = senderAccount.id,
                 amount = gift.amount,
                 fee = BigDecimal.ZERO,
-                currency = senderWallet.currency,
+                currency = senderAccount.currency,
                 type = TransactionType.TRANSFER,
                 status = TransactionStatus.COMPLETED,
                 description = "Unclaimed gift refunded",
@@ -252,13 +267,31 @@ class GiftService(
 
     fun getExpiredPendingGifts(): List<Gift> =
         giftRepository.findByStatusAndExpiresAtBefore(GiftStatus.PENDING, Instant.now())
-}
 
-private fun formatAmount(amount: BigDecimal): String {
-    val plain = amount.stripTrailingZeros().toPlainString()
-    val parts = plain.split(".")
-    val intPart = parts[0].reversed().chunked(3).joinToString(",").reversed()
-    return intPart
+    fun getGiftsDueForExpiryReminder(): List<Gift> {
+        val cutoff = Instant.now().plus(Gift.EXPIRY_REMINDER_WINDOW)
+        return giftRepository.findByStatusAndExpiryReminderSentAtIsNull(GiftStatus.PENDING)
+            .filter { !it.expiresAt.isAfter(cutoff) }
+    }
+
+    /** One real expiry-reminder message, called per-gift by the scheduler -- re-checks
+     * `status`/`expiryReminderSentAt` right before sending so a genuine race can't
+     * double-fire, same resilience discipline GiftVoucherService.sendExpiryReminder's
+     * own doc comment already establishes. Posted as the sender into the existing real
+     * sender<->recipient conversation, same "no system/bot sender concept yet"
+     * convention this class's own send/claim/expire messages already use. */
+    @Transactional
+    fun sendExpiryReminder(giftId: String) {
+        val gift = giftRepository.findById(giftId).orElse(null) ?: return
+        if (gift.status != GiftStatus.PENDING || gift.expiryReminderSentAt != null) return
+
+        messagingService.sendMessage(
+            gift.senderId, gift.conversationId,
+            "⏳ Your gift of ${formatAmount(gift.amount)} RWF expires soon -- open it before ${gift.expiresAt} or it'll be refunded",
+        )
+        gift.expiryReminderSentAt = Instant.now()
+        giftRepository.save(gift)
+    }
 }
 
 /** A gift's chat message body is a real, stable, machine-parseable format (same
@@ -267,7 +300,17 @@ private fun formatAmount(amount: BigDecimal): String {
  * links back to the [Gift] row via [Gift.messageId], so the client never needs to
  * parse the amount out of this string; it's a human-readable fallback for any client
  * that doesn't special-case gift messages. */
-private fun formatGiftBody(amount: BigDecimal, note: String?): String {
+// Real KakaoPay 송금봉투 (money envelope) themed presets -- see GiftTheme's own doc
+// comment for the sourced account. Exactly the 4 real, sourced presets; nothing invented.
+private fun themeLabel(theme: GiftTheme): String = when (theme) {
+    GiftTheme.CONGRATULATIONS -> "🎉 축하해요 (Congratulations)"
+    GiftTheme.HEARTFELT -> "💌 내마음 (From the heart)"
+    GiftTheme.GOOD_LUCK -> "🍀 행운만땅 (Good luck)"
+    GiftTheme.SETTLE_UP -> "🧾 정산해요 (Settling up)"
+}
+
+private fun formatGiftBody(amount: BigDecimal, note: String?, theme: GiftTheme? = null): String {
     val amountText = "${formatAmount(amount)} RWF"
-    return if (note.isNullOrBlank()) "🎁 Sent a gift: $amountText" else "🎁 Sent a gift: $amountText — \"$note\""
+    val prefix = theme?.let { "${themeLabel(it)} " } ?: "🎁 "
+    return if (note.isNullOrBlank()) "${prefix}Sent a gift: $amountText" else "${prefix}Sent a gift: $amountText — \"$note\""
 }

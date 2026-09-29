@@ -9,7 +9,11 @@ import jakarta.persistence.Table
 import java.math.BigDecimal
 import java.time.Instant
 
-enum class TransactionType { TRANSFER, PAYMENT, DEPOSIT, WITHDRAWAL, BILL, AIRTIME, LOAN }
+// INTEREST added 2026-08-11 -- see SavingsService.accrueInterest's own doc comment:
+// real Toss Bank passbook interest (user-provided screenshots) posts as its own real
+// transaction-history line item ("통장 이자 +36원") the moment it accrues, not as an
+// invisible ledger-only balance change requiring a separate manual claim.
+enum class TransactionType { TRANSFER, PAYMENT, DEPOSIT, WITHDRAWAL, BILL, AIRTIME, LOAN, INTEREST }
 enum class TransactionStatus { PENDING, COMPLETED, FAILED, CANCELLED }
 
 /** Mirrors backend/src/types/index.ts Transaction. */
@@ -29,11 +33,11 @@ class Transaction(
     @Column(name = "recipient_id", nullable = false, length = 64)
     val recipientId: String,
 
-    @Column(name = "from_wallet_id", length = 64)
-    val fromWalletId: String? = null,
+    @Column(name = "from_account_id", length = 64)
+    val fromAccountId: String? = null,
 
-    @Column(name = "to_wallet_id", length = 64)
-    val toWalletId: String? = null,
+    @Column(name = "to_account_id", length = 64)
+    val toAccountId: String? = null,
 
     @Column(nullable = false, precision = 18, scale = 2)
     val amount: BigDecimal,

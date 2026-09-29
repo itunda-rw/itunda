@@ -1,15 +1,22 @@
-// Real fix (2026-07-13): textPrimary/textSecondary were both one semantic step off
-// from every other platform's convention (Android IdsSemanticColors.kt,
-// iOS IDS.swift, web packages/design-tokens/tokens.css all agree: textPrimary is
-// grey900 #191F28, textSecondary is grey700 #4E5968) -- this file had textPrimary
-// holding grey800's value and textSecondary holding grey500's, found via a
-// repo-wide design-token audit.
+// IDS semantic color contract for native mini-app surfaces.
+// Keep these roles aligned with packages/design-tokens/tokens.json.
 export const colors = {
-  primaryBlue: '#3182F6',
+  primaryIndigo: '#7472F4',
+  primaryIndigoPressed: '#625FE6',
   background: '#F2F4F6',
-  card: '#FFFFFF',
+  surface: '#FFFFFF',
+  surfaceBrand: '#F0EFFF',
   textPrimary: '#191F28',
   textSecondary: '#4E5968',
-  positiveBackground: '#E8F3FF',
+  textTertiary: '#6B7684',
+  textDisabled: '#B0B8C1',
   divider: '#E5E8EB',
-};
+  borderStrong: '#D1D6DB',
+  positive: '#05804A',
+  positiveBackground: '#F8F9FF',
+  error: '#F04452',
+  errorBackground: '#FFECEB',
+  white: '#FFFFFF',
+} as const;
+
+export type IdsColors = typeof colors;

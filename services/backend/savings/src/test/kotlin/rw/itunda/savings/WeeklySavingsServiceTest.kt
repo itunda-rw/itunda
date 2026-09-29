@@ -10,16 +10,18 @@ import io.mockk.slot
 import io.mockk.verify
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.domain.WeeklySavingsInstallment
 import rw.itunda.core.domain.WeeklySavingsPlan
 import rw.itunda.core.domain.WeeklySavingsPlanStatus
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.WeeklySavingsInstallmentRepository
 import rw.itunda.core.repository.WeeklySavingsPlanRepository
+import rw.itunda.core.account.AccountNumberGenerator
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -29,8 +31,8 @@ import java.util.Optional
 /** First test coverage for the real KakaoBank 26주적금 (26-week savings) equivalent. */
 class WeeklySavingsServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String, type: WalletType = WalletType.MAIN, balance: BigDecimal = BigDecimal("1000000")) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
+    fun account(id: String, userId: String, type: AccountType = AccountType.MAIN, balance: BigDecimal = BigDecimal("1000000")) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
         type = type, balance = balance, availableBalance = balance,
     )
 
@@ -43,19 +45,21 @@ class WeeklySavingsServiceTest : BehaviorSpec({
         streakBroken: Boolean = false,
         status: WeeklySavingsPlanStatus = WeeklySavingsPlanStatus.ACTIVE,
     ) = WeeklySavingsPlan(
-        id = id, userId = userId, walletId = "wallet_plan_$id", name = "My 26-Week Plan",
+        id = id, userId = userId, accountId = "account_plan_$id", name = "My 26-Week Plan",
         baseWeeklyAmount = BigDecimal(baseWeeklyAmount), escalationRate = BigDecimal(escalationRate),
         openingWeekday = 1, baseRate = 5.0, bonusRate = 3.0, weeksElapsed = weeksElapsed,
         streakBroken = streakBroken, status = status, nextInstallmentDueAt = Instant.now(),
     )
 
     fun service(
-        walletRepository: WalletRepository = mockk(),
+        accountRepository: AccountRepository = mockk(),
         planRepository: WeeklySavingsPlanRepository = mockk(),
         installmentRepository: WeeklySavingsInstallmentRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = WeeklySavingsService(walletRepository, planRepository, installmentRepository, ledgerService, rateLimiter)
+        accountNumberGenerator: AccountNumberGenerator = mockk(relaxed = true),
+        ledgerEntryRepository: LedgerEntryRepository = mockk(relaxed = true),
+    ) = WeeklySavingsService(accountRepository, planRepository, installmentRepository, ledgerService, rateLimiter, accountNumberGenerator, ledgerEntryRepository)
 
     Given("the real escalating weekly amount schedule") {
         val svc = service()
@@ -76,24 +80,24 @@ class WeeklySavingsServiceTest : BehaviorSpec({
     }
 
     Given("creating a plan") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val planRepository = mockk<WeeklySavingsPlanRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val svc = service(walletRepository = walletRepository, planRepository = planRepository, rateLimiter = rateLimiter)
+        val svc = service(accountRepository = accountRepository, planRepository = planRepository, rateLimiter = rateLimiter)
 
         When("a valid escalation rate is chosen") {
-            every { walletRepository.save(any()) } answers { firstArg() }
+            every { accountRepository.save(any()) } answers { firstArg() }
             every { planRepository.save(any()) } answers { firstArg() }
 
             val created = svc.createPlan("user_1", "Trip Fund", BigDecimal("10000"), BigDecimal("0.10"))
 
-            Then("it provisions a real dedicated WEEKLY_SAVINGS wallet and locks the opening weekday from real now") {
+            Then("it provisions a real dedicated WEEKLY_SAVINGS account and locks the opening weekday from real now") {
                 created.userId shouldBe "user_1"
                 created.baseRate shouldBe 5.0
                 created.bonusRate shouldBe 3.0
                 created.status shouldBe WeeklySavingsPlanStatus.ACTIVE
                 (created.openingWeekday in 1..7) shouldBe true
-                verify(exactly = 1) { walletRepository.save(match { it.type == WalletType.WEEKLY_SAVINGS }) }
+                verify(exactly = 1) { accountRepository.save(match { it.type == AccountType.WEEKLY_SAVINGS }) }
             }
         }
 
@@ -109,7 +113,7 @@ class WeeklySavingsServiceTest : BehaviorSpec({
         }
 
         When("a non-positive weekly amount is requested") {
-            Then("it real-rejects before touching any wallet or plan") {
+            Then("it real-rejects before touching any account or plan") {
                 try {
                     svc.createPlan("user_1", "Bad Plan", BigDecimal.ZERO, BigDecimal("0.10"))
                     error("expected WeeklyPlanInvalidAmountException")
@@ -133,18 +137,41 @@ class WeeklySavingsServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        When("the plan name is blank") {
+            Then("it throws InvalidWeeklyPlanNameException before ever spending a rate-limit attempt") {
+                try {
+                    svc.createPlan("user_1", "   ", BigDecimal("10000"), BigDecimal("0.10"))
+                    error("expected InvalidWeeklyPlanNameException")
+                } catch (e: InvalidWeeklyPlanNameException) {
+                    verify(exactly = 0) { rateLimiter.checkLimit(any(), any(), any()) }
+                    verify(exactly = 0) { planRepository.save(any()) }
+                }
+            }
+        }
+
+        When("the plan name would overflow the settlement account's own accountName once \" (26-Week Savings)\" is appended") {
+            Then("it throws InvalidWeeklyPlanNameException at the real 237-char safe bound, not the naive 255") {
+                try {
+                    svc.createPlan("user_1", "x".repeat(238), BigDecimal("10000"), BigDecimal("0.10"))
+                    error("expected InvalidWeeklyPlanNameException")
+                } catch (e: InvalidWeeklyPlanNameException) {
+                    verify(exactly = 0) { planRepository.save(any()) }
+                }
+            }
+        }
     }
 
     Given("processing a due weekly installment with sufficient funds") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val planRepository = mockk<WeeklySavingsPlanRepository>()
         val installmentRepository = mockk<WeeklySavingsInstallmentRepository>()
         val ledgerService = mockk<LedgerService>()
-        val svc = service(walletRepository, planRepository, installmentRepository, ledgerService)
+        val svc = service(accountRepository, planRepository, installmentRepository, ledgerService)
 
         val theplan = plan(weeksElapsed = 4) // about to process week 5 -> escalated amount
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_main", "user_1")
-        every { walletRepository.findById("wallet_plan_wsp_1") } returns Optional.of(wallet("wallet_plan_wsp_1", "user_1", WalletType.WEEKLY_SAVINGS, BigDecimal("40000")))
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_main", "user_1")
+        every { accountRepository.findById("account_plan_wsp_1") } returns Optional.of(account("account_plan_wsp_1", "user_1", AccountType.WEEKLY_SAVINGS, BigDecimal("40000")))
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { installmentRepository.save(any()) } answers { firstArg() }
         every { planRepository.save(any()) } answers { firstArg() }
@@ -168,14 +195,14 @@ class WeeklySavingsServiceTest : BehaviorSpec({
     }
 
     Given("processing a due weekly installment with insufficient funds") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val planRepository = mockk<WeeklySavingsPlanRepository>()
         val installmentRepository = mockk<WeeklySavingsInstallmentRepository>()
         val ledgerService = mockk<LedgerService>()
-        val svc = service(walletRepository, planRepository, installmentRepository, ledgerService)
+        val svc = service(accountRepository, planRepository, installmentRepository, ledgerService)
 
         val theplan = plan()
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_main", "user_1", balance = BigDecimal("1"))
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_main", "user_1", balance = BigDecimal("1"))
         every { planRepository.save(any()) } answers { firstArg() }
 
         val succeeded = svc.processDueInstallment(theplan)
@@ -191,15 +218,15 @@ class WeeklySavingsServiceTest : BehaviorSpec({
     }
 
     Given("a plan reaching its real 26th elapsed week") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val planRepository = mockk<WeeklySavingsPlanRepository>()
         val installmentRepository = mockk<WeeklySavingsInstallmentRepository>()
         val ledgerService = mockk<LedgerService>()
-        val svc = service(walletRepository, planRepository, installmentRepository, ledgerService)
+        val svc = service(accountRepository, planRepository, installmentRepository, ledgerService)
 
         val theplan = plan(weeksElapsed = 25, streakBroken = false)
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_main", "user_1")
-        every { walletRepository.findById("wallet_plan_wsp_1") } returns Optional.of(wallet("wallet_plan_wsp_1", "user_1", WalletType.WEEKLY_SAVINGS))
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_main", "user_1")
+        every { accountRepository.findById("account_plan_wsp_1") } returns Optional.of(account("account_plan_wsp_1", "user_1", AccountType.WEEKLY_SAVINGS))
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { installmentRepository.save(any()) } answers { firstArg() }
         every { installmentRepository.findByPlanIdOrderByWeekNumberAsc("wsp_1") } returns listOf(
@@ -217,15 +244,15 @@ class WeeklySavingsServiceTest : BehaviorSpec({
     }
 
     Given("a plan reaching maturity with a broken streak") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val planRepository = mockk<WeeklySavingsPlanRepository>()
         val installmentRepository = mockk<WeeklySavingsInstallmentRepository>()
         val ledgerService = mockk<LedgerService>()
-        val svc = service(walletRepository, planRepository, installmentRepository, ledgerService)
+        val svc = service(accountRepository, planRepository, installmentRepository, ledgerService)
 
         val theplan = plan(weeksElapsed = 25, streakBroken = true)
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_main", "user_1")
-        every { walletRepository.findById("wallet_plan_wsp_1") } returns Optional.of(wallet("wallet_plan_wsp_1", "user_1", WalletType.WEEKLY_SAVINGS))
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_main", "user_1")
+        every { accountRepository.findById("account_plan_wsp_1") } returns Optional.of(account("account_plan_wsp_1", "user_1", AccountType.WEEKLY_SAVINGS))
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { installmentRepository.save(any()) } answers { firstArg() }
         val installments = mutableListOf<WeeklySavingsInstallment>()
@@ -262,19 +289,19 @@ class WeeklySavingsServiceTest : BehaviorSpec({
     }
 
     Given("cancelling an active plan early") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val planRepository = mockk<WeeklySavingsPlanRepository>()
         val installmentRepository = mockk<WeeklySavingsInstallmentRepository>()
         val ledgerService = mockk<LedgerService>()
-        val svc = service(walletRepository, planRepository, installmentRepository, ledgerService)
+        val svc = service(accountRepository, planRepository, installmentRepository, ledgerService)
 
         val theplan = plan(weeksElapsed = 10, streakBroken = false)
         every { planRepository.findById("wsp_1") } returns Optional.of(theplan)
         every { installmentRepository.findByPlanIdOrderByWeekNumberAsc("wsp_1") } returns listOf(
             WeeklySavingsInstallment(id = "i1", planId = "wsp_1", weekNumber = 1, amount = BigDecimal("10000"), depositedAt = Instant.now().minus(70, ChronoUnit.DAYS)),
         )
-        every { walletRepository.findById("wallet_plan_wsp_1") } returns Optional.of(wallet("wallet_plan_wsp_1", "user_1", WalletType.WEEKLY_SAVINGS, BigDecimal("10000")))
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_main", "user_1")
+        every { accountRepository.findById("account_plan_wsp_1") } returns Optional.of(account("account_plan_wsp_1", "user_1", AccountType.WEEKLY_SAVINGS, BigDecimal("10000")))
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_main", "user_1")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { planRepository.save(any()) } answers { firstArg() }
 
@@ -305,16 +332,16 @@ class WeeklySavingsServiceTest : BehaviorSpec({
     }
 
     Given("withdrawing a matured plan") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val planRepository = mockk<WeeklySavingsPlanRepository>()
         val installmentRepository = mockk<WeeklySavingsInstallmentRepository>()
         val ledgerService = mockk<LedgerService>()
-        val svc = service(walletRepository, planRepository, installmentRepository, ledgerService)
+        val svc = service(accountRepository, planRepository, installmentRepository, ledgerService)
 
         val theplan = plan(status = WeeklySavingsPlanStatus.MATURED, weeksElapsed = 26)
         every { planRepository.findById("wsp_1") } returns Optional.of(theplan)
-        every { walletRepository.findById("wallet_plan_wsp_1") } returns Optional.of(wallet("wallet_plan_wsp_1", "user_1", WalletType.WEEKLY_SAVINGS, BigDecimal("270400")))
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_main", "user_1")
+        every { accountRepository.findById("account_plan_wsp_1") } returns Optional.of(account("account_plan_wsp_1", "user_1", AccountType.WEEKLY_SAVINGS, BigDecimal("270400")))
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_main", "user_1")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { installmentRepository.findByPlanIdOrderByWeekNumberAsc("wsp_1") } returns emptyList()
         every { planRepository.save(any()) } answers { firstArg() }
@@ -350,6 +377,38 @@ class WeeklySavingsServiceTest : BehaviorSpec({
                 error("expected WeeklyPlanNotMaturedException")
             } catch (e: WeeklyPlanNotMaturedException) {
                 // expected
+            }
+        }
+    }
+
+    Given("a real caller who has already exceeded a real weekly-savings rate limit") {
+        val planRepository = mockk<WeeklySavingsPlanRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val svc = service(planRepository = planRepository, rateLimiter = rateLimiter)
+
+        When("cancelling a plan") {
+            every { rateLimiter.checkLimit("weekly-savings:cancel:user_1", limit = 10, window = any()) } throws RateLimitExceededException("Too many requests")
+
+            Then("a real RateLimitExceededException fires before ever touching the real plan row") {
+                try {
+                    svc.cancelPlan("user_1", "wsp_1")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { planRepository.findById(any()) }
+                }
+            }
+        }
+
+        When("withdrawing a matured plan") {
+            every { rateLimiter.checkLimit("weekly-savings:withdraw:user_1", limit = 10, window = any()) } throws RateLimitExceededException("Too many requests")
+
+            Then("a real RateLimitExceededException fires before ever touching the real plan row") {
+                try {
+                    svc.withdraw("user_1", "wsp_1")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { planRepository.findById(any()) }
+                }
             }
         }
     }

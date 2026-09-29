@@ -14,7 +14,6 @@ import java.time.Instant
 import java.util.UUID
 
 class LinkedAccountNotFoundException(message: String) : RuntimeException(message)
-class LinkedAccountNotOwnedException(message: String) : RuntimeException(message)
 class LinkedAccountAlreadyUnlinkedException(message: String) : RuntimeException(message)
 
 /**
@@ -74,8 +73,14 @@ class LinkedAccountService(
     fun unlink(userId: String, accountId: String): LinkedAccount {
         val account = linkedAccountRepository.findById(accountId)
             .orElseThrow { LinkedAccountNotFoundException("Linked account not found") }
+        // Real IDOR fix (2026-08-02): accountId is a real URL path variable
+        // (POST /api/v1/accounts/link/{accountId}/unlink), directly probeable/
+        // enumerable -- a linked account belonging to a DIFFERENT user used to throw
+        // LinkedAccountNotOwnedException, mapped to a real 403 that confirmed the id
+        // was real. Same real-existence-confirming probe AccountService.getAccountById's
+        // own doc comment already documents fixing for account lookups; same fix here.
         if (account.userId != userId) {
-            throw LinkedAccountNotOwnedException("That linked account does not belong to you")
+            throw LinkedAccountNotFoundException("Linked account not found")
         }
         if (account.status == LinkedAccountStatus.UNLINKED) {
             throw LinkedAccountAlreadyUnlinkedException("This account is already unlinked")

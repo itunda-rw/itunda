@@ -14,6 +14,7 @@ import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.repository.JobPostRepository
 import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.trust.TrustScoreService
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
 import java.math.BigDecimal
@@ -25,6 +26,7 @@ class JobPostNotOpenException(message: String) : RuntimeException(message)
 class OwnJobPostException(message: String) : RuntimeException(message)
 class InvalidJobCoordinatesException(message: String) : RuntimeException(message)
 class JobsNeighborhoodNotSetException(message: String) : RuntimeException(message)
+class WorkerNotFoundException(message: String) : RuntimeException(message)
 
 data class JobCategory(val id: String, val label: String)
 
@@ -32,16 +34,16 @@ data class JobCategory(val id: String, val label: String)
  * A real 당근알바 (Danggeun/Karrot "Alba")-style local job board -- see `JobPost`'s own
  * doc comment for the full account of why this is a distinct surface from Marketplace,
  * explicitly named by the user alongside 당근생활 (now real as Community) and
- * 당근부동산 (real estate, still open) as three distinct neighborhood-services
- * products.
+ * 당근부동산 (now real as RealEstate/`PropertyListingService`) as three distinct
+ * neighborhood-services products.
  *
  * v1, honestly scoped, mirroring `MarketplaceService`'s own v1 shape: real posts, real
  * category browse, a real opt-in Haversine "near me" browse, real "message poster"
- * (the real apply mechanism, reusing `MessagingService` unmodified), real
- * poster-only mark-filled/remove. No structured "application" object, no
- * accept/reject-a-worker flow -- a real conversation with the poster covers v1, matching
- * how Marketplace's own price-offer negotiation was a later addition, not required to
- * ship a real, usable job board.
+ * (a real contact mechanism reusing `MessagingService` unmodified), real
+ * poster-only mark-filled/remove. A real structured application object and
+ * accept/reject-a-worker flow now also exist (`JobApplicationService`), matching
+ * how Marketplace's own price-offer negotiation was likewise added after v1 shipped,
+ * not required to ship a real, usable job board.
  */
 @Service
 class JobPostService(
@@ -50,6 +52,7 @@ class JobPostService(
     private val messagingService: MessagingService,
     private val nominatimGeocodingClient: NominatimGeocodingClient,
     private val userRepository: UserRepository,
+    private val trustScoreService: TrustScoreService,
 ) {
     companion object {
         val CATEGORIES = listOf(
@@ -118,7 +121,7 @@ class JobPostService(
         val neighborhood = if (latitude != null && longitude != null) {
             nominatimGeocodingClient.reverseGeocode(latitude, longitude)
         } else {
-            null
+            userRepository.findById(posterId).orElse(null)?.neighborhood
         }
 
         return jobPostRepository.save(
@@ -128,6 +131,17 @@ class JobPostService(
                 latitude = latitude, longitude = longitude, neighborhood = neighborhood,
             ),
         )
+    }
+
+    // Real relevance-ranked search (2026-08-14) -- see MarketplaceService.search's own
+    // doc comment for the full "why" (not neighborhood-scoped, same as browse above).
+    fun search(query: String, pageable: Pageable): Page<JobPost> {
+        val booleanQuery = rw.itunda.core.search.FullTextSearchUtil.toBooleanModeQuery(query)
+        return if (booleanQuery != null) {
+            jobPostRepository.searchFullText(JobPostStatus.OPEN, booleanQuery, pageable)
+        } else {
+            jobPostRepository.searchShort(JobPostStatus.OPEN, query.trim(), pageable)
+        }
     }
 
     fun browse(pageable: Pageable, category: String?): Page<JobPost> =
@@ -140,16 +154,23 @@ class JobPostService(
     fun getMyPosts(posterId: String, pageable: Pageable): Page<JobPost> =
         jobPostRepository.findByPosterIdOrderByCreatedAtDesc(posterId, pageable)
 
+    // Real "Jobs I did" (2026-07-25) -- see JobPostRepository.
+    // findByWorkerIdOrderByCreatedAtDesc's own doc comment for the full account.
+    fun getMyWorkedPosts(workerId: String, pageable: Pageable): Page<JobPost> =
+        jobPostRepository.findByWorkerIdOrderByCreatedAtDesc(workerId, pageable)
+
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see MarketplaceService.
     // myNeighborhood's own doc comment for the full account; identical shape here.
     fun myNeighborhood(callerUserId: String, category: String?, pageable: Pageable): Page<JobPost> {
         val caller = userRepository.findById(callerUserId).orElseThrow { JobPostNotFoundException("User not found") }
         val neighborhood = caller.neighborhood
             ?: throw JobsNeighborhoodNotSetException("Set your neighborhood first via POST /api/v1/auth/profile/neighborhood")
+        // Real dual-neighborhood support (2026-08-04) -- see User.secondNeighborhood's own doc comment.
+        val neighborhoods = listOfNotNull(neighborhood, caller.secondNeighborhood)
         return if (category.isNullOrBlank()) {
-            jobPostRepository.findByStatusAndNeighborhoodOrderByCreatedAtDesc(JobPostStatus.OPEN, neighborhood, pageable)
+            jobPostRepository.findByStatusAndNeighborhoodInOrderByCreatedAtDesc(JobPostStatus.OPEN, neighborhoods, pageable)
         } else {
-            jobPostRepository.findByStatusAndNeighborhoodAndCategoryOrderByCreatedAtDesc(JobPostStatus.OPEN, neighborhood, category, pageable)
+            jobPostRepository.findByStatusAndNeighborhoodInAndCategoryOrderByCreatedAtDesc(JobPostStatus.OPEN, neighborhoods, category, pageable)
         }
     }
 
@@ -179,13 +200,36 @@ class JobPostService(
         jobPostRepository.findById(jobPostId).orElseThrow { JobPostNotFoundException("Job post not found") }
 
     @Transactional
-    fun markFilled(posterId: String, jobPostId: String): JobPost {
+    // Real optional worker identification (2026-07-24) -- see MarketplaceService.
+    // markSold's own doc comment for the full account; identical shape here.
+    fun markFilled(posterId: String, jobPostId: String, workerPhoneNumber: String? = null): JobPost {
         val post = requirePoster(posterId, jobPostId)
         if (post.status != JobPostStatus.OPEN) {
             throw JobPostNotOpenException("Only an open job post can be marked filled")
         }
+        val trimmedPhone = workerPhoneNumber?.trim()
+        if (!trimmedPhone.isNullOrEmpty()) {
+            val worker = userRepository.findByPhoneNumber(trimmedPhone)
+                ?: throw WorkerNotFoundException("No itunda account found for this phone number")
+            if (worker.id == posterId) throw OwnJobPostException("You can't record yourself as the worker")
+            post.workerId = worker.id
+        }
         post.status = JobPostStatus.FILLED
-        return jobPostRepository.save(post)
+        val saved = jobPostRepository.save(post)
+        // Real Karrot-Score-style trust badge (2026-07-21) -- see TrustScoreService's own
+        // doc comment; identical shape to MarketplaceService.markSold.
+        trustScoreService.computeScore(posterId)
+        // Real review-prompt system message (2026-07-25) -- see
+        // MarketplaceService.markSold's own doc comment for the full sourced account;
+        // identical shape here.
+        post.workerId?.let { workerId ->
+            val conversation = messagingService.startOrGetConversation(posterId, workerId)
+            messagingService.sendMessage(
+                posterId, conversation.id,
+                "✅ Marked \"${post.title}\" as filled. If everything went well, leave a review so other neighbors know what to expect!",
+            )
+        }
+        return saved
     }
 
     @Transactional

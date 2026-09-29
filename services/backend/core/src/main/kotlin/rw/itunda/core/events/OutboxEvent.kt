@@ -3,7 +3,9 @@ package rw.itunda.core.events
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
+import jakarta.persistence.LockModeType
 import jakarta.persistence.Table
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.JpaRepository
 import java.time.Instant
 
@@ -47,5 +49,12 @@ class OutboxEventEntity(
 }
 
 interface OutboxEventRepository : JpaRepository<OutboxEventEntity, String> {
+    /**
+     * Relay workers may run in more than one application replica. Locking the selected
+     * rows within [OutboxRelay.relay]'s transaction prevents two workers from relaying
+     * the same pending row concurrently; after the first commits, the next worker sees
+     * its processed timestamp and skips it.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     fun findTop100ByProcessedAtIsNullOrderByCreatedAtAsc(): List<OutboxEventEntity>
 }

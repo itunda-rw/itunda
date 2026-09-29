@@ -1,0 +1,73 @@
+server:
+  port: 4008
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] [requestId=%X{requestId:-}] %logger{36} - %msg%n"
+
+spring:
+  application:
+    name: itunda-vehicle-service
+  # Same reasoning as the other extracted services' identical exclude -- this
+  # service also authenticates purely via the shared JwtAuthenticationFilter
+  # (see :security), never Spring Security's UserDetailsService/form-login
+  # machinery.
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  datasource:
+    # Deliberately the SAME schema :app uses (itunda), not a separate per-service
+    # database -- same reasoning as the other extracted services' own doc
+    # comments: real SELECT ... FOR UPDATE locking (core/ledger/LedgerService) is
+    # enforced by MySQL itself, not JVM-held state, so it serializes correctly
+    # across this process and :app's.
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:itunda}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: ${DB_USER:itunda}
+    password: ${DB_PASSWORD:itunda_password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      # Real, coordinated pool budget -- see :app's application.yml for the full
+      # arithmetic (Kakao Bank messaging-hub precedent, tech.kakaobank.com, 2023-11:
+      # uncoordinated per-service DB pools against one shared, connection-limited
+      # database blocks safe horizontal scale-out). This service's slice: 6 of the
+      # shared `itunda` schema's 109-connection total budget (assumes 1 replica, per
+      # infra/k8s/staging/*.yaml today -- divide by replica count if that changes).
+      maximum-pool-size: 6
+      minimum-idle: 2
+  data:
+    redis:
+      # Real infra RateLimiter (:auth) needs this -- same Redis instance :app
+      # already points at, same env-var convention.
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  jpa:
+    hibernate:
+      # vehicle-service never runs migrations (flyway is disabled below and not
+      # even a dependency of this module) -- :app remains the sole schema
+      # owner. This only validates its own entity mappings against whatever
+      # :app's Flyway migrations already created.
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+itunda:
+  jwt:
+    # Must match :app's exact same secret -- a JWT :app minted has to validate
+    # here too, see :security's SecurityConfig/JwtAuthenticationFilter (shared
+    # code, not a duplicated copy).
+    secret: ${JWT_SECRET:itunda-dev-secret-do-not-use-in-production}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}

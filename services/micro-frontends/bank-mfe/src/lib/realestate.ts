@@ -23,6 +23,17 @@ export interface PropertyListing {
   // Real hyperlocal neighborhood (2026-07-20), cached at creation time -- see
   // lib/neighborhood.ts's own doc comment for the full account.
   neighborhood?: string | null;
+  // counterpartyId added 2026-07-24 -- real optional buyer/tenant identification
+  // captured at mark-taken time, see backend PropertyListing.kt's own doc comment.
+  // Only set once a real review becomes possible for this transaction.
+  counterpartyId?: string | null;
+  // Real ownership verification (2026-07-25) -- NONE/PENDING/VERIFIED, see backend
+  // PropertyOwnershipService's own doc comment. Real client added to Android the same
+  // day (a document-picker + submit flow); bank-mfe had zero client for it despite
+  // that -- found via a fresh backend-module sweep. Same "URL, not a binary upload"
+  // honest scope-down lib/neighborhood.ts's updateProfilePhoto already established for
+  // this web client, since bank-mfe has no real photo/document upload pipeline at all.
+  ownershipVerificationStatus?: 'NONE' | 'PENDING' | 'VERIFIED';
 }
 
 export interface PropertyType {
@@ -33,26 +44,49 @@ export interface PropertyType {
 export const fetchPropertyTypes = () =>
   apiFetch<{ success: boolean; propertyTypes: PropertyType[] }>('/api/v1/realestate/property-types').then((r) => r.propertyTypes);
 
-export const fetchPropertyListings = (listingType?: PropertyListingType, propertyType?: string) => {
+// Real Karrot-Score-style numeric trust/reputation badge (2026-07-24) -- see backend
+// TrustScoreService's own doc comment for the full account. A listerId -> cached
+// User.trustScore map, resolved server-side alongside the listing list itself (see
+// PropertyListingController's own doc comment) -- was already spread in every one of
+// these responses since 2026-07-21, but silently discarded here until now. Reuses
+// lib/marketplace.ts's own TrustScores type (same Record<string, number> shape).
+import type { HoodReview, TrustScores } from './marketplace';
+
+// Real pagination-discard fix (same systemic gap fixed for Knowledge/Community/
+// Marketplace/Jobs, 2026-09-09 -- see project_itunda_pagination_discard_sweep
+// memory) -- PropertyListingController's real Pageable/pageMeta endpoints were
+// always there; page/size just weren't sent, silently capping every browse/
+// mine/acquired/neighborhood feed at its first 20 listings.
+export const fetchPropertyListings = (listingType?: PropertyListingType, propertyType?: string, page = 0, size = 20) => {
   const params = new URLSearchParams();
   if (listingType) params.set('listingType', listingType);
   if (propertyType) params.set('propertyType', propertyType);
-  const qs = params.toString();
-  return apiFetch<{ success: boolean; listings: PropertyListing[] }>(`/api/v1/realestate/listings${qs ? `?${qs}` : ''}`).then(
-    (r) => r.listings,
+  params.set('page', String(page));
+  params.set('size', String(size));
+  return apiFetch<{ success: boolean; listings: PropertyListing[]; trustScores: TrustScores; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/realestate/listings?${params.toString()}`,
   );
 };
 
-export const fetchMyPropertyListings = () =>
-  apiFetch<{ success: boolean; listings: PropertyListing[] }>('/api/v1/realestate/my-listings').then((r) => r.listings);
+export const fetchMyPropertyListings = (page = 0, size = 20) =>
+  apiFetch<{ success: boolean; listings: PropertyListing[]; trustScores: TrustScores; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/realestate/my-listings?page=${page}&size=${size}`,
+  );
+
+// Real "Places I got" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+// recommendation #6. See backend PropertyListingRepository's own doc comment.
+export const fetchMyAcquiredPropertyListings = (page = 0, size = 20) =>
+  apiFetch<{ success: boolean; listings: PropertyListing[]; trustScores: TrustScores; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/realestate/my-acquired-listings?page=${page}&size=${size}`,
+  );
 
 // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see lib/neighborhood.ts's own
 // doc comment. Throws ApiError with code NEIGHBORHOOD_NOT_SET (real 400) if the caller
 // hasn't set one yet. Deliberately not combined with listingType/propertyType filters --
 // PropertyListingRepository's own doc comment names this as an honest v1 scoping choice.
-export const fetchPropertyListingsMyNeighborhood = () =>
-  apiFetch<{ success: boolean; listings: PropertyListing[] }>('/api/v1/realestate/listings/my-neighborhood').then(
-    (r) => r.listings,
+export const fetchPropertyListingsMyNeighborhood = (page = 0, size = 20) =>
+  apiFetch<{ success: boolean; listings: PropertyListing[]; trustScores: TrustScores; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/realestate/listings/my-neighborhood?page=${page}&size=${size}`,
   );
 
 export const createPropertyListing = (
@@ -71,10 +105,35 @@ export const createPropertyListing = (
     body: JSON.stringify({ listingType, propertyType, title, description, price, bedrooms, sizeSqm, latitude, longitude }),
   }).then((r) => r.listing);
 
-export const markPropertyListingTaken = (propertyListingId: string) =>
+export const markPropertyListingTaken = (propertyListingId: string, counterpartyPhoneNumber?: string) =>
   apiFetch<{ success: boolean; listing: PropertyListing }>(`/api/v1/realestate/listings/${propertyListingId}/mark-taken`, {
     method: 'POST',
+    body: JSON.stringify({ counterpartyPhoneNumber }),
   }).then((r) => r.listing);
+
+// Real Karrot(당근마켓)-style price-drop notification -- see backend
+// PropertyListingService.updatePrice's own doc comment. Found via
+// scripts/uncalled-endpoint-sweep.py: the same real gap shape as
+// MarketplaceService.updatePrice (§227, already closed this session) -- fully built
+// with zero client anywhere.
+export const updatePropertyListingPrice = (propertyListingId: string, price: number) =>
+  apiFetch<{ success: boolean; listing: PropertyListing }>(`/api/v1/realestate/listings/${propertyListingId}/price`, {
+    method: 'POST',
+    body: JSON.stringify({ price }),
+  }).then((r) => r.listing);
+
+// Real post-transaction review with asymmetric public/private visibility (2026-07-24)
+// -- see backend HoodReviewService's own doc comment.
+export const submitPropertyListingReview = (propertyListingId: string, goodPoints: string[], uncomfortablePoints: string[]) =>
+  apiFetch<{ success: boolean; review: HoodReview }>(`/api/v1/realestate/listings/${propertyListingId}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ goodPoints, uncomfortablePoints }),
+  }).then((r) => r.review);
+
+// Real read-back for the review submitted above (item 192) -- see lib/marketplace.ts's
+// fetchListingReviews for the full account; identical shape.
+export const fetchPropertyListingReviews = (propertyListingId: string) =>
+  apiFetch<{ success: boolean; reviews: HoodReview[] }>(`/api/v1/realestate/listings/${propertyListingId}/review`).then((r) => r.reviews);
 
 export const removePropertyListing = (propertyListingId: string) =>
   apiFetch<{ success: boolean; listing: PropertyListing }>(`/api/v1/realestate/listings/${propertyListingId}`, {
@@ -126,3 +185,58 @@ export const fetchPropertyOffersForConversation = (conversationId: string) =>
   apiFetch<{ success: boolean; offers: PropertyPriceOffer[] }>(`/api/v1/realestate/conversations/${conversationId}/offers`).then(
     (r) => r.offers,
   );
+
+// Real 당근부동산 property-listing wishlist (2026-07-22) -- closes the same
+// docs/DESIGN_REFERENCES.md-named gap lib/jobs.ts's FavoriteJobPost closes: Marketplace
+// listings already got a real wishlist (2026-07-21, lib/marketplace.ts) but Property
+// never did. Mirrors FavoriteListing's exact shape; see PropertyListingFavoriteService.kt's
+// own doc comment on the backend.
+export interface FavoritePropertyListing {
+  propertyListingId: string;
+  title: string;
+  price: number;
+  propertyType: string;
+  favoritedAt: string;
+}
+
+export const addPropertyListingFavorite = (propertyListingId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/realestate/listings/${propertyListingId}/favorite`, { method: 'POST' });
+
+export const removePropertyListingFavorite = (propertyListingId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/realestate/listings/${propertyListingId}/favorite`, { method: 'DELETE' });
+
+// Real pagination-discard fix (2026-09-12, same systemic gap fixed
+// throughout the sweep -- see project_itunda_pagination_discard_sweep
+// memory) -- the real Pageable/pageMeta endpoint was always there; page
+// just wasn't ever sent, silently capping this list (and any count badge
+// reading it) at the most recent 20 favorited property listings.
+export const fetchMyFavoritePropertyListings = (page = 0) =>
+  apiFetch<{ success: boolean; favorites: FavoritePropertyListing[]; page: number; totalPages: number; totalElements: number }>(
+    `/api/v1/realestate/listings/favorites?page=${page}&size=20`,
+  );
+
+export const submitPropertyOwnershipVerification = (propertyListingId: string, documentUrl: string) =>
+  apiFetch<{ success: boolean; submission: { status: string } }>(`/api/v1/realestate/listings/${propertyListingId}/verify-ownership`, {
+    method: 'POST',
+    body: JSON.stringify({ documentUrl }),
+  });
+
+// Real Toss Bank 우리집 시세 (my home's estimated value, item 228) -- see
+// PropertyListingService.estimateValue's own doc comment on the backend. A real
+// comparable-listings-based estimate, computed fresh on every call, not persisted.
+export interface PropertyValuationEstimate {
+  estimatedValue: number;
+  comparableCount: number;
+  averagePricePerSqm: number;
+  radiusKm: number;
+}
+
+export const fetchPropertyValuation = (
+  latitude: number, longitude: number, propertyType: string, listingType: PropertyListingType, sizeSqm: number, radiusKm = 5.0,
+) => {
+  const params = new URLSearchParams({
+    latitude: String(latitude), longitude: String(longitude), propertyType, listingType,
+    sizeSqm: String(sizeSqm), radiusKm: String(radiusKm),
+  });
+  return apiFetch<{ success: boolean; estimate: PropertyValuationEstimate }>(`/api/v1/realestate/valuation?${params}`).then((r) => r.estimate);
+};

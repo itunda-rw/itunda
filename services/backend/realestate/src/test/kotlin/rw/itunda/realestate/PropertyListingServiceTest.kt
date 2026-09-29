@@ -17,8 +17,12 @@ import rw.itunda.core.domain.PropertyListingStatus
 import rw.itunda.core.domain.PropertyListingType
 import rw.itunda.core.domain.User
 import rw.itunda.core.geo.NominatimGeocodingClient
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
+import rw.itunda.core.repository.PropertyListingFavoriteRepository
 import rw.itunda.core.repository.PropertyListingRepository
 import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.trust.TrustScoreService
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
 import java.math.BigDecimal
@@ -33,11 +37,19 @@ class PropertyListingServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val propertyListingFavoriteRepository = mockk<PropertyListingFavoriteRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = PropertyListingService(
+            propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository, trustScoreService,
+            propertyListingFavoriteRepository, notificationRepository, pushNotificationService,
+        )
 
         When("listing with valid fields") {
             val savedSlot = slot<PropertyListing>()
             every { propertyListingRepository.save(capture(savedSlot)) } answers { firstArg() }
+            every { userRepository.findById("lister_1") } returns java.util.Optional.empty()
 
             val listing = service.createListing(
                 "lister_1", PropertyListingType.RENT, "apartment", "  2-bedroom in Kacyiru  ", "  Quiet, close to town  ",
@@ -67,7 +79,7 @@ class PropertyListingServiceTest : BehaviorSpec({
         When("listing with a zero price") {
             Then("it throws InvalidPropertyListingException") {
                 try {
-                    service.createListing("lister_1", PropertyListingType.SALE, "house", "T", "D", BigDecimal.ZERO)
+                    service.createListing("lister_1", PropertyListingType.SALE, "apartment", "T", "D", BigDecimal.ZERO)
                     error("expected InvalidPropertyListingException")
                 } catch (e: InvalidPropertyListingException) {
                     // expected
@@ -78,7 +90,7 @@ class PropertyListingServiceTest : BehaviorSpec({
         When("listing with a title longer than the real 200-char DB column bound") {
             Then("it throws InvalidPropertyListingException rather than risking a raw DB insert failure") {
                 try {
-                    service.createListing("lister_1", PropertyListingType.SALE, "house", "x".repeat(201), "D", BigDecimal("1000"))
+                    service.createListing("lister_1", PropertyListingType.SALE, "apartment", "x".repeat(201), "D", BigDecimal("1000"))
                     error("expected InvalidPropertyListingException")
                 } catch (e: InvalidPropertyListingException) {
                     // expected
@@ -89,7 +101,7 @@ class PropertyListingServiceTest : BehaviorSpec({
         When("listing with negative bedrooms") {
             Then("it throws InvalidPropertyListingException") {
                 try {
-                    service.createListing("lister_1", PropertyListingType.SALE, "house", "T", "D", BigDecimal("1000"), bedrooms = -1)
+                    service.createListing("lister_1", PropertyListingType.SALE, "apartment", "T", "D", BigDecimal("1000"), bedrooms = -1)
                     error("expected InvalidPropertyListingException")
                 } catch (e: InvalidPropertyListingException) {
                     // expected
@@ -101,7 +113,7 @@ class PropertyListingServiceTest : BehaviorSpec({
             Then("it throws InvalidPropertyCoordinatesException") {
                 try {
                     service.createListing(
-                        "lister_1", PropertyListingType.SALE, "house", "T", "D", BigDecimal("1000"),
+                        "lister_1", PropertyListingType.SALE, "apartment", "T", "D", BigDecimal("1000"),
                         latitude = -1.9441, longitude = null,
                     )
                     error("expected InvalidPropertyCoordinatesException")
@@ -117,7 +129,7 @@ class PropertyListingServiceTest : BehaviorSpec({
 
             Then("it real-propagates RateLimitExceededException") {
                 try {
-                    service.createListing("lister_1", PropertyListingType.SALE, "house", "T", "D", BigDecimal("1000"))
+                    service.createListing("lister_1", PropertyListingType.SALE, "apartment", "T", "D", BigDecimal("1000"))
                     error("expected RateLimitExceededException")
                 } catch (e: RateLimitExceededException) {
                     // expected
@@ -132,7 +144,14 @@ class PropertyListingServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val propertyListingFavoriteRepository = mockk<PropertyListingFavoriteRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = PropertyListingService(
+            propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository, trustScoreService,
+            propertyListingFavoriteRepository, notificationRepository, pushNotificationService,
+        )
         val listing = PropertyListing(
             id = "property_listing_1", listerId = "lister_1", listingType = PropertyListingType.RENT,
             propertyType = "apartment", title = "T", description = "D", price = BigDecimal("250000"),
@@ -146,6 +165,9 @@ class PropertyListingServiceTest : BehaviorSpec({
 
             Then("its status flips to TAKEN") {
                 result.status shouldBe PropertyListingStatus.TAKEN
+            }
+            Then("the real Karrot-Score-style trust badge is recomputed for the lister immediately") {
+                verify(exactly = 1) { trustScoreService.computeScore("lister_1") }
             }
         }
 
@@ -225,7 +247,14 @@ class PropertyListingServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val propertyListingFavoriteRepository = mockk<PropertyListingFavoriteRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = PropertyListingService(
+            propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository, trustScoreService,
+            propertyListingFavoriteRepository, notificationRepository, pushNotificationService,
+        )
 
         When("no filter is given") {
             val page = PageImpl(listOf<PropertyListing>())
@@ -255,16 +284,16 @@ class PropertyListingServiceTest : BehaviorSpec({
             val page = PageImpl(listOf<PropertyListing>())
             every {
                 propertyListingRepository.findByStatusAndListingTypeAndPropertyTypeOrderByCreatedAtDesc(
-                    PropertyListingStatus.AVAILABLE, PropertyListingType.SALE, "house", any(),
+                    PropertyListingStatus.AVAILABLE, PropertyListingType.SALE, "apartment", any(),
                 )
             } returns page
 
-            service.browse(PageRequest.of(0, 20), PropertyListingType.SALE, "house")
+            service.browse(PageRequest.of(0, 20), PropertyListingType.SALE, "apartment")
 
             Then("it filters by both real filters combined") {
                 verify {
                     propertyListingRepository.findByStatusAndListingTypeAndPropertyTypeOrderByCreatedAtDesc(
-                        PropertyListingStatus.AVAILABLE, PropertyListingType.SALE, "house", any(),
+                        PropertyListingStatus.AVAILABLE, PropertyListingType.SALE, "apartment", any(),
                     )
                 }
             }
@@ -277,14 +306,21 @@ class PropertyListingServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val propertyListingFavoriteRepository = mockk<PropertyListingFavoriteRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = PropertyListingService(
+            propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository, trustScoreService,
+            propertyListingFavoriteRepository, notificationRepository, pushNotificationService,
+        )
 
         val near = PropertyListing(
-            id = "property_near", listerId = "a", listingType = PropertyListingType.RENT, propertyType = "house",
+            id = "property_near", listerId = "a", listingType = PropertyListingType.RENT, propertyType = "apartment",
             title = "T", description = "D", price = BigDecimal("100000"), latitude = -1.9500, longitude = 30.0619,
         )
         val far = PropertyListing(
-            id = "property_far", listerId = "a", listingType = PropertyListingType.RENT, propertyType = "house",
+            id = "property_far", listerId = "a", listingType = PropertyListingType.RENT, propertyType = "apartment",
             title = "T", description = "D", price = BigDecimal("100000"), latitude = -1.5, longitude = 30.0619,
         )
 
@@ -310,20 +346,92 @@ class PropertyListingServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a real Toss Bank 우리집 시세 (home value estimate) request") {
+        val propertyListingRepository = mockk<PropertyListingRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val messagingService = mockk<MessagingService>()
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val propertyListingFavoriteRepository = mockk<PropertyListingFavoriteRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = PropertyListingService(
+            propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository, trustScoreService,
+            propertyListingFavoriteRepository, notificationRepository, pushNotificationService,
+        )
+
+        fun comp(id: String, price: String, sizeSqm: Double, lat: Double = -1.9500, lng: Double = 30.0619) = PropertyListing(
+            id = id, listerId = "a", listingType = PropertyListingType.SALE, propertyType = "apartment",
+            title = "T", description = "D", price = BigDecimal(price), sizeSqm = sizeSqm, latitude = lat, longitude = lng,
+        )
+
+        When("at least 3 real comparable listings exist nearby") {
+            val comps = listOf(comp("c1", "10000000", 100.0), comp("c2", "12000000", 120.0), comp("c3", "9000000", 90.0))
+            every { propertyListingRepository.findByStatusAndLatitudeIsNotNullAndLongitudeIsNotNull(PropertyListingStatus.AVAILABLE) } returns comps
+
+            val estimate = service.estimateValue(-1.9441, 30.0619, "apartment", PropertyListingType.SALE, 100.0, 5.0)
+
+            Then("a real estimate is computed from their real average price-per-sqm") {
+                // Each comp is exactly 100,000/sqm, so the average is exact and the
+                // estimate for a 100sqm target is exactly 10,000,000.
+                estimate.estimatedValue shouldBe BigDecimal("10000000.00")
+                estimate.comparableCount shouldBe 3
+            }
+        }
+
+        When("fewer than 3 real comparable listings exist nearby") {
+            val comps = listOf(comp("c1", "10000000", 100.0), comp("c2", "12000000", 120.0))
+            every { propertyListingRepository.findByStatusAndLatitudeIsNotNullAndLongitudeIsNotNull(PropertyListingStatus.AVAILABLE) } returns comps
+
+            Then("it throws InsufficientComparablesException rather than a fabricated number") {
+                try {
+                    service.estimateValue(-1.9441, 30.0619, "apartment", PropertyListingType.SALE, 100.0, 5.0)
+                    error("expected InsufficientComparablesException")
+                } catch (e: InsufficientComparablesException) {
+                    // expected
+                }
+            }
+        }
+
+        When("only far-away comparables exist") {
+            val comps = listOf(
+                comp("c1", "10000000", 100.0, lat = -1.5), comp("c2", "12000000", 120.0, lat = -1.5), comp("c3", "9000000", 90.0, lat = -1.5),
+            )
+            every { propertyListingRepository.findByStatusAndLatitudeIsNotNullAndLongitudeIsNotNull(PropertyListingStatus.AVAILABLE) } returns comps
+
+            Then("they're correctly excluded by the real radius filter, real-422ing") {
+                try {
+                    service.estimateValue(-1.9441, 30.0619, "apartment", PropertyListingType.SALE, 100.0, 5.0)
+                    error("expected InsufficientComparablesException")
+                } catch (e: InsufficientComparablesException) {
+                    // expected
+                }
+            }
+        }
+    }
+
     Given("a real caller browsing their own real neighborhood") {
         val propertyListingRepository = mockk<PropertyListingRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val propertyListingFavoriteRepository = mockk<PropertyListingFavoriteRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = PropertyListingService(
+            propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository, trustScoreService,
+            propertyListingFavoriteRepository, notificationRepository, pushNotificationService,
+        )
 
         When("the caller has a real neighborhood set") {
             val caller = User(id = "user_1", phoneNumber = "+250780000001", firstName = "A", lastName = "B", passwordHash = "x", neighborhood = "Kimironko")
             val expectedPage = PageImpl(listOf(mockk<PropertyListing>()))
             every { userRepository.findById("user_1") } returns Optional.of(caller)
             every {
-                propertyListingRepository.findByStatusAndNeighborhoodOrderByCreatedAtDesc(PropertyListingStatus.AVAILABLE, "Kimironko", any())
+                propertyListingRepository.findByStatusAndNeighborhoodInOrderByCreatedAtDesc(PropertyListingStatus.AVAILABLE, listOf("Kimironko"), any())
             } returns expectedPage
 
             val page = service.myNeighborhood("user_1", PageRequest.of(0, 20))
@@ -343,6 +451,118 @@ class PropertyListingServiceTest : BehaviorSpec({
                     error("expected RealEstateNeighborhoodNotSetException")
                 } catch (e: RealEstateNeighborhoodNotSetException) {
                     // expected
+                }
+            }
+        }
+    }
+
+    Given("a real lister updating an AVAILABLE listing's price, with two real favoriters") {
+        val propertyListingRepository = mockk<PropertyListingRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val messagingService = mockk<MessagingService>()
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val propertyListingFavoriteRepository = mockk<PropertyListingFavoriteRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = PropertyListingService(
+            propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository, trustScoreService,
+            propertyListingFavoriteRepository, notificationRepository, pushNotificationService,
+        )
+
+        fun listing(price: String, status: PropertyListingStatus = PropertyListingStatus.AVAILABLE) = PropertyListing(
+            id = "property_1", listerId = "lister_1", listingType = PropertyListingType.SALE, propertyType = "apartment",
+            title = "Nice house", description = "D", price = BigDecimal(price), status = status,
+        )
+        val favorites = listOf(
+            rw.itunda.core.domain.PropertyListingFavorite(id = "fav_1", userId = "user_a", propertyListingId = "property_1"),
+            rw.itunda.core.domain.PropertyListingFavorite(id = "fav_2", userId = "user_b", propertyListingId = "property_1"),
+        )
+
+        When("the price genuinely drops") {
+            every { propertyListingRepository.findById("property_1") } returns java.util.Optional.of(listing("10000000"))
+            every { propertyListingRepository.save(any()) } answers { firstArg() }
+            every { propertyListingFavoriteRepository.findByPropertyListingId("property_1") } returns favorites
+            // relaxed=true mishandles JpaRepository's generic `<S extends T> S save(S)` and
+            // returns a raw Object, ClassCastException-ing at the call site (silently caught
+            // by the service's own per-favoriter try/catch) -- same fix as
+            // RewardsServiceTest/BillsServiceTest's own rewardClaimRepository.save stubs.
+            every { notificationRepository.save(any()) } answers { firstArg() }
+
+            val saved = service.updatePrice("lister_1", "property_1", BigDecimal("9000000"))
+
+            Then("it saves the new price and notifies every real favoriter") {
+                saved.price shouldBe BigDecimal("9000000")
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_a" && it.type == "PROPERTY_PRICE_DROP" }) }
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_b" && it.type == "PROPERTY_PRICE_DROP" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_a", any(), any(), any()) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_b", any(), any(), any()) }
+            }
+        }
+
+        When("the price increases instead of dropping") {
+            every { propertyListingRepository.findById("property_1") } returns java.util.Optional.of(listing("10000000"))
+            every { propertyListingRepository.save(any()) } answers { firstArg() }
+
+            val saved = service.updatePrice("lister_1", "property_1", BigDecimal("11000000"))
+
+            Then("it saves the new price but never notifies -- only a real drop does") {
+                saved.price shouldBe BigDecimal("11000000")
+                verify(exactly = 0) { propertyListingFavoriteRepository.findByPropertyListingId(any()) }
+                verify(exactly = 0) { notificationRepository.save(any()) }
+            }
+        }
+
+        When("one favoriter's notification save throws") {
+            every { propertyListingRepository.findById("property_1") } returns java.util.Optional.of(listing("10000000"))
+            every { propertyListingRepository.save(any()) } answers { firstArg() }
+            every { propertyListingFavoriteRepository.findByPropertyListingId("property_1") } returns favorites
+            every { notificationRepository.save(match { it.userId == "user_a" }) } throws RuntimeException("db blip")
+            every { notificationRepository.save(match { it.userId == "user_b" }) } answers { firstArg() }
+
+            val saved = service.updatePrice("lister_1", "property_1", BigDecimal("9000000"))
+
+            Then("the price change still commits and the other favoriter still gets notified") {
+                saved.price shouldBe BigDecimal("9000000")
+                verify(exactly = 1) { propertyListingRepository.save(any()) }
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_b" }) }
+            }
+        }
+
+        When("the price isn't greater than zero") {
+            Then("it throws InvalidPropertyListingException before ever touching the repository") {
+                try {
+                    service.updatePrice("lister_1", "property_1", BigDecimal.ZERO)
+                    error("expected InvalidPropertyListingException")
+                } catch (e: InvalidPropertyListingException) {
+                    verify(exactly = 0) { propertyListingRepository.findById(any()) }
+                }
+            }
+        }
+
+        When("the listing is already TAKEN") {
+            every { propertyListingRepository.findById("property_1") } returns java.util.Optional.of(listing("10000000", PropertyListingStatus.TAKEN))
+
+            Then("it throws PropertyListingNotAvailableException") {
+                try {
+                    service.updatePrice("lister_1", "property_1", BigDecimal("9000000"))
+                    error("expected PropertyListingNotAvailableException")
+                } catch (e: PropertyListingNotAvailableException) {
+                    verify(exactly = 0) { propertyListingRepository.save(any()) }
+                }
+            }
+        }
+
+        When("someone who isn't the lister tries to change the price") {
+            every { propertyListingRepository.findById("property_1") } returns java.util.Optional.of(listing("10000000"))
+
+            Then("it throws PropertyListingNotFoundException -- same not-the-owner discipline as everywhere else") {
+                try {
+                    service.updatePrice("someone_else", "property_1", BigDecimal("9000000"))
+                    error("expected PropertyListingNotFoundException")
+                } catch (e: PropertyListingNotFoundException) {
+                    verify(exactly = 0) { propertyListingRepository.save(any()) }
                 }
             }
         }

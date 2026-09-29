@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="maps_search_placeholder">Recherchez un lieu réel au Rwanda</string>
+    <string name="maps_connection_error">Impossible de contacter itunda. Vérifiez votre connexion et réessayez.</string>
+    <string name="maps_folder_name_placeholder">Nom du dossier (ex. Favoris)</string>
+    <string name="maps_saving">Enregistrement…</string>
+    <string name="maps_save">Enregistrer</string>
+    <string name="maps_cancel">Annuler</string>
+    <string name="maps_location_share_title">📍 Partage de position en direct</string>
+    <string name="maps_share_my_location">+ Partager ma position</string>
+    <string name="maps_recipient_phone_placeholder">Numéro de téléphone du destinataire</string>
+    <string name="maps_share_for">Pendant</string>
+    <string name="maps_starting">Démarrage…</string>
+    <string name="maps_start_sharing">Démarrer le partage</string>
+</resources>

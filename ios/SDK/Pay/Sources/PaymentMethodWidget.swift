@@ -25,9 +25,19 @@ public struct PaymentMethodWidget: View {
                     selectedMethod = method
                 }) {
                     HStack {
+                        // Real a11y fix (item 242, docs/ACCESSIBILITY.md §2's iOS follow-up,
+                        // same fix as AgreementWidget.swift's checkbox icon): both this
+                        // method icon and the trailing selection indicator below are hidden
+                        // from accessibility -- SwiftUI's Button merges all subviews into one
+                        // spoken label by default, so their raw SF Symbol names ("mobile
+                        // phone fill" / "circle" / "checkmark circle fill") would otherwise
+                        // get read out alongside method.rawValue as redundant noise. Selected
+                        // state is now conveyed the standard way, via .isSelected below,
+                        // instead of relying on which icon shape is showing.
                         Image(systemName: iconName(for: method))
                             .foregroundColor(selectedMethod == method ? .blue : .gray)
                             .frame(width: 32, height: 32)
+                            .accessibilityHidden(true)
 
                         Text(method.rawValue)
                             .foregroundColor(.primary)
@@ -37,9 +47,11 @@ public struct PaymentMethodWidget: View {
                         if selectedMethod == method {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundColor(.blue)
+                                .accessibilityHidden(true)
                         } else {
                             Image(systemName: "circle")
                                 .foregroundColor(.gray)
+                                .accessibilityHidden(true)
                         }
                     }
                     .padding()
@@ -50,6 +62,7 @@ public struct PaymentMethodWidget: View {
                             .stroke(selectedMethod == method ? Color.blue : Color.clear, lineWidth: 2)
                     )
                 }
+                .accessibilityAddTraits(selectedMethod == method ? [.isSelected] : [])
             }
         }
         .padding()

@@ -1,6 +1,7 @@
 package rw.itunda.rider.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import rw.itunda.core.designsystem.theme.Ids
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,14 +10,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.Button
+import java.util.Locale
+import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsLoading
+import rw.itunda.core.designsystem.components.IdsErrorText
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,6 +36,7 @@ import rw.itunda.rider.network.EatsOrderDto
 import rw.itunda.rider.network.NetworkClient
 import rw.itunda.rider.network.UpdateEatsOrderStatusRequest
 import rw.itunda.rider.network.UpdateRiderLocationRequest
+import rw.itunda.rider.network.parseApiError
 
 /**
  * A single active (or just-completed) delivery. Pushes this rider's real live
@@ -88,15 +88,12 @@ fun DeliveryDetailScreen(orderId: String, onBack: () -> Unit) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Row(modifier = Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back") }
-            Text("Delivery", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        }
+        BackTopBar(title = "Delivery", onBack = onBack)
 
         val current = order
         if (current == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error) else CircularProgressIndicator()
+                if (error != null) IdsErrorText(error!!) else IdsLoading()
             }
             return@Column
         }
@@ -114,16 +111,16 @@ fun DeliveryDetailScreen(orderId: String, onBack: () -> Unit) {
                 }
                 current.distanceKm?.let {
                     Spacer(modifier = Modifier.height(6.dp))
-                    Text("${"%.1f".format(it)} km", style = MaterialTheme.typography.bodyMedium)
+                    Text("${String.format(Locale.US, "%.1f", it)} km", style = MaterialTheme.typography.bodyMedium)
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                     Text("Order total", style = MaterialTheme.typography.bodyMedium)
-                    Text("${"%,.0f".format(current.itemsSubtotal)} RWF", style = MaterialTheme.typography.bodyMedium)
+                    Text("${String.format(Locale.US, "%,.0f", current.itemsSubtotal)} RWF", style = MaterialTheme.typography.bodyMedium)
                 }
                 Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                     Text("Your delivery fee", fontWeight = FontWeight.Bold)
-                    Text("${"%,.0f".format(current.deliveryFee)} RWF", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text("${String.format(Locale.US, "%,.0f", current.deliveryFee)} RWF", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
             }
         }
@@ -131,12 +128,12 @@ fun DeliveryDetailScreen(orderId: String, onBack: () -> Unit) {
         if (!locationPermissionGranted) {
             Text(
                 "Location permission is needed so the buyer can see you're on the way.",
-                color = MaterialTheme.colorScheme.error,
+                color = Ids.colors.danger,
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
         }
 
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp)) }
+        error?.let { IdsErrorText(it, modifier = Modifier.padding(horizontal = 16.dp)) }
 
         val nextAction = when (current.status) {
             "RIDER_ASSIGNED" -> "PICKED_UP" to "I've picked up the order"
@@ -145,13 +142,18 @@ fun DeliveryDetailScreen(orderId: String, onBack: () -> Unit) {
         }
         if (nextAction != null) {
             val (nextStatus, label) = nextAction
-            Button(
+            IdsButton(
+                text = if (advancing) "Updating…" else label,
+                enabled = !advancing,
+                modifier = Modifier.padding(16.dp),
                 onClick = {
                     advancing = true
                     scope.launch {
                         try {
                             order = NetworkClient.apiService.updateRiderOrderStatus(orderId, UpdateEatsOrderStatusRequest(nextStatus)).order
                             if (nextStatus == "DELIVERED") onBack()
+                        } catch (e: retrofit2.HttpException) {
+                            error = parseApiError(e).message ?: "Couldn't update this delivery's status. Try again."
                         } catch (e: Exception) {
                             error = "Couldn't update this delivery's status. Try again."
                         } finally {
@@ -159,15 +161,10 @@ fun DeliveryDetailScreen(orderId: String, onBack: () -> Unit) {
                         }
                     }
                 },
-                enabled = !advancing,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth().padding(16.dp).height(52.dp),
-            ) {
-                Text(if (advancing) "Updating…" else label)
-            }
+            )
         } else if (current.status == "DELIVERED") {
             Text(
-                "Delivered -- ${"%,.0f".format(current.deliveryFee)} RWF paid to your wallet.",
+                "Delivered -- ${String.format(Locale.US, "%,.0f", current.deliveryFee)} RWF paid to your account.",
                 modifier = Modifier.padding(16.dp),
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,

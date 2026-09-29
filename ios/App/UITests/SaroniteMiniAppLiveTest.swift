@@ -149,13 +149,13 @@ final class SaroniteMiniAppLiveTest: XCTestCase {
         XCTAssertTrue(app.state == .runningForeground, "App should still be running, not crashed")
     }
 
-    /// `wallet-balance`/`reward-tasks`/`insurance` migrated onto the now-proven iOS mini-app
+    /// `account-balance`/`reward-tasks`/`insurance` migrated onto the now-proven iOS mini-app
     /// host the same day pay-bills' own root cause was closed (2026-07-17) -- zero new native
     /// logic needed, matching Android's own "needed zero native changes" migration for these
-    /// same three (see docs/ARCHITECTURE.md's mini-app host row): `WalletBalanceMiniAppViewController`/
+    /// same three (see docs/ARCHITECTURE.md's mini-app host row): `AccountBalanceMiniAppViewController`/
     /// `RewardTasksMiniAppViewController`/`InsuranceMiniAppViewController` are thin subclasses
     /// of the exact same `SaroniteMiniAppViewController` base pay-bills already proved live,
-    /// and `SaroniteBrownfieldModule`'s `getWalletBalance`/`getRewardTasks`/`getInsurancePlans`
+    /// and `SaroniteBrownfieldModule`'s `getAccountBalance`/`getRewardTasks`/`getInsurancePlans`
     /// methods were built and code-reviewed alongside `payBill` in the same pass, not added
     /// separately or differently.
     ///
@@ -165,7 +165,7 @@ final class SaroniteMiniAppLiveTest: XCTestCase {
     /// resolve it"). Confirmed live here too: a real screenshot shows the floating tab bar
     /// visually overlapping the "Mini apps" section's rows at their default scroll position,
     /// and a coordinate-forced tap that works reliably for "Pay bills" (this section's middle
-    /// row) lands on the tab bar's "Home" button instead for "Wallet balance"/"Reward tasks"
+    /// row) lands on the tab bar's "Home" button instead for "Account balance"/"Reward tasks"
     /// (the rows immediately above/below it) -- confirmed via `row.isHittable == false` and a
     /// post-tap screenshot showing the Home tab, not the intended mini-app. A real swipe-up
     /// before tapping was tried and made things worse (scrolled the whole section out of
@@ -173,17 +173,17 @@ final class SaroniteMiniAppLiveTest: XCTestCase {
     /// `XCTExpectFailure`s (not silently deleted, not silently passing) so these re-surface
     /// the moment the underlying window bug is fixed, matching the exact convention
     /// `MoneyFlowLiveTests.swift` already established for the same class of bug.
-    func testWalletBalanceMiniAppRendersRealBackendData() throws {
+    func testAccountBalanceMiniAppRendersRealBackendData() throws {
         let app = XCUIApplication()
         loginAndOpenAllTab(app)
-        XCTExpectFailure("Known unresolved bug: this app's pre-existing window-shrink bug puts 'Wallet balance''s row behind the floating tab bar -- see comment above.") {
-            tapMiniAppRow(app, title: "Wallet balance")
-            // Real GET /api/v1/wallet round trip -- "Jean's Main Account" / 2,450,000 RWF are
+        XCTExpectFailure("Known unresolved bug: this app's pre-existing window-shrink bug puts 'Account balance''s row behind the floating tab bar -- see comment above.") {
+            tapMiniAppRow(app, title: "Account balance")
+            // Real GET /api/v1/account round trip -- "Jean's Main Account" / 2,450,000 RWF are
             // the real backend's actual seeded values for the demo user this test logs in as.
-            let walletName = app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "Jean's Main Account")).firstMatch
-            XCTAssertTrue(walletName.waitForExistence(timeout: 20), "Real wallet data from the real backend should render")
+            let accountName = app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "Jean's Main Account")).firstMatch
+            XCTAssertTrue(accountName.waitForExistence(timeout: 20), "Real account data from the real backend should render")
         }
-        attachScreenshot(named: "walletbalance-01-actual-result")
+        attachScreenshot(named: "accountbalance-01-actual-result")
     }
 
     func testRewardTasksMiniAppRendersRealBackendData() throws {

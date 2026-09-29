@@ -17,12 +17,13 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
+import rw.itunda.core.domain.GiftTheme
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.gift.GiftAlreadyResolvedException
 import rw.itunda.gift.GiftExpiredException
 import rw.itunda.gift.GiftInvalidAmountException
-import rw.itunda.gift.GiftNoWalletException
+import rw.itunda.gift.GiftNoAccountException
 import rw.itunda.gift.GiftNotFoundException
 import rw.itunda.gift.GiftNotRecipientException
 import rw.itunda.gift.GiftRecipientNotFoundException
@@ -30,8 +31,8 @@ import rw.itunda.gift.GiftSelfException
 import rw.itunda.gift.GiftService
 import java.math.BigDecimal
 
-data class SendGiftRequest(val recipientPhoneNumber: String, val amount: BigDecimal, val note: String? = null)
-data class SendGiftInConversationRequest(val amount: BigDecimal, val note: String? = null)
+data class SendGiftRequest(val recipientPhoneNumber: String, val amount: BigDecimal, val note: String? = null, val theme: GiftTheme? = null)
+data class SendGiftInConversationRequest(val amount: BigDecimal, val note: String? = null, val theme: GiftTheme? = null)
 
 // Real KakaoTalk-style "선물하기" money gift -- see GiftService's own doc comment.
 @RestController
@@ -45,7 +46,7 @@ class GiftController(private val giftService: GiftService, private val idempoten
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/gifts", idempotencyKey, request) {
-            val gift = giftService.sendGift(currentUser.userId, request.recipientPhoneNumber, request.amount, request.note)
+            val gift = giftService.sendGift(currentUser.userId, request.recipientPhoneNumber, request.amount, request.note, request.theme)
             201 to mapOf("success" to true, "gift" to gift)
         }
         return ResponseEntity.status(status).body(body)
@@ -62,7 +63,7 @@ class GiftController(private val giftService: GiftService, private val idempoten
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/gifts/conversations/$conversationId", idempotencyKey, request) {
-            val gift = giftService.sendGiftInConversation(currentUser.userId, conversationId, request.amount, request.note)
+            val gift = giftService.sendGiftInConversation(currentUser.userId, conversationId, request.amount, request.note, request.theme)
             201 to mapOf("success" to true, "gift" to gift)
         }
         return ResponseEntity.status(status).body(body)
@@ -112,9 +113,9 @@ class GiftController(private val giftService: GiftService, private val idempoten
     fun handleSelf(ex: GiftSelfException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("SELF_GIFT_NOT_ALLOWED", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(GiftNoWalletException::class)
-    fun handleNoWallet(ex: GiftNoWalletException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    @ExceptionHandler(GiftNoAccountException::class)
+    fun handleNoAccount(ex: GiftNoAccountException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(GiftRecipientNotFoundException::class)
     fun handleRecipientNotFound(ex: GiftRecipientNotFoundException) =

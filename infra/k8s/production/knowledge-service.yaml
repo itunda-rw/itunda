@@ -1,0 +1,152 @@
+# services/backend/knowledge-service -- the eleventh independently-deployable
+# itunda product (2026-09-01, see docs/ARCHITECTURE.md's dated follow-up).
+# Same shape as card-service.yaml and the nine other services before it: NOT
+# services/microservices code -- runs the exact same
+# :knowledge/:core/:auth/:security modules the `backend` Deployment does,
+# against the SAME itunda-db-config/itunda-db-credentials schema (not a
+# separate per-service database), just as its own JVM/bootJar/Deployment so a
+# Knowledge-only build/deploy never needs to touch or restart `backend`'s
+# pod. See backend.yaml's own header comment for the secrets/ConfigMap
+# provisioning convention shared here.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: knowledge-service
+  namespace: itunda
+spec:
+  replicas: 1
+  minReadySeconds: 10
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: knowledge-service
+  template:
+    metadata:
+      labels:
+        app: knowledge-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: "4012"
+    spec:
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 30
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: knowledge-service
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: knowledge-service
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: knowledge-service
+        image: ghcr.io/itunda-rw/knowledge-service:latest
+        ports:
+        - containerPort: 4012
+        env:
+        # Deliberately the SAME schema `backend` uses -- itunda-db-config, not
+        # ledger-service/payment-service's separate itunda-microservices-db-config
+        # (that points at itunda_ledger/itunda_payment, the wrong schema for
+        # Knowledge).
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-db-config
+              key: host
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-db-config
+              key: port
+        - name: DB_NAME
+          value: "itunda"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: itunda-db-credentials
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: itunda-db-credentials
+              key: password
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-redis-config
+              key: host
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-redis-config
+              key: port
+        # Must be the exact same secret `backend` uses -- a JWT `backend`'s
+        # AuthService mints has to validate here too (shared :security filter
+        # chain, see SecurityConfig's own doc comment).
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: itunda-jwt-secret
+              key: secret
+        resources:
+          requests:
+            memory: "384Mi"
+            cpu: "250m"
+          limits:
+            memory: "768Mi"
+            cpu: "500m"
+        # See backend.yaml's own extensive comments on why all three probes exist
+        # and their exact timings -- same cold-start/probe-timeout/node-contention
+        # class of real incidents this single overcommitted node has already hit
+        # more than once, so this mirrors backend.yaml/card-service.yaml's tuned
+        # values rather than the untuned defaults ledger-service/payment-service
+        # still carry.
+        startupProbe:
+          httpGet:
+            path: /actuator/health
+            port: 4012
+          failureThreshold: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 4012
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 4012
+          initialDelaySeconds: 45
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 4
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: knowledge-service
+  namespace: itunda
+spec:
+  selector:
+    app: knowledge-service
+  ports:
+  - port: 4012
+    targetPort: 4012
+  type: ClusterIP

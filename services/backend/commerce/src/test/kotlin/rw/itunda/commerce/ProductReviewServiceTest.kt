@@ -6,14 +6,22 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
+import rw.itunda.core.domain.Merchant
+import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.domain.Order
 import rw.itunda.core.domain.OrderItem
 import rw.itunda.core.domain.OrderStatus
 import rw.itunda.core.domain.ProductReview
+import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.OrderItemRepository
 import rw.itunda.core.repository.OrderRepository
+import rw.itunda.core.repository.ProductReviewHelpfulVoteRepository
 import rw.itunda.core.repository.ProductReviewRepository
 import rw.itunda.core.repository.RatingSummaryProjection
+import rw.itunda.auth.RateLimiter
 import java.math.BigDecimal
 import java.util.Optional
 
@@ -23,7 +31,12 @@ class ProductReviewServiceTest : BehaviorSpec({
         val orderRepository = mockk<OrderRepository>()
         val orderItemRepository = mockk<OrderItemRepository>()
         val productReviewRepository = mockk<ProductReviewRepository>()
-        val service = ProductReviewService(orderRepository, orderItemRepository, productReviewRepository)
+        val merchantRepository = mockk<MerchantRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val productReviewHelpfulVoteRepository = mockk<ProductReviewHelpfulVoteRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = ProductReviewService(orderRepository, orderItemRepository, productReviewRepository, merchantRepository, notificationRepository, pushNotificationService, productReviewHelpfulVoteRepository, rateLimiter)
 
         val deliveredOrder = Order(
             id = "order_1", buyerId = "buyer_1", merchantId = "merchant_1", deliveryAddress = "addr",
@@ -145,6 +158,114 @@ class ProductReviewServiceTest : BehaviorSpec({
             Then("it returns the real average and count") {
                 summary.average shouldBe 4.5
                 summary.count shouldBe 2L
+            }
+        }
+    }
+
+    Given("a real merchant owner replying to a real review of their own product") {
+        val orderRepository = mockk<OrderRepository>()
+        val orderItemRepository = mockk<OrderItemRepository>()
+        val productReviewRepository = mockk<ProductReviewRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val productReviewHelpfulVoteRepository = mockk<ProductReviewHelpfulVoteRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = ProductReviewService(orderRepository, orderItemRepository, productReviewRepository, merchantRepository, notificationRepository, pushNotificationService, productReviewHelpfulVoteRepository, rateLimiter)
+
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
+        val review = ProductReview(
+            id = "product_review_1", orderItemId = "order_item_1", orderId = "order_1", buyerId = "buyer_1",
+            productId = "product_1", merchantId = "merchant_1", rating = 5, comment = "Great!",
+        )
+
+        When("the real owner replies") {
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
+            every { productReviewRepository.findById("product_review_1") } returns Optional.of(review)
+            every { productReviewRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
+
+            val result = service.replyToProductReview("owner_1", "product_review_1", "  Thanks for shopping with us!  ")
+
+            Then("it real-trims and saves the reply with a timestamp") {
+                result.ownerReply shouldBe "Thanks for shopping with us!"
+                (result.ownerRepliedAt != null) shouldBe true
+            }
+
+            Then("it real-notifies the real reviewing buyer") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_1" && it.type == "PRODUCT_REVIEW_REPLY" }) }
+            }
+        }
+
+        When("someone who isn't the real merchant owner tries to reply") {
+            every { merchantRepository.findByOwnerUserId("stranger") } returns null
+
+            Then("it throws MerchantNotFoundException") {
+                try {
+                    service.replyToProductReview("stranger", "product_review_1", "hi")
+                    error("expected MerchantNotFoundException")
+                } catch (e: MerchantNotFoundException) {
+                    // expected
+                }
+            }
+        }
+
+        When("a different merchant's owner tries to reply to this review") {
+            val otherMerchant = Merchant(id = "merchant_2", ownerUserId = "owner_2", accountId = "account_2", businessName = "Other Store", status = MerchantStatus.ACTIVE)
+            every { merchantRepository.findByOwnerUserId("owner_2") } returns otherMerchant
+            every { productReviewRepository.findById("product_review_1") } returns Optional.of(review)
+
+            Then("it throws ProductReviewNotFoundException, not a 403 that would confirm the review exists") {
+                try {
+                    service.replyToProductReview("owner_2", "product_review_1", "hi")
+                    error("expected ProductReviewNotFoundException")
+                } catch (e: ProductReviewNotFoundException) {
+                    // expected
+                }
+            }
+        }
+
+        When("replying with an empty string") {
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
+
+            Then("it throws InvalidProductReviewReplyException before ever touching the review") {
+                try {
+                    service.replyToProductReview("owner_1", "product_review_1", "   ")
+                    error("expected InvalidProductReviewReplyException")
+                } catch (e: InvalidProductReviewReplyException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    // Real bug found live (2026-09-07, Shop/Commerce product-completeness pass):
+    // submitReview had shipped with zero rate limiting despite this same class's
+    // own toggleHelpful endpoint already having one -- the exact same class of gap
+    // EatsReviewService.submitReview was already fixed for (2026-09-06).
+    Given("a real buyer who has already hit the real review-submission rate limit") {
+        val orderRepository = mockk<OrderRepository>()
+        val orderItemRepository = mockk<OrderItemRepository>()
+        val productReviewRepository = mockk<ProductReviewRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val productReviewHelpfulVoteRepository = mockk<ProductReviewHelpfulVoteRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>()
+        every { rateLimiter.checkLimit("commerce:review:submit:buyer_1", limit = 20, window = java.time.Duration.ofHours(1)) } throws
+            rw.itunda.auth.RateLimitExceededException("Too many requests")
+        val service = ProductReviewService(orderRepository, orderItemRepository, productReviewRepository, merchantRepository, notificationRepository, pushNotificationService, productReviewHelpfulVoteRepository, rateLimiter)
+
+        When("they try to submit another review") {
+            Then("it real-429s before ever looking up the order item") {
+                try {
+                    service.submitReview("buyer_1", "order_item_1", 5, "Great product")
+                    error("expected RateLimitExceededException")
+                } catch (e: rw.itunda.auth.RateLimitExceededException) {
+                    // expected
+                }
+                verify(exactly = 0) { orderItemRepository.findById(any()) }
+                verify(exactly = 0) { productReviewRepository.save(any()) }
             }
         }
     }

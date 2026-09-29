@@ -6,16 +6,18 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.domain.WeeklySavingsInstallment
 import rw.itunda.core.domain.WeeklySavingsPlan
 import rw.itunda.core.domain.WeeklySavingsPlanStatus
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.WeeklySavingsInstallmentRepository
 import rw.itunda.core.repository.WeeklySavingsPlanRepository
+import rw.itunda.core.account.AccountNumberGenerator
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -35,30 +37,39 @@ class WeeklyPlanInvalidAmountException(message: String) : RuntimeException(messa
 class WeeklyPlanNotActiveException(message: String) : RuntimeException(message)
 class WeeklyPlanNotMaturedException(message: String) : RuntimeException(message)
 class WeeklyPlanAlreadyWithdrawnException(message: String) : RuntimeException(message)
+class InvalidWeeklyPlanNameException(message: String) : RuntimeException(message)
 
-data class WeeklySavingsPlanView(val plan: WeeklySavingsPlan, val walletBalance: BigDecimal, val installments: List<WeeklySavingsInstallment>)
+data class WeeklySavingsPlanView(val plan: WeeklySavingsPlan, val accountBalance: BigDecimal, val installments: List<WeeklySavingsInstallment>)
 
 /**
  * Real KakaoBank 26주적금 (26-week savings) equivalent -- see `WeeklySavingsPlan`'s own
  * doc comment for the full sourced mechanics and `docs/DESIGN_REFERENCES.md` Section 6
  * for the source citation. Mirrors this module's own established conventions rather
  * than inventing new ones: rate-limited creation like `SavingsService.createGoal`/
- * `GroupAccountService.createGroupAccount`, a dedicated per-plan `Wallet` like
+ * `GroupAccountService.createGroupAccount`, a dedicated per-plan `Account` like
  * `GroupAccountService` (not a shared clearing account like `SavingsGoal`), and a
  * scheduler-polls-a-due-list shape like `AutoSaveScheduler`/`InterestAccrualScheduler`
  * (real business cadence -- 7 real days per installment -- with a demo-speed poll).
  */
 @Service
 class WeeklySavingsService(
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val planRepository: WeeklySavingsPlanRepository,
     private val installmentRepository: WeeklySavingsInstallmentRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val accountNumberGenerator: AccountNumberGenerator,
+    private val ledgerEntryRepository: LedgerEntryRepository,
 ) {
     private val log = LoggerFactory.getLogger(WeeklySavingsService::class.java)
 
-    private fun generateAccountNumber(): String = (2025200000L + (Math.random() * 900000).toLong()).toString()
+    // Real per-bucket ledger (2026-08-31) -- unlike SavingsGoal, this plan already has
+    // its own dedicated real Account (created in createPlan above), so its ledger is
+    // already cleanly isolated -- no shared-pool migration needed, just a read path.
+    fun getPlanTransactions(userId: String, planId: String): List<BucketTransactionDto> {
+        val plan = findOwned(userId, planId)
+        return ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc(plan.accountId).map { it.toBucketTransactionDto() }
+    }
 
     // Real KakaoBank step-up presets (10/20/30/50/100%). The exact cadence the step
     // applies on (every 4 installments) is itunda's own scoping choice -- the sourced
@@ -79,6 +90,14 @@ class WeeklySavingsService(
 
     @Transactional
     fun createPlan(userId: String, name: String, baseWeeklyAmount: BigDecimal, escalationRate: BigDecimal): WeeklySavingsPlan {
+        // Real gap found 2026-09-05, same shape as GroupAccountService
+        // .createGroupAccount's own fix: name is concatenated into the settlement
+        // Account's own accountName ("$name (26-Week Savings)", 18 extra chars), whose
+        // column has no explicit length (Hibernate's 255 default) -- 237 (255 - 18) is
+        // the real safe bound, not WeeklySavingsPlan.name's own (unenforced) 255.
+        if (name.isBlank() || name.length > 237) {
+            throw InvalidWeeklyPlanNameException("Plan name must be between 1 and 237 characters")
+        }
         // Real anti-spam limit, added from day one -- same class of free-row-creation
         // endpoint the 2026-07-19 sweep found missing across P2P/Savings/Marketplace.
         rateLimiter.checkLimit("weekly-savings:create:$userId", limit = 10, window = Duration.ofHours(1))
@@ -88,13 +107,13 @@ class WeeklySavingsService(
         }
 
         val now = Instant.now()
-        val wallet = walletRepository.save(
-            Wallet(
-                id = "wallet_${UUID.randomUUID()}",
+        val account = accountRepository.save(
+            Account(
+                id = "account_${UUID.randomUUID()}",
                 userId = userId,
-                accountNumber = generateAccountNumber(),
+                accountNumber = accountNumberGenerator.generate(2025200000L),
                 accountName = "$name (26-Week Savings)",
-                type = WalletType.WEEKLY_SAVINGS,
+                type = AccountType.WEEKLY_SAVINGS,
                 balance = BigDecimal.ZERO,
                 availableBalance = BigDecimal.ZERO,
             ),
@@ -102,7 +121,7 @@ class WeeklySavingsService(
         val openingWeekday = now.atZone(ZoneOffset.UTC).dayOfWeek.value
         val plan = planRepository.save(
             WeeklySavingsPlan(
-                id = "wsp_${UUID.randomUUID()}", userId = userId, walletId = wallet.id, name = name,
+                id = "wsp_${UUID.randomUUID()}", userId = userId, accountId = account.id, name = name,
                 baseWeeklyAmount = baseWeeklyAmount, escalationRate = escalationRate,
                 openingWeekday = openingWeekday, baseRate = BASE_RATE, bonusRate = BONUS_RATE,
                 nextInstallmentDueAt = now, createdAt = now,
@@ -119,9 +138,9 @@ class WeeklySavingsService(
 
     fun getPlan(userId: String, planId: String): WeeklySavingsPlanView {
         val plan = findOwned(userId, planId)
-        val wallet = walletRepository.findById(plan.walletId).orElseThrow { NoWalletException("Wallet not found") }
+        val account = accountRepository.findById(plan.accountId).orElseThrow { NoAccountException("Account not found") }
         val installments = installmentRepository.findByPlanIdOrderByWeekNumberAsc(planId)
-        return WeeklySavingsPlanView(plan, wallet.balance, installments)
+        return WeeklySavingsPlanView(plan, account.balance, installments)
     }
 
     // Real findAll()-then-filter honesty, same convention as
@@ -145,19 +164,19 @@ class WeeklySavingsService(
     fun processDueInstallment(plan: WeeklySavingsPlan): Boolean {
         val weekNumber = plan.weeksElapsed + 1
         val amount = amountForWeek(plan.baseWeeklyAmount, plan.escalationRate, weekNumber)
-        val sourceWallet = walletRepository.findByUserIdAndType(plan.userId, WalletType.MAIN)
+        val sourceAccount = accountRepository.findByUserIdAndType(plan.userId, AccountType.MAIN)
 
-        val succeeded = if (sourceWallet == null || sourceWallet.availableBalance < amount) {
-            log.info("Skipping week {} installment for plan {} -- insufficient funds or no MAIN wallet; streak broken", weekNumber, plan.id)
+        val succeeded = if (sourceAccount == null || sourceAccount.availableBalance < amount) {
+            log.info("Skipping week {} installment for plan {} -- insufficient funds or no MAIN account; streak broken", weekNumber, plan.id)
             plan.streakBroken = true
             false
         } else {
-            val planWallet = walletRepository.findById(plan.walletId).orElseThrow { NoWalletException("Wallet not found") }
+            val planAccount = accountRepository.findById(plan.accountId).orElseThrow { NoAccountException("Account not found") }
             ledgerService.postLedgerTransaction(
-                sourceWallet.currency,
+                sourceAccount.currency,
                 listOf(
-                    LedgerLeg(sourceWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "26-week savings week $weekNumber: ${plan.name}"),
-                    LedgerLeg(planWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "26-week savings week $weekNumber: ${plan.name}"),
+                    LedgerLeg(sourceAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "26-week savings week $weekNumber: ${plan.name}"),
+                    LedgerLeg(planAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "26-week savings week $weekNumber: ${plan.name}"),
                 ),
             )
             installmentRepository.save(
@@ -192,7 +211,7 @@ class WeeklySavingsService(
     }
 
     // Real streak-gated preferential rate: the bonus only survives a full unbroken run
-    // to real maturity. Interest is credited straight into the plan's own wallet
+    // to real maturity. Interest is credited straight into the plan's own account
     // (principal + interest sit together, matching how a real matured term account
     // looks) -- a separate withdraw() call is required to move it out to MAIN, mirroring
     // the real distinction between "the term ended" and "the customer took the money".
@@ -208,7 +227,7 @@ class WeeklySavingsService(
                 "RWF",
                 listOf(
                     LedgerLeg("interest_expense", LedgerAccountType.INTEREST_EXPENSE, LedgerDirection.DEBIT, interest, "26-week savings maturity interest: ${plan.name}"),
-                    LedgerLeg(plan.walletId, LedgerAccountType.WALLET, LedgerDirection.CREDIT, interest, "26-week savings maturity interest: ${plan.name}"),
+                    LedgerLeg(plan.accountId, LedgerAccountType.WALLET, LedgerDirection.CREDIT, interest, "26-week savings maturity interest: ${plan.name}"),
                 ),
             )
         }
@@ -222,36 +241,40 @@ class WeeklySavingsService(
     /** Real early withdrawal: always forfeits the streak bonus (the plan never reached
      * its real unbroken 26-week maturity), computes interest on installments-so-far as
      * of right now at base rate only, credits it, then immediately pays out the full
-     * principal + interest to the user's MAIN wallet in the same action -- unlike a
+     * principal + interest to the user's MAIN account in the same action -- unlike a
      * matured plan's separate withdraw() step, cancellation *is* the exit. */
     @Transactional
     fun cancelPlan(userId: String, planId: String): WeeklySavingsPlanView {
+        // Real anti-spam/cost limit -- createPlan already has one, cancel/withdraw never
+        // did, the same "row creation vs. repeatable action" gap class this pass's own
+        // Loans research already named.
+        rateLimiter.checkLimit("weekly-savings:cancel:$userId", limit = 10, window = Duration.ofHours(1))
         val plan = findOwned(userId, planId)
         if (plan.status != WeeklySavingsPlanStatus.ACTIVE) throw WeeklyPlanNotActiveException("This plan is not active")
 
         val installments = installmentRepository.findByPlanIdOrderByWeekNumberAsc(planId)
         val now = Instant.now()
         val interest = computeInterest(installments, now, plan.baseRate)
-        val planWallet = walletRepository.findById(plan.walletId).orElseThrow { NoWalletException("Wallet not found") }
+        val planAccount = accountRepository.findById(plan.accountId).orElseThrow { NoAccountException("Account not found") }
 
         if (interest > BigDecimal.ZERO) {
             ledgerService.postLedgerTransaction(
                 "RWF",
                 listOf(
                     LedgerLeg("interest_expense", LedgerAccountType.INTEREST_EXPENSE, LedgerDirection.DEBIT, interest, "26-week savings early-withdrawal interest: ${plan.name}"),
-                    LedgerLeg(plan.walletId, LedgerAccountType.WALLET, LedgerDirection.CREDIT, interest, "26-week savings early-withdrawal interest: ${plan.name}"),
+                    LedgerLeg(plan.accountId, LedgerAccountType.WALLET, LedgerDirection.CREDIT, interest, "26-week savings early-withdrawal interest: ${plan.name}"),
                 ),
             )
         }
 
-        val mainWallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN) ?: throw NoWalletException("No wallet found for this account")
-        val payout = planWallet.balance.add(interest)
+        val mainAccount = accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
+        val payout = planAccount.balance.add(interest)
         if (payout > BigDecimal.ZERO) {
             ledgerService.postLedgerTransaction(
-                planWallet.currency,
+                planAccount.currency,
                 listOf(
-                    LedgerLeg(plan.walletId, LedgerAccountType.WALLET, LedgerDirection.DEBIT, payout, "Early withdrawal: ${plan.name}"),
-                    LedgerLeg(mainWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, payout, "Early withdrawal: ${plan.name}"),
+                    LedgerLeg(plan.accountId, LedgerAccountType.WALLET, LedgerDirection.DEBIT, payout, "Early withdrawal: ${plan.name}"),
+                    LedgerLeg(mainAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, payout, "Early withdrawal: ${plan.name}"),
                 ),
             )
         }
@@ -266,25 +289,27 @@ class WeeklySavingsService(
         return getPlan(userId, planId)
     }
 
-    /** Moves a matured plan's full wallet balance (principal + already-credited
-     * interest) to the user's MAIN wallet. Separate from maturePlan() on purpose --
+    /** Moves a matured plan's full account balance (principal + already-credited
+     * interest) to the user's MAIN account. Separate from maturePlan() on purpose --
      * maturity is a real scheduled/system event, withdrawal is a real explicit user
      * action, matching how a real matured term-deposit account behaves. */
     @Transactional
     fun withdraw(userId: String, planId: String): WeeklySavingsPlanView {
+        // Real anti-spam/cost limit -- same convention cancelPlan above now establishes.
+        rateLimiter.checkLimit("weekly-savings:withdraw:$userId", limit = 10, window = Duration.ofHours(1))
         val plan = findOwned(userId, planId)
         if (plan.status != WeeklySavingsPlanStatus.MATURED) throw WeeklyPlanNotMaturedException("This plan has not matured yet")
         if (plan.withdrawnAt != null) throw WeeklyPlanAlreadyWithdrawnException("This plan has already been withdrawn")
 
-        val planWallet = walletRepository.findById(plan.walletId).orElseThrow { NoWalletException("Wallet not found") }
-        val mainWallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN) ?: throw NoWalletException("No wallet found for this account")
-        val payout = planWallet.balance
+        val planAccount = accountRepository.findById(plan.accountId).orElseThrow { NoAccountException("Account not found") }
+        val mainAccount = accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
+        val payout = planAccount.balance
         if (payout > BigDecimal.ZERO) {
             ledgerService.postLedgerTransaction(
-                planWallet.currency,
+                planAccount.currency,
                 listOf(
-                    LedgerLeg(plan.walletId, LedgerAccountType.WALLET, LedgerDirection.DEBIT, payout, "Matured 26-week savings withdrawal: ${plan.name}"),
-                    LedgerLeg(mainWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, payout, "Matured 26-week savings withdrawal: ${plan.name}"),
+                    LedgerLeg(plan.accountId, LedgerAccountType.WALLET, LedgerDirection.DEBIT, payout, "Matured 26-week savings withdrawal: ${plan.name}"),
+                    LedgerLeg(mainAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, payout, "Matured 26-week savings withdrawal: ${plan.name}"),
                 ),
             )
         }

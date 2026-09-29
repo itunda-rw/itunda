@@ -1,0 +1,102 @@
+# Staging variant of infra/k8s/production/certificate-service.yaml: same
+# shape, single replica, smaller resource footprint, itunda-staging namespace,
+# :staging image tag. Same schema as `backend` (itunda-db-config), not
+# ledger-service/payment-service's separate itunda-microservices-db-config --
+# see the production manifest's own header comment for the full account.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: certificate-service
+  namespace: itunda-staging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: certificate-service
+  template:
+    metadata:
+      labels:
+        app: certificate-service
+    spec:
+      enableServiceLinks: false
+      containers:
+      - name: certificate-service
+        image: ghcr.io/itunda-rw/certificate-service:staging
+        ports:
+        - containerPort: 4006
+        env:
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-db-config
+              key: host
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-db-config
+              key: port
+        - name: DB_NAME
+          value: "itunda"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: itunda-db-credentials
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: itunda-db-credentials
+              key: password
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-redis-config
+              key: host
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-redis-config
+              key: port
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: itunda-jwt-secret
+              key: secret
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "150m"
+          limits:
+            memory: "512Mi"
+            cpu: "350m"
+        startupProbe:
+          httpGet:
+            path: /actuator/health
+            port: 4006
+          failureThreshold: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 4006
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 4006
+          initialDelaySeconds: 45
+          periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: certificate-service
+  namespace: itunda-staging
+spec:
+  selector:
+    app: certificate-service
+  ports:
+  - port: 4006
+    targetPort: 4006
+  type: ClusterIP

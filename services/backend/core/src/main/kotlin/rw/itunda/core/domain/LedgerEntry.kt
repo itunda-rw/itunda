@@ -15,6 +15,148 @@ enum class LedgerAccountType {
     WALLET, FEE_REVENUE, RAIL_SUSPENSE, LOAN_PAYABLE, SECURITIES_SUSPENSE,
     SAVINGS_GOAL_PAYABLE, INTEREST_EXPENSE, INSURANCE_PREMIUM_REVENUE, REWARDS_EXPENSE,
     INSURANCE_CLAIMS_EXPENSE, EATS_DELIVERY_HOLDING, GIFT_HOLDING,
+    AGENT_CASH,
+    CASH_VAULT,
+    // Real foreign-currency conversion clearing (2026-07-25) -- see
+    // ForeignCurrencyAccountService's own doc comment for why a conversion is two
+    // separate, each-individually-balanced single-currency ledger transactions rather
+    // than one cross-currency one (postLedgerTransaction enforces raw debits==credits
+    // per call, with no per-currency dimension). itunda's own real counterparty position
+    // (the currency it's holding/owed on the other side of every user's foreign-currency
+    // balance), same real-counterparty shape CASH_VAULT/AGENT_CASH already establish for
+    // cash-in/out -- one FX_CLEARING account per currency (accountId e.g.
+    // "fx_clearing_usd"), never one shared account mixing currencies.
+    FX_CLEARING,
+    // Real Marketplace escrow holding (2026-07-25) -- closes a real trust gap Naver
+    // Cafe's own "안전거래" (Safe Trade) product exists specifically to solve: itunda's
+    // Marketplace has always settled buyer/seller in person, off-platform, with zero
+    // protection against a no-show or a not-as-described item. Same real
+    // escrow-clearing-account shape EATS_DELIVERY_HOLDING/GIFT_HOLDING already
+    // establish -- the buyer's money already left their account, it just hasn't reached
+    // its final recipient yet. See MarketplaceEscrow.kt's own doc comment.
+    MARKETPLACE_ESCROW_HOLDING,
+    // Real Kakao Hair Shop-style 100%-prepay-to-book holding (2026-07-25) -- see
+    // BookingDeposit.kt's own doc comment. Same escrow-clearing-account shape
+    // MARKETPLACE_ESCROW_HOLDING already establishes: a customer's real money already
+    // left their account at booking time, it just hasn't reached the merchant (or been
+    // refunded/forfeited) yet.
+    BOOKING_DEPOSIT_HOLDING,
+    // Real Kakao T-style ride-hailing fare holding (2026-07-26) -- see RideTrip.kt's own
+    // doc comment. Same real escrow-clearing-account shape EATS_DELIVERY_HOLDING already
+    // establishes: the passenger's real fare leaves their account at request time, held
+    // until the trip completes (or refunded if cancelled before a driver is assigned).
+    RIDE_HOLDING,
+    // Real KakaoTalk Emoticon Store revenue (2026-07-26) -- see EmoticonService's own
+    // doc comment. A direct sale, not an escrow hold: unlike GIFT_HOLDING/RIDE_HOLDING
+    // (money in flight to another real user, pending an event), a purchased emoticon
+    // pack is itunda's own product -- the same real "itunda earns this outright"
+    // revenue-account shape FEE_REVENUE already establishes, just its own dedicated
+    // account so emoticon sales can be reconciled independently of transaction fees.
+    EMOTICON_REVENUE,
+    // Real KakaoTalk 선물하기 기프티콘 (mobile gift voucher) holding (2026-07-26) -- see
+    // GiftVoucher.kt's own doc comment. Same real escrow-clearing-account shape
+    // GIFT_HOLDING already establishes for money gifts: the purchaser's real money
+    // already left their account, it just hasn't reached the merchant (redemption) or
+    // been refunded (expiry) yet.
+    GIFT_VOUCHER_HOLDING,
+    // Real Toss Bank/KakaoBank 마이너스통장 (overdraft/revolving line-of-credit) interest
+    // income (2026-07-27) -- see OverdraftAccount.kt's own doc comment. A real, direct
+    // "itunda earns this outright" revenue account, the same shape FEE_REVENUE/
+    // EMOTICON_REVENUE already establish -- interest income is conceptually distinct
+    // from a transaction fee, so this gets its own dedicated account rather than being
+    // folded into FEE_REVENUE and muddying that account's own real reconciliation.
+    INTEREST_INCOME,
+    // Real MTN MoMo-style agent cash-in/cash-out commission expense (2026-07-27) -- see
+    // AgentCommissionSchedule.kt's own doc comment. A real "itunda pays this out"
+    // expense account, the same shape REWARDS_EXPENSE/INTEREST_EXPENSE already
+    // establish, distinct from AGENT_CASH (the agent's own physical float/till).
+    AGENT_COMMISSION_EXPENSE,
+    // Real Toss Bank 체크카드 (check/debit card) purchase expense (2026-07-31) -- see
+    // DebitCard.kt's own doc comment. A real "itunda pays this out" expense account,
+    // the same shape REWARDS_EXPENSE/AGENT_COMMISSION_EXPENSE already establish: a card
+    // purchase's real counterparty is an external, unmodeled merchant/POS, not another
+    // itunda account.
+    CARD_SPEND_EXPENSE,
+    // Real Naver Pay/Kakao Pay/Toss 후불결제 (postpaid/BNPL credit line, 2026-07-31) --
+    // see PostpaidCreditLine.kt's own doc comment. A real "owed by the user" receivable,
+    // the same shape LOAN_PAYABLE already establishes -- its own dedicated account so
+    // postpaid-credit exposure can be reconciled independently of term-loan/overdraft
+    // exposure, matching how every other new money-movement product in this ledger
+    // (EATS_DELIVERY_HOLDING, RIDE_HOLDING, CARD_SPEND_EXPENSE) gets its own account
+    // rather than sharing LOAN_PAYABLE the way OverdraftAccount deliberately does.
+    POSTPAID_CREDIT_PAYABLE,
+    // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment,
+    // 2026-07-31) -- see VehicleInspectionBooking.kt's own doc comment. Same real
+    // escrow-clearing-account shape MARKETPLACE_ESCROW_HOLDING/BOOKING_DEPOSIT_HOLDING
+    // already establish: a buyer's real inspection fee already left their account, it
+    // just hasn't reached the mechanic (or been refunded) yet.
+    VEHICLE_INSPECTION_HOLDING,
+    // Real Kakao T 대리운전 (designated driver) fare holding -- see
+    // DesignatedDriverTrip.kt's own doc comment. Same real escrow-clearing-account shape
+    // RIDE_HOLDING already establishes for ride-hailing fares: the customer's real fare
+    // already left their account at request time, held until the trip completes (or
+    // refunded if cancelled before a driver is assigned) -- its own dedicated account
+    // so designated-driver volume can be reconciled independently of ride-hailing
+    // volume, matching how every distinct trip/booking product in this ledger already
+    // gets its own account rather than sharing RIDE_HOLDING.
+    DESIGNATED_DRIVER_HOLDING,
+    // Real Ejo Heza ya Moto-style premium savings fund (2026-08-02) -- see
+    // InsurancePremiumFund.kt's own doc comment. A real "owed back to the user until it
+    // either pays the premium or gets refunded" liability, the same shape
+    // SAVINGS_GOAL_PAYABLE already establishes for savings-goal deposits -- its own
+    // dedicated account so premium-fund float can be reconciled independently of
+    // ordinary savings-goal float.
+    INSURANCE_PREMIUM_FUND_PAYABLE,
+    // Real itunda Deposit Protection Fund (2026-08-11) -- see DepositProtectionFund.kt's
+    // own doc comment. itunda has no real BNR banking license, so unlike a real bank's
+    // government-backed deposit insurance, this is itunda's own internal reserve,
+    // honestly disclosed as a simulation rather than a real regulatory scheme. Real
+    // double-entry pair with DEPOSIT_PROTECTION_EXPENSE below: itunda periodically sets
+    // aside a real percentage of covered deposits into this reserve, the same
+    // expense-funds-a-reserve shape AGENT_COMMISSION_EXPENSE/INTEREST_INCOME already
+    // establish for "itunda's own money moving between its own accounts."
+    DEPOSIT_PROTECTION_RESERVE,
+    DEPOSIT_PROTECTION_EXPENSE,
+    // Real Baemin-style tiered order-amount promotion (2026-08-16) -- see
+    // EatsPromotionCalculator's own doc comment. Same "itunda's own money, not the
+    // restaurant's" expense shape REWARDS_EXPENSE already establishes for task-claim
+    // payouts: the buyer pays less, itunda absorbs the difference as a real expense,
+    // the restaurant's own payout is never reduced.
+    PROMOTION_EXPENSE,
+    // Real Korean 지연이체서비스 (Delayed Transfer Service, 2026-08-18) -- see
+    // P2pDelayedTransfer.kt's own doc comment. Same real escrow-clearing-account shape
+    // MARKETPLACE_ESCROW_HOLDING/BOOKING_DEPOSIT_HOLDING already establish: the
+    // sender's real money already left their account the moment they chose "Send
+    // safely," it just hasn't reached the recipient yet -- held here until the real
+    // delay window elapses (or the sender cancels within it).
+    P2P_DELAY_HOLDING,
+    // Real Kigali Tap&Go-style transit stored-value balance (2026-08-27) -- see
+    // TransitBalance.kt's own doc comment. A real "owed back to the user until it's
+    // spent on a fare (or refunded)" liability, the same shape SAVINGS_GOAL_PAYABLE/
+    // GIFT_HOLDING already establish: the user's real money already left their main
+    // account at top-up time, held in this one pooled account until a real tap spends
+    // it (see TRANSIT_FARE_EXPENSE below) -- individual users' balances live on
+    // TransitBalance.balance, not as separate ledger accounts per user.
+    TRANSIT_BALANCE_PAYABLE,
+    // Real Kigali Tap&Go-style transit fare spend (2026-08-27) -- see
+    // TransitBalance.kt's own doc comment. A real "itunda pays this out" expense
+    // account, the same shape CARD_SPEND_EXPENSE already establishes: a transit fare's
+    // real counterparty is an external, unmodeled bus operator (Kigali Bus Services/
+    // Royal Express), not another itunda account -- itunda has no real settlement
+    // partnership with them or with AC Group (Tap&Go's real operator), same honest
+    // boundary CARD_SPEND_EXPENSE's own doc comment already draws for card purchases.
+    TRANSIT_FARE_EXPENSE,
+    // Real bad-debt write-off (Bank product-completeness pass, cycle 2, 2026-09-08) --
+    // see VupLoanService.decide/CooperativeService.decide's own doc comments. Both
+    // named this as a deliberate, disclosed limitation ("writing off a loan's real
+    // accounting treatment ... needs a real ledger account this pass doesn't invent")
+    // until this pass finally built it: writing off a loan/advance still owed to
+    // itunda's own LOAN_PAYABLE receivable needs a real double-entry pair, the same
+    // "itunda's own money, not the counterparty's" expense shape REWARDS_EXPENSE/
+    // PROMOTION_EXPENSE already establish -- itunda absorbs the loss as a real
+    // expense, the LOAN_PAYABLE receivable is credited down to reflect it's no
+    // longer being pursued for repayment.
+    BAD_DEBT_EXPENSE,
 }
 
 /**

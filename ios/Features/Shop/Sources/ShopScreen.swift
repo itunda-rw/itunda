@@ -1,0 +1,468 @@
+import SwiftUI
+import UIKit
+import CoreDesignSystem
+import CoreNetwork
+import CoreLocation
+
+// Shop tab entry point + browse content. Sub-views live in
+// ShopBrowseComponents.swift / ShopMerchantDetail.swift / ShopBooking.swift /
+// ShopProductDetail.swift / ShopOrders.swift / ShopMerchantOrders.swift /
+// ShopReturns.swift / ShopReviews.swift / ShopPay.swift (split 2026-08-19
+// for real file-size decomposition).
+
+// SilentLocationFetcher promoted to Core/DesignSystem/Sources/Components/
+// SilentLocationFetcher.swift (2026-09-06, Eats product-completeness pass) -- see
+// that file's own doc comment for why (EatsDishGrid.swift needed the same real
+// utility once Eats moved into its own Feature module).
+
+/// Real Coupang-style multi-item checkout (2026-07-18) -- iOS mirror of Android's
+/// CommerceShopContent (:features:shop:impl), replacing the old Toss-Shopping-cashback
+/// DiscoverScreen entirely. See NetworkClient.swift's Commerce extension and
+/// rw.itunda.commerce.OrderService's own doc comment for the full backend account,
+/// including the honest "self-declared fulfillment, no real courier network" scope.
+///
+/// ShopScreen's own Shop/Eats segmented control was retired 2026-08-10: real user
+/// correction, same fix applied to HoodScreen's Marketplace/Community/Jobs/Property
+/// Picker and to Android's identical ShopTab/HoodTab chip rows -- nesting Shop and
+/// Eats behind one Explore row with an internal switcher is a tab bar inside a tab,
+/// noise a flat catalog shouldn't have. CommerceShopContent/EatsContent are each
+/// their own flat ContentView.swift destination now (see ContentView.swift's
+/// showShop/showEats).
+
+enum CommerceView { case browse, orders, wishlist, subscriptions, questions }
+
+// Real cross-merchant cart (2026-07-20) -- closes the "real Coupang splits a
+// multi-seller cart into per-seller orders, not attempted here" simplification the
+// matrix named. Flattened (keyed by "merchantId:productId") rather than nested
+// dictionaries, mirroring Android's own identical CommerceCartLine shape exactly.
+struct CommerceCartLine {
+    let merchantId: String
+    let businessName: String
+    let product: MerchantProductDto
+    var quantity: Int
+}
+
+struct CommerceCheckoutResult: Identifiable {
+    var id: String { merchantId }
+    let merchantId: String
+    let businessName: String
+    let order: OrderDto?
+    let error: String?
+}
+
+public struct CommerceShopContent: View {
+    var onMessageSeller: (String) -> Void = { _ in } // default no-op keeps both existing call sites unchanged
+
+    public init(onMessageSeller: @escaping (String) -> Void = { _ in }) {
+        self.onMessageSeller = onMessageSeller
+    }
+
+    @State private var view: CommerceView = .browse
+    @State private var merchants: [ShoppingMerchantDto]?
+    @State private var categories: [String] = []
+    @State private var selectedCategory: String?
+    @State private var searchInput: String = ""
+    @State private var filterTask: Task<Void, Never>?
+    @State private var error: String?
+    @State private var selectedMerchant: ShoppingMerchantDto?
+    @State private var products: [MerchantProductDto]?
+    @State private var selectedProduct: MerchantProductDto?
+    @State private var cart: [String: CommerceCartLine] = [:]
+    @State private var showCart = false
+    @State private var results: [CommerceCheckoutResult]?
+    @State private var reorderingId: String?
+    @State private var reorderError: String?
+    @State private var contactingMerchant: ShoppingMerchantDto? // real seller chat, see ShopSellerContactPicker.swift
+
+    // Real Shop product wishlist (2026-07-24) -- lifted here same as Marketplace's own
+    // favoriteIds (HoodScreen.swift), so the heart on a product card (grid or detail)
+    // stays correct whichever screen toggled it. See NetworkClient's FavoriteProductDto
+    // doc comment.
+    @State private var favoriteProductIds: Set<String> = []
+    @State private var favoritingProductId: String?
+    // Real "recently viewed products" rail (2026-08-23) -- see
+    // RecentlyViewedStores.swift's own doc comment.
+    @State private var recentlyViewedProducts: [RecentlyViewedProduct] = RecentlyViewedProductsStore.shared.getAll()
+
+    // Real Naver Smart Store-style "알림받기" (follow a store) -- first iOS client
+    // for this feature (item 117, found via a content-grep sweep: bank-mfe has it,
+    // Android/iOS didn't; Android ported the same day). Lifted here same as
+    // favoriteProductIds above.
+    @State private var followedMerchantIds: Set<String> = []
+    @State private var followBusyMerchantId: String?
+
+    // Real "Deals" rail (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 5
+    // recommendation #8. Every entry is a real merchant-set discount, never a
+    // fabricated promo -- see backend MerchantProductRepository.findDeals's own doc
+    // comment.
+    @State private var deals: [DealProductDto]?
+
+    // Real Coupang 타임특가 (Time Deal, item 226) -- see TimeDealDto's own doc comment
+    // on the backend. A time-boxed, quantity-capped event, distinct from the
+    // always-on Deals rail above. Re-fetched every 30s so a deal that just sold out
+    // or expired stops showing without a manual refresh, matching bank-mfe/Android's
+    // own established re-fetch interval for this exact feature.
+    @State private var timeDeals: [TimeDealViewDto]?
+
+    // Real 당근(Karrot) 반경 타기팅-style nearby ads rail -- see lib/shopping.ts's own
+    // NearbyMerchantAd doc comment. bank-mfe/Android already have this; this is the
+    // first iOS client.
+    @State private var nearbyAds: [NearbyMerchantAdDto] = []
+    @StateObject private var nearbyAdsLocationFetcher = SilentLocationFetcher()
+
+    // Real Naver Pay 멤버십 데이 (Membership Day) cashback boost -- bank-mfe/Android
+    // already have this; this is the first iOS client. See the backend's
+    // ShoppingCashbackService doc comment for the real "first Monday of the month"
+    // eligibility rule.
+    @State private var membershipDay: MembershipDayStatusResponse?
+
+    // Real cross-merchant product search (item 191) -- closes
+    // docs/DESIGN_REFERENCES.md Section 5 recommendation #1: bank-mfe has had "search
+    // across every merchant" since 2026-07-20 (lib/shopping.ts's own doc comment), and
+    // Android got its own port the same session (item 190), but iOS's Shop tab never
+    // called this real, pre-existing endpoint at all. Opening a result constructs a
+    // minimal ShoppingMerchantDto from the search row (merchantId/businessName only),
+    // matching bank-mfe/Android's own openSearchResult shortcut rather than a second
+    // real merchant fetch.
+    @State private var productSearchInput = ""
+    @State private var productSearchResults: [ProductSearchResultDto]?
+    @State private var productSearching = false
+
+    private var totalItems: Int { cart.values.reduce(0) { $0 + $1.quantity } }
+
+    public var body: some View {
+        Group {
+            if let results {
+                MultiCartResultsView(results: results, onDone: {
+                    self.results = nil
+                    self.selectedMerchant = nil
+                    self.products = nil
+                    self.showCart = false
+                    self.view = .orders
+                })
+            } else if showCart {
+                MultiCartView(
+                    cart: $cart,
+                    onBack: { showCart = false },
+                    onOrderPlaced: { checkoutResults in
+                        for r in checkoutResults where r.order != nil {
+                            cart = cart.filter { !$0.key.hasPrefix("\(r.merchantId):") }
+                        }
+                        results = checkoutResults
+                    }
+                )
+            } else if let merchant = selectedMerchant, let product = selectedProduct {
+                ProductDetailView(
+                    merchant: merchant,
+                    product: product,
+                    cart: $cart,
+                    onBack: { selectedProduct = nil },
+                    onViewCart: { selectedProduct = nil; showCart = true },
+                    favorited: favoriteProductIds.contains(product.id),
+                    favoriteBusy: favoritingProductId == product.id,
+                    onToggleFavorite: { Task { await toggleProductFavorite(product.id) } }, onContactSeller: { contactingMerchant = merchant }
+                )
+            } else if let merchant = selectedMerchant {
+                MerchantDetailView(
+                    merchant: merchant,
+                    products: products,
+                    cart: $cart,
+                    onBack: { selectedMerchant = nil },
+                    onViewCart: { showCart = true },
+                    onOpenProduct: { openProduct($0, businessName: merchant.businessName) },
+                    favoriteProductIds: favoriteProductIds,
+                    favoritingProductId: favoritingProductId,
+                    onToggleFavorite: { productId in Task { await toggleProductFavorite(productId) } },
+                    following: followedMerchantIds.contains(merchant.merchantId),
+                    followBusy: followBusyMerchantId == merchant.merchantId,
+                    onToggleFollow: { Task { await toggleFollow(merchant.merchantId) } }, onContactSeller: { contactingMerchant = merchant }
+                )
+            } else {
+                browseBody
+            }
+        }
+        .sheet(item: $contactingMerchant) { merchant in
+            ShopSellerContactPicker(merchantId: merchant.merchantId, merchantName: merchant.businessName, onOpened: { conversationId in
+                contactingMerchant = nil; onMessageSeller(conversationId)
+            })
+        }
+        .task {
+            if merchants == nil { await loadMerchants() }
+            if categories.isEmpty {
+                // businessType added 2026-08-25 (direct user directive: "we need
+                // everything separated to avoid confusion, that's toss style, clear
+                // isolation") -- matches Android's identical ShopScreen.kt fix.
+                do { categories = try await NetworkClient.shared.getMerchantCategories(businessType: "SHOP").categories } catch {}
+            }
+            await loadFavoriteProductIds()
+            await loadFollowedMerchantIds()
+            if deals == nil {
+                do { deals = try await NetworkClient.shared.getShopDeals(businessType: "SHOP").products } catch {}
+            }
+            if membershipDay == nil {
+                do { membershipDay = try await NetworkClient.shared.getMembershipDayStatus() } catch {}
+            }
+            nearbyAdsLocationFetcher.requestLocation()
+        }
+        .task {
+            while true {
+                do { timeDeals = try await NetworkClient.shared.getActiveTimeDeals().deals } catch {}
+                try? await Task.sleep(nanoseconds: 30_000_000_000)
+            }
+        }
+        .onChange(of: nearbyAdsLocationFetcher.coordinate?.latitude) { _ in
+            guard let coordinate = nearbyAdsLocationFetcher.coordinate else { return }
+            Task {
+                nearbyAds = (try? await NetworkClient.shared.getNearbyMerchantAds(latitude: coordinate.latitude, longitude: coordinate.longitude))?.ads ?? []
+            }
+        }
+    }
+
+    private func loadFollowedMerchantIds() async {
+        if let ids = await loadShopFollowedMerchantIds() { followedMerchantIds = ids }
+    }
+
+    private func toggleFollow(_ merchantId: String) async {
+        followBusyMerchantId = merchantId
+        defer { followBusyMerchantId = nil }
+        let (newIds, err) = await toggleShopMerchantFollow(merchantId, followedMerchantIds: followedMerchantIds)
+        if let newIds { followedMerchantIds = newIds }
+        if let err { self.error = err }
+    }
+
+    private func loadFavoriteProductIds() async {
+        if let ids = await loadShopFavoriteProductIds() { favoriteProductIds = ids }
+    }
+
+    private func toggleProductFavorite(_ productId: String) async {
+        favoritingProductId = productId
+        defer { favoritingProductId = nil }
+        let (newIds, err) = await toggleShopProductFavoriteIds(productId, favoriteProductIds: favoriteProductIds)
+        if let newIds { favoriteProductIds = newIds }
+        if let err { self.error = err }
+    }
+
+    // Same debounced category/search filter as Eats' OrderFoodContent -- see
+    // SearchAndCategoryChips's own doc comment for why this is now shared.
+    private func scheduleFilterReload() {
+        filterTask?.cancel()
+        filterTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
+            await loadMerchants()
+        }
+    }
+
+    private func selectCategory(_ category: String?) {
+        selectedCategory = (category == selectedCategory) ? nil : category
+        scheduleFilterReload()
+    }
+
+    private var browseBody: some View {
+        ZStack(alignment: .bottom) {
+            ScrollView {
+                VStack(spacing: IDS.Layout.cardGap) {
+                    // No IdsPlainTopBar("Shop") here (2026-07-24), same fix as
+                    // HoodScreen's own "Hood" title -- this screen's own Shop/Eats
+                    // picker one level up already establishes where the user is.
+                    Picker("", selection: $view) {
+                        Text("Merchants").tag(CommerceView.browse)
+                        Text("My orders").tag(CommerceView.orders)
+                        Text("Wishlist").tag(CommerceView.wishlist)
+                        Text("Subscriptions").tag(CommerceView.subscriptions)
+                        Text("Questions").tag(CommerceView.questions)
+                    }
+                    .pickerStyle(.segmented)
+
+                    // Real merchant-side Commerce order fulfillment queue (item 234) --
+                    // see NetworkClient.getMerchantOrders's own doc comment. Shown above
+                    // every sub-tab, same placement as bank-mfe/Android.
+                    MerchantOrdersView()
+                    MerchantReturnQueueView()
+
+                    if view == .orders {
+                        MyCommerceOrdersView(
+                            onReorder: { order in Task { await handleReorder(order) } },
+                            reorderingId: reorderingId
+                        )
+                        if let reorderError {
+                            Text(reorderError).foregroundColor(.red).font(.caption)
+                        }
+                        // MyBookingsView moved to itunda Place (2026-08-25) -- see
+                        // MapsBooking.swift's own doc comment.
+                    } else if view == .wishlist {
+                        ProductWishlistView(onRemoved: { Task { await loadFavoriteProductIds() } })
+                    } else if view == .subscriptions {
+                        MyProductSubscriptionsView()
+                    } else if view == .questions {
+                        MyProductInquiriesView()
+                    } else {
+                        // Real fix (2026-08-25, direct user follow-up: "why do we
+                        // have pay in there?" -- matches Android's identical
+                        // ShopScreen.kt fix). PayAMerchantSection is real, in-person
+                        // merchant payment -- it already has its own real home, the
+                        // Pay tab (PayHomeExtras.swift's own PayScreen). This call
+                        // rendered the exact same section a second time,
+                        // unconditionally, at the top of Shop's own online-catalog
+                        // browse screen.
+                        if let membershipDay, membershipDay.isMembershipDay {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("🎉 Membership Day — \(Int(membershipDay.multiplier))x cashback today")
+                                    .font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.brand)
+                                Text("Every purchase you make today earns \(Int(membershipDay.multiplier))x the usual cashback.")
+                                    .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            }
+                            .padding(.vertical, 10).frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        ShopProductSearchSection(
+                            query: $productSearchInput,
+                            results: $productSearchResults,
+                            searching: $productSearching,
+                            onOpenMerchant: { m in Task { await openMerchant(m) } }
+                        )
+
+                        if productSearchResults == nil {
+                        // Real "recently viewed products" rail (2026-08-23) -- see
+                        // RecentlyViewedStores.swift's own doc comment. Same "merchandising
+                        // above the raw list, hidden once filtering starts" discipline the
+                        // Nearby/Deals rails below already establish. Reopens the merchant
+                        // (same shortcut those rails use), not a possibly-stale cached
+                        // product snapshot.
+                        if selectedCategory == nil, searchInput.trimmingCharacters(in: .whitespaces).isEmpty, !recentlyViewedProducts.isEmpty {
+                            ShopRecentlyViewedRail(products: recentlyViewedProducts, onOpenMerchant: { m in Task { await openMerchant(m) } })
+                        }
+                        // Real 당근(Karrot) 반경 타기팅-style nearby ads rail -- only shown
+                        // on the unfiltered landing state, same discipline the Deals rail
+                        // below follows. Tapping one opens that merchant's real catalog,
+                        // same minimal-ShoppingMerchantDto shortcut the Deals rail uses.
+                        if selectedCategory == nil, searchInput.trimmingCharacters(in: .whitespaces).isEmpty, !nearbyAds.isEmpty {
+                            ShopNearbyAdsRail(ads: nearbyAds, onOpenMerchant: { m in Task { await openMerchant(m) } })
+                        }
+                        // Real "Deals" rail (2026-07-25) -- only shown on the
+                        // unfiltered landing state, same "merchandising above the raw
+                        // list, hidden once the user starts filtering" discipline a
+                        // real Coupang/Naver home surface follows. Tapping a deal jumps
+                        // straight to that real merchant via the same minimal-
+                        // ShoppingMerchantDto shortcut the product search results above
+                        // now use (previously fell back to a merchant-name text search
+                        // -- this closes that same gap for the same reason).
+                        if selectedCategory == nil, searchInput.trimmingCharacters(in: .whitespaces).isEmpty, let deals, !deals.isEmpty {
+                            ShopDealsCarousel(deals: deals, onOpenMerchant: { m in Task { await openMerchant(m) } })
+                        }
+                        if selectedCategory == nil, searchInput.trimmingCharacters(in: .whitespaces).isEmpty, let timeDeals, !timeDeals.isEmpty {
+                            ShopTimeDealsCarousel(timeDeals: timeDeals, onOpenMerchant: { m in Task { await openMerchant(m) } })
+                        }
+                        if selectedCategory == nil, searchInput.trimmingCharacters(in: .whitespaces).isEmpty {
+                            ShoppingPointsRow()
+                        }
+                        SearchAndCategoryChips(
+                            searchText: searchInput,
+                            onSearchChange: { searchInput = $0; scheduleFilterReload() },
+                            placeholder: "Search merchants",
+                            categories: categories,
+                            selectedCategory: selectedCategory,
+                            onSelectCategory: selectCategory
+                        )
+
+                        if let error {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text(error).foregroundColor(.red).font(.subheadline)
+                                Button("Retry") { Task { await loadMerchants() } }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 10)
+                        } else if merchants == nil {
+                            SkeletonBlock(height: 120)
+                        } else if merchants!.isEmpty {
+                            // Real copy-voice fix (item 244, round 5 of the empty-state
+                            // pass, ported from the same-day Android fix): "registered
+                            // yet" is honest about whose gap this is -- no store has
+                            // joined yet, not something the reader is missing a step on.
+                            Text(selectedCategory != nil || !searchInput.trimmingCharacters(in: .whitespaces).isEmpty ? "No merchants match your search — try a different category or search term." : "No stores registered yet — check back once merchants in your area join itunda Shop.")
+                                .foregroundColor(IDS.Colors.textSecondary)
+                        } else {
+                        ForEach(merchants!) { merchant in
+                            Button(action: { Task { await openMerchant(merchant) } }) {
+                                HStack(spacing: 14) {
+                                    // Real photo-forward store thumb (2026-07-24), same
+                                    // pattern already shipped for EatsScreen's own
+                                    // RestaurantPhotoThumb -- ShoppingMerchantDto.photoUrl
+                                    // is the same field both screens share, previously only
+                                    // rendered on the Eats side.
+                                    StorePhotoThumb(imageUrl: merchant.photoUrl)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(merchant.businessName).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                                        Text("\(merchant.cashbackRate) cashback on QR/code payments")
+                                            .font(.caption)
+                                            .foregroundColor(IDS.Colors.textSecondary)
+                                    }
+                                    Spacer()
+                                }
+                                .padding(18)
+                                .background(IDS.Colors.card)
+                                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    }
+                    }
+                }
+                .padding(.horizontal, IDS.Layout.screenHorizontal)
+                .padding(.top, IDS.Layout.screenTop)
+                .padding(.bottom, totalItems > 0 ? 80 : IDS.Layout.sectionSpacing)
+            }
+            if view == .browse && totalItems > 0 {
+                CartFab(totalItems: totalItems, onTap: { showCart = true })
+            }
+        }
+        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+    }
+
+    // businessType added 2026-08-25 (direct user directive: "we need everything
+    // separated to avoid confusion, that's toss style, clear isolation") -- matches
+    // Android's identical ShopScreen.kt fix and EatsScreen.swift's own existing
+    // businessType: "RESTAURANT" call, which this mirrors.
+    private func loadMerchants() async {
+        let result = await loadShopMerchants(selectedCategory: selectedCategory, searchInput: searchInput)
+        if let loaded = result.merchants { merchants = loaded }
+        error = result.error
+    }
+
+    private func openMerchant(_ merchant: ShoppingMerchantDto) async {
+        selectedMerchant = merchant
+        products = nil
+        let result = await loadShopMerchantProducts(merchantId: merchant.merchantId)
+        if let loaded = result.products { products = loaded }
+        if let err = result.error { error = err }
+    }
+
+    // Real "recently viewed products" rail (2026-08-23) -- see
+    // RecentlyViewedStores.swift's own doc comment.
+    private func openProduct(_ product: MerchantProductDto, businessName: String) {
+        selectedProduct = product
+        recentlyViewedProducts = RecentlyViewedProductsStore.shared.add(
+            RecentlyViewedProduct(id: product.id, merchantId: product.merchantId, businessName: businessName, name: product.name, price: product.price, imageUrl: product.imageUrl, discountPercent: product.discountPercent)
+        )
+    }
+
+    // Real Coupang/Amazon-style "Buy it again" (2026-08-23) -- direct port of this
+    // app's own real Eats "Reorder" (see EatsScreen.swift's handleReorder). Re-populates
+    // the cross-merchant `cart` from a past order's still-active products and opens the
+    // cart for review, same "review before a real-money action, not an instant one-tap
+    // purchase" precedent Eats already established (a delivery address could be stale, a
+    // price could have changed since). Commerce products never carry option groups
+    // (only Eats' menu items do), so unlike Eats this needs no "drop items that now
+    // require an option selection" sanitization -- only "drop items that are no longer
+    // active."
+    private func handleReorder(_ order: OrderDto) async {
+        reorderingId = order.id
+        reorderError = nil
+        defer { reorderingId = nil }
+        let result = await performShopReorder(order, cart: cart)
+        if let newCart = result.newCart { cart = newCart }
+        if let err = result.error { reorderError = err }
+        if result.opened { showCart = true }
+    }
+}
+

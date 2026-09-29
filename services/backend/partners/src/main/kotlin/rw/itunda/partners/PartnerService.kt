@@ -7,22 +7,29 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Partner
 import rw.itunda.core.domain.PartnerMiniApp
+import rw.itunda.core.domain.PartnerMiniAppCategory
 import rw.itunda.core.domain.PartnerMiniAppStatus
 import rw.itunda.core.domain.PartnerStatus
 import rw.itunda.core.repository.PartnerMiniAppRepository
 import rw.itunda.core.repository.PartnerRepository
+import rw.itunda.core.validation.isValidEmail
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 
 class PartnerEmailAlreadyRegisteredException(message: String) : RuntimeException(message)
+class InvalidPartnerEmailException(message: String) : RuntimeException(message)
 class InvalidApiKeyException(message: String) : RuntimeException(message)
 class PartnerSuspendedException(message: String) : RuntimeException(message)
 class InvalidPermissionScopeException(message: String) : RuntimeException(message)
 class PartnerMiniAppNotFoundException(message: String) : RuntimeException(message)
 class PartnerMiniAppNotPendingException(message: String) : RuntimeException(message)
 class InvalidMiniAppSubmissionException(message: String) : RuntimeException(message)
+class InvalidMiniAppDecisionReasonException(message: String) : RuntimeException(message)
+class InvalidMiniAppCategoryException(message: String) : RuntimeException(message)
+class PartnerNotFoundException(message: String) : RuntimeException(message)
 
 /**
  * The real scopes a partner mini-app can request review for -- deliberately a small,
@@ -34,7 +41,21 @@ class InvalidMiniAppSubmissionException(message: String) : RuntimeException(mess
  * honest scope boundary.
  */
 object PartnerMiniAppPermissions {
-    val ALLOWED = setOf("wallet:read", "transactions:read", "profile:read")
+    val ALLOWED = setOf("account:read", "transactions:read", "profile:read")
+}
+
+// Shared parse helper (2026-09-11, Mini-Apps hub pass) -- both submitMiniApp's own
+// default-to-OTHER handling and MiniAppCatalogController's optional ?category= filter
+// need identical "blank/null means no explicit value, anything else must be a real
+// enum name" parsing; a null return means "no value given" (caller decides the
+// default), never a value itself.
+fun parsePartnerMiniAppCategory(raw: String?): PartnerMiniAppCategory? {
+    if (raw.isNullOrBlank()) return null
+    return try {
+        PartnerMiniAppCategory.valueOf(raw.trim().uppercase())
+    } catch (e: IllegalArgumentException) {
+        throw InvalidMiniAppCategoryException("Unknown category '$raw' -- must be one of ${PartnerMiniAppCategory.entries.joinToString(", ")}")
+    }
 }
 
 /**
@@ -47,14 +68,11 @@ object PartnerMiniAppPermissions {
  * Honest, explicit scope boundary (read before assuming this is more than it is): this
  * is a REAL registry + REAL human review workflow + a REAL published catalog of
  * approved mini-apps (`getCatalog()`) -- every part of that is genuinely functional,
- * not a demo. What this deliberately does NOT include: the mobile Saronite host does
- * not yet actually download, verify, sandbox, and render a third-party bundle at
- * runtime (that's a separate, comparably large piece of native engineering -- bundle
- * signing/verification, a real sandboxed JS execution boundary, and real runtime
- * enforcement of `PartnerMiniAppPermissions` -- matching the honest, dated, multi-pass
- * scoping this repo already gave the iOS mini-app host itself). A partner today gets a
- * real account, a real reviewed listing, and a real catalog entry; actually running
- * their code on a real device is the next, distinct, larger step.
+ * not a demo. Android's own host (`PartnerMiniAppLoader.kt`) already really downloads,
+ * loads, and runs an approved bundle on a real device -- see `docs/TOSS_PARITY_MATRIX.md`'s
+ * Partner SDK row for that account, this comment used to (wrongly) claim otherwise.
+ * bank-mfe only got a catalog-browse client (2026-07-26); it doesn't attempt to run a
+ * bundle at all, same as iOS's current scope.
  */
 @Service
 class PartnerService(
@@ -73,6 +91,13 @@ class PartnerService(
         // AuthService.register already applies to itunda's own user registration --
         // without this, the endpoint has no bound at all on registration spam or on how
         // fast that oracle can be probed.
+        // Real gap found 2026-09-05: contactEmail was never checked for even being
+        // shaped like an email address -- see EmailValidation.kt's own doc comment.
+        // Checked before the rate limiter below so a malformed value doesn't spend a
+        // real attempt out of that budget.
+        if (!isValidEmail(contactEmail)) {
+            throw InvalidPartnerEmailException("Please provide a valid contact email address")
+        }
         rateLimiter.checkLimit("partner:register:$contactEmail", limit = 3, window = Duration.ofMinutes(10))
         if (partnerRepository.findByContactEmail(contactEmail) != null) {
             throw PartnerEmailAlreadyRegisteredException("A partner account already exists for this email")
@@ -91,8 +116,16 @@ class PartnerService(
     @Transactional
     fun submitMiniApp(
         apiKey: String, name: String, description: String, iconUrl: String?, bundleUrl: String, permissions: List<String>,
+        category: String? = null,
     ): PartnerMiniApp {
         val partner = resolvePartner(apiKey)
+        // Real gap found live (2026-09-11, Mini-Apps hub pass) -- register() above has
+        // always been rate-limited; this real, authenticated, DB-writing, review-queue-
+        // generating endpoint never was. A valid (non-suspended) partner could spam
+        // unlimited submissions with no bound at all. Matches this codebase's own
+        // per-actor rate-limit convention (keyed by the real acting partner, not a
+        // shared bucket).
+        rateLimiter.checkLimit("partner:submit_mini_app:${partner.id}", limit = 10, window = Duration.ofHours(1))
         val invalidScopes = permissions.filterNot { PartnerMiniAppPermissions.ALLOWED.contains(it) }
         if (invalidScopes.isNotEmpty()) {
             throw InvalidPermissionScopeException("Unknown permission scope(s): ${invalidScopes.joinToString(", ")}")
@@ -111,6 +144,11 @@ class PartnerService(
         if (trimmedName.length > 255 || trimmedDescription.length > 500 || (trimmedIconUrl?.length ?: 0) > 500 || trimmedBundleUrl.length > 500) {
             throw InvalidMiniAppSubmissionException("Name must be 255 characters or fewer; description, iconUrl, and bundleUrl 500 or fewer")
         }
+        // Real Mini-Apps hub pass (2026-09-11) -- a blank/omitted category is a real,
+        // honest default (OTHER), same fail-closed-on-garbage-input convention as the
+        // permission-scope check above: an unrecognized name is rejected outright, never
+        // silently coerced to a guess.
+        val resolvedCategory = parsePartnerMiniAppCategory(category) ?: PartnerMiniAppCategory.OTHER
         val miniApp = PartnerMiniApp(
             id = "partner_app_${UUID.randomUUID()}",
             partnerId = partner.id,
@@ -120,6 +158,7 @@ class PartnerService(
             bundleUrl = trimmedBundleUrl,
             permissions = permissions.joinToString(","),
             status = PartnerMiniAppStatus.PENDING,
+            category = resolvedCategory,
         )
         return partnerMiniAppRepository.save(miniApp)
     }
@@ -136,8 +175,14 @@ class PartnerService(
     // which third-party mini-apps are approved and available, the same real "app store"
     // surface Toss's own mini-app platform exposes. See this class's own doc comment for
     // why the mobile side doesn't actually consume/render this yet.
-    fun getCatalog(pageable: Pageable): Page<PartnerMiniApp> =
-        partnerMiniAppRepository.findByStatus(PartnerMiniAppStatus.APPROVED, pageable)
+    // Real category filter (2026-09-11, Mini-Apps hub pass) -- backs each client's new
+    // dedicated hub screen's category chips.
+    fun getCatalog(pageable: Pageable, category: PartnerMiniAppCategory? = null): Page<PartnerMiniApp> =
+        if (category != null) {
+            partnerMiniAppRepository.findByStatusAndCategory(PartnerMiniAppStatus.APPROVED, category, pageable)
+        } else {
+            partnerMiniAppRepository.findByStatus(PartnerMiniAppStatus.APPROVED, pageable)
+        }
 
     @Transactional
     fun decide(miniAppId: String, reviewerId: String, approve: Boolean, reason: String?): PartnerMiniApp {
@@ -146,12 +191,50 @@ class PartnerService(
         if (miniApp.status != PartnerMiniAppStatus.PENDING) {
             throw PartnerMiniAppNotPendingException("Submission is already ${miniApp.status}")
         }
+        // PartnerMiniApp.decisionReason has no explicit @Column length (255 default)
+        // and is written verbatim from a reviewer's free-text input -- same missing-
+        // bound bug class as the 2026-09-05 sweep, just an admin-facing input.
+        if (reason != null && reason.length > 255) {
+            throw InvalidMiniAppDecisionReasonException("Decision reason must be 255 characters or fewer")
+        }
         miniApp.status = if (approve) PartnerMiniAppStatus.APPROVED else PartnerMiniAppStatus.REJECTED
         miniApp.reviewedBy = reviewerId
         miniApp.reviewedAt = java.time.Instant.now()
         miniApp.decisionReason = reason
         return partnerMiniAppRepository.save(miniApp)
     }
+
+    // Real admin moderation surface (2026-09-07, Partners product-completeness pass) --
+    // `resolvePartner` below already real-enforces PartnerStatus.SUSPENDED (locking a
+    // suspended partner out of every real partner-facing feature), but nothing anywhere
+    // ever set a Partner to SUSPENDED until this pass -- the same real gap class this
+    // sweep already found and fixed for Merchant (MerchantService.suspendMerchant) and
+    // for Vehicle Inspection's mechanics.
+    fun getAllPartners(): List<Partner> = partnerRepository.findAll()
+
+    @Transactional
+    fun suspendPartner(partnerId: String, adminUserId: String): Partner {
+        val partner = partnerRepository.findById(partnerId).orElseThrow { PartnerNotFoundException("Partner not found") }
+        partner.status = PartnerStatus.SUSPENDED
+        partner.statusChangedBy = adminUserId
+        partner.statusChangedAt = Instant.now()
+        return partnerRepository.save(partner)
+    }
+
+    @Transactional
+    fun reactivatePartner(partnerId: String, adminUserId: String): Partner {
+        val partner = partnerRepository.findById(partnerId).orElseThrow { PartnerNotFoundException("Partner not found") }
+        partner.status = PartnerStatus.ACTIVE
+        partner.statusChangedBy = adminUserId
+        partner.statusChangedAt = Instant.now()
+        return partnerRepository.save(partner)
+    }
+
+    // Real, shared partner-authentication entry point -- IdentityVerificationService
+    // reuses this exact API-key resolution (hash lookup + suspended check) rather than
+    // duplicating it, so a suspended partner is locked out of every real partner-facing
+    // feature consistently, not just mini-app submission.
+    fun authenticate(apiKey: String): Partner = resolvePartner(apiKey)
 
     private fun resolvePartner(apiKey: String): Partner {
         val partner = partnerRepository.findByApiKeyHash(hashApiKey(apiKey))

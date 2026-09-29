@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
@@ -17,7 +18,7 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
@@ -25,6 +26,7 @@ import java.math.BigDecimal
 data class CreateGroupAccountRequest(val name: String)
 data class InviteMemberRequest(val phoneNumber: String)
 data class GroupAccountAmountRequest(val amount: BigDecimal)
+data class SetDuesAmountRequest(val amount: BigDecimal?)
 
 @RestController
 @RequestMapping("/api/v1/group-accounts")
@@ -46,14 +48,23 @@ class GroupAccountController(
     fun get(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true) + groupAccountService.getGroupAccount(currentUser.userId, id).toMap())
 
+    // Real gap found 2026-09-05, same class as StudentLoanController.apply's
+    // identical fix (see feedback_idempotency_key_sweep memory) -- a lost response
+    // after a successful invite would resubmit here and hit
+    // GroupAccountAlreadyMemberException on the retry. deposit/withdraw below were
+    // already protected; this create endpoint was the outlier.
     @PostMapping("/{id}/members")
     fun invite(
         @PathVariable id: String,
         @RequestBody request: InviteMemberRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val member = groupAccountService.inviteMember(currentUser.userId, id, request.phoneNumber)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "member" to member))
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/group-accounts/$id/members", idempotencyKey, request) {
+            val member = groupAccountService.inviteMember(currentUser.userId, id, request.phoneNumber)
+            HttpStatus.CREATED.value() to mapOf("success" to true, "member" to member)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @PostMapping("/{id}/deposit")
@@ -84,16 +95,46 @@ class GroupAccountController(
         return ResponseEntity.status(status).body(body)
     }
 
+    // Real KakaoBank 회비 (dues) management -- see GroupAccountService's own doc comments.
+    @PutMapping("/{id}/dues")
+    fun setDuesAmount(
+        @PathVariable id: String,
+        @RequestBody request: SetDuesAmountRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val account = groupAccountService.setDuesAmount(currentUser.userId, id, request.amount)
+        return ResponseEntity.ok(mapOf("success" to true, "groupAccount" to account))
+    }
+
+    @GetMapping("/{id}/dues")
+    fun getDuesStatus(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser) =
+        ResponseEntity.ok(mapOf("success" to true, "dues" to groupAccountService.getDuesStatus(currentUser.userId, id)))
+
+    @PostMapping("/{id}/dues/remind")
+    fun requestUnpaidDues(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val remindedCount = groupAccountService.requestUnpaidDues(currentUser.userId, id)
+        return ResponseEntity.ok(mapOf("success" to true, "remindedCount" to remindedCount))
+    }
+
     private fun GroupAccountView.toMap() = mapOf("groupAccount" to account, "balance" to balance, "members" to members)
 
     @ExceptionHandler(GroupAccountNotFoundException::class)
     fun handleNotFound(ex: GroupAccountNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("GROUP_ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(GroupAccountNotOwnerException::class)
-    fun handleNotOwner(ex: GroupAccountNotOwnerException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("GROUP_ACCOUNT_NOT_OWNER", ex.message ?: "Forbidden"))
+    @ExceptionHandler(InvalidGroupAccountNameException::class)
+    fun handleInvalidName(ex: InvalidGroupAccountNameException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_GROUP_ACCOUNT_NAME", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(GroupAccountNotMemberException::class)
-    fun handleNotMember(ex: GroupAccountNotMemberException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("GROUP_ACCOUNT_NOT_MEMBER", ex.message ?: "Forbidden"))
+    // Real fix (IDOR audit pass 1, 2026-08-08) fixed the STATUS (403->404) for
+    // ownership/membership checks in withdraw/inviteMember/setDues/requestDues/
+    // getGroupAccount/contribute, but kept distinguishable error CODES
+    // (GROUP_ACCOUNT_NOT_OWNER/GROUP_ACCOUNT_NOT_MEMBER) -- the exact residual leak
+    // pass 9 (2026-09-03) named and fixed elsewhere (LoanNotOwned/AccountNotOwned/
+    // PaymentCodeAccountNotOwned) but missed here. A stranger probing groupAccountId
+    // values could still distinguish "exists, not yours/not a member" from "doesn't
+    // exist" purely from the response body, even though both returned 404. Fixed
+    // 2026-09-04 by having every ownership/membership check in
+    // GroupAccountService.kt throw the same GroupAccountNotFoundException instead --
+    // both handlers (and their now-dead exception classes) removed.
 
     @ExceptionHandler(GroupAccountRecipientNotFoundException::class)
     fun handleRecipientNotFound(ex: GroupAccountRecipientNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RECIPIENT_NOT_FOUND", ex.message ?: "Not found"))
@@ -104,17 +145,17 @@ class GroupAccountController(
     @ExceptionHandler(GroupAccountFullException::class)
     fun handleFull(ex: GroupAccountFullException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("GROUP_ACCOUNT_FULL", ex.message ?: "Conflict"))
 
-    @ExceptionHandler(GroupAccountNoWalletException::class)
-    fun handleNoWallet(ex: GroupAccountNoWalletException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    @ExceptionHandler(GroupAccountNoAccountException::class)
+    fun handleNoAccount(ex: GroupAccountNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(RateLimitExceededException::class)
-    fun handleRateLimit(ex: RateLimitExceededException) = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMIT_EXCEEDED", ex.message ?: "Too many requests"))
+    fun handleRateLimit(ex: RateLimitExceededException) = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENCY_KEY_CONFLICT", ex.message ?: "Conflict"))

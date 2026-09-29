@@ -10,6 +10,7 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.WritableArray
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.uimanager.ViewManager
 import com.google.gson.JsonObject
@@ -19,7 +20,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import rw.itunda.app.BuildConfig
-import rw.itunda.app.network.NetworkClient
+import rw.itunda.core.network.NetworkClient
 import java.io.IOException
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -82,10 +83,39 @@ class SaroniteBrownfieldModule(
         }
     }
 
+    // Real gap found 2026-08-08 (super-app mini-program research pass, comparing this
+    // bridge against WeChat's own documented Mini Program model, which restricts
+    // outbound navigation to a pre-declared domain allowlist): this was the one bridge
+    // method with no requireScope gate at all -- every sibling method in this file
+    // checks it (see MiniAppSecurityContext's own doc comment, which already claimed
+    // "every SaroniteBrownfieldModule method except getAccountBalance" is gated, an
+    // oversight this file itself didn't match) -- and no scheme/domain restriction,
+    // so any mini-app's JS could launch an arbitrary http(s) URL, tel:, or another
+    // installed app's custom intent scheme. Today's real callers are itunda's own
+    // first-party mini-apps, so the practical exploit surface is limited, but the
+    // bridge itself had no structural defense if a lower-trust mini-app is ever loaded
+    // through Saronite later -- fixed now rather than left for whenever that happens.
     @ReactMethod
     fun openURL(url: String, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        val parsed = try {
+            Uri.parse(url)
+        } catch (e: Exception) {
+            promise.reject("SARONITE_OPEN_URL_FAILED", e)
+            return
+        }
+        val host = parsed.host?.lowercase()
+        val allowed = when (parsed.scheme?.lowercase()) {
+            "https" -> host != null && (host == "itunda.rw" || host.endsWith(".itunda.rw"))
+            "tel", "mailto" -> true
+            else -> false
+        }
+        if (!allowed) {
+            promise.reject("SARONITE_OPEN_URL_DENIED", "This mini-app tried to open a URL outside itunda's allowed domains: $url")
+            return
+        }
         try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+            val intent = Intent(Intent.ACTION_VIEW, parsed).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             reactApplicationContext.startActivity(intent)
@@ -96,22 +126,22 @@ class SaroniteBrownfieldModule(
     }
 
     @ReactMethod
-    fun getWalletBalance(promise: Promise) {
+    fun getAccountBalance(promise: Promise) {
         // The one bridge call a partner mini-app can actually be granted today --
-        // PartnerMiniAppPermissions.ALLOWED's "wallet:read" scope maps directly onto this
+        // PartnerMiniAppPermissions.ALLOWED's "account:read" scope maps directly onto this
         // real read-only endpoint. See requireScope's own doc comment.
-        if (!requireScope("wallet:read", promise)) return
-        authorizedCall(get("api/v1/wallet"), promise, ::parseWalletBalance)
+        if (!requireScope("account:read", promise)) return
+        authorizedCall(get("api/v1/account"), promise, ::parseAccountBalance)
     }
 
     @ReactMethod
     fun getPendingBills(promise: Promise) {
         // No real backend scope covers bill data at all (PartnerMiniAppPermissions.ALLOWED
-        // is wallet:read/transactions:read/profile:read only) -- always denied for a
+        // is account:read/transactions:read/profile:read only) -- always denied for a
         // partner mini-app, unconditionally, not gated behind a scope name that doesn't exist.
         if (!requireScope(null, promise)) return
         // Real bug fixed (2026-07-13): was missing the /api/v1 prefix every other
-        // endpoint on this same class already uses correctly (getWalletBalance) --
+        // endpoint on this same class already uses correctly (getAccountBalance) --
         // resolved to the wrong URL relative to BuildConfig.API_BASE_URL and 404'd
         // against the real backend (services/backend/bills, @RequestMapping("/api/v1/bills")).
         authorizedCall(get("api/v1/bills/pending"), promise, ::parsePendingBills)
@@ -130,6 +160,74 @@ class SaroniteBrownfieldModule(
         }
         // Same missing-prefix bug as getPendingBills above, fixed 2026-07-13.
         authorizedCall(post("api/v1/bills/pay", body), promise, ::parsePayBillResult)
+    }
+
+    // Real Kakao Pay 자동납부 (automatic bill payment) -- see the backend's
+    // BillAutoPaySetting.kt doc comment for the full sourced account. Wired to
+    // bank-mfe already (2026-08-17, docs Section 162); these four calls (providers +
+    // the 3 auto-pay endpoints) had never reached this bridge or the pay-bills
+    // mini-app, even though getPendingBills/payBill next to them have been real
+    // since 2026-07-13. `getBillProviders` is added alongside auto-pay (not asked
+    // for on its own) because `setAutoPay`/`clearAutoPay` take a real providerId
+    // (e.g. "b1"), which is distinct from PendingBill.provider (only a display
+    // name like "REG - Electricity") -- without it the mini-app has no honest way
+    // to resolve which provider a user is registering.
+    @ReactMethod
+    fun getBillProviders(promise: Promise) {
+        if (!requireScope(null, promise)) return
+        authorizedCall(get("api/v1/bills/providers"), promise, ::parseBillProviders)
+    }
+
+    // Real gap closed 2026-09-07 (Bills product-completeness pass): bank-mfe's web
+    // BillsView.tsx has had "Buy airtime" since 2026-08-17 (lib/bills.ts's own doc
+    // comment), but this bridge -- the only path Android/iOS have to Bills at all --
+    // never did, so the pay-bills mini-app had no airtime UI to call even if it wanted
+    // one. Money movement, same requireScope(null, ...) classification as payBill
+    // above. `provider` is an empty string, not null, when the mini-app's own picker
+    // has no selection ("Default provider"), matching the RN bridge's non-nullable
+    // String parameter convention every other method here already uses -- mapped to
+    // the backend's real optional `provider: String? = null` by omitting it entirely
+    // when blank, same as BillsController.BuyAirtimeRequest expects. Response shape
+    // (`{message, transaction: {id, referenceNumber, status}}`) is identical to
+    // payBill's, so parsePayBillResult is reused as-is rather than duplicated.
+    @ReactMethod
+    fun buyAirtime(phoneNumber: String, amount: Double, provider: String, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        val body = JsonObject().apply {
+            addProperty("phoneNumber", phoneNumber)
+            addProperty("amount", amount)
+            if (provider.isNotBlank()) addProperty("provider", provider)
+        }
+        authorizedCall(post("api/v1/bills/airtime", body), promise, ::parsePayBillResult)
+    }
+
+    @ReactMethod
+    fun getAutoPaySettings(promise: Promise) {
+        if (!requireScope(null, promise)) return
+        authorizedCall(get("api/v1/bills/auto-pay"), promise, ::parseAutoPaySettings)
+    }
+
+    @ReactMethod
+    fun setAutoPay(providerId: String, accountNumber: String, maxAmount: Double, promise: Promise) {
+        // Registers a *future* recurring auto-charge (BillAutoPayProcessor runs it later),
+        // not an immediate money movement -- same non-money-moving classification as
+        // enrollInsurance/createPremiumFund above, so no scope currently grants it (partner
+        // mini-apps get none of PartnerMiniAppPermissions.ALLOWED's scopes for bills either,
+        // matching payBill/getPendingBills's existing requireScope(null, ...) right above).
+        if (!requireScope(null, promise)) return
+        val body = JsonObject().apply {
+            addProperty("providerId", providerId)
+            addProperty("accountNumber", accountNumber)
+            addProperty("maxAmount", maxAmount)
+        }
+        authorizedCall(post("api/v1/bills/auto-pay", body), promise, ::parseSetAutoPayResult)
+    }
+
+    @ReactMethod
+    fun clearAutoPay(providerId: String, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        val encodedProviderId = java.net.URLEncoder.encode(providerId, "UTF-8")
+        authorizedCall(delete("api/v1/bills/auto-pay?providerId=$encodedProviderId"), promise) { Arguments.createMap() }
     }
 
     @ReactMethod
@@ -167,10 +265,132 @@ class SaroniteBrownfieldModule(
         authorizedCall(post("api/v1/insurance/enroll", body), promise, ::parseEnrollInsuranceResult)
     }
 
+    // Real Ejo Heza ya Moto-style premium savings fund -- see the backend's
+    // InsuranceService.createPremiumFund doc comment. Row creation only, no
+    // Idempotency-Key required by the backend (post() below adds one anyway, which is
+    // harmless since InsuranceController.createPremiumFund never reads that header).
+    @ReactMethod
+    fun createPremiumFund(policyId: String, dailyContribution: Double, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        val body = JsonObject().apply { addProperty("dailyContribution", dailyContribution) }
+        authorizedCall(post("api/v1/insurance/policies/$policyId/premium-fund", body), promise, ::parsePremiumFundResult)
+    }
+
+    // Money movement -- backend requires a real Idempotency-Key header
+    // (InsuranceController.contributeToFund's @RequestHeader), which post() already
+    // attaches on every call (same as enrollInsurance above).
+    @ReactMethod
+    fun contributeToFund(fundId: String, amount: Double, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        val body = JsonObject().apply { addProperty("amount", amount) }
+        authorizedCall(post("api/v1/insurance/premium-funds/$fundId/contribute", body), promise, ::parsePremiumFundResult)
+    }
+
+    // Also money movement (refunds currentAmount back to the MAIN account) -- same real
+    // Idempotency-Key requirement as contributeToFund.
+    @ReactMethod
+    fun cancelFund(fundId: String, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        authorizedCall(post("api/v1/insurance/premium-funds/$fundId/cancel", JsonObject()), promise, ::parsePremiumFundResult)
+    }
+
+    @ReactMethod
+    fun getMyPremiumFunds(promise: Promise) {
+        if (!requireScope(null, promise)) return
+        authorizedCall(get("api/v1/insurance/premium-funds"), promise, ::parseMyPremiumFundsResult)
+    }
+
+    // Real claims filing -- InsuranceController.submitClaim/getMyClaims existed on the
+    // backend (rate-limited, real policy-ownership + active-status checks) but had zero
+    // mobile client anywhere: the insurance mini-app only ever surfaced plans/policies/
+    // premium-funds. Not money-moving (only the ADMIN decide step pays out), so post()'s
+    // always-attached Idempotency-Key header is harmless but unused, same as
+    // createPremiumFund above.
+    @ReactMethod
+    fun submitClaim(policyId: String, description: String, amount: Double, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        val body = JsonObject().apply {
+            addProperty("policyId", policyId)
+            addProperty("description", description)
+            addProperty("amount", amount)
+        }
+        authorizedCall(post("api/v1/insurance/claims", body), promise, ::parseSubmitClaimResult)
+    }
+
+    @ReactMethod
+    fun getMyClaims(promise: Promise) {
+        if (!requireScope(null, promise)) return
+        authorizedCall(get("api/v1/insurance/claims"), promise, ::parseMyClaimsResult)
+    }
+
+    // Real Rwanda NAIS-style parametric/weather-index crop insurance
+    // (WeatherIndexInsuranceController) -- see that controller's own doc comment.
+    // Structurally distinct from claims-based InsuranceController above: no individual
+    // claim is ever filed, a published district+season rainfall index auto-triggers
+    // payout for every enrolled policy at once. Had zero mobile client anywhere until now.
+    @ReactMethod
+    fun getCropIndexCatalog(promise: Promise) {
+        if (!requireScope(null, promise)) return
+        authorizedCall(get("api/v1/insurance/crop-index/catalog"), promise, ::parseCropIndexCatalogResult)
+    }
+
+    @ReactMethod
+    fun getMyCropIndexPolicies(promise: Promise) {
+        if (!requireScope(null, promise)) return
+        authorizedCall(get("api/v1/insurance/crop-index/policies"), promise, ::parseMyCropIndexPoliciesResult)
+    }
+
+    @ReactMethod
+    fun enrollCropIndexPolicy(cropType: String, district: String, season: String, insuredAmount: Double, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        val body = JsonObject().apply {
+            addProperty("cropType", cropType)
+            addProperty("district", district)
+            addProperty("season", season)
+            addProperty("insuredAmount", insuredAmount)
+        }
+        authorizedCall(post("api/v1/insurance/crop-index/policies", body), promise, ::parseCropIndexPolicyResult)
+    }
+
+    // Money movement in reverse only if the policy hasn't already paid out --
+    // WeatherIndexInsuranceService.cancel enforces that server-side; a real
+    // Idempotency-Key is required (same as InsuranceController's fund endpoints).
+    @ReactMethod
+    fun cancelCropIndexPolicy(policyId: String, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        authorizedCall(post("api/v1/insurance/crop-index/policies/$policyId/cancel", JsonObject()), promise, ::parseCropIndexPolicyResult)
+    }
+
+    @ReactMethod
+    fun getCropIndexSeasonIndex(district: String, season: String, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        val encodedDistrict = java.net.URLEncoder.encode(district, "UTF-8")
+        val encodedSeason = java.net.URLEncoder.encode(season, "UTF-8")
+        authorizedCall(get("api/v1/insurance/crop-index/districts/$encodedDistrict/seasons/$encodedSeason/index"), promise, ::parseCropIndexSeasonIndexResult)
+    }
+
     @ReactMethod
     fun getReferralInfo(promise: Promise) {
         if (!requireScope(null, promise)) return
         authorizedCall(get("api/v1/rewards/referral"), promise, ::parseReferralInfo)
+    }
+
+    // Real Toss 만보기 (walking rewards) -- see StepRewardService's own doc comment on
+    // the backend. `steps` is honestly the mini-app's own manually-entered count, not a
+    // real device pedometer/HealthKit reading -- no sensor integration exists on either
+    // native host app, and the backend's own doc comment already names this as the
+    // honest client-reported boundary (a sanity ceiling, not real anti-spoofing).
+    @ReactMethod
+    fun reportSteps(steps: Double, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        val body = JsonObject().apply { addProperty("steps", steps.toInt()) }
+        authorizedCall(post("api/v1/rewards/steps", body), promise, ::parseStepReportResult)
+    }
+
+    @ReactMethod
+    fun getTodaySteps(promise: Promise) {
+        if (!requireScope(null, promise)) return
+        authorizedCall(get("api/v1/rewards/steps/today"), promise, ::parseTodayStepsResult)
     }
 
     @ReactMethod
@@ -244,6 +464,19 @@ class SaroniteBrownfieldModule(
             .put(requestBody)
     }
 
+    // First real DELETE this bridge issues -- every prior endpoint was GET/POST/PUT.
+    // No Idempotency-Key, matching BillsController.clearAutoPay's own backend contract
+    // (@DeleteMapping("/auto-pay") never reads that header): deactivating an already-off
+    // auto-pay setting is a naturally idempotent no-op server-side (BillsService.clearAutoPay
+    // returns early via `?: return` when no setting exists for that provider).
+    private fun delete(path: String): Request.Builder? {
+        val token = hostBridge.getAuthToken() ?: return null
+        return Request.Builder()
+            .url("${hostBridge.getApiBaseUrl()}$path")
+            .header("Authorization", "Bearer $token")
+            .delete()
+    }
+
     private fun authorizedCall(
         requestBuilder: Request.Builder?,
         promise: Promise,
@@ -263,7 +496,12 @@ class SaroniteBrownfieldModule(
                 response.use {
                     val body = it.body?.string()
                     if (!it.isSuccessful || body == null) {
-                        promise.reject("SARONITE_HTTP_ERROR", "itunda API returned ${it.code}: ${body ?: ""}")
+                        // Real gap (2026-08-30): every mini-app error surfaced the raw
+                        // "itunda API returned 409: {...}" dump instead of ApiError.message.
+                        val message = body?.let { b ->
+                            try { JsonParser.parseString(b).asJsonObject.get("message")?.asString } catch (_: Exception) { null }
+                        } ?: "itunda API returned ${it.code}: ${body ?: ""}"
+                        promise.reject("SARONITE_HTTP_ERROR", message)
                         return
                     }
                     try {
@@ -277,41 +515,41 @@ class SaroniteBrownfieldModule(
     }
 
     // Real bug fixed (2026-07-13): never set top-level `totalBalance`/`currency`,
-    // which WalletBalanceResult (the TS spec this bridge implements --
+    // which AccountBalanceResult (the TS spec this bridge implements --
     // packages/saronite/packages/brownfield-module/src/spec/SaroniteBrownfieldModule.ts)
-    // requires and wallet-balance/pages/index.tsx actually reads
+    // requires and account-balance/pages/index.tsx actually reads
     // (`balance.totalBalance.toLocaleString()`) -- would throw on any successful
-    // fetch. Also only populated 3 of WalletSummary's 8 fields; the real backend
-    // (services/backend's Wallet entity) has real values for all of them except
+    // fetch. Also only populated 3 of AccountSummary's 8 fields; the real backend
+    // (services/backend's Account entity) has real values for all of them except
     // `icon` (no such concept server-side -- left honestly empty rather than
-    // invented) and `connected` (always true: these are itunda's own wallets,
+    // invented) and `connected` (always true: these are itunda's own accounts,
     // not an externally-linked account with a real connection-status concept).
-    private fun parseWalletBalance(json: String): WritableMap {
+    private fun parseAccountBalance(json: String): WritableMap {
         val root = JsonParser.parseString(json).asJsonObject
         val result = Arguments.createMap()
-        val wallets = Arguments.createArray()
+        val accounts = Arguments.createArray()
         var totalBalance = 0.0
         var currency = "RWF"
-        root.getAsJsonArray("wallets")?.forEach { element ->
+        root.getAsJsonArray("accounts")?.forEach { element ->
             val w = element.asJsonObject
             val balance = w.get("balance").asDouble
-            val walletCurrency = w.get("currency")?.asString ?: currency
-            val walletMap = Arguments.createMap()
-            walletMap.putString("id", w.get("id").asString)
-            walletMap.putString("type", w.get("type")?.asString ?: "")
-            walletMap.putString("name", w.get("accountName")?.asString ?: "")
-            walletMap.putString("number", w.get("accountNumber")?.asString ?: "")
-            walletMap.putDouble("balance", balance)
-            walletMap.putString("currency", walletCurrency)
-            walletMap.putString("icon", "")
-            walletMap.putBoolean("connected", true)
-            wallets.pushMap(walletMap)
+            val accountCurrency = w.get("currency")?.asString ?: currency
+            val accountMap = Arguments.createMap()
+            accountMap.putString("id", w.get("id").asString)
+            accountMap.putString("type", w.get("type")?.asString ?: "")
+            accountMap.putString("name", w.get("accountName")?.asString ?: "")
+            accountMap.putString("number", w.get("accountNumber")?.asString ?: "")
+            accountMap.putDouble("balance", balance)
+            accountMap.putString("currency", accountCurrency)
+            accountMap.putString("icon", "")
+            accountMap.putBoolean("connected", true)
+            accounts.pushMap(accountMap)
             totalBalance += balance
-            currency = walletCurrency
+            currency = accountCurrency
         }
         result.putDouble("totalBalance", totalBalance)
         result.putString("currency", currency)
-        result.putArray("wallets", wallets)
+        result.putArray("accounts", accounts)
         return result
     }
 
@@ -395,6 +633,63 @@ class SaroniteBrownfieldModule(
         return result
     }
 
+    // Real backend shape: services/backend/bills's BillsController.getProviders /
+    // BillsCatalog.providers -- read directly, not guessed. `id` (e.g. "b1") is the
+    // real key setAutoPay/clearAutoPay below take, distinct from PendingBill.provider
+    // above (only ever a display name).
+    private fun parseBillProvider(p: JsonObject): WritableMap {
+        val providerMap = Arguments.createMap()
+        providerMap.putString("id", p.get("id").asString)
+        providerMap.putString("name", p.get("name")?.asString ?: "")
+        providerMap.putString("category", p.get("category")?.asString ?: "")
+        providerMap.putString("logo", p.get("logo")?.asString ?: "")
+        providerMap.putBoolean("isActive", p.get("isActive")?.asBoolean ?: true)
+        return providerMap
+    }
+
+    private fun parseBillProviders(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val providers = Arguments.createArray()
+        root.getAsJsonArray("providers")?.forEach { element -> providers.pushMap(parseBillProvider(element.asJsonObject)) }
+        val result = Arguments.createMap()
+        result.putArray("providers", providers)
+        return result
+    }
+
+    // Real backend shape: core/domain/BillAutoPaySetting.kt, returned as-is by
+    // BillsController's setAutoPay/getAutoPay (no remapping, same convention as
+    // parseClaim/parsePremiumFund above). lastPaidBillId is null until
+    // BillAutoPayProcessor has actually run this setting once.
+    private fun parseBillAutoPaySetting(s: JsonObject): WritableMap {
+        val settingMap = Arguments.createMap()
+        settingMap.putString("id", s.get("id").asString)
+        settingMap.putString("userId", s.get("userId")?.asString ?: "")
+        settingMap.putString("providerId", s.get("providerId")?.asString ?: "")
+        settingMap.putString("accountNumber", s.get("accountNumber")?.asString ?: "")
+        settingMap.putDouble("maxAmount", s.get("maxAmount")?.asDouble ?: 0.0)
+        settingMap.putBoolean("active", s.get("active")?.asBoolean ?: true)
+        s.get("lastPaidBillId")?.takeIf { !it.isJsonNull }?.let { settingMap.putString("lastPaidBillId", it.asString) }
+            ?: settingMap.putNull("lastPaidBillId")
+        settingMap.putString("createdAt", s.get("createdAt")?.asString ?: "")
+        return settingMap
+    }
+
+    private fun parseAutoPaySettings(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val settings = Arguments.createArray()
+        root.getAsJsonArray("autoPay")?.forEach { element -> settings.pushMap(parseBillAutoPaySetting(element.asJsonObject)) }
+        val result = Arguments.createMap()
+        result.putArray("autoPay", settings)
+        return result
+    }
+
+    private fun parseSetAutoPayResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val result = Arguments.createMap()
+        root.getAsJsonObject("autoPay")?.let { result.putMap("autoPay", parseBillAutoPaySetting(it)) }
+        return result
+    }
+
     // Real backend shape: services/backend/insurance's InsuranceService.insurancePlans
     // (GET /api/v1/insurance/plans), read directly rather than guessed -- `features` is a
     // real List<String>, `monthlyPremium`/`coverageAmount`/`enrolledCount` are real numbers.
@@ -456,6 +751,150 @@ class SaroniteBrownfieldModule(
         return result
     }
 
+    // Real backend shape: services/backend/insurance's InsuranceController.fundMap
+    // (POST .../premium-fund, POST .../contribute, POST .../cancel, GET premium-funds)
+    // -- read directly from InsuranceController.kt, not guessed.
+    private fun parsePremiumFund(f: JsonObject): WritableMap {
+        val fundMap = Arguments.createMap()
+        fundMap.putString("id", f.get("id").asString)
+        fundMap.putString("policyId", f.get("policyId")?.asString ?: "")
+        fundMap.putDouble("targetAmount", f.get("targetAmount")?.asDouble ?: 0.0)
+        fundMap.putDouble("currentAmount", f.get("currentAmount")?.asDouble ?: 0.0)
+        fundMap.putDouble("dailyContribution", f.get("dailyContribution")?.asDouble ?: 0.0)
+        fundMap.putString("status", f.get("status")?.asString ?: "")
+        fundMap.putString("createdAt", f.get("createdAt")?.asString ?: "")
+        return fundMap
+    }
+
+    private fun parsePremiumFundResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val result = Arguments.createMap()
+        result.putBoolean("success", root.get("success")?.asBoolean ?: true)
+        root.getAsJsonObject("fund")?.let { result.putMap("fund", parsePremiumFund(it)) }
+        return result
+    }
+
+    private fun parseMyPremiumFundsResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val funds = Arguments.createArray()
+        root.getAsJsonArray("funds")?.forEach { element -> funds.pushMap(parsePremiumFund(element.asJsonObject)) }
+        val result = Arguments.createMap()
+        result.putBoolean("success", root.get("success")?.asBoolean ?: true)
+        result.putArray("funds", funds)
+        return result
+    }
+
+    // Real backend shape: services/backend/insurance's InsuranceController.submitClaim/
+    // getMyClaims return the raw InsuranceClaim entity (no remapping, unlike
+    // fundMap/policyMap above) -- field names read directly from
+    // core/domain/InsuranceClaim.kt. status is one of SUBMITTED/APPROVED/REJECTED;
+    // reviewedBy/reviewedAt/decisionReason are only set once an admin has decided it.
+    private fun parseClaim(c: JsonObject): WritableMap {
+        val claimMap = Arguments.createMap()
+        claimMap.putString("id", c.get("id").asString)
+        claimMap.putString("policyId", c.get("policyId")?.asString ?: "")
+        claimMap.putString("description", c.get("description")?.asString ?: "")
+        claimMap.putDouble("amount", c.get("amount")?.asDouble ?: 0.0)
+        claimMap.putString("status", c.get("status")?.asString ?: "SUBMITTED")
+        claimMap.putString("submittedAt", c.get("submittedAt")?.asString ?: "")
+        c.get("decisionReason")?.takeIf { !it.isJsonNull }?.let { claimMap.putString("decisionReason", it.asString) }
+        return claimMap
+    }
+
+    private fun parseSubmitClaimResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val result = Arguments.createMap()
+        result.putBoolean("success", root.get("success")?.asBoolean ?: true)
+        root.getAsJsonObject("claim")?.let { result.putMap("claim", parseClaim(it)) }
+        return result
+    }
+
+    private fun parseMyClaimsResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val claims = Arguments.createArray()
+        root.getAsJsonArray("claims")?.forEach { element -> claims.pushMap(parseClaim(element.asJsonObject)) }
+        val result = Arguments.createMap()
+        result.putBoolean("success", root.get("success")?.asBoolean ?: true)
+        result.putArray("claims", claims)
+        return result
+    }
+
+    // Real backend shape: WeatherIndexInsuranceService.getCatalog -- cropType serializes
+    // as the enum's real name (MAIZE/RICE/CHILLI_PEPPER/FRENCH_BEANS/IRISH_POTATO),
+    // confirmed live against the running backend, not guessed.
+    private fun parseCropIndexCatalogResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val catalog = Arguments.createArray()
+        root.getAsJsonArray("catalog")?.forEach { element ->
+            val c = element.asJsonObject
+            val entry = Arguments.createMap()
+            entry.putString("cropType", c.get("cropType")?.asString ?: "")
+            entry.putString("name", c.get("name")?.asString ?: "")
+            entry.putDouble("premiumRatePercent", c.get("premiumRatePercent")?.asDouble ?: 0.0)
+            entry.putString("description", c.get("description")?.asString ?: "")
+            catalog.pushMap(entry)
+        }
+        val result = Arguments.createMap()
+        result.putBoolean("success", root.get("success")?.asBoolean ?: true)
+        result.putArray("catalog", catalog)
+        return result
+    }
+
+    // Real backend shape: WeatherIndexInsuranceController.policyMap -- read directly from
+    // that controller, not guessed. status is one of ENROLLED/PAYOUT_TRIGGERED/
+    // SEASON_ENDED_NO_PAYOUT/CANCELLED; payoutAt is null until a payout actually fires.
+    private fun parseCropIndexPolicy(p: JsonObject): WritableMap {
+        val policyMap = Arguments.createMap()
+        policyMap.putString("id", p.get("id").asString)
+        policyMap.putString("cropType", p.get("cropType")?.asString ?: "")
+        policyMap.putString("district", p.get("district")?.asString ?: "")
+        policyMap.putString("season", p.get("season")?.asString ?: "")
+        policyMap.putDouble("insuredAmount", p.get("insuredAmount")?.asDouble ?: 0.0)
+        policyMap.putDouble("premiumAmount", p.get("premiumAmount")?.asDouble ?: 0.0)
+        policyMap.putString("status", p.get("status")?.asString ?: "ENROLLED")
+        policyMap.putString("createdAt", p.get("createdAt")?.asString ?: "")
+        p.get("payoutAt")?.takeIf { !it.isJsonNull }?.let { policyMap.putString("payoutAt", it.asString) }
+        return policyMap
+    }
+
+    private fun parseMyCropIndexPoliciesResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val policies = Arguments.createArray()
+        root.getAsJsonArray("policies")?.forEach { element -> policies.pushMap(parseCropIndexPolicy(element.asJsonObject)) }
+        val result = Arguments.createMap()
+        result.putBoolean("success", root.get("success")?.asBoolean ?: true)
+        result.putArray("policies", policies)
+        return result
+    }
+
+    private fun parseCropIndexPolicyResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val result = Arguments.createMap()
+        result.putBoolean("success", root.get("success")?.asBoolean ?: true)
+        root.getAsJsonObject("policy")?.let { result.putMap("policy", parseCropIndexPolicy(it)) }
+        return result
+    }
+
+    // Real backend shape: WeatherIndexInsuranceController.indexMap / SeasonRainfallIndex.kt.
+    // "index" is null (confirmed live) until an ADMIN has transcribed that district+season's
+    // real published NISR/Rwanda Meteorology Agency rainfall figure.
+    private fun parseCropIndexSeasonIndexResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val result = Arguments.createMap()
+        result.putBoolean("success", root.get("success")?.asBoolean ?: true)
+        val indexObj = root.get("index")?.takeIf { !it.isJsonNull }?.asJsonObject
+        if (indexObj != null) {
+            val indexMap = Arguments.createMap()
+            indexMap.putString("district", indexObj.get("district")?.asString ?: "")
+            indexMap.putString("season", indexObj.get("season")?.asString ?: "")
+            indexMap.putDouble("rainfallIndexPercent", indexObj.get("rainfallIndexPercent")?.asDouble ?: 0.0)
+            indexMap.putDouble("droughtThresholdPercent", indexObj.get("droughtThresholdPercent")?.asDouble ?: 0.0)
+            indexMap.putString("publishedAt", indexObj.get("publishedAt")?.asString ?: "")
+            result.putMap("index", indexMap)
+        }
+        return result
+    }
+
     // Real backend shape: services/backend/rewards's RewardsController.referral
     // (GET /api/v1/rewards/referral) -- referralCode is nullable (accounts that
     // predate the feature have none yet).
@@ -466,6 +905,57 @@ class SaroniteBrownfieldModule(
             ?: result.putNull("referralCode")
         result.putInt("referredCount", root.get("referredCount")?.asInt ?: 0)
         result.putInt("completedReferralCount", root.get("completedReferralCount")?.asInt ?: 0)
+        return result
+    }
+
+    // Real backend shape: services/backend/rewards's RewardsController.reportSteps
+    // (POST /api/v1/rewards/steps) -- newlyEarnedTiers is a real List<Int> of the step
+    // thresholds (StepRewardTier.stepsRequired) crossed by THIS report.
+    //
+    // Real lottery-style bonus (item 248, docs/DESIGN_REFERENCES.md Section 15):
+    // lotteryBonusWonTiers/-WonAmount/-Total and tiers (the real, stated per-tier odds)
+    // extended here so the mini-app can show the same disclosed-odds transparency
+    // bank-mfe's own identical addition already has -- this bridge previously silently
+    // dropped these fields since it only extracts what it explicitly names.
+    private fun parseStepReportResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val result = Arguments.createMap()
+        result.putInt("steps", root.get("steps")?.asInt ?: 0)
+        val tiers = Arguments.createArray()
+        root.getAsJsonArray("newlyEarnedTiers")?.forEach { tiers.pushInt(it.asInt) }
+        result.putArray("newlyEarnedTiers", tiers)
+        result.putDouble("newlyEarnedAmount", root.get("newlyEarnedAmount")?.asDouble ?: 0.0)
+        result.putDouble("totalEarnedToday", root.get("totalEarnedToday")?.asDouble ?: 0.0)
+        val lotteryTiers = Arguments.createArray()
+        root.getAsJsonArray("lotteryBonusWonTiers")?.forEach { lotteryTiers.pushInt(it.asInt) }
+        result.putArray("lotteryBonusWonTiers", lotteryTiers)
+        result.putDouble("lotteryBonusWonAmount", root.get("lotteryBonusWonAmount")?.asDouble ?: 0.0)
+        result.putDouble("lotteryBonusTotal", root.get("lotteryBonusTotal")?.asDouble ?: 0.0)
+        result.putArray("tiers", parseStepRewardTiers(root))
+        return result
+    }
+
+    private fun parseTodayStepsResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val result = Arguments.createMap()
+        result.putInt("steps", root.get("steps")?.asInt ?: 0)
+        result.putArray("tiers", parseStepRewardTiers(root))
+        return result
+    }
+
+    // Real, stated odds (item 248) -- the whole point of disclosing this via the API at
+    // all: a client can show "5% chance of +100 RWF" up front, not just the outcome.
+    private fun parseStepRewardTiers(root: com.google.gson.JsonObject): WritableArray {
+        val result = Arguments.createArray()
+        root.getAsJsonArray("tiers")?.forEach { tierElement ->
+            val tier = tierElement.asJsonObject
+            val tierMap = Arguments.createMap()
+            tierMap.putInt("stepsRequired", tier.get("stepsRequired")?.asInt ?: 0)
+            tierMap.putDouble("rewardAmount", tier.get("rewardAmount")?.asDouble ?: 0.0)
+            tierMap.putDouble("lotteryOdds", tier.get("lotteryOdds")?.asDouble ?: 0.0)
+            tierMap.putDouble("lotteryBonusAmount", tier.get("lotteryBonusAmount")?.asDouble ?: 0.0)
+            result.pushMap(tierMap)
+        }
         return result
     }
 

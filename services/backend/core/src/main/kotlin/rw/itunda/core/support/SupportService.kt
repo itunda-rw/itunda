@@ -1,25 +1,30 @@
 package rw.itunda.core.support
 
+import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.SupportTicket
 import rw.itunda.core.domain.SupportTicketCategory
 import rw.itunda.core.domain.SupportTicketResolution
 import rw.itunda.core.domain.SupportTicketStatus
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.LedgerEntryRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.SupportTicketRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.time.Instant
 import java.util.UUID
 
 class SupportTransactionNotFoundException(message: String) : RuntimeException(message)
-class SupportTransactionNotOwnedException(message: String) : RuntimeException(message)
 class SupportTicketNotFoundException(message: String) : RuntimeException(message)
 class SupportTicketAlreadyResolvedException(message: String) : RuntimeException(message)
 
@@ -35,16 +40,24 @@ class SupportTicketAlreadyResolvedException(message: String) : RuntimeException(
 class SupportService(
     private val supportTicketRepository: SupportTicketRepository,
     private val transactionRepository: TransactionRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerEntryRepository: LedgerEntryRepository,
     private val ledgerService: LedgerService,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(SupportService::class.java)
+
     companion object {
         // Real itunda-defined SLA (not a sourced Toss number -- see SupportTicket's own
-        // doc comment). ACCOUNT_TAKEOVER is tightest given a wallet is frozen and the
+        // doc comment). ACCOUNT_TAKEOVER is tightest given a account is frozen and the
         // user is locked out of moving money on it until reviewed.
         val SLA_HOURS = mapOf(
             SupportTicketCategory.ACCOUNT_TAKEOVER to 4L,
+            SupportTicketCategory.RIDE_ISSUE to 24L,
+            // Same 24h SLA as RIDE_ISSUE -- the same "dispute a completed paid
+            // transaction" shape, see SupportTicketCategory's own doc comment.
+            SupportTicketCategory.EATS_ORDER_ISSUE to 24L,
             SupportTicketCategory.PAYMENT_DISPUTE to 48L,
             SupportTicketCategory.GENERAL to 72L,
         )
@@ -54,26 +67,33 @@ class SupportService(
     fun createTicket(userId: String, transactionId: String, category: SupportTicketCategory, description: String): SupportTicket {
         val transaction = transactionRepository.findById(transactionId)
             .orElseThrow { SupportTransactionNotFoundException("Transaction not found") }
+        // Real IDOR fix (2026-08-02): a transactionId the caller isn't a party to used
+        // to throw SupportTransactionNotOwnedException (403), confirming to anyone who
+        // guesses or enumerates a transactionId that it's real -- the same
+        // real-existence-confirming probe AccountService.getAccountById's own doc
+        // comment already documents fixing for account lookups. Now the same
+        // SupportTransactionNotFoundException (404) as a genuinely bogus id, never
+        // revealing that a transaction the caller wasn't part of actually exists.
         if (transaction.senderId != userId && transaction.recipientId != userId) {
-            throw SupportTransactionNotOwnedException("That transaction does not belong to you")
+            throw SupportTransactionNotFoundException("Transaction not found")
         }
 
-        var frozeWalletId: String? = null
+        var frozeAccountId: String? = null
         if (category == SupportTicketCategory.ACCOUNT_TAKEOVER) {
             // Real account-takeover-specific flow: freeze whichever side of this
-            // transaction's real wallets belongs to the reporting user, so a
+            // transaction's real accounts belongs to the reporting user, so a
             // suspected-compromised account can't move any more money out while
             // under review. Enforced for real in LedgerService.postLedgerTransaction,
             // not just a cosmetic flag -- see that class's own comment.
-            val candidateWalletId = when (userId) {
-                transaction.senderId -> transaction.fromWalletId
-                else -> transaction.toWalletId
+            val candidateAccountId = when (userId) {
+                transaction.senderId -> transaction.fromAccountId
+                else -> transaction.toAccountId
             }
-            val wallet = candidateWalletId?.let { walletRepository.findById(it).orElse(null) }
-            if (wallet != null && wallet.userId == userId && wallet.isActive) {
-                wallet.isActive = false
-                walletRepository.save(wallet)
-                frozeWalletId = wallet.id
+            val account = candidateAccountId?.let { accountRepository.findById(it).orElse(null) }
+            if (account != null && account.userId == userId && account.isActive) {
+                account.isActive = false
+                accountRepository.save(account)
+                frozeAccountId = account.id
             }
         }
 
@@ -83,7 +103,7 @@ class SupportService(
             transactionId = transactionId,
             category = category,
             description = description,
-            frozeWalletId = frozeWalletId,
+            frozeAccountId = frozeAccountId,
             dueBy = Instant.now().plusSeconds(SLA_HOURS.getValue(category) * 3600),
         )
         return supportTicketRepository.save(ticket)
@@ -117,10 +137,12 @@ class SupportService(
         // end of the review, whether it confirmed the takeover (REFUNDED) or found the
         // activity legitimate (REJECTED); either way the account shouldn't stay frozen
         // once a human has looked at it.
-        ticket.frozeWalletId?.let { walletId ->
-            walletRepository.findById(walletId).orElse(null)?.let { wallet ->
-                wallet.isActive = true
-                walletRepository.save(wallet)
+        var wasFrozen = false
+        ticket.frozeAccountId?.let { accountId ->
+            accountRepository.findById(accountId).orElse(null)?.let { account ->
+                account.isActive = true
+                accountRepository.save(account)
+                wasFrozen = true
             }
         }
 
@@ -129,7 +151,60 @@ class SupportService(
         ticket.resolutionNotes = notes
         ticket.reviewedBy = reviewerId
         ticket.resolvedAt = Instant.now()
-        return supportTicketRepository.save(ticket)
+        val saved = supportTicketRepository.save(ticket)
+
+        // Real gap found live (2026-09-14, sibling-asymmetry sweep): this is a real
+        // terminal decision on a real user-filed ticket (can move real refund money
+        // and, for ACCOUNT_TAKEOVER, unfreeze the user's own account), yet this class
+        // had zero notification wiring -- unlike every other structurally identical
+        // "terminal decision on someone's own submission" class in this codebase
+        // (OrderReturnService.decide, InsuranceService.decideClaim,
+        // MarketplaceService.resolveDispute, PropertyOwnershipService.decide,
+        // IdentityService.decide). The submitter had no way to learn their ticket was
+        // resolved short of manually polling getMyTickets.
+        val title = if (resolution == SupportTicketResolution.REFUNDED) "Support ticket resolved -- refunded" else "Support ticket resolved"
+        val body = buildString {
+            append(
+                if (resolution == SupportTicketResolution.REFUNDED) {
+                    "Your support ticket was reviewed and the transaction was refunded."
+                } else {
+                    "Your support ticket was reviewed. No refund was issued."
+                },
+            )
+            if (wasFrozen) append(" Your account has been restored.")
+            if (!notes.isNullOrBlank()) append(" Note: $notes")
+        }
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = ticket.userId, type = "SUPPORT_TICKET_RESOLVED",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"ticketId\":\"${ticket.id}\"}",
+            ),
+        )
+        sendPushAfterCommit(ticket.userId, title, body, ticket.id)
+
+        return saved
+    }
+
+    // Same real "defer the mobile push until the real status change is durable, but
+    // the in-app Notification row is saved immediately" discipline
+    // OrderReturnService.sendPushAfterCommit/InsuranceService.sendPushAfterCommit/
+    // IdentityService.sendPushAfterCommit already establish for a structurally
+    // identical terminal decision.
+    private fun sendPushAfterCommit(userId: String, title: String, body: String, ticketId: String) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body, mapOf("ticketId" to ticketId))
+            } catch (e: Exception) {
+                log.warn("Could not send support-ticket-resolved push for ticket {}", ticketId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     /**

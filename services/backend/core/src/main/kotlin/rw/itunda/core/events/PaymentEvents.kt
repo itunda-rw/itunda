@@ -7,7 +7,7 @@ import java.time.Instant
  * docs/TOSS_RWANDA_ALIGNMENT.md's event model documents; wired for real
  * (2026-07-11) at the two call sites that actually go through
  * `ProviderConnector.attempt` (`BillsService.payBill`/`buyAirtime`). Merchant QR
- * collection has no external rail call (pure wallet-to-wallet), so it never
+ * collection has no external rail call (pure account-to-account), so it never
  * publishes this event -- there's no provider to have succeeded against. */
 data class PaymentProviderSucceededEvent(
     val transactionId: String,

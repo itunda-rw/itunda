@@ -6,9 +6,21 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 
-enum class SupportTicketCategory { GENERAL, PAYMENT_DISPUTE, ACCOUNT_TAKEOVER }
+// RIDE_ISSUE added 2026-08-16 -- real Uber "trip issue report" pattern (Uber's own
+// real post-trip support flow lets a rider report a problem -- unsafe driving,
+// overcharge, lost item -- directly from a specific completed trip). itunda's generic
+// ticket system already let a user pick ANY transaction including a ride's own
+// payment, so this isn't a new capability -- it's a real, distinct category (own SLA,
+// own framing) plus a real trip-contextual entry point, not a bespoke second ticket
+// system.
+// EATS_ORDER_ISSUE added 2026-09-06 (Eats product-completeness pass) -- the exact
+// same shape as RIDE_ISSUE, for a delivered Eats order: a buyer disputing a bad order
+// today could only file a generic GENERAL/PAYMENT_DISPUTE ticket with no pre-attached
+// order context, despite a delivered order already carrying a real transactionId.
+enum class SupportTicketCategory { GENERAL, PAYMENT_DISPUTE, ACCOUNT_TAKEOVER, RIDE_ISSUE, EATS_ORDER_ISSUE }
 enum class SupportTicketStatus { OPEN, RESOLVED }
 enum class SupportTicketResolution { REFUNDED, REJECTED }
 
@@ -59,11 +71,11 @@ class SupportTicket(
     @Column(name = "refund_transaction_id", length = 64)
     var refundTransactionId: String? = null,
 
-    // Set true when this ticket's category caused the transaction's source wallet to be
-    // frozen (Wallet.isActive = false) as the real account-takeover response; resolve()
+    // Set true when this ticket's category caused the transaction's source account to be
+    // frozen (Account.isActive = false) as the real account-takeover response; resolve()
     // unfreezes it regardless of decision, since a ticket is always the end of the review.
-    @Column(name = "froze_wallet_id", length = 64)
-    var frozeWalletId: String? = null,
+    @Column(name = "froze_account_id", length = 64)
+    var frozeAccountId: String? = null,
 
     @Column(name = "due_by", nullable = false)
     val dueBy: Instant,
@@ -76,6 +88,20 @@ class SupportTicket(
 
     @Column(name = "resolved_at")
     var resolvedAt: Instant? = null,
+
+    // Real bug found live (2026-08-02): SupportService.resolve reads this exact entity,
+    // checks `status == RESOLVED`, then -- for a REFUNDED resolution -- reverses the
+    // original transaction (real money movement) and writes status back to RESOLVED,
+    // the same check-then-act shape RideTripService.acceptTrip/KnowledgeService.
+    // adoptAnswer already establish as needing @Version. With none here, two reviewers
+    // concurrently resolving the same still-OPEN ticket as REFUNDED could both pass the
+    // status check before either committed, both call reverseTransaction, and post a
+    // real DOUBLE refund -- money created from nothing, a more severe instance of the
+    // same bug class than Bike/ParkingSpot/KnowledgeQuestion's own data-integrity-only
+    // versions of it.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(
         id = "", userId = "", transactionId = "", category = SupportTicketCategory.GENERAL,

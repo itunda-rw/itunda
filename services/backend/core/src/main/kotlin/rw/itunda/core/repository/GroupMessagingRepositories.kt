@@ -12,12 +12,37 @@ import rw.itunda.core.domain.GroupMessageReaction
 
 interface GroupConversationRepository : JpaRepository<GroupConversation, String> {
     // Real pagination from day one, same discipline the 1:1 ConversationRepository
-    // already established.
+    // already established. `g.isDirect = FALSE` (2026-08-09) excludes the synthetic
+    // 2-person groups GroupMessagingService.getOrCreateDirectSplitGroup creates to back
+    // a 1:1-chat split bill -- those aren't real groups either person asked to create,
+    // so they must never appear in "My Groups", the concrete problem that blocked this
+    // feature the first time it was investigated.
     @Query(
         "SELECT g FROM GroupConversation g JOIN GroupConversationMember m ON m.groupConversationId = g.id " +
-            "WHERE m.userId = :userId ORDER BY g.lastMessageAt DESC",
+            "WHERE m.userId = :userId AND g.isDirect = FALSE ORDER BY g.lastMessageAt DESC",
     )
     fun findByMember(@Param("userId") userId: String, pageable: Pageable): Page<GroupConversation>
+
+    // Real lookup for GroupMessagingService.getOrCreateDirectSplitGroup -- finds the
+    // existing synthetic 2-person group for this exact pair of users, if one was already
+    // created by an earlier split bill between them, so a second split doesn't spawn a
+    // second hidden group and split their settlement history across two threads.
+    // COUNT(m) = 2 (not "contains both ids") -- a real group with >2 members, or a
+    // synthetic pair-group joined by a 3rd member somehow, both correctly fail to match
+    // here rather than being silently reused for a bill meant to be strictly 1:1.
+    @Query(
+        "SELECT g FROM GroupConversation g WHERE g.isDirect = TRUE AND g.id IN (" +
+            "SELECT m.groupConversationId FROM GroupConversationMember m " +
+            "WHERE m.userId IN (:userIdA, :userIdB) " +
+            "GROUP BY m.groupConversationId HAVING COUNT(m) = 2)",
+    )
+    fun findDirectGroupBetween(@Param("userIdA") userIdA: String, @Param("userIdB") userIdB: String): GroupConversation?
+
+    // Real KakaoTalk 오픈채팅-style join-by-code lookup -- see
+    // GroupMessagingService.joinByCode's own doc comment.
+    fun findByJoinCode(joinCode: String): GroupConversation?
+
+    fun existsByJoinCode(joinCode: String): Boolean
 }
 
 interface GroupConversationMemberRepository : JpaRepository<GroupConversationMember, String> {
@@ -53,6 +78,18 @@ interface GroupMessageRepository : JpaRepository<GroupMessage, String> {
     // analogue, used by GroupMessagingService.listMyGroups' batched last-message fetch.
     fun findByGroupConversationIdInOrderBySentAtDesc(groupConversationIds: List<String>, pageable: Pageable): List<GroupMessage>
 
+    // Real group-chat message search -- same shape as MessageRepository
+    // .searchByConversationIdAndBody's 1:1 equivalent.
+    @Query(
+        "SELECT m FROM GroupMessage m WHERE m.groupConversationId = :groupConversationId " +
+            "AND m.deletedAt IS NULL AND LOWER(m.body) LIKE LOWER(CONCAT('%', :query, '%')) ORDER BY m.sentAt DESC",
+    )
+    fun searchByGroupConversationIdAndBody(
+        @Param("groupConversationId") groupConversationId: String,
+        @Param("query") query: String,
+        pageable: Pageable,
+    ): Page<GroupMessage>
+
     // Real unread-count support, the group-chat analogue of MessageRepository's
     // countByConversationIdAndSenderIdNotAndReadAtIsNull -- since group read state is a
     // per-member cursor (GroupConversationMember.lastReadAt), not a per-message flag,
@@ -72,6 +109,39 @@ interface GroupMessageRepository : JpaRepository<GroupMessage, String> {
         @Param("userId") userId: String,
         @Param("lastReadAt") lastReadAt: java.time.Instant?,
     ): Long
+
+    // Real Thread support (2026-08-05) -- see MessageRepository.MessageReplyCount's own
+    // doc comment for the full account; identical shape here for group chat.
+    fun findByReplyToMessageIdAndDeletedAtIsNullOrderBySentAtAsc(replyToMessageId: String): List<GroupMessage>
+
+    // Real total-unread-count fix (2026-09-11) -- see
+    // project_itunda_pagination_discard_sweep memory's own "Messaging"
+    // section: countUnread's own doc comment above named a per-group cutoff
+    // as the reason a single cross-group aggregate query wasn't attempted,
+    // reasoning that expressing "each group's own lastReadAt cutoff" needs
+    // "either a correlated subquery or raw SQL this codebase doesn't use
+    // elsewhere." A CORRELATED SUBQUERY is real, standard JPQL though (not
+    // raw SQL) -- this is exactly that: for every unread candidate message,
+    // look up that SPECIFIC group's own membership row for this user via a
+    // subquery correlated on gm.groupConversationId, falling back to
+    // :epoch (Instant.EPOCH, passed from the service layer) when the user
+    // has never opened that group at all -- COALESCE(..., epoch) mirrors
+    // countUnread's own "lastReadAt IS NULL means everything is unread"
+    // semantics (any real sentAt is always after 1970).
+    @Query(
+        "SELECT COUNT(gm) FROM GroupMessage gm WHERE gm.senderId <> :userId " +
+            "AND gm.groupConversationId IN (SELECT gcm.groupConversationId FROM GroupConversationMember gcm WHERE gcm.userId = :userId) " +
+            "AND gm.sentAt > COALESCE(" +
+            "(SELECT gcm2.lastReadAt FROM GroupConversationMember gcm2 WHERE gcm2.groupConversationId = gm.groupConversationId AND gcm2.userId = :userId), " +
+            ":epoch)",
+    )
+    fun countTotalUnreadForUser(@Param("userId") userId: String, @Param("epoch") epoch: java.time.Instant): Long
+
+    @Query(
+        "SELECT m.replyToMessageId AS rootMessageId, COUNT(m) AS replyCount FROM GroupMessage m " +
+            "WHERE m.replyToMessageId IN :messageIds AND m.deletedAt IS NULL GROUP BY m.replyToMessageId",
+    )
+    fun countRepliesByMessageIds(@Param("messageIds") messageIds: List<String>): List<MessageReplyCount>
 }
 
 interface GroupMessageReactionRepository : JpaRepository<GroupMessageReaction, String> {

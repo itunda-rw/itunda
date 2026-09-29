@@ -12,15 +12,16 @@ import rw.itunda.core.domain.Gift
 import rw.itunda.core.domain.GiftStatus
 import rw.itunda.core.domain.Message
 import rw.itunda.core.domain.User
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.GiftRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.messaging.MessagingService
 import java.math.BigDecimal
 import java.time.Instant
@@ -28,30 +29,31 @@ import java.util.Optional
 
 class GiftServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String, balance: String) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal(balance), availableBalance = BigDecimal(balance),
+    fun account(id: String, userId: String, balance: String) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal(balance), availableBalance = BigDecimal(balance),
     )
 
     fun user(id: String, phone: String) = User(id = id, phoneNumber = phone, firstName = "Test", lastName = "User", passwordHash = "hash")
 
-    Given("a real sender with a wallet and a real recipient resolvable by phone number") {
+    Given("a real sender with a account and a real recipient resolvable by phone number") {
         val giftRepository = mockk<GiftRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val userRepository = mockk<UserRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val messagingService = mockk<MessagingService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = GiftService(giftRepository, walletRepository, userRepository, transactionRepository, ledgerService, messagingService, rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = GiftService(giftRepository, accountRepository, userRepository, transactionRepository, ledgerService, messagingService, rateLimiter, fraudRuleEngine)
 
         val recipient = user("user_recipient", "+250788000002")
         val conversation = Conversation(id = "conversation_1", participantAId = "user_recipient", participantBId = "user_sender")
         val message = Message(id = "message_1", conversationId = "conversation_1", senderId = "user_sender", body = "gift")
 
         every { userRepository.findByPhoneNumber("+250788000002") } returns recipient
-        every { walletRepository.findByUserIdAndType("user_sender", WalletType.MAIN) } returns wallet("wallet_sender", "user_sender", "10000")
-        every { walletRepository.findByUserIdAndType("user_recipient", WalletType.MAIN) } returns wallet("wallet_recipient", "user_recipient", "0")
+        every { accountRepository.findByUserIdAndType("user_sender", AccountType.MAIN) } returns account("account_sender", "user_sender", "10000")
+        every { accountRepository.findByUserIdAndType("user_recipient", AccountType.MAIN) } returns account("account_recipient", "user_recipient", "0")
         every { messagingService.startOrGetConversation("user_sender", "user_recipient") } returns conversation
         every { messagingService.sendMessage(any(), any(), any()) } returns message
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
@@ -68,10 +70,19 @@ class GiftServiceTest : BehaviorSpec({
                 gift.status shouldBe GiftStatus.PENDING
                 verify(exactly = 1) { messagingService.sendMessage("user_sender", "conversation_1", any()) }
             }
+
+            // Real gap found live (Gift product-completeness pass, 2026-09-08): every
+            // rateLimiter/fraudRuleEngine mock in this file was relaxed = true with zero
+            // verify{} anywhere, so a future accidental removal of either real call
+            // would have compiled and passed silently.
+            Then("the real rate limiter and real fraud engine are actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("gift:send:user_sender", limit = 20, window = java.time.Duration.ofHours(1)) }
+                verify(exactly = 1) { fraudRuleEngine.evaluate("user_sender", "user_recipient", BigDecimal("5000"), any()) }
+            }
         }
 
         When("the sender doesn't have enough balance") {
-            every { walletRepository.findByUserIdAndType("user_sender", WalletType.MAIN) } returns wallet("wallet_sender", "user_sender", "100")
+            every { accountRepository.findByUserIdAndType("user_sender", AccountType.MAIN) } returns account("account_sender", "user_sender", "100")
 
             Then("it throws InsufficientFundsException before ever moving real money") {
                 try {
@@ -132,15 +143,16 @@ class GiftServiceTest : BehaviorSpec({
         }
     }
 
-    Given("a real, already-open conversation between two real users, both with wallets") {
+    Given("a real, already-open conversation between two real users, both with accounts") {
         val giftRepository = mockk<GiftRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val userRepository = mockk<UserRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val messagingService = mockk<MessagingService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = GiftService(giftRepository, walletRepository, userRepository, transactionRepository, ledgerService, messagingService, rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = GiftService(giftRepository, accountRepository, userRepository, transactionRepository, ledgerService, messagingService, rateLimiter, fraudRuleEngine)
 
         // Real canonical-pair ordering (MessagingService.canonicalPair): participantAId
         // is whichever id sorts first -- "user_a" here, regardless of who is sender.
@@ -148,8 +160,8 @@ class GiftServiceTest : BehaviorSpec({
         val message = Message(id = "message_1", conversationId = "conversation_1", senderId = "user_a", body = "gift")
 
         every { messagingService.getConversationForParticipant("user_a", "conversation_1") } returns conversation
-        every { walletRepository.findByUserIdAndType("user_a", WalletType.MAIN) } returns wallet("wallet_a", "user_a", "10000")
-        every { walletRepository.findByUserIdAndType("user_b", WalletType.MAIN) } returns wallet("wallet_b", "user_b", "0")
+        every { accountRepository.findByUserIdAndType("user_a", AccountType.MAIN) } returns account("account_a", "user_a", "10000")
+        every { accountRepository.findByUserIdAndType("user_b", AccountType.MAIN) } returns account("account_b", "user_b", "0")
         every { messagingService.sendMessage(any(), any(), any()) } returns message
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { transactionRepository.save(any()) } answers { firstArg() }
@@ -207,13 +219,14 @@ class GiftServiceTest : BehaviorSpec({
 
     Given("a real pending gift addressed to a real recipient") {
         val giftRepository = mockk<GiftRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val userRepository = mockk<UserRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val messagingService = mockk<MessagingService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = GiftService(giftRepository, walletRepository, userRepository, transactionRepository, ledgerService, messagingService, rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = GiftService(giftRepository, accountRepository, userRepository, transactionRepository, ledgerService, messagingService, rateLimiter, fraudRuleEngine)
 
         val pendingGift = Gift(
             id = "gift_1", senderId = "user_sender", recipientId = "user_recipient", conversationId = "conversation_1",
@@ -222,7 +235,7 @@ class GiftServiceTest : BehaviorSpec({
         )
 
         every { giftRepository.findById("gift_1") } returns Optional.of(pendingGift)
-        every { walletRepository.findByUserIdAndType("user_recipient", WalletType.MAIN) } returns wallet("wallet_recipient", "user_recipient", "0")
+        every { accountRepository.findByUserIdAndType("user_recipient", AccountType.MAIN) } returns account("account_recipient", "user_recipient", "0")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
         every { transactionRepository.save(any()) } answers { firstArg() }
         every { giftRepository.save(any()) } answers { firstArg() }
@@ -230,9 +243,13 @@ class GiftServiceTest : BehaviorSpec({
         When("the real recipient opens/claims it") {
             val claimed = service.claimGift("user_recipient", "gift_1")
 
-            Then("it moves the real escrowed amount into their wallet and marks it CLAIMED") {
+            Then("it moves the real escrowed amount into their account and marks it CLAIMED") {
                 claimed.status shouldBe GiftStatus.CLAIMED
                 (claimed.claimedAt != null) shouldBe true
+            }
+
+            Then("the real rate limiter is actually consulted, not just mocked away") {
+                verify(exactly = 1) { rateLimiter.checkLimit("gift:claim:user_recipient", limit = 30, window = java.time.Duration.ofHours(1)) }
             }
         }
 
@@ -297,13 +314,14 @@ class GiftServiceTest : BehaviorSpec({
 
     Given("a real gift that expired unclaimed") {
         val giftRepository = mockk<GiftRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val userRepository = mockk<UserRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val messagingService = mockk<MessagingService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = GiftService(giftRepository, walletRepository, userRepository, transactionRepository, ledgerService, messagingService, rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = GiftService(giftRepository, accountRepository, userRepository, transactionRepository, ledgerService, messagingService, rateLimiter, fraudRuleEngine)
 
         val expiredGift = Gift(
             id = "gift_4", senderId = "user_sender", recipientId = "user_recipient", conversationId = "conversation_1",
@@ -312,7 +330,7 @@ class GiftServiceTest : BehaviorSpec({
         )
 
         every { giftRepository.findByStatusAndExpiresAtBefore(GiftStatus.PENDING, any()) } returns listOf(expiredGift)
-        every { walletRepository.findByUserIdAndType("user_sender", WalletType.MAIN) } returns wallet("wallet_sender", "user_sender", "0")
+        every { accountRepository.findByUserIdAndType("user_sender", AccountType.MAIN) } returns account("account_sender", "user_sender", "0")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_6", emptyList())
         every { transactionRepository.save(any()) } answers { firstArg() }
         every { giftRepository.save(any()) } answers { firstArg() }
@@ -324,6 +342,77 @@ class GiftServiceTest : BehaviorSpec({
             Then("it refunds the real escrowed amount back to the sender and marks the gift EXPIRED") {
                 found.size shouldBe 1
                 verify(exactly = 1) { giftRepository.save(match { it.status == GiftStatus.EXPIRED }) }
+            }
+        }
+    }
+
+    // Real sibling-asymmetry fix (2026-09-13) -- GiftVoucher already nudges its
+    // recipient before real expiry; this near-identical money-envelope concept had no
+    // equivalent, so the recipient got zero further signal for the whole EXPIRY
+    // window before the money silently returned to the sender.
+    Given("a real pending gift approaching its expiry, never yet reminded") {
+        val giftRepository = mockk<GiftRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val userRepository = mockk<UserRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val messagingService = mockk<MessagingService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = GiftService(giftRepository, accountRepository, userRepository, transactionRepository, ledgerService, messagingService, rateLimiter, fraudRuleEngine)
+
+        val dueGift = Gift(
+            id = "gift_5", senderId = "user_sender", recipientId = "user_recipient", conversationId = "conversation_1",
+            messageId = "message_5", amount = BigDecimal("3000"), note = null, holdTransactionId = "ledgertxn_7",
+            expiresAt = Instant.now().plusSeconds(3600),
+        )
+
+        every { giftRepository.findByStatusAndExpiryReminderSentAtIsNull(GiftStatus.PENDING) } returns listOf(dueGift)
+        every { giftRepository.findById("gift_5") } returns Optional.of(dueGift)
+        every { giftRepository.save(any()) } answers { firstArg() }
+
+        When("the reminder scheduler checks for gifts due soon") {
+            val due = service.getGiftsDueForExpiryReminder()
+
+            Then("it real-finds the gift that's within the reminder window") {
+                due.map { it.id } shouldBe listOf("gift_5")
+            }
+        }
+
+        When("a real reminder is sent") {
+            service.sendExpiryReminder("gift_5")
+
+            Then("it messages the sender's own conversation and marks the reminder sent, never double-firing on a re-check") {
+                verify(exactly = 1) { messagingService.sendMessage("user_sender", "conversation_1", match { it.contains("expires soon") }) }
+                verify(exactly = 1) { giftRepository.save(match { it.expiryReminderSentAt != null }) }
+            }
+        }
+    }
+
+    Given("a real pending gift with plenty of time left before expiry") {
+        val giftRepository = mockk<GiftRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val userRepository = mockk<UserRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val messagingService = mockk<MessagingService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = GiftService(giftRepository, accountRepository, userRepository, transactionRepository, ledgerService, messagingService, rateLimiter, fraudRuleEngine)
+
+        val freshGift = Gift(
+            id = "gift_6", senderId = "user_sender", recipientId = "user_recipient", conversationId = "conversation_1",
+            messageId = "message_6", amount = BigDecimal("1000"), note = null, holdTransactionId = "ledgertxn_8",
+            expiresAt = Instant.now().plus(Gift.EXPIRY),
+        )
+
+        every { giftRepository.findByStatusAndExpiryReminderSentAtIsNull(GiftStatus.PENDING) } returns listOf(freshGift)
+
+        When("the reminder scheduler checks for gifts due soon") {
+            val due = service.getGiftsDueForExpiryReminder()
+
+            Then("it real-excludes a gift that's still well outside the reminder window") {
+                due shouldBe emptyList()
             }
         }
     }

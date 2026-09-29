@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="marketplace_new_listing_cta">+ Vendre un article</string>
+    <string name="marketplace_title_placeholder">Que vendez-vous ?</string>
+    <string name="marketplace_description_placeholder">Description</string>
+    <string name="marketplace_listing">Publication…</string>
+    <string name="marketplace_list_it">Publier</string>
+</resources>

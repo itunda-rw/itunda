@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Real strings for :features:banking:impl's BankHubScreen/NewSavingsGoalDialog,
+     migrated from :app's own strings.xml (2026-09-02, Banking Feature-module
+     decomposition slice 5) - a Feature module cannot reference :app's generated R
+     class (that dependency direction is backwards), so these keys are duplicated here
+     rather than shared; :app keeps its own copies of the handful (bank_account_account,
+     home_round_up_title, scam_report_cancel) still used by code that stays in :app
+     (HomeTabWidgets.kt, other dialogs). -->
+<resources>
+    <string name="scam_report_cancel">Cancel</string>
+    <string name="home_round_up_title">Round-up saving</string>
+    <string name="home_spent_period_category">Spent this period -- mostly on %1$s</string>
+    <string name="home_spent_period">Spent this period</string>
+    <string name="home_credit_score_title">My credit score</string>
+    <string name="home_credit_score_subtitle">Free check, alternative data</string>
+    <string name="home_credit_score_value">%1$d points</string>
+    <string name="home_credit_score_action">View</string>
+    <string name="home_auto_transfer_title">Auto-transfer</string>
+    <string name="home_auto_transfer_active">%1$d active</string>
+    <string name="home_auto_transfer_setup">Set up a recurring transfer</string>
+    <string name="home_coop_rail_sacco_title">SACCO shares</string>
+    <string name="home_coop_rail_sacco_subtitle">Buy cooperative shares, earn a real dividend</string>
+    <string name="home_coop_rail_ikimina_title">Ikimina</string>
+    <string name="home_coop_rail_ikimina_subtitle">Join a rotating savings circle with people you trust</string>
+    <string name="home_coop_rail_moto_title">Moto-Taxi Ownership</string>
+    <string name="home_coop_rail_harvest_title">Harvest advance</string>
+    <string name="home_coop_rail_harvest_subtitle">Input financing from your coffee cooperative</string>
+    <string name="home_interest_jar">Interest jar</string>
+    <string name="home_interest_jar_rate_subtitle">%1$s%% annual, accrued daily</string>
+    <string name="home_savings_progress">RWF %1$s of %2$s</string>
+    <string name="home_savings_progress_by_date">RWF %1$s of %2$s · by %3$s</string>
+    <string name="savings_new_goal_title">New savings goal</string>
+    <string name="savings_new_goal_subtitle">Set a target and save towards it</string>
+    <string name="savings_new_goal_name_label">Goal name</string>
+    <string name="savings_new_goal_target_label">Target amount (RWF)</string>
+    <string name="savings_new_goal_monthly_label">Monthly contribution (optional)</string>
+    <string name="savings_new_goal_date_label">Target date, YYYY-MM-DD (optional)</string>
+    <string name="savings_new_goal_create">Create goal</string>
+    <string name="home_interest_jar_rate_subtitle_total">%1$s%% annual · RWF %2$s earned so far</string>
+    <string name="home_round_up_rounding">Rounding up to RWF %1$s</string>
+    <string name="home_round_up_off">Off</string>
+    <string name="home_round_up_on">On</string>
+    <string name="home_round_up_set_up">Set up</string>
+    <string name="bank_title">itunda Bank</string>
+    <string name="pay_title">itunda Pay</string>
+    <string name="bank_account_account">itunda Bank</string>
+    <string name="bank_save_grow">Save &amp; grow</string>
+    <string name="bank_borrow">Borrow</string>
+    <string name="bank_insights">Insights</string>
+    <string name="bank_recommendations">Recommended for you</string>
+    <string name="bank_status_disclosure">itunda is not a licensed bank, and this is not real government deposit insurance. \"itunda Bank\" is itunda\'s own product name for these savings, SACCO/Ikimina, loan, and investment features -- not a separate licensed banking entity.</string>
+    <string name="bank_deposit_protection_title">Deposit Protection Fund (simulation)</string>
+    <string name="bank_deposit_protection_covered">Your covered balance</string>
+    <string name="bank_deposit_protection_cap">Covered up to RWF %1$s per user</string>
+    <string name="bank_deposit_protection_reserve">itunda\'s reserve: RWF %1$s</string>
+    <string name="home_round_up_body">Every time you send money, round the payment up and save the difference.</string>
+    <string name="home_round_up_enable">Enable round-up</string>
+    <string name="home_round_up_nearest">Round up to nearest</string>
+    <string name="home_round_up_save_into">Save into</string>
+    <string name="home_save">Save</string>
+    <string name="home_cancel">Cancel</string>
+</resources>

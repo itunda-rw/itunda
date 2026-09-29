@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -29,10 +30,10 @@ enum class WeeklySavingsPlanStatus { ACTIVE, MATURED, CANCELLED }
  * [bonusRate] is only ever paid on top of [baseRate] if [streakBroken] stays false
  * through a real, full unbroken run to maturity -- a single missed installment (an
  * insufficient-funds skip) sets it permanently, the real "don't break the streak"
- * gamification mechanic. Backed by a real dedicated `Wallet` (WalletType.WEEKLY_SAVINGS)
+ * gamification mechanic. Backed by a real dedicated `Account` (AccountType.WEEKLY_SAVINGS)
  * per plan, same "no new balance concept" discipline `GroupAccount` already
  * established -- deposits/interest/withdrawals are the same real ledger-backed
- * WALLET-to-WALLET or clearing-account movement every other money-moving feature here
+ * ACCOUNT-to-ACCOUNT or clearing-account movement every other money-moving feature here
  * already uses.
  */
 @Entity
@@ -45,8 +46,8 @@ class WeeklySavingsPlan(
     @Column(name = "user_id", nullable = false, length = 64)
     val userId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(nullable = false, length = 255)
     var name: String,
@@ -109,9 +110,15 @@ class WeeklySavingsPlan(
 
     @Column(name = "total_interest_paid", precision = 18, scale = 2)
     var totalInterestPaid: BigDecimal? = null,
+
+    // The weekly scheduler, maturity process, and user withdrawal all mutate the
+    // same plan and can move money.  One transition must win at a time.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(
-        id = "", userId = "", walletId = "", name = "", baseWeeklyAmount = BigDecimal.ZERO,
+        id = "", userId = "", accountId = "", name = "", baseWeeklyAmount = BigDecimal.ZERO,
         escalationRate = BigDecimal.ZERO, openingWeekday = 1, baseRate = 0.0, bonusRate = 0.0,
     )
 }

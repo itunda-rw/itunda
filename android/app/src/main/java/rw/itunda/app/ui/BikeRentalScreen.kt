@@ -1,0 +1,455 @@
+package rw.itunda.app.ui
+
+import rw.itunda.core.designsystem.components.formatMoney
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import rw.itunda.core.designsystem.components.pressScaleClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import retrofit2.HttpException
+import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
+import rw.itunda.core.designsystem.components.SkeletonBlock
+import rw.itunda.core.designsystem.components.rememberRealLocationRequester
+import rw.itunda.core.designsystem.itundaface.BikeTypeGlyph
+import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.network.BikeDto
+import rw.itunda.core.network.BikeRentalSessionDto
+import rw.itunda.core.network.EndBikeRentalRequest
+import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.RegisterBikeRequest
+import rw.itunda.core.network.SetBikeAvailabilityRequest
+import rw.itunda.core.network.StartBikeRentalRequest
+import rw.itunda.core.network.UpdateBikeLocationRequest
+import rw.itunda.core.network.superAppErrorMessage
+import java.io.IOException
+
+// Real Kakao T 바이크 (Kakao T Bike, item 222) -- real PEER-TO-PEER bike/scooter rental
+// pool (any user self-registers a bike they own, no admin gate), billed by elapsed TIME
+// at rental end -- distinct from DesignatedDriverScreen.kt/RideScreen.kt, which both
+// know their fare up front. bank-mfe already has this; this is the first Android
+// client, mirroring its Rent-a-bike/My-bikes toggle exactly. Same honest v1
+// scope-down RideScreen.kt/DesignatedDriverScreen.kt already established: one-tap
+// "Use my location" via the shared rememberRealLocationRequester helper, no real map.
+private enum class BikeRentalTab { RENT, MINE }
+
+@Composable
+fun BikeRentalScreen(onBack: () -> Unit) {
+    BackHandler(onBack = onBack)
+    var tab by remember { mutableStateOf(BikeRentalTab.RENT) }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        BackTopBar(title = "Bike rental", onBack = onBack)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp)
+                .clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(4.dp),
+        ) {
+            listOf(BikeRentalTab.RENT to "Rent a bike", BikeRentalTab.MINE to "My bikes").forEach { (value, label) ->
+                val selected = tab == value
+                Box(
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
+                        .background(if (selected) Ids.colors.brand else Color.Transparent)
+                        .pressScaleClickable { tab = value }.padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        if (tab == BikeRentalTab.RENT) BikeRentContent() else BikeMineContent()
+    }
+}
+
+@Composable
+private fun BikeRentContent() {
+    var lat by remember { mutableStateOf<Double?>(null) }
+    var lng by remember { mutableStateOf<Double?>(null) }
+    var locating by remember { mutableStateOf(false) }
+    var nearbyBikes by remember { mutableStateOf<List<BikeDto>>(emptyList()) }
+    var activeRental by remember { mutableStateOf<BikeRentalSessionDto?>(null) }
+    var pastRentals by remember { mutableStateOf<List<BikeRentalSessionDto>>(emptyList()) }
+    // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
+    // project_itunda_pagination_discard_sweep memory) -- getMyBikeRentalHistory
+    // silently capped this list at the first 20 rentals. Page 0 is polled every
+    // 4s for real-time active-rental accuracy, so it must stay a live, page-0-only
+    // fetch; olderRentals is a separate accumulator populated only by loadMore.
+    var olderRentals by remember { mutableStateOf<List<BikeRentalSessionDto>>(emptyList()) }
+    var rentalsPage by remember { mutableStateOf(0) }
+    var rentalsHasMore by remember { mutableStateOf(false) }
+    var loadingMoreRentals by remember { mutableStateOf(false) }
+    var busyBikeId by remember { mutableStateOf<String?>(null) }
+    var ending by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    val requestLocation = rememberRealLocationRequester(
+        onLocating = { locating = it },
+        onSuccess = { la, lo -> lat = la; lng = lo },
+        onError = { error = it },
+    )
+
+    fun loadHistory() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyBikeRentalHistory(page = 0)
+                activeRental = res.rentals.firstOrNull { it.status == "ACTIVE" }
+                pastRentals = res.rentals.filter { it.status == "COMPLETED" }
+                rentalsHasMore = res.page + 1 < res.totalPages
+            } catch (_: Exception) {
+                // Non-critical -- a poll failure just skips this refresh.
+            }
+        }
+    }
+
+    fun loadMoreRentals() {
+        val nextPage = rentalsPage + 1
+        loadingMoreRentals = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyBikeRentalHistory(page = nextPage)
+                olderRentals = olderRentals + res.rentals.filter { it.status == "COMPLETED" }
+                rentalsPage = nextPage
+                rentalsHasMore = res.page + 1 < res.totalPages
+            } catch (_: Exception) {
+                // Non-critical -- the already-loaded page stays visible; the
+                // user can retry by tapping "Load more" again.
+            } finally {
+                loadingMoreRentals = false
+            }
+        }
+    }
+
+    fun loadNearby() {
+        val la = lat
+        val lo = lng
+        if (la == null || lo == null) return
+        coroutineScope.launch {
+            try {
+                nearbyBikes = NetworkClient.apiService.getNearbyBikes(la, lo).bikes
+            } catch (_: Exception) {
+                // Non-critical -- a poll failure just skips this refresh.
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            loadHistory()
+            delay(4000)
+        }
+    }
+    LaunchedEffect(lat, lng) { loadNearby() }
+
+    fun startRental(bikeId: String) {
+        val la = lat
+        val lo = lng
+        if (la == null || lo == null) return
+        busyBikeId = bikeId
+        error = null
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.startBikeRental(StartBikeRentalRequest(bikeId, la, lo), java.util.UUID.randomUUID().toString())
+                loadHistory()
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                busyBikeId = null
+            }
+        }
+    }
+
+    fun endRental(sessionId: String) {
+        val la = lat
+        val lo = lng
+        if (la == null || lo == null) {
+            error = "Share your location to end this rental."
+            return
+        }
+        ending = true
+        error = null
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.endBikeRental(sessionId, EndBikeRentalRequest(la, lo), java.util.UUID.randomUUID().toString())
+                loadHistory()
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                ending = false
+            }
+        }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
+        val rental = activeRental
+        if (rental != null) {
+            item { Text("Riding now", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            item {
+                // Real fix (flat-design sweep): dropped the Card wrapper.
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Bike unlocked -- billed by elapsed time", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Box(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
+                                .pressScaleClickable(enabled = !ending) { endRental(rental.id) }.padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { Text(if (ending) "Ending…" else "End rental (park here)", color = Color.White, fontWeight = FontWeight.Bold) }
+                }
+            }
+        } else {
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    Box(
+                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
+                            .pressScaleClickable(enabled = !locating) { requestLocation() }.padding(vertical = 14.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(if (locating) "Locating…" else "Find nearby bikes", fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+                }
+            }
+            if (lat != null && nearbyBikes.isEmpty()) {
+                item { Text("No bikes available nearby.", color = Ids.colors.textSecondary, fontSize = 13.sp) }
+            }
+            items(nearbyBikes, key = { it.id }) { bike ->
+                // Real fix (flat-design sweep): dropped the per-row Card.
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            BikeTypeGlyph(electric = bike.type == "ELECTRIC", size = 15.dp)
+                            Text(if (bike.type == "ELECTRIC") "Electric bike" else "Regular bike", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+                        Text(if (bike.type == "ELECTRIC") "150 RWF/minute" else "80 RWF/minute", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                        Box(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
+                                .pressScaleClickable(enabled = busyBikeId != bike.id) { startRental(bike.id) }.padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { Text(if (busyBikeId == bike.id) "…" else "Unlock", color = Color.White, fontWeight = FontWeight.Bold) }
+                }
+            }
+        }
+        val allPastRentals = pastRentals + olderRentals
+        if (allPastRentals.isNotEmpty()) {
+            item { Text("Past rides", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            items(allPastRentals, key = { it.id }) { session -> BikeRentalSessionCard(session) }
+            if (rentalsHasMore) {
+                item {
+                    IdsButton(
+                        text = if (loadingMoreRentals) "Loading…" else "Load more",
+                        onClick = ::loadMoreRentals,
+                        enabled = !loadingMoreRentals,
+                        variant = IdsButtonVariant.Tinted,
+                        size = IdsButtonSize.Medium,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BikeMineContent() {
+    var myBikes by remember { mutableStateOf<List<BikeDto>>(emptyList()) }
+    var loaded by remember { mutableStateOf(false) }
+    var bikeType by remember { mutableStateOf("ELECTRIC") }
+    var registering by remember { mutableStateOf(false) }
+    var busyBikeId by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    val requestLocation = rememberRealLocationRequester(
+        onLocating = {},
+        onSuccess = { lat, lng ->
+            coroutineScope.launch {
+                try {
+                    NetworkClient.apiService.registerBike(RegisterBikeRequest(bikeType, lat, lng))
+                    myBikes = NetworkClient.apiService.getMyBikes().bikes
+                } catch (e: HttpException) {
+                    error = superAppErrorMessage(e)
+                } catch (e: IOException) {
+                    error = "Couldn't reach itunda. Check your connection and try again."
+                } finally {
+                    registering = false
+                }
+            }
+        },
+        onError = { error = it; registering = false },
+    )
+
+    // Real fix (2026-08-15) -- updateBikeLocation existed on ApiService and the backend
+    // since day one, but was never called from any client (bank-mfe's identical gap
+    // fixed the same session). A bike owner could register a bike and toggle its
+    // availability, but never update its position after moving it, so getNearbyBikes
+    // would show a stale location forever after the first registration.
+    var updatingLocationBikeId by remember { mutableStateOf<String?>(null) }
+    val requestLocationUpdate = rememberRealLocationRequester(
+        onLocating = {},
+        onSuccess = { lat, lng ->
+            val bikeId = updatingLocationBikeId
+            if (bikeId == null) return@rememberRealLocationRequester
+            coroutineScope.launch {
+                try {
+                    NetworkClient.apiService.updateBikeLocation(bikeId, UpdateBikeLocationRequest(lat, lng))
+                    myBikes = NetworkClient.apiService.getMyBikes().bikes
+                } catch (e: HttpException) {
+                    error = superAppErrorMessage(e)
+                } catch (e: IOException) {
+                    error = "Couldn't reach itunda. Check your connection and try again."
+                } finally {
+                    updatingLocationBikeId = null
+                }
+            }
+        },
+        onError = { error = it; updatingLocationBikeId = null },
+    )
+
+    fun updateBikeLocationAction(bikeId: String) {
+        updatingLocationBikeId = bikeId
+        error = null
+        requestLocationUpdate()
+    }
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                myBikes = NetworkClient.apiService.getMyBikes().bikes
+            } catch (_: Exception) {
+                // Leave state as-is; next poll may recover.
+            }
+            loaded = true
+        }
+    }
+    LaunchedEffect(Unit) { load() }
+
+    fun register() {
+        registering = true
+        error = null
+        requestLocation()
+    }
+
+    fun toggleAvailable(bike: BikeDto) {
+        busyBikeId = bike.id
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.setBikeAvailability(bike.id, SetBikeAvailabilityRequest(!bike.available))
+                load()
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                busyBikeId = null
+            }
+        }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
+        item {
+            // Real fix (flat-design sweep): dropped the Card wrapper.
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Register a bike you own", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text("Any itunda user can list a bike or scooter into the shared rental pool.", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("ELECTRIC" to "Electric", "REGULAR" to "Regular").forEach { (value, label) ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+                                modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
+                                    .background(if (bikeType == value) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                    .pressScaleClickable { bikeType = value }.padding(vertical = 10.dp),
+                            ) {
+                                BikeTypeGlyph(electric = value == "ELECTRIC", size = 13.dp)
+                                Text(label, color = if (bikeType == value) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                    Box(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
+                            .pressScaleClickable(enabled = !registering) { register() }.padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(if (registering) "Registering…" else "Register at my current location", color = Color.White, fontWeight = FontWeight.Bold) }
+            }
+        }
+        if (!loaded) {
+            item { SkeletonBlock(height = 80.dp) }
+        } else if (myBikes.isEmpty()) {
+            item { Text("You haven't registered any bikes yet.", color = Ids.colors.textSecondary, fontSize = 13.sp) }
+        } else {
+            item { Text("Your bikes", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            items(myBikes, key = { it.id }) { bike ->
+                // Real fix (flat-design sweep): dropped the per-row Card.
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            BikeTypeGlyph(electric = bike.type == "ELECTRIC", size = 15.dp)
+                            Text(if (bike.type == "ELECTRIC") "Electric bike" else "Regular bike", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
+                                    .pressScaleClickable(enabled = updatingLocationBikeId != bike.id) { updateBikeLocationAction(bike.id) }
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                            ) { Text(if (updatingLocationBikeId == bike.id) "…" else "Update location", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                            Box(
+                                modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                                    .background(if (bike.available) Ids.colors.success else Ids.colors.surfaceSoft)
+                                    .pressScaleClickable(enabled = busyBikeId != bike.id) { toggleAvailable(bike) }.padding(horizontal = 14.dp, vertical = 10.dp),
+                            ) { Text(if (bike.available) "Available" else "Unavailable", color = if (bike.available) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                        }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BikeRentalSessionCard(session: BikeRentalSessionDto) {
+    // Real fix (flat-design sweep): dropped the Card wrapper -- used as a
+    // repeated past-rides list row.
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("${session.durationMinutes ?: 0} min ride", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            val fare = session.totalFare
+            if (fare != null) {
+                Text("${formatMoney(fare)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
+            }
+    }
+}
+

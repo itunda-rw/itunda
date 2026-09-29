@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -22,8 +23,8 @@ class SavingsGoal(
     @Column(name = "user_id", nullable = false, length = 64)
     val userId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(nullable = false)
     var name: String,
@@ -60,6 +61,19 @@ class SavingsGoal(
     // treated as immediately due. See AutoSaveScheduler in the savings module.
     @Column(name = "last_auto_contribution_at")
     var lastAutoContributionAt: Instant? = null,
+
+    // Real KB국민은행-style 상품만기알림서비스 (product maturity alert service) (2026-08-17)
+    // -- see SavingsMaturityReminderScheduler's own doc comment. Null means no maturity
+    // reminder has fired yet for this goal; set once the real reminder actually sends,
+    // so a goal past its targetDate is never re-notified on every scheduler poll.
+    @Column(name = "maturity_notified_at")
+    var maturityNotifiedAt: Instant? = null,
+
+    // Manual deposits and the recurring auto-save scheduler update this balance
+    // independently.  Versioning prevents a lost contribution update.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
-    protected constructor() : this(id = "", userId = "", walletId = "", name = "", targetAmount = BigDecimal.ZERO, currentAmount = BigDecimal.ZERO, monthlyContribution = BigDecimal.ZERO, interestRate = 0.0)
+    protected constructor() : this(id = "", userId = "", accountId = "", name = "", targetAmount = BigDecimal.ZERO, currentAmount = BigDecimal.ZERO, monthlyContribution = BigDecimal.ZERO, interestRate = 0.0)
 }

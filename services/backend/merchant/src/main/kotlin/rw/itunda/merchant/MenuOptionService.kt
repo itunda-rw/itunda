@@ -59,7 +59,14 @@ class MenuOptionService(
      * one at a time" API that could leave a half-built, unusable group visible to buyers
      * in between calls. */
     @Transactional
-    fun addOptionGroup(ownerUserId: String, productId: String, name: String, choices: List<MenuOptionChoiceRequest>): MenuOptionGroupView {
+    fun addOptionGroup(
+        ownerUserId: String,
+        productId: String,
+        name: String,
+        choices: List<MenuOptionChoiceRequest>,
+        required: Boolean = true,
+        multiSelect: Boolean = false,
+    ): MenuOptionGroupView {
         rateLimiter.checkLimit("merchant:menu-option-group:$ownerUserId", limit = 30, window = Duration.ofHours(1))
         val ownedProductId = getOwnedProduct(ownerUserId, productId)
 
@@ -92,7 +99,7 @@ class MenuOptionService(
         val group = menuOptionGroupRepository.save(
             MenuOptionGroup(
                 id = "menu_option_group_${UUID.randomUUID()}", productId = ownedProductId, name = trimmedName,
-                displayOrder = existingGroups.size,
+                displayOrder = existingGroups.size, required = required, multiSelect = multiSelect,
             ),
         )
         val savedChoices = menuOptionChoiceRepository.saveAll(

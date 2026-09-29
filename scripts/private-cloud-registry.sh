@@ -421,16 +421,30 @@ configure_containerd_registry() {
   local node="$1"
   local registry_host="$2"
   local registry_host_alt="${registry_host/:/_}_"
+  local configure_script
+
+  read -r -d '' configure_script <<'PY' || true
+import pathlib
+import re
+
+path = pathlib.Path('/etc/containerd/config.toml')
+text = path.read_text(encoding='utf-8')
+section = r"(\[plugins\.'io\.containerd\.cri\.v1\.images'\.registry\]\s*\n)(\s*config_path\s*=\s*).*"
+updated, count = re.subn(section, r"\1\2'/etc/containerd/certs.d'", text, count=1)
+if count != 1:
+    raise SystemExit('Could not find the active containerd v3 registry config_path')
+path.write_text(updated, encoding='utf-8')
+PY
 
   run_vm "$node" "
     set -euo pipefail
-    sudo mkdir -p /etc/containerd/conf.d '/etc/containerd/certs.d/${registry_host}' '/etc/containerd/certs.d/${registry_host_alt}'
-    cat <<'EOF' | sudo tee /etc/containerd/conf.d/itunda-registry.toml >/dev/null
-version = 3
-
-[plugins.'io.containerd.cri.v1.images'.registry]
-  config_path = '/etc/containerd/certs.d'
-EOF
+    sudo mkdir -p '/etc/containerd/certs.d/${registry_host}' '/etc/containerd/certs.d/${registry_host_alt}'
+    # containerd does not automatically load /etc/containerd/conf.d/*.toml on this
+    # kubeadm image. Updating a drop-in there looked correct but was inert: CRI kept
+    # treating the HTTP registry as HTTPS and pods failed with ImagePullBackOff. Patch
+    # the active v3 configuration in place and keep one real config_path (not a
+    # colon-separated pseudo-path, which containerd interprets literally).
+    sudo python3 -c $(shell_quote "$configure_script")
     cat <<'EOF' | sudo tee '/etc/containerd/certs.d/${registry_host}/hosts.toml' >/dev/null
 server = 'http://${registry_host}'
 

@@ -1,10 +1,119 @@
 const express = require('express');
+const { randomUUID } = require('node:crypto');
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 const promClient = require('prom-client');
 
 const app = express();
-app.use(cors());
+app.disable('x-powered-by');
+const DEFAULT_CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+    'http://localhost:5000',
+    'http://localhost:5001',
+    'http://localhost:5002',
+    'http://localhost:5003',
+    'http://localhost:5004',
+    'http://localhost:5005',
+];
+
+function parseAllowedOrigins(value) {
+    const origins = (value || DEFAULT_CORS_ALLOWED_ORIGINS.join(','))
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean);
+    return new Set(origins);
+}
+
+const corsAllowedOrigins = parseAllowedOrigins(process.env.CORS_ALLOWED_ORIGINS);
+function isAllowedCorsOrigin(origin) {
+    // Native apps, same-origin requests, health probes, and curl do not send an
+    // Origin header. Browser requests must be explicitly configured.
+    return !origin || corsAllowedOrigins.has(origin);
+}
+
+function setHeader(target, name, value) {
+    const set = typeof target.setHeader === 'function'
+        ? (name, value) => target.setHeader(name, value)
+        : (name, value) => {
+            target.headers = target.headers || {};
+            target.headers[name.toLowerCase()] = value;
+        };
+    set(name, value);
+}
+
+function setSecurityHeaders(target) {
+    setHeader(target, 'X-Content-Type-Options', 'nosniff');
+    setHeader(target, 'Referrer-Policy', 'no-referrer');
+    setHeader(target, 'X-Frame-Options', 'DENY');
+    setHeader(target, 'Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+}
+
+function setResponseCachePolicy(req, target) {
+    // Financial, account, and admin API responses must never be stored by a browser
+    // or an intermediary. Static map routes deliberately retain their upstream cache
+    // policy because they do not carry account data.
+    if (req.path.startsWith('/api/v1/')) {
+        setHeader(target, 'Cache-Control', 'no-store, private');
+    }
+}
+
+// Only the Istio sidecar (loopback) and Kubernetes pod network may supply a
+// forwarding chain. `true` trusts every hop and lets a direct caller choose its
+// own X-Forwarded-For value, which defeats IP-based rate limits.
+const TRUST_PROXY_CIDRS = process.env.TRUST_PROXY_CIDRS || 'loopback, 10.244.0.0/16';
+app.set('trust proxy', TRUST_PROXY_CIDRS);
+app.use(cors({
+    origin: (origin, callback) => callback(null, isAllowedCorsOrigin(origin)),
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key'],
+    exposedHeaders: ['X-Request-ID'],
+    maxAge: 600,
+}));
+app.use((req, res, next) => {
+    // These API-safe headers apply at the edge, including health and error responses.
+    // HSTS is intentionally configured at the HTTPS terminator, never on this
+    // clear-text in-cluster listener.
+    setSecurityHeaders(res);
+    setResponseCachePolicy(req, res);
+    next();
+});
+
+function requestIdFor(req) {
+    if (!req.itundaRequestId) req.itundaRequestId = randomUUID();
+    return req.itundaRequestId;
+}
+
+app.use((req, res, next) => {
+    res.setHeader('X-Request-ID', requestIdFor(req));
+    next();
+});
+
+function isOperationalEndpoint(req) {
+    return req.path === '/health' || req.path === '/metrics';
+}
+
+// Real rate limiting (2026-07-25) -- this gateway is now reachable from the
+// public internet (bore.pub tunnel -> Istio ingress -> here), so it needs a
+// first line of defense before it's treated as a shareable demo URL. Istio's
+// Istio's ingressgateway sets X-Forwarded-For, and only the explicitly trusted
+// mesh hops above are allowed to extend that chain. Traffic without an original
+// client address (for example a raw TCP tunnel) still collapses to one key.
+app.use(rateLimit({
+    windowMs: 60 * 1000,
+    limit: 300,
+    standardHeaders: true,
+    legacyHeaders: false,
+    // Kubernetes probes and Prometheus scrapes must remain available when a
+    // public caller exhausts the shared limiter key.
+    skip: isOperationalEndpoint,
+}));
+const moneyMovementLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 
 // Real Prometheus scrape target (2026-07-11, alongside services/backend's
 // micrometer-registry-prometheus) -- default Node process metrics plus HTTP
@@ -18,9 +127,32 @@ const httpRequestDuration = new promClient.Histogram({
     labelNames: ['method', 'route', 'status_code'],
     registers: [metricsRegistry]
 });
+const upstreamFailures = new promClient.Counter({
+    name: 'itunda_gateway_upstream_failures_total',
+    help: 'Failed gateway attempts to reach an upstream service',
+    // Keep this intentionally small and predictable: raw error messages (and
+    // arbitrary DNS names) would turn a scrape-time metric into a cardinality
+    // incident during an outage.
+    labelNames: ['route', 'error_code'],
+    registers: [metricsRegistry]
+});
+
+function metricRoute(path) {
+    if (path === '/health' || path === '/metrics') return path;
+    if (path.startsWith('/api/v1/')) {
+        const resource = path.split('/')[3];
+        return resource ? `/api/v1/${resource}` : '/api/v1';
+    }
+    for (const prefix of ['/tiles', '/glyphs', '/osrm', '/geocode']) {
+        if (path === prefix || path.startsWith(`${prefix}/`)) return prefix;
+    }
+    return 'other';
+}
+
 app.use((req, res, next) => {
+    const route = metricRoute(req.path);
     const stop = httpRequestDuration.startTimer({ method: req.method });
-    res.on('finish', () => stop({ route: req.path, status_code: res.statusCode }));
+    res.on('finish', () => stop({ route, status_code: res.statusCode }));
     next();
 });
 app.get('/metrics', async (req, res) => {
@@ -45,27 +177,382 @@ app.get('/metrics', async (req, res) => {
 const PAYMENT_SERVICE_URL = process.env.PAYMENT_SERVICE_URL || 'http://localhost:8081';
 const LEDGER_SERVICE_URL = process.env.LEDGER_SERVICE_URL || 'http://localhost:8082';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:4001';
+// Real, first independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up to the 2026-07-11 microservices decision.
+// Same routing-precedence reasoning as PAYMENT_SERVICE_URL/LEDGER_SERVICE_URL above:
+// registered before the /api/v1 catch-all to services/backend, which no longer
+// serves /api/v1/card/** at all (the :card Gradle module was removed from :app).
+const CARD_SERVICE_URL = process.env.CARD_SERVICE_URL || 'http://localhost:4002';
+// Real, second independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Same routing-precedence reasoning as
+// CARD_SERVICE_URL above: registered before the /api/v1 catch-all to
+// services/backend, which no longer serves /api/v1/insurance/** or
+// /api/v1/system/insurance-claims at all (the :insurance Gradle module was
+// removed from :app). The admin route lives under the shared /api/v1/system/**
+// prefix other unrelated modules also use, so only its own specific sub-path is
+// routed here -- never the whole /api/v1/system prefix.
+const INSURANCE_SERVICE_URL = process.env.INSURANCE_SERVICE_URL || 'http://localhost:4003';
+// Real, third independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Same routing-precedence reasoning as
+// CARD_SERVICE_URL/INSURANCE_SERVICE_URL above. Covers all three of :agents'
+// own route prefixes (/api/v1/agent singular -- AgentOperatorController,
+// /api/v1/agents plural -- AgentDiscoveryController, /api/v1/float-marketplace)
+// plus its admin sub-path under the shared /api/v1/system/** prefix.
+const AGENTS_SERVICE_URL = process.env.AGENTS_SERVICE_URL || 'http://localhost:4004';
+// Real, fourth independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Same routing-precedence reasoning as
+// CARD_SERVICE_URL/INSURANCE_SERVICE_URL/AGENTS_SERVICE_URL above.
+const TRANSIT_SERVICE_URL = process.env.TRANSIT_SERVICE_URL || 'http://localhost:4005';
+// Real, fifth independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Same routing-precedence reasoning as
+// the other *_SERVICE_URL consts above, but deliberately NOT wrapped in
+// moneyMovementLimiter -- certificate generation/verification moves no money,
+// unlike card/insurance/agents/transit; the global rate limiter applied
+// earlier in the middleware chain already covers it.
+const CERTIFICATE_SERVICE_URL = process.env.CERTIFICATE_SERVICE_URL || 'http://localhost:4006';
+// Real, sixth independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Same routing-precedence reasoning as
+// the other *_SERVICE_URL consts above. Real money movement (bill/airtime
+// payments) -- wrapped in moneyMovementLimiter, same as card/insurance/
+// agents/transit.
+const BILLS_SERVICE_URL = process.env.BILLS_SERVICE_URL || 'http://localhost:4007';
+// Real, seventh independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Same routing-precedence reasoning as
+// the other *_SERVICE_URL consts above. No moneyMovementLimiter -- vehicle
+// valuation moves no money, same reasoning as CERTIFICATE_SERVICE_URL.
+const VEHICLE_SERVICE_URL = process.env.VEHICLE_SERVICE_URL || 'http://localhost:4008';
+// Real, eighth independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Same routing-precedence reasoning as
+// the other *_SERVICE_URL consts above. :partners owns FOUR distinct route
+// prefixes (see the four app.use calls below): /api/v1/partners (covers both
+// PartnerController's own routes AND PartnerIdentityController's
+// /api/v1/partners/identity sub-path, since both already live under the same
+// /api/v1/partners prefix -- one route registration covers both),
+// /api/v1/identity/verification (IdentityVerificationController -- a
+// DIFFERENT top-level prefix than :partners' own /api/v1/partners, and a
+// narrower sub-path than :identity's own future /api/v1/identity prefix, not
+// yet extracted), /api/v1/mini-apps (MiniAppCatalogController), and the admin
+// sub-path /api/v1/system/partners under the shared /api/v1/system/** prefix.
+// IMPORTANT ordering note for whenever :identity is eventually extracted: its
+// broader /api/v1/identity route MUST be registered AFTER this file's
+// existing /api/v1/identity/verification line below, not before -- Express
+// matches app.use() in registration order, not longest-prefix, so a
+// mis-ordered broader route would silently swallow this narrower one.
+const PARTNERS_SERVICE_URL = process.env.PARTNERS_SERVICE_URL || 'http://localhost:4009';
+// Real, ninth independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Owns two prefixes: /api/v1/identity
+// (real NIDA/KYB verification) and the admin sub-path
+// /api/v1/system/compliance under the shared /api/v1/system/** prefix. The
+// /api/v1/identity route below is registered AFTER partners-service's
+// existing /api/v1/identity/verification line (see that const's own comment)
+// exactly per the resolved route-collision note -- Express matches
+// registration order, not longest-prefix, so this ordering is load-bearing,
+// not cosmetic.
+const IDENTITY_SERVICE_URL = process.env.IDENTITY_SERVICE_URL || 'http://localhost:4010';
+// Real, tenth independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Owns two prefixes: /api/v1/overview
+// (net-worth/assets aggregation dashboard) and /api/v1/accounts (plural --
+// LinkedAccountController's external-bank-account linking, a real, distinct
+// prefix from :account's own singular /api/v1/account/** -- checked before
+// assuming safety, no collision).
+const OVERVIEW_SERVICE_URL = process.env.OVERVIEW_SERVICE_URL || 'http://localhost:4011';
+// Real, eleventh independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Same routing-precedence reasoning as
+// the other *_SERVICE_URL consts above. No moneyMovementLimiter -- knowledge
+// base Q&A moves no money.
+const KNOWLEDGE_SERVICE_URL = process.env.KNOWLEDGE_SERVICE_URL || 'http://localhost:4012';
+// Real, twelfth independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Owns two prefixes:
+// /api/v1/notifications (covers both NotificationController and
+// DeviceTokenController's /api/v1/notifications/device-tokens sub-path --
+// one registration covers both) and /api/v1/talk/service-channel (a distinct
+// sub-path from :messaging's own /api/v1/talk/ai-chat, checked, no
+// collision -- only this specific sub-path is routed, never the whole
+// /api/v1/talk prefix).
+const NOTIFICATIONS_SERVICE_URL = process.env.NOTIFICATIONS_SERVICE_URL || 'http://localhost:4013';
+// Real, thirteenth independently-deployable itunda product (2026-09-02) --
+// see docs/ARCHITECTURE.md's dated follow-up. Same routing-precedence
+// reasoning as the other *_SERVICE_URL consts above. No moneyMovementLimiter
+// -- analytics event ingestion moves no money. GET /api/v1/analytics/summary
+// stays real, deliberate hasRole("ADMIN") in the shared :security
+// SecurityConfig, unaffected by this extraction.
+const ANALYTICS_SERVICE_URL = process.env.ANALYTICS_SERVICE_URL || 'http://localhost:4014';
+// Real, fourteenth independently-deployable itunda product (2026-09-06) --
+// Bank product-completeness pass, see docs/ARCHITECTURE.md's dated follow-up.
+// Same routing-precedence reasoning as the other *_SERVICE_URL consts above.
+// :loans owns FOUR distinct top-level route prefixes (see the four app.use
+// calls below): /api/v1/loans (covers /loans/vup and /loans/student too, same
+// sub-path prefix-match reasoning as :partners' own multi-prefix comment
+// above), /api/v1/cooperatives, /api/v1/vendor-advance, and (added 2026-09-06
+// for VupLoanAdminController, Bank's first ops-mfe review queue)
+// /api/v1/system/loans -- no moneyMovementLimiter on that one, same reasoning
+// as every other /api/v1/system/** admin route here (an ops decision, not a
+// user-initiated money movement). Checked against every other registered
+// prefix here for a collision before adding --
+// deliberately singular /api/v1/account (unrelated, stays on `backend` this
+// pass, see staged-swimming-sun.md's own account of the real :account/:savings
+// reverse-coupling that ruled those two out) is a genuinely different string
+// from OVERVIEW_SERVICE_URL's existing plural /api/v1/accounts above (Express
+// app.use only matches on a "/" or end-of-string boundary after the prefix, so
+// neither route can ever swallow the other's traffic) -- not touched by this
+// service at all, named here only to record that the check was made.
+const LOANS_SERVICE_URL = process.env.LOANS_SERVICE_URL || 'http://localhost:4015';
+function parsePositiveTimeout(value, fallback) {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isInteger(parsed) && parsed >= 1000 ? parsed : fallback;
+}
+const UPSTREAM_TIMEOUT_MS = parsePositiveTimeout(process.env.UPSTREAM_TIMEOUT_MS, 15000);
 
-app.use('/api/v1/payments', createProxyMiddleware({
-    target: PAYMENT_SERVICE_URL,
-    changeOrigin: true
-}));
+function upstreamErrorCode(error) {
+    switch (error && error.code) {
+    case 'ECONNREFUSED':
+    case 'ECONNRESET':
+    case 'ETIMEDOUT':
+    case 'EAI_AGAIN':
+    case 'ENOTFOUND':
+        return error.code;
+    default:
+        return 'OTHER';
+    }
+}
 
-app.use('/api/v1/ledger', createProxyMiddleware({
-    target: LEDGER_SERVICE_URL,
-    changeOrigin: true
-}));
+function upstreamFailureResponse(error) {
+    if (error && error.code === 'ETIMEDOUT') {
+        return { status: 504, error: 'UPSTREAM_TIMEOUT' };
+    }
+    return { status: 503, error: 'UPSTREAM_UNAVAILABLE', retryAfterSeconds: 5 };
+}
 
-app.use('/api/v1', createProxyMiddleware({
+// App-layer circuit breaker (2026-08-29). Toss's own real Gateway architecture runs
+// circuit breaking at two layers -- infra (Istio) and app (Resilience4j) -- kept
+// deliberately separate because Istio's own granularity alone was judged too coarse
+// (docs/TOSS_ARCHITECTURE_FACTS.md §8). This gateway already has the infra layer (an
+// Istio sidecar sits in front of it -- see the `trust proxy` CIDR comment above) but
+// had no app layer at all: every request to a downed upstream burned the full
+// UPSTREAM_TIMEOUT_MS one at a time, forever, instead of failing fast once the
+// upstream is known to be down. Scoped per upstream target (there are few enough of
+// them that target-level granularity is the right size), not per route.
+function parsePositiveCount(value, fallback) {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isInteger(parsed) && parsed >= 1 ? parsed : fallback;
+}
+const CIRCUIT_FAILURE_THRESHOLD = parsePositiveCount(process.env.CIRCUIT_FAILURE_THRESHOLD, 5);
+const CIRCUIT_OPEN_DURATION_MS = parsePositiveTimeout(process.env.CIRCUIT_OPEN_DURATION_MS, 30000);
+
+const circuits = new Map(); // target -> { state, consecutiveFailures, openedAt }
+function circuitFor(target) {
+    let circuit = circuits.get(target);
+    if (!circuit) {
+        circuit = { state: 'CLOSED', consecutiveFailures: 0, openedAt: 0 };
+        circuits.set(target, circuit);
+    }
+    return circuit;
+}
+
+const circuitStateGauge = new promClient.Gauge({
+    name: 'itunda_gateway_circuit_state',
+    help: 'Circuit breaker state per upstream target (0=closed, 1=open, 2=half-open)',
+    labelNames: ['target'],
+    registers: [metricsRegistry],
+});
+const circuitShortCircuits = new promClient.Counter({
+    name: 'itunda_gateway_circuit_short_circuited_total',
+    help: "Requests rejected immediately because the target upstream's circuit was open",
+    labelNames: ['target'],
+    registers: [metricsRegistry],
+});
+
+function setCircuitState(target, circuit, state) {
+    circuit.state = state;
+    circuitStateGauge.set({ target }, state === 'OPEN' ? 1 : state === 'HALF_OPEN' ? 2 : 0);
+}
+
+// Only connection-level failures count against the breaker -- the same
+// onError-vs-onProxyRes distinction upstreamFailures already draws. A real HTTP
+// 4xx/5xx business response from a healthy, reachable upstream must never trip it.
+function recordCircuitFailure(target) {
+    const circuit = circuitFor(target);
+    circuit.consecutiveFailures += 1;
+    if (circuit.consecutiveFailures >= CIRCUIT_FAILURE_THRESHOLD) {
+        circuit.openedAt = Date.now();
+        setCircuitState(target, circuit, 'OPEN');
+    }
+}
+
+function recordCircuitSuccess(target) {
+    const circuit = circuitFor(target);
+    circuit.consecutiveFailures = 0;
+    if (circuit.state !== 'CLOSED') setCircuitState(target, circuit, 'CLOSED');
+}
+
+// Gate placed in front of the real proxy middleware for a given target. When open,
+// rejects the request without the upstream ever being attempted.
+function circuitGate(target) {
+    return (req, res, next) => {
+        const circuit = circuitFor(target);
+        if (circuit.state === 'OPEN') {
+            if (Date.now() - circuit.openedAt < CIRCUIT_OPEN_DURATION_MS) {
+                circuitShortCircuits.inc({ target });
+                res.set('Retry-After', String(Math.ceil(CIRCUIT_OPEN_DURATION_MS / 1000)));
+                res.status(503).json({ success: false, error: 'UPSTREAM_CIRCUIT_OPEN' });
+                return;
+            }
+            // Cooldown elapsed -- let exactly one trial request through rather than
+            // resetting straight to CLOSED, so a still-down upstream re-opens on that
+            // single trial instead of needing a whole new failure streak to notice.
+            setCircuitState(target, circuit, 'HALF_OPEN');
+        }
+        next();
+    };
+}
+
+function upstreamProxy(target, options = {}) {
+    const { onProxyReq: userOnProxyReq, onProxyRes: userOnProxyRes, ...proxyOptions } = options;
+    const proxyMiddleware = createProxyMiddleware({
+        target,
+        changeOrigin: true,
+        // Keep the caller/gateway timeout bounded and consistent. Payment state is
+        // reconciled through idempotency and durable events rather than a client
+        // waiting indefinitely on a stalled upstream socket.
+        timeout: UPSTREAM_TIMEOUT_MS,
+        proxyTimeout: UPSTREAM_TIMEOUT_MS,
+        onError: (error, req, res) => {
+            upstreamFailures.inc({
+                route: metricRoute(req.path),
+                error_code: upstreamErrorCode(error),
+            });
+            recordCircuitFailure(target);
+            if (!res.headersSent) {
+                const failure = upstreamFailureResponse(error);
+                if (failure.retryAfterSeconds) res.set('Retry-After', String(failure.retryAfterSeconds));
+                res.status(failure.status).json({ success: false, error: failure.error });
+            }
+        },
+        onProxyReq: (proxyReq, req, res) => {
+            proxyReq.setHeader('X-Request-ID', requestIdFor(req));
+            if (userOnProxyReq) userOnProxyReq(proxyReq, req, res);
+        },
+        onProxyRes: (proxyRes, req, res) => {
+            // A response of any status code proves the upstream is reachable.
+            recordCircuitSuccess(target);
+            // Proxy response headers can replace Express's pre-set values, so enforce
+            // the invariant on the upstream response itself as well.
+            setSecurityHeaders(proxyRes);
+            setResponseCachePolicy(req, proxyRes);
+            if (userOnProxyRes) userOnProxyRes(proxyRes, req, res);
+        },
+        ...proxyOptions,
+    });
+    return [circuitGate(target), proxyMiddleware];
+}
+
+function isMessagingWebSocketUpgrade(url) {
+    return typeof url === 'string' && url.split('?', 1)[0] === '/ws/messaging';
+}
+
+// WebSocket upgrades bypass Express middleware, so the ordinary /api/v1 proxy
+// cannot carry the real-time messaging path. Keep a dedicated proxy and attach
+// it directly to the Node HTTP server below; this also preserves the path for
+// Spring's /ws/messaging handler instead of rewriting it as an API request.
+// Deliberately not behind the circuitGate above: each call is one long-lived
+// connection rather than a repeated request/response, so a per-request breaker
+// model doesn't fit it -- a downed backend still fails each upgrade attempt on
+// its own bounded timeout via onError below.
+const messagingWebSocketProxy = createProxyMiddleware({
     target: BACKEND_URL,
-    changeOrigin: true
-}));
+    changeOrigin: true,
+    ws: true,
+    // The browser handshake currently contains a JWT query parameter. Do not let
+    // http-proxy-middleware format a failed upgrade URL into process logs; the
+    // bounded metric below retains the operational signal without a credential.
+    logLevel: 'silent',
+    onProxyReqWs: (proxyReq, req) => {
+        proxyReq.setHeader('X-Request-ID', requestIdFor(req));
+    },
+    onError: (error, req, socket) => {
+        upstreamFailures.inc({
+            route: '/ws/messaging',
+            error_code: upstreamErrorCode(error),
+        });
+        socket.destroy();
+    },
+});
+
+app.use('/api/v1/payments', moneyMovementLimiter, upstreamProxy(PAYMENT_SERVICE_URL));
+
+app.use('/api/v1/ledger', moneyMovementLimiter, upstreamProxy(LEDGER_SERVICE_URL));
+
+app.use('/api/v1/card', moneyMovementLimiter, upstreamProxy(CARD_SERVICE_URL));
+app.use('/api/v1/system/insurance-claims', moneyMovementLimiter, upstreamProxy(INSURANCE_SERVICE_URL));
+app.use('/api/v1/insurance', moneyMovementLimiter, upstreamProxy(INSURANCE_SERVICE_URL));
+app.use('/api/v1/system/agents', moneyMovementLimiter, upstreamProxy(AGENTS_SERVICE_URL));
+app.use('/api/v1/agent', moneyMovementLimiter, upstreamProxy(AGENTS_SERVICE_URL));
+app.use('/api/v1/agents', moneyMovementLimiter, upstreamProxy(AGENTS_SERVICE_URL));
+app.use('/api/v1/float-marketplace', moneyMovementLimiter, upstreamProxy(AGENTS_SERVICE_URL));
+app.use('/api/v1/transit', moneyMovementLimiter, upstreamProxy(TRANSIT_SERVICE_URL));
+app.use('/api/v1/certificate', upstreamProxy(CERTIFICATE_SERVICE_URL));
+app.use('/api/v1/bills', moneyMovementLimiter, upstreamProxy(BILLS_SERVICE_URL));
+app.use('/api/v1/vehicles', upstreamProxy(VEHICLE_SERVICE_URL));
+app.use('/api/v1/system/partners', upstreamProxy(PARTNERS_SERVICE_URL));
+app.use('/api/v1/identity/verification', upstreamProxy(PARTNERS_SERVICE_URL));
+app.use('/api/v1/partners', upstreamProxy(PARTNERS_SERVICE_URL));
+app.use('/api/v1/mini-apps', upstreamProxy(PARTNERS_SERVICE_URL));
+// Registered AFTER the /api/v1/identity/verification line above -- required
+// ordering, not incidental (see IDENTITY_SERVICE_URL's own comment).
+app.use('/api/v1/system/compliance', upstreamProxy(IDENTITY_SERVICE_URL));
+app.use('/api/v1/identity', upstreamProxy(IDENTITY_SERVICE_URL));
+app.use('/api/v1/overview', upstreamProxy(OVERVIEW_SERVICE_URL));
+app.use('/api/v1/accounts', upstreamProxy(OVERVIEW_SERVICE_URL));
+app.use('/api/v1/knowledge', upstreamProxy(KNOWLEDGE_SERVICE_URL));
+app.use('/api/v1/talk/service-channel', upstreamProxy(NOTIFICATIONS_SERVICE_URL));
+app.use('/api/v1/system/notifications', upstreamProxy(NOTIFICATIONS_SERVICE_URL));
+app.use('/api/v1/notifications', upstreamProxy(NOTIFICATIONS_SERVICE_URL));
+app.use('/api/v1/analytics', upstreamProxy(ANALYTICS_SERVICE_URL));
+app.use('/api/v1/system/loans', upstreamProxy(LOANS_SERVICE_URL));
+app.use('/api/v1/loans', moneyMovementLimiter, upstreamProxy(LOANS_SERVICE_URL));
+app.use('/api/v1/cooperatives', moneyMovementLimiter, upstreamProxy(LOANS_SERVICE_URL));
+app.use('/api/v1/vendor-advance', moneyMovementLimiter, upstreamProxy(LOANS_SERVICE_URL));
+
+app.use('/api/v1', upstreamProxy(BACKEND_URL));
+
+// Real self-hosted Maps geo-stack proxy (2026-07-24) -- rides this same gateway's
+// existing public tunnel instead of needing a separate bore.pub tunnel per service.
+// OSRM/Nominatim/tiles/glyphs all listen on itunda-dc-a's own host network (not a
+// k8s Service), reachable from this pod via the node's IP.
+const TILES_URL = process.env.TILES_URL || 'http://192.168.252.4:8090';
+const GLYPHS_URL = process.env.GLYPHS_URL || 'http://192.168.252.4:8091';
+const OSRM_CAR_URL = process.env.OSRM_CAR_URL || 'http://192.168.252.4:5000';
+const OSRM_FOOT_URL = process.env.OSRM_FOOT_URL || 'http://192.168.252.4:5001';
+const NOMINATIM_URL = process.env.NOMINATIM_URL || 'http://192.168.252.4:8088';
+
+app.use('/tiles', upstreamProxy(TILES_URL, { pathRewrite: { '^/tiles': '' } }));
+app.use('/glyphs', upstreamProxy(GLYPHS_URL, { pathRewrite: { '^/glyphs': '' } }));
+app.use('/osrm/foot', upstreamProxy(OSRM_FOOT_URL, { pathRewrite: { '^/osrm/foot': '' } }));
+app.use('/osrm', upstreamProxy(OSRM_CAR_URL, { pathRewrite: { '^/osrm': '' } }));
+app.use('/geocode', upstreamProxy(NOMINATIM_URL, { pathRewrite: { '^/geocode': '' } }));
 
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'UP', service: 'Itunda API Gateway (Node.js)' });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 Itunda API Gateway running on port ${PORT}`);
-});
+function startServer(port = PORT, host) {
+    const server = host ? app.listen(port, host) : app.listen(port);
+    server.on('upgrade', (req, socket, head) => {
+        if (isMessagingWebSocketUpgrade(req.url)) {
+            requestIdFor(req);
+            messagingWebSocketProxy.upgrade(req, socket, head);
+        } else {
+            socket.destroy();
+        }
+    });
+    return server;
+}
+
+if (require.main === module) {
+    startServer(PORT).on('listening', () => {
+        console.log(`🚀 Itunda API Gateway running on port ${PORT}`);
+    });
+}
+
+module.exports = { app, metricRoute, parseAllowedOrigins, isAllowedCorsOrigin, parsePositiveTimeout, upstreamErrorCode, upstreamFailureResponse, isOperationalEndpoint, isMessagingWebSocketUpgrade, requestIdFor, setSecurityHeaders, setResponseCachePolicy, startServer };

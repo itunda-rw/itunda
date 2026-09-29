@@ -1,0 +1,18 @@
+-- Real Toss passwordless-login rollout (2026-08-24, direct user follow-up: "we need
+-- that simplification" -- after real sourced Toss research confirmed exactly how it
+-- works: phone + real OTP verification, then a real 6-digit numeric PIN, and every
+-- REPEAT app open is a biometric/PIN-pad gesture against an already-recognized
+-- device, never re-typing the full credential again). See AuthService/DeviceService's
+-- own doc comments for the full account.
+--
+-- `pin_set` distinguishes an existing user (registered under the old free-form-
+-- password scheme, `password_hash` may be any shape) from a user who registered
+-- under the new 6-digit-PIN scheme -- `password_hash` itself is left completely
+-- untouched (still a real bcrypt hash either way, still verified the same
+-- passwordEncoder.matches call in AuthService.login) since it's shape-agnostic and a
+-- free-form password already existing users set keeps working exactly as before with
+-- zero migration risk. `DEFAULT false` here is deliberate: every row that already
+-- exists at the moment this migration runs gets `false` (they haven't set a real
+-- 6-digit PIN yet, whatever their real existing password's shape). AuthService.register
+-- explicitly sets pinSet = true for every newly-created user going forward.
+ALTER TABLE users ADD COLUMN pin_set BOOLEAN NOT NULL DEFAULT false;

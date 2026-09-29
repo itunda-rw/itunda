@@ -22,6 +22,44 @@ import java.time.Instant
  * `getRiderRatingSummary`), not a running counter cached on `Merchant`/`Rider` -- avoids
  * touching those already-tested entities' write paths for a purely additive feature,
  * matching this session's own discipline everywhere else.
+ *
+ * `ownerReply`/`ownerRepliedAt` (2026-07-26) close a gap this entity's own doc comment
+ * used to name explicitly: `MerchantBookingReview`'s doc comment called out "the
+ * genuinely new part `ProductReview`/`EatsReview` don't have" when owner-side review
+ * replies shipped for bookings -- a real, well-known 배달의민족/Naver Smart Place
+ * restaurant-owner-reply capability every real Korean delivery app has, left open here
+ * at the time. Same exact shape: one editable reply per review (re-posting overwrites
+ * the same reply + timestamp, no separate versioning), only the restaurant's own real
+ * owner can post it. See `EatsReviewService.replyToRestaurantReview` for the full account.
+ *
+ * `riderId`/`riderRating` are nullable (migration V130, 2026-07-26) -- a real bug found
+ * live while verifying the owner-reply feature above: a Baemin-style PICKUP order
+ * (`EatsFulfillmentType.PICKUP`, added 2026-07-26) reaches `DELIVERED` via
+ * `EatsOrderService.completePickup` with no rider ever assigned at all, but this class
+ * used to hard-require a real riderId/riderRating on every review -- making every real
+ * PICKUP order permanently unreviewable. A PICKUP order's review simply has no rider to
+ * rate; `riderRating`/`riderComment` stay null for that case, same honest "nothing to
+ * report" discipline this codebase already uses elsewhere rather than a fabricated 0/N-A.
+ *
+ * `photoUrl` (migration V224, 2026-08-04) -- see docs/DESIGN_REFERENCES.md's Eats
+ * recommendation #5: food-delivery trust leans disproportionately on photos of the
+ * actual plated food (Baemin's 2022 push ranks photo-bearing reviews first via 추천순
+ * 정렬). Same real-external-URL-only convention as Merchant.photoUrl/Listing photos
+ * everywhere else in this codebase -- a real URL the buyer supplies, never an
+ * upload/storage pipeline. Nullable: a review with no photo is still a complete, honest
+ * review, same as before this field existed.
+ *
+ * `helpfulCount` (migration V264, 2026-08-17) -- a real Baemin/Coupang-style "도움돼요"
+ * vote other buyers can cast on a review, distinct from the restaurant-owner `ownerReply`
+ * above. See `EatsReviewService.toggleHelpful`'s own doc comment for the full account.
+ *
+ * `goodPoints` (migration V299, 2026-08-28) -- real preset-tag review checklist (itunda
+ * Maps redesign, direct Naver Map reference: "이런 점이 좋았어요"), ported from
+ * `HoodTransactionReview.goodPoints`'s own exact pipe-separated-preset-tags convention
+ * (see that class's own doc comment) rather than inventing a second mechanism -- same
+ * "plain VARCHAR over a join table for a small enumerated set" discipline. Nullable: a
+ * review submitted with no tags selected is still a complete, honest review, same as
+ * every other optional field on this entity.
  */
 @Entity
 @Table(name = "eats_reviews")
@@ -39,8 +77,8 @@ class EatsReview(
     @Column(name = "restaurant_id", nullable = false, length = 64)
     val restaurantId: String,
 
-    @Column(name = "rider_id", nullable = false, length = 64)
-    val riderId: String,
+    @Column(name = "rider_id", length = 64)
+    val riderId: String?,
 
     @Column(name = "restaurant_rating", nullable = false)
     val restaurantRating: Int,
@@ -48,11 +86,34 @@ class EatsReview(
     @Column(name = "restaurant_comment", length = 1000)
     val restaurantComment: String?,
 
-    @Column(name = "rider_rating", nullable = false)
-    val riderRating: Int,
+    @Column(name = "rider_rating")
+    val riderRating: Int?,
 
     @Column(name = "rider_comment", length = 1000)
     val riderComment: String?,
+
+    @Column(name = "owner_reply", length = 1000)
+    var ownerReply: String? = null,
+
+    @Column(name = "owner_replied_at")
+    var ownerRepliedAt: Instant? = null,
+
+    @Column(name = "photo_url", length = 500)
+    val photoUrl: String? = null,
+
+    @Column(name = "helpful_count", nullable = false)
+    var helpfulCount: Long = 0,
+
+    // Real Baemin 리뷰 신고하기 (report review) -- see EatsReviewReport.kt's own doc
+    // comment for the full sourcing. Flips true once EatsReviewService.REPORT_THRESHOLD
+    // distinct reporters accumulate; excluded from getRestaurantReviews and both rating
+    // summaries from that point on, same real "silently removed from view" effect
+    // MarketplaceListingReport's REMOVED status already establishes for listings.
+    @Column(name = "hidden", nullable = false)
+    var hidden: Boolean = false,
+
+    @Column(name = "good_points", length = 500)
+    val goodPoints: String? = null,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
@@ -61,4 +122,6 @@ class EatsReview(
         id = "", orderId = "", buyerId = "", restaurantId = "", riderId = "",
         restaurantRating = 0, restaurantComment = null, riderRating = 0, riderComment = null,
     )
+
+    fun goodPointList(): List<String> = goodPoints?.split("|")?.filter { it.isNotBlank() } ?: emptyList()
 }

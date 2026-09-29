@@ -1,6 +1,7 @@
 package rw.itunda.feature.payments.impl
 
 import androidx.compose.foundation.background
+import rw.itunda.core.designsystem.components.IdsLoading
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
@@ -25,13 +26,13 @@ import rw.itunda.core.designsystem.theme.Ids
  * QuickAmountChip/FlowNextBar/NumericKeypad, widened from private to internal for
  * exactly this reuse) rather than re-implementing an identical layout.
  *
- * itunda has no real withdraw-from-goal endpoint (only deposit + interest-jar
- * claim, see SavingsController.kt) -- SavingsAmountScreen's `mode` therefore only
- * offers .deposit for a real goal and .claimInterest for the jar; a withdraw mode
- * is deliberately not exposed here rather than faked against an endpoint that
- * doesn't exist.
+ * Real gap found live (2026-08-31, direct user re-reference of the same two
+ * screenshots): a withdraw endpoint now exists (SavingsController.kt's real
+ * POST /api/v1/savings/withdraw, closing SavingsService.depositToGoal's own
+ * 2026-08-23 doc comment naming this exact gap) -- .withdraw is no longer faked
+ * against a nonexistent endpoint, it's real.
  */
-enum class SavingsAmountMode { deposit, claimInterest }
+enum class SavingsAmountMode { deposit, withdraw, claimInterest }
 
 @Composable
 fun SavingsAmountScreen(
@@ -44,6 +45,9 @@ fun SavingsAmountScreen(
 ) {
     var digits by rememberSaveable { mutableStateOf("") }
     val amount = digits.toLongOrNull() ?: 0L
+    // For withdraw, `availableBalance` is the GOAL's own current balance (the real cap
+    // on this action), not the destination account's balance -- see this screen's own
+    // call site in ItundaAppScreen.kt.
     val availableBalanceLong = availableBalance.toLong()
 
     Column(
@@ -54,11 +58,19 @@ fun SavingsAmountScreen(
         FlowTopBar(onBack)
 
         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-            TransferPartyRow(
-                label = "From Itunda Wallet",
-                sublabel = "Available RWF ${rwfFormatter.format(availableBalanceLong)}",
-                icon = Icons.Outlined.AccountBalanceWallet
-            )
+            if (mode == SavingsAmountMode.withdraw) {
+                TransferPartyRow(
+                    label = "From $goalName",
+                    sublabel = "Available ${rwfFormatter.format(availableBalanceLong)} RWF",
+                    icon = Icons.Outlined.Savings
+                )
+            } else {
+                TransferPartyRow(
+                    label = "From Itunda Account",
+                    sublabel = "Available ${rwfFormatter.format(availableBalanceLong)} RWF",
+                    icon = Icons.Outlined.AccountBalanceWallet
+                )
+            }
             Spacer(modifier = Modifier.height(2.dp))
             Box(
                 modifier = Modifier
@@ -68,11 +80,15 @@ fun SavingsAmountScreen(
                     .background(Ids.colors.divider)
             )
             Spacer(modifier = Modifier.height(2.dp))
-            TransferPartyRow(
-                label = "To $goalName",
-                sublabel = if (mode == SavingsAmountMode.deposit) "Savings goal" else "Interest jar",
-                icon = Icons.Outlined.Savings
-            )
+            if (mode == SavingsAmountMode.withdraw) {
+                TransferPartyRow(label = "To Itunda Account", sublabel = "", icon = Icons.Outlined.AccountBalanceWallet)
+            } else {
+                TransferPartyRow(
+                    label = "To $goalName",
+                    sublabel = if (mode == SavingsAmountMode.deposit) "Savings goal" else "Interest jar",
+                    icon = Icons.Outlined.Savings
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(40.dp))
@@ -86,7 +102,17 @@ fun SavingsAmountScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                if (mode == SavingsAmountMode.deposit) "How much to save?" else "Claim your interest",
+                // Real fix (2026-08-11): interest now auto-credits to the account the
+                // instant it accrues (see backend SavingsService.accrueInterest's own
+                // doc comment, matching real Toss Bank passbook interest) -- this
+                // screen no longer moves money, it just acknowledges what already
+                // arrived. "Claim your interest" would overclaim a pending action
+                // that doesn't exist anymore.
+                when (mode) {
+                    SavingsAmountMode.deposit -> "How much to save?"
+                    SavingsAmountMode.withdraw -> "How much to withdraw?"
+                    SavingsAmountMode.claimInterest -> "Interest already added to your balance"
+                },
                 color = Ids.colors.textSecondary,
                 fontSize = 16.sp
             )
@@ -100,25 +126,26 @@ fun SavingsAmountScreen(
             )
         }
 
-        if (mode == SavingsAmountMode.deposit) {
+        if (mode == SavingsAmountMode.deposit || mode == SavingsAmountMode.withdraw) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                QuickAmountChip("+10,000") { digits = ((digits.toLongOrNull() ?: 0L) + 10_000L).toString() }
-                QuickAmountChip("+100,000") { digits = ((digits.toLongOrNull() ?: 0L) + 100_000L).toString() }
+                QuickAmountChip("+10,000") { digits = (((digits.toLongOrNull() ?: 0L) + 10_000L).coerceAtMost(availableBalanceLong)).toString() }
+                QuickAmountChip("+100,000") { digits = (((digits.toLongOrNull() ?: 0L) + 100_000L).coerceAtMost(availableBalanceLong)).toString() }
                 QuickAmountChip("Max") { digits = availableBalanceLong.toString() }
             }
         }
 
         if (isSubmitting) {
             Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
-                androidx.compose.material3.CircularProgressIndicator(color = Ids.colors.brand)
+                IdsLoading()
             }
         } else if (mode == SavingsAmountMode.claimInterest) {
-            FlowNextBar(enabled = true, label = "Claim") { onConfirm(0L) }
+            FlowNextBar(enabled = true, label = "OK") { onConfirm(0L) }
         } else {
-            FlowNextBar(enabled = digits.isNotEmpty() && amount > 0, label = "Deposit") { onConfirm(amount) }
+            val label = if (mode == SavingsAmountMode.withdraw) "Withdraw" else "Deposit"
+            FlowNextBar(enabled = digits.isNotEmpty() && amount > 0 && amount <= availableBalanceLong, label = label) { onConfirm(amount) }
             NumericKeypad(
                 onDigit = { d -> if (digits.length < 9) digits += d },
                 onDelete = { if (digits.isNotEmpty()) digits = digits.dropLast(1) }

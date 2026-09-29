@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Real localization for :features:maps:impl (Maps product-completeness pass,
+     2026-09-07): this module had zero string-resource localization at all (every UI
+     string was a raw Kotlin literal), unlike every sibling feature module
+     (:features:banking:impl, :features:home:impl, :features:payments:impl,
+     :core:designsystem all ship real values-rw/values-fr). Deliberately scoped to the
+     primary, always-visible surface (search bar, bookmark save dialog, live-location-
+     sharing panel, the one generic connectivity-error message reused across ~13 catch
+     blocks), not every secondary/edge-case string in this module's screens. All
+     translations here are a good-faith, careful effort, NOT verified by a native
+     speaker of either language, and should get real native-speaker review before
+     being treated as production-final, same honesty standard every other localized
+     module in this repo already holds itself to. -->
+<resources>
+    <string name="maps_search_placeholder">Search a real place in Rwanda</string>
+    <string name="maps_connection_error">Couldn\'t reach itunda. Check your connection and try again.</string>
+    <string name="maps_folder_name_placeholder">Folder name (e.g. Favorites)</string>
+    <string name="maps_saving">Saving…</string>
+    <string name="maps_save">Save</string>
+    <string name="maps_cancel">Cancel</string>
+    <string name="maps_location_share_title">📍 Live location sharing</string>
+    <string name="maps_share_my_location">+ Share my location</string>
+    <string name="maps_recipient_phone_placeholder">Recipient\'s phone number</string>
+    <string name="maps_share_for">For</string>
+    <string name="maps_starting">Starting…</string>
+    <string name="maps_start_sharing">Start sharing</string>
+</resources>

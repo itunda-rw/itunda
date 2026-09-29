@@ -1,0 +1,22 @@
+name: IDS semantic parity
+
+on:
+  push:
+    branches:
+      - agent/itunda-agent-network
+    paths:
+      - "client/design-system/**"
+      - "scripts/design-system-parity.mjs"
+      - ".github/workflows/ids-parity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check IDS semantic parity
+        run: node scripts/design-system-parity.mjs

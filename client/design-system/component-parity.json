@@ -1,0 +1,144 @@
+{
+  "version": "1.0.0",
+  "purpose": "IDS component API and state parity contract. Platform implementations may use native APIs, but public behavior must satisfy the same contract.",
+  "components": {
+    "button": {
+      "variants": [
+        "filled",
+        "tinted"
+      ],
+      "sizes": [
+        "large",
+        "medium",
+        "small"
+      ],
+      "states": [
+        "default",
+        "pressed",
+        "focus",
+        "disabled",
+        "loading",
+        "success",
+        "error"
+      ],
+      "accessibility": [
+        "native-button-role",
+        "visible-label",
+        "state-not-color-only",
+        "minimum-touch-target"
+      ],
+      "sources": {
+        "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt",
+        "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
+        "web": "client/design-system/components.css"
+      }
+    },
+    "textField": {
+      "states": [
+        "empty",
+        "focused",
+        "filled",
+        "disabled",
+        "loading",
+        "error",
+        "success"
+      ],
+      "requirements": [
+        "label",
+        "supporting-text",
+        "error-recovery",
+        "keyboard-appropriate-input",
+        "screen-reader-state"
+      ],
+      "sources": {
+        "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsTextField.kt",
+        "web": "client/design-system/components.css"
+      }
+    },
+    "listRow": {
+      "states": [
+        "default",
+        "pressed",
+        "disabled",
+        "selected"
+      ],
+      "requirements": [
+        "leading-content",
+        "primary-label",
+        "secondary-content",
+        "trailing-content",
+        "touch-target"
+      ],
+      "sources": {
+        "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsListRow.kt",
+        "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
+        "web": "client/design-system/components.css"
+      }
+    },
+    "emptyState": {
+      "states": [
+        "default",
+        "with-action"
+      ],
+      "requirements": [
+        "explanation",
+        "next-action-when-applicable",
+        "localized-content"
+      ],
+      "sources": {
+        "android": "android/core/designsystem",
+        "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
+        "web": "client/design-system/components.css"
+      }
+    },
+    "errorState": {
+      "states": [
+        "recoverable",
+        "terminal"
+      ],
+      "requirements": [
+        "human-readable-message",
+        "recovery-action-when-possible",
+        "preserve-context"
+      ],
+      "sources": {
+        "android": "android/core/designsystem",
+        "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
+        "web": "client/design-system/components.css"
+      }
+    },
+    "skeleton": {
+      "states": [
+        "loading"
+      ],
+      "requirements": [
+        "preserve-layout",
+        "reduced-motion-safe",
+        "no-essential-information-only-in-animation"
+      ],
+      "sources": {
+        "android": "android/core/designsystem",
+        "web": "client/design-system/components.css"
+      }
+    },
+    "bottomCta": {
+      "states": [
+        "enabled",
+        "disabled",
+        "loading"
+      ],
+      "requirements": [
+        "keyboard-safe-area",
+        "sticky-action",
+        "content-scroll-independence",
+        "accessible-label"
+      ],
+      "sources": {
+        "android": "android/core/designsystem",
+        "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
+        "web": "client/design-system/components.css"
+      }
+    }
+  },
+  "completionRule": "A component is IDS-complete only when anatomy, variants, states, accessibility, localization, dark mode, responsive/platform behavior and recovery behavior are documented and tested."
+}

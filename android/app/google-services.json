@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1019859645463",
+    "project_id": "itunda-org",
+    "storage_bucket": "itunda-org.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1019859645463:android:56112ec87e40ef7becd852",
+        "android_client_info": {
+          "package_name": "rw.itunda.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXdq7TMQ78E3O5nNy0DY9Xo5o65s5pHlg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

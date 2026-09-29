@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- :core:designsystem's first real localized copy (2026-09-02) - previously pure
+     design tokens/components with no text of its own. DeviceStepUpDialog promoted
+     here from :features:payments:impl/TransferFlow.kt so :features:pay:impl (and any
+     other Feature module) can share the same real device-verification dialog without
+     a forbidden cross-Feature impl-to-impl import. Keys renamed from transfer_* to
+     device_step_up_* since the dialog is not transfer-specific (also used by Gift
+     send/claim, Commerce/Eats checkout, Stocks buy/sell - see DeviceStepUpHost.kt's
+     own doc comment); device_step_up_cancel is a fresh key here (not a migrated
+     transfer_cancel, which stays in :features:payments:impl since it's also used
+     elsewhere in TransferFlow.kt). -->
+<resources>
+    <string name="device_step_up_title">🔒 Verify this device</string>
+    <string name="device_step_up_body">This is a new device for your account. Re-enter your password to allow it to send money, then try again.</string>
+    <string name="device_step_up_password_description">Password</string>
+    <string name="device_step_up_show_password">Show password</string>
+    <string name="device_step_up_hide_password">Hide password</string>
+    <string name="device_step_up_verifying">Verifying…</string>
+    <string name="device_step_up_verify">Verify device</string>
+    <string name="device_step_up_cancel">Cancel</string>
+</resources>

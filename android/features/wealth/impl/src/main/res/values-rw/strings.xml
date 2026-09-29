@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="invest_tab_market">Isoko</string>
+    <string name="invest_tab_portfolio">Ibyo ufite</string>
+    <string name="invest_tab_watchlist">Ibyo ukurikirana</string>
+    <string name="invest_buy">Gura</string>
+    <string name="invest_sell">Gurisha</string>
+    <string name="invest_working">Birakora…</string>
+    <string name="invest_add_funds">Ongeramo amafaranga</string>
+</resources>

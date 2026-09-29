@@ -1,7 +1,9 @@
 package rw.itunda.merchant.ui
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.theme.Ids
+import java.util.Locale
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,10 +15,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,6 +33,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.components.SkeletonBlock
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Inventory2
+import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.merchant.network.ChargeCardRequest
 import rw.itunda.merchant.network.GenerateQrRequest
 import rw.itunda.merchant.network.MerchantProductDto
@@ -73,17 +79,20 @@ fun PosTab() {
         Column(modifier = Modifier.weight(2f)) {
             val list = products
             if (list == null) {
-                Text("Loading…")
+                SkeletonBlock()
             } else if (list.isEmpty()) {
-                Text("No products yet — add some in the Catalog tab first.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                EmptyState("No products yet — add some in the Catalog tab first.", icon = Icons.Outlined.Inventory2)
             } else {
                 ProductGrid(
                     products = list,
                     onAdd = { product ->
                         cart = cart.toMutableList().apply {
                             val index = indexOfFirst { it.product.id == product.id }
-                            if (index >= 0) this[index] = this[index].copy(quantity = this[index].quantity + 1)
-                            else add(CartLine(product, 1))
+                            val nextQuantity = if (index >= 0) this[index].quantity + 1 else 1
+                            if (product.stockQuantity == null || nextQuantity <= product.stockQuantity) {
+                                if (index >= 0) this[index] = this[index].copy(quantity = nextQuantity)
+                                else add(CartLine(product, 1))
+                            }
                         }
                     },
                 )
@@ -101,17 +110,17 @@ fun PosTab() {
                     cart.forEach { line ->
                         Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                             Text("${line.quantity}x ${line.product.name}", style = MaterialTheme.typography.bodySmall)
-                            Text("${"%,.0f".format(line.product.price * line.quantity)} RWF", style = MaterialTheme.typography.bodySmall)
+                            Text("${String.format(Locale.US, "%,.0f", line.product.price * line.quantity)} RWF", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
                 Spacer(modifier = Modifier.padding(top = 8.dp))
                 Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                     Text("Total", fontWeight = FontWeight.Bold)
-                    Text("${"%,.0f".format(total)} RWF", fontWeight = FontWeight.Bold)
+                    Text("${String.format(Locale.US, "%,.0f", total)} RWF", fontWeight = FontWeight.Bold)
                 }
                 Spacer(modifier = Modifier.padding(top = 8.dp))
-                Button(onClick = { checkingOut = true }, enabled = cart.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text("Checkout") }
+                IdsButton(text = "Checkout", enabled = cart.isNotEmpty(), onClick = { checkingOut = true })
             }
         }
     }
@@ -125,10 +134,20 @@ private fun ProductGrid(products: List<MerchantProductDto>, onAdd: (MerchantProd
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(products, key = { it.id }) { product ->
-            Card(modifier = Modifier.fillMaxWidth().clickable { onAdd(product) }) {
+            val soldOut = product.stockQuantity == 0
+            Card(modifier = Modifier.fillMaxWidth().pressScaleClickable(enabled = !soldOut) { onAdd(product) }) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Text(product.name, fontWeight = FontWeight.Bold)
-                    Text("${"%,.0f".format(product.price)} RWF", style = MaterialTheme.typography.bodySmall)
+                    Text("${String.format(Locale.US, "%,.0f", product.price)} RWF", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        when (product.stockQuantity) {
+                            null -> "Unlimited stock"
+                            0 -> "Out of stock"
+                            else -> "${product.stockQuantity} in stock"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (soldOut) Ids.colors.danger else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }
@@ -137,35 +156,102 @@ private fun ProductGrid(products: List<MerchantProductDto>, onAdd: (MerchantProd
 
 @Composable
 private fun CheckoutView(total: Double, description: String, onDone: () -> Unit, onCancel: () -> Unit) {
-    var mode by remember { mutableStateOf("QR") }
+    // Real fix (2026-08-11, itunda Pay research pass -- user pushback: "why is
+    // itunda pay have no simplicity at all pay by code?"): SCAN is now the default
+    // mode, not QR (merchant generates a code the customer has to separately scan
+    // or type). Real KakaoPay/Toss Pay's actual primary in-store flow is the
+    // reverse -- the customer's own code is already on their screen, the merchant
+    // just scans it, no typing on either side. QR stays for a customer without the
+    // itunda app open/available; CARD stays for a real demo card-authorization
+    // flow.
+    var mode by remember { mutableStateOf("SCAN") }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Checkout", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text("${"%,.0f".format(total)} RWF", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text("${String.format(Locale.US, "%,.0f", total)} RWF", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.padding(top = 16.dp))
 
-        Row {
-            listOf("QR" to "QR code", "CARD" to "Card").forEach { (v, label) ->
-                val selected = mode == v
-                Text(
-                    label,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(end = 16.dp).clickable { mode = v },
-                )
-            }
-        }
+        rw.itunda.core.designsystem.components.IdsTabs(
+            labels = listOf("Scan customer", "Show QR code", "Demo card"),
+            selectedIndex = when (mode) {
+                "SCAN" -> 0
+                "QR" -> 1
+                else -> 2
+            },
+            onSelectedIndexChange = { mode = listOf("SCAN", "QR", "CARD")[it] },
+            modifier = Modifier.fillMaxWidth(),
+        )
         Spacer(modifier = Modifier.padding(top = 12.dp))
 
-        if (mode == "QR") {
-            QrCheckout(amount = total, description = description, onDone = onDone)
-        } else {
-            CardCheckout(amount = total, description = description, onDone = onDone)
+        when (mode) {
+            "SCAN" -> ScanCustomerCheckout(amount = total, onDone = onDone)
+            "QR" -> QrCheckout(amount = total, description = description, onDone = onDone)
+            else -> CardCheckout(amount = total, description = description, onDone = onDone)
         }
 
         Spacer(modifier = Modifier.padding(top = 12.dp))
         TextButton(onClick = onCancel) { Text("Back to cart") }
+    }
+}
+
+// Real customer-presented payment code checkout (2026-08-11) -- see
+// CameraQrScanner.kt's own doc comment and backend's MerchantService.
+// chargeByCustomerCode doc comment. The amount is already known from the cart, so
+// unlike a merchant scanning an unknown market-stall customer, no separate amount
+// entry step is needed here -- scan, confirm, done.
+@Composable
+private fun ScanCustomerCheckout(amount: Double, onDone: () -> Unit) {
+    var scannedCode by remember { mutableStateOf<String?>(null) }
+    var result by remember { mutableStateOf<rw.itunda.merchant.network.CollectPaymentResultDto?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var charging by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    val currentResult = result
+    if (currentResult != null) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+            Text("Payment received — ${String.format(Locale.US, "%,.0f", currentResult.amount)} RWF", fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.padding(top = 12.dp))
+            IdsButton(text = "Done — new sale", onClick = onDone)
+        }
+        return
+    }
+
+    val code = scannedCode
+    if (code == null) {
+        Column(modifier = Modifier.fillMaxWidth().size(320.dp)) {
+            CameraQrScanner(onScanned = { scannedCode = it }, modifier = Modifier.fillMaxSize())
+        }
+        Spacer(modifier = Modifier.padding(top = 8.dp))
+        Text("Point the camera at the customer's Pay screen.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        return
+    }
+
+    fun charge() {
+        charging = true
+        error = null
+        scope.launch {
+            try {
+                result = rw.itunda.merchant.network.NetworkClient.apiService.chargeByCustomerCode(
+                    request = rw.itunda.merchant.network.ChargeByCustomerCodeRequest(code, amount),
+                )
+            } catch (e: retrofit2.HttpException) {
+                error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not charge this code. It may have expired -- ask the customer to refresh their Pay screen."
+                scannedCode = null
+            } catch (e: Exception) {
+                error = "Could not charge this code. It may have expired -- ask the customer to refresh their Pay screen."
+                scannedCode = null
+            } finally {
+                charging = false
+            }
+        }
+    }
+    LaunchedEffect(code) { charge() }
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        Text(if (charging) "Charging ${String.format(Locale.US, "%,.0f", amount)} RWF…" else "Code scanned", fontWeight = FontWeight.Bold)
+        error?.let { Text(it, color = Ids.colors.danger, style = MaterialTheme.typography.bodySmall) }
     }
 }
 
@@ -182,6 +268,8 @@ private fun QrCheckout(amount: Double, description: String, onDone: () -> Unit) 
             try {
                 val intent = NetworkClient.apiService.generateQr(GenerateQrRequest(amount, description)).paymentIntent
                 qrContent = paymentIntentQrPayload(intent.id)
+            } catch (e: retrofit2.HttpException) {
+                error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not generate a QR code."
             } catch (e: Exception) {
                 error = "Could not generate a QR code."
             }
@@ -195,9 +283,9 @@ private fun QrCheckout(amount: Double, description: String, onDone: () -> Unit) 
         if (content != null) {
             Image(bitmap = generateQrBitmap(content), contentDescription = "Payment QR code", modifier = Modifier.size(240.dp))
             Spacer(modifier = Modifier.padding(top = 12.dp))
-            Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) { Text("Done — new sale") }
+            IdsButton(text = "Done — new sale", onClick = onDone)
         } else {
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            error?.let { Text(it, color = Ids.colors.danger) }
             TextButton(onClick = { generate() }) { Text("Retry") }
         }
     }
@@ -212,54 +300,76 @@ private fun CardCheckout(amount: Double, description: String, onDone: () -> Unit
     var result by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var submitting by remember { mutableStateOf(false) }
+    // Real device step-up (2026-07-28 port) -- a real 403 DEVICE_NOT_VERIFIED (this
+    // device hasn't been step-up-verified yet) gets its own case, not a generic error.
+    var needsDeviceVerification by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
+    // Real fix (2026-08-10) -- see PayrollScreen.kt's own identical fix for the full
+    // account. Card fields are unchanged while the verify dialog is up, so re-reading
+    // them here on retry is exactly the same charge the merchant already confirmed.
+    fun charge() {
+        val month = expiryMonth.toIntOrNull()
+        val year = expiryYear.toIntOrNull()
+        if (cardNumber.isBlank() || month == null || year == null || cvc.isBlank()) {
+            error = "Fill in every card field."
+            return
+        }
+        submitting = true
+        error = null
+        needsDeviceVerification = false
+        scope.launch {
+            try {
+                val charge = NetworkClient.apiService.chargeCard(
+                    request = ChargeCardRequest(amount, description, cardNumber.replace(" ", ""), month, year, cvc),
+                )
+                result = charge.cardLast4
+            } catch (e: retrofit2.HttpException) {
+                if (rw.itunda.merchant.network.isDeviceNotVerifiedError(e)) {
+                    needsDeviceVerification = true
+                } else {
+                    error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not charge this card."
+                }
+            } catch (e: Exception) {
+                error = "Could not charge this card."
+            } finally {
+                submitting = false
+            }
+        }
+    }
+
+    if (needsDeviceVerification) {
+        rw.itunda.merchant.ui.DeviceStepUpDialog(
+            onVerified = { charge() },
+            onCancel = { needsDeviceVerification = false },
+        )
+    }
 
     if (result != null) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
             Text("Card charged — •••• $result", fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.padding(top = 12.dp))
-            Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) { Text("Done — new sale") }
+            IdsButton(text = "Done — new sale", onClick = onDone)
         }
         return
     }
 
     Column {
-        OutlinedTextField(
-            value = cardNumber, onValueChange = { cardNumber = it }, label = { Text("Card number") },
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
+        IdsTextField(
+            value = cardNumber, onValueChange = { cardNumber = it }, label = "Card number",
+            keyboardType = KeyboardType.Number,
             modifier = Modifier.fillMaxWidth(),
         )
         Row {
-            OutlinedTextField(value = expiryMonth, onValueChange = { expiryMonth = it }, label = { Text("MM") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
-            OutlinedTextField(value = expiryYear, onValueChange = { expiryYear = it }, label = { Text("YYYY") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
-            OutlinedTextField(value = cvc, onValueChange = { cvc = it }, label = { Text("CVC") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+            IdsTextField(value = expiryMonth, onValueChange = { expiryMonth = it }, label = "MM", keyboardType = KeyboardType.Number, modifier = Modifier.weight(1f))
+            IdsTextField(value = expiryYear, onValueChange = { expiryYear = it }, label = "YYYY", keyboardType = KeyboardType.Number, modifier = Modifier.weight(1f))
+            IdsTextField(value = cvc, onValueChange = { cvc = it }, label = "CVC", keyboardType = KeyboardType.Number, modifier = Modifier.weight(1f))
         }
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        Button(
-            onClick = {
-                val month = expiryMonth.toIntOrNull()
-                val year = expiryYear.toIntOrNull()
-                if (cardNumber.isBlank() || month == null || year == null || cvc.isBlank()) {
-                    error = "Fill in every card field."
-                    return@Button
-                }
-                submitting = true
-                error = null
-                scope.launch {
-                    try {
-                        val charge = NetworkClient.apiService.chargeCard(
-                            request = ChargeCardRequest(amount, description, cardNumber.replace(" ", ""), month, year, cvc),
-                        )
-                        result = charge.cardLast4
-                    } catch (e: Exception) {
-                        error = "Could not charge this card."
-                    } finally {
-                        submitting = false
-                    }
-                }
-            },
+        error?.let { Text(it, color = Ids.colors.danger) }
+        IdsButton(
+            text = if (submitting) "Charging…" else "Charge ${String.format(Locale.US, "%,.0f", amount)} RWF",
             enabled = !submitting,
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text(if (submitting) "Charging…" else "Charge ${"%,.0f".format(amount)} RWF") }
+            onClick = { charge() },
+        )
     }
 }

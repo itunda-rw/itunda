@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- First colors.xml in this module (2026-08-12), see ItundaMessagingService.kt's own
+     doc comment. Matches IdsSemanticColors.kt's real light-theme `brand` value
+     (0xFF3182F6) exactly, not a separately invented shade, so a push notification's
+     accent tint matches the in-app brand color a user already recognizes. -->
+<resources>
+    <color name="itunda_notification_brand">#3182F6</color>
+</resources>

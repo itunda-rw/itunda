@@ -1,0 +1,13 @@
+-- Real card-design picker (2026-08-27, direct user instruction: "update itunda bank
+-- with all those cards designs allowing users to choose from those designs... that's
+-- how toss does it too") -- real Toss Bank precedent (namu.wiki: 5 named colorways).
+-- itunda's own 5 real colorways from the card-design pass, whitelisted in Kotlin as
+-- DebitCardDesign.ALL (see DebitCard.kt's own doc comment); `design` is a raw string
+-- column, not an enum ordinal, matching the same reasoning already applied to other
+-- string-keyed lookups in this schema.
+--
+-- `DEFAULT 'onyx_indigo'` is deliberate, same convention as V293's `pin_set` column:
+-- every card already issued before this migration runs gets the real default design
+-- (Onyx Indigo, the one already shown on every "get your card" screen before this
+-- feature existed) rather than an unset/null value a client would have to special-case.
+ALTER TABLE debit_cards ADD COLUMN design VARCHAR(32) NOT NULL DEFAULT 'onyx_indigo';
