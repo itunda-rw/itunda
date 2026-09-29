@@ -31,6 +31,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
 
     implementation(project(":core:network")) // For SDUI models + superAppErrorMessage
+    implementation(project(":core:sdui")) // Direct SDUI model dependency for SduiRenderer
     implementation(project(":core:identity")) // For DeviceStepUpHost's DeviceKeyManager
 
     // Added 2026-07-22 for HoodShared.kt -- the cross-feature Marketplace/Community/
