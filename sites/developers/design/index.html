@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#7472F4">
+<meta name="description" content="Itunda Design System — clear visual foundations and component examples.">
+<title>Itunda Design System · Developers</title>
+<link rel="stylesheet" href="/ids.css">
+<style>
+.design-shell{max-width:1120px;margin:0 auto;padding:0 24px}
+.design-hero{padding:96px 0 76px;border-bottom:1px solid var(--line)}
+.design-kicker{font-size:11px;font-weight:800;letter-spacing:.14em;color:var(--brand-strong);text-transform:uppercase}
+.design-hero h1{max-width:780px;font-size:clamp(52px,7vw,82px);line-height:.98;letter-spacing:-.055em;margin:16px 0 22px}
+.design-hero h1 em{font-style:normal;color:var(--brand)}
+.design-hero p{max-width:650px;color:var(--muted);font-size:19px;line-height:1.65;margin:0}
+.design-section{padding:72px 0;border-bottom:1px solid var(--line)}
+.design-head{max-width:700px;margin-bottom:34px}
+.design-head h2{font-size:38px;line-height:1.08;letter-spacing:-.045em;margin:8px 0 12px}
+.design-head p{color:var(--muted);line-height:1.65;margin:0}
+.design-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:0}
+.design-block{grid-column:span 6;border-top:1px solid var(--line);padding:28px 28px 30px 0}
+.design-block:nth-child(even){padding-left:28px;border-left:1px solid var(--line)}
+.design-block.full{grid-column:1/-1;padding-right:0}
+.design-block h3{margin:0 0 8px;font-size:18px;letter-spacing:-.02em}
+.design-block p{margin:0 0 20px;color:var(--muted);font-size:14px;line-height:1.6}
+.color-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.color{min-height:92px;border-radius:12px;padding:12px;display:flex;flex-direction:column;justify-content:flex-end;font:11px ui-monospace,SFMono-Regular,Menlo,monospace}
+.color.brand{background:#7472F4;color:#fff}.color.strong{background:#625FE0;color:#fff}.color.soft{background:#F0EFFF;color:#625FE0}.color.neutral{background:var(--surface);color:var(--text);border:1px solid var(--line)}
+.type-sample{font-weight:750;letter-spacing:-.04em;font-size:42px;line-height:1.05;margin-bottom:18px}
+.type-list{display:grid;gap:0}.type-list div{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--line);font-size:14px}.type-list span{color:var(--muted);font:11px ui-monospace,monospace}
+.space-list{display:grid;gap:10px}.space{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--muted)}.space i{display:block;height:8px;border-radius:999px;background:var(--brand)}.s4 i{width:4px}.s8 i{width:8px}.s12 i{width:12px}.s16 i{width:16px}.s24 i{width:24px}.s32 i{width:32px}
+.demo{padding:24px;border-radius:16px;background:var(--surface);border:1px solid var(--line)}
+.button-row{display:flex;gap:10px;flex-wrap:wrap}.demo-btn{min-height:44px;padding:0 18px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-weight:700}.demo-btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}.demo-btn.quiet{background:transparent;color:var(--brand-strong)}
+.field-demo{display:grid;gap:8px;max-width:420px}.field-demo label{font-size:13px;font-weight:700}.field-demo input{min-height:46px;border:1px solid var(--line);border-radius:12px;padding:0 13px;background:var(--bg);color:var(--text)}.field-demo small{color:var(--muted);font-size:12px}
+.state-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.state{padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}.state b{display:block;margin-bottom:5px;font-size:13px}.state span{font-size:12px;color:var(--muted)}
+.principles{display:grid;grid-template-columns:repeat(3,1fr);gap:0}.principle{padding:22px 24px 22px 0;border-top:1px solid var(--line)}.principle:not(:first-child){padding-left:24px;border-left:1px solid var(--line)}.principle b{display:block;margin-bottom:7px}.principle span{font-size:13px;color:var(--muted);line-height:1.6}
+@media(max-width:800px){.design-shell{padding:0 20px}.design-hero{padding:72px 0 60px}.design-section{padding:58px 0}.design-head h2{font-size:32px}.design-grid{grid-template-columns:1fr}.design-block,.design-block:nth-child(even),.design-block.full{grid-column:1;padding:24px 0;border-left:0}.color-row{grid-template-columns:repeat(2,1fr)}.state-row,.principles{grid-template-columns:1fr}.principle,.principle:not(:first-child){padding:20px 0;border-left:0}.type-sample{font-size:36px}}
+</style>
+</head>
+<body>
+<header class="top shell">
+<a class="brand" href="/">itunda</a>
+<nav class="nav">
+<a href="https://itunda.pages.dev/">Itunda</a>
+<a href="https://itunda-tech.pages.dev/">Tech</a>
+<a href="https://itunda-business.pages.dev/">Business</a>
+<a href="/design/">Design</a>
+<a class="cta" href="#components">Components</a>
+</nav>
+</header>
+<main>
+<section class="design-hero"><div class="design-shell">
+<div class="design-kicker">ITUNDA DESIGN SYSTEM</div>
+<h1>Clear by design.<br><em>Quiet by default.</em></h1>
+<p>One visual language for Itunda products: strong hierarchy, restrained color, predictable spacing and components that explain their state without visual noise.</p>
+</div></section>
+
+<section class="design-section"><div class="design-shell">
+<div class="design-head"><div class="eyebrow">01 · Principles</div><h2>Let content create the hierarchy.</h2><p>Color and decoration are supporting tools. Structure comes first, so users can scan, understand and act quickly.</p></div>
+<div class="principles">
+<div class="principle"><b>One core message</b><span>Make the purpose obvious before presenting controls.</span></div>
+<div class="principle"><b>Indigo is an accent</b><span>Reserve #7472F4 for brand, primary actions and selected states.</span></div>
+<div class="principle"><b>Neutrals carry the UI</b><span>Use surfaces, type and separators to create most of the visual structure.</span></div>
+</div></div></section>
+
+<section class="design-section" id="foundations"><div class="design-shell">
+<div class="design-head"><div class="eyebrow">02 · Foundations</div><h2>Small tokens. Consistent results.</h2><p>The same decisions repeat across web, Android and iOS without turning every screen into a collection of colored cards.</p></div>
+<div class="design-grid">
+<article class="design-block"><h3>Color roles</h3><p>Four roles are enough for most surfaces. Semantic success and error colors appear only when their meaning is required.</p><div class="color-row"><div class="color brand">Brand<br>#7472F4</div><div class="color strong">Strong<br>#625FE0</div><div class="color soft">Soft<br>#F0EFFF</div><div class="color neutral">Neutral<br>surface</div></div></article>
+<article class="design-block"><h3>Typography</h3><p>Large type is for important moments. Body text remains compact and readable.</p><div class="type-sample">RWF 248,000</div><div class="type-list"><div><b>Display</b><span>56–82 / 700</span></div><div><b>Heading</b><span>32–40 / 700</span></div><div><b>Body</b><span>16–20 / 400</span></div><div><b>Caption</b><span>12–14 / 400</span></div></div></article>
+<article class="design-block"><h3>Spacing</h3><p>Use a simple 4px rhythm. Larger gaps separate ideas rather than decorating containers.</p><div class="space-list"><div class="space s4"><i></i>4 · micro</div><div class="space s8"><i></i>8 · control</div><div class="space s12"><i></i>12 · inline</div><div class="space s16"><i></i>16 · content</div><div class="space s24"><i></i>24 · group</div><div class="space s32"><i></i>32 · major group</div></div></article>
+<article class="design-block"><h3>Surfaces</h3><p>Prefer open space and separators. Add a surface only when it improves grouping or interaction.</p><div class="demo"><b>Quiet surface</b><p style="margin:6px 0 0">A subtle background separates content without creating another visual object.</p></div></article>
+</div></div></section>
+
+<section class="design-section" id="components"><div class="design-shell">
+<div class="design-head"><div class="eyebrow">03 · Components</div><h2>Show the component, not the decoration.</h2><p>Examples stay close to production behavior and make the primary action obvious.</p></div>
+<div class="design-grid">
+<article class="design-block"><h3>Actions</h3><p>One primary action. Secondary actions stay quiet.</p><div class="demo"><div class="button-row"><button class="demo-btn primary">Continue</button><button class="demo-btn">Secondary</button><button class="demo-btn quiet">Cancel</button></div></div></article>
+<article class="design-block"><h3>Form field</h3><p>Labels and supporting text explain the task without adding noise.</p><div class="demo"><div class="field-demo"><label for="example-phone">Phone number</label><input id="example-phone" value="+250 788 123 456"><small>Used to identify your Itunda account.</small></div></div></article>
+<article class="design-block full"><h3>States</h3><p>Every important component has a clear default, loading, disabled and error state.</p><div class="state-row"><div class="state"><b>Default</b><span>Ready for interaction.</span></div><div class="state"><b>Loading</b><span>Progress without layout jump.</span></div><div class="state"><b>Error</b><span>Explain the problem and recovery.</span></div></div></article>
+</div></div></section>
+
+<section class="design-section"><div class="design-shell">
+<div class="design-head"><div class="eyebrow">04 · Product language</div><h2>Quiet surfaces. Strong decisions.</h2><p>Itunda Indigo should guide attention, not color every surface.</p></div>
+<div class="demo" style="max-width:680px"><div class="design-kicker">NEIGHBORHOOD MARKETPLACE</div><h3 style="font-size:28px;letter-spacing:-.04em;margin:10px 0 8px">Find what you need nearby.</h3><p style="color:var(--muted);line-height:1.6;margin:0 0 18px">Clear context first. One primary action next. Supporting choices remain available but visually quiet.</p><div class="button-row"><button class="demo-btn primary">Explore marketplace</button><button class="demo-btn">Saved items</button></div></div>
+</div></section>
+</main>
+<footer class="footer shell"><span>Itunda Design System · IDS</span><span><a href="https://github.com/itunda-rw/itunda">Open source</a></span></footer>
+<script src="/theme.js"></script>
+</body>
+</html>
