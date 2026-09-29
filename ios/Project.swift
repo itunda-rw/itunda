@@ -87,7 +87,7 @@ func makeMicroFeature(
 
 var allTargets: [Target] = []
 
-let coreModules = ["DesignSystem", "Network", "Testing", "Identity", "Consent", "Ledger", "Risk"]
+let coreModules = ["DesignSystem", "SDUI", "Network", "Testing", "Identity", "Consent", "Ledger", "Risk"]
 for core in coreModules {
     allTargets.append(
         Target.target(
@@ -110,7 +110,8 @@ for core in coreModules {
             // a target's own declared dependencies. Fixed at the source (declare
             // CoreDesignSystem's own real dependency) rather than patching every
             // consumer to redundantly re-declare it.
-            dependencies: core == "DesignSystem" ? [.target(name: "CoreNetwork")] : []
+            dependencies: core == "DesignSystem" ? [.target(name: "CoreNetwork"), .target(name: "CoreSDUI")] :
+                core == "Network" ? [.target(name: "CoreSDUI")] : []
         )
     )
 }
