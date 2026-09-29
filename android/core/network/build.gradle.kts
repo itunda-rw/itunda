@@ -27,18 +27,18 @@ android {
 // callback per API call" shape). Versions mirror :app's own exactly -- this is a
 // relocation, not a library upgrade.
 dependencies {
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.google.code.gson:gson:2.10.1")
-    implementation("androidx.security:security-crypto:1.1.0-alpha06")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.okhttp)
+    implementation(libs.gson)
+    implementation(libs.androidx.security.crypto)
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.android)
     // Real FCM token registration (2026-08-12) -- see SessionManager.currentPushToken's
     // own doc comment. Play-services-backed Task<String>.await() extension, the
     // standard way to bridge FirebaseMessaging's Task API into a suspend function
     // without hand-rolling a suspendCancellableCoroutine wrapper.
     implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
     implementation("com.google.firebase:firebase-messaging-ktx")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+    implementation(libs.kotlinx.coroutines.play.services)
 }
