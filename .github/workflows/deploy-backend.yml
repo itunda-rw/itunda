@@ -18,6 +18,7 @@ env:
   PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   GAR_REPOSITORY: ${{ vars.GAR_REPOSITORY || 'itunda' }}
   SERVICE_NAME: ${{ vars.CLOUD_RUN_SERVICE || 'itunda-api' }}
+  RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT || 'itunda-api@itunda-org.iam.gserviceaccount.com' }}
 
 jobs:
   deploy:
@@ -49,6 +50,7 @@ jobs:
             --project "${PROJECT_ID}" \
             --platform managed \
             --port 4001 \
+            --service-account "${RUNTIME_SERVICE_ACCOUNT}" \
             --allow-unauthenticated \
             --quiet
       - name: Show service URL
