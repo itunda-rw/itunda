@@ -96,7 +96,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy "services/blog/dist" --project-name="itunda-tech" --branch=main
+          command: pages deploy "services/blog/dist" --project-name="itunda-tech"
 
       - name: Production smoke test
         run: |
