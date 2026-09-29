@@ -1,8 +1,12 @@
 package rw.itunda.app.ui
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,8 +15,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,41 +31,124 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.AccountBalance
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.Agriculture
+import androidx.compose.material.icons.outlined.School
+import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.AttachMoney
+import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.Build
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.Campaign
+import androidx.compose.material.icons.outlined.Call
+import androidx.compose.material.icons.outlined.ChildCare
+import androidx.compose.material.icons.outlined.ConfirmationNumber
+import androidx.compose.material.icons.outlined.ReportProblem
+import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.Chat
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.CreditCard
+import androidx.compose.material.icons.outlined.CurrencyExchange
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.Fastfood
+import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.DirectionsBike
+import androidx.compose.material.icons.outlined.DirectionsCar
+import androidx.compose.material.icons.outlined.DirectionsBus
+import androidx.compose.material.icons.outlined.LocalParking
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.outlined.Work
+import androidx.compose.material.icons.outlined.DynamicFeed
+import androidx.compose.material.icons.outlined.EventAvailable
+import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.HomeWork
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.LocalOffer
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.LocalShipping
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Map
+import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Payments
+import androidx.compose.material.icons.outlined.Percent
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Pets
+import androidx.compose.material.icons.outlined.PieChart
+import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.QrCodeScanner
+import androidx.compose.material.icons.outlined.Autorenew
+import androidx.compose.material.icons.outlined.RequestQuote
 import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.ShoppingBag
+import androidx.compose.material.icons.outlined.ShoppingCart
+import androidx.compose.material.icons.outlined.ShowChart
+import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material.icons.outlined.Storefront
+import androidx.compose.material.icons.outlined.Swipe
+import androidx.compose.material.icons.outlined.SwapHoriz
+import androidx.compose.material.icons.outlined.TrendingUp
+import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import coil.compose.AsyncImage
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.activity.compose.BackHandler
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -65,13 +157,23 @@ import androidx.compose.ui.unit.dp
 // graphics is understood intuitively without reading) and confetti/celebration for real
 // positive moments ("행복한 순간") -- these two composable-scoped animation primitives back
 // TransferSuccessScreen and IdsButton's new press feedback below.
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.EaseOutBack
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Spring
 import androidx.compose.ui.unit.sp
 
 import rw.itunda.app.R
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.StarGold
+import rw.itunda.core.designsystem.components.relativeTimeAgo
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsCard
+import rw.itunda.core.designsystem.components.rememberPressScale
+import rw.itunda.core.designsystem.components.dashedBorder
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.components.rememberCountUp
 import rw.itunda.core.designsystem.components.rememberSpringOverscrollModifier
@@ -102,8 +204,13 @@ import rw.itunda.feature.ride.impl.DesignatedDriverEntryPoint
 import rw.itunda.core.network.BucketDetailTarget
 import rw.itunda.core.network.MoneyActionResult
 import rw.itunda.core.designsystem.theme.AccentIndigo
+import rw.itunda.core.designsystem.theme.AccentTeal
+import rw.itunda.core.designsystem.theme.AccentPurple
+import rw.itunda.core.designsystem.theme.AccentOrange
+import rw.itunda.core.designsystem.theme.IdsLightSemanticColors
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
+import rw.itunda.core.designsystem.components.IdsIconButton
 import rw.itunda.core.designsystem.components.LocalRealActivity
 import rw.itunda.core.designsystem.components.DeviceStepUpHost
 import rw.itunda.core.designsystem.components.AccountLedgerRow
@@ -115,15 +222,45 @@ import rw.itunda.core.designsystem.components.transactionTypeLabel
 import rw.itunda.core.designsystem.components.TransactionDetailRow
 import rw.itunda.core.designsystem.components.FlatRow
 import rw.itunda.core.designsystem.components.FlatSection
+import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.core.designsystem.theme.IdsTypography
+import rw.itunda.core.designsystem.theme.IdsColors
 import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.designsystem.theme.Ids
 // itundaface glyphs for the pure-tossface Explore/Menu icon pass (2026-08-26) --
 // see FlatRow's own doc comment. App already depends on both feature impl
 // modules directly (MapScreen/TalkTab below), so importing their itundaface
 // glyphs here isn't a new cross-feature boundary, unlike impl-to-impl imports.
+import rw.itunda.core.designsystem.itundaface.ShoppingBagGlyph
+import rw.itunda.core.designsystem.itundaface.MoneyBagGlyph
+import rw.itunda.core.designsystem.itundaface.GlobeGlyph
+import rw.itunda.core.designsystem.itundaface.LockGlyph
+import rw.itunda.core.designsystem.itundaface.PinGlyph
+import rw.itunda.core.designsystem.itundaface.BellGlyph
+import rw.itunda.core.designsystem.itundaface.SpeechBubbleGlyph
+import rw.itunda.core.designsystem.itundaface.SplitBillDice
+import rw.itunda.core.designsystem.itundaface.WishlistHeart
+import rw.itunda.core.designsystem.itundaface.BikeGlyph
+import rw.itunda.core.designsystem.itundaface.GiftBox
+import rw.itunda.core.designsystem.itundaface.VoucherTicket
+import rw.itunda.core.designsystem.itundaface.BriefcaseGlyph
+import rw.itunda.core.designsystem.itundaface.ChartIncreasingGlyph
+import rw.itunda.core.designsystem.itundaface.QuestionGlyph
+import rw.itunda.core.designsystem.itundaface.FamilyGlyph
+import rw.itunda.core.designsystem.itundaface.WarningGlyph
+import rw.itunda.core.designsystem.itundaface.ParkingGlyph
+import rw.itunda.core.designsystem.itundaface.BarChartGlyph
+import rw.itunda.core.designsystem.itundaface.CalendarGlyph
+import rw.itunda.core.designsystem.itundaface.ChildGlyph
+import rw.itunda.core.designsystem.itundaface.WrenchGlyph
+import rw.itunda.core.designsystem.itundaface.SeedlingGlyph
+import rw.itunda.core.designsystem.itundaface.RefreshCardGlyph
+import rw.itunda.core.designsystem.itundaface.ReceiptGlyph
+import rw.itunda.core.designsystem.itundaface.ShieldEmojiGlyph
+import rw.itunda.core.designsystem.itundaface.PlaceMarket
+import rw.itunda.core.designsystem.itundaface.TravelHouse
 
 // Real gap found live (2026-08-10), user-flagged: this file used to alias the real
 // theme-reactive design-system tokens (core/designsystem/theme/IdsSemanticColors.kt)
@@ -142,6 +279,8 @@ import rw.itunda.core.designsystem.theme.Ids
 // (staying in :app) share one real definition. AccentGray moved there too
 // (2026-09-02, Menu Feature-module decomposition) -- MenuScreen was its only real
 // caller.
+private val AccentPink = IdsLightSemanticColors.brand
+
 // Real super-app bottom nav: Home/Pay/Explore/Messages/You (2026-08-10), replacing
 // the previous Home/Shop/Hood/Talk/All layout -- an explicit product decision after
 // directly comparing both against each other (see docs/DESIGN_REFERENCES.md Section
