@@ -122,6 +122,7 @@ include(":agentapp")
 // Core Bounded Contexts
 include(":core:designsystem")
 include(":core:network")
+include(":core:sdui")
 include(":core:testing")
 include(":core:identity")
 include(":core:consent")
