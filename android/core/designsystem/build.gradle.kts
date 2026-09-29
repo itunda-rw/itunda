@@ -61,11 +61,11 @@ dependencies {
     // real CameraX + ML Kit Barcode Scanning versions merchantapp's own separate copy
     // (a deliberately different Gradle application, out of scope for this promotion)
     // already uses.
-    implementation("androidx.camera:camera-core:1.4.2")
-    implementation("androidx.camera:camera-camera2:1.4.2")
-    implementation("androidx.camera:camera-lifecycle:1.4.2")
-    implementation("androidx.camera:camera-view:1.4.2")
-    implementation("com.google.mlkit:barcode-scanning:17.3.0")
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.mlkit.barcode.scanning)
     // Real non-money-critical QR generation (item 244) -- Open Chat's join code is
     // NOT a payment code, so the "duplicate per app for money-critical safety"
     // precedent PayQrCodeUtil.kt/QrCodeUtil.kt establish doesn't apply here; a
