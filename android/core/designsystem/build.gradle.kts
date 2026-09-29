@@ -37,21 +37,21 @@ dependencies {
     // Jobs/Property UI atoms (rememberRealLocationRequester, HoodReportAction,
     // NeighborhoodSetupPrompt) relocated here from app/ui/SuperAppTabs.kt so
     // :features:marketplace:impl can share them without depending on :app.
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("androidx.activity:activity-compose:1.8.2")
-    implementation("androidx.fragment:fragment-ktx:1.6.2")
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("com.google.android.gms:play-services-location:21.3.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation(libs.retrofit)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.fragment.ktx)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.play.services.location)
+    implementation(libs.kotlinx.coroutines.core)
 
     // Added 2026-07-23 for RouteMiniMap.kt -- relocated here from app/ui/RouteMiniMap.kt
     // so Marketplace/Jobs/Property/Eats can render a real drawn route directly instead
     // of receiving it as an injected routeMiniMap callback.
-    implementation("org.maplibre.gl:android-sdk:13.3.1")
+    implementation(libs.maplibre.android)
 
     // Added 2026-08-05 for IdsAvatar.kt -- same version already used by :app and
     // :features:talk:impl, so this stays a single real dependency, not a second one.
-    implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation(libs.coil.compose)
 
     // Added 2026-08-21 for CameraQrScanner.kt -- relocated here from
     // :features:shop:impl (item 244) once a real second Feature (:features:talk:impl,
@@ -70,5 +70,5 @@ dependencies {
     // NOT a payment code, so the "duplicate per app for money-critical safety"
     // precedent PayQrCodeUtil.kt/QrCodeUtil.kt establish doesn't apply here; a
     // shared generator is the honest, simpler choice for this specific real use.
-    implementation("com.google.zxing:core:3.5.3")
+    implementation(libs.zxing.core)
 }
