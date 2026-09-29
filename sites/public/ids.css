@@ -25,3 +25,14 @@ button,.btn,.cta,.theme-toggle,.nav a{touch-action:manipulation}
 .step{border-top-color:var(--brand)}
 .footer{max-width:1160px}
 @media(max-width:800px){.hero{padding:76px 0 68px}.section{padding:62px 0}.hero-grid{gap:38px}}
+
+/* Showcase parity v2: typography, controls and navigation */
+.brand{gap:10px}
+.nav{gap:24px;font-size:14px}
+.hero h1{font-size:clamp(54px,8vw,92px);line-height:.98;letter-spacing:-.06em}
+.hero p{font-size:20px;margin:28px 0 0}
+.actions{margin-top:34px}
+.btn{min-height:44px;padding:0 20px;font-size:15px}
+.section-head{gap:40px}
+.section h2{letter-spacing:-.04em}
+@media(max-width:800px){.nav{gap:8px}.hero h1{letter-spacing:-.05em}.hero p{font-size:18px}.actions{margin-top:28px}}
