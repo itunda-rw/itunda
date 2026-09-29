@@ -20,6 +20,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:sdui"))
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
     implementation(libs.okhttp)
