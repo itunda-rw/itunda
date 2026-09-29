@@ -47,3 +47,12 @@ coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-messaging-ktx = { module = "com.google.firebase:firebase-messaging-ktx" }
+
+androidx-camera-core = { module = "androidx.camera:camera-core", version = "1.4.2" }
+androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version = "1.4.2" }
+androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version = "1.4.2" }
+androidx-camera-view = { module = "androidx.camera:camera-view", version = "1.4.2" }
+mlkit-barcode-scanning = { module = "com.google.mlkit:barcode-scanning", version = "17.3.0" }
+konsist = { module = "com.lemonappdev:konsist", version = "0.17.3" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version = "5.10.2" }
+kotlinx-coroutines-android-legacy = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version = "1.6.4" }
