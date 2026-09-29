@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Itunda — 3D Icon Renderer</title>
+<style>
+body{margin:0;background:#0b0d12;color:#eef0f5;font:14px system-ui,sans-serif;display:grid;place-items:center;min-height:100vh}
+main{width:min(680px,92vw);text-align:center}canvas{width:min(520px,80vw);height:min(520px,80vw);display:block;margin:20px auto;background:transparent}
+button{border:0;border-radius:10px;padding:11px 18px;background:#7472F4;color:white;font-weight:700;cursor:pointer}
+small{color:#8891a3}
+</style></head>
+<body><main><h1>Itunda 3D Icon</h1><small>Three.js physical extrusion renderer — transparent PNG export</small><canvas id="c" width="1024" height="1024"></canvas><button id="download">Export 1024×1024 PNG</button></main>
+<script src="https://cdn.jsdelivr.net/npm/three@0.140.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.140.0/examples/js/loaders/SVGLoader.js"></script>
+<script>
+const renderer=new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true,alpha:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(1);renderer.setSize(1024,1024,false);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputEncoding=THREE.sRGBEncoding;renderer.setClearColor(0,0);
+const scene=new THREE.Scene(), group=new THREE.Group();
+scene.add(new THREE.HemisphereLight(0xffffff,0x16002f,.72));
+const key=new THREE.DirectionalLight(0xffffff,1.9);key.position.set(-70,110,140);key.castShadow=true;key.shadow.mapSize.set(2048,2048);scene.add(key);
+const fill=new THREE.DirectionalLight(0x9fb0ff,.42);fill.position.set(90,-30,90);scene.add(fill);
+const rim=new THREE.DirectionalLight(0x47bfff,.55);rim.position.set(20,45,-120);scene.add(rim);
+const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 46"><path d="M25.946 44.938c-.664.845-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.287c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.497 0-3.578-1.842-3.578H1.237c-.92 0-1.456-1.04-.92-1.788L10.013.474c.214-.297.556-.474.92-.474h28.894c.92 0 1.456.965.92 1.788l-7.48 10.471c-1.07 1.498-.1 3.579 1.842 3.579h11.377c.943 0 1.473 1.088.89 1.83L25.947 44.94Z" fill="#863BFF"/></svg>`;
+const data=new THREE.SVGLoader().parse(svg);
+data.paths.forEach(path=>{const shapes=THREE.SVGLoader.createShapes(path);shapes.forEach(shape=>{
+const geo=new THREE.ExtrudeGeometry(shape,{depth:14,bevelEnabled:true,bevelThickness:3,bevelSize:2.2,bevelSegments:6,curveSegments:20});
+geo.computeVertexNormals();
+const mat=new THREE.MeshPhysicalMaterial({color:new THREE.Color('#863BFF'),roughness:.28,metalness:.03,clearcoat:.7,clearcoatRoughness:.22});
+const mesh=new THREE.Mesh(geo,mat);mesh.castShadow=true;mesh.receiveShadow=true;group.add(mesh);
+});});
+group.scale.y=-1;
+const box=new THREE.Box3().setFromObject(group),center=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
+group.position.sub(center);group.rotation.y=-0.18;group.rotation.x=0.06;
+const max=Math.max(size.x,size.y);group.scale.multiplyScalar(4.6/max);scene.add(group);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(30,30),new THREE.ShadowMaterial({opacity:.22}));floor.rotation.x=-Math.PI/2;floor.position.y=-2.5;floor.receiveShadow=true;scene.add(floor);
+const camera=new THREE.PerspectiveCamera(28,1,.1,200);camera.position.set(3.2,2.2,12);camera.lookAt(0,0,0);
+function frame(t){group.rotation.y=-.18+Math.sin(t*.00045)*.12;renderer.render(scene,camera);requestAnimationFrame(frame)}requestAnimationFrame(frame);
+document.getElementById('download').onclick=()=>{renderer.render(scene,camera);const a=document.createElement('a');a.href=renderer.domElement.toDataURL('image/png');a.download='itunda-3d-icon.png';a.click()};
+</script></body></html>

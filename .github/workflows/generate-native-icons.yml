@@ -1,0 +1,91 @@
+name: generate native icon assets
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'ios/Assets/ItundaIcon.svg'
+      - '.github/workflows/generate-native-icons.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  icons:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install rasterizer
+        run: python -m pip install --disable-pip-version-check cairosvg pillow
+
+      - name: Generate PNG icon family
+        run: |
+          python <<'PY'
+          import cairosvg
+          from PIL import Image
+          from pathlib import Path
+
+          src = Path("ios/Assets/ItundaIcon.svg")
+          out = Path("ios/App/Resources/ItundaIcon.xcassets/ItundaIcon.appiconset/ItundaIcon.png")
+          out.parent.mkdir(parents=True, exist_ok=True)
+
+          cairosvg.svg2png(
+              url=str(src),
+              write_to=str(out),
+              output_width=1024,
+              output_height=1024,
+          )
+
+          base = Image.open(out).convert("RGBA")
+
+          for size, density in [(48, "mdpi"), (72, "hdpi"), (96, "xhdpi"), (144, "xxhdpi"), (192, "xxxhdpi")]:
+              d = Path(f"android/app/src/main/res/mipmap-{density}")
+              d.mkdir(parents=True, exist_ok=True)
+              resized = base.resize((size, size), Image.Resampling.LANCZOS)
+              resized.save(d / "ic_launcher.png", optimize=True)
+              resized.save(d / "ic_launcher_round.png", optimize=True)
+
+          web = Path("site/assets")
+          web.mkdir(parents=True, exist_ok=True)
+          base.resize((64, 64), Image.Resampling.LANCZOS).save(web / "favicon.png", optimize=True)
+          PY
+
+      - name: Normalize iOS AppIcon catalog
+        run: |
+          cat > ios/App/Resources/ItundaIcon.xcassets/ItundaIcon.appiconset/Contents.json <<'JSON'
+          {
+            "images": [
+              {
+                "filename": "ItundaIcon.png",
+                "idiom": "universal",
+                "scale": "1x",
+                "size": "1024x1024"
+              }
+            ],
+            "info": {
+              "author": "Itunda",
+              "version": 1
+            }
+          }
+          JSON
+
+      - name: Validate generated assets
+        run: |
+          test -s ios/App/Resources/ItundaIcon.xcassets/ItundaIcon.appiconset/ItundaIcon.png
+          test -s site/assets/favicon.png
+          find android/app/src/main/res -name 'ic_launcher*.png' -size +0c | grep -q .
+
+      - name: Commit generated assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ios/App/Resources/ItundaIcon.xcassets android/app/src/main/res/mipmap-* site/assets/favicon.png
+          if git diff --cached --quiet; then
+            echo "No generated asset changes."
+          else
+            git commit -m "build: generate native launcher and favicon assets"
+            git push
+          fi
