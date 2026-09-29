@@ -214,14 +214,14 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
     // collectAsStateWithLifecycle() for MainActivity's login-gate StateFlow collection.
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
-    implementation("androidx.activity:activity-compose:1.8.2")
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.activity.compose)
     // FragmentActivity, not just ComponentActivity, is required by BiometricPrompt's
     // constructor (androidx.biometric:1.1.0) -- see NIDABiometricAuth.kt.
-    implementation("androidx.fragment:fragment-ktx:1.6.2")
+    implementation(libs.androidx.fragment.ktx)
     implementation(platform("androidx.compose:compose-bom:2024.02.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
@@ -238,13 +238,13 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging-ktx")
 
     // Networking & Architecture
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     // Real "my location" blue dot (2026-07-19) -- FusedLocationProviderClient, the
     // standard modern Android location API (battery-efficient, real GPS/network fusion).
     // `google()` is already a declared repository for this project.
-    implementation("com.google.android.gms:play-services-location:21.3.0")
+    implementation(libs.play.services.location)
 
     // Real product-image loading (2026-07-21) -- Coil, the standard modern
     // Compose-native async image loader. Closes docs/DESIGN_REFERENCES.md Section 5's
@@ -252,7 +252,7 @@ dependencies {
     // zero image-loading capability anywhere before this (confirmed by repo-wide
     // search), since no client feature needed one until real merchant-supplied product
     // photo URLs existed. Plain Maven Central coordinate, no new repository needed.
-    implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation(libs.coil.compose)
 
     // Project Modules
     implementation(project(":core:designsystem"))
@@ -335,9 +335,9 @@ dependencies {
     // granite-adoption plan for the staged version-upgrade path).
     implementation("com.facebook.react:react-android")
     implementation("com.facebook.react:hermes-android")
-    implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.google.code.gson:gson:2.10.1")
+    implementation(libs.androidx.appcompat)
+    implementation(libs.okhttp)
+    implementation(libs.gson)
     // Real instrumented UI tests (2026-07-11) -- androidx.compose.ui.test reads the
     // same semantics tree TalkBack does, so this is a real live accessibility check
     // against a real emulator, not a static-analysis proxy for one. See
@@ -348,12 +348,12 @@ dependencies {
     // otherwise fails to resolve ui-test-junit4's version at all.
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.02.00"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation(libs.androidx.test.ext.junit)
     // 3.7.0, not 3.5.1 (2026-07-11): 3.5.1's InputManagerEventInjectionStrategy
     // reflectively calls the hidden android.hardware.input.InputManager.getInstance()
     // -- removed/renamed by the real emulator's API 36 (Android 16) platform,
     // confirmed via a live NoSuchMethodException on that exact call. 3.7.0 targets
     // newer platforms correctly.
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
+    androidTestImplementation(libs.espresso.core)
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
