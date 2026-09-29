@@ -42,3 +42,15 @@ button,.btn,.cta,.theme-toggle,.nav a{touch-action:manipulation}
 .section{padding:76px 0}.section-head{margin-bottom:34px}.section h2{max-width:760px}.grid{border:0;background:transparent;gap:0;grid-template-columns:repeat(2,minmax(0,1fr))}.item{border-top:1px solid var(--line);padding:24px 24px 26px;min-height:170px}.item:nth-child(odd){border-right:1px solid var(--line)}.item:nth-child(-n+2){border-top:1px solid var(--line)}.item:hover{background:var(--surface)}
 .metrics{background:transparent}.metric{padding:24px 20px}.steps{gap:36px}.step{padding-top:16px}.code{border-radius:14px;padding:22px}
 @media(max-width:800px){.hero{padding-top:72px;padding-bottom:64px}.hero-grid{grid-template-columns:1fr;gap:34px}.section{padding:58px 0}.grid{grid-template-columns:1fr}.item{border-right:0!important}.item:nth-child(n){border-top:1px solid var(--line)}.steps{gap:24px}}
+
+/* Clean showcase baseline v4: quieter color, clearer hierarchy, fewer visual containers. */
+:root{--surface:#f8f8fa;--surface-2:#f1f0ff;--line:#e7e7eb}
+:root[data-theme="dark"]{--surface:#17181c;--surface-2:#25233b;--line:#2a2c32}
+.hero .eyebrow,.design-kicker,.section .eyebrow{color:var(--brand-strong)}
+.hero .cta,.btn.primary{box-shadow:none}
+.item,.metric,.step,.principle{box-shadow:none}
+.item:hover{background:color-mix(in srgb,var(--surface) 72%,var(--bg))}
+.btn.secondary,.theme-toggle{background:transparent}
+.code{background:var(--surface);border-color:var(--line)}
+.section.alt{background:transparent}
+@media(max-width:800px){.hero-grid{gap:32px}.section{padding:64px 0}.item{padding:22px 0}.item:nth-child(odd){border-right:0}.metric{padding:22px 0}}
