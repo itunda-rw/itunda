@@ -12,8 +12,8 @@ java {
 }
 
 dependencies {
-    testImplementation("com.lemonappdev:konsist:0.17.3")
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+    testImplementation(libs.konsist)
+    testImplementation(libs.junit.jupiter)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
