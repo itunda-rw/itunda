@@ -129,3 +129,26 @@ button,input{font:inherit}
 @media(prefers-reduced-motion:reduce){.category-nav{scroll-behavior:auto}.popular-card,.post-card>a{transition:none}}
 
 
+
+/* Showcase parity: tech surface */
+.header-inner{max-width:1160px;padding:0}
+.tech-hero{max-width:1160px;margin:auto;padding:112px 0 100px;border-bottom:1px solid var(--itunda-border)}
+.tech-hero h1{font-size:clamp(54px,8vw,92px);line-height:.98;letter-spacing:-.06em}
+.hero-copy{font-size:20px;line-height:1.5;margin:28px 0 0}
+.category-nav{max-width:1160px;margin:auto;padding:20px 0 14px}
+.featured{max-width:1160px;margin:auto;gap:40px;padding:84px 0}
+.featured h2{font-size:40px;line-height:1.05;letter-spacing:-.04em}
+.latest{max-width:1160px;margin:auto;padding:84px 0}
+.section-heading h2{font-size:40px;letter-spacing:-.04em}
+.popular-section,.discipline-section,.series-section{max-width:1160px;margin:auto}
+.post-card>a{padding:28px 0}
+@media(max-width:760px){
+ .header-inner{padding:0 20px}
+ .tech-hero{padding:76px 20px 68px}
+ .tech-hero h1{font-size:54px;letter-spacing:-.05em}
+ .hero-copy{font-size:18px}
+ .category-nav{padding:14px 20px}
+ .featured,.latest{padding:62px 20px}
+ .featured h2,.section-heading h2{font-size:34px}
+ .popular-section,.discipline-section,.series-section{margin-left:20px;margin-right:20px}
+}
