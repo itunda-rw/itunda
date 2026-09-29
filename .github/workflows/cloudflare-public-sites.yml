@@ -2,7 +2,7 @@ name: Deploy Itunda Public Sites to Cloudflare Pages
 
 on:
   push:
-    branches: [agent/itunda-agent-network]
+    branches: [main, agent/itunda-agent-network]
     paths:
       - "sites/public/**"
       - "sites/itunda/**"
@@ -41,7 +41,6 @@ jobs:
         uses: actions/checkout@v6
         with:
           persist-credentials: false
-
 
       - name: Assemble shared IDS assets
         run: |
