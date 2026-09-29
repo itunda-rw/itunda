@@ -14,5 +14,5 @@ android {
 
 dependencies {
     implementation("com.facebook.react:react-android")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
+    implementation(libs.kotlinx.coroutines.android.legacy)
 }
