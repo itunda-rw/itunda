@@ -88,6 +88,9 @@ jobs:
         working-directory: services/blog
         run: npm run build
 
+      - name: Enable Corepack for Wrangler
+        run: corepack enable
+
       - name: Deploy Itunda Tech
         uses: cloudflare/wrangler-action@v3
         with:
