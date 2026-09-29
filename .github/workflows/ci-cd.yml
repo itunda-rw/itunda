@@ -11,10 +11,12 @@ permissions:
 on:
   push:
     branches:
-      - agent/itunda-agent-network
+      - main
+      - develop
   pull_request:
     branches:
-      - agent/itunda-agent-network
+      - main
+      - develop
   workflow_dispatch:
 
 jobs:
