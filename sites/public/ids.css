@@ -13,3 +13,15 @@ button,.btn,.cta,.theme-toggle,.nav a{touch-action:manipulation}
 .code{tab-size:2}
 @media(max-width:800px){.top{padding:0}.nav{gap:8px}.nav a.cta{padding-inline:13px}.hero p{font-size:18px}.section-head{margin-bottom:32px}.item{min-height:168px;padding:24px}.item b{margin-top:26px}.steps{gap:22px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* Showcase parity: shared composition contract */
+.top{padding-left:0;padding-right:0}.shell{max-width:1160px}
+.hero{padding:112px 0 100px}.hero-grid{gap:64px}
+.section{padding:84px 0}.section.alt{background:var(--surface)}
+.grid,.metrics{background:var(--line)}
+.item,.metric{background:var(--bg)}
+.item:hover{background:var(--surface)}
+.code{background:var(--surface)}
+.step{border-top-color:var(--brand)}
+.footer{max-width:1160px}
+@media(max-width:800px){.hero{padding:76px 0 68px}.section{padding:62px 0}.hero-grid{gap:38px}}
