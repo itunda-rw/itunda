@@ -33,14 +33,14 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.foundation:foundation")
-    implementation("androidx.activity:activity-compose:1.8.2")
-    implementation("androidx.core:core-ktx:1.12.0")
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.core.ktx)
 
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-    implementation("com.google.android.gms:play-services-location:21.3.0")
-    implementation("org.maplibre.gl:android-sdk:13.3.1")
+    implementation(libs.retrofit)
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.play.services.location)
+    implementation(libs.maplibre.android)
     // Real merchant-photo rendering in the place-detail sheet (2026-08-09) -- same version
     // :features:shop:impl already uses elsewhere in this codebase.
-    implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation(libs.coil.compose)
 }
