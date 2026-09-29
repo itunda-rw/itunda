@@ -51,7 +51,7 @@ jobs:
         run: corepack enable
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -67,6 +67,8 @@ jobs:
           done
           test -s /tmp/site.html
           grep -q '<h1' /tmp/site.html
+          grep -q 'ids.css' /tmp/site.html
+          grep -q 'theme.js' /tmp/site.html
 
   deploy-tech:
     runs-on: ubuntu-latest
@@ -92,7 +94,7 @@ jobs:
         run: corepack enable
 
       - name: Deploy Itunda Tech
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -106,3 +108,4 @@ jobs:
           done
           test -s /tmp/tech.html
           grep -q '<div id="root"></div>' /tmp/tech.html
+          grep -q 'Design' /tmp/tech.html
