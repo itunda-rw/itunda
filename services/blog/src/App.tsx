@@ -26,7 +26,7 @@ export default function App() {
             <Link to="/" className="nav-active" aria-current="page">Articles</Link>
             <a href="/itunda/" aria-label="Open Itunda">Itunda</a>
             <a href="/itunda-business/" aria-label="Open Itunda Business">Business</a>
-            <a href="/itunda-developers/" aria-label="Open Itunda Developers">Developers</a>
+            <a href="/itunda-developers/" aria-label="Open Itunda Developers">Developers</a><a href="/itunda-developers/design/" aria-label="Open Itunda Design System">Design</a>
           </nav>
           <button className="theme-toggle" type="button" onClick={() => setTheme(nextTheme)} aria-label={themeLabel} title={themeLabel}>{theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'Auto'}</button>
           <a className="header-cta" href="https://github.com/itunda-rw/itunda">GitHub</a>
