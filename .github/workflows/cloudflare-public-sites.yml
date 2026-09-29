@@ -105,4 +105,4 @@ jobs:
             sleep 5
           done
           test -s /tmp/tech.html
-          grep -q '<main' /tmp/tech.html
+          grep -q '<div id="root"></div>' /tmp/tech.html
