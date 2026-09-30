@@ -18,6 +18,7 @@ on:
 permissions:
   contents: read
 
+# CI trigger: keep the workflow path-sensitive while allowing PR synchronization to start a fresh run.
 concurrency:
   group: ios-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -105,14 +106,7 @@ jobs:
         working-directory: ios
         run: |
           set -o pipefail
-          xcodebuild \
-            -workspace Itunda.xcworkspace \
-            -scheme ItundaApp \
-            -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath "$RUNNER_TEMP/ItundaDerivedData" \
-            -parallelizeTargets \
-            CODE_SIGNING_ALLOWED=NO \
-            build-for-testing
+          xcodebuild             -workspace Itunda.xcworkspace             -scheme ItundaApp             -destination 'generic/platform=iOS Simulator'             -derivedDataPath "$RUNNER_TEMP/ItundaDerivedData"             -parallelizeTargets             CODE_SIGNING_ALLOWED=NO             build-for-testing
 
       - name: Cache build-for-testing products
         uses: actions/cache/save@v4
@@ -202,10 +196,4 @@ jobs:
           fi
           xcrun simctl boot "$DEVICE_ID" 2>/dev/null || true
           xcrun simctl bootstatus "$DEVICE_ID" -b
-          xcodebuild \
-            -workspace Itunda.xcworkspace \
-            -scheme ItundaApp \
-            -destination "id=$DEVICE_ID" \
-            -derivedDataPath "$RUNNER_TEMP/ItundaDerivedData" \
-            CODE_SIGNING_ALLOWED=NO \
-            test-without-building
+          xcodebuild             -workspace Itunda.xcworkspace             -scheme ItundaApp             -destination "id=$DEVICE_ID"             -derivedDataPath "$RUNNER_TEMP/ItundaDerivedData"             CODE_SIGNING_ALLOWED=NO             test-without-building
