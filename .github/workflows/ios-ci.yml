@@ -117,7 +117,21 @@ jobs:
 
       - name: Start iOS UI test infrastructure
         run: |
-          docker compose -f infra/docker-compose.yml up -d mysql redis-node-1 kafka-broker-1 zookeeper debezium
+          set -euo pipefail
+          services="mysql redis-node-1 kafka-broker-1 zookeeper debezium"
+          for attempt in 1 2 3; do
+            echo "Pull attempt $attempt/3"
+            if COMPOSE_PARALLEL_LIMIT=1 docker compose -f infra/docker-compose.yml pull $services; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "Docker image pull failed after 3 attempts"
+              exit 1
+            fi
+            sleep $((attempt * 5))
+          done
+          docker compose -f infra/docker-compose.yml up -d --no-build $services
+          docker compose -f infra/docker-compose.yml ps
 
       - name: Start real backend for iOS UI tests
         working-directory: services/backend
@@ -157,9 +171,4 @@ jobs:
           fi
           xcrun simctl boot "$DEVICE_ID" 2>/dev/null || true
           xcrun simctl bootstatus "$DEVICE_ID" -b
-          xcodebuild \
-            -workspace Itunda.xcworkspace \
-            -scheme ItundaApp \
-            -destination "id=$DEVICE_ID" \
-            CODE_SIGNING_ALLOWED=NO \
-            test
+          xcodebuild             -workspace Itunda.xcworkspace             -scheme ItundaApp             -destination "id=$DEVICE_ID"             CODE_SIGNING_ALLOWED=NO             test
