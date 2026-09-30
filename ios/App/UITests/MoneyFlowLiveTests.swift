@@ -24,15 +24,14 @@ final class MoneyFlowLiveTests: XCTestCase {
         guard phoneField.waitForExistence(timeout: 5) else { return }
         phoneField.tap()
         phoneField.typeText("+250788123456")
-        enterDemoPin(app)
-    }
-
-    private func enterDemoPin(_ app: XCUIApplication) {
-        for digit in ["1", "2", "3", "4", "5", "6"] {
-            let key = app.buttons[digit]
-            XCTAssertTrue(key.waitForExistence(timeout: 3), "PIN key \(digit) should exist")
-            key.tap()
-        }
+        let usePassword = app.buttons["Use password"]
+        XCTAssertTrue(usePassword.waitForExistence(timeout: 5), "Legacy password login should be available for the seeded CI account")
+        usePassword.tap()
+        let passwordField = app.secureTextFields["Password"]
+        XCTAssertTrue(passwordField.waitForExistence(timeout: 5), "Password field should appear after selecting password login")
+        passwordField.tap()
+        passwordField.typeText("password123")
+        app.buttons["Log in"].tap()
     }
 
     private func attachScreenshot(named name: String) {
