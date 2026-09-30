@@ -52,6 +52,8 @@ private let loginStrings: [AppLocale: [String: String]] = [
         "pinLoginHeadline": "Enter your PIN",
         "pinMismatch": "That didn't match. Try again.",
         "checkingDevice": "Checking this device…",
+        "usePassword": "Use password",
+        "usePin": "Use PIN",
         // Real, sourced Toss simplification (2026-08-24, toss.tech/article/signup):
         // Toss found iOS users completed signup at a real, measurably higher rate
         // than Android, root-caused to iOS's first screen explaining WHY personal
@@ -92,6 +94,8 @@ private let loginStrings: [AppLocale: [String: String]] = [
         "pinLoginHeadline": "Andika PIN yawe",
         "pinMismatch": "Ntibihuye. Ongera ugerageze.",
         "checkingDevice": "Kugenzura iyi terefone…",
+        "usePassword": "Koresha ijambo ry'ibanga",
+        "usePin": "Koresha PIN",
         "nameContext": "Ni ko uzagaragara ku ncuti n'abacuruzi.",
         "phoneContext": "Tuzareba niba ufite konti isanzwe.",
         "termsHeadline": "Emeza amabwiriza ya itunda",
@@ -120,6 +124,8 @@ private let loginStrings: [AppLocale: [String: String]] = [
         "pinLoginHeadline": "Entrez votre code PIN",
         "pinMismatch": "Cela ne correspond pas. Réessayez.",
         "checkingDevice": "Vérification de cet appareil…",
+        "usePassword": "Utiliser le mot de passe",
+        "usePin": "Utiliser le PIN",
         "nameContext": "C'est ainsi que vous apparaîtrez auprès de vos amis et des commerçants.",
         "phoneContext": "Nous allons vérifier si vous avez déjà un compte.",
         "termsHeadline": "Acceptez les conditions d'itunda",
@@ -160,6 +166,7 @@ struct LoginScreen: View {
     // fingerprint, with the PIN only as its standing fallback.
     @State private var pinFirstEntry: String?
     @State private var attemptingPasswordless = false
+    @State private var useLegacyPassword = false
 
     // Real Toss/Korean-fintech-style 약관 동의 (terms consent) -- see
     // NetworkClient.swift's RegisterRequest.acceptedTermsIds own doc comment. Starts
@@ -313,6 +320,14 @@ struct LoginScreen: View {
                                 }
                             }
                             .transition(.opacity.combined(with: .move(edge: .top)))
+                        } else if useLegacyPassword {
+                            IdsTextField(t("password"), text: $password, isSecure: true, autoFocus: true)
+                            IdsButton(
+                                text: t("logIn"),
+                                variant: .filled,
+                                size: .medium,
+                                action: submit
+                            )
                         } else {
                             AccountPinPad(
                                 headline: t("pinLoginHeadline"),
@@ -330,6 +345,19 @@ struct LoginScreen: View {
                 }
 
                 Group {
+                    if !attemptingPasswordless && !isRegisterMode {
+                        IdsButton(
+                            text: useLegacyPassword ? t("usePin") : t("usePassword"),
+                            variant: .tertiary,
+                            size: .small,
+                            action: {
+                                useLegacyPassword.toggle()
+                                password = ""
+                                errorMessage = nil
+                            }
+                        )
+                    }
+
                     if !attemptingPasswordless {
                         IdsButton(
                             text: isRegisterMode ? t("switchToLogin") : t("switchToRegister"),
