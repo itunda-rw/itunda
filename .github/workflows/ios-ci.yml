@@ -38,7 +38,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: packages/saronite/node_modules
-          key: ios-saronite-node-modules-${{ runner.os }}-${{ hashFiles('packages/saronite/**/package.json') }}
+          key: ios-saronite-node-modules-${{ runner.os }}-${{ hashFiles('packages/saronite/package-lock.json') }}
           restore-keys: |
             ios-saronite-node-modules-${{ runner.os }}-
 
@@ -53,7 +53,7 @@ jobs:
             ios/Pods
             ~/Library/Caches/CocoaPods
             ~/Library/Developer/Xcode/DerivedData
-          key: ios-build-${{ runner.os }}-${{ hashFiles('ios/Podfile', 'ios/Project.swift', 'packages/saronite/**/package.json') }}
+          key: ios-build-${{ runner.os }}-${{ hashFiles('ios/Podfile', 'ios/Project.swift', 'packages/saronite/package-lock.json') }}
           restore-keys: |
             ios-build-${{ runner.os }}-
 
