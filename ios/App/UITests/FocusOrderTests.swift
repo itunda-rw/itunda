@@ -20,6 +20,20 @@ final class FocusOrderTests: XCTestCase {
         continueAfterFailure = false
     }
 
+    private func loginAndLaunch(_ app: XCUIApplication) {
+        loginAndLaunch(app)
+        let phoneField = app.textFields["Phone number"]
+        guard phoneField.waitForExistence(timeout: 5) else { return }
+        phoneField.tap()
+        phoneField.typeText("+250788123456")
+        for digit in ["1", "2", "3", "4", "5", "6"] {
+            let key = app.buttons[digit]
+            XCTAssertTrue(key.waitForExistence(timeout: 3), "PIN key \(digit) should exist")
+            key.tap()
+        }
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 15), "Tab bar should appear after login")
+    }
+
     /// The tab bar is the one piece of UI every screen shares, and its
     /// accessibility order is exactly what a VoiceOver user swiping right
     /// through tabs depends on. Checks two real things: the labels match
