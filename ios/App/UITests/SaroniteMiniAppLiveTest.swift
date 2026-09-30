@@ -104,9 +104,9 @@ final class SaroniteMiniAppLiveTest: XCTestCase {
     private func loginAndOpenAllTab(_ app: XCUIApplication) {
         app.launch()
         login(app)
-        let tabBar = app.tabBars.firstMatch
-        XCTAssertTrue(tabBar.waitForExistence(timeout: 15), "Tab bar should appear after login")
-        tabBar.buttons["All"].tap()
+        let exploreTab = app.buttons["Explore"]
+        XCTAssertTrue(exploreTab.waitForExistence(timeout: 15), "Explore tab should appear after login")
+        exploreTab.tap()
         // A real, observed flake running these tests back-to-back: the very next element
         // query sometimes still saw stale Home-tab content immediately after this tap.
         // A short settle delay made it reproducibly stable.
