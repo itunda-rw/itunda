@@ -33,6 +33,12 @@ const dirs = workspacePatterns.flatMap((pattern) => {
     .filter((dir) => fs.existsSync(path.join(root, dir, "package.json")));
 }).sort();
 const catalogDeps = new Set(Object.keys(required));
+const rootDeps = {...(rootPackage.dependencies ?? {}), ...(rootPackage.devDependencies ?? {})};
+for (const name of catalogDeps) if (name in rootDeps && rootDeps[name] !== "catalog:")
+  errors.push(`root package: ${name} must use catalog:`);
+for (const [name, version] of Object.entries(rootDeps))
+  if (name.startsWith("@itunda/") && !version.startsWith("workspace:"))
+    errors.push(`root package: ${name} must use workspace:`);
 for (const dir of dirs) {
   const file = path.join(root, dir, "package.json");
   if (!fs.existsSync(file)) continue;
