@@ -24,7 +24,9 @@ final class MoneyFlowLiveTests: XCTestCase {
         if phoneField.waitForExistence(timeout: 5) {
             phoneField.tap()
             phoneField.typeText("+250788123456")
+            app.buttons["Use password"].tap()
             let passwordField = app.secureTextFields["Password"]
+            XCTAssertTrue(passwordField.waitForExistence(timeout: 5), "Legacy password field should be available for the seeded pre-PIN demo account")
             passwordField.tap()
             passwordField.typeText("password123")
             app.buttons["Log in"].tap()
