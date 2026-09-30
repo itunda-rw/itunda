@@ -92,7 +92,7 @@
     "audit:monorepo": "node ./scripts/audit-monorepo.mjs"
   },
   "devDependencies": {
-    "dependency-cruiser": "catalog:",
+    "dependency-cruiser": "^16.10.0",
     "oxlint": "^1.71.0",
     "typescript": "catalog:"
   },
