@@ -72,10 +72,10 @@ jobs:
           rm -rf ../../../ios/.brick
           node ../node_modules/.bin/brick-codegen --platform ios --output-ios ../../../ios/.brick --projectRoot .
 
-      - name: Install Tuist 3.42.3
+      - name: Install Tuist 4.205.0
         run: |
-          mise install tuist@3.42.3
-          mise exec tuist@3.42.3 -- tuist version
+          mise install tuist@4.205.0
+          mise exec tuist@4.205.0 -- tuist version
 
       - name: Generate iOS app icon asset catalog
         working-directory: ios
@@ -96,7 +96,7 @@ jobs:
 
       - name: Generate Xcode project
         working-directory: ios
-        run: mise exec tuist@3.42.3 -- tuist generate --no-open
+        run: mise exec tuist@4.205.0 -- tuist generate --no-open
 
       - name: Install CocoaPods
         working-directory: ios
@@ -148,7 +148,7 @@ jobs:
         run: |
           curl https://mise.run | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          mise install tuist@3.42.3
+          mise install tuist@4.205.0
 
       - name: Generate Saronite iOS Brick codegen
         working-directory: packages/saronite/host-app
@@ -158,7 +158,7 @@ jobs:
 
       - name: Generate Xcode project
         working-directory: ios
-        run: mise exec tuist@3.42.3 -- tuist generate --no-open
+        run: mise exec tuist@4.205.0 -- tuist generate --no-open
 
       - name: Restore CocoaPods and Xcode cache
         uses: actions/cache/restore@v4
