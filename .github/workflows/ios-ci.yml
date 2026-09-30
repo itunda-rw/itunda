@@ -108,6 +108,13 @@ jobs:
         run: |
           xcodebuild             -workspace Itunda.xcworkspace             -scheme ItundaApp             -destination 'generic/platform=iOS Simulator'             CODE_SIGNING_ALLOWED=NO             build
 
+      - name: Install Docker runtime
+        run: |
+          brew install colima docker docker-compose
+          colima start --cpu 4 --memory 8 --disk 40
+          docker version
+          docker compose version
+
       - name: Start iOS UI test infrastructure
         run: |
           docker compose -f infra/docker-compose.yml up -d mysql redis-node-1 kafka-broker-1 zookeeper debezium
