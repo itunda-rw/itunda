@@ -21,7 +21,7 @@ final class FocusOrderTests: XCTestCase {
     }
 
     private func loginAndLaunch(_ app: XCUIApplication) {
-        loginAndLaunch(app)
+        app.launch()
         let phoneField = app.textFields["Phone number"]
         guard phoneField.waitForExistence(timeout: 5) else { return }
         phoneField.tap()
