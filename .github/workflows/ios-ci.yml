@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: packages/saronite/package.json
+          cache-dependency-path: packages/saronite/package-lock.json
 
       - name: Cache Saronite node_modules
         uses: actions/cache@v4
@@ -44,7 +44,7 @@ jobs:
 
       - name: Install Saronite dependencies
         working-directory: packages/saronite
-        run: npm install --prefer-offline --no-audit --no-fund
+        run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Cache CocoaPods and Xcode build products
         uses: actions/cache@v4
@@ -133,7 +133,7 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: packages/saronite/package.json
+          cache-dependency-path: packages/saronite/package-lock.json
 
       - name: Cache Saronite node_modules
         uses: actions/cache@v4
@@ -145,7 +145,7 @@ jobs:
 
       - name: Install Saronite dependencies
         working-directory: packages/saronite
-        run: npm install --prefer-offline --no-audit --no-fund
+        run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Install mise
         run: |
