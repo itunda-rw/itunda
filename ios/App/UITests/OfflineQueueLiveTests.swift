@@ -50,13 +50,14 @@ final class OfflineQueueLiveTests: XCTestCase {
 
     private func login(_ app: XCUIApplication) {
         let phoneField = app.textFields["Phone number"]
-        if phoneField.waitForExistence(timeout: 5) {
-            phoneField.tap()
-            phoneField.typeText("0788444444")
-            let passwordField = app.secureTextFields["Password"]
-            passwordField.tap()
-            passwordField.typeText("TestPass123!")
-            app.buttons["Log in"].tap()
+        guard phoneField.waitForExistence(timeout: 5) else { return }
+
+        phoneField.tap()
+        phoneField.typeText("+250788123456")
+        for digit in "123456" {
+            let button = app.buttons[String(digit)]
+            XCTAssertTrue(button.waitForExistence(timeout: 3), "PIN digit \(digit) should be visible")
+            button.tap()
         }
     }
 
