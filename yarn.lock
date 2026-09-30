@@ -80,7 +80,7 @@ __metadata:
     "@types/react-dom": "npm:^19.2.3"
     react: "npm:^19.2.7"
     react-dom: "npm:^19.2.7"
-    typescript: "npm:~6.0.2"
+    typescript: "npm:^5.0.0"
   languageName: unknown
   linkType: soft
 
@@ -740,7 +740,7 @@ __metadata:
     qrcode: "npm:^1.5.4"
     react: "npm:^19.2.7"
     react-dom: "npm:^19.2.7"
-    typescript: "npm:~6.0.2"
+    typescript: "npm:^5.0.0"
     vite: "npm:^8.1.1"
   languageName: unknown
   linkType: soft
@@ -1441,7 +1441,7 @@ __metadata:
     oxlint: "npm:^1.71.0"
     react: "npm:^19.2.7"
     react-dom: "npm:^19.2.7"
-    typescript: "npm:~6.0.2"
+    typescript: "npm:^5.0.0"
     vite: "npm:^8.1.1"
   languageName: unknown
   linkType: soft
@@ -1628,8 +1628,8 @@ __metadata:
   resolution: "itunda@workspace:."
   dependencies:
     dependency-cruiser: "npm:^16.10.0"
-    oxlint: "npm:^1.69.0"
-    typescript: "npm:~6.0.2"
+    oxlint: "npm:^1.71.0"
+    typescript: "npm:^5.0.0"
   languageName: unknown
   linkType: soft
 
@@ -1698,7 +1698,7 @@ __metadata:
     oxlint: "npm:^1.71.0"
     react: "npm:^19.2.7"
     react-dom: "npm:^19.2.7"
-    typescript: "npm:~6.0.2"
+    typescript: "npm:^5.0.0"
     vite: "npm:^8.1.1"
   languageName: unknown
   linkType: soft
@@ -1898,7 +1898,7 @@ __metadata:
     oxlint: "npm:^1.71.0"
     react: "npm:^19.2.7"
     react-dom: "npm:^19.2.7"
-    typescript: "npm:~6.0.2"
+    typescript: "npm:^5.0.0"
     vite: "npm:^8.1.1"
   languageName: unknown
   linkType: soft
@@ -1943,7 +1943,7 @@ __metadata:
     qrcode: "npm:^1.5.4"
     react: "npm:^19.2.7"
     react-dom: "npm:^19.2.7"
-    typescript: "npm:~6.0.2"
+    typescript: "npm:^5.0.0"
     vite: "npm:^8.1.1"
   languageName: unknown
   linkType: soft
@@ -2149,7 +2149,7 @@ __metadata:
     oxlint: "npm:^1.71.0"
     react: "npm:^19.2.7"
     react-dom: "npm:^19.2.7"
-    typescript: "npm:~6.0.2"
+    typescript: "npm:^5.0.0"
     vite: "npm:^8.1.1"
   languageName: unknown
   linkType: soft
@@ -2306,7 +2306,7 @@ __metadata:
     qrcode: "npm:^1.5.4"
     react: "npm:^19.2.7"
     react-dom: "npm:^19.2.7"
-    typescript: "npm:~6.0.2"
+    typescript: "npm:^5.0.0"
     vite: "npm:^8.1.1"
   languageName: unknown
   linkType: soft
@@ -2971,224 +2971,3 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@npm%3A^5.0.0#optional!builtin<compat/typescript>":
-  version: 5.9.3
-  resolution: "typescript@patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"
-  bin:
-    tsc: bin/tsc
-    tsserver: bin/tsserver
-  checksum: 10c0/ad09fdf7a756814dce65bc60c1657b40d44451346858eea230e10f2e95a289d9183b6e32e5c11e95acc0ccc214b4f36289dcad4bf1886b0adb84d711d336a430
-  languageName: node
-  linkType: hard
-
-"typescript@patch:typescript@npm%3A~6.0.2#optional!builtin<compat/typescript>":
-  version: 6.0.3
-  resolution: "typescript@patch:typescript@npm%3A6.0.3#optional!builtin<compat/typescript>::version=6.0.3&hash=5786d5"
-  bin:
-    tsc: bin/tsc
-    tsserver: bin/tsserver
-  checksum: 10c0/2f25c74e65663c248fa1ade2b8459d9ce5372ff9dad07067310f132966ebec1d93f6c42f0baf77a6b6a7a91460463f708e6887013aaade22111037457c6b25df
-  languageName: node
-  linkType: hard
-
-"undici-types@npm:~7.18.0":
-  version: 7.18.2
-  resolution: "undici-types@npm:7.18.2"
-  checksum: 10c0/85a79189113a238959d7a647368e4f7c5559c3a404ebdb8fc4488145ce9426fcd82252a844a302798dfc0e37e6fb178ff481ed03bc4caf634c5757d9ef43521d
-  languageName: node
-  linkType: hard
-
-"undici-types@npm:~8.3.0":
-  version: 8.3.0
-  resolution: "undici-types@npm:8.3.0"
-  checksum: 10c0/c8aa7e2fbebfce519654dafadc0ece59be888d2ccaf180fb4495da875e7b536d2456345c384069c7e6f3e9c9ab7435f074957da306f142343eee86ff8048855a
-  languageName: node
-  linkType: hard
-
-"undici@npm:^8.4.1":
-  version: 8.7.0
-  resolution: "undici@npm:8.7.0"
-  checksum: 10c0/b7e5ecb4de82fa4f905011a77544fe7ba4da06f27167ff99313a7ae2869f3cb233d676dcd085533bc69f36989bc40871f5ae6ea6e4c9b91db92616b9e91b579d
-  languageName: node
-  linkType: hard
-
-"unpipe@npm:~1.0.0":
-  version: 1.0.0
-  resolution: "unpipe@npm:1.0.0"
-  checksum: 10c0/193400255bd48968e5c5383730344fbb4fa114cdedfab26e329e50dd2d81b134244bb8a72c6ac1b10ab0281a58b363d06405632c9d49ca9dfd5e90cbd7d0f32c
-  languageName: node
-  linkType: hard
-
-"utils-merge@npm:1.0.1":
-  version: 1.0.1
-  resolution: "utils-merge@npm:1.0.1"
-  checksum: 10c0/02ba649de1b7ca8854bfe20a82f1dfbdda3fb57a22ab4a8972a63a34553cf7aa51bc9081cf7e001b035b88186d23689d69e71b510e610a09a4c66f68aa95b672
-  languageName: node
-  linkType: hard
-
-"vary@npm:^1, vary@npm:~1.1.2":
-  version: 1.1.2
-  resolution: "vary@npm:1.1.2"
-  checksum: 10c0/f15d588d79f3675135ba783c91a4083dcd290a2a5be9fcb6514220a1634e23df116847b1cc51f66bfb0644cf9353b2abb7815ae499bab06e46dd33c1a6bf1f4f
-  languageName: node
-  linkType: hard
-
-"vite@npm:^8.1.1":
-  version: 8.1.3
-  resolution: "vite@npm:8.1.3"
-  dependencies:
-    fsevents: "npm:~2.3.3"
-    lightningcss: "npm:^1.32.0"
-    picomatch: "npm:^4.0.4"
-    postcss: "npm:^8.5.16"
-    rolldown: "npm:~1.1.3"
-    tinyglobby: "npm:^0.2.17"
-  peerDependencies:
-    "@types/node": ^20.19.0 || >=22.12.0
-    "@vitejs/devtools": ^0.3.0
-    esbuild: ^0.27.0 || ^0.28.0
-    jiti: ">=1.21.0"
-    less: ^4.0.0
-    sass: ^1.70.0
-    sass-embedded: ^1.70.0
-    stylus: ">=0.54.8"
-    sugarss: ^5.0.0
-    terser: ^5.16.0
-    tsx: ^4.8.1
-    yaml: ^2.4.2
-  dependenciesMeta:
-    fsevents:
-      optional: true
-  peerDependenciesMeta:
-    "@types/node":
-      optional: true
-    "@vitejs/devtools":
-      optional: true
-    esbuild:
-      optional: true
-    jiti:
-      optional: true
-    less:
-      optional: true
-    sass:
-      optional: true
-    sass-embedded:
-      optional: true
-    stylus:
-      optional: true
-    sugarss:
-      optional: true
-    terser:
-      optional: true
-    tsx:
-      optional: true
-    yaml:
-      optional: true
-  bin:
-    vite: bin/vite.js
-  checksum: 10c0/e3c95e95f9c19b36be3c9d1c4de7f57d24d5af71613a221cfa22f1fd1568adebdb640e30ef9a7f2361fbb15478883955c9d8932e4fa5566280dd7a16bffa64f9
-  languageName: node
-  linkType: hard
-
-"vt-pbf@npm:^3.1.3":
-  version: 3.1.3
-  resolution: "vt-pbf@npm:3.1.3"
-  dependencies:
-    "@mapbox/point-geometry": "npm:0.1.0"
-    "@mapbox/vector-tile": "npm:^1.3.1"
-    pbf: "npm:^3.2.1"
-  checksum: 10c0/a568801ae25f0ffe65ef697bf520c996c8a4067f73f355c0d5815238de90322c8ca207c61220206141cfe6f5b525de875b7eb26e22979a1b768b96d03b93dca7
-  languageName: node
-  linkType: hard
-
-"watskeburt@npm:^4.2.3":
-  version: 4.2.3
-  resolution: "watskeburt@npm:4.2.3"
-  bin:
-    watskeburt: dist/run-cli.js
-  checksum: 10c0/0d93c8124abf0d7e375b6d766107480f426b2ae27d8a6c9e94a3c82b4352f1debf057ece0fbe28cd155ba060222d176eeb795bd3f5573b9f37201d7b087edf85
-  languageName: node
-  linkType: hard
-
-"which-module@npm:^2.0.0":
-  version: 2.0.1
-  resolution: "which-module@npm:2.0.1"
-  checksum: 10c0/087038e7992649eaffa6c7a4f3158d5b53b14cf5b6c1f0e043dccfacb1ba179d12f17545d5b85ebd94a42ce280a6fe65d0cbcab70f4fc6daad1dfae85e0e6a3e
-  languageName: node
-  linkType: hard
-
-"which@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "which@npm:4.0.0"
-  dependencies:
-    isexe: "npm:^3.1.1"
-  bin:
-    node-which: bin/which.js
-  checksum: 10c0/449fa5c44ed120ccecfe18c433296a4978a7583bf2391c50abce13f76878d2476defde04d0f79db8165bdf432853c1f8389d0485ca6e8ebce3bbcded513d5e6a
-  languageName: node
-  linkType: hard
-
-"which@npm:^7.0.0":
-  version: 7.0.0
-  resolution: "which@npm:7.0.0"
-  dependencies:
-    isexe: "npm:^4.0.0"
-  bin:
-    node-which: bin/which.js
-  checksum: 10c0/ca0b54f198f78bbc4b7c02e34bda8d335cb352e0adb4cbca1c37b1a957af3a879a82c4c27ca6525bc942f548d8b64f816ef6528360af9f3de55ffb9b979b620d
-  languageName: node
-  linkType: hard
-
-"wrap-ansi@npm:^6.2.0":
-  version: 6.2.0
-  resolution: "wrap-ansi@npm:6.2.0"
-  dependencies:
-    ansi-styles: "npm:^4.0.0"
-    string-width: "npm:^4.1.0"
-    strip-ansi: "npm:^6.0.0"
-  checksum: 10c0/baad244e6e33335ea24e86e51868fe6823626e3a3c88d9a6674642afff1d34d9a154c917e74af8d845fd25d170c4ea9cf69a47133c3f3656e1252b3d462d9f6c
-  languageName: node
-  linkType: hard
-
-"y18n@npm:^4.0.0":
-  version: 4.0.3
-  resolution: "y18n@npm:4.0.3"
-  checksum: 10c0/308a2efd7cc296ab2c0f3b9284fd4827be01cfeb647b3ba18230e3a416eb1bc887ac050de9f8c4fd9e7856b2e8246e05d190b53c96c5ad8d8cb56dffb6f81024
-  languageName: node
-  linkType: hard
-
-"yallist@npm:^5.0.0":
-  version: 5.0.0
-  resolution: "yallist@npm:5.0.0"
-  checksum: 10c0/a499c81ce6d4a1d260d4ea0f6d49ab4da09681e32c3f0472dee16667ed69d01dae63a3b81745a24bd78476ec4fcf856114cb4896ace738e01da34b2c42235416
-  languageName: node
-  linkType: hard
-
-"yargs-parser@npm:^18.1.2":
-  version: 18.1.3
-  resolution: "yargs-parser@npm:18.1.3"
-  dependencies:
-    camelcase: "npm:^5.0.0"
-    decamelize: "npm:^1.2.0"
-  checksum: 10c0/25df918833592a83f52e7e4f91ba7d7bfaa2b891ebf7fe901923c2ee797534f23a176913ff6ff7ebbc1cc1725a044cc6a6539fed8bfd4e13b5b16376875f9499
-  languageName: node
-  linkType: hard
-
-"yargs@npm:^15.3.1":
-  version: 15.4.1
-  resolution: "yargs@npm:15.4.1"
-  dependencies:
-    cliui: "npm:^6.0.0"
-    decamelize: "npm:^1.2.0"
-    find-up: "npm:^4.1.0"
-    get-caller-file: "npm:^2.0.1"
-    require-directory: "npm:^2.1.1"
-    require-main-filename: "npm:^2.0.0"
-    set-blocking: "npm:^2.0.0"
-    string-width: "npm:^4.2.0"
-    which-module: "npm:^2.0.0"
-    y18n: "npm:^4.0.0"
-    yargs-parser: "npm:^18.1.2"
-  checksum: 10c0/f1ca680c974333a5822732825cca7e95306c5a1e7750eb7b973ce6dc4f97a6b0a8837203c8b194f461969bfe1fb1176d1d423036635285f6010b392fa498ab2d
-  languageName: node
-  linkType: hard
