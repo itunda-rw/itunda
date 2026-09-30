@@ -44,6 +44,7 @@ final class FocusOrderTests: XCTestCase {
     /// from what's on screen.
     func testTabBarFocusOrderMatchesVisualLeftToRightOrder() throws {
         let app = XCUIApplication()
+        app.launchArguments.append("-itunda-ui-test-authenticated")
         app.launch()
 
         let tabBar = app.tabBars.firstMatch
@@ -72,6 +73,7 @@ final class FocusOrderTests: XCTestCase {
     /// "Notifications" despite the bell icon appearing first on screen.
     func testHomeTabTopBarIconsFocusOrderMatchesVisualOrder() throws {
         let app = XCUIApplication()
+        app.launchArguments.append("-itunda-ui-test-authenticated")
         app.launch()
 
         let notifications = app.buttons["Notifications"]
@@ -94,6 +96,7 @@ final class FocusOrderTests: XCTestCase {
 
     func testBenefitsTabRowsFocusOrderMatchesVisualTopToBottomOrder() throws {
         let app = XCUIApplication()
+        app.launchArguments.append("-itunda-ui-test-authenticated")
         app.launch()
         app.tabBars.buttons["Benefits"].tap()
 
@@ -120,6 +123,7 @@ final class FocusOrderTests: XCTestCase {
     /// wrapper/real navigation yet.
     func testShopTabTopBarIconsFocusOrderMatchesVisualOrder() throws {
         let app = XCUIApplication()
+        app.launchArguments.append("-itunda-ui-test-authenticated")
         app.launch()
         app.tabBars.buttons["Shop"].tap()
 
@@ -136,6 +140,7 @@ final class FocusOrderTests: XCTestCase {
 
     func testPayTabMerchantRowsFocusOrderMatchesVisualTopToBottomOrder() throws {
         let app = XCUIApplication()
+        app.launchArguments.append("-itunda-ui-test-authenticated")
         app.launch()
         app.tabBars.buttons["Pay"].tap()
 
@@ -157,6 +162,7 @@ final class FocusOrderTests: XCTestCase {
     /// queries app.buttons, not app.images.
     func testAllTabTopBarFocusOrderMatchesVisualOrder() throws {
         let app = XCUIApplication()
+        app.launchArguments.append("-itunda-ui-test-authenticated")
         app.launch()
         app.tabBars.buttons["All"].tap()
 
