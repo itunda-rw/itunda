@@ -120,10 +120,41 @@ jobs:
   ios-ui-tests:
     needs: ios-build
     runs-on: macos-15
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      # The live XCUITest suite talks to the real canonical backend at localhost:4001.
+      # GitHub macOS runners do not provide Docker Engine directly, so run the repo's
+      # committed local infrastructure through Colima, then boot the real Spring backend.
+      - name: Start local backend infrastructure
+        run: |
+          brew install colima docker
+          colima start --runtime docker --cpu 4 --memory 8 --disk 60
+          docker version
+          docker compose -f infra/docker-compose.yml up -d --wait --wait-timeout 180 mysql redis-node-1 zookeeper kafka-broker-1 debezium
+          for port in 3307 16379 9092; do
+            for attempt in $(seq 1 90); do
+              nc -z localhost "$port" && break
+              sleep 1
+            done
+          done
+
+      - name: Start canonical backend
+        run: |
+          cd services/backend
+          DB_PORT=3307           REDIS_PORT=16379           KAFKA_BOOTSTRAP_SERVERS=localhost:9092           ./gradlew :app:bootRun > "$RUNNER_TEMP/itunda-backend.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/itunda-backend.pid"
+          for attempt in $(seq 1 180); do
+            if curl --fail --silent http://localhost:4001/health >/dev/null; then
+              echo "Canonical backend is healthy"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/itunda-backend.log"
+          exit 1
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -197,3 +228,4 @@ jobs:
           xcrun simctl boot "$DEVICE_ID" 2>/dev/null || true
           xcrun simctl bootstatus "$DEVICE_ID" -b
           xcodebuild             -workspace Itunda.xcworkspace             -scheme ItundaApp             -destination "id=$DEVICE_ID"             -derivedDataPath "$RUNNER_TEMP/ItundaDerivedData"             CODE_SIGNING_ALLOWED=NO             test-without-building
+
