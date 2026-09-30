@@ -131,12 +131,21 @@ jobs:
       - name: Start local backend infrastructure
         run: |
           brew install colima docker
-          colima start --runtime docker --cpu 4 --memory 8 --disk 60
+          # QEMU avoids the VZ raw-disk startup failure observed on the macOS-15 arm64 runner.
+          colima start --runtime docker --vm-type=qemu --cpu 4 --memory 8 --disk 60
           docker version
           docker compose -f infra/docker-compose.yml up -d --wait --wait-timeout 180 mysql redis-node-1 zookeeper kafka-broker-1 debezium
           for port in 3307 16379 9092; do
             for attempt in $(seq 1 90); do
-              nc -z localhost "$port" && break
+              if nc -z localhost "$port"; then
+                break
+              fi
+              if [ "$attempt" -eq 90 ]; then
+                echo "Timed out waiting for localhost:$port"
+                docker compose -f infra/docker-compose.yml ps
+                docker compose -f infra/docker-compose.yml logs --tail=200
+                exit 1
+              fi
               sleep 1
             done
           done
@@ -228,4 +237,3 @@ jobs:
           xcrun simctl boot "$DEVICE_ID" 2>/dev/null || true
           xcrun simctl bootstatus "$DEVICE_ID" -b
           xcodebuild             -workspace Itunda.xcworkspace             -scheme ItundaApp             -destination "id=$DEVICE_ID"             -derivedDataPath "$RUNNER_TEMP/ItundaDerivedData"             CODE_SIGNING_ALLOWED=NO             test-without-building
-
