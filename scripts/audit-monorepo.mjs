@@ -77,7 +77,10 @@ for (const dir of dirs) {
     const importPattern = /(?:from\s+|import\s*\(\s*|require\(\s*|@import\s+)["'](@itunda\/[^"']+)["']/g;
     for (const match of source.matchAll(importPattern)) {
       const imported = match[1];
-      if (workspacePackageNames.has(imported) && imported !== pkg.name) importedWorkspacePackages.add(imported);
+      const workspacePackage = [...workspacePackageNames].find(
+        (name) => imported === name || imported.startsWith(name + "/"),
+      );
+      if (workspacePackage && workspacePackage !== pkg.name) importedWorkspacePackages.add(workspacePackage);
     }
   }
   for (const imported of importedWorkspacePackages) {
