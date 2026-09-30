@@ -47,8 +47,8 @@ final class MoneyFlowLiveTests: XCTestCase {
         app.launch()
         login(app)
 
-        let tabBar = app.tabBars.firstMatch
-        XCTAssertTrue(tabBar.waitForExistence(timeout: 15), "Tab bar should appear after login")
+        let homeTab = app.buttons["Home"]
+        XCTAssertTrue(homeTab.waitForExistence(timeout: 15), "Home tab should appear after login")
         attachScreenshot(named: "01-home")
 
         let sendButton = app.buttons["Send money now"]
