@@ -18,12 +18,20 @@ for (const [name, version] of Object.entries(required)) {
   const line = name.startsWith("@") ? `  "${name}": ${version}` : `  ${name}: ${version}`;
   if (!catalog.includes(line)) errors.push(`catalog: ${name} must be ${version}`);
 }
-const dirs = [
-  "packages/shared-utils","packages/design-tokens","packages/design-system-web","packages/itunda-pay-widget",
-  "services/api-gateway","services/micro-frontends/bank-mfe","services/micro-frontends/host-app",
-  "services/micro-frontends/kyc-mfe","services/micro-frontends/maps-mfe","services/micro-frontends/merchant-mfe",
-  "services/micro-frontends/ops-mfe","services/micro-frontends/pay-checkout"
-];
+const rootPackage = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+const workspacePatterns = rootPackage.workspaces ?? [];
+const dirs = workspacePatterns.flatMap((pattern) => {
+  if (!pattern.includes("*")) return [pattern];
+  const star = pattern.indexOf("*");
+  const prefix = pattern.slice(0, star);
+  const suffix = pattern.slice(star + 1);
+  const base = path.join(root, prefix);
+  if (!fs.existsSync(base)) return [];
+  return fs.readdirSync(base, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => path.join(prefix, entry.name) + suffix)
+    .filter((dir) => fs.existsSync(path.join(root, dir, "package.json")));
+}).sort();
 const catalogDeps = new Set(Object.keys(required));
 for (const dir of dirs) {
   const file = path.join(root, dir, "package.json");
