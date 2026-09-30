@@ -50,15 +50,17 @@ final class OfflineQueueLiveTests: XCTestCase {
 
     private func login(_ app: XCUIApplication) {
         let phoneField = app.textFields["Phone number"]
-        if phoneField.waitForExistence(timeout: 5) {
-            phoneField.tap()
-            phoneField.typeText("0788444444")
-            app.buttons["Use password"].tap()
-            let passwordField = app.secureTextFields["Password"]
-            XCTAssertTrue(passwordField.waitForExistence(timeout: 5), "Legacy password field should be available for the seeded test account")
-            passwordField.tap()
-            passwordField.typeText("TestPass123!")
-            app.buttons["Log in"].tap()
+        guard phoneField.waitForExistence(timeout: 5) else { return }
+        phoneField.tap()
+        phoneField.typeText("+250788123456")
+        enterDemoPin(app)
+    }
+
+    private func enterDemoPin(_ app: XCUIApplication) {
+        for digit in ["1", "2", "3", "4", "5", "6"] {
+            let key = app.buttons[digit]
+            XCTAssertTrue(key.waitForExistence(timeout: 3), "PIN key \(digit) should exist")
+            key.tap()
         }
     }
 
