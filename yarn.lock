@@ -1574,7 +1574,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "itunda@workspace:."
   dependencies:
-    dependency-cruiser: "npm:^16.10.0"
+    dependency-cruiser: "catalog:"
     oxlint: "npm:^1.71.0"
     typescript: "catalog:"
   languageName: unknown
