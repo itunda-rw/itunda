@@ -23,14 +23,17 @@ final class FocusOrderTests: XCTestCase {
     private func loginAndLaunch(_ app: XCUIApplication) {
         app.launch()
         let phoneField = app.textFields["Phone number"]
-        guard phoneField.waitForExistence(timeout: 5) else { return }
+        XCTAssertTrue(phoneField.waitForExistence(timeout: 5), "Phone field should appear")
         phoneField.tap()
         phoneField.typeText("+250788123456")
-        for digit in ["1", "2", "3", "4", "5", "6"] {
-            let key = app.buttons[digit]
-            XCTAssertTrue(key.waitForExistence(timeout: 3), "PIN key \(digit) should exist")
-            key.tap()
-        }
+        let usePassword = app.buttons["Use password"]
+        XCTAssertTrue(usePassword.waitForExistence(timeout: 5), "Password login should be available for the seeded CI account")
+        usePassword.tap()
+        let passwordField = app.secureTextFields["Password"]
+        XCTAssertTrue(passwordField.waitForExistence(timeout: 5), "Password field should appear")
+        passwordField.tap()
+        passwordField.typeText("password123")
+        app.buttons["Log in"].tap()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 15), "Tab bar should appear after login")
     }
 
@@ -44,8 +47,7 @@ final class FocusOrderTests: XCTestCase {
     /// from what's on screen.
     func testTabBarFocusOrderMatchesVisualLeftToRightOrder() throws {
         let app = XCUIApplication()
-        app.launchArguments.append("-itunda-ui-test-authenticated")
-        app.launch()
+        loginAndLaunch(app)
 
         let tabBar = app.tabBars.firstMatch
         XCTAssertTrue(tabBar.waitForExistence(timeout: 10), "Tab bar should exist")
@@ -73,8 +75,7 @@ final class FocusOrderTests: XCTestCase {
     /// "Notifications" despite the bell icon appearing first on screen.
     func testHomeTabTopBarIconsFocusOrderMatchesVisualOrder() throws {
         let app = XCUIApplication()
-        app.launchArguments.append("-itunda-ui-test-authenticated")
-        app.launch()
+        loginAndLaunch(app)
 
         let notifications = app.buttons["Notifications"]
         let profile = app.buttons["Profile"]
@@ -96,8 +97,7 @@ final class FocusOrderTests: XCTestCase {
 
     func testBenefitsTabRowsFocusOrderMatchesVisualTopToBottomOrder() throws {
         let app = XCUIApplication()
-        app.launchArguments.append("-itunda-ui-test-authenticated")
-        app.launch()
+        loginAndLaunch(app)
         app.tabBars.buttons["Benefits"].tap()
 
         // BenefitsShopAllScreens.swift's BenefitsVisitCard rows, in their real
@@ -123,8 +123,7 @@ final class FocusOrderTests: XCTestCase {
     /// wrapper/real navigation yet.
     func testShopTabTopBarIconsFocusOrderMatchesVisualOrder() throws {
         let app = XCUIApplication()
-        app.launchArguments.append("-itunda-ui-test-authenticated")
-        app.launch()
+        loginAndLaunch(app)
         app.tabBars.buttons["Shop"].tap()
 
         let profile = app.images["Profile"]
@@ -140,8 +139,7 @@ final class FocusOrderTests: XCTestCase {
 
     func testPayTabMerchantRowsFocusOrderMatchesVisualTopToBottomOrder() throws {
         let app = XCUIApplication()
-        app.launchArguments.append("-itunda-ui-test-authenticated")
-        app.launch()
+        loginAndLaunch(app)
         app.tabBars.buttons["Pay"].tap()
 
         // PayScreen's two "Nearby Merchants" rows, in their real source order.
@@ -162,8 +160,7 @@ final class FocusOrderTests: XCTestCase {
     /// queries app.buttons, not app.images.
     func testAllTabTopBarFocusOrderMatchesVisualOrder() throws {
         let app = XCUIApplication()
-        app.launchArguments.append("-itunda-ui-test-authenticated")
-        app.launch()
+        loginAndLaunch(app)
         app.tabBars.buttons["All"].tap()
 
         let name = app.staticTexts["TUYIZERE ERIC"]
