@@ -343,3 +343,24 @@ optional polish.
    rule 6.
 7. Does every name I just wrote truthfully predict its behavior, return shape, and how it
    differs from anything it wraps? → apply rule 7.
+
+
+## 7. Monorepo boundaries are dependency contracts, not folder conventions
+
+The repository intentionally stays one monorepo. Scale comes from making the dependency
+surface explicit inside that repo, not from splitting repositories prematurely.
+
+- **MFE isolation:** one micro-frontend must not import another MFE's source directly.
+- **Gateway isolation:** an MFE may call the API gateway over its runtime API boundary,
+  but must not import `services/api-gateway` source code.
+- **Foundation isolation:** shared packages under `packages/` must not depend upward on
+  micro-frontend source. Product composition belongs in the application/MFE layer.
+- **Direct workspace dependencies:** if source code imports an active Yarn workspace
+  package, that package must be declared directly with `workspace:*` (or the appropriate
+  `workspace:` protocol), never obtained accidentally through transitive visibility.
+- **Enforcement:** `dependency-cruiser` checks source-level boundaries and
+  `scripts/audit-monorepo.mjs` checks dependency declarations. Both run in CI.
+
+This is the intended large-monorepo model for itunda: many independently changeable silos,
+one repository, explicit contracts, and automated checks at the boundaries. A repository
+split remains a later operational decision, not a substitute for internal architecture.
