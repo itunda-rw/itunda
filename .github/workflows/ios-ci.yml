@@ -108,6 +108,36 @@ jobs:
         run: |
           xcodebuild             -workspace Itunda.xcworkspace             -scheme ItundaApp             -destination 'generic/platform=iOS Simulator'             CODE_SIGNING_ALLOWED=NO             build
 
+      - name: Start iOS UI test infrastructure
+        run: |
+          docker compose -f infra/docker-compose.yml up -d mysql redis-node-1 kafka-broker-1 zookeeper debezium
+
+      - name: Start real backend for iOS UI tests
+        working-directory: services/backend
+        env:
+          DB_PORT: "3307"
+          REDIS_PORT: "16379"
+          KAFKA_BOOTSTRAP_SERVERS: "localhost:9092"
+        run: |
+          ./gradlew :app:bootRun > /tmp/itunda-backend.log 2>&1 &
+          BACKEND_PID=$!
+          echo "$BACKEND_PID" > /tmp/itunda-backend.pid
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:4001/health > /dev/null; then
+              echo "Backend is healthy"
+              exit 0
+            fi
+            if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+              echo "Backend exited before becoming healthy"
+              cat /tmp/itunda-backend.log
+              exit 1
+            fi
+            sleep 2
+          done
+          echo "Backend did not become healthy within 120 seconds"
+          cat /tmp/itunda-backend.log
+          exit 1
+
       - name: Run iOS UI tests
         working-directory: ios
         run: |
