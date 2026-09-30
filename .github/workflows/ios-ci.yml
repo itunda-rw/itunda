@@ -50,10 +50,10 @@ jobs:
           rm -rf ../../../ios/.brick
           node ../node_modules/.bin/brick-codegen             --platform ios             --output-ios ../../../ios/.brick             --projectRoot .
 
-      - name: Install Tuist 3.42.3
+      - name: Install Tuist 4.205.0
         run: |
-          mise install tuist@3.42.3
-          mise exec tuist@3.42.3 -- tuist version
+          mise install tuist@4.205.0
+          mise exec tuist@4.205.0 -- tuist version
 
       # Keep icon generation isolated from the runner's externally-managed Python.
       # The source SVG lives under ios/Assets; App/Resources contains only generated XCAssets.
@@ -97,7 +97,7 @@ jobs:
       - name: Generate Xcode project
         working-directory: ios
         run: |
-          mise exec tuist@3.42.3 -- tuist generate --no-open
+          mise exec tuist@4.205.0 -- tuist generate --no-open
 
       - name: Install CocoaPods
         working-directory: ios
