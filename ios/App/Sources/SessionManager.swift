@@ -38,16 +38,6 @@ final class SessionManager: ObservableObject {
     }
 
     func restoreSession() {
-        #if DEBUG
-        // Deterministic UI-only CI mode. Live network/E2E suites are intentionally
-        // separate from the native accessibility smoke suite; this flag never ships
-        // in release builds and must be explicitly supplied by XCUITest.
-        if ProcessInfo.processInfo.arguments.contains("-itunda-ui-test-authenticated") {
-            sessionState = .loggedIn(userId: "demo-user")
-            return
-        }
-        #endif
-
         let store = KeychainTokenStore.shared
         if store.hasSession(), let userId = store.getUserId() {
             sessionState = .loggedIn(userId: userId)
