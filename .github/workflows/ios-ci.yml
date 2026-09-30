@@ -100,7 +100,7 @@ jobs:
 
       - name: Install CocoaPods
         working-directory: ios
-        run: pod install --deployment
+        run: pod install --repo-update
 
       - name: Build for testing
         working-directory: ios
@@ -173,7 +173,7 @@ jobs:
 
       - name: Install CocoaPods
         working-directory: ios
-        run: pod install --deployment
+        run: pod install --repo-update
 
       - name: Restore build-for-testing products
         uses: actions/cache/restore@v4
