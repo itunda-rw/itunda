@@ -53,7 +53,9 @@ final class OfflineQueueLiveTests: XCTestCase {
         if phoneField.waitForExistence(timeout: 5) {
             phoneField.tap()
             phoneField.typeText("0788444444")
+            app.buttons["Use password"].tap()
             let passwordField = app.secureTextFields["Password"]
+            XCTAssertTrue(passwordField.waitForExistence(timeout: 5), "Legacy password field should be available for the seeded test account")
             passwordField.tap()
             passwordField.typeText("TestPass123!")
             app.buttons["Log in"].tap()
