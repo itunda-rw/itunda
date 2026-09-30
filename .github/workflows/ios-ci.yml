@@ -63,7 +63,7 @@ jobs:
 
       - name: Install mise
         run: |
-          curl https://mise.run | sh
+          curl --fail --retry 5 --retry-delay 2 --retry-all-errors https://mise.run | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Generate Saronite iOS Brick codegen
@@ -146,7 +146,7 @@ jobs:
 
       - name: Install mise
         run: |
-          curl https://mise.run | sh
+          curl --fail --retry 5 --retry-delay 2 --retry-all-errors https://mise.run | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           mise install tuist@4.205.0
 
