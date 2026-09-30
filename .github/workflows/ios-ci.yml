@@ -138,35 +138,7 @@ jobs:
           cat /tmp/itunda-backend.log
           exit 1
 
-      - name: Start real backend for iOS UI tests
-        working-directory: services/backend
-        run: |
-          set -euo pipefail
-          brew install mysql@8.0 redis || true
-          echo "$(brew --prefix mysql@8.0)/bin" >> "$GITHUB_PATH"
-          echo "$(brew --prefix redis)/bin" >> "$GITHUB_PATH"
-          export PATH="$(brew --prefix mysql@8.0)/bin:$(brew --prefix redis)/bin:$PATH"
-          brew services start mysql@8.0 || true
-          brew services start redis || true
-          for i in {1..60}; do
-            mysqladmin ping -h 127.0.0.1 --silent >/dev/null 2>&1 && break
-            sleep 2
-          done
-          mysqladmin ping -h 127.0.0.1 --silent
-          redis-cli -h 127.0.0.1 ping
-          mysql -h 127.0.0.1 -uroot -e "CREATE DATABASE IF NOT EXISTS itunda; CREATE USER IF NOT EXISTS 'itunda'@'localhost' IDENTIFIED BY 'itunda_password'; GRANT ALL PRIVILEGES ON itunda.* TO 'itunda'@'localhost'; FLUSH PRIVILEGES;"
-          nohup env DB_HOST=127.0.0.1 DB_PORT=3306 DB_NAME=itunda DB_USER=itunda DB_PASSWORD=itunda_password REDIS_HOST=127.0.0.1 REDIS_PORT=6379 KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:9092 ./gradlew :app:bootRun > /tmp/itunda-backend.log 2>&1 &
-          for i in {1..180}; do
-            if curl --fail --silent http://127.0.0.1:4001/health >/tmp/itunda-health.json; then
-              cat /tmp/itunda-health.json
-              exit 0
-            fi
-            sleep 2
-          done
-          cat /tmp/itunda-backend.log
-          exit 1
-
-      - name: Run backend-independent iOS launch smoke test
+      - name: Run iOS UI tests
         working-directory: ios
         run: |
           set -euo pipefail
@@ -182,10 +154,5 @@ jobs:
             -workspace Itunda.xcworkspace \
             -scheme ItundaApp \
             -destination "id=$DEVICE_ID" \
-            -only-testing:ItundaAppUITests/LaunchSmokeTests/testAppLaunchesWithoutCrash \
             CODE_SIGNING_ALLOWED=NO \
             test
-
-      # The remaining XCUITest suites are intentionally live-backend tests.
-      # They require the real services/backend on localhost:4001 and therefore
-      # are not part of the deterministic hosted build gate.
