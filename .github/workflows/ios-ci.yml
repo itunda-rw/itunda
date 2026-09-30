@@ -118,10 +118,12 @@ jobs:
       - name: Start iOS UI test infrastructure
         run: |
           set -euo pipefail
+          compose="docker compose -f infra/docker-compose.yml"
           services="mysql redis-node-1 kafka-broker-1 zookeeper debezium"
+
           for attempt in 1 2 3; do
             echo "Pull attempt $attempt/3"
-            if COMPOSE_PARALLEL_LIMIT=1 docker compose -f infra/docker-compose.yml pull $services; then
+            if COMPOSE_PARALLEL_LIMIT=1 $compose pull $services; then
               break
             fi
             if [ "$attempt" -eq 3 ]; then
@@ -130,8 +132,42 @@ jobs:
             fi
             sleep $((attempt * 5))
           done
-          docker compose -f infra/docker-compose.yml up -d --no-build $services
-          docker compose -f infra/docker-compose.yml ps
+
+          wait_for_health() {
+            local service="$1"
+            local timeout_seconds="$2"
+            local deadline=$((SECONDS + timeout_seconds))
+            echo "Waiting for $service to become healthy..."
+            while (( SECONDS < deadline )); do
+              status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$service" 2>/dev/null || true)"
+              echo "$service status: $status"
+              if [ "$status" = "healthy" ]; then
+                return 0
+              fi
+              if [ "$status" = "unhealthy" ]; then
+                docker logs --tail 120 "$service" || true
+                return 1
+              fi
+              sleep 5
+            done
+            echo "$service did not become healthy within ${timeout_seconds}s"
+            docker logs --tail 120 "$service" || true
+            return 1
+          }
+
+          # Start dependency layers separately so a cold MySQL/Kafka startup
+          # cannot make Compose abort the entire stack prematurely.
+          $compose up -d --no-build mysql redis-node-1 zookeeper
+          wait_for_health mysql 180
+          wait_for_health redis-node-1 90
+          wait_for_health zookeeper 120
+
+          $compose up -d --no-build kafka-broker-1
+          wait_for_health kafka-broker-1 180
+
+          $compose up -d --no-build debezium
+          sleep 5
+          $compose ps
 
       - name: Start real backend for iOS UI tests
         working-directory: services/backend
