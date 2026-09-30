@@ -1,17 +1,3 @@
-//
-//  FocusOrderTests.swift
-//  Real XCUITest coverage for docs/ACCESSIBILITY.md's one remaining open item --
-//  "Focus order... requires either a live TalkBack/VoiceOver run or Compose's
-//  testTag-based semantics tree inspection, neither available in this
-//  environment." That was true until this session found the real Xcode/simulator
-//  toolchain was actually available here (see docs/ARCHITECTURE.md §3's "MAJOR
-//  CORRECTION" note). XCUITest reads the same accessibility tree VoiceOver does
-//  (XCUIElement queries walk it in accessibility-traversal order), so this is a
-//  real check against real UI, not a static-analysis proxy for one.
-//
-//  Added 2026-07-11.
-//
-
 import XCTest
 
 final class FocusOrderTests: XCTestCase {
@@ -23,151 +9,99 @@ final class FocusOrderTests: XCTestCase {
     private func loginAndLaunch(_ app: XCUIApplication) {
         app.launch()
         let phoneField = app.textFields["Phone number"]
-        guard phoneField.waitForExistence(timeout: 5) else { return }
+        XCTAssertTrue(phoneField.waitForExistence(timeout: 5), "Phone number field should exist")
         phoneField.tap()
         phoneField.typeText("+250788123456")
         for digit in ["1", "2", "3", "4", "5", "6"] {
             let key = app.buttons[digit]
-            XCTAssertTrue(key.waitForExistence(timeout: 3), "PIN key \(digit) should exist")
+            XCTAssertTrue(key.waitForExistence(timeout: 3), "PIN key (digit) should exist")
             key.tap()
         }
-        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 15), "Tab bar should appear after login")
+        XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 15), "Home tab should appear after login")
     }
 
-    /// The tab bar is the one piece of UI every screen shares, and its
-    /// accessibility order is exactly what a VoiceOver user swiping right
-    /// through tabs depends on. Checks two real things: the labels match
-    /// Android's established taxonomy (Home/Benefits/Shop/Pay/All, fixed
-    /// 2026-07-11 -- see ContentView.swift's own header) in that exact order,
-    /// and each button's accessibility-tree position is also visually
-    /// left-to-right, so VoiceOver's traversal order can't silently diverge
-    /// from what's on screen.
     func testTabBarFocusOrderMatchesVisualLeftToRightOrder() throws {
         let app = XCUIApplication()
-        app.launch()
+        loginAndLaunch(app)
 
-        let tabBar = app.tabBars.firstMatch
-        XCTAssertTrue(tabBar.waitForExistence(timeout: 10), "Tab bar should exist")
-
-        let expectedLabels = ["Home", "Benefits", "Shop", "Pay", "All"]
-        let buttons = tabBar.buttons.allElementsBoundByIndex
+        let expectedLabels = ["Home", "Pay", "Explore", "Messages", "You"]
+        let buttons = expectedLabels.map { label -> XCUIElement in
+            let button = app.buttons[label]
+            XCTAssertTrue(button.waitForExistence(timeout: 10), "(label) tab should exist")
+            return button
+        }
 
         XCTAssertEqual(
             buttons.map { $0.label }, expectedLabels,
-            "Tab bar accessibility order should match Android's taxonomy and left-to-right visual order"
+            "Primary tab accessibility order should match the current product taxonomy"
         )
 
         let xPositions = buttons.map { $0.frame.minX }
         XCTAssertEqual(
             xPositions, xPositions.sorted(),
-            "Tab bar buttons' accessibility traversal order should match their left-to-right visual position"
+            "Primary tab accessibility order should match the left-to-right visual order"
         )
     }
 
-    /// The Home tab's top bar has two icon-only buttons fixed this session
-    /// (BankView.swift's TopBarActionButton -- Notifications, then Profile,
-    /// same order the visible bell/person icons render in left-to-right). If
-    /// their accessibility order ever diverged from their visual order, a
-    /// VoiceOver user swiping right would land on "Profile" before
-    /// "Notifications" despite the bell icon appearing first on screen.
-    func testHomeTabTopBarIconsFocusOrderMatchesVisualOrder() throws {
+    func testHomeHeaderFocusOrderMatchesVisualOrder() throws {
         let app = XCUIApplication()
-        app.launch()
+        loginAndLaunch(app)
 
-        let notifications = app.buttons["Notifications"]
-        let profile = app.buttons["Profile"]
-        XCTAssertTrue(notifications.waitForExistence(timeout: 10), "Notifications button should exist and be labeled")
-        XCTAssertTrue(profile.exists, "Profile button should exist and be labeled")
+        let title = app.staticTexts["itunda"]
+        let notifications = app.images["Notifications"]
+        XCTAssertTrue(title.waitForExistence(timeout: 10), "Home header title should exist")
+        XCTAssertTrue(notifications.waitForExistence(timeout: 10), "Home notifications icon should be labeled")
 
         XCTAssertLessThan(
-            notifications.frame.minX, profile.frame.minX,
-            "Notifications (bell) should sit left of Profile, matching HomeTopBar's real HStack order"
+            title.frame.minX, notifications.frame.minX,
+            "Home title should sit left of Notifications, matching the real header HStack order"
         )
     }
 
-    /// Extends coverage (2026-07-11) from Home-tab-only to the remaining four
-    /// tabs, closing the "other 4 tabs... isn't covered by a test yet" gap this
-    /// file's own earlier version left open. Same pattern: switch tabs via the
-    /// real tab bar (not a direct navigation shortcut -- this exercises the
-    /// same path a real user, or VoiceOver user, takes), then assert real
-    /// accessibility-tree order matches real visual/HStack order.
-
-    func testBenefitsTabRowsFocusOrderMatchesVisualTopToBottomOrder() throws {
+    func testPayTabFocusOrderMatchesVisualTopToBottomOrder() throws {
         let app = XCUIApplication()
-        app.launch()
-        app.tabBars.buttons["Benefits"].tap()
+        loginAndLaunch(app)
+        app.buttons["Pay"].tap()
 
-        // BenefitsShopAllScreens.swift's BenefitsVisitCard rows, in their real
-        // source/visual order.
-        let titles = ["Happy lottery", "Push the button", "Try on", "Bring friends"]
-        let yPositions = titles.map { title -> CGFloat in
-            let element = app.staticTexts[title]
-            XCTAssertTrue(element.waitForExistence(timeout: 10), "'\(title)' row should exist on the Benefits tab")
-            return element.frame.minY
-        }
-        XCTAssertEqual(
-            yPositions, yPositions.sorted(),
-            "Benefits tab's visit-card rows should read top-to-bottom in their real source order: \(titles)"
-        )
-    }
-
-    /// ShopTopBar's Profile/Cart icons are bare Image()s with an
-    /// accessibilityLabel, not wrapped in Button -- confirmed by this test's
-    /// own first version failing against app.buttons[...] and passing once
-    /// changed to app.images[...] (real XCUITest element-type introspection,
-    /// not a source-reading guess). Matches the already-documented finding
-    /// in ARCHITECTURE.md that these specific icons have no clickable
-    /// wrapper/real navigation yet.
-    func testShopTabTopBarIconsFocusOrderMatchesVisualOrder() throws {
-        let app = XCUIApplication()
-        app.launch()
-        app.tabBars.buttons["Shop"].tap()
-
-        let profile = app.images["Profile"]
-        let cart = app.images["Cart"]
-        XCTAssertTrue(profile.waitForExistence(timeout: 10), "Profile image should exist and be labeled on the Shop tab")
-        XCTAssertTrue(cart.exists, "Cart image should exist and be labeled on the Shop tab")
+        let payCode = app.staticTexts["Pay by code"]
+        let requestMoney = app.staticTexts["Request money"]
+        XCTAssertTrue(payCode.waitForExistence(timeout: 10), "Pay tab should show Pay by code")
+        XCTAssertTrue(requestMoney.waitForExistence(timeout: 10), "Pay tab should show Request money")
 
         XCTAssertLessThan(
-            profile.frame.minX, cart.frame.minX,
-            "Profile should sit left of Cart, matching ShopTopBar's real HStack order"
+            payCode.frame.minY, requestMoney.frame.minY,
+            "Pay actions should read top-to-bottom in their real visual order"
         )
     }
 
-    func testPayTabMerchantRowsFocusOrderMatchesVisualTopToBottomOrder() throws {
+    func testExploreTabMiniAppsSectionExists() throws {
         let app = XCUIApplication()
-        app.launch()
-        app.tabBars.buttons["Pay"].tap()
+        loginAndLaunch(app)
+        app.buttons["Explore"].tap()
 
-        // PayScreen's two "Nearby Merchants" rows, in their real source order.
-        let kigaliHeights = app.staticTexts["Kigali Heights"]
-        let briocheCafe = app.staticTexts["Brioche Cafe"]
-        XCTAssertTrue(kigaliHeights.waitForExistence(timeout: 10), "Kigali Heights row should exist on the Pay tab")
-        XCTAssertTrue(briocheCafe.exists, "Brioche Cafe row should exist on the Pay tab")
+        let miniApps = app.staticTexts["Mini apps"]
+        XCTAssertTrue(miniApps.waitForExistence(timeout: 10), "Explore tab should expose the Mini apps section")
+    }
 
-        XCTAssertLessThan(
-            kigaliHeights.frame.minY, briocheCafe.frame.minY,
-            "Kigali Heights should sit above Brioche Cafe, matching PayScreen's real VStack order"
+    func testMessagesTabExists() throws {
+        let app = XCUIApplication()
+        loginAndLaunch(app)
+        app.buttons["Messages"].tap()
+
+        XCTAssertTrue(
+            app.staticTexts["Messages"].waitForExistence(timeout: 10),
+            "Messages tab should expose its real Talk surface"
         )
     }
 
-    /// IdsAllTopBar's Settings icon was a bare Image() when this test was first
-    /// written; it's a real Button now (2026-07-12, see BenefitsShopAllScreens.swift
-    /// -- wired to the real Settings screen instead of direct logout), so this
-    /// queries app.buttons, not app.images.
-    func testAllTabTopBarFocusOrderMatchesVisualOrder() throws {
+    func testYouTabExists() throws {
         let app = XCUIApplication()
-        app.launch()
-        app.tabBars.buttons["All"].tap()
+        loginAndLaunch(app)
+        app.buttons["You"].tap()
 
-        let name = app.staticTexts["TUYIZERE ERIC"]
-        let settings = app.buttons["Settings"]
-        XCTAssertTrue(name.waitForExistence(timeout: 10), "Name should exist on the All tab")
-        XCTAssertTrue(settings.waitForExistence(timeout: 10), "Settings button should exist and be labeled on the All tab")
-
-        XCTAssertLessThan(
-            name.frame.minX, settings.frame.minX,
-            "Name should sit left of the Settings gear, matching IdsAllTopBar's real SpaceBetween HStack order"
+        XCTAssertTrue(
+            app.staticTexts["My orders"].waitForExistence(timeout: 10),
+            "You tab should expose the real personal hub"
         )
     }
 }
