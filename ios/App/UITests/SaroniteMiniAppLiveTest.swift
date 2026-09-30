@@ -82,10 +82,13 @@ final class SaroniteMiniAppLiveTest: XCTestCase {
         if phoneField.waitForExistence(timeout: 5) {
             phoneField.tap()
             phoneField.typeText("+250788123456")
-            let passwordField = app.secureTextFields["Password"]
-            passwordField.tap()
-            passwordField.typeText("password123")
-            app.buttons["Log in"].tap()
+            // The iOS login flow now uses the real 6-digit AccountPinPad, not a
+            // SecureTextField. Tap the visible keypad digits so this remains a real XCUITest
+            // interaction and does not depend on an OS keyboard/autofill implementation.
+            for digit in "123456" {
+                XCTAssertTrue(app.buttons[String(digit)].waitForExistence(timeout: 3), "PIN digit \(digit) should be visible")
+                app.buttons[String(digit)].tap()
+            }
         }
     }
 
