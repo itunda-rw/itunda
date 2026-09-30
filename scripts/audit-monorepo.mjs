@@ -9,12 +9,11 @@ const required = {
   oxlint: "^1.71.0", vite: "^8.1.1", "@vitejs/plugin-react": "^6.0.3",
   "@originjs/vite-plugin-federation": "^1.4.1"
 };
+const errors = [];
 const idsShowcase = fs.readFileSync(path.join(root, "design-system/index.html"), "utf8");
 if (!idsShowcase.includes("#7472F4")) errors.push("design-system/index.html: canonical Itunda Indigo #7472F4 is missing");
 if (idsShowcase.includes("#1F78FF") || idsShowcase.includes("#1769E0")) errors.push("design-system/index.html: stale legacy blue identity detected");
 if (idsShowcase.includes("IDS v2.1")) errors.push("design-system/index.html: stale IDS v2.1 label detected");
-
-const errors = [];
 for (const [name, version] of Object.entries(required)) {
   const line = name.startsWith("@") ? `  "${name}": ${version}` : `  ${name}: ${version}`;
   if (!catalog.includes(line)) errors.push(`catalog: ${name} must be ${version}`);
