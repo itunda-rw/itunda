@@ -15,6 +15,9 @@ on:
       - ".github/workflows/ios-ci.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ios-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
