@@ -78,15 +78,28 @@ final class SaroniteMiniAppLiveTest: XCTestCase {
     }
 
     private func login(_ app: XCUIApplication) {
-        let phoneField = app.textFields["Phone number"]
-        if phoneField.waitForExistence(timeout: 5) {
-            phoneField.tap()
-            phoneField.typeText("+250788123456")
-            let passwordField = app.secureTextFields["Password"]
-            passwordField.tap()
-            passwordField.typeText("password123")
-            app.buttons["Log in"].tap()
+        app.launch()
+        let tabBar = app.tabBars.firstMatch
+        if tabBar.waitForExistence(timeout: 2) {
+            return
         }
+
+        let phoneField = app.textFields["Phone number"]
+        XCTAssertTrue(phoneField.waitForExistence(timeout: 10), "Phone number field should appear when the session is logged out")
+        phoneField.tap()
+        phoneField.typeText("+250788123456")
+
+        let usePassword = app.buttons["Use password"]
+        XCTAssertTrue(usePassword.waitForExistence(timeout: 5), "Password login should be available for the seeded CI account")
+        usePassword.tap()
+
+        let passwordField = app.secureTextFields["Password"]
+        XCTAssertTrue(passwordField.waitForExistence(timeout: 5), "Password field should appear after selecting password login")
+        passwordField.tap()
+        passwordField.typeText("password123")
+        app.buttons["Log in"].tap()
+
+        XCTAssertTrue(tabBar.waitForExistence(timeout: 20), "Tab bar should appear after login")
     }
 
     private func attachScreenshot(named name: String) {

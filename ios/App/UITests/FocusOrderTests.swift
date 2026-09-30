@@ -20,6 +20,31 @@ final class FocusOrderTests: XCTestCase {
         continueAfterFailure = false
     }
 
+    private func login(_ app: XCUIApplication) {
+            app.launch()
+            let tabBar = app.tabBars.firstMatch
+            if tabBar.waitForExistence(timeout: 2) {
+                return
+            }
+    
+            let phoneField = app.textFields["Phone number"]
+            XCTAssertTrue(phoneField.waitForExistence(timeout: 10), "Phone number field should appear when the session is logged out")
+            phoneField.tap()
+            phoneField.typeText("+250788123456")
+    
+            let usePassword = app.buttons["Use password"]
+            XCTAssertTrue(usePassword.waitForExistence(timeout: 5), "Password login should be available for the seeded CI account")
+            usePassword.tap()
+    
+            let passwordField = app.secureTextFields["Password"]
+            XCTAssertTrue(passwordField.waitForExistence(timeout: 5), "Password field should appear after selecting password login")
+            passwordField.tap()
+            passwordField.typeText("password123")
+            app.buttons["Log in"].tap()
+    
+            XCTAssertTrue(tabBar.waitForExistence(timeout: 20), "Tab bar should appear after login")
+        }
+
     /// The tab bar is the one piece of UI every screen shares, and its
     /// accessibility order is exactly what a VoiceOver user swiping right
     /// through tabs depends on. Checks two real things: the labels match
@@ -30,7 +55,7 @@ final class FocusOrderTests: XCTestCase {
     /// from what's on screen.
     func testTabBarFocusOrderMatchesVisualLeftToRightOrder() throws {
         let app = XCUIApplication()
-        app.launch()
+        login(app)
 
         let tabBar = app.tabBars.firstMatch
         XCTAssertTrue(tabBar.waitForExistence(timeout: 10), "Tab bar should exist")
@@ -58,7 +83,7 @@ final class FocusOrderTests: XCTestCase {
     /// "Notifications" despite the bell icon appearing first on screen.
     func testHomeTabTopBarIconsFocusOrderMatchesVisualOrder() throws {
         let app = XCUIApplication()
-        app.launch()
+        login(app)
 
         let notifications = app.buttons["Notifications"]
         let profile = app.buttons["Profile"]
@@ -80,7 +105,7 @@ final class FocusOrderTests: XCTestCase {
 
     func testBenefitsTabRowsFocusOrderMatchesVisualTopToBottomOrder() throws {
         let app = XCUIApplication()
-        app.launch()
+        login(app)
         app.tabBars.buttons["Benefits"].tap()
 
         // BenefitsShopAllScreens.swift's BenefitsVisitCard rows, in their real
@@ -106,7 +131,7 @@ final class FocusOrderTests: XCTestCase {
     /// wrapper/real navigation yet.
     func testShopTabTopBarIconsFocusOrderMatchesVisualOrder() throws {
         let app = XCUIApplication()
-        app.launch()
+        login(app)
         app.tabBars.buttons["Shop"].tap()
 
         let profile = app.images["Profile"]
@@ -122,7 +147,7 @@ final class FocusOrderTests: XCTestCase {
 
     func testPayTabMerchantRowsFocusOrderMatchesVisualTopToBottomOrder() throws {
         let app = XCUIApplication()
-        app.launch()
+        login(app)
         app.tabBars.buttons["Pay"].tap()
 
         // PayScreen's two "Nearby Merchants" rows, in their real source order.
@@ -143,7 +168,7 @@ final class FocusOrderTests: XCTestCase {
     /// queries app.buttons, not app.images.
     func testAllTabTopBarFocusOrderMatchesVisualOrder() throws {
         let app = XCUIApplication()
-        app.launch()
+        login(app)
         app.tabBars.buttons["All"].tap()
 
         let name = app.staticTexts["TUYIZERE ERIC"]

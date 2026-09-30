@@ -30,7 +30,8 @@ services:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 12
+      start_period: 60s
     networks:
       - itunda-network
     restart: unless-stopped
@@ -133,7 +134,7 @@ volumes:
   redis_node_1:
   zookeeper_data:
   zookeeper_logs:
-  kafka_broker_1:
+  kafka_broker_1
 
 networks:
   itunda-network:
