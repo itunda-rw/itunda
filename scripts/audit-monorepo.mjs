@@ -4,7 +4,7 @@ import path from "node:path";
 const root = process.cwd();
 const catalog = fs.readFileSync(path.join(root, ".yarnrc.yml"), "utf8");
 const required = {
-  react: "^19.2.7", "react-dom": "^19.2.7", typescript: "~6.0.2",
+  react: "^19.2.7", "react-dom": "^19.2.7", typescript: "^5.0.0",
   "@types/react": "^19.2.17", "@types/react-dom": "^19.2.3", "@types/node": "^24.13.2",
   oxlint: "^1.71.0", vite: "^8.1.1", "@vitejs/plugin-react": "^6.0.3",
   "@originjs/vite-plugin-federation": "^1.4.1"
