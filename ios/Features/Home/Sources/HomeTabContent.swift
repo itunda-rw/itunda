@@ -123,6 +123,7 @@ public struct HeaderTitle: View {
                 .foregroundColor(IDS.Colors.textPrimary)
             Spacer()
             IDS.Icons.bell(size: 22, color: IDS.Colors.textSecondary)
+                .accessibilityLabel("Notifications")
         }
         .padding(.horizontal, 24)
         .padding(.top, 16)
