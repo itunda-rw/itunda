@@ -52,6 +52,9 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
+      - name: Monorepo governance audit
+        run: yarn audit:monorepo
+
       - name: Lint
         run: yarn lint
 
