@@ -96,7 +96,7 @@ jobs:
 
       - name: Install CocoaPods
         working-directory: ios
-        run: pod install
+        run: pod install --deployment
 
       - name: Build for testing
         working-directory: ios
