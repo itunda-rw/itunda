@@ -11,6 +11,12 @@ const MICRO_FRONTENDS = [
 ];
 
 const SHARED_PACKAGES = ['shared-utils', 'design-tokens', 'itunda-pay-widget'];
+const PACKAGE_DIRS = [
+  'packages/shared-utils/',
+  'packages/design-tokens/',
+  'packages/design-system-web/',
+  'packages/itunda-pay-widget/',
+];
 
 const noCrossMfeImportRules = MICRO_FRONTENDS.map((mfe) => ({
   name: `no-cross-mfe-import-${mfe}`,
@@ -32,6 +38,26 @@ const noCrossMfeImportRules = MICRO_FRONTENDS.map((mfe) => ({
 // correct-when-it-matters insurance for if one of these packages ever grows an
 // internal/ split, not because it's catching anything today. Don't read a clean
 // depcruise run as proof this specific rule set is doing real work right now.
+const noPackageToMfeSourceRules = PACKAGE_DIRS.map((pkgDir) => ({
+  name: `no-package-to-mfe-source-${pkgDir.replace(/\/$/, '').replace(/[^a-z0-9]+/gi, '-')}`,
+  comment:
+    `${pkgDir} must not depend on a micro-frontend's source code. Shared packages are ` +
+    'lower-level building blocks; product composition belongs in the MFE/app layer.',
+  severity: 'error',
+  from: { path: `^${pkgDir}` },
+  to: { path: '^services/micro-frontends/[^/]+/' },
+}));
+
+const noMfeToGatewaySourceRule = {
+  name: 'no-mfe-to-api-gateway-source',
+  comment:
+    'Micro-frontends must call the API boundary at runtime; they must not import ' +
+    'services/api-gateway source directly.',
+  severity: 'error',
+  from: { path: '^services/micro-frontends/[^/]+/' },
+  to: { path: '^services/api-gateway/' },
+};
+
 const noDeepPackageInternalImportRules = SHARED_PACKAGES.map((pkg) => ({
   name: `no-deep-internal-import-${pkg}`,
   comment:
@@ -43,7 +69,12 @@ const noDeepPackageInternalImportRules = SHARED_PACKAGES.map((pkg) => ({
 }));
 
 module.exports = {
-  forbidden: [...noCrossMfeImportRules, ...noDeepPackageInternalImportRules],
+  forbidden: [
+    ...noCrossMfeImportRules,
+    ...noPackageToMfeSourceRules,
+    noMfeToGatewaySourceRule,
+    ...noDeepPackageInternalImportRules,
+  ],
   options: {
     doNotFollow: { path: 'node_modules' },
     exclude: {
