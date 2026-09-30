@@ -1575,7 +1575,7 @@ __metadata:
   resolution: "itunda@workspace:."
   dependencies:
     dependency-cruiser: "catalog:"
-    oxlint: "npm:^1.71.0"
+    oxlint: "catalog:"
     typescript: "catalog:"
   languageName: unknown
   linkType: soft
