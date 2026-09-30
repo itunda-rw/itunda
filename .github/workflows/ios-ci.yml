@@ -153,6 +153,20 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           mise install tuist@3.42.3
 
+      - name: Generate Saronite iOS Brick codegen
+        working-directory: packages/saronite/host-app
+        run: |
+          rm -rf ../../../ios/.brick
+          node ../node_modules/.bin/brick-codegen --platform ios --output-ios ../../../ios/.brick --projectRoot .
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: mise exec tuist@3.42.3 -- tuist generate --no-open
+
+      - name: Install CocoaPods
+        working-directory: ios
+        run: pod install
+
       - name: Restore build-for-testing products
         uses: actions/cache/restore@v4
         with:
