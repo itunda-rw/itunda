@@ -74,7 +74,7 @@ for (const dir of dirs) {
   const importedWorkspacePackages = new Set();
   for (const sourceFile of sourceFiles) {
     const source = fs.readFileSync(sourceFile, "utf8");
-    const importPattern = /(?:from\\s+|import\\s*\\(\\s*|require\\(\\s*|@import\\s+)["'](@itunda\\/[^"']+)["']/g;
+    const importPattern = /(?:from\s+|import\s*\(\s*|require\(\s*|@import\s+)["'](@itunda\/[^"']+)["']/g;
     for (const match of source.matchAll(importPattern)) {
       const imported = match[1];
       if (workspacePackageNames.has(imported) && imported !== pkg.name) importedWorkspacePackages.add(imported);
