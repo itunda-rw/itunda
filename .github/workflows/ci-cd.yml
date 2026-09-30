@@ -277,6 +277,12 @@ jobs:
         working-directory: packages/saronite
         run: npm ci
 
+      - name: Cache Saronite node_modules
+        uses: actions/cache@v4
+        with:
+          path: packages/saronite/node_modules
+          key: saronite-node-modules-${{ runner.os }}-${{ hashFiles('packages/saronite/package-lock.json') }}
+
       - name: Setup JDK
         uses: actions/setup-java@v4
         with:
