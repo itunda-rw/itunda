@@ -89,7 +89,7 @@ final class FocusOrderTests: XCTestCase {
         app.buttons["Messages"].tap()
 
         XCTAssertTrue(
-            app.staticTexts["Messages"].waitForExistence(timeout: 10),
+            app.staticTexts["Talk"].waitForExistence(timeout: 10),
             "Messages tab should expose its real Talk surface"
         )
     }
@@ -100,7 +100,7 @@ final class FocusOrderTests: XCTestCase {
         app.buttons["You"].tap()
 
         XCTAssertTrue(
-            app.staticTexts["My orders"].waitForExistence(timeout: 10),
+            app.staticTexts["My favorites"].waitForExistence(timeout: 10),
             "You tab should expose the real personal hub"
         )
     }
