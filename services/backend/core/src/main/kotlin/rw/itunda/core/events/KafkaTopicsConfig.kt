@@ -15,7 +15,7 @@ import org.springframework.kafka.config.TopicBuilder
 @Configuration
 @ConditionalOnProperty(prefix = "itunda.kafka", name = ["enabled"], havingValue = "true")
 class KafkaTopicsConfig(
-    @Value("${spring.kafka.bootstrap-servers:localhost:9092}") private val bootstrapServers: String,
+    @Value("\${spring.kafka.bootstrap-servers:localhost:9092}") private val bootstrapServers: String,
 ) {
     @Bean
     fun kafkaAdmin(): KafkaAdmin = KafkaAdmin(
