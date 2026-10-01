@@ -17,6 +17,9 @@ dependencies {
     implementation("org.springframework.security:spring-security-crypto")
     implementation("org.springframework.security:spring-security-core")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
+    // Google Memorystore for Redis blocks CLIENT SETINFO; Lettuce 6.4+ disables
+    // the incompatible handshake metadata path for Redis derivatives such as GCP.
+    implementation("io.lettuce:lettuce-core:6.4.0")
     implementation("io.jsonwebtoken:jjwt-api:0.12.6")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
