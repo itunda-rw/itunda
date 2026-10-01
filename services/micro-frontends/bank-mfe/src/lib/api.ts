@@ -102,11 +102,11 @@ function persistSession(body: { accessToken: string; refreshToken: string; user:
 // actually is" convention.
 /** Normalize Rwanda-first phone input to the E.164 format required by the backend. */
 export function normalizePhoneNumber(value: string): string {
-  const compact = value.replace(/[\\s()-]/g, '');
+  const compact = value.replace(/[\s()-]/g, '');
   if (compact.startsWith('+')) return compact;
   if (compact.startsWith('250') && compact.length === 12) return `+${compact}`;
   if (compact.startsWith('0') && compact.length === 10) return `+250${compact.slice(1)}`;
-  if (/^\\d{9}$/.test(compact)) return `+250${compact}`;
+  if (/^\d{9}$/.test(compact)) return `+250${compact}`;
   return compact;
 }
 
