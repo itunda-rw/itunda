@@ -77,6 +77,7 @@ spring:
   data:
     redis:
       host: ${REDIS_HOST:localhost}
+      client-type: jedis
       # Same reasoning as the MySQL default above: standard external Redis by
       # default, local-Docker override injected by scripts/local-ecosystem.sh.
       port: ${REDIS_PORT:6379}
