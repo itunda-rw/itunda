@@ -23,6 +23,7 @@ env:
   GAR_REPOSITORY: ${{ vars.GAR_REPOSITORY || 'itunda' }}
   SERVICE_NAME: ${{ vars.CLOUD_RUN_WEB_SERVICE || 'itunda-web' }}
   RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT || 'itunda-api@itunda-org.iam.gserviceaccount.com' }}
+  # Customer web root serves the bank auth shell; keep API base pinned to the Cloud Run service URL.
   API_BASE_URL: https://itunda-api-hptgu43hsa-du.a.run.app
 
 jobs:
