@@ -130,7 +130,7 @@ jobs:
       # committed local infrastructure through Colima, then boot the real Spring backend.
       - name: Start local backend infrastructure
         run: |
-          brew install colima docker
+          brew install colima docker qemu
           # QEMU avoids the VZ raw-disk startup failure observed on the macOS-15 arm64 runner.
           colima start --runtime docker --vm-type=qemu --cpu 4 --memory 8 --disk 60
           docker version
