@@ -1,0 +1,82 @@
+name: Deploy Itunda Customer Web App to Google Cloud
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "services/micro-frontends/**"
+      - "packages/design-system-web/**"
+      - "packages/design-tokens/**"
+      - "scripts/cloudflare-build-web-app.sh"
+      - ".github/workflows/deploy-web-gcp.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  REGION: ${{ vars.GCP_REGION || 'asia-northeast3' }}
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GAR_REPOSITORY: ${{ vars.GAR_REPOSITORY || 'itunda' }}
+  SERVICE_NAME: ${{ vars.CLOUD_RUN_WEB_SERVICE || 'itunda-web' }}
+  RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT || 'itunda-api@itunda-org.iam.gserviceaccount.com' }}
+  API_BASE_URL: https://itunda-api-hptgu43hsa-du.a.run.app
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker authentication
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build customer web image
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${GAR_REPOSITORY}/itunda-web:${GITHUB_SHA}"
+          echo "IMAGE=${IMAGE}" >> "${GITHUB_ENV}"
+          docker build \
+            --build-arg VITE_API_BASE_URL="${API_BASE_URL}" \
+            -f services/micro-frontends/Dockerfile.gcp \
+            -t "${IMAGE}" .
+
+      - name: Push customer web image
+        run: docker push "${IMAGE}"
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "${SERVICE_NAME}" \
+            --image="${IMAGE}" \
+            --region="${REGION}" \
+            --project="${PROJECT_ID}" \
+            --platform=managed \
+            --port=80 \
+            --memory=512Mi \
+            --cpu=1 \
+            --min-instances=0 \
+            --max-instances=10 \
+            --service-account="${RUNTIME_SERVICE_ACCOUNT}" \
+            --allow-unauthenticated \
+            --quiet
+
+      - name: Verify service
+        run: |
+          URL="$(gcloud run services describe "${SERVICE_NAME}" --region="${REGION}" --project="${PROJECT_ID}" --format="value(status.url)")"
+          echo "WEB_URL=${URL}" >> "${GITHUB_ENV}"
+          curl --fail --silent --show-error --location --max-time 30 "${URL}/" > /tmp/index.html
+          test -s /tmp/index.html
+          grep -Eiq '<(html|body|div|main|script)[ >]' /tmp/index.html
+          echo "Customer web app is live at ${URL}"
