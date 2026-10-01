@@ -9,6 +9,7 @@ on:
       - "packages/design-system-web/**"
       - "packages/design-tokens/**"
       - "scripts/cloudflare-build-web-app.sh"
+      - ".dockerignore.gcp"
       - ".github/workflows/deploy-web-gcp.yml"
   workflow_dispatch:
 
