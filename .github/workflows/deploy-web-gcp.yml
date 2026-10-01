@@ -50,6 +50,7 @@ jobs:
           IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${GAR_REPOSITORY}/itunda-web:${GITHUB_SHA}"
           echo "IMAGE=${IMAGE}" >> "${GITHUB_ENV}"
           docker build \
+            --ignorefile .dockerignore.gcp \
             --build-arg VITE_API_BASE_URL="${API_BASE_URL}" \
             -f services/micro-frontends/Dockerfile.gcp \
             -t "${IMAGE}" .
