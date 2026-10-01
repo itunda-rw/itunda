@@ -123,7 +123,7 @@ class NetWorthSnapshotTest : BehaviorSpec({
         When("fetching net worth history") {
             val history = service.getNetWorthHistory("user_1")
 
-            Then("each month keeps only its last (month-end) snapshot, real months in order") {
+            Then("each month keeps only its latest snapshot, real months in order") {
                 history.size shouldBe 3
                 history.map { it.liquidTotal } shouldBe listOf(BigDecimal("12000"), BigDecimal("15000"), BigDecimal("18000"))
             }
