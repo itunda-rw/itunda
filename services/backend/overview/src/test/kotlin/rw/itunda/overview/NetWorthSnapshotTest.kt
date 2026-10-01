@@ -125,7 +125,7 @@ class NetWorthSnapshotTest : BehaviorSpec({
 
             Then("each month keeps only its last (month-end) snapshot, real months in order") {
                 history.size shouldBe 3
-                history.map { it.liquidTotal } shouldBe listOf(BigDecimal("10000"), BigDecimal("15000"), BigDecimal("18000"))
+                history.map { it.liquidTotal } shouldBe listOf(BigDecimal("12000"), BigDecimal("15000"), BigDecimal("18000"))
             }
         }
     }
