@@ -18,6 +18,7 @@ export default defineConfig({
         maps_mfe: mapsMfeUrl,
       },
       exposes: {
+        './App': './src/App.tsx',
         './BankDashboard': './src/BankDashboard.tsx',
         './I18nProvider': './src/RemoteI18nProvider.tsx',
       },
