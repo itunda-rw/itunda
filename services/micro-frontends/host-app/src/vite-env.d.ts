@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 declare module 'kyc_mfe/KycDashboard';
+declare module 'bank_mfe/App';
 declare module 'bank_mfe/BankDashboard';
 declare module 'kyc_mfe/I18nProvider' {
   import type { ComponentType, PropsWithChildren } from 'react';
