@@ -24,6 +24,8 @@ import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.VehicleRepository
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.YearMonth
+import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 
 /** OverviewService.captureSnapshot/hasSnapshotToday/getNetWorthHistory coverage --
@@ -105,13 +107,15 @@ class NetWorthSnapshotTest : BehaviorSpec({
     Given("a user with 3 months of real snapshot history") {
         val netWorthSnapshotRepository = mockk<NetWorthSnapshotRepository>()
         val now = Instant.now()
+        val currentMonth = YearMonth.from(now.atZone(ZoneOffset.UTC))
+        val twoMonthsAgo = currentMonth.minusMonths(2)
+        val lastMonth = currentMonth.minusMonths(1)
         every { netWorthSnapshotRepository.findByUserIdAndCapturedAtGreaterThanEqualOrderByCapturedAtAsc("user_1", any()) } returns listOf(
-            // Two snapshots in the SAME month -- getNetWorthHistory must keep only
-            // the later (month-end) one, never average or otherwise fabricate a
-            // number this user's real history never had.
-            NetWorthSnapshot(id = "s1", userId = "user_1", liquidTotal = BigDecimal("10000"), capturedAt = now.minus(65, ChronoUnit.DAYS)),
-            NetWorthSnapshot(id = "s2", userId = "user_1", liquidTotal = BigDecimal("12000"), capturedAt = now.minus(35, ChronoUnit.DAYS)),
-            NetWorthSnapshot(id = "s3", userId = "user_1", liquidTotal = BigDecimal("15000"), capturedAt = now.minus(30, ChronoUnit.DAYS)),
+            // Two snapshots in the SAME calendar month -- keep only the later one.
+            // Calendar-relative dates avoid flakiness across month boundaries.
+            NetWorthSnapshot(id = "s1", userId = "user_1", liquidTotal = BigDecimal("10000"), capturedAt = twoMonthsAgo.atDay(5).atStartOfDay(ZoneOffset.UTC).toInstant()),
+            NetWorthSnapshot(id = "s2", userId = "user_1", liquidTotal = BigDecimal("12000"), capturedAt = twoMonthsAgo.atEndOfMonth().atTime(23, 59).atZone(ZoneOffset.UTC).toInstant()),
+            NetWorthSnapshot(id = "s3", userId = "user_1", liquidTotal = BigDecimal("15000"), capturedAt = lastMonth.atDay(15).atStartOfDay(ZoneOffset.UTC).toInstant()),
             NetWorthSnapshot(id = "s4", userId = "user_1", liquidTotal = BigDecimal("18000"), capturedAt = now),
         )
         val service = newService(netWorthSnapshotRepository = netWorthSnapshotRepository)
