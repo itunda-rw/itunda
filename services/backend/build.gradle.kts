@@ -13,6 +13,8 @@ subprojects {
 
     repositories {
         mavenCentral()
+        // Google Managed Kafka auth handler brings a Confluent client dependency.
+        maven { url = uri("https://packages.confluent.io/maven/") }
     }
 
     tasks.withType<KotlinCompile> {
