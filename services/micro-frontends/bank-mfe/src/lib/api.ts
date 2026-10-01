@@ -100,6 +100,16 @@ function persistSession(body: { accessToken: string; refreshToken: string; user:
 // PIN scheme (any shape, still verified the same way server-side), matching this
 // session's own "server field name unchanged, client-facing name matches what it
 // actually is" convention.
+/** Normalize Rwanda-first phone input to the E.164 format required by the backend. */
+export function normalizePhoneNumber(value: string): string {
+  const compact = value.replace(/[\\s()-]/g, '');
+  if (compact.startsWith('+')) return compact;
+  if (compact.startsWith('250') && compact.length === 12) return `+${compact}`;
+  if (compact.startsWith('0') && compact.length === 10) return `+250${compact.slice(1)}`;
+  if (/^\\d{9}$/.test(compact)) return `+250${compact}`;
+  return compact;
+}
+
 export async function login(phoneNumber: string, pin: string): Promise<AuthedUser> {
   // Real device binding (2026-07-20) -- see lib/device.ts's own doc comment. Imported
   // lazily inline (not at module top) to avoid a circular import, since device.ts's own
@@ -110,7 +120,7 @@ export async function login(phoneNumber: string, pin: string): Promise<AuthedUse
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      phoneNumber, password: pin, deviceId: getOrCreateDeviceId(), deviceName: getDeviceName(),
+      phoneNumber: normalizePhoneNumber(phoneNumber), password: pin, deviceId: getOrCreateDeviceId(), deviceName: getDeviceName(),
       devicePublicKey: await getDevicePublicKeyBase64(),
     }),
   });
@@ -241,7 +251,7 @@ export async function register(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      phoneNumber,
+      phoneNumber: normalizePhoneNumber(phoneNumber),
       email: null,
       firstName,
       lastName,
