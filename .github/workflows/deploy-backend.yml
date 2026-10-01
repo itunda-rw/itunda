@@ -60,8 +60,8 @@ jobs:
             --network=default \
             --subnet=default \
             --vpc-egress=private-ranges-only \
-            --set-env-vars="DB_HOST=${MYSQL_HOST},DB_PORT=3306,DB_NAME=itunda,DB_USER=itunda,REDIS_HOST=${REDIS_HOST},REDIS_PORT=6379,KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP},ITUNDA_CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}" \
-            --set-secrets="DB_PASSWORD=itunda-db-password:3,JWT_SECRET=itunda-jwt-secret:1" \
+            --set-env-vars="^@^DB_HOST=${MYSQL_HOST}@DB_PORT=3306@DB_NAME=itunda@DB_USER=itunda@REDIS_HOST=${REDIS_HOST}@REDIS_PORT=6379@KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP}@ITUNDA_CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}" \
+            --set-secrets="^@^DB_PASSWORD=itunda-db-password:3@JWT_SECRET=itunda-jwt-secret:1" \
             --quiet
       - name: Show service URL
         run: gcloud run services describe "${SERVICE_NAME}" --region="${REGION}" --project="${PROJECT_ID}" --format="value(status.url)"
