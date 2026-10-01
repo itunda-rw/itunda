@@ -39,6 +39,7 @@ spring:
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
   datasource:
     # Defaults stay on the standard MySQL port for private-cloud/external-infra
     # deployments. The repo's optional local Docker fallback maps MySQL to 3307;
@@ -124,6 +125,10 @@ spring:
         format_sql: true
 
 itunda:
+  kafka:
+    # Kafka is deliberately off until the Cloud Run service account has the
+    # Managed Kafka IAM roles. Auth/API traffic must never depend on Kafka health.
+    enabled: ${ITUNDA_KAFKA_ENABLED:false}
   providers:
     # Development/CI may use deterministic simulated rails; production disables this explicitly.
     simulation-enabled: ${ITUNDA_PROVIDER_SIMULATION_ENABLED:true}
