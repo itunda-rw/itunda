@@ -53,6 +53,7 @@ jobs:
             --project="${PROJECT_ID}" \
             --platform=managed \
             --port=4001 \
+            --memory=1Gi \
             --service-account="${RUNTIME_SERVICE_ACCOUNT}" \
             --allow-unauthenticated \
             --network=default \
