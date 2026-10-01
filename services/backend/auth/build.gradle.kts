@@ -16,15 +16,16 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.security:spring-security-crypto")
     implementation("org.springframework.security:spring-security-core")
-    implementation("org.springframework.boot:spring-boot-starter-data-redis")
-    // Google Memorystore for Redis blocks CLIENT SETINFO; Lettuce 6.4 disables
-    // the incompatible handshake metadata path for Redis derivatives such as GCP.
-    implementation("io.lettuce:lettuce-core:6.4.0.RELEASE")
+    // Google Memorystore rejects Lettuce's CLIENT SETINFO handshake metadata.
+    // Use Jedis for the auth Redis workload; Spring Boot 3.3 supports both clients.
+    implementation("org.springframework.boot:spring-boot-starter-data-redis") {
+        exclude(group = "io.lettuce", module = "lettuce-core")
+    }
+    implementation("redis.clients:jedis")
     implementation("io.jsonwebtoken:jjwt-api:0.12.6")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    // Same Kotest + MockK convention as :core's/:merchant's/:bills'/:wallet's tests.
     testImplementation("io.kotest:kotest-runner-junit5:5.9.1")
     testImplementation("io.kotest:kotest-assertions-core:5.9.1")
     testImplementation("io.mockk:mockk:1.13.12")
