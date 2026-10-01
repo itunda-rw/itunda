@@ -15,15 +15,18 @@ on:
       - ".github/workflows/ios-ci.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+# CI trigger: keep the workflow path-sensitive while allowing PR synchronization to start a fresh run.
 concurrency:
   group: ios-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  ios:
+  ios-build:
     runs-on: macos-15
-    timeout-minutes: 45
-
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -33,30 +36,47 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: packages/saronite/package.json
+          cache-dependency-path: packages/saronite/package-lock.json
+
+      - name: Cache Saronite node_modules
+        uses: actions/cache@v4
+        with:
+          path: packages/saronite/node_modules
+          key: ios-saronite-node-modules-${{ runner.os }}-${{ hashFiles('packages/saronite/package-lock.json') }}
+          restore-keys: |
+            ios-saronite-node-modules-${{ runner.os }}-
 
       - name: Install Saronite dependencies
         working-directory: packages/saronite
-        run: npm install
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Cache CocoaPods and Xcode build products
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+            ~/Library/Developer/Xcode/DerivedData
+          key: ios-build-${{ runner.os }}-${{ hashFiles('ios/Podfile', 'ios/Podfile.lock', 'ios/Project.swift', 'packages/saronite/package-lock.json') }}
+          restore-keys: |
+            ios-build-${{ runner.os }}-
 
       - name: Install mise
         run: |
-          curl https://mise.run | sh
+          curl --fail --retry 5 --retry-delay 2 --retry-all-errors https://mise.run | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Generate Saronite iOS Brick codegen
         working-directory: packages/saronite/host-app
         run: |
           rm -rf ../../../ios/.brick
-          node ../node_modules/.bin/brick-codegen             --platform ios             --output-ios ../../../ios/.brick             --projectRoot .
+          node ../node_modules/.bin/brick-codegen --platform ios --output-ios ../../../ios/.brick --projectRoot .
 
-      - name: Install Tuist 3.42.3
+      - name: Install Tuist 4.205.0
         run: |
-          mise install tuist@3.42.3
-          mise exec tuist@3.42.3 -- tuist version
+          mise install tuist@4.205.0
+          mise exec tuist@4.205.0 -- tuist version
 
-      # Keep icon generation isolated from the runner's externally-managed Python.
-      # The source SVG lives under ios/Assets; App/Resources contains only generated XCAssets.
       - name: Generate iOS app icon asset catalog
         working-directory: ios
         run: |
@@ -65,50 +85,146 @@ jobs:
           .ci-venv/bin/python <<'PY'
           import cairosvg
           from pathlib import Path
-
           src = Path("Assets/ItundaIcon.svg")
           out = Path("App/Resources/ItundaIcon.xcassets/ItundaIcon.appiconset/ItundaIcon.png")
           out.parent.mkdir(parents=True, exist_ok=True)
-
-          cairosvg.svg2png(
-              url=str(src),
-              write_to=str(out),
-              output_width=1024,
-              output_height=1024,
-          )
+          cairosvg.svg2png(url=str(src), write_to=str(out), output_width=1024, output_height=1024)
           PY
           cat > App/Resources/ItundaIcon.xcassets/ItundaIcon.appiconset/Contents.json <<'JSON'
-          {
-            "images": [
-              {
-                "filename": "ItundaIcon.png",
-                "idiom": "universal",
-                "scale": "1x",
-                "size": "1024x1024"
-              }
-            ],
-            "info": {
-              "author": "Itunda",
-              "version": 1
-            }
-          }
+          {"images":[{"filename":"ItundaIcon.png","idiom":"universal","scale":"1x","size":"1024x1024"}],"info":{"author":"Itunda","version":1}}
           JSON
 
       - name: Generate Xcode project
         working-directory: ios
-        run: |
-          mise exec tuist@3.42.3 -- tuist generate --no-open
+        run: mise exec tuist@4.205.0 -- tuist generate --no-open
 
       - name: Install CocoaPods
         working-directory: ios
         run: pod install --repo-update
 
-      - name: Build iOS simulator app
+      - name: Build for testing
         working-directory: ios
         run: |
-          xcodebuild             -workspace Itunda.xcworkspace             -scheme ItundaApp             -destination 'generic/platform=iOS Simulator'             CODE_SIGNING_ALLOWED=NO             build
+          set -o pipefail
+          xcodebuild             -workspace Itunda.xcworkspace             -scheme ItundaApp             -destination 'generic/platform=iOS Simulator'             -derivedDataPath "$RUNNER_TEMP/ItundaDerivedData"             -parallelizeTargets             CODE_SIGNING_ALLOWED=NO             build-for-testing
 
-      - name: Run iOS UI tests
+      - name: Cache build-for-testing products
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ runner.temp }}/ItundaDerivedData
+            ${{ github.workspace }}/ios/Pods
+            ~/Library/Caches/CocoaPods
+          key: ios-test-products-${{ github.sha }}
+
+  ios-ui-tests:
+    needs: ios-build
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # The live XCUITest suite talks to the real canonical backend at localhost:4001.
+      # GitHub macOS runners do not provide Docker Engine directly, so run the repo's
+      # committed local infrastructure through Colima, then boot the real Spring backend.
+      - name: Start local backend infrastructure
+        run: |
+          brew install colima docker qemu
+          # QEMU avoids the VZ raw-disk startup failure observed on the macOS-15 arm64 runner.
+          colima start --runtime docker --vm-type=qemu --cpu 4 --memory 8 --disk 60
+          docker version
+          docker compose -f infra/docker-compose.yml up -d --wait --wait-timeout 180 mysql redis-node-1 zookeeper kafka-broker-1 debezium
+          for port in 3307 16379 9092; do
+            for attempt in $(seq 1 90); do
+              if nc -z localhost "$port"; then
+                break
+              fi
+              if [ "$attempt" -eq 90 ]; then
+                echo "Timed out waiting for localhost:$port"
+                docker compose -f infra/docker-compose.yml ps
+                docker compose -f infra/docker-compose.yml logs --tail=200
+                exit 1
+              fi
+              sleep 1
+            done
+          done
+
+      - name: Start canonical backend
+        run: |
+          cd services/backend
+          DB_PORT=3307           REDIS_PORT=16379           KAFKA_BOOTSTRAP_SERVERS=localhost:9092           ./gradlew :app:bootRun > "$RUNNER_TEMP/itunda-backend.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/itunda-backend.pid"
+          for attempt in $(seq 1 180); do
+            if curl --fail --silent http://localhost:4001/health >/dev/null; then
+              echo "Canonical backend is healthy"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/itunda-backend.log"
+          exit 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: packages/saronite/package-lock.json
+
+      - name: Cache Saronite node_modules
+        uses: actions/cache@v4
+        with:
+          path: packages/saronite/node_modules
+          key: ios-saronite-node-modules-${{ runner.os }}-${{ hashFiles('packages/saronite/package-lock.json') }}
+          restore-keys: |
+            ios-saronite-node-modules-${{ runner.os }}-
+
+      - name: Install Saronite dependencies
+        working-directory: packages/saronite
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Install mise
+        run: |
+          curl --fail --retry 5 --retry-delay 2 --retry-all-errors https://mise.run | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          mise install tuist@4.205.0
+
+      - name: Generate Saronite iOS Brick codegen
+        working-directory: packages/saronite/host-app
+        run: |
+          rm -rf ../../../ios/.brick
+          node ../node_modules/.bin/brick-codegen --platform ios --output-ios ../../../ios/.brick --projectRoot .
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: mise exec tuist@4.205.0 -- tuist generate --no-open
+
+      - name: Restore CocoaPods and Xcode cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+            ~/Library/Developer/Xcode/DerivedData
+          key: ios-build-${{ runner.os }}-${{ hashFiles('ios/Podfile', 'ios/Podfile.lock', 'ios/Project.swift', 'packages/saronite/package-lock.json') }}
+          restore-keys: |
+            ios-build-${{ runner.os }}-
+
+      - name: Install CocoaPods
+        working-directory: ios
+        run: pod install --repo-update
+
+      - name: Restore build-for-testing products
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ runner.temp }}/ItundaDerivedData
+            ${{ github.workspace }}/ios/Pods
+            ~/Library/Caches/CocoaPods
+          key: ios-test-products-${{ github.sha }}
+
+      - name: Run iOS UI tests without rebuilding
         working-directory: ios
         run: |
           set -euo pipefail
@@ -120,4 +236,4 @@ jobs:
           fi
           xcrun simctl boot "$DEVICE_ID" 2>/dev/null || true
           xcrun simctl bootstatus "$DEVICE_ID" -b
-          xcodebuild             -workspace Itunda.xcworkspace             -scheme ItundaApp             -destination "id=$DEVICE_ID"             CODE_SIGNING_ALLOWED=NO             test
+          xcodebuild             -workspace Itunda.xcworkspace             -scheme ItundaApp             -destination "id=$DEVICE_ID"             -derivedDataPath "$RUNNER_TEMP/ItundaDerivedData"             CODE_SIGNING_ALLOWED=NO             test-without-building
