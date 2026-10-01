@@ -22,6 +22,7 @@ env:
   MYSQL_HOST: "10.79.0.3"
   REDIS_HOST: "10.103.51.123"
   KAFKA_BOOTSTRAP: "bootstrap-h5k05cv2cxjf.07b7efb6.asia-northeast3.managedkafka.s.cloud.goog:9092"
+  CORS_ALLOWED_ORIGINS: "https://itunda-web-hptgu43hsa-du.a.run.app,https://itunda-app.pages.dev,https://itunda-business-app.pages.dev"
 
 jobs:
   deploy:
@@ -59,7 +60,7 @@ jobs:
             --network=default \
             --subnet=default \
             --vpc-egress=private-ranges-only \
-            --set-env-vars="DB_HOST=${MYSQL_HOST},DB_PORT=3306,DB_NAME=itunda,DB_USER=itunda,REDIS_HOST=${REDIS_HOST},REDIS_PORT=6379,KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP}" \
+            --set-env-vars="DB_HOST=${MYSQL_HOST},DB_PORT=3306,DB_NAME=itunda,DB_USER=itunda,REDIS_HOST=${REDIS_HOST},REDIS_PORT=6379,KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP},ITUNDA_CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}" \
             --set-secrets="DB_PASSWORD=itunda-db-password:3,JWT_SECRET=itunda-jwt-secret:1" \
             --quiet
       - name: Show service URL
