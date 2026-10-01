@@ -19,6 +19,9 @@ env:
   GAR_REPOSITORY: ${{ vars.GAR_REPOSITORY || 'itunda' }}
   SERVICE_NAME: ${{ vars.CLOUD_RUN_SERVICE || 'itunda-api' }}
   RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT || 'itunda-api@itunda-org.iam.gserviceaccount.com' }}
+  MYSQL_HOST: "10.79.0.3"
+  REDIS_HOST: "10.103.51.123"
+  KAFKA_BOOTSTRAP: "bootstrap-h5k05cv2cxjf.07b7efb6.asia-northeast3.managedkafka.s.cloud.goog:9092"
 
 jobs:
   deploy:
@@ -45,16 +48,18 @@ jobs:
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy "${SERVICE_NAME}" \
-            --image "${IMAGE}" \
-            --region "${REGION}" \
-            --project "${PROJECT_ID}" \
-            --platform managed \
-            --port 4001 \
-            --service-account "${RUNTIME_SERVICE_ACCOUNT}" \
+            --image="${IMAGE}" \
+            --region="${REGION}" \
+            --project="${PROJECT_ID}" \
+            --platform=managed \
+            --port=4001 \
+            --service-account="${RUNTIME_SERVICE_ACCOUNT}" \
             --allow-unauthenticated \
+            --network=default \
+            --subnet=default \
+            --vpc-egress=private-ranges-only \
+            --set-env-vars="DB_HOST=${MYSQL_HOST},DB_PORT=3306,DB_NAME=itunda,DB_USER=itunda,REDIS_HOST=${REDIS_HOST},REDIS_PORT=6379,KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP}" \
+            --set-secrets="DB_PASSWORD=itunda-db-password:3,JWT_SECRET=itunda-jwt-secret:1" \
             --quiet
       - name: Show service URL
-        run: gcloud run services describe "${SERVICE_NAME}" --region "${REGION}" --project "${PROJECT_ID}" --format="value(status.url)"
-
-# Deployment trigger verification commit.
-# Runtime service account is explicit for Cloud Run.
+        run: gcloud run services describe "${SERVICE_NAME}" --region="${REGION}" --project="${PROJECT_ID}" --format="value(status.url)"
