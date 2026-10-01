@@ -1,0 +1,15 @@
+# GCP customer web build context: keep the JS monorepo workspaces, exclude native/backend-heavy artifacts.
+android
+ios
+node_modules
+docs
+infra
+.git
+.claude
+dump.rdb
+**/build
+**/.gradle
+**/*.apk
+**/*.ipa
+services/backend
+services/microservices
