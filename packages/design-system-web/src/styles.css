@@ -852,6 +852,8 @@
    Clear hierarchy first, generous whitespace second, glass only where a surface floats.
    Glass never replaces readable text contrast or semantic focus boundaries. */
 .ids-glass {
+  isolation: isolate;
+  overflow: clip;
   background: color-mix(in srgb, var(--itunda-surface-default) 76%, transparent);
   border: 1px solid color-mix(in srgb, var(--itunda-border-default) 48%, transparent);
   box-shadow: 0 12px 36px color-mix(in srgb, var(--itunda-text-primary) 8%, transparent);
