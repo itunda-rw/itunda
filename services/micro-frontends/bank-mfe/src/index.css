@@ -1476,3 +1476,102 @@ input, textarea, select {
     transition: none;
   }
 }
+
+
+/* Home composition refinement — 2026-10-02.
+   Inspired by Toss's clear home hierarchy: identity once, primary actions next,
+   discovery after. Itunda stays flat, quiet, and uses Itunda Indigo only for meaning. */
+.itunda-home-welcome {
+  padding: 20px 0 22px;
+}
+
+.itunda-home-welcome__copy {
+  max-width: 620px;
+}
+
+.itunda-home-welcome__eyebrow {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  color: var(--itunda-brand);
+}
+
+.itunda-home-welcome h1 {
+  margin: 0;
+  max-width: 560px;
+  font-size: clamp(30px, 7vw, 40px);
+  line-height: 1.08;
+  letter-spacing: -.05em;
+}
+
+.itunda-home-welcome__copy > p:last-child {
+  margin: 10px 0 0;
+  color: var(--itunda-text-secondary);
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.itunda-home-actions {
+  margin: 0 0 28px;
+  border-top: 1px solid var(--itunda-border-default);
+  border-bottom: 1px solid var(--itunda-border-default);
+}
+
+.itunda-home-actions > button {
+  min-height: 88px;
+  gap: 8px;
+  color: var(--itunda-text-primary);
+}
+
+.itunda-home-actions__icon {
+  background: transparent;
+  color: var(--itunda-brand);
+  border: 0;
+}
+
+.itunda-home-actions > button:hover .itunda-home-actions__icon {
+  background: var(--itunda-surface-brand);
+}
+
+.itunda-home-discover {
+  margin-top: 4px;
+}
+
+.itunda-home-discover > div {
+  margin-top: 0 !important;
+}
+
+.itunda-home-discover h3 {
+  margin: 0 0 6px !important;
+  font-size: 19px !important;
+  line-height: 26px;
+  letter-spacing: -.02em;
+}
+
+.itunda-home-discover > div > div {
+  border-top: 1px solid var(--itunda-border-default);
+}
+
+.itunda-home-discover > div > div > div {
+  min-height: 72px;
+  padding: 14px 0 !important;
+}
+
+@media (max-width: 520px) {
+  .itunda-home-welcome {
+    padding: 14px 0 18px;
+  }
+
+  .itunda-home-welcome h1 {
+    font-size: 30px;
+  }
+
+  .itunda-home-actions {
+    margin-bottom: 24px;
+  }
+
+  .itunda-home-actions > button {
+    min-height: 82px;
+  }
+}
