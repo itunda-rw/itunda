@@ -912,3 +912,26 @@
     background: var(--itunda-surface-brand);
   }
 }
+
+
+/* Partner/app brand theming — 2026-10-03
+   Apps can bring their own brand palette without forking IDS. The semantic
+   component contract stays shared; only brand expression changes. */
+[data-ids-brand-theme] {
+  --itunda-brand: var(--ids-brand-light, var(--itunda-brand));
+  --itunda-brand-strong: var(--ids-brand-strong-light, var(--itunda-brand-strong));
+  --itunda-surface-brand: var(--ids-brand-surface-light, var(--itunda-surface-brand));
+  --itunda-text-inverse: var(--ids-on-brand-light, var(--itunda-text-inverse));
+  --itunda-focus: var(--ids-focus-light, var(--itunda-focus));
+  --itunda-pressed: var(--ids-pressed-light, var(--itunda-pressed));
+}
+@media (prefers-color-scheme: dark) {
+  [data-ids-brand-theme] {
+    --itunda-brand: var(--ids-brand-dark, var(--itunda-brand));
+    --itunda-brand-strong: var(--ids-brand-strong-dark, var(--itunda-brand-strong));
+    --itunda-surface-brand: var(--ids-brand-surface-dark, var(--itunda-surface-brand));
+    --itunda-text-inverse: var(--ids-on-brand-dark, var(--itunda-text-inverse));
+    --itunda-focus: var(--ids-focus-dark, var(--itunda-focus));
+    --itunda-pressed: var(--ids-pressed-dark, var(--itunda-pressed));
+  }
+}
