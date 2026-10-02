@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, fileURLToPath } from 'node:path';
 
-const dist = new URL('../dist/', import.meta.url);
+const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 
 if (!existsSync(dist)) {
   throw new Error('Production boundary check requires an existing dist/ directory. Run npm run build first.');
