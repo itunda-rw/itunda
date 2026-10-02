@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { IconShieldCheck, IconItundaLogo } from './icons/ItundaIcons';
+import { IconItundaLogo } from './icons/ItundaIcons';
 import { ApiError, getRememberedPhoneNumber, login, tryPasswordlessLogin } from './lib/api';
 import { PinPad } from './PinPad';
 import { useI18n } from './i18n/I18nContext';
