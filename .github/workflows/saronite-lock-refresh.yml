@@ -1,7 +1,8 @@
 name: Saronite lock refresh
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [agent/saronite-platform-parity]
 
 permissions:
   contents: write
