@@ -908,3 +908,159 @@ input, textarea, select {
     scroll-behavior: auto;
   }
 }
+
+/* Itunda primary-tab composition pass — Home / Pay / Explore / Messages / You.
+   Keep the product flat: hierarchy comes from spacing, type, tint and rows rather
+   than a stack of dashboard cards. */
+
+.itunda-pay-page > div:first-child {
+  margin-top: 6px;
+}
+
+.itunda-pay-page > button:first-of-type {
+  min-height: 64px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--itunda-border-default);
+}
+
+.itunda-pay-page > button:first-of-type p:last-child {
+  font-size: clamp(30px, 8vw, 36px) !important;
+  line-height: 1.08;
+  letter-spacing: -0.045em !important;
+}
+
+.itunda-pay-page .itunda-flat-section {
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+.itunda-pay-page .itunda-btn-primary,
+.itunda-pay-page .itunda-btn-secondary {
+  min-height: 52px;
+}
+
+.itunda-pay-page .itunda-flat-section button {
+  min-height: 52px;
+}
+
+.itunda-explore-page .itunda-flat-section {
+  padding: 18px 0;
+}
+
+.itunda-explore-page .itunda-flat-section > h2 {
+  margin-bottom: 14px !important;
+}
+
+.itunda-explore-page .itunda-flat-section > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0 !important;
+}
+
+.itunda-explore-page .itunda-flat-section > div > .itunda-btn {
+  width: 100%;
+  min-height: 56px;
+  justify-content: space-between;
+  padding: 10px 4px 10px 2px !important;
+  border: 0;
+  border-bottom: 1px solid var(--itunda-border-default);
+  border-radius: 0;
+  background: transparent;
+  color: var(--itunda-text-primary);
+  text-align: left;
+}
+
+.itunda-explore-page .itunda-flat-section > div > .itunda-btn:last-child {
+  border-bottom: 0;
+}
+
+.itunda-explore-page .itunda-flat-section > div > .itunda-btn svg {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--itunda-surface-brand);
+  color: var(--itunda-brand);
+}
+
+.itunda-explore-page .itunda-flat-section > div > .itunda-btn:hover {
+  background: var(--itunda-surface-subtle);
+}
+
+.itunda-you-page > .itunda-flat-section {
+  padding: 20px 0;
+}
+
+.itunda-you-page > .itunda-flat-section > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0 !important;
+}
+
+.itunda-you-page > .itunda-flat-section > div > .itunda-btn {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 4px !important;
+  border: 0;
+  border-bottom: 1px solid var(--itunda-border-default);
+  border-radius: 0;
+  background: transparent;
+  color: var(--itunda-text-primary);
+  text-align: left;
+}
+
+.itunda-you-page > .itunda-flat-section > div > .itunda-btn:last-child {
+  border-bottom: 0;
+}
+
+.itunda-you-page > .itunda-flat-section > div > .itunda-btn::after,
+.itunda-explore-page .itunda-flat-section > div > .itunda-btn::after {
+  content: '›';
+  margin-left: auto;
+  color: var(--itunda-text-disabled);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.itunda-you-page > .itunda-flat-section > div > .itunda-btn:hover {
+  background: var(--itunda-surface-subtle);
+}
+
+.itunda-messages-page > div:first-child {
+  margin-top: 6px;
+  padding: 4px;
+  border: 1px solid var(--itunda-border-default);
+  border-radius: 14px;
+  background: var(--itunda-surface-subtle);
+}
+
+.itunda-messages-page > div:first-child button {
+  min-height: 44px;
+  border-radius: 10px;
+}
+
+.itunda-messages-page > div:not(:first-child) button {
+  min-height: 64px;
+}
+
+@media (max-width: 520px) {
+  .itunda-pay-page > button:first-of-type {
+    min-height: 70px;
+  }
+
+  .itunda-explore-page .itunda-flat-section > div > .itunda-btn,
+  .itunda-you-page > .itunda-flat-section > div > .itunda-btn {
+    min-height: 58px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itunda-explore-page .itunda-flat-section > div > .itunda-btn,
+  .itunda-you-page > .itunda-flat-section > div > .itunda-btn {
+    transition: none;
+  }
+}
