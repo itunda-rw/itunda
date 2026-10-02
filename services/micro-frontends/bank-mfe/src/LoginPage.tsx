@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { IconShieldCheck } from './icons/ItundaIcons';
+import { IconShieldCheck, IconItundaLogo } from './icons/ItundaIcons';
 import { ApiError, getRememberedPhoneNumber, login, tryPasswordlessLogin } from './lib/api';
 import { PinPad } from './PinPad';
 import { useI18n } from './i18n/I18nContext';
@@ -51,7 +51,7 @@ export default function LoginPage({
     return (
       <main className="itunda-auth-page" aria-busy="true">
         <div className="itunda-auth-loading">
-          <span className="itunda-brand-mark" aria-hidden="true"><IconShieldCheck size={22} color="currentColor" /></span>
+          <span className="itunda-brand-mark" aria-hidden="true"><IconItundaLogo size={28} color="currentColor" /></span>
           <span>{t('login.checkingDevice')}</span>
         </div>
       </main>
