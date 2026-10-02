@@ -747,13 +747,13 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
   return (
     <FullScreenFlow>
       <ProgressStepper activeStepIndex={0} steps={TRANSFER_STEP_LABELS} />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="itunda-transfer-step-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 800 }}>{t('transfer.recipientStepTitle')}</h3>
         <button type="button" aria-label={t('transfer.cancel')} onClick={onClose} style={{ background: 'none', border: 'none', padding: '4px', display: 'flex' }}>
           <IconClose size={20} color="var(--itunda-text-tertiary)" />
         </button>
       </div>
-      <form onSubmit={(e) => { e.preventDefault(); selectRecipient(recipient); }} style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+      <form className="itunda-transfer-recipient-form" onSubmit={(e) => { e.preventDefault(); selectRecipient(recipient); }} style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
         <div style={{ position: 'relative', flex: 1 }}>
           <IconSearch size={16} color="var(--itunda-text-disabled)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
           <input
@@ -772,7 +772,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
         <IdsButton type="submit" style={{ width: 'auto' }} disabled={!recipient.trim()}>{t('transfer.continue')}</IdsButton>
       </form>
 
-      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, marginTop: '12px' }}>
+      <label className="itunda-transfer-gift-option" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, marginTop: '12px' }}>
         <input type="checkbox" checked={isGift} onChange={(e) => setIsGift(e.target.checked)} />
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><GiftGlyph theme={null} size={16} /> Send as a gift instead</span>
       </label>
