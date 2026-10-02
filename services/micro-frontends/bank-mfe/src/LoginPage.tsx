@@ -136,9 +136,9 @@ export default function LoginPage({
               {t('login.next')}
             </Button>
 
-            <button type="button" className="itunda-auth-secondary" onClick={onCreateAccount}>
+            <Button type="button" className="itunda-auth-secondary" variant="tertiary" size="md" fullWidth onClick={onCreateAccount}>
               {t('login.createAccount')}
-            </button>
+            </Button>
 
           </form>
         )}
