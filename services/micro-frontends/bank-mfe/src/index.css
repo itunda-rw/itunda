@@ -2727,3 +2727,50 @@ input, textarea, select {
     font-size: 10px !important;
   }
 }
+
+
+/* Transfer recipient step — one clear input, with supporting options kept quiet. */
+.itunda-transfer-step-heading h3 {
+  font-size: clamp(22px, 5vw, 28px) !important;
+  letter-spacing: -.035em;
+  line-height: 1.12;
+}
+
+.itunda-transfer-recipient-form {
+  align-items: stretch;
+}
+
+.itunda-transfer-recipient-form input {
+  min-height: 52px;
+  border-radius: 14px !important;
+  font-size: 16px !important;
+}
+
+.itunda-transfer-recipient-form button {
+  min-height: 52px;
+  border-radius: 14px;
+  padding-inline: 18px;
+  font-weight: 700;
+}
+
+.itunda-transfer-gift-option {
+  padding: 10px 0;
+  color: var(--itunda-text-secondary);
+}
+
+.itunda-transfer-gift-option input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--itunda-indigo);
+}
+
+@media (max-width: 520px) {
+  .itunda-transfer-recipient-form {
+    flex-direction: column;
+    gap: 10px !important;
+  }
+
+  .itunda-transfer-recipient-form button {
+    width: 100% !important;
+  }
+}
