@@ -163,25 +163,7 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', margin: 0 }}>
           We&apos;ll check if you already have an account.
         </p>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Phone number</span>
-          {/* Real "Minimum Input" simplicity fix (item 244, docs/DESIGN_REFERENCES.md §11,
-              rule #4), matching the identical same-day fix on LoginPage.tsx. */}
-          <input
-            type="tel"
-            autoFocus
-            value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
-            placeholder="+250788123456"
-            required
-            style={{
-              padding: '12px 14px',
-              borderRadius: '10px',
-              border: '1px solid var(--itunda-grey-200)',
-              fontSize: 'var(--itunda-type-scale-15-size)',
-            }}
-          />
-        </label>
+        <TextField label="Phone number" type="tel" autoFocus value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="+250788123456" required autoComplete="tel" inputMode="tel" />
 
         {/* Same real Toss-sourced fix as the phone context line above, Android's own
             login_subtitle_name copy. */}
@@ -189,21 +171,12 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
           This is how you&apos;ll appear to friends and merchants.
         </p>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-            <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>First name</span>
-            <TextField label="First name" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} required autoComplete="given-name" />
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-            <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Last name</span>
-            <TextField label="Last name" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} required autoComplete="family-name" />
-          </label>
+          <TextField label="First name" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} required autoComplete="given-name" />
+          <TextField label="Last name" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} required autoComplete="family-name" />
         </div>
 
         {showReferralField ? (
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Referral code (optional)</span>
-            <TextField label="Referral code (optional)" type="text" value={referralCode} onChange={(e) => setReferralCode(e.target.value)} />
-          </label>
+          <TextField label="Referral code (optional)" type="text" value={referralCode} onChange={(e) => setReferralCode(e.target.value)} />
         ) : (
           <Button type="button" variant="tertiary" size="md" onClick={() => setShowReferralField(true)}>Have a referral code?</Button>
         )}
@@ -278,17 +251,9 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
           </p>
         )}
 
-        <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting || !allRequiredAccepted}>
-          {submitting ? 'Creating account…' : 'Create account'}
-        </button>
+        <Button type="submit" variant="primary" size="lg" fullWidth disabled={submitting || !allRequiredAccepted} loading={submitting} loadingLabel="Creating account…">Create account</Button>
 
-        <button
-          type="button"
-          onClick={onBackToLogin}
-          style={{ background: 'none', border: 'none', fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', cursor: 'pointer' }}
-        >
-          Already have an account? Log in
-        </button>
+        <Button type="button" variant="tertiary" size="md" fullWidth onClick={onBackToLogin}>Already have an account? Log in</Button>
       </form>
     </div>
   );
