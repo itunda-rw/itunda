@@ -1,9 +1,8 @@
-/* Toss color tokens -- single source of truth (2026-07-11), matching
-   android/core/designsystem and ios/Core/DesignSystem's real values, real dark mode
-   included. Previously this file hand-copied its own :root block, independently from
-   host-app's identical copy, and had drifted (--itunda-green was Apple's iOS system
-   green #34c759, not Toss's real green500 #04C065) -- see the package's own header. */
+/* Itunda Design System — customer web foundation.
+   Product surfaces consume the canonical IDS token layer and component styles.
+   Toss is used only as an external UX reference; Itunda owns the visual language. */
 @import "@itunda/design-tokens/tokens.css";
+@import "@itunda/design-system-web/styles.css";
 
 /* Defensive hygiene fix (2026-08-10): no box-sizing reset existed anywhere in this file,
    so the default content-box model added every element's padding/border ON TOP of its
