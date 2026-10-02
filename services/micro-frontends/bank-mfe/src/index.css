@@ -2981,3 +2981,135 @@ input, textarea, select {
     padding-bottom: 92px;
   }
 }
+\n
+/* Itunda product craft v2 — 2026-10-02
+   Inspired by Toss principles: one clear task, easy-to-answer choices, less visual noise.
+   This remains Itunda-specific: flat surfaces, Indigo #7472F4, and no decorative gradients.
+*/
+.itunda-app-content {
+  max-width: 720px;
+}
+
+.itunda-home-page .itunda-flat-section:first-of-type {
+  padding-top: 4px;
+}
+
+.itunda-home-page .itunda-flat-section h2,
+.itunda-home-page .itunda-flat-section h3 {
+  letter-spacing: -0.03em;
+}
+
+.itunda-home-page .itunda-home-actions {
+  gap: 10px !important;
+}
+
+.itunda-home-page .itunda-home-actions > button {
+  min-height: 56px;
+  border-radius: 14px;
+}
+
+.itunda-home-page .itunda-home-actions > button:first-child {
+  min-height: 60px;
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.itunda-home-page .itunda-flat-section {
+  padding-block: 20px;
+}
+
+.itunda-pay-page .itunda-pay-balance {
+  padding-block: 8px 18px;
+}
+
+.itunda-pay-page .itunda-pay-balance > div:first-child {
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+}
+
+.itunda-pay-page .itunda-pay-primary-actions {
+  gap: 10px !important;
+}
+
+.itunda-pay-page .itunda-pay-primary-actions button {
+  border-radius: 14px;
+}
+
+.itunda-explore-page .itunda-explore-row-list {
+  margin-top: 4px;
+}
+
+.itunda-explore-page .itunda-explore-row {
+  min-height: 68px;
+  grid-template-columns: 42px minmax(0, 1fr) 20px;
+  gap: 14px;
+}
+
+.itunda-explore-page .itunda-explore-row__icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+}
+
+.itunda-messages-page .itunda-flat-section:first-of-type,
+.itunda-you-page .itunda-flat-section:first-of-type {
+  padding-top: 8px;
+}
+
+.itunda-messages-page .itunda-flat-section,
+.itunda-you-page .itunda-flat-section {
+  padding-block: 18px;
+}
+
+.itunda-messages-page .itunda-flat-section h2,
+.itunda-you-page .itunda-flat-section h2 {
+  margin-bottom: 6px;
+  letter-spacing: -0.035em;
+}
+
+.itunda-transfer-step-heading {
+  margin-bottom: 18px;
+}
+
+.itunda-transfer-step-heading h3 {
+  max-width: 560px;
+  letter-spacing: -0.04em;
+}
+
+.itunda-transfer-recipient-form {
+  gap: 8px !important;
+}
+
+.itunda-transfer-recipient-form input,
+.itunda-transfer-recipient-form button {
+  border-radius: 14px !important;
+}
+
+.itunda-app-content input,
+.itunda-app-content select,
+.itunda-app-content textarea {
+  font-size: 16px;
+}
+
+@media (max-width: 520px) {
+  .itunda-app-content {
+    max-width: none;
+  }
+
+  .itunda-home-page .itunda-flat-section,
+  .itunda-pay-page .itunda-flat-section,
+  .itunda-messages-page .itunda-flat-section,
+  .itunda-you-page .itunda-flat-section {
+    padding-block: 16px;
+  }
+
+  .itunda-explore-page .itunda-explore-row {
+    min-height: 70px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itunda-app-content * {
+    scroll-behavior: auto !important;
+  }
+}
