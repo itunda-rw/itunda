@@ -1,0 +1,9 @@
+{
+  "name": "@itunda/saronite-debugger",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Transport-agnostic Saronite debugger session contracts.",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts"
+}
