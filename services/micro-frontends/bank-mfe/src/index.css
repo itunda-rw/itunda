@@ -679,3 +679,138 @@ input, textarea, select {
     box-shadow: 0 12px 40px rgba(0, 0, 0, .34);
   }
 }
+
+
+/* Itunda customer surfaces 2026-10: shared IDS composition pass. */
+.itunda-app-content {
+  scroll-behavior: smooth;
+}
+
+/* Give primary screens a deliberate vertical rhythm without forcing every feature
+   into a card. Sections remain flat; emphasis comes from typography, spacing and
+   small tinted controls. */
+.itunda-app-content > div {
+  padding-top: 8px;
+}
+
+.itunda-app-content h2 {
+  letter-spacing: -0.035em;
+}
+
+.itunda-app-content h3 {
+  letter-spacing: -0.02em;
+}
+
+.itunda-app-content .itunda-flat-section {
+  padding: 18px 0;
+  border-bottom-color: var(--itunda-border-default);
+}
+
+.itunda-app-content .itunda-flat-section + .itunda-flat-section {
+  padding-top: 14px;
+}
+
+/* Primary actions: one strong action, quiet secondary actions. */
+.itunda-app-content .itunda-btn-primary {
+  min-height: 52px;
+  border-radius: 16px;
+  font-weight: 700;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--itunda-brand) 16%, transparent);
+}
+
+.itunda-app-content .itunda-btn-secondary {
+  min-height: 52px;
+  border: 1px solid var(--itunda-border-default);
+  background: var(--itunda-surface-subtle);
+  color: var(--itunda-text-primary);
+  border-radius: 16px;
+}
+
+/* Explore catalog: make the existing icon + row architecture feel like a
+   first-class Itunda destination rather than a utility list. */
+.itunda-app-content [role="list"] {
+  gap: 2px;
+}
+
+.itunda-app-content [role="list"] > button,
+.itunda-app-content [role="listitem"] {
+  border-radius: 16px;
+  transition: background-color var(--itunda-motion-fast) var(--itunda-ease-out),
+              transform var(--itunda-motion-fast) var(--itunda-ease-out);
+}
+
+.itunda-app-content [role="list"] > button:hover,
+.itunda-app-content [role="listitem"]:hover {
+  background: var(--itunda-surface-subtle);
+}
+
+.itunda-app-content [role="list"] > button:active,
+.itunda-app-content [role="listitem"]:active {
+  transform: scale(.985);
+}
+
+/* Search surfaces use one consistent IDS field treatment. */
+.itunda-app-content input[type="search"],
+.itunda-app-content input[placeholder*="Search"],
+.itunda-app-content input[placeholder*="search"] {
+  min-height: 48px;
+  border: 1px solid var(--itunda-border-default);
+  border-radius: 15px;
+  background: var(--itunda-surface-subtle);
+  color: var(--itunda-text-primary);
+  padding: 0 15px;
+  outline: none;
+}
+
+.itunda-app-content input[type="search"]:focus,
+.itunda-app-content input[placeholder*="Search"]:focus,
+.itunda-app-content input[placeholder*="search"]:focus {
+  border-color: var(--itunda-brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--itunda-brand) 14%, transparent);
+}
+
+/* Money summary: make large balances read as the screen's hierarchy, not a
+   generic form field. */
+.itunda-app-content button[aria-label*="balance" i],
+.itunda-app-content [data-testid*="balance" i] {
+  letter-spacing: -0.03em;
+}
+
+/* Quiet interactive rows throughout Messages and You. */
+.itunda-app-content button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.itunda-app-content button:not(.itunda-btn):not(.itunda-bottom-nav__item):hover {
+  opacity: .96;
+}
+
+/* Mobile: keep content comfortably readable above the floating navigation. */
+@media (max-width: 520px) {
+  .itunda-app-content {
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-bottom: 112px;
+  }
+
+  .itunda-app-header {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .itunda-app-content .itunda-btn-primary,
+  .itunda-app-content .itunda-btn-secondary {
+    min-height: 50px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itunda-app-content {
+    scroll-behavior: auto;
+  }
+
+  .itunda-app-content [role="list"] > button,
+  .itunda-app-content [role="listitem"] {
+    transition: none;
+  }
+}
