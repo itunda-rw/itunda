@@ -113,28 +113,33 @@ export default function LoginPage({
             className="itunda-auth-form"
             onSubmit={(e) => { e.preventDefault(); setPhoneConfirmed(true); }}
           >
-            <label className="itunda-field">
-              <span className="itunda-field__label">{t('login.phoneNumber')}</span>
-              <input
-                className="itunda-field__control itunda-phone-control"
-                type="tel"
-                autoFocus
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="+250 788 123 456"
-                required
-                autoComplete="tel"
-                inputMode="tel"
-              />
-            </label>
+            <TextField
+              className="itunda-phone-field"
+              label={t('login.phoneNumber')}
+              type="tel"
+              autoFocus
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              placeholder="+250 788 123 456"
+              required
+              autoComplete="tel"
+              inputMode="tel"
+            />
 
-            <button type="submit" className="itunda-btn itunda-btn-primary itunda-auth-primary">
+            <Button
+              type="submit"
+              className="itunda-auth-primary"
+              variant="primary"
+              size="lg"
+              fullWidth
+            >
               {t('login.next')}
-            </button>
+            </Button>
 
             <button type="button" className="itunda-auth-secondary" onClick={onCreateAccount}>
               {t('login.createAccount')}
             </button>
+
           </form>
         )}
 
