@@ -96,3 +96,28 @@ button,.btn,.cta,.theme-toggle,.nav a{touch-action:manipulation}
  .steps{gap:24px}
  .metric{padding:22px 0}
 }
+
+
+/* Itunda public-site flat baseline — 2026-10-02
+   Keep the same native Indigo identity while removing glass/gradient/3D treatment. */
+.top {
+  background: var(--bg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+.cta,
+.btn.primary {
+  box-shadow: none;
+}
+.btn:hover,
+.cta:hover,
+.theme-toggle:hover {
+  transform: none;
+}
+.hero,
+.section,
+.section.alt,
+.code {
+  background-image: none;
+}
