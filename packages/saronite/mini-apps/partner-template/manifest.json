@@ -1,0 +1,36 @@
+{
+  "$schema": "https://itunda.dev/schemas/mini-app-manifest.v1.json",
+  "manifestVersion": 1,
+  "id": "rw.example.partner",
+  "name": "Partner Example",
+  "version": "0.1.0",
+  "category": "PRODUCTIVITY",
+  "description": "Example Apps in Itunda mini-app.",
+  "entry": {
+    "type": "saronite",
+    "bundleUrl": "https://example.com/itunda-mini-app.bundle.js"
+  },
+  "icon": {
+    "url": "https://example.com/icon.png"
+  },
+  "permissions": [],
+  "brandTheme": {
+    "themeId": "partner-example",
+    "light": {
+      "brand": "#4F46E5",
+      "brandStrong": "#4338CA",
+      "brandSurface": "#EEF2FF",
+      "onBrand": "#FFFFFF",
+      "focus": "#4F46E5",
+      "pressed": "#4338CA"
+    },
+    "dark": {
+      "brand": "#A5B4FC",
+      "brandStrong": "#C7D2FE",
+      "brandSurface": "#312E81",
+      "onBrand": "#111827",
+      "focus": "#C7D2FE",
+      "pressed": "#A5B4FC"
+    }
+  }
+}
