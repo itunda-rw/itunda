@@ -48,34 +48,30 @@ export function AccountLinkForm({ myPhoneNumber, onLinked, onError }: { myPhoneN
 
   if (!showForm) {
     return (
-      <button className="itunda-btn itunda-btn-primary" onClick={() => setShowForm(true)}>
+      <Button variant="primary" size="md" onClick={() => setShowForm(true)}>
         {t('overview.linkAccountPrompt')}
-      </button>
+      </Button>
     );
   }
 
   return (
     <form onSubmit={handleLink} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-        {LINK_PROVIDERS.map((p) => (
-          <button
-            type="button" key={p} className="itunda-btn itunda-btn-secondary"
-            onClick={() => {
-              setProvider(p);
-              if (MOMO_PROVIDERS.includes(p) && !accountNumber) setAccountNumber(myPhoneNumber);
-            }}
-          >{p}</button>
-        ))}
-      </div>
-      <input
-        type="text" value={provider} onChange={(e) => setProvider(e.target.value)} placeholder={t('overview.providerNamePlaceholder')} required
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
+      <Select
+        label="Provider"
+        value={provider}
+        onChange={(e) => setProvider(e.target.value)}
+        options={LINK_PROVIDERS.map((p) => ({ value: p, label: p }))}
+        required
       />
-      <input
-        type="text" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} placeholder={t('overview.accountPhonePlaceholder')} required
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
+      <TextField
+        label="Account number"
+        type="text"
+        value={accountNumber}
+        onChange={(e) => setAccountNumber(e.target.value)}
+        placeholder={t('overview.accountPhonePlaceholder')}
+        required
       />
-      <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('overview.linking') : t('overview.linkAccount')}</button>
+      <Button type="submit" variant="primary" size="md" disabled={busy}>{busy ? t('overview.linking') : t('overview.linkAccount')}</Button>
     </form>
   );
 }
