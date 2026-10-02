@@ -5,5 +5,8 @@
   "description": "Transport-agnostic Saronite debugger session contracts.",
   "type": "module",
   "main": "src/index.ts",
-  "types": "src/index.ts"
+  "types": "src/index.ts",
+  "dependencies": {
+    "@itunda/saronite-protocol": "workspace:*"
+  }
 }
