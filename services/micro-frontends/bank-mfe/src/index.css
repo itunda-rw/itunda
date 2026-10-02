@@ -3318,3 +3318,5 @@ input, textarea, select {
 .itunda-you-row-list > button { border: 0 !important; }
 .itunda-explore-row:hover,
 .itunda-you-row-list > button:hover { background: var(--itunda-surface-subtle); }
+
+/* IDS lock parity verified — 2026-10-02 */
