@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "production-boundary": "node ./scripts/verify-production-boundary.mjs"
   },
   "devDependencies": {
     "@itunda/saronite-devtools": "workspace:*",
