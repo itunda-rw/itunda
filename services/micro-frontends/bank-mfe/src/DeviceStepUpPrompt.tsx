@@ -13,6 +13,7 @@ import { LockGlyph } from './icons/ItundaFaceSecurity';
 import { useI18n } from './i18n/I18nContext';
 import { ApiError } from './lib/api';
 import { verifyDevice } from './lib/device';
+import { Button, TextField } from '@itunda/design-system-web';
 
 export function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () => void; onCancel: () => void }) {
   const { t } = useI18n();
@@ -47,31 +48,23 @@ export function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () =>
       {/* Real "Minimum Input" simplicity fix (item 244, docs/DESIGN_REFERENCES.md §11, rule
           #4), matching the identical same-day fix on Android/iOS's device step-up dialog:
           this password field is the sole meaningful action on the entire prompt. */}
-      <div style={{ position: 'relative' }}>
-        <input
-          type={showPassword ? 'text' : 'password'}
-          autoFocus
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder={t('deviceStepUp.passwordPlaceholder')}
-          required
-          style={{ width: '100%', boxSizing: 'border-box', padding: '10px 40px 10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
-        />
-        <button
-          type="button"
-          onClick={() => setShowPassword((v) => !v)}
-          aria-label={showPassword ? t('deviceStepUp.hidePassword') : t('deviceStepUp.showPassword')}
-          style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '4px', display: 'flex', color: 'var(--itunda-grey-500)' }}
-        >
-          {showPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
-        </button>
-      </div>
-      {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      <TextField
+        label={t('deviceStepUp.passwordPlaceholder')}
+        type={showPassword ? 'text' : 'password'}
+        autoFocus
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        required
+        error={error ?? undefined}
+        suffix={
+          <button type="button" aria-label={showPassword ? t('deviceStepUp.hidePassword') : t('deviceStepUp.showPassword')} onClick={() => setShowPassword((v) => !v)}>
+            {showPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
+          </button>
+        }
+      />
       <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={onCancel} disabled={busy}>{t('deviceStepUp.cancel')}</button>
-        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy}>
-          {busy ? t('deviceStepUp.verifying') : t('deviceStepUp.verify')}
-        </button>
+        <Button type="button" variant="secondary" size="md" fullWidth onClick={onCancel} disabled={busy}>{t('deviceStepUp.cancel')}</Button>
+        <Button type="submit" variant="primary" size="md" fullWidth disabled={busy} loading={busy} loadingLabel={t('deviceStepUp.verifying')}>{t('deviceStepUp.verify')}</Button>
       </div>
     </form>
   );
