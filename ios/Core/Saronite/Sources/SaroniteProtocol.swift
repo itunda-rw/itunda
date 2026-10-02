@@ -10,7 +10,7 @@ public struct SaroniteRequest: Codable {
         protocolVersion = SaroniteProtocol.version; kind = "request"; self.id = id; self.capability = capability; self.method = method; self.payload = payload; self.timeoutMs = timeoutMs
     }
 }
-public struct SaroniteError: Codable {
+public struct SaroniteError: Codable, Error {
     public let code: String; public let message: String; public let detail: [String: AnyCodable]?
     public init(code: String, message: String, detail: [String: AnyCodable]? = nil) { self.code=code; self.message=message; self.detail=detail }
 }
