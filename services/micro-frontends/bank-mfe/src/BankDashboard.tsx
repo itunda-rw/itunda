@@ -957,7 +957,7 @@ function ExploreHub({ groups, tabLabel, tabIcon, recentTabs, onSelect, autoFocus
   }, [autoFocusSearch]);
 
   return (
-    <div>
+    <div className="itunda-explore-page">
       <ProductPageHeader title="Explore" subtitle="Everything beyond your everyday money tasks, in one searchable place." />
       <div style={{ position: 'relative', marginBottom: '14px' }}>
         <IconSearch size={15} color="var(--itunda-text-tertiary)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
@@ -1032,7 +1032,7 @@ function ExploreHub({ groups, tabLabel, tabIcon, recentTabs, onSelect, autoFocus
 // EntireMenuScreen expose these) and Account & security as their own groups.
 function YouHub({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) {
   return (
-    <div>
+    <div className="itunda-you-page">
       <ProductPageHeader title="You" subtitle="Your profile, insights, and account security in one place." />
       <MyView />
       <div className="itunda-flat-section">
