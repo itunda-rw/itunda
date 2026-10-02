@@ -89,7 +89,9 @@
     "lint:web": "bash ./scripts/local-ecosystem.sh web-lint",
     "depcruise": "depcruise --config .dependency-cruiser.cjs \"services/micro-frontends/**/src/**/*.{ts,tsx}\" \"packages/*/src/**/*.{ts,tsx}\" \"services/api-gateway/**/*.{ts,tsx}\"",
     "audit:ids": "node ./scripts/audit-ids.mjs",
-    "audit:monorepo": "node ./scripts/audit-monorepo.mjs"
+    "audit:monorepo": "node ./scripts/audit-monorepo.mjs",
+    "miniapp:new": "node ./tools/itunda-miniapp/bin/itunda-miniapp.mjs new",
+    "miniapp:validate": "node ./tools/itunda-miniapp/bin/itunda-miniapp.mjs validate"
   },
   "devDependencies": {
     "dependency-cruiser": "catalog:",
