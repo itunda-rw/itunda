@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, type ComponentType, type ReactElement } from 'react';
-import { IconShieldCheck, IconStar } from './icons/ItundaIcons';
+import { IconShieldCheck, IconStar, IconItundaLogo } from './icons/ItundaIcons';
 import { motion } from 'framer-motion';
 import { Bike, Check, Clock, Landmark, LogOut, Sprout, Users } from 'lucide-react';
 import { BankCardChip, CardContactlessGlyph } from './BankCardChip';import { IconBack, IconChevronRight, IconClose, IconSearch } from './icons/ItundaIcons';
@@ -2975,7 +2975,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       <header className="itunda-app-header">
         <div className="itunda-app-brand">
           <span className="itunda-app-brand-mark" aria-hidden="true">
-            <IconShieldCheck size={20} color="currentColor" />
+            <IconItundaLogo size={28} color="currentColor" />
           </span>
           <div>
             <div className="itunda-app-brand-name">Itunda</div>
