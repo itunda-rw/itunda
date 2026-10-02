@@ -1886,3 +1886,313 @@ input, textarea, select {
     min-height: 60px;
   }
 }
+
+
+/* Itunda flat surface refinement — 2026-10-02
+   Design intent:
+   - Itunda Indigo #7472F4 remains the only brand accent.
+   - Flat composition: no glass, blur, gradients, floating nav containers, or 3D card treatment.
+   - Hierarchy comes from spacing, type, dividers, and one clear action.
+   - Desktop gets more breathing room; mobile stays compact and single-column.
+   This is an Itunda-native implementation informed by public product-design principles,
+   not a reproduction of another company's branding or proprietary UI. */
+
+:root {
+  --itunda-flat-page: var(--itunda-surface-default);
+  --itunda-flat-subtle: var(--itunda-surface-subtle);
+}
+
+#root,
+.itunda-app-shell {
+  background: var(--itunda-flat-page);
+}
+
+.itunda-app-header {
+  background: var(--itunda-flat-page);
+  border-bottom: 1px solid var(--itunda-border-default);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+
+.itunda-app-brand-mark {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.itunda-app-actions {
+  gap: 6px;
+}
+
+.itunda-icon-button {
+  border-radius: var(--itunda-control-radius, 12px);
+}
+
+.itunda-icon-button:hover {
+  background: var(--itunda-flat-subtle);
+}
+
+.itunda-app-language select {
+  border: 0;
+  border-radius: var(--itunda-control-radius, 12px);
+  background: var(--itunda-flat-subtle);
+}
+
+.itunda-bottom-nav {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: none;
+  transform: none;
+  padding: 6px max(8px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  gap: 0;
+  border: 0;
+  border-top: 1px solid var(--itunda-border-default);
+  border-radius: 0;
+  background: var(--itunda-flat-page);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.itunda-bottom-nav__item {
+  min-height: 54px;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--itunda-text-tertiary);
+  position: relative;
+}
+
+.itunda-bottom-nav__item.is-active {
+  background: transparent;
+  color: var(--itunda-brand);
+  font-weight: 700;
+}
+
+.itunda-bottom-nav__item.is-active::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 24px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--itunda-brand);
+  transform: translateX(-50%);
+}
+
+.itunda-bottom-nav__item:hover {
+  background: var(--itunda-flat-subtle);
+}
+
+.itunda-bottom-nav__icon {
+  width: 22px;
+  height: 22px;
+}
+
+.itunda-bottom-nav__badge {
+  top: -6px;
+  right: -11px;
+}
+
+.itunda-home-page {
+  padding-top: 4px;
+}
+
+.itunda-home-welcome {
+  padding: 20px 0;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--itunda-border-default);
+  background: transparent;
+}
+
+.itunda-home-welcome__mark {
+  width: 40px;
+  height: 40px;
+  flex-basis: 40px;
+  border-radius: 10px;
+  background: var(--itunda-flat-subtle);
+}
+
+.itunda-home-actions {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin: 12px 0 4px;
+  border-top: 1px solid var(--itunda-border-default);
+  border-bottom: 1px solid var(--itunda-border-default);
+}
+
+.itunda-home-actions > button {
+  min-height: 72px;
+  padding: 10px 5px;
+  border: 0;
+  border-right: 1px solid var(--itunda-border-default);
+  border-radius: 0;
+  background: transparent;
+}
+
+.itunda-home-actions > button:last-child {
+  border-right: 0;
+}
+
+.itunda-home-actions > button:hover {
+  background: var(--itunda-flat-subtle);
+}
+
+.itunda-home-actions__icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.itunda-app-content .itunda-btn-primary {
+  background: var(--itunda-brand);
+  border-radius: var(--itunda-control-radius, 12px);
+  box-shadow: none;
+}
+
+.itunda-app-content .itunda-btn-secondary {
+  background: transparent;
+  border-radius: var(--itunda-control-radius, 12px);
+}
+
+.itunda-app-content [data-itunda-primary],
+.itunda-app-content .itunda-primary-surface {
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--itunda-brand) 18%, var(--itunda-border-default));
+  background: var(--itunda-surface-brand);
+}
+
+.itunda-pay-page > button:first-of-type {
+  padding: 14px 0 16px;
+  border-bottom: 1px solid var(--itunda-border-default);
+}
+
+.itunda-pay-page > button:first-of-type p:last-child {
+  font-weight: 750;
+}
+
+.itunda-pay-page .itunda-flat-section {
+  padding: 20px 0;
+}
+
+.itunda-explore-page .itunda-flat-section > div > .itunda-btn {
+  min-height: 60px;
+}
+
+.itunda-explore-page .itunda-flat-section > div > .itunda-btn svg {
+  background: transparent;
+  padding: 0;
+}
+
+.itunda-explore-page .itunda-flat-section > div > .itunda-btn:hover {
+  background: var(--itunda-flat-subtle);
+}
+
+.itunda-app-content [role="list"] > button,
+.itunda-app-content [role="listitem"] {
+  border-radius: 0;
+  border-bottom: 1px solid var(--itunda-border-default);
+}
+
+.itunda-app-content [role="list"] > button:hover,
+.itunda-app-content [role="listitem"]:hover {
+  background: var(--itunda-flat-subtle);
+}
+
+.itunda-app-content input[type="search"],
+.itunda-app-content input[placeholder*="Search"],
+.itunda-app-content input[placeholder*="search"] {
+  border-radius: var(--itunda-control-radius, 12px);
+  background: var(--itunda-flat-subtle);
+}
+
+.itunda-auth-page {
+  background: var(--itunda-flat-page);
+}
+
+.itunda-auth-orb,
+.itunda-auth-orb--one,
+.itunda-auth-orb--two {
+  display: none;
+}
+
+.itunda-auth-surface {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.itunda-auth-primary {
+  box-shadow: none;
+  border-radius: var(--itunda-control-radius, 12px);
+}
+
+@media (min-width: 700px) {
+  #root,
+  .itunda-app-shell {
+    max-width: 760px;
+  }
+
+  .itunda-app-content {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+
+  .itunda-bottom-nav {
+    width: min(760px, 100%);
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+
+  .itunda-explore-page .itunda-flat-section > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 24px;
+  }
+
+  .itunda-explore-page .itunda-flat-section > div > .itunda-btn {
+    border-bottom: 1px solid var(--itunda-border-default);
+  }
+
+  .itunda-home-actions {
+    max-width: 620px;
+  }
+}
+
+@media (max-width: 699px) {
+  .itunda-explore-page .itunda-flat-section > div {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 520px) {
+  .itunda-bottom-nav {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .itunda-home-welcome {
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+
+  .itunda-home-actions > button {
+    min-height: 70px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itunda-bottom-nav__item,
+  .itunda-home-actions > button {
+    transition: none;
+  }
+}
