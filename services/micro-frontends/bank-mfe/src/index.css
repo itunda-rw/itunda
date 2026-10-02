@@ -3262,3 +3262,24 @@ input, textarea, select {
 .itunda-pin-error { margin:0; color:var(--itunda-red); font-size:var(--itunda-type-scale-13-size); }
 .itunda-pin-grid { display:grid; grid-template-columns:repeat(3,64px); gap:12px; margin-top:8px; }
 @media (max-width:420px) { .itunda-pin-grid { grid-template-columns:repeat(3,60px); gap:10px; } .itunda-pin-dots { gap:12px; } }
+
+
+/* IDS migration bridge — Toast placement/lifecycle stays product-owned; visual surface is @itunda/design-system-web. */
+.itunda-toast-host {
+  position: fixed;
+  left: 50%;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  z-index: 2147483000;
+  transform: translateX(-50%) translateY(12px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform var(--itunda-motion-fast) var(--itunda-ease-out), opacity var(--itunda-motion-fast) var(--itunda-ease-out);
+}
+.itunda-toast-host.is-visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .itunda-toast-host { transition: none; }
+}
