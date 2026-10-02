@@ -51,7 +51,7 @@ jobs:
 
       - name: Install Saronite dependencies
         working-directory: packages/saronite
-        run: npm install
+        run: npm install --no-audit --no-fund
 
       - name: Install mise
         run: |
