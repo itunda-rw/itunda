@@ -3240,3 +3240,13 @@ input, textarea, select {
     transition: none;
   }
 }
+
+
+/* IDS migration bridge — authentication controls now use @itunda/design-system-web. */
+.itunda-auth-header .itunda-language { min-width: 88px; gap: 0; }
+.itunda-auth-header .itunda-language .ids-field__label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.itunda-auth-header .itunda-language .ids-select__input { min-height: 40px; padding-inline: 10px 32px; border-radius: 10px; background: transparent; }
+.itunda-auth-header .itunda-language .ids-select__chevron { inset-inline-end: 8px; }
+.itunda-phone-field .ids-field__input { min-height: 56px; border-radius: 14px; }
+.itunda-auth-primary { min-height: 56px; }
+.itunda-auth-secondary { min-height: 48px; }
