@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { IconShieldCheck } from './icons/ItundaIcons';
 import { ChevronDown, ChevronUp } from 'lucide-react';import { ApiError, getTerms, register, type TermsDocument } from './lib/api';
+import { Button, Checkbox, TextField } from '@itunda/design-system-web';
 import { PinPad } from './PinPad';
 
 // Real sign-up page (2026-08-04) -- closes docs/DESIGN_REFERENCES.md Section 8
@@ -190,59 +191,21 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
         <div style={{ display: 'flex', gap: '10px' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
             <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>First name</span>
-            <input
-              type="text"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              required
-              style={{
-                padding: '12px 14px',
-                borderRadius: '10px',
-                border: '1px solid var(--itunda-grey-200)',
-                fontSize: 'var(--itunda-type-scale-15-size)',
-              }}
-            />
+            <TextField label="First name" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} required autoComplete="given-name" />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
             <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Last name</span>
-            <input
-              type="text"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              required
-              style={{
-                padding: '12px 14px',
-                borderRadius: '10px',
-                border: '1px solid var(--itunda-grey-200)',
-                fontSize: 'var(--itunda-type-scale-15-size)',
-              }}
-            />
+            <TextField label="Last name" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} required autoComplete="family-name" />
           </label>
         </div>
 
         {showReferralField ? (
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Referral code (optional)</span>
-            <input
-              type="text"
-              value={referralCode}
-              onChange={(e) => setReferralCode(e.target.value)}
-              style={{
-                padding: '12px 14px',
-                borderRadius: '10px',
-                border: '1px solid var(--itunda-grey-200)',
-                fontSize: 'var(--itunda-type-scale-15-size)',
-              }}
-            />
+            <TextField label="Referral code (optional)" type="text" value={referralCode} onChange={(e) => setReferralCode(e.target.value)} />
           </label>
         ) : (
-          <button
-            type="button"
-            onClick={() => setShowReferralField(true)}
-            style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-indigo)', cursor: 'pointer' }}
-          >
-            Have a referral code?
-          </button>
+          <Button type="button" variant="tertiary" size="md" onClick={() => setShowReferralField(true)}>Have a referral code?</Button>
         )}
 
         {terms.length > 0 && (
