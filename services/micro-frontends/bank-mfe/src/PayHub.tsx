@@ -52,8 +52,8 @@ function QuickActions({ onCardsClick }: { onCardsClick: () => void }) {
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCardsClick(); } }}
       style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
     >
-      <div style={{ width: '38px', height: '38px', borderRadius: '999px', backgroundColor: 'rgba(138, 43, 226, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <AccountIcon size={18} color="#8A2BE2" />
+      <div style={{ width: '38px', height: '38px', borderRadius: '999px', backgroundColor: 'color-mix(in srgb, var(--itunda-indigo) 12%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <AccountIcon size={18} color="var(--itunda-indigo)" />
       </div>
       <span style={{ fontWeight: '600', fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)' }}>{t('quickActions.cards')}</span>
     </motion.div>
@@ -386,10 +386,10 @@ export function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab:
         />
       )}
       <div style={{ display: 'flex', gap: '8px', margin: '4px 0 16px' }}>
-        <button className="itunda-btn itunda-btn-primary" onClick={() => setShowTransfer(true)} disabled={!account} style={{ flex: 1, minHeight: '48px' }}>
+        <button className="itunda-btn itunda-btn-primary itunda-pay-send-action" onClick={() => setShowTransfer(true)} disabled={!account} style={{ flex: 1, minHeight: '48px' }}>
           <IconSend size={17} /> Send money
         </button>
-        <button className="itunda-btn itunda-btn-secondary" onClick={() => onNavigateToTab('BILLS')} style={{ flex: 1, minHeight: '48px' }}>
+        <button className="itunda-btn itunda-btn-secondary itunda-pay-bills-action" onClick={() => onNavigateToTab('BILLS')} style={{ flex: 1, minHeight: '48px' }}>
           <Receipt size={17} /> Bills & airtime
         </button>
       </div>
