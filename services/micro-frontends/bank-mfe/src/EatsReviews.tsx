@@ -8,6 +8,7 @@ import {
 } from './lib/eatsReviews';
 import { StarRatingInput } from './BankDashboard';
 import { useDeferredLoading } from './useDeferredLoading';
+import { Button, TextField } from '@itunda/design-system-web';
 
 // Real owner-reply management (item 184) -- a restaurant owner's own reviews, with an
 // inline reply form for anything not yet replied to. Lives on RestaurantOrdersView
@@ -57,9 +58,7 @@ export function RestaurantReviewsManageView({ restaurantId }: { restaurantId: st
         {reviews.map((r) => <RestaurantReviewReplyCard key={r.id} review={r} onReplied={load} />)}
       </div>
       {reviewsHasMore && (
-        <button className="itunda-btn itunda-btn-secondary" disabled={loadingMoreReviews} onClick={loadMoreReviews} style={{ marginTop: '10px' }}>
-          {loadingMoreReviews ? 'Loading…' : 'Load more'}
-        </button>
+        <Button variant="secondary" size="md" disabled={loadingMoreReviews} loading={loadingMoreReviews} loadingLabel="Loading…" onClick={loadMoreReviews}>Load more</Button>
       )}
     </div>
   );
