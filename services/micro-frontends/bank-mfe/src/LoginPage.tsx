@@ -73,16 +73,14 @@ export default function LoginPage({
             <span className="itunda-brand-name">Itunda</span>
           </div>
 
-          <label className="itunda-language">
-            <span className="sr-only">Language</span>
-            <select
-              value={locale}
-              onChange={(e) => setLocale(e.target.value as 'en' | 'rw' | 'fr')}
-              aria-label="Language"
-            >
-              {LOCALES.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
-            </select>
-          </label>
+          <Select
+            className="itunda-language"
+            label="Language"
+            aria-label="Language"
+            value={locale}
+            onChange={(e) => setLocale(e.target.value as 'en' | 'rw' | 'fr')}
+            options={LOCALES.map((l) => ({ value: l.code, label: l.label }))}
+          />
         </header>
 
         <div className="itunda-auth-intro">
