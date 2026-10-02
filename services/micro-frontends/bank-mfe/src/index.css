@@ -2311,3 +2311,112 @@ input, textarea, select {
     transition: none;
   }
 }
+
+
+/* Pay surface refinement — 2026-10-02.
+   Keep the Pay screen task-first: balance identity, one primary money action,
+   then supporting tools. Flat Itunda composition; Indigo #7472F4 remains the
+   semantic accent. */
+.itunda-pay-page {
+  padding-top: 8px;
+}
+
+.itunda-pay-header {
+  min-height: 48px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--itunda-border-default);
+}
+
+.itunda-pay-header h2 {
+  font-size: 24px !important;
+  line-height: 30px;
+  letter-spacing: -.04em !important;
+}
+
+.itunda-pay-header button {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  color: var(--itunda-text-secondary) !important;
+}
+
+.itunda-pay-header button:hover,
+.itunda-pay-header button:focus-visible {
+  background: var(--itunda-surface-subtle);
+}
+
+.itunda-pay-balance {
+  margin-top: 6px;
+  padding: 18px 0 16px !important;
+  border-bottom: 1px solid var(--itunda-border-default);
+}
+
+.itunda-pay-balance p:first-child {
+  font-size: 13px !important;
+  line-height: 18px;
+  color: var(--itunda-text-secondary) !important;
+}
+
+.itunda-pay-balance p:last-child {
+  margin-top: 5px !important;
+  font-size: clamp(28px, 8vw, 36px) !important;
+  line-height: 40px;
+  letter-spacing: -.045em;
+  color: var(--itunda-text-primary) !important;
+}
+
+.itunda-pay-bank-link {
+  min-height: 48px;
+  padding-bottom: 14px !important;
+  border-bottom: 1px solid var(--itunda-border-default);
+}
+
+.itunda-pay-bank-link:hover {
+  background: var(--itunda-surface-subtle);
+}
+
+.itunda-pay-primary-actions {
+  margin-top: 18px !important;
+  margin-bottom: 24px !important;
+}
+
+.itunda-pay-primary-actions .itunda-btn {
+  min-height: 52px !important;
+}
+
+.itunda-pay-primary-actions .itunda-btn-primary {
+  flex: 1.35 !important;
+  font-weight: 700;
+}
+
+.itunda-pay-primary-actions .itunda-btn-secondary {
+  flex: .9 !important;
+  color: var(--itunda-text-secondary);
+  border: 1px solid var(--itunda-border-default);
+}
+
+.itunda-pay-page .itunda-flat-section {
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+.itunda-pay-empty-card {
+  border-radius: 12px !important;
+  border-color: var(--itunda-border-default) !important;
+  background: var(--itunda-surface-subtle);
+}
+
+@media (max-width: 520px) {
+  .itunda-pay-header {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .itunda-pay-balance {
+    padding-top: 16px !important;
+  }
+
+  .itunda-pay-primary-actions {
+    gap: 10px !important;
+  }
+}
