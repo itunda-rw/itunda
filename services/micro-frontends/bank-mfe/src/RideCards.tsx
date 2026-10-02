@@ -7,7 +7,7 @@
 // callers outside RidesView.
 
 import { useEffect, useState } from 'react';
-import { Badge as IDSBadge, Button, TextField } from '@itunda/design-system-web';
+import { Badge as IDSBadge } from '@itunda/design-system-web';
 import { IconShieldCheck } from './icons/ItundaIcons';
 import { ClockGlyph } from './icons/ItundaFaceMisc';
 import { useI18n } from './i18n/I18nContext';
