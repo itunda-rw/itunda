@@ -13,7 +13,7 @@ import { LockGlyph } from './icons/ItundaFaceSecurity';
 import { useI18n } from './i18n/I18nContext';
 import { ApiError } from './lib/api';
 import { verifyDevice } from './lib/device';
-import { Button, TextField } from '@itunda/design-system-web';
+import { Button, TextField, TextFieldButton } from '@itunda/design-system-web';
 
 export function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () => void; onCancel: () => void }) {
   const { t } = useI18n();
@@ -57,9 +57,9 @@ export function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () =>
         required
         error={error ?? undefined}
         suffix={
-          <button type="button" aria-label={showPassword ? t('deviceStepUp.hidePassword') : t('deviceStepUp.showPassword')} onClick={() => setShowPassword((v) => !v)}>
+          <TextFieldButton aria-label={showPassword ? t('deviceStepUp.hidePassword') : t('deviceStepUp.showPassword')} onClick={() => setShowPassword((v) => !v)}>
             {showPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
-          </button>
+          </TextFieldButton>
         }
       />
       <div style={{ display: 'flex', gap: '10px' }}>
