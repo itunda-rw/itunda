@@ -1,5 +1,4 @@
 import type { SaroniteMockHost } from '@itunda/saronite-devtools';
-import { SARONITE_CAPABILITIES } from '@itunda/saronite-devtools';
 import './style.css';
 
 type DemoState = {
@@ -59,7 +58,7 @@ document.querySelector<HTMLButtonElement>('#identity')!.onclick = () => {
     'identity',
     'getCurrentIdentity',
     () => ({ id: 'demo-user', verified: true }),
-    { permission: SARONITE_CAPABILITIES.identity.read },
+    { permission: 'identity:read' },
   );
   setResult(identity ? JSON.stringify(identity) : 'Identity permission denied.');
 };
@@ -69,14 +68,14 @@ document.querySelector<HTMLButtonElement>('#location')!.onclick = () => {
     'location',
     'getCurrentLocation',
     () => ({ latitude: -1.9441, longitude: 30.0619 }),
-    { permission: SARONITE_CAPABILITIES.location.read },
+    { permission: 'location:read' },
   );
   setResult(location ? JSON.stringify(location) : 'Location permission denied.');
 };
 
 if (import.meta.env.DEV) {
   void import('@itunda/saronite-devtools').then(({ createSaroniteMockHost, renderSaroniteDevPanel }) => {
-    host = createSaroniteMockHost({ permissions: { [SARONITE_CAPABILITIES.identity.read]: true } });
+    host = createSaroniteMockHost({ permissions: { 'identity:read': true } });
     renderSaroniteDevPanel(host, document.body);
   });
 } else {
