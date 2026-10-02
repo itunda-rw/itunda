@@ -3113,3 +3113,131 @@ input, textarea, select {
     scroll-behavior: auto !important;
   }
 }
+
+
+/* Itunda visual-consistency pass — 2026-10-02.
+   Apply the same calm, task-first language to authentication: no decorative
+   gradients, floating glass, or competing ornaments. Indigo is reserved for
+   identity and the primary action. */
+.itunda-auth-page {
+  place-items: start center;
+  padding: 24px 20px 40px;
+  background: var(--itunda-surface-default);
+}
+
+.itunda-auth-orb {
+  display: none;
+}
+
+.itunda-auth-surface {
+  width: min(100%, 400px);
+  padding: 24px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.itunda-auth-header {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--itunda-border-default);
+}
+
+.itunda-brand-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.itunda-brand-name {
+  font-size: 17px;
+}
+
+.itunda-auth-intro {
+  padding: 40px 0 24px;
+}
+
+.itunda-auth-intro h1 {
+  max-width: 360px;
+  font-size: clamp(28px, 7vw, 34px);
+  line-height: 1.12;
+  letter-spacing: -.045em;
+}
+
+.itunda-auth-intro p {
+  max-width: 360px;
+  margin-top: 12px;
+}
+
+.itunda-auth-form {
+  gap: 10px;
+}
+
+.itunda-auth-primary {
+  margin-top: 6px;
+  min-height: 56px;
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+.itunda-auth-primary:hover:not(:disabled) {
+  box-shadow: none;
+}
+
+.itunda-auth-account {
+  border-radius: 12px;
+  background: var(--itunda-surface-subtle);
+}
+
+.itunda-auth-footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--itunda-border-default);
+}
+
+@media (max-width: 520px) {
+  .itunda-auth-page {
+    padding: 16px 16px 32px;
+  }
+
+  .itunda-auth-surface {
+    padding: 16px 0;
+  }
+
+  .itunda-auth-intro {
+    padding-top: 32px;
+  }
+}
+
+/* Persistent shell: make inactive controls quieter while preserving 44px targets. */
+.itunda-bottom-nav__item {
+  color: var(--itunda-text-tertiary);
+  font-weight: 600;
+}
+
+.itunda-bottom-nav__item:hover {
+  background: var(--itunda-surface-subtle);
+  color: var(--itunda-text-secondary);
+}
+
+.itunda-bottom-nav__item.is-active {
+  font-weight: 700;
+}
+
+.itunda-bottom-nav__item.is-active .itunda-bottom-nav__icon {
+  color: var(--itunda-brand);
+}
+
+.itunda-bottom-nav__badge {
+  box-shadow: 0 0 0 2px var(--itunda-surface-default);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itunda-bottom-nav__item {
+    transition: none;
+  }
+}
