@@ -910,13 +910,10 @@ function HomeView({ userName, onNavigateToTab }: { userName?: string; onNavigate
   return (
     <div className="itunda-home-page">
       <section className="itunda-home-welcome" aria-labelledby="itunda-home-title">
-        <div className="itunda-home-welcome__mark" aria-hidden="true">
-          <IconItundaLogo size={30} color="currentColor" />
-        </div>
-        <div>
+        <div className="itunda-home-welcome__copy">
           <p className="itunda-home-welcome__eyebrow">ITUNDA</p>
           <h1 id="itunda-home-title">{userName ? `Welcome back, ${userName}.` : 'Welcome back.'}</h1>
-          <p>Everything you use most, right where you need it.</p>
+          <p>What do you need today?</p>
         </div>
       </section>
 
@@ -931,7 +928,9 @@ function HomeView({ userName, onNavigateToTab }: { userName?: string; onNavigate
         ))}
       </section>
 
-      <DiscoverSection />
+      <section className="itunda-home-discover" aria-label="Discover">
+        <DiscoverSection />
+      </section>
     </div>
   );
 }
