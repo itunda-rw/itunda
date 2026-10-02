@@ -115,7 +115,7 @@ jobs:
 
       - name: Install CocoaPods
         working-directory: ios
-        run: pod install --deployment
+        run: pod install --no-repo-update
 
       - name: Build iOS simulator app
         working-directory: ios
