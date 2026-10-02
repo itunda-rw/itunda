@@ -277,7 +277,7 @@ function ReportScamLink({ identifier }: { identifier: string }) {
 // isn't a step to track progress toward, it's the destination).
 export function ProgressStepper({ activeStepIndex, steps }: { activeStepIndex: number; steps: string[] }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', paddingTop: '4px', paddingBottom: '12px' }}>
+    <div className="itunda-progress-stepper" style={{ display: 'flex', alignItems: 'flex-start', paddingTop: '4px', paddingBottom: '12px' }}>
       {steps.map((label, i) => (
         <div key={label} style={{ display: 'flex', alignItems: 'center', flex: i < steps.length - 1 ? 1 : '0 0 auto' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
