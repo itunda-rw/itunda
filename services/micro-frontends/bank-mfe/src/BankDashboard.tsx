@@ -910,6 +910,9 @@ function HomeView({ userName, onNavigateToTab }: { userName?: string; onNavigate
   return (
     <div className="itunda-home-page">
       <section className="itunda-home-welcome" aria-labelledby="itunda-home-title">
+        <span className="itunda-home-welcome__mark" aria-hidden="true">
+          <IconItundaLogo size={38} color="var(--itunda-logo-color)" />
+        </span>
         <div className="itunda-home-welcome__copy">
           <p className="itunda-home-welcome__eyebrow">ITUNDA</p>
           <h1 id="itunda-home-title">{userName ? `Welcome back, ${userName}.` : 'Welcome back.'}</h1>
