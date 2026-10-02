@@ -1,15 +1,11 @@
-import { createSaroniteMockHost } from '@itunda/saronite-devtools';
+import type { SaroniteMockHost } from '@itunda/saronite-devtools';
 import './style.css';
 
 type DemoState = {
   result: string;
 };
 
-const host = createSaroniteMockHost({
-  permissions: {
-    'identity:read': true,
-  },
-});
+let host: SaroniteMockHost | undefined;
 
 const state: DemoState = {
   result: 'Ready. Run a capability call.',
@@ -58,7 +54,7 @@ function setResult(value: string) {
 }
 
 document.querySelector<HTMLButtonElement>('#identity')!.onclick = () => {
-  const identity = host.request(
+  const identity = host?.request(
     'identity',
     'getCurrentIdentity',
     () => ({ id: 'demo-user', verified: true }),
@@ -68,7 +64,7 @@ document.querySelector<HTMLButtonElement>('#identity')!.onclick = () => {
 };
 
 document.querySelector<HTMLButtonElement>('#location')!.onclick = () => {
-  const location = host.request(
+  const location = host?.request(
     'location',
     'getCurrentLocation',
     () => ({ latitude: -1.9441, longitude: 30.0619 }),
@@ -78,7 +74,10 @@ document.querySelector<HTMLButtonElement>('#location')!.onclick = () => {
 };
 
 if (import.meta.env.DEV) {
-  void import('@itunda/saronite-devtools').then(({ renderSaroniteDevPanel }) => {
+  void import('@itunda/saronite-devtools').then(({ createSaroniteMockHost, renderSaroniteDevPanel }) => {
+    host = createSaroniteMockHost({ permissions: { 'identity:read': true } });
     renderSaroniteDevPanel(host, document.body);
   });
+} else {
+  setResult('Production host runtime is required; browser mock is development-only.');
 }
