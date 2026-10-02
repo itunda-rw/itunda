@@ -20,7 +20,8 @@
     "overlay-kit": "^1.9.0",
     "qrcode": "^1.5.4",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "@itunda/design-system-web": "workspace:*"
   },
   "devDependencies": {
     "@originjs/vite-plugin-federation": "catalog:",
