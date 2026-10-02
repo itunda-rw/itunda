@@ -2664,3 +2664,39 @@ input, textarea, select {
     min-height: 56px;
   }
 }
+
+
+/* Pay action hierarchy — one obvious money action, quieter support action. */
+.itunda-pay-page .itunda-pay-send-action {
+  flex: 1.35 !important;
+  min-height: 52px !important;
+  font-weight: 700;
+}
+
+.itunda-pay-page .itunda-pay-bills-action {
+  flex: .9 !important;
+  min-height: 52px !important;
+}
+
+.itunda-pay-page .itunda-pay-header button {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  align-items: center;
+  justify-content: center;
+}
+
+.itunda-pay-page .itunda-pay-header button:hover {
+  background: var(--itunda-surface-subtle);
+}
+
+.itunda-pay-page .itunda-pay-header button:active {
+  background: var(--itunda-surface-brand);
+}
+
+@media (max-width: 520px) {
+  .itunda-pay-page .itunda-pay-send-action,
+  .itunda-pay-page .itunda-pay-bills-action {
+    min-height: 54px !important;
+  }
+}
