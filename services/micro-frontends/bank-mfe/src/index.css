@@ -272,3 +272,219 @@ input, textarea, select {
 .itunda-field__select { min-height: 44px; padding: 8px 10px; border: 1px solid var(--itunda-border-default); border-radius: var(--itunda-control-radius, 12px); background: var(--itunda-surface-default); color: var(--itunda-text-secondary); font: inherit; outline: none; }
 .itunda-auth-error { margin: 0; color: var(--itunda-field-border-error); font-size: 13px; line-height: 18px; }
 @media (prefers-reduced-motion: reduce) { button { transition: none; } .skeleton { animation: none; } }
+
+
+/* Itunda 2026 web surface: calm, branded, content-first auth shell. */
+.itunda-auth-page {
+  min-height: 100svh;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px 20px;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 50% -10%, var(--itunda-indigo-light) 0, transparent 42%),
+    var(--itunda-surface-default);
+}
+
+.itunda-auth-orb {
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(2px);
+  opacity: .65;
+  z-index: -1;
+}
+.itunda-auth-orb--one {
+  top: 12%;
+  left: -150px;
+  background: color-mix(in srgb, var(--itunda-brand) 10%, transparent);
+}
+.itunda-auth-orb--two {
+  right: -160px;
+  bottom: 8%;
+  background: color-mix(in srgb, var(--itunda-brand) 8%, transparent);
+}
+
+.itunda-auth-surface {
+  width: min(100%, 420px);
+  padding: 28px;
+  border: 1px solid color-mix(in srgb, var(--itunda-border-default) 78%, transparent);
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--itunda-surface-default) 94%, transparent);
+  box-shadow: 0 24px 70px rgba(25, 31, 40, .08);
+  backdrop-filter: blur(20px);
+}
+
+.itunda-auth-header,
+.itunda-auth-account,
+.itunda-auth-footer,
+.itunda-brand {
+  display: flex;
+  align-items: center;
+}
+
+.itunda-auth-header {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.itunda-brand {
+  gap: 9px;
+}
+.itunda-brand-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: var(--itunda-text-inverse);
+  background: var(--itunda-brand);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--itunda-brand) 28%, transparent);
+}
+.itunda-brand-name {
+  font-size: 19px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -.04em;
+}
+
+.itunda-language select {
+  min-height: 40px;
+  padding: 7px 30px 7px 11px;
+  border: 1px solid var(--itunda-border-default);
+  border-radius: var(--itunda-radius-pill);
+  background: var(--itunda-surface-subtle);
+  color: var(--itunda-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+.itunda-language select:focus-visible {
+  border-color: var(--itunda-brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--itunda-brand) 15%, transparent);
+}
+
+.itunda-auth-intro {
+  padding: 48px 0 28px;
+}
+.itunda-auth-eyebrow {
+  margin-bottom: 10px;
+  color: var(--itunda-brand);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+.itunda-auth-intro h1 {
+  max-width: 330px;
+  color: var(--itunda-text-primary);
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 700;
+  letter-spacing: -.04em;
+}
+.itunda-auth-intro p {
+  max-width: 330px;
+  margin-top: 10px;
+  color: var(--itunda-text-tertiary);
+  font-size: 14px;
+  line-height: 21px;
+}
+
+.itunda-auth-form,
+.itunda-auth-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.itunda-phone-control {
+  min-height: 56px;
+  font-size: 17px;
+  border-radius: 14px;
+}
+.itunda-phone-control::placeholder {
+  color: var(--itunda-text-disabled);
+}
+
+.itunda-auth-primary {
+  min-height: 56px;
+  margin-top: 4px;
+  border-radius: 16px;
+  font-size: 16px;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--itunda-brand) 20%, transparent);
+  transition: transform var(--itunda-motion-fast) var(--itunda-ease-out),
+              background-color var(--itunda-motion-fast) var(--itunda-ease-out),
+              box-shadow var(--itunda-motion-fast) var(--itunda-ease-out);
+}
+.itunda-auth-primary:hover:not(:disabled) {
+  background: var(--itunda-brand-strong);
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--itunda-brand) 24%, transparent);
+}
+.itunda-auth-primary:active:not(:disabled) {
+  transform: scale(.985);
+}
+
+.itunda-auth-secondary {
+  min-height: 44px;
+  color: var(--itunda-brand);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.itunda-auth-account {
+  width: 100%;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--itunda-border-default);
+  border-radius: 14px;
+  background: var(--itunda-surface-subtle);
+  color: var(--itunda-text-secondary);
+  font-size: 13px;
+}
+.itunda-auth-account span:last-child {
+  color: var(--itunda-brand);
+  font-weight: 600;
+}
+
+.itunda-auth-footer {
+  justify-content: center;
+  gap: 7px;
+  margin-top: 26px;
+  color: var(--itunda-text-tertiary);
+  font-size: 11px;
+}
+
+.itunda-auth-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--itunda-text-secondary);
+  font-size: 14px;
+}
+
+@media (max-width: 520px) {
+  .itunda-auth-page { padding: 16px; }
+  .itunda-auth-surface {
+    padding: 22px 20px;
+    border-radius: 24px;
+    box-shadow: none;
+  }
+  .itunda-auth-intro { padding-top: 40px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itunda-auth-primary { transition: none; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .itunda-auth-surface {
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .28);
+  }
+}
