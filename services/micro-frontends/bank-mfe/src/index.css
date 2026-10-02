@@ -687,16 +687,13 @@ input, textarea, select {
    Keep the new droplet/leaf mark visually central without turning the customer web
    into a decorative dashboard. Hierarchy comes from type, tint, spacing and touch
    targets; behavior and auth flow remain unchanged. */
-.itunda-auth-logo-lockup {
-  width: 56px;
-  height: 56px;
+.itunda-auth-logo {
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   margin-bottom: 18px;
-  border-radius: 18px;
   color: var(--itunda-logo-color);
-  background: var(--itunda-surface-brand);
-  border: 1px solid color-mix(in srgb, var(--itunda-logo-color) 18%, var(--itunda-border-default));
 }
 
 .itunda-auth-intro {
@@ -803,10 +800,9 @@ input, textarea, select {
 }
 
 @media (max-width: 520px) {
-  .itunda-auth-logo-lockup {
-    width: 52px;
-    height: 52px;
-    border-radius: 16px;
+  .itunda-auth-logo {
+    width: 42px;
+    height: 42px;
   }
 
   .itunda-home-page {
