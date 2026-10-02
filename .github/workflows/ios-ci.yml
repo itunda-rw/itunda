@@ -36,6 +36,19 @@ jobs:
           cache: npm
           cache-dependency-path: packages/saronite/package.json
 
+      - name: Cache macOS native build state
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/.ci-derived-data
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+            ~/.cache/tuist
+            ~/.local/share/mise
+          key: ios-native-macos15-${{ hashFiles('ios/Podfile.lock', 'ios/Project.swift', 'packages/saronite/package.json', 'packages/saronite/package-lock.json') }}
+          restore-keys: |
+            ios-native-macos15-
+
       - name: Install Saronite dependencies
         working-directory: packages/saronite
         run: npm install
