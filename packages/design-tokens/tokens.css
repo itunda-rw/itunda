@@ -91,6 +91,8 @@
      role is actually held to), brand-vs-dark-bg 4.82:1 (was 5.00:1, both comfortably
      clear 4.5:1 AA-normal-text). */
   --itunda-indigo: #7472F4;
+  /* New 2026 Itunda logo color: intentionally identical in light and dark themes. */
+  --itunda-logo-color: #B8B5FF;
   --itunda-indigo-active: #625FE6;
   --itunda-indigo-light: #F0EFFF;
   --itunda-red: #f04452;
@@ -370,6 +372,7 @@
 @media (prefers-color-scheme: dark) {
   html:not([data-theme]) {
     --itunda-indigo: #9B98FF;
+    --itunda-logo-color: #B8B5FF;
     --itunda-indigo-active: #B0AEFF;
     --itunda-indigo-light: #27244A;
     --itunda-red: #ff6b7a;
