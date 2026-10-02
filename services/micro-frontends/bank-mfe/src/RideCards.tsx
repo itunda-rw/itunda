@@ -7,6 +7,7 @@
 // callers outside RidesView.
 
 import { useEffect, useState } from 'react';
+import { Badge as IDSBadge, Button, TextField } from '@itunda/design-system-web';
 import { IconShieldCheck } from './icons/ItundaIcons';
 import { ClockGlyph } from './icons/ItundaFaceMisc';
 import { useI18n } from './i18n/I18nContext';
@@ -52,13 +53,11 @@ export function RideTripCard({ trip, action, stops }: { trip: RideTrip; action?:
             </p>
           )}
         </div>
-        <span style={{
-          fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, padding: '4px 8px', borderRadius: '6px',
-          color: trip.status === 'CANCELLED' ? 'var(--itunda-red)' : trip.status === 'COMPLETED' ? 'var(--itunda-grey-500)' : 'var(--itunda-indigo)',
-          backgroundColor: trip.status === 'CANCELLED' ? 'var(--itunda-red-light)' : trip.status === 'COMPLETED' ? 'var(--itunda-grey-100)' : '#E8F0FE',
-        }}>
-          {trip.status === 'REQUESTED' && trip.scheduledFor ? 'Scheduled' : RIDE_STATUS_LABEL[trip.status]}
-        </span>
+        <IDSBadge
+          text={trip.status === 'REQUESTED' && trip.scheduledFor ? 'Scheduled' : RIDE_STATUS_LABEL[trip.status]}
+          tone={trip.status === 'CANCELLED' ? 'danger' : trip.status === 'COMPLETED' ? 'neutral' : 'brand'}
+          variant="soft"
+        />
       </div>
       {action}
     </div>
