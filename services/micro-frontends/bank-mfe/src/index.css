@@ -2774,3 +2774,115 @@ input, textarea, select {
     width: 100% !important;
   }
 }
+
+
+/* Explore + You navigation craft — 2026-10-02.
+   Replace pill-heavy catalogs with calm, scan-friendly rows. The goal is one
+   obvious destination per row, consistent touch targets, and Itunda's own
+   Indigo/flat visual language rather than copying another product's chrome. */
+.itunda-explore-row-list,
+.itunda-you-row-list {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--itunda-border-default);
+}
+
+.itunda-explore-row,
+.itunda-you-row-list > button {
+  width: 100%;
+  min-height: 64px;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--itunda-border-default);
+  border-radius: 0;
+  background: transparent;
+  color: var(--itunda-text-primary);
+  text-align: left;
+  font-size: var(--itunda-type-scale-14-size);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.itunda-explore-row:hover,
+.itunda-you-row-list > button:hover {
+  background: var(--itunda-surface-subtle);
+}
+
+.itunda-explore-row:active,
+.itunda-you-row-list > button:active {
+  background: var(--itunda-surface-brand);
+}
+
+.itunda-explore-row:focus-visible,
+.itunda-you-row-list > button:focus-visible {
+  outline: 2px solid var(--itunda-brand);
+  outline-offset: -2px;
+}
+
+.itunda-explore-row__icon {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--itunda-surface-brand);
+  color: var(--itunda-brand);
+}
+
+.itunda-explore-row__fallback {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--itunda-brand);
+}
+
+.itunda-explore-row__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itunda-explore-row__chevron {
+  color: var(--itunda-text-tertiary);
+  flex-shrink: 0;
+}
+
+.itunda-you-row-list {
+  margin-top: 12px;
+}
+
+.itunda-you-row-list > button {
+  min-height: 60px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding-inline: 0;
+  font-weight: 600;
+}
+
+@media (max-width: 520px) {
+  .itunda-explore-row {
+    min-height: 68px;
+    padding-block: 12px;
+  }
+
+  .itunda-explore-row__icon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .itunda-you-row-list > button {
+    min-height: 64px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itunda-explore-row,
+  .itunda-you-row-list > button {
+    transition: none;
+  }
+}
