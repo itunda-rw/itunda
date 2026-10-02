@@ -27,9 +27,9 @@ function scaffold(name) {
   const id = flag("--id", "rw.example." + slugify(name));
   const category = (flag("--category", "OTHER") || "OTHER").toUpperCase();
   const bundle = flag("--bundle", "https://example.com/itunda-mini-app.bundle.js");
-  if (!/^rw\\.[a-z0-9]+(?:[._-][a-z0-9]+)+$/.test(id)) return fail("invalid mini-app id");
+  if (!/^rw\.[a-z0-9]+(?:[._-][a-z0-9]+)+$/.test(id)) return fail("invalid mini-app id");
   if (!categories.has(category)) return fail("invalid category: " + category);
-  if (!/^https:\\/\\//.test(bundle) && !args.includes("--local")) return fail("bundle URL must use HTTPS, or pass --local");
+  if (!bundle.startsWith("https://") && !args.includes("--local")) return fail("bundle URL must use HTTPS, or pass --local");
   fs.mkdirSync(path.join(directory, "src"), {recursive:true});
   const manifest = {
     $schema: "https://itunda.dev/schemas/mini-app-manifest.v1.json",
@@ -56,13 +56,13 @@ function validate(file) {
   try { m = JSON.parse(fs.readFileSync(target,"utf8")); } catch { return fail("manifest is not valid JSON"); }
   const e = [];
   if (m.manifestVersion !== 1) e.push("manifestVersion must be 1");
-  if (typeof m.id !== "string" || !/^rw\\.[a-z0-9]+(?:[._-][a-z0-9]+)+$/.test(m.id)) e.push("id is invalid");
+  if (typeof m.id !== "string" || !/^rw\.[a-z0-9]+(?:[._-][a-z0-9]+)+$/.test(m.id)) e.push("id is invalid");
   if (typeof m.name !== "string" || !m.name.trim()) e.push("name is required");
-  if (typeof m.version !== "string" || !/^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$/.test(m.version)) e.push("version must be semantic");
+  if (typeof m.version !== "string" || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(m.version)) e.push("version must be semantic");
   if (!categories.has(m.category)) e.push("category is invalid");
   if (m.entry?.type !== "saronite") e.push("entry.type must be saronite");
-  if (typeof m.entry?.bundleUrl !== "string" || !/^https:\\/\\//.test(m.entry.bundleUrl)) e.push("entry.bundleUrl must be HTTPS");
-  if (typeof m.icon?.url !== "string" || !/^https:\\/\\//.test(m.icon.url)) e.push("icon.url must be HTTPS");
+  if (typeof m.entry?.bundleUrl !== "string" || !m.entry.bundleUrl.startsWith("https://")) e.push("entry.bundleUrl must be HTTPS");
+  if (typeof m.icon?.url !== "string" || !m.icon.url.startsWith("https://")) e.push("icon.url must be HTTPS");
   if (!Array.isArray(m.permissions) || m.permissions.some(p => !permissions.has(p))) e.push("permissions contains an unsupported scope");
   if (new Set(m.permissions || []).size !== (m.permissions || []).length) e.push("permissions must not contain duplicates");
   if (m.brandTheme) for (const mode of ["light","dark"]) for (const role of ["brand","brandStrong","brandSurface","onBrand","focus","pressed"]) if (!/^#[0-9A-Fa-f]{6}$/.test(m.brandTheme?.[mode]?.[role] || "")) e.push("brandTheme."+mode+"."+role+" must be six-digit hex");
