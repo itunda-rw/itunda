@@ -21,7 +21,8 @@ concurrency:
 
 jobs:
   ios:
-    runs-on: macos-15
+    # Standard Intel lane; larger macOS runners require Team/Enterprise.
+    runs-on: macos-15-intel
     timeout-minutes: 45
 
     steps:
