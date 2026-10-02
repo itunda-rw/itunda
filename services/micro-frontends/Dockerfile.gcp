@@ -24,7 +24,8 @@ RUN rm -rf services/micro-frontends/host-app/dist/remotes \
  && test -s services/micro-frontends/host-app/dist/index.html \
  && test -s services/micro-frontends/host-app/dist/remotes/maps/index.html \
  && test -s services/micro-frontends/host-app/dist/remotes/bank/index.html \
- && test -s services/micro-frontends/host-app/dist/remotes/kyc/index.html
+ && test -s services/micro-frontends/host-app/dist/remotes/kyc/index.html \
+ && node -e 'const fs=require("fs"); const path=require("path"); for (const root of ["services/micro-frontends/host-app/dist","services/micro-frontends/host-app/dist/remotes/maps","services/micro-frontends/host-app/dist/remotes/bank","services/micro-frontends/host-app/dist/remotes/kyc"]) { const html=fs.readFileSync(path.join(root,"index.html"),"utf8"); const scripts=[...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map(m=>m[1]); for (const src of scripts) { if (src.startsWith("http")) continue; const rel=src.replace(/^\\//,""); const candidate=path.join("services/micro-frontends/host-app/dist",rel); if (!fs.existsSync(candidate)) throw new Error("Missing script referenced by "+path.join(root,"index.html")+": "+src); } }'
 
 FROM nginx:1.27-alpine
 COPY services/micro-frontends/nginx.conf /etc/nginx/conf.d/default.conf
