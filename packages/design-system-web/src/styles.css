@@ -710,3 +710,91 @@
     border-color: GrayText;
   }
 }
+
+
+/* Keypad and badge primitives: reusable interaction language belongs to IDS. */
+.ids-keypad-button {
+  width: 64px;
+  height: 64px;
+  min-width: 44px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--itunda-radius-pill);
+  background: var(--itunda-surface-subtle);
+  color: var(--itunda-text-primary);
+  font: inherit;
+  font-size: var(--itunda-type-scale-20-size);
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color var(--itunda-motion-fast) var(--itunda-ease-out),
+    transform var(--itunda-motion-fast) var(--itunda-ease-out);
+}
+.ids-keypad-button:hover:not(:disabled) {
+  background: var(--itunda-surface-brand);
+}
+.ids-keypad-button:active:not(:disabled) {
+  transform: scale(.97);
+}
+.ids-keypad-button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--itunda-focus) 28%, transparent);
+  outline-offset: 3px;
+}
+.ids-keypad-button:disabled {
+  color: var(--itunda-text-tertiary);
+  cursor: not-allowed;
+  opacity: .52;
+}
+.ids-keypad-button--delete {
+  background: transparent;
+  color: var(--itunda-text-secondary);
+}
+.ids-keypad-button--delete:hover:not(:disabled) {
+  background: var(--itunda-surface-subtle);
+}
+@media (max-width: 420px) {
+  .ids-keypad-button {
+    width: 60px;
+    height: 60px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ids-keypad-button { transition: none; }
+  .ids-keypad-button:active:not(:disabled) { transform: none; }
+}
+
+.ids-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 2px 7px;
+  border: 1px solid transparent;
+  border-radius: var(--itunda-radius-sm);
+  font-size: var(--itunda-type-scale-11-size);
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.ids-badge--filled {
+  color: var(--itunda-text-inverse);
+}
+.ids-badge--soft {
+  background: var(--itunda-surface-subtle);
+}
+.ids-badge--brand { --ids-badge-color: var(--itunda-brand); }
+.ids-badge--neutral { --ids-badge-color: var(--itunda-text-secondary); }
+.ids-badge--success { --ids-badge-color: var(--itunda-green); }
+.ids-badge--danger { --ids-badge-color: var(--itunda-red); }
+.ids-badge--warning { --ids-badge-color: var(--itunda-orange); }
+.ids-badge--filled {
+  background: var(--ids-badge-color);
+}
+.ids-badge--soft {
+  color: var(--ids-badge-color);
+  border-color: color-mix(in srgb, var(--ids-badge-color) 20%, var(--itunda-border-default));
+  background: color-mix(in srgb, var(--ids-badge-color) 10%, transparent);
+}
