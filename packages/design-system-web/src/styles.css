@@ -839,3 +839,10 @@
 .ids-soft-list > * + * { border-top: 0; }
 .ids-button { box-shadow: none; }
 .ids-card { border-color: transparent; }
+
+
+/* Soft surface calibration — reduce visual stiffness without removing semantic focus/error boundaries. */
+.ids-card { border: 0; }
+.ids-card + .ids-card { margin-top: 12px; }
+.ids-badge--soft { border-color: transparent; }
+.ids-toast { box-shadow: 0 8px 28px color-mix(in srgb, var(--itunda-text-primary) 12%, transparent); }
