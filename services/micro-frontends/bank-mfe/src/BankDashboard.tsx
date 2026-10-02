@@ -2971,81 +2971,43 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   }
 
   return (
-    <div style={{ padding: '20px', paddingBottom: '100px', maxWidth: '480px', margin: '0 auto' }}>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', padding: '0 8px' }}
-      >
-        <h2 style={{ color: 'var(--itunda-text-primary)', margin: 0, fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: '700', letterSpacing: '-0.5px' }}>Itunda</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {user && <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-text-tertiary)' }}>{user.firstName}</span>}
+    <div className="itunda-app-shell">
+      <header className="itunda-app-header">
+        <div className="itunda-app-brand">
+          <span className="itunda-app-brand-mark" aria-hidden="true">
+            <IconShieldCheck size={20} color="currentColor" />
+          </span>
+          <div>
+            <div className="itunda-app-brand-name">Itunda</div>
+            {user && <div className="itunda-app-greeting">{user.firstName}</div>}
+          </div>
+        </div>
+
+        <div className="itunda-app-actions">
           <button
+            className="itunda-icon-button"
             onClick={() => { setFocusExploreSearch(true); setTab('EXPLORE'); }}
-            style={{ color: 'var(--itunda-text-tertiary)', display: 'flex', padding: '4px' }}
             aria-label="Search all services"
           >
-            <IconSearch size={18} />
+            <IconSearch size={20} />
           </button>
-          <select
-            value={locale}
-            onChange={(e) => setLocale(e.target.value as 'en' | 'rw' | 'fr')}
-            aria-label="Language"
-            style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--itunda-border-default)', color: 'var(--itunda-text-secondary)', background: 'var(--itunda-surface-default)' }}
-          >
-            {LOCALES.map((l) => (
-              <option key={l.code} value={l.code}>{l.label}</option>
-            ))}
-          </select>
-          <button onClick={handleLogout} style={{ color: 'var(--itunda-text-tertiary)', display: 'flex', padding: '4px' }} aria-label="Sign out">
+          <label className="itunda-app-language">
+            <span className="sr-only">Language</span>
+            <select
+              value={locale}
+              onChange={(e) => setLocale(e.target.value as 'en' | 'rw' | 'fr')}
+              aria-label="Language"
+            >
+              {LOCALES.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
+            </select>
+          </label>
+          <button className="itunda-icon-button" onClick={handleLogout} aria-label="Sign out">
             <LogOut size={18} />
           </button>
         </div>
-      </motion.div>
+      </header>
 
-      <div style={{ display: 'flex', gap: '2px', padding: '4px', marginBottom: '16px', backgroundColor: 'transparent', borderBottom: '1px solid var(--itunda-border-default)' }}>
-        {PRIMARY_TABS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            aria-current={tab === id ? 'page' : undefined}
-            style={{
-              flex: 1, padding: '7px 2px', borderRadius: 'var(--itunda-control-radius, 12px)', fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700,
-              color: tab === id ? 'var(--itunda-surface-default)' : 'var(--itunda-text-secondary)',
-              backgroundColor: tab === id ? 'var(--itunda-indigo)' : 'transparent',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px',
-            }}
-          >
-            <div style={{ position: 'relative' }}>
-              <Icon size={18} />
-              {id === 'MESSAGES' && messagesUnreadCount > 0 && (
-                <span
-                  style={{
-                    position: 'absolute', top: '-6px', right: '-10px', minWidth: '16px', height: '16px', padding: '0 3px',
-                    borderRadius: '999px', backgroundColor: 'var(--itunda-red)', color: 'var(--itunda-surface-default)',
-                    fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    lineHeight: 1,
-                  }}
-                >
-                  {messagesUnreadCount > 99 ? '99+' : messagesUnreadCount}
-                </span>
-              )}
-              {id === 'YOU' && hasUnreadNotifications && (
-                <span
-                  style={{
-                    position: 'absolute', top: '-2px', right: '-4px', width: '9px', height: '9px',
-                    borderRadius: '999px', backgroundColor: 'var(--itunda-red)',
-                    border: '1.5px solid var(--itunda-surface-subtle)',
-                  }}
-                  aria-label="Unread notifications"
-                />
-              )}
-            </div>
-            {label}
-          </button>
-        ))}
-      </div>
-
+      <main className="itunda-app-content">
       {tab === 'HOME' && <HomeView />}
       {tab === 'PAY' && <PayHub onNavigateToTab={setTab} onNavigateToCard={() => setTab('CARD')} />}
       {tab === 'EXPLORE' && (
@@ -3141,6 +3103,32 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
           }}
         />
       )}
+      </main>
+
+      <nav className="itunda-bottom-nav" aria-label="Primary navigation">
+        {PRIMARY_TABS.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            className={`itunda-bottom-nav__item${tab === id ? ' is-active' : ''}`}
+            onClick={() => setTab(id)}
+            aria-current={tab === id ? 'page' : undefined}
+          >
+            <span className="itunda-bottom-nav__icon">
+              <Icon size={21} />
+              {id === 'MESSAGES' && messagesUnreadCount > 0 && (
+                <span className="itunda-bottom-nav__badge">
+                  {messagesUnreadCount > 99 ? '99+' : messagesUnreadCount}
+                </span>
+              )}
+              {id === 'YOU' && hasUnreadNotifications && (
+                <span className="itunda-bottom-nav__dot" aria-label="Unread notifications" />
+              )}
+            </span>
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   );
+
 }
