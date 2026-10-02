@@ -672,6 +672,7 @@ __metadata:
   dependencies:
     "@emotion/is-prop-valid": "npm:^1.3.1"
     "@itunda/design-tokens": "workspace:*"
+    "@itunda/design-system-web": "workspace:*"
     "@originjs/vite-plugin-federation": "catalog:"
     "@types/node": "catalog:"
     "@types/qrcode": "npm:^1.5.5"
