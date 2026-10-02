@@ -3349,20 +3349,8 @@ input, textarea, select {
 .itunda-app-content .itunda-flat-section + .itunda-flat-section {
   margin-top: 18px;
 }
-.itunda-app-header {
-  background: color-mix(in srgb, var(--itunda-surface-default) 78%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--itunda-border-default) 42%, transparent);
-  box-shadow: 0 8px 28px color-mix(in srgb, var(--itunda-text-primary) 5%, transparent);
-  backdrop-filter: blur(18px) saturate(135%);
-  -webkit-backdrop-filter: blur(18px) saturate(135%);
-}
-.itunda-bottom-nav {
-  background: color-mix(in srgb, var(--itunda-surface-default) 82%, transparent);
-  border-top: 1px solid color-mix(in srgb, var(--itunda-border-default) 42%, transparent);
-  box-shadow: 0 -10px 32px color-mix(in srgb, var(--itunda-text-primary) 7%, transparent);
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
-}
+/* Floating shell surfaces use IDS glass primitives directly.
+   Product CSS owns placement/layout; IDS owns the surface language. */
 .itunda-bottom-nav__item.is-active .itunda-bottom-nav__icon {
   background: color-mix(in srgb, var(--itunda-brand) 14%, transparent);
   color: var(--itunda-brand);
@@ -3376,7 +3364,4 @@ input, textarea, select {
   .itunda-app-content { padding-top: 8px; padding-bottom: 104px; }
   .itunda-app-content .itunda-flat-section { padding-block: 22px; }
 }
-@media (prefers-reduced-transparency: reduce) {
-  .itunda-app-header,
-  .itunda-bottom-nav { background: var(--itunda-surface-default); backdrop-filter: none; -webkit-backdrop-filter: none; }
-}
+/* IDS glass primitives already handle reduced-transparency and forced-colors fallbacks. */
