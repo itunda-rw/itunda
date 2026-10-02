@@ -32,7 +32,7 @@ function scaffold(name) {
   if (!bundle.startsWith("https://") && !args.includes("--local")) return fail("bundle URL must use HTTPS, or pass --local");
   fs.mkdirSync(path.join(directory, "src"), {recursive:true});
   const manifest = {
-    $schema: "https://itunda.dev/schemas/mini-app-manifest.v1.json",
+    $schema: "https://raw.githubusercontent.com/itunda-rw/itunda/main/packages/saronite/mini-apps/partner-template/manifest.schema.json",
     manifestVersion: 1, id, name: name.trim(), version: "0.1.0", category,
     description: "Itunda mini-app: " + name.trim(),
     entry: {type:"saronite", bundleUrl:bundle},
