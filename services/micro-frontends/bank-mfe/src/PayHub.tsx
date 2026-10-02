@@ -306,7 +306,7 @@ export function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab:
           PayByCodeCard's own already-real camera-scan flow
           (id="pay-by-code-section" below) -- not a new scanner, just a faster,
           top-bar-level entry point to the existing real one. */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '4px 4px 16px' }}>
+      <div className="itunda-pay-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '4px 4px 16px' }}>
         <h2 style={{ fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>itunda Pay</h2>
         <div style={{ display: 'flex', gap: '4px' }}>
           <button
@@ -423,7 +423,7 @@ export function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab:
               <IconChevronRight size={18} color="var(--itunda-grey-400)" />
             </button>
           ) : (
-            <div style={{ border: '1px dashed var(--itunda-grey-300)', borderRadius: 'var(--itunda-radius-md)', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="itunda-pay-empty-card" style={{ border: '1px dashed var(--itunda-grey-300)', borderRadius: 'var(--itunda-radius-md)', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{t('overview.teaserCards')}</p>
               <button className="itunda-btn itunda-btn-secondary" onClick={onNavigateToCard}>{t('overview.teaserCardsCta')}</button>
             </div>
