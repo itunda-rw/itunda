@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion, useAnimation } from 'framer-motion';
 import { Delete } from 'lucide-react';
-import { Button } from '@itunda/design-system-web';
+import { KeypadButton } from '@itunda/design-system-web';
 
 // Real Toss-sourced 6-digit PIN pad (2026-08-24) -- see backend AuthService's own doc
 // comment on the sourced Toss flow this replaces free-form password fields with.
@@ -45,56 +45,29 @@ export function PinPad({ label, onComplete, error, disabled }: { label: string; 
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
-      <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 600, color: 'var(--itunda-grey-700)', margin: 0 }}>{label}</p>
+    <div className="itunda-pin-pad">
+      <p className="itunda-pin-label">{label}</p>
       <motion.div
         animate={digits.length === 6 ? { scale: [1, 1.15, 1] } : shakeControls}
         transition={digits.length === 6 ? { duration: 0.25 } : undefined}
-        style={{ display: 'flex', gap: '14px' }}
+        className="itunda-pin-dots"
         role="status" aria-label={`${digits.length} of 6 digits entered`}
       >
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            style={{
-              width: '14px', height: '14px', borderRadius: '999px',
-              backgroundColor: i < digits.length ? 'var(--itunda-indigo)' : 'var(--itunda-grey-200)',
-              border: error ? '1px solid var(--itunda-red)' : 'none',
-            }}
+            className={`itunda-pin-dot${i < digits.length ? ' is-filled' : ''}${error ? ' has-error' : ''}`}
           />
         ))}
       </motion.div>
-      {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 64px)', gap: '12px', marginTop: '8px' }}>
+      {error && <p className="itunda-pin-error" role="alert">{error}</p>}
+      <div className="itunda-pin-grid">
         {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((n) => (
-          <button
-            key={n}
-            type="button"
-            onClick={() => press(n)}
-            disabled={disabled}
-            style={{ width: '64px', height: '64px', borderRadius: '999px', fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 600, backgroundColor: 'var(--itunda-grey-100)', color: 'var(--itunda-grey-900)' }}
-          >
-            {n}
-          </button>
+          <KeypadButton key={n} onClick={() => press(n)} disabled={disabled} aria-label={`Enter ${n}`}>{n}</KeypadButton>
         ))}
         <div />
-        <button
-          type="button"
-          onClick={() => press('0')}
-          disabled={disabled}
-          style={{ width: '64px', height: '64px', borderRadius: '999px', fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 600, backgroundColor: 'var(--itunda-grey-100)', color: 'var(--itunda-grey-900)' }}
-        >
-          0
-        </button>
-        <button
-          type="button"
-          onClick={backspace}
-          disabled={disabled}
-          aria-label="Delete"
-          style={{ width: '64px', height: '64px', borderRadius: '999px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--itunda-grey-500)' }}
-        >
-          <Delete size={22} />
-        </button>
+        <KeypadButton onClick={() => press('0')} disabled={disabled} aria-label="Enter 0">0</KeypadButton>
+        <KeypadButton onClick={backspace} disabled={disabled} aria-label="Delete" tone="delete"><Delete size={22} aria-hidden="true" /></KeypadButton>
       </div>
     </div>
   );
