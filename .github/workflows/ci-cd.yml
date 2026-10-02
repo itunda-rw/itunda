@@ -298,7 +298,7 @@ jobs:
   # `tuist generate` -- see ios/Podfile's own comment) -- this is the first time
   # that's been a real, run green check instead of an untested claim.
   ios-build:
-    runs-on: macos-15
+    runs-on: macos-15-intel
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
