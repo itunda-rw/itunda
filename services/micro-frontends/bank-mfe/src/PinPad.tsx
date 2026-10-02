@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion, useAnimation } from 'framer-motion';
 import { Delete } from 'lucide-react';
+import { Button } from '@itunda/design-system-web';
 
 // Real Toss-sourced 6-digit PIN pad (2026-08-24) -- see backend AuthService's own doc
 // comment on the sourced Toss flow this replaces free-form password fields with.
