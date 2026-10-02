@@ -811,7 +811,7 @@
   border-radius: var(--itunda-radius-md);
   background: var(--itunda-text-primary);
   color: var(--itunda-text-inverse);
-  box-shadow: var(--itunda-shadow-md);
+  box-shadow: var(--itunda-shadow);
   font-size: var(--itunda-type-scale-14-size);
   line-height: 1.4;
 }
@@ -822,7 +822,7 @@
   padding: 8px 0;
   border: 0;
   background: transparent;
-  color: var(--itunda-indigo-soft);
+  color: var(--itunda-indigo-light);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
