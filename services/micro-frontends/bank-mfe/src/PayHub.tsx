@@ -296,7 +296,7 @@ export function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab:
   }
 
   return (
-    <div>
+    <div className="itunda-pay-page">
       {/* Real redesign (2026-08-26, direct user reference to itunda Bank hub's own
           real structure -- SavingsView's ProductPageHeader/AccountSummaryRow/
           CooperativeSavingsRail): "itunda Pay" branded header (matching Bank hub's
