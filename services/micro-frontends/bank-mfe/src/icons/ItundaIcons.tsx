@@ -53,10 +53,12 @@ function IconBase({ size = 24, children, ...rest }: ItundaIconProps & { children
 
 
 /**
- * Itunda brand mark — new 2026 identity.
+ * Itunda 2026 brand mark.
  *
- * The mark is deliberately rendered with the same brand lavender in both themes;
- * the dimensional layers use opacity rather than switching the underlying color.
+ * This is the dimensional loop/ribbon mark from the supplied brand reference:
+ * a pointed outer loop with a folded vertical ribbon through the center.
+ * Keep the base logo color identical in light/dark mode; depth comes from
+ * controlled opacity rather than theme-dependent recoloring.
  */
 export function IconItundaLogo({ size = 24, ...props }: ItundaIconProps) {
   return (
@@ -68,29 +70,37 @@ export function IconItundaLogo({ size = 24, ...props }: ItundaIconProps) {
       aria-hidden="true"
       {...props}
     >
+      <defs>
+        <linearGradient id="itunda-logo-outer" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="currentColor" stopOpacity=".96" />
+          <stop offset=".45" stopColor="currentColor" stopOpacity=".78" />
+          <stop offset="1" stopColor="currentColor" stopOpacity=".56" />
+        </linearGradient>
+        <linearGradient id="itunda-logo-ribbon" x1="9" y1="3" x2="15" y2="21" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="currentColor" />
+          <stop offset=".52" stopColor="currentColor" stopOpacity=".84" />
+          <stop offset="1" stopColor="currentColor" stopOpacity=".58" />
+        </linearGradient>
+      </defs>
+
+      {/* Pointed outer loop / ring */}
       <path
-        d="M12 1.7C15.8 3.5 19.6 6.8 20.2 10.7C20.8 14.5 17.8 18.9 12 22.3C6.2 18.9 3.2 14.5 3.8 10.7C4.4 6.8 8.2 3.5 12 1.7Z"
-        fill="currentColor"
-        opacity=".92"
+        d="M12 1.9C17.5 3.4 21 7.5 21 12c0 4.5-3.5 8.6-9 10.1C6.5 20.6 3 16.5 3 12c0-4.5 3.5-8.6 9-10.1ZM12 5.2c-2.9 1.1-4.7 3.5-4.7 6.8 0 3 1.8 5.5 4.7 6.8 2.9-1.3 4.7-3.8 4.7-6.8 0-3.3-1.8-5.7-4.7-6.8Z"
+        fill="url(#itunda-logo-outer)"
+        fillRule="evenodd"
       />
+
+      {/* Folded center ribbon */}
       <path
-        d="M12 2.1C9.7 5.3 8.3 8.7 8.4 12.2C8.5 15.2 10 18.2 12 21.7C8.2 19.5 5.8 16.6 5.5 13.5C5.2 9.9 7.5 5.8 12 2.1Z"
-        fill="currentColor"
-        opacity=".58"
+        d="M12 2.5c2.2 2.2 3.5 5 3.5 8.1 0 3.4-1.5 6.5-3.5 10.9-1.9-3.7-3.2-6.6-3.2-9.8 0-3.4 1.1-6.4 3.2-9.2Z"
+        fill="url(#itunda-logo-ribbon)"
       />
+
+      {/* Shadow/fold plane that gives the mark its physical ribbon depth */}
       <path
-        d="M12 2.1C14.3 5.3 15.7 8.7 15.6 12.2C15.5 15.2 14 18.2 12 21.7C15.8 19.5 18.2 16.6 18.5 13.5C18.8 9.9 16.5 5.8 12 2.1Z"
+        d="M12 2.5c-1.4 2.9-2.1 5.7-1.7 8.5.4 3.1 1.3 6.4 1.7 10.5-1.9-3.7-3.2-6.6-3.2-9.8 0-3.4 1.1-6.4 3.2-9.2Z"
         fill="currentColor"
-        opacity=".76"
-      />
-      <path
-        d="M12 4.4C10.9 6.5 10.3 8.8 10.5 11.1C10.7 13.7 11.4 16.1 12 18.7C12.6 16.1 13.3 13.7 13.5 11.1C13.7 8.8 13.1 6.5 12 4.4Z"
-        fill="currentColor"
-      />
-      <path
-        d="M10.5 11.1C10.7 13.7 11.4 16.1 12 18.7C11.1 16.6 9.9 14.9 9.2 13.1C8.5 11.2 8.7 9.5 9.3 8C9.8 9 10.2 10 10.5 11.1Z"
-        fill="currentColor"
-        opacity=".42"
+        opacity=".46"
       />
     </svg>
   );
