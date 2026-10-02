@@ -3250,3 +3250,15 @@ input, textarea, select {
 .itunda-phone-field .ids-field__input { min-height: 56px; border-radius: 14px; }
 .itunda-auth-primary { min-height: 56px; }
 .itunda-auth-secondary { min-height: 48px; }
+
+
+/* PIN pad layout composes the IDS keypad primitive; domain spacing stays local. */
+.itunda-pin-pad { display:flex; flex-direction:column; align-items:center; gap:20px; }
+.itunda-pin-label { margin:0; color:var(--itunda-text-secondary); font-size:var(--itunda-type-scale-15-size); font-weight:600; }
+.itunda-pin-dots { display:flex; gap:14px; }
+.itunda-pin-dot { width:14px; height:14px; border-radius:50%; background:var(--itunda-grey-200); }
+.itunda-pin-dot.is-filled { background:var(--itunda-brand); }
+.itunda-pin-dot.has-error { border:1px solid var(--itunda-red); }
+.itunda-pin-error { margin:0; color:var(--itunda-red); font-size:var(--itunda-type-scale-13-size); }
+.itunda-pin-grid { display:grid; grid-template-columns:repeat(3,64px); gap:12px; margin-top:8px; }
+@media (max-width:420px) { .itunda-pin-grid { grid-template-columns:repeat(3,60px); gap:10px; } .itunda-pin-dots { gap:12px; } }
