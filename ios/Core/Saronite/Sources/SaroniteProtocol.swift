@@ -4,7 +4,7 @@ public enum SaroniteProtocol {
     public static let version = 1
 }
 
-public struct SaroniteRequest: Codable, Sendable {
+public struct SaroniteRequest: Codable {
     public let protocolVersion: Int
     public let kind: String
     public let id: String
@@ -24,13 +24,13 @@ public struct SaroniteRequest: Codable, Sendable {
     }
 }
 
-public struct SaroniteError: Codable, Sendable {
+public struct SaroniteError: Codable {
     public let code: String
     public let message: String
     public let detail: [String: AnyCodable]?
 }
 
-public struct SaroniteResponse: Codable, Sendable {
+public struct SaroniteResponse: Codable {
     public let protocolVersion: Int
     public let kind: String
     public let id: String
@@ -39,12 +39,12 @@ public struct SaroniteResponse: Codable, Sendable {
     public let error: SaroniteError?
 }
 
-public struct SaronitePermissionEvent: Codable, Sendable {
+public struct SaronitePermissionEvent: Codable {
     public let name: String
     public let state: String
 }
 
-public struct SaroniteEvent: Codable, Sendable {
+public struct SaroniteEvent: Codable {
     public let protocolVersion: Int
     public let kind: String
     public let id: String
@@ -54,7 +54,7 @@ public struct SaroniteEvent: Codable, Sendable {
     public let payload: [String: AnyCodable]?
 }
 
-public struct AnyCodable: Codable, Sendable {
+public struct AnyCodable: Codable {
     public let value: Any
     public init(_ value: Any) { self.value = value }
     public init(from decoder: Decoder) throws {
