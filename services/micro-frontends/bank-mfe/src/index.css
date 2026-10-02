@@ -1287,3 +1287,192 @@ input, textarea, select {
     transition: none;
   }
 }
+
+
+/* Itunda 2026 flat-product refinement — Toss-inspired hierarchy without copying
+   Toss visuals. Keep Itunda Indigo, flat surfaces, and the droplet/leaf identity.
+   No gradients, glass effects, or decorative 3D treatment. */
+.itunda-app-header {
+  background: var(--itunda-surface-default);
+  backdrop-filter: none;
+  border-bottom-color: var(--itunda-border-default);
+}
+
+.itunda-app-brand-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+}
+
+.itunda-bottom-nav {
+  background: var(--itunda-surface-default);
+  backdrop-filter: none;
+  border-color: var(--itunda-border-default);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--itunda-text-primary) 9%, transparent);
+}
+
+.itunda-bottom-nav__item.is-active {
+  background: transparent;
+  color: var(--itunda-brand);
+  font-weight: 700;
+}
+
+.itunda-bottom-nav__item.is-active .itunda-bottom-nav__icon {
+  background: var(--itunda-surface-brand);
+  border-radius: 10px;
+  width: 34px;
+  height: 30px;
+}
+
+.itunda-home-page {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.itunda-home-welcome {
+  display: block;
+  padding: 18px 0 20px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.itunda-home-welcome__mark {
+  width: 38px;
+  height: 38px;
+  margin-bottom: 16px;
+  border-radius: 0;
+  background: transparent;
+}
+
+.itunda-home-welcome__eyebrow {
+  margin-bottom: 7px;
+  color: var(--itunda-brand);
+  letter-spacing: .14em;
+}
+
+.itunda-home-welcome h1 {
+  max-width: 520px;
+  font-size: clamp(30px, 7vw, 38px);
+  line-height: 1.08;
+}
+
+.itunda-home-welcome > div:last-child > p:last-child {
+  max-width: 430px;
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 21px;
+}
+
+.itunda-home-actions {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin: 4px 0 18px;
+  border-top: 1px solid var(--itunda-border-default);
+  border-bottom: 1px solid var(--itunda-border-default);
+}
+
+.itunda-home-actions > button {
+  min-height: 92px;
+  padding: 14px 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.itunda-home-actions > button + button {
+  border-left: 1px solid var(--itunda-border-default);
+}
+
+.itunda-home-actions > button:hover {
+  background: var(--itunda-surface-subtle);
+}
+
+.itunda-home-actions__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--itunda-surface-brand);
+}
+
+.itunda-app-content .itunda-flat-section {
+  border-bottom-color: var(--itunda-border-default);
+}
+
+.itunda-app-content .itunda-btn-primary {
+  box-shadow: none;
+}
+
+.itunda-app-content .itunda-btn-secondary {
+  background: transparent;
+}
+
+.itunda-pay-page > button:first-of-type {
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  background: var(--itunda-surface-brand);
+  box-shadow: none;
+}
+
+.itunda-pay-page .itunda-btn-primary {
+  box-shadow: none;
+}
+
+.itunda-explore-page .itunda-flat-section > div > .itunda-btn {
+  min-height: 64px;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.itunda-explore-page .itunda-flat-section > div > .itunda-btn svg {
+  padding: 4px;
+  border-radius: 9px;
+}
+
+.itunda-messages-page > div:first-child {
+  border: 0;
+  border-bottom: 1px solid var(--itunda-border-default);
+  border-radius: 0;
+  padding: 0 0 8px;
+  background: transparent;
+}
+
+.itunda-messages-page > div:not(:first-child) button {
+  border-radius: 0;
+  border-bottom: 1px solid var(--itunda-border-default);
+}
+
+@media (max-width: 520px) {
+  .itunda-home-welcome {
+    padding-top: 12px;
+  }
+
+  .itunda-home-welcome h1 {
+    font-size: 30px;
+  }
+
+  .itunda-home-actions > button {
+    min-height: 84px;
+  }
+
+  .itunda-home-actions__icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .itunda-bottom-nav {
+    box-shadow: 0 6px 24px color-mix(in srgb, var(--itunda-text-primary) 10%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itunda-home-actions > button,
+  .itunda-bottom-nav__item {
+    transition: none;
+  }
+}
