@@ -342,9 +342,10 @@ input, textarea, select {
   display: grid;
   place-items: center;
   border-radius: 12px;
-  color: var(--itunda-text-inverse);
-  background: var(--itunda-brand);
-  box-shadow: 0 8px 22px color-mix(in srgb, var(--itunda-brand) 28%, transparent);
+  color: var(--itunda-logo-color);
+  background: var(--itunda-surface-raised);
+  border: 1px solid color-mix(in srgb, var(--itunda-logo-color) 20%, var(--itunda-border-default));
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--itunda-logo-color) 18%, transparent);
 }
 .itunda-brand-name {
   font-size: 19px;
@@ -528,8 +529,9 @@ input, textarea, select {
   place-items: center;
   flex: 0 0 auto;
   border-radius: 12px;
-  color: var(--itunda-text-inverse);
-  background: var(--itunda-brand);
+  color: var(--itunda-logo-color);
+  background: var(--itunda-surface-raised);
+  border: 1px solid color-mix(in srgb, var(--itunda-logo-color) 20%, var(--itunda-border-default));
 }
 .itunda-app-brand-name {
   font-size: 17px;
