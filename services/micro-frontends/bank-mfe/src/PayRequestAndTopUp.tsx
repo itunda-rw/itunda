@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { DeviceStepUpPrompt } from './DeviceStepUpPrompt';
 import { useI18n } from './i18n/I18nContext';
+import { Button, TextField } from '@itunda/design-system-web';
 import { type TranslationKey } from './i18n/translations';
 import { ApiError } from './lib/api';
 import { type LinkedAccount, fetchLinkedAccounts } from './lib/overview';
@@ -82,22 +83,14 @@ export function RequestMoneyCard() {
     <div style={{ marginTop: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{t('requestMoney.title')}</h3>
-        <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>
-          {showCreate ? t('requestMoney.cancel') : t('requestMoney.newRequest')}
-        </button>
+        <Button variant="secondary" size="sm" onClick={() => setShowCreate((v) => !v)}>{showCreate ? t('requestMoney.cancel') : t('requestMoney.newRequest')}</Button>
       </div>
 
       {showCreate && (
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
-          <input
-            type="number" placeholder={t('requestMoney.amountPlaceholder')} value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
-          />
-          <input
-            type="text" placeholder={t('requestMoney.whatsItFor')} value={description} onChange={(e) => setDescription(e.target.value)}
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
-          />
-          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={creating}>{creating ? t('requestMoney.creating') : t('requestMoney.createButton')}</button>
+          <TextField label={t('requestMoney.amountPlaceholder')} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required />
+          <TextField label={t('requestMoney.whatsItFor')} type="text" value={description} onChange={(e) => setDescription(e.target.value)} />
+          <Button type="submit" variant="primary" size="md" disabled={creating} loading={creating} loadingLabel={t('requestMoney.creating')}>{t('requestMoney.createButton')}</Button>
         </form>
       )}
 
@@ -114,13 +107,8 @@ export function RequestMoneyCard() {
         <DeviceStepUpPrompt onVerified={() => handlePay()} onCancel={() => setNeedsDeviceVerification(false)} />
       ) : (
         <form onSubmit={handlePay} style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-          <input
-            type="text" placeholder={t('requestMoney.payCodePlaceholder')} value={payCode} onChange={(e) => setPayCode(e.target.value)} required
-            style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
-          />
-          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={paying} style={{ padding: '10px 16px', fontSize: 'var(--itunda-type-scale-13-size)' }}>
-            {paying ? t('requestMoney.paying') : t('requestMoney.pay')}
-          </button>
+          <TextField label={t('requestMoney.payCodePlaceholder')} type="text" value={payCode} onChange={(e) => setPayCode(e.target.value)} required />
+          <Button type="submit" variant="primary" size="md" disabled={paying} loading={paying} loadingLabel={t('requestMoney.paying')}>{t('requestMoney.pay')}</Button>
         </form>
       )}
 
