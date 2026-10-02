@@ -1,4 +1,4 @@
-import { createSaroniteMockHost, renderSaroniteDevPanel } from '@itunda/saronite-devtools';
+import { createSaroniteMockHost } from '@itunda/saronite-devtools';
 import './style.css';
 
 type DemoState = {
@@ -78,5 +78,7 @@ document.querySelector<HTMLButtonElement>('#location')!.onclick = () => {
 };
 
 if (import.meta.env.DEV) {
-  renderSaroniteDevPanel(host, document.body);
+  void import('@itunda/saronite-devtools').then(({ renderSaroniteDevPanel }) => {
+    renderSaroniteDevPanel(host, document.body);
+  });
 }
