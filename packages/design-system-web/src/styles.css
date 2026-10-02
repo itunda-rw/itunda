@@ -878,3 +878,22 @@
   .ids-glass,
   .ids-glass-strong { transition: none; }
 }
+
+
+/* Itunda layered product surfaces — 2026-10-02
+   Keep the main content flat and spacious; reserve glass for a surface that floats
+   above content. Brand tint provides the clear Itunda color cue without gradients. */
+.itunda-primary-surface {
+  background:
+    color-mix(in srgb, var(--itunda-surface-brand) 72%, var(--itunda-surface-default));
+  border: 1px solid color-mix(in srgb, var(--itunda-brand) 16%, var(--itunda-border-default));
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--itunda-brand) 8%, transparent);
+}
+.itunda-primary-surface:focus-within {
+  border-color: color-mix(in srgb, var(--itunda-brand) 42%, var(--itunda-border-default));
+}
+@media (prefers-reduced-transparency: reduce) {
+  .itunda-primary-surface {
+    background: var(--itunda-surface-brand);
+  }
+}
