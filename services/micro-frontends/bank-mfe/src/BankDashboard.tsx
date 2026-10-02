@@ -947,15 +947,19 @@ export function ProductPageHeader({ title, subtitle }: { title: string; subtitle
   );
 }
 
-function ExploreTabPill({ id, label, icon: Icon, onSelect }: { id: Tab; label: string; icon?: ComponentType<{ size?: number }>; onSelect: (id: Tab) => void }) {
+function ExploreTabRow({ id, label, icon: Icon, onSelect }: { id: Tab; label: string; icon?: ComponentType<{ size?: number }>; onSelect: (id: Tab) => void }) {
   return (
     <button
-      className="itunda-btn itunda-btn-secondary"
-      style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--itunda-type-scale-13-size)', padding: '8px 12px', borderRadius: '999px' }}
+      type="button"
+      className="itunda-explore-row"
       onClick={() => onSelect(id)}
+      aria-label={label}
     >
-      {Icon && <Icon size={16} />}
-      {label}
+      <span className="itunda-explore-row__icon" aria-hidden="true">
+        {Icon ? <Icon size={20} /> : <span className="itunda-explore-row__fallback" />}
+      </span>
+      <span className="itunda-explore-row__label">{label}</span>
+      <IconChevronRight size={18} aria-hidden="true" className="itunda-explore-row__chevron" />
     </button>
   );
 }
@@ -1010,9 +1014,9 @@ function ExploreHub({ groups, tabLabel, tabIcon, recentTabs, onSelect, autoFocus
 
       {search.trim() ? (
         matches.length > 0 ? (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          <div className="itunda-explore-row-list">
             {matches.map((id) => (
-              <ExploreTabPill key={id} id={id} label={tabLabel(id)} icon={tabIcon?.(id)} onSelect={onSelect} />
+              <ExploreTabRow key={id} id={id} label={tabLabel(id)} icon={tabIcon?.(id)} onSelect={onSelect} />
             ))}
           </div>
         ) : (
@@ -1027,7 +1031,7 @@ function ExploreHub({ groups, tabLabel, tabIcon, recentTabs, onSelect, autoFocus
               </h2>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {recentTabs.map((id) => (
-                  <ExploreTabPill key={id} id={id} label={tabLabel(id)} icon={tabIcon?.(id)} onSelect={onSelect} />
+                  <ExploreTabRow key={id} id={id} label={tabLabel(id)} icon={tabIcon?.(id)} onSelect={onSelect} />
                 ))}
               </div>
             </section>
@@ -1046,7 +1050,7 @@ function ExploreHub({ groups, tabLabel, tabIcon, recentTabs, onSelect, autoFocus
               </h2>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {group.ids.map((id) => (
-                  <ExploreTabPill key={id} id={id} label={tabLabel(id)} icon={tabIcon?.(id)} onSelect={onSelect} />
+                  <ExploreTabRow key={id} id={id} label={tabLabel(id)} icon={tabIcon?.(id)} onSelect={onSelect} />
                 ))}
               </div>
             </section>
@@ -1068,7 +1072,7 @@ function YouHub({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) {
       <MyView />
       <div className="itunda-flat-section">
         <h2 style={{ margin: 0, fontSize: 'var(--itunda-type-scale-16-size)' }}>Insights</h2>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
+        <div className="itunda-you-row-list">
           {[
             { label: 'Overview', tab: 'OVERVIEW' as Tab },
             { label: 'Spending insights', tab: 'SPENDING' as Tab },
