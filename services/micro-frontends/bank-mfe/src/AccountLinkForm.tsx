@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { ApiError } from './lib/api';
 import { linkAccount, type LinkedAccount } from './lib/overview';
 import { useI18n } from './i18n/I18nContext';
+import { Button, Select, TextField } from '@itunda/design-system-web';
 
 const LINK_PROVIDERS = ['MTN Mobile Money', 'Airtel Money', 'Bank of Kigali', 'Equity Bank Rwanda'];
 // Real friction point found live via Toss Simplicity21 research (2026-08-08, session 2-1
