@@ -120,7 +120,7 @@ jobs:
       - name: Build iOS simulator app
         working-directory: ios
         run: |
-          xcodebuild             -workspace Itunda.xcworkspace             -scheme ItundaApp             -destination 'generic/platform=iOS Simulator'             CODE_SIGNING_ALLOWED=NO             build
+          xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp -destination 'generic/platform=iOS Simulator' -derivedDataPath .ci-derived-data CODE_SIGNING_ALLOWED=NO build
 
       - name: Run iOS UI tests
         working-directory: ios
