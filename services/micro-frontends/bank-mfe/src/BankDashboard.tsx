@@ -3006,7 +3006,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
 
   return (
     <div className="itunda-app-shell">
-      <header className="itunda-app-header">
+      <header className="itunda-app-header ids-glass-strong">
         <div className="itunda-app-brand">
           <span className="itunda-app-brand-mark" aria-hidden="true">
             <IconItundaLogo size={28} color="currentColor" />
@@ -3139,7 +3139,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       )}
       </main>
 
-      <nav className="itunda-bottom-nav" aria-label="Primary navigation">
+      <nav className="itunda-bottom-nav ids-glass-strong" aria-label="Primary navigation">
         {PRIMARY_TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
