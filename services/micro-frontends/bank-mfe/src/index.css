@@ -2700,3 +2700,30 @@ input, textarea, select {
     min-height: 54px !important;
   }
 }
+
+
+/* Transfer flow: progress should orient, not compete with the decision. */
+.itunda-progress-stepper {
+  max-width: 520px;
+  margin-inline: auto;
+  opacity: .96;
+}
+
+.itunda-progress-stepper > div {
+  min-width: 0;
+}
+
+.itunda-progress-stepper span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 520px) {
+  .itunda-progress-stepper {
+    padding-inline: 2px;
+  }
+
+  .itunda-progress-stepper span {
+    font-size: 10px !important;
+  }
+}
