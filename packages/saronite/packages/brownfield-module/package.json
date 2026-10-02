@@ -5,7 +5,8 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "contract-test": "node --experimental-strip-types src/protocol.test.ts"
   },
   "peerDependencies": {
     "react-native": ">=0.70.0"
