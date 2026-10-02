@@ -1575,3 +1575,183 @@ input, textarea, select {
     min-height: 82px;
   }
 }
+
+
+/* Itunda product polish — inspired by public Toss product principles, not copied
+   visuals. Prioritize readable hierarchy, short paths, generous whitespace and
+   predictable rows. Keep Itunda Indigo + flat surfaces. */
+.itunda-home-welcome__mark {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  margin: 0 0 16px;
+  color: var(--itunda-logo-color);
+  background: transparent;
+  border: 0;
+}
+
+.itunda-home-welcome__copy {
+  max-width: 640px;
+}
+
+.itunda-home-welcome h1 {
+  max-width: 580px;
+  font-size: clamp(32px, 7.5vw, 42px);
+  line-height: 1.05;
+  letter-spacing: -.055em;
+  font-weight: 760;
+}
+
+.itunda-home-welcome__copy > p:last-child {
+  margin-top: 12px;
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.itunda-home-actions {
+  margin-top: 2px;
+  margin-bottom: 32px;
+}
+
+.itunda-home-actions > button {
+  min-height: 88px;
+  padding: 16px 8px;
+  color: var(--itunda-text-primary);
+  font-weight: 700;
+}
+
+.itunda-home-actions__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--itunda-brand);
+}
+
+.itunda-home-actions > button:hover,
+.itunda-home-actions > button:focus-visible {
+  background: var(--itunda-surface-subtle);
+}
+
+.itunda-home-actions > button:focus-visible,
+.itunda-app-content button:focus-visible,
+.itunda-bottom-nav__item:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--itunda-brand) 22%, transparent);
+  outline-offset: 2px;
+}
+
+.itunda-home-discover {
+  margin-top: 0;
+}
+
+.itunda-home-discover > div > div > div {
+  border-bottom: 1px solid var(--itunda-border-default);
+}
+
+.itunda-home-discover > div > div > div:last-child {
+  border-bottom: 0;
+}
+
+.itunda-bottom-nav {
+  box-shadow: none;
+  border-radius: 18px;
+}
+
+.itunda-bottom-nav__item {
+  border-radius: 12px;
+}
+
+.itunda-bottom-nav__item.is-active .itunda-bottom-nav__icon {
+  width: 32px;
+  height: 28px;
+  border-radius: 9px;
+}
+
+.itunda-app-header {
+  box-shadow: none;
+}
+
+.itunda-app-content {
+  max-width: 760px;
+}
+
+.itunda-app-content h1,
+.itunda-app-content h2,
+.itunda-app-content h3 {
+  text-wrap: balance;
+}
+
+.itunda-app-content .itunda-flat-section {
+  background: transparent;
+}
+
+.itunda-explore-page > .itunda-flat-section:first-of-type {
+  border-top: 1px solid var(--itunda-border-default);
+}
+
+.itunda-explore-page .itunda-flat-section > div > .itunda-btn {
+  min-height: 60px;
+}
+
+.itunda-explore-page .itunda-flat-section > div > .itunda-btn span {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.itunda-explore-page .itunda-flat-section > div > .itunda-btn svg {
+  margin-right: 10px;
+}
+
+.itunda-you-page > .itunda-flat-section {
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+.itunda-you-page > .itunda-flat-section > h2 {
+  font-size: 18px !important;
+  letter-spacing: -.02em;
+}
+
+.itunda-messages-page > div:not(:first-child) button {
+  min-height: 72px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.itunda-messages-page > div:not(:first-child) button:hover {
+  background: var(--itunda-surface-subtle);
+}
+
+.itunda-pay-page .itunda-btn-primary {
+  box-shadow: none;
+}
+
+@media (max-width: 520px) {
+  .itunda-home-welcome__mark {
+    margin-bottom: 14px;
+  }
+
+  .itunda-home-welcome h1 {
+    font-size: 32px;
+  }
+
+  .itunda-home-actions {
+    margin-bottom: 28px;
+  }
+
+  .itunda-home-actions > button {
+    min-height: 82px;
+  }
+
+  .itunda-app-content {
+    max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itunda-home-actions > button,
+  .itunda-messages-page > div:not(:first-child) button {
+    transition: none;
+  }
+}
