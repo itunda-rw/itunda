@@ -3298,7 +3298,7 @@ input, textarea, select {
 .itunda-explore-row:active,
 .itunda-you-row-list > button:active { border-radius: 14px; }
 .itunda-app-header { border-bottom: 0; }
-.itunda-bottom-nav { border-top: 0; box-shadow: 0 -4px 20px color-mix(in srgb, var(--itunda-text-primary) 4%, transparent); }
+.itunda-bottom-nav { border-top: 0; box-shadow: 0 -6px 24px color-mix(in srgb, var(--itunda-text-primary) 5%, transparent); }
 .itunda-auth-header { border-bottom: 0; }
 .itunda-auth-footer { border-top: 0; }
 .itunda-messages-page .itunda-flat-section,
@@ -3306,3 +3306,15 @@ input, textarea, select {
 .itunda-pay-page .itunda-flat-section,
 .itunda-explore-page .itunda-flat-section { border-bottom: 0; }
 .itunda-app-content .itunda-flat-section > button + button { border-top: 0; }
+
+
+/* Soft surface calibration — keep structure through rhythm, not rules. */
+.itunda-app-content .itunda-flat-section { border: 0 !important; }
+.itunda-app-content .itunda-flat-section + .itunda-flat-section { margin-top: 8px; }
+.itunda-app-content .itunda-flat-section > button + button { border-top: 0 !important; }
+.itunda-explore-row-list > * + *,
+.itunda-you-row-list > * + * { margin-top: 4px; }
+.itunda-explore-row,
+.itunda-you-row-list > button { border: 0 !important; }
+.itunda-explore-row:hover,
+.itunda-you-row-list > button:hover { background: var(--itunda-surface-subtle); }
