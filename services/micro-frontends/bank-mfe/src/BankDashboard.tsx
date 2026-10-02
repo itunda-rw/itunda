@@ -2524,7 +2524,6 @@ function CardView() {
             display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '6px',
           }}
         >
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(115deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 40%)' }} />
           <BankCardChip size={16} />
           {card.frozen ? (
             <LockGlyph size={14} color="#fff" style={{ alignSelf: 'flex-end' }} />
