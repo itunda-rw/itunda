@@ -2420,3 +2420,97 @@ input, textarea, select {
     gap: 10px !important;
   }
 }
+
+
+/* Home + Explore refinement — 2026-10-02.
+   Sharpen the information hierarchy rather than adding more UI.
+   Public Toss principles used as reference: One Thing, Clear Action,
+   Value First and Minimum Features. Visual language remains Itunda-native. */
+.itunda-home-welcome__mark {
+  background: transparent;
+  border-radius: 0;
+  margin-bottom: 12px;
+}
+
+.itunda-home-welcome h1 {
+  font-size: clamp(30px, 6.8vw, 38px);
+  line-height: 1.08;
+  letter-spacing: -.045em;
+  max-width: 520px;
+}
+
+.itunda-home-welcome__copy > p:last-child {
+  max-width: 540px;
+  color: var(--itunda-text-secondary);
+  font-size: 14px;
+  line-height: 21px;
+}
+
+.itunda-home-actions {
+  margin-top: 16px;
+}
+
+.itunda-home-actions > button:first-child {
+  min-height: 68px;
+  border-color: color-mix(in srgb, var(--itunda-brand) 16%, var(--itunda-border-default));
+}
+
+.itunda-home-actions > button:not(:first-child) {
+  color: var(--itunda-text-tertiary);
+}
+
+.itunda-home-discover {
+  border-top: 0;
+}
+
+.itunda-home-discover h2 {
+  letter-spacing: -.025em;
+}
+
+.itunda-home-discover > div > div > div {
+  min-height: 64px;
+}
+
+.itunda-home-discover > div > div > div:hover {
+  background: var(--itunda-surface-subtle);
+}
+
+.itunda-explore-page {
+  padding-top: 6px;
+}
+
+.itunda-explore-page > div[style*="position: relative"] {
+  margin-bottom: 8px !important;
+}
+
+.itunda-explore-page > div[style*="position: relative"] input {
+  background: var(--itunda-surface-subtle);
+  border: 1px solid transparent !important;
+}
+
+.itunda-explore-page .itunda-flat-section > h2 {
+  margin-top: 6px !important;
+}
+
+.itunda-explore-page .itunda-flat-section > div > div > button {
+  min-height: 64px !important;
+}
+
+.itunda-explore-page .itunda-flat-section > div > div > button svg {
+  background: transparent;
+  color: var(--itunda-brand);
+}
+
+@media (max-width: 520px) {
+  .itunda-home-welcome h1 {
+    font-size: 30px;
+  }
+
+  .itunda-home-actions > button:first-child {
+    min-height: 64px;
+  }
+
+  .itunda-home-discover > div > div > div {
+    min-height: 60px;
+  }
+}
