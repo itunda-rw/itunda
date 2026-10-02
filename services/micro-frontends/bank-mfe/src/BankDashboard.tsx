@@ -894,14 +894,43 @@ export function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode,
 // SavingsView ("itunda Bank"); CooperativeSavingsRail was only ever a teaser
 // linking into SavingsView's own already-complete SaccoSection/IkiminaSection, so
 // it's removed outright rather than moved -- nothing it showed was unique.
-function HomeView() {
+function HomeView({ userName, onNavigateToTab }: { userName?: string; onNavigateToTab: (tab: Tab) => void }) {
   // Real, minimal usage signal (2026-08-10) -- see lib/analytics.ts's own doc comment.
   // Fired once per real mount of Home, the baseline every retention question in the
   // "itunda: the wedge, not the mirror" memo is measured against.
   useEffect(() => { recordEvent('home_view'); }, []);
 
+  const quickActions: { id: Tab; label: string; icon: ComponentType<{ size?: number }> }[] = [
+    { id: 'PAY', label: 'Pay', icon: IconPay },
+    { id: 'EXPLORE', label: 'Explore', icon: IconExplore },
+    { id: 'MESSAGES', label: 'Messages', icon: IconMessages },
+    { id: 'YOU', label: 'You', icon: IconYou },
+  ];
+
   return (
-    <div>
+    <div className="itunda-home-page">
+      <section className="itunda-home-welcome" aria-labelledby="itunda-home-title">
+        <div className="itunda-home-welcome__mark" aria-hidden="true">
+          <IconItundaLogo size={30} color="currentColor" />
+        </div>
+        <div>
+          <p className="itunda-home-welcome__eyebrow">ITUNDA</p>
+          <h1 id="itunda-home-title">{userName ? `Welcome back, ${userName}.` : 'Welcome back.'}</h1>
+          <p>Everything you use most, right where you need it.</p>
+        </div>
+      </section>
+
+      <section className="itunda-home-actions" aria-label="Quick actions">
+        {quickActions.map(({ id, label, icon: Icon }) => (
+          <button key={id} type="button" onClick={() => onNavigateToTab(id)}>
+            <span className="itunda-home-actions__icon" aria-hidden="true">
+              <Icon size={20} />
+            </span>
+            <span>{label}</span>
+          </button>
+        ))}
+      </section>
+
       <DiscoverSection />
     </div>
   );
@@ -3008,7 +3037,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       </header>
 
       <main className="itunda-app-content">
-      {tab === 'HOME' && <HomeView />}
+      {tab === 'HOME' && <HomeView userName={user?.firstName} onNavigateToTab={setTab} />}
       {tab === 'PAY' && <PayHub onNavigateToTab={setTab} onNavigateToCard={() => setTab('CARD')} />}
       {tab === 'EXPLORE' && (
         <ExploreHub
