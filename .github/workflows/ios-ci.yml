@@ -134,4 +134,4 @@ jobs:
           fi
           xcrun simctl boot "$DEVICE_ID" 2>/dev/null || true
           xcrun simctl bootstatus "$DEVICE_ID" -b
-          xcodebuild             -workspace Itunda.xcworkspace             -scheme ItundaApp             -destination "id=$DEVICE_ID"             CODE_SIGNING_ALLOWED=NO             test
+          xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp -destination "id=$DEVICE_ID" -derivedDataPath .ci-derived-data CODE_SIGNING_ALLOWED=NO test
