@@ -67,7 +67,7 @@ export default function LoginPage({
         <header className="itunda-auth-header">
           <div className="itunda-brand">
             <span className="itunda-brand-mark" aria-hidden="true">
-              <IconShieldCheck size={22} color="currentColor" />
+              <IconItundaLogo size={28} color="currentColor" />
             </span>
             <span className="itunda-brand-name">Itunda</span>
           </div>
