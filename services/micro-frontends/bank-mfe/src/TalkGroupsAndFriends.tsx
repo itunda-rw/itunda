@@ -172,7 +172,7 @@ export function MessagesView({ initialConversationId, onConsumedInitial }: { ini
   }, [initialConversationId]);
 
   return (
-    <div>
+    <div className="itunda-messages-page">
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
         {(['DIRECT', 'GROUPS', 'FRIENDS'] as const).map((v) => (
           <button
