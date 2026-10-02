@@ -3283,3 +3283,26 @@ input, textarea, select {
 @media (prefers-reduced-motion: reduce) {
   .itunda-toast-host { transition: none; }
 }
+
+
+/* Itunda Soft Surface — 2026-10-02
+   Consumer surfaces should breathe instead of reading as stacked boxes. */
+.itunda-explore-row-list,
+.itunda-you-row-list { border-top: 0; }
+.itunda-explore-row,
+.itunda-you-row-list > button { border-bottom: 0; }
+.itunda-explore-row-list > * + *,
+.itunda-you-row-list > * + * { margin-top: 2px; }
+.itunda-explore-row:hover,
+.itunda-you-row-list > button:hover { border-radius: 14px; }
+.itunda-explore-row:active,
+.itunda-you-row-list > button:active { border-radius: 14px; }
+.itunda-app-header { border-bottom: 0; }
+.itunda-bottom-nav { border-top: 0; box-shadow: 0 -4px 20px color-mix(in srgb, var(--itunda-text-primary) 4%, transparent); }
+.itunda-auth-header { border-bottom: 0; }
+.itunda-auth-footer { border-top: 0; }
+.itunda-messages-page .itunda-flat-section,
+.itunda-you-page .itunda-flat-section,
+.itunda-pay-page .itunda-flat-section,
+.itunda-explore-page .itunda-flat-section { border-bottom: 0; }
+.itunda-app-content .itunda-flat-section > button + button { border-top: 0; }
