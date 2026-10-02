@@ -5,7 +5,9 @@
   "type": "module",
   "exports": {
     ".": "./src/index.tsx",
-    "./styles.css": "./src/styles.css"
+    "./styles.css": "./src/styles.css",
+    "./keypad": "./src/KeypadButton.tsx",
+    "./badge": "./src/Badge.tsx"
   },
   "dependencies": {
     "@itunda/design-tokens": "workspace:*",
