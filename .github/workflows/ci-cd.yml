@@ -332,7 +332,7 @@ jobs:
 
       - name: Install CocoaPods dependencies
         working-directory: ios
-        run: pod install
+        run: pod install --deployment
 
       - name: Build ItundaApp
         working-directory: ios
