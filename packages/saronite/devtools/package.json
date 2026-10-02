@@ -7,7 +7,7 @@
   "types": "src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "contract-test": "node --experimental-strip-types src/mock.contract.test.ts"
+    "contract-test": "node --experimental-strip-types src/mock.contract.test.ts && node --experimental-strip-types src/capabilities.test.ts"
   },
   "devDependencies": {
     "typescript": "^5.8.3"
