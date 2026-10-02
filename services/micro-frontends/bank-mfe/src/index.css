@@ -1755,3 +1755,134 @@ input, textarea, select {
     transition: none;
   }
 }
+
+
+/* Itunda home hierarchy — 2026-10-02.
+   Reference principle: one clear primary action, then quieter secondary choices.
+   This is Itunda's flat interpretation; no Toss colors, assets, or component styling. */
+.itunda-home-actions > button:first-child {
+  background: var(--itunda-surface-brand);
+  color: var(--itunda-text-primary);
+}
+
+.itunda-home-actions > button:first-child .itunda-home-actions__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: var(--itunda-brand);
+  color: #fff;
+}
+
+.itunda-home-actions > button:first-child:hover,
+.itunda-home-actions > button:first-child:focus-visible {
+  background: color-mix(in srgb, var(--itunda-surface-brand) 88%, var(--itunda-brand) 12%);
+}
+
+.itunda-home-actions > button:not(:first-child) .itunda-home-actions__icon {
+  color: var(--itunda-text-secondary);
+}
+
+.itunda-bottom-nav__item.is-active .itunda-bottom-nav__icon {
+  background: transparent;
+  color: var(--itunda-brand);
+}
+
+.itunda-bottom-nav__item.is-active {
+  color: var(--itunda-brand);
+}
+
+.itunda-app-header {
+  min-height: 64px;
+}
+
+.itunda-app-brand-name {
+  font-weight: 760;
+  letter-spacing: -.025em;
+}
+
+.itunda-app-greeting {
+  color: var(--itunda-text-tertiary);
+  font-size: 11px;
+}
+
+.itunda-explore-page > div[style*="position: relative"] input {
+  min-height: 52px;
+  padding-top: 13px !important;
+  padding-bottom: 13px !important;
+  border-radius: 14px !important;
+  font-size: 15px !important;
+}
+
+.itunda-explore-page > div[style*="position: relative"] input:focus {
+  border-color: var(--itunda-brand) !important;
+  outline: 3px solid color-mix(in srgb, var(--itunda-brand) 12%, transparent);
+  outline-offset: 0;
+}
+
+.itunda-explore-page .itunda-flat-section {
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+.itunda-explore-page .itunda-flat-section > h2 {
+  margin-bottom: 12px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: var(--itunda-text-secondary) !important;
+  text-transform: none !important;
+  letter-spacing: -.01em !important;
+}
+
+.itunda-explore-page .itunda-flat-section > div > div {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 18px;
+}
+
+.itunda-explore-page .itunda-flat-section > div > div > button {
+  width: 100%;
+  min-height: 68px !important;
+  justify-content: flex-start;
+  border-bottom: 1px solid var(--itunda-border-default);
+  border-radius: 0 !important;
+  padding: 12px 0 !important;
+  background: transparent;
+}
+
+.itunda-explore-page .itunda-flat-section > div > div > button:hover {
+  background: var(--itunda-surface-subtle);
+}
+
+.itunda-explore-page .itunda-flat-section > div > div > button svg {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  padding: 7px !important;
+  margin-right: 4px;
+  border-radius: 9px;
+  background: var(--itunda-surface-brand);
+  color: var(--itunda-brand);
+}
+
+.itunda-messages-page > div:not(:first-child) button {
+  border-bottom-color: var(--itunda-border-default);
+}
+
+.itunda-you-page > .itunda-flat-section {
+  border-bottom: 1px solid var(--itunda-border-default);
+}
+
+@media (max-width: 520px) {
+  .itunda-explore-page .itunda-flat-section > div > div {
+    grid-template-columns: 1fr;
+  }
+
+  .itunda-home-actions > button:first-child .itunda-home-actions__icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .itunda-app-header {
+    min-height: 60px;
+  }
+}
