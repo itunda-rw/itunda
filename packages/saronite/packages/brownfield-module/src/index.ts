@@ -47,3 +47,5 @@ export type {
   TodayStepsResult,
   StepRewardTierInfo,
 } from './spec/SaroniteBrownfieldModule';
+
+export * from './protocol';
