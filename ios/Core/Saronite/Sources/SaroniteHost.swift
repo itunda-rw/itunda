@@ -61,13 +61,13 @@ public final class SaroniteHost {
             return respond(id: request.id, error: SaroniteError(code: "INVALID_REQUEST", message: "capability and method are required", detail: nil), completion: completion)
         }
         guard let handler = handlers[request.capability] else {
-            return respond(id: request.id, error: SaroniteError(code: "UNKNOWN_CAPABILITY", message: "Capability is not registered: (request.capability)", detail: nil), completion: completion)
+            return respond(id: request.id, error: SaroniteError(code: "UNKNOWN_CAPABILITY", message: "Capability is not registered: \(request.capability)", detail: nil), completion: completion)
         }
         if let permission = Self.permission(for: request.capability), permissions.state(for: permission) != .granted {
-            return respond(id: request.id, error: SaroniteError(code: "PERMISSION_DENIED", message: "Permission is not granted: (permission)", detail: nil), completion: completion)
+            return respond(id: request.id, error: SaroniteError(code: "PERMISSION_DENIED", message: "Permission is not granted: \(permission)", detail: nil), completion: completion)
         }
         guard lifecycle != .terminated && lifecycle != .failed else {
-            return respond(id: request.id, error: SaroniteError(code: "INVALID_STATE", message: "Mini-app host is (lifecycle.rawValue)", detail: nil), completion: completion)
+            return respond(id: request.id, error: SaroniteError(code: "INVALID_STATE", message: "Mini-app host is \(lifecycle.rawValue)", detail: nil), completion: completion)
         }
 
         handler.handle(method: request.method, payload: request.payload) { [weak self] result in
@@ -90,7 +90,7 @@ public final class SaroniteHost {
     }
 
     public static func newId(_ prefix: String = "srn") -> String {
-        "(prefix)_(UUID().uuidString.lowercased())"
+        "\(prefix)_\(UUID().uuidString.lowercased())"
     }
 
     private static func permission(for capability: String) -> String? {
