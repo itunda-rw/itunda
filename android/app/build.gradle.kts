@@ -258,6 +258,7 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":core:risk"))
     implementation(project(":core:identity"))
+    implementation(project(":core:saronite"))
     // Real shared networking layer (2026-07-22) -- NetworkClient/ApiService/
     // TokenStore/etc. relocated here from :app itself, see :core:network's own
     // build.gradle.kts doc comment for why.
