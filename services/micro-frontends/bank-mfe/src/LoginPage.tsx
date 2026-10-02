@@ -85,8 +85,8 @@ export default function LoginPage({
         </header>
 
         <div className="itunda-auth-intro">
-          <div className="itunda-auth-logo-lockup" aria-hidden="true">
-            <IconItundaLogo size={42} color="currentColor" />
+          <div className="itunda-auth-logo" aria-hidden="true">
+            <IconItundaLogo size={44} color="currentColor" />
           </div>
           <div className="itunda-auth-eyebrow">ITUNDA</div>
           <h1>{phoneConfirmed ? t('login.enterPin') : t('login.tagline')}</h1>
