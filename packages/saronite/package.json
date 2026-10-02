@@ -6,7 +6,8 @@
   "workspaces": [
     "packages/*",
     "mini-apps/*",
-    "host-app"
+    "host-app",
+    "devtools"
   ],
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
