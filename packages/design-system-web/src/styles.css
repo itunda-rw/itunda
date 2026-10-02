@@ -798,3 +798,34 @@
   border-color: color-mix(in srgb, var(--ids-badge-color) 20%, var(--itunda-border-default));
   background: color-mix(in srgb, var(--ids-badge-color) 10%, transparent);
 }
+
+
+/* Toast primitive: host controls placement and lifecycle; IDS owns visual language. */
+.ids-toast {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(420px, calc(100vw - 32px));
+  padding: 14px 18px;
+  border-radius: var(--itunda-radius-md);
+  background: var(--itunda-text-primary);
+  color: var(--itunda-text-inverse);
+  box-shadow: var(--itunda-shadow-md);
+  font-size: var(--itunda-type-scale-14-size);
+  line-height: 1.4;
+}
+.ids-toast__message { min-width: 0; flex: 1; overflow-wrap: anywhere; font-weight: 600; }
+.ids-toast__action {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 8px 0;
+  border: 0;
+  background: transparent;
+  color: var(--itunda-indigo-soft);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ids-toast__action:focus-visible { outline: 2px solid var(--itunda-focus); outline-offset: 3px; border-radius: var(--itunda-radius-xs); }
+@media (prefers-reduced-motion: reduce) { .ids-toast, .ids-toast__action { transition: none; } }
