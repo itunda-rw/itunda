@@ -91,7 +91,7 @@ export function DriverRatingSection({ driverId }: { driverId: string }) {
         className="itunda-rating-toggle"
       >
         ★ {rating.average?.toFixed(1)} <span style={{ color: 'var(--itunda-grey-500)', fontWeight: 400 }}>({rating.count} rating{rating.count === 1 ? '' : 's'}) {expanded ? '▲' : '▼'}</span>
-      </button>
+      </Button>
       {expanded && (
         reviews === null ? (
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginTop: '6px' }}>Loading reviews…</p>
