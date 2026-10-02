@@ -7,7 +7,7 @@
 // callers outside RidesView.
 
 import { useEffect, useState } from 'react';
-import { Badge as IDSBadge } from '@itunda/design-system-web';
+import { Badge as IDSBadge, Button } from '@itunda/design-system-web';
 import { IconShieldCheck } from './icons/ItundaIcons';
 import { ClockGlyph } from './icons/ItundaFaceMisc';
 import { useI18n } from './i18n/I18nContext';
@@ -80,12 +80,15 @@ export function DriverRatingSection({ driverId }: { driverId: string }) {
 
   return (
     <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--itunda-grey-100)' }}>
-      <button
+      <Button
+        type="button"
+        variant="tertiary"
+        size="sm"
         onClick={() => {
           setExpanded((e) => !e);
           if (!expanded && reviews === null) fetchDriverReviews(driverId).then(setReviews).catch(() => setReviews([]));
         }}
-        style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: '#FFC107' }}
+        className="itunda-rating-toggle"
       >
         ★ {rating.average?.toFixed(1)} <span style={{ color: 'var(--itunda-grey-500)', fontWeight: 400 }}>({rating.count} rating{rating.count === 1 ? '' : 's'}) {expanded ? '▲' : '▼'}</span>
       </button>
