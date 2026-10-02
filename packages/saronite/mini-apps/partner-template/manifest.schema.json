@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://itunda.dev/schemas/mini-app-manifest.v1.json",
+  "title": "Apps in Itunda Mini-App Manifest",
+  "type": "object",
+  "required": [
+    "manifestVersion",
+    "id",
+    "name",
+    "version",
+    "category",
+    "description",
+    "entry",
+    "icon",
+    "permissions"
+  ],
+  "properties": {
+    "manifestVersion": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$"
+    },
+    "category": {
+      "enum": [
+        "FINANCE",
+        "SHOPPING",
+        "PRODUCTIVITY",
+        "LIFESTYLE",
+        "OTHER"
+      ]
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240
+    },
+    "entry": {
+      "type": "object",
+      "required": [
+        "type",
+        "bundleUrl"
+      ],
+      "properties": {
+        "type": {
+          "const": "saronite"
+        },
+        "bundleUrl": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        }
+      },
+      "additionalProperties": false
+    },
+    "icon": {
+      "type": "object",
+      "required": [
+        "url"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        }
+      },
+      "additionalProperties": false
+    },
+    "permissions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "identity",
+          "navigation",
+          "share",
+          "storage",
+          "notifications",
+          "payments",
+          "location",
+          "camera",
+          "contacts"
+        ]
+      }
+    },
+    "brandTheme": {
+      "type": "object",
+      "required": [
+        "themeId",
+        "light",
+        "dark"
+      ],
+      "properties": {
+        "themeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "light": {
+          "$ref": "#/$defs/brandPalette"
+        },
+        "dark": {
+          "$ref": "#/$defs/brandPalette"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "brandPalette": {
+      "type": "object",
+      "required": [
+        "brand",
+        "brandStrong",
+        "brandSurface",
+        "onBrand",
+        "focus",
+        "pressed"
+      ],
+      "properties": {
+        "brand": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "brandStrong": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "brandSurface": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "onBrand": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "focus": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "pressed": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
