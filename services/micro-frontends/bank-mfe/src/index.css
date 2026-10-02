@@ -2611,3 +2611,56 @@ input, textarea, select {
     padding-bottom: 16px;
   }
 }
+
+
+/* Itunda product-craft pass — 2026-10-02 */
+.itunda-app-content h1,
+.itunda-app-content h2,
+.itunda-app-content h3 {
+  text-wrap: balance;
+}
+
+.itunda-app-content button:focus-visible,
+.itunda-app-content a:focus-visible,
+.itunda-app-content input:focus-visible,
+.itunda-app-content select:focus-visible {
+  outline: 2px solid var(--itunda-brand);
+  outline-offset: 2px;
+}
+
+.itunda-app-content .itunda-flat-section h3 {
+  letter-spacing: -.02em;
+}
+
+.itunda-app-content .itunda-flat-section > button {
+  min-height: 52px;
+}
+
+.itunda-app-content .itunda-flat-section > button + button {
+  border-top: 1px solid var(--itunda-border-default);
+}
+
+.itunda-pay-page .itunda-flat-section,
+.itunda-explore-page .itunda-flat-section,
+.itunda-messages-page .itunda-flat-section,
+.itunda-you-page .itunda-flat-section {
+  border-bottom: 1px solid var(--itunda-border-default);
+}
+
+.itunda-pay-page .itunda-flat-section:last-child,
+.itunda-explore-page .itunda-flat-section:last-child,
+.itunda-messages-page .itunda-flat-section:last-child,
+.itunda-you-page .itunda-flat-section:last-child {
+  border-bottom: 0;
+}
+
+@media (max-width: 520px) {
+  .itunda-app-content {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .itunda-app-content .itunda-flat-section > button {
+    min-height: 56px;
+  }
+}
