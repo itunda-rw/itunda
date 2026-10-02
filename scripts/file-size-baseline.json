@@ -36,6 +36,7 @@
   "ios/MerchantApp/Sources/BusinessAccountScreen.swift": 594,
   "ios/MerchantApp/Sources/MerchantHomeScreen.swift": 575,
   "ios/MerchantApp/Sources/NetworkClient.swift": 960,
+  "packages/design-system-web/src/index.tsx": 593,
   "packages/saronite/mini-apps/insurance_mini_app/pages/index.tsx": 680,
   "services/backend/agents/src/main/kotlin/rw/itunda/agents/AgentService.kt": 584,
   "services/backend/app/src/main/kotlin/rw/itunda/app/SeedDataRunner.kt": 507,
