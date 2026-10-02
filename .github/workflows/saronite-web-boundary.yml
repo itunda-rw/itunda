@@ -1,0 +1,50 @@
+name: Saronite Web Production Boundary
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "packages/saronite/**"
+      - ".github/workflows/saronite-web-boundary.yml"
+  pull_request:
+    paths:
+      - "packages/saronite/**"
+      - ".github/workflows/saronite-web-boundary.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: saronite-web-boundary-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  production-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: packages/saronite/package-lock.json
+
+      - name: Install Saronite dependencies
+        working-directory: packages/saronite
+        run: npm install
+
+      - name: Typecheck web demo
+        working-directory: packages/saronite/mini-apps/web-demo
+        run: npm run typecheck
+
+      - name: Build web demo
+        working-directory: packages/saronite/mini-apps/web-demo
+        run: npm run build
+
+      - name: Verify production boundary
+        working-directory: packages/saronite/mini-apps/web-demo
+        run: npm run production-boundary
