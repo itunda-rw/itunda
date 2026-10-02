@@ -2886,3 +2886,98 @@ input, textarea, select {
     transition: none;
   }
 }
+
+
+/* Shell navigation refinement — 2026-10-02.
+   Keep the persistent shell quiet so the current task owns attention. No floating
+   glass container: navigation is a stable part of the page, while Indigo marks
+   only the active destination. */
+.itunda-app-header {
+  min-height: 64px;
+  padding: 10px 18px;
+  background: var(--itunda-surface-default);
+  border-bottom: 1px solid var(--itunda-border-default);
+  backdrop-filter: none;
+}
+
+.itunda-app-brand {
+  gap: 8px;
+}
+
+.itunda-app-brand-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+}
+
+.itunda-app-brand-name {
+  font-size: 16px;
+  font-weight: 750;
+}
+
+.itunda-app-actions {
+  gap: 2px;
+}
+
+.itunda-app-language select {
+  height: 34px;
+  max-width: 62px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--itunda-text-tertiary);
+}
+
+.itunda-app-language select:hover {
+  background: var(--itunda-surface-subtle);
+  color: var(--itunda-text-secondary);
+}
+
+.itunda-bottom-nav {
+  bottom: 0;
+  width: 100%;
+  max-width: 480px;
+  padding: 6px 8px max(6px, env(safe-area-inset-bottom));
+  border: 0;
+  border-top: 1px solid var(--itunda-border-default);
+  border-radius: 0;
+  background: var(--itunda-surface-default);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.itunda-bottom-nav__item {
+  min-height: 54px;
+  border-radius: 12px;
+}
+
+.itunda-bottom-nav__item.is-active {
+  background: transparent;
+  color: var(--itunda-brand);
+}
+
+.itunda-bottom-nav__item.is-active .itunda-bottom-nav__icon {
+  width: 34px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--itunda-surface-brand);
+}
+
+@media (min-width: 700px) {
+  .itunda-bottom-nav {
+    bottom: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .itunda-app-header {
+    padding-inline: 16px;
+  }
+
+  .itunda-app-content {
+    padding-bottom: 92px;
+  }
+}
