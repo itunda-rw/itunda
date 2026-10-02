@@ -3,6 +3,7 @@ import { ApiError, setPin } from './lib/api';
 import { fetchProfile } from './lib/neighborhood';
 import { PinPad } from './PinPad';
 import { useI18n } from './i18n/I18nContext';
+import { Button, TextField } from '@itunda/design-system-web';
 
 // Real Toss-sourced passwordless-login rollout (2026-08-24) -- see backend
 // User.pinSet's own doc comment. A real, non-blocking upgrade prompt for a
@@ -76,18 +77,11 @@ export function PinSetupCard() {
           </p>
         </>
       )}
-      {step === 'closed' && <button className="itunda-btn itunda-btn-secondary" onClick={() => setStep('credential')}>Set up my PIN</button>}
+      {step === 'closed' && <Button variant="secondary" size="md" onClick={() => setStep('credential')}>Set up my PIN</Button>}
       {step === 'credential' && (
         <form onSubmit={submitCurrentCredential} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <input
-            type="password"
-            placeholder="Your current password"
-            value={currentCredential}
-            onChange={(e) => setCurrentCredential(e.target.value)}
-            required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-15-size)' }}
-          />
-          <button type="submit" className="itunda-btn itunda-btn-primary">Continue</button>
+          <TextField label="Current password" type="password" value={currentCredential} onChange={(e) => setCurrentCredential(e.target.value)} required autoComplete="current-password" />
+          <Button type="submit" variant="primary" size="md">Continue</Button>
         </form>
       )}
       {step === 'pin' && <PinPad label="Create a 6-digit PIN" onComplete={handleFirstPin} error={error} disabled={busy} />}
