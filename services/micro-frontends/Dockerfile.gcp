@@ -18,9 +18,9 @@ RUN yarn workspace kyc-mfe build
 
 RUN rm -rf services/micro-frontends/host-app/dist/remotes \
  && mkdir -p services/micro-frontends/host-app/dist/remotes \
- && cp -R services/micro-frontends/maps-mfe/dist services/micro-frontends/host-app/dist/remotes/maps \
- && cp -R services/micro-frontends/bank-mfe/dist services/micro-frontends/host-app/dist/remotes/bank \
- && cp -R services/micro-frontends/kyc-mfe/dist services/micro-frontends/host-app/dist/remotes/kyc \
+ && cp -R services/micro-frontends/maps-mfe/dist/. services/micro-frontends/host-app/dist/remotes/maps/ \
+ && cp -R services/micro-frontends/bank-mfe/dist/. services/micro-frontends/host-app/dist/remotes/bank/ \
+ && cp -R services/micro-frontends/kyc-mfe/dist/. services/micro-frontends/host-app/dist/remotes/kyc/ \
  && test -s services/micro-frontends/host-app/dist/index.html \
  && test -s services/micro-frontends/host-app/dist/remotes/maps/index.html \
  && test -s services/micro-frontends/host-app/dist/remotes/bank/index.html \
