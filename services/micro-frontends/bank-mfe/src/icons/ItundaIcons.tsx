@@ -51,6 +51,51 @@ function IconBase({ size = 24, children, ...rest }: ItundaIconProps & { children
   );
 }
 
+
+/**
+ * Itunda brand mark — new 2026 identity.
+ *
+ * The mark is deliberately rendered with the same brand lavender in both themes;
+ * the dimensional layers use opacity rather than switching the underlying color.
+ */
+export function IconItundaLogo({ size = 24, ...props }: ItundaIconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+      {...props}
+    >
+      <path
+        d="M12 1.7C15.8 3.5 19.6 6.8 20.2 10.7C20.8 14.5 17.8 18.9 12 22.3C6.2 18.9 3.2 14.5 3.8 10.7C4.4 6.8 8.2 3.5 12 1.7Z"
+        fill="currentColor"
+        opacity=".92"
+      />
+      <path
+        d="M12 2.1C9.7 5.3 8.3 8.7 8.4 12.2C8.5 15.2 10 18.2 12 21.7C8.2 19.5 5.8 16.6 5.5 13.5C5.2 9.9 7.5 5.8 12 2.1Z"
+        fill="currentColor"
+        opacity=".58"
+      />
+      <path
+        d="M12 2.1C14.3 5.3 15.7 8.7 15.6 12.2C15.5 15.2 14 18.2 12 21.7C15.8 19.5 18.2 16.6 18.5 13.5C18.8 9.9 16.5 5.8 12 2.1Z"
+        fill="currentColor"
+        opacity=".76"
+      />
+      <path
+        d="M12 4.4C10.9 6.5 10.3 8.8 10.5 11.1C10.7 13.7 11.4 16.1 12 18.7C12.6 16.1 13.3 13.7 13.5 11.1C13.7 8.8 13.1 6.5 12 4.4Z"
+        fill="currentColor"
+      />
+      <path
+        d="M10.5 11.1C10.7 13.7 11.4 16.1 12 18.7C11.1 16.6 9.9 14.9 9.2 13.1C8.5 11.2 8.7 9.5 9.3 8C9.8 9 10.2 10 10.5 11.1Z"
+        fill="currentColor"
+        opacity=".42"
+      />
+    </svg>
+  );
+}
+
 export function IconHome(props: ItundaIconProps) {
   return (
     <IconBase {...props}>
