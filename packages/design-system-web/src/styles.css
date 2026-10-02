@@ -829,3 +829,13 @@
 }
 .ids-toast__action:focus-visible { outline: 2px solid var(--itunda-focus); outline-offset: 3px; border-radius: var(--itunda-radius-xs); }
 @media (prefers-reduced-motion: reduce) { .ids-toast, .ids-toast__action { transition: none; } }
+
+
+/* Itunda Soft Surface — 2026-10-02
+   Hierarchy comes from spacing, type, and surface contrast before rules.
+   Borders remain only where they communicate control/focus structure. */
+.ids-soft-list,
+.ids-soft-section { border: 0; }
+.ids-soft-list > * + * { border-top: 0; }
+.ids-button { box-shadow: none; }
+.ids-card { border-color: transparent; }
