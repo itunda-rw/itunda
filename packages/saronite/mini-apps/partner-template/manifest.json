@@ -1,5 +1,5 @@
 {
-  "$schema": "https://itunda.dev/schemas/mini-app-manifest.v1.json",
+  "$schema": "https://raw.githubusercontent.com/itunda-rw/itunda/main/packages/saronite/mini-apps/partner-template/manifest.schema.json",
   "manifestVersion": 1,
   "id": "rw.example.partner",
   "name": "Partner Example",
