@@ -814,3 +814,97 @@ input, textarea, select {
     transition: none;
   }
 }
+
+
+/* Itunda primary surfaces — 2026-10 visual refinement.
+   Keep the existing product behavior and flat IDS architecture; improve hierarchy,
+   touch targets, and the distinction between primary money actions and secondary
+   catalog content. */
+.itunda-app-content > div > header:first-child,
+.itunda-app-content > div > section:first-child {
+  margin-top: 8px;
+}
+
+.itunda-app-content h1 {
+  font-size: clamp(28px, 7vw, 34px);
+  line-height: 1.12;
+  letter-spacing: -0.045em;
+}
+
+.itunda-app-content h2 {
+  font-size: clamp(22px, 5.8vw, 28px);
+  line-height: 1.18;
+}
+
+.itunda-app-content h3 {
+  font-size: 17px;
+  line-height: 23px;
+}
+
+.itunda-app-content a,
+.itunda-app-content button {
+  touch-action: manipulation;
+}
+
+.itunda-app-content .itunda-flat-section > button,
+.itunda-app-content button.itunda-flat-section {
+  min-height: 60px;
+}
+
+/* Home/Pay: money-critical actions get a calm tinted stage instead of competing
+   card chrome. */
+.itunda-app-content [data-itunda-primary],
+.itunda-app-content .itunda-primary-surface {
+  border-radius: 20px;
+  background: var(--itunda-surface-brand);
+  padding: 20px;
+}
+
+.itunda-app-content [data-itunda-primary] .itunda-btn-primary,
+.itunda-app-content .itunda-primary-surface .itunda-btn-primary {
+  box-shadow: none;
+}
+
+/* Explore: search is the entry point, while categories remain lightweight rows. */
+.itunda-app-content input[type="search"] {
+  font-size: 15px;
+}
+
+.itunda-app-content input[type="search"]::placeholder {
+  color: var(--itunda-text-tertiary);
+}
+
+.itunda-app-content [aria-label*="Explore" i] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Messages/You: readable row rhythm and stronger section titles without
+   introducing dashboard-style cards. */
+.itunda-app-content [role="list"] {
+  margin-top: 4px;
+}
+
+.itunda-app-content [role="list"] > button,
+.itunda-app-content [role="listitem"] {
+  min-height: 64px;
+}
+
+@media (max-width: 520px) {
+  .itunda-app-content > div > header:first-child,
+  .itunda-app-content > div > section:first-child {
+    margin-top: 4px;
+  }
+
+  .itunda-app-content [data-itunda-primary],
+  .itunda-app-content .itunda-primary-surface {
+    padding: 18px;
+    border-radius: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itunda-app-content > div > header:first-child,
+  .itunda-app-content > div > section:first-child {
+    scroll-behavior: auto;
+  }
+}
