@@ -41,7 +41,12 @@ class PartnerNotFoundException(message: String) : RuntimeException(message)
  * honest scope boundary.
  */
 object PartnerMiniAppPermissions {
-    val ALLOWED = setOf("account:read", "transactions:read", "profile:read")
+    val ALLOWED = setOf(
+        "account:read", "transactions:read", "profile:read",
+        "identity", "auth", "navigation", "share", "storage", "notifications",
+        "payments", "location", "camera", "contacts", "clipboard", "haptic",
+        "analytics", "events", "deepLinks",
+    )
 }
 
 // Shared parse helper (2026-09-11, Mini-Apps hub pass) -- both submitMiniApp's own
@@ -161,6 +166,16 @@ class PartnerService(
             category = resolvedCategory,
         )
         return partnerMiniAppRepository.save(miniApp)
+    }
+
+    fun getMiniApp(apiKey: String, miniAppId: String): PartnerMiniApp {
+        val partner = resolvePartner(apiKey)
+        val miniApp = partnerMiniAppRepository.findById(miniAppId)
+            .orElseThrow { PartnerMiniAppNotFoundException("Mini-app submission not found") }
+        if (miniApp.partnerId != partner.id) {
+            throw PartnerMiniAppNotFoundException("Mini-app submission not found")
+        }
+        return miniApp
     }
 
     fun getMyMiniApps(apiKey: String): List<PartnerMiniApp> {
