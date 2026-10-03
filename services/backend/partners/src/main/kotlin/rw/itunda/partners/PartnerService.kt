@@ -163,6 +163,12 @@ class PartnerService(
         if (trimmedName.length > 255 || trimmedDescription.length > 500 || (trimmedIconUrl?.length ?: 0) > 500 || trimmedBundleUrl.length > 500) {
             throw InvalidMiniAppSubmissionException("Name must be 255 characters or fewer; description, iconUrl, and bundleUrl 500 or fewer")
         }
+        if (!trimmedBundleUrl.startsWith("https://")) {
+            throw InvalidMiniAppSubmissionException("bundleUrl must use HTTPS")
+        }
+        if (trimmedIconUrl != null && !trimmedIconUrl.startsWith("https://")) {
+            throw InvalidMiniAppSubmissionException("iconUrl must use HTTPS")
+        }
         // Real Mini-Apps hub pass (2026-09-11) -- a blank/omitted category is a real,
         // honest default (OTHER), same fail-closed-on-garbage-input convention as the
         // permission-scope check above: an unrecognized name is rejected outright, never
