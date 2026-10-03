@@ -14,6 +14,7 @@ import rw.itunda.partners.InvalidApiKeyException
 import rw.itunda.partners.InvalidMiniAppCategoryException
 import rw.itunda.partners.InvalidMiniAppDecisionReasonException
 import rw.itunda.partners.InvalidMiniAppSubmissionException
+import rw.itunda.partners.InvalidMiniAppReleaseIntegrityException
 import rw.itunda.partners.InvalidPartnerEmailException
 import rw.itunda.partners.InvalidPermissionScopeException
 import rw.itunda.partners.PartnerEmailAlreadyRegisteredException
@@ -49,12 +50,12 @@ class PartnerControllerTest : BehaviorSpec({
         val controller = PartnerController(service)
         val miniApp = mockk<PartnerMiniApp>(relaxed = true)
         every {
-            service.submitMiniApp("sk_test_key", "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), null)
+            service.submitMiniApp("sk_test_key", "My App", "1.0.0", 1, "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "a".repeat(64), null, null, null)
         } returns miniApp
 
         When("submitting") {
             val response = controller.submitMiniApp(
-                SubmitMiniAppRequest("My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read")),
+                SubmitMiniAppRequest("My App", "1.0.0", 1, "Does things", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "a".repeat(64)),
                 "sk_test_key",
             )
 
@@ -73,12 +74,12 @@ class PartnerControllerTest : BehaviorSpec({
         val controller = PartnerController(service)
         val miniApp = mockk<PartnerMiniApp>(relaxed = true)
         every {
-            service.submitMiniApp("sk_test_key", "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "finance")
+            service.submitMiniApp("sk_test_key", "My App", "1.0.0", 1, "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "a".repeat(64), "finance", null, null)
         } returns miniApp
 
         When("submitting") {
             val response = controller.submitMiniApp(
-                SubmitMiniAppRequest("My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "finance"),
+                SubmitMiniAppRequest("My App", "1.0.0", 1, "Does things", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "a".repeat(64), "finance"),
                 "sk_test_key",
             )
 
@@ -127,6 +128,7 @@ class PartnerControllerTest : BehaviorSpec({
         Triple(PartnerSuspendedException("Forbidden"), HttpStatus.FORBIDDEN, "PARTNER_SUSPENDED"),
         Triple(InvalidPermissionScopeException("Bad request"), HttpStatus.BAD_REQUEST, "INVALID_PERMISSION_SCOPE"),
         Triple(InvalidMiniAppSubmissionException("Bad request"), HttpStatus.BAD_REQUEST, "INVALID_MINI_APP_SUBMISSION"),
+        Triple(InvalidMiniAppReleaseIntegrityException("Bad release metadata"), HttpStatus.BAD_REQUEST, "INVALID_MINI_APP_RELEASE_INTEGRITY"),
         Triple(RateLimitExceededException("Too many requests"), HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMITED"),
         Triple(InvalidMiniAppDecisionReasonException("Invalid decision reason"), HttpStatus.BAD_REQUEST, "INVALID_DECISION_REASON"),
         Triple(InvalidMiniAppCategoryException("Invalid category"), HttpStatus.BAD_REQUEST, "INVALID_MINI_APP_CATEGORY"),
@@ -143,6 +145,7 @@ class PartnerControllerTest : BehaviorSpec({
                     is PartnerSuspendedException -> controller.handleSuspended(exception)
                     is InvalidPermissionScopeException -> controller.handleInvalidScope(exception)
                     is InvalidMiniAppSubmissionException -> controller.handleInvalidSubmission(exception)
+                    is InvalidMiniAppReleaseIntegrityException -> controller.handleInvalidReleaseIntegrity(exception)
                     is RateLimitExceededException -> controller.handleRateLimit(exception)
                     is InvalidMiniAppDecisionReasonException -> controller.handleInvalidDecisionReason(exception)
                     is InvalidMiniAppCategoryException -> controller.handleInvalidCategory(exception)
