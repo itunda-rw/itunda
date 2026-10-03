@@ -28,6 +28,7 @@ Options:
   --id <id>                   Mini-app identifier
   --category <category>       FINANCE|SHOPPING|PRODUCTIVITY|LIFESTYLE|OTHER
   --bundle <https-url>        Production bundle URL
+  --bundle-file <path>        Local bundle to hash for release integrity
   --permission <scope>        Repeat to request a Saronite scope
   --endpoint <url>            Platform API endpoint
   --api-key <key>             Partner API key (or ITUNDA_PARTNER_API_KEY)
@@ -191,6 +192,16 @@ function build(input) {
   fs.mkdirSync(out, { recursive: true });
   const manifestBytes = Buffer.from(JSON.stringify(loaded.manifest, null, 2) + "\n");
   const manifestSha256 = crypto.createHash("sha256").update(manifestBytes).digest("hex");
+  const bundleFile = flag("--bundle-file");
+  let bundleSha256 = null;
+  let bundleSizeBytes = null;
+  if (bundleFile) {
+    const bundlePath = path.resolve(bundleFile);
+    if (!fs.existsSync(bundlePath)) return fail("bundle file not found: " + bundlePath);
+    const bundleBytes = fs.readFileSync(bundlePath);
+    bundleSha256 = crypto.createHash("sha256").update(bundleBytes).digest("hex");
+    bundleSizeBytes = bundleBytes.length;
+  }
   fs.writeFileSync(path.join(out, "manifest.json"), manifestBytes);
   fs.writeFileSync(path.join(out, "build.json"), JSON.stringify({
     format: "itunda-mini-app",
@@ -198,7 +209,8 @@ function build(input) {
     id: loaded.manifest.id,
     version: loaded.manifest.version,
     manifestSha256,
-    createdAt: new Date().toISOString()
+    bundleSha256,
+    bundleSizeBytes,
   }, null, 2) + "\n");
   console.log("built " + out);
 }
@@ -217,6 +229,24 @@ async function publish(input) {
   const apiKey = flag("--api-key", process.env.ITUNDA_PARTNER_API_KEY);
   if (!apiKey) return fail("publish requires --api-key or ITUNDA_PARTNER_API_KEY");
   const m = loaded.manifest;
+  const manifestBytes = Buffer.from(JSON.stringify(m, null, 2) + "\n");
+  const manifestSha256 = crypto.createHash("sha256").update(manifestBytes).digest("hex");
+  const buildFile = path.join(path.dirname(loaded.target), "dist", "build.json");
+  let releaseIntegrity = { manifestSha256 };
+  if (fs.existsSync(buildFile)) {
+    try {
+      const build = JSON.parse(fs.readFileSync(buildFile, "utf8"));
+      if (build.manifestSha256 === manifestSha256) {
+        releaseIntegrity = {
+          manifestSha256,
+          bundleSha256: build.bundleSha256 || null,
+          bundleSizeBytes: Number.isInteger(build.bundleSizeBytes) ? build.bundleSizeBytes : null,
+        };
+      }
+    } catch {
+      return fail("dist/build.json is not valid JSON; run build again");
+    }
+  }
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -233,6 +263,9 @@ async function publish(input) {
       iconUrl: m.icon.url,
       bundleUrl: m.entry.bundleUrl,
       permissions: m.permissions,
+      manifestSha256: releaseIntegrity.manifestSha256,
+      bundleSha256: releaseIntegrity.bundleSha256,
+      bundleSizeBytes: releaseIntegrity.bundleSizeBytes,
       category: m.category,
     })
   });
