@@ -54,25 +54,26 @@ class PartnerControllerTest : BehaviorSpec({
             val exception = runCatching {
                 controller.submitMiniApp(
                     SubmitMiniAppRequest(
-                        "rw.acme.app",
-                        "1.0.0",
-                        1,
-                        "My App",
-                        "Does things",
-                        null,
-                        "https://example.com/bundle.js",
-                        listOf("account:read"),
-                        "a".repeat(64),
-                        null,
-                        null,
-                        null,
-                    ),
+                            id = "rw.acme.app",
+                            version = "1.0.0",
+                            manifestVersion = 1,
+                            name = "My App",
+                            description = "Does things",
+                            iconUrl = null,
+                            bundleUrl = "https://example.com/bundle.js",
+                            permissions = listOf("account:read"),
+                            manifestSha256 = "a".repeat(64),
+                            category = null,
+                            bundleSha256 = null,
+                            bundleSizeBytes = null,
+                            manifestUrl = null,
+                        ),
                     "sk_test_key",
                 )
             }.exceptionOrNull()
 
             Then("it fails closed before delegating to the partner service") {
-                exception shouldBeInstanceOf InvalidMiniAppReleaseIntegrityException::class
+                exception shouldBeInstanceOf<InvalidMiniAppReleaseIntegrityException>()
                 exception?.message shouldBe "manifestUrl is required for partner releases"
                 verify(exactly = 0) {
                     service.submitMiniApp(
@@ -94,7 +95,21 @@ class PartnerControllerTest : BehaviorSpec({
 
         When("submitting") {
             val response = controller.submitMiniApp(
-                SubmitMiniAppRequest("rw.acme.app", "1.0.0", 1, "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "a".repeat(64), null, null, "https://example.com/manifest.json"),
+                SubmitMiniAppRequest(
+                    id = "rw.acme.app",
+                    version = "1.0.0",
+                    manifestVersion = 1,
+                    name = "My App",
+                    description = "Does things",
+                    iconUrl = null,
+                    bundleUrl = "https://example.com/bundle.js",
+                    permissions = listOf("account:read"),
+                    manifestSha256 = "a".repeat(64),
+                    category = null,
+                    bundleSha256 = null,
+                    bundleSizeBytes = null,
+                    manifestUrl = "https://example.com/manifest.json",
+                ),
                 "sk_test_key",
             )
 
@@ -118,7 +133,21 @@ class PartnerControllerTest : BehaviorSpec({
 
         When("submitting") {
             val response = controller.submitMiniApp(
-                SubmitMiniAppRequest("rw.acme.app", "1.0.0", 1, "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "a".repeat(64), "finance", null, "https://example.com/manifest.json"),
+                SubmitMiniAppRequest(
+                    id = "rw.acme.app",
+                    version = "1.0.0",
+                    manifestVersion = 1,
+                    name = "My App",
+                    description = "Does things",
+                    iconUrl = null,
+                    bundleUrl = "https://example.com/bundle.js",
+                    permissions = listOf("account:read"),
+                    manifestSha256 = "a".repeat(64),
+                    category = "finance",
+                    bundleSha256 = null,
+                    bundleSizeBytes = null,
+                    manifestUrl = "https://example.com/manifest.json",
+                ),
                 "sk_test_key",
             )
 
