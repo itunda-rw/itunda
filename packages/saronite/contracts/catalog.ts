@@ -1,43 +1,35 @@
 export type ItundaCatalogStatus =
-  | 'draft'
-  | 'submitted'
-  | 'in_review'
+  | 'pending'
   | 'approved'
   | 'rejected'
-  | 'published'
   | 'suspended';
 
 export type ItundaCatalogEntry = {
   id: string;
+  appId: string;
   version: string;
+  manifestVersion: 1;
   name: string;
   category: string;
   description: string;
   bundleUrl: string;
-  iconUrl: string;
+  iconUrl?: string;
   permissions: string[];
   status: ItundaCatalogStatus;
-  submittedAt?: string;
+  createdAt?: string;
   reviewedAt?: string;
-  publishedAt?: string;
+  reviewedBy?: string;
+  decisionReason?: string;
 };
 
 export type ItundaCatalogTransition =
-  | { from: 'draft'; to: 'submitted' }
-  | { from: 'submitted'; to: 'in_review' }
-  | { from: 'in_review'; to: 'approved' | 'rejected' }
-  | { from: 'approved'; to: 'published' }
-  | { from: 'published'; to: 'suspended' }
-  | { from: 'suspended'; to: 'published' };
+  | { from: 'pending'; to: 'approved' | 'rejected' }
+  | { from: 'approved'; to: 'suspended' };
 
 export const ITUNDA_CATALOG_TRANSITIONS: readonly ItundaCatalogTransition[] = [
-  { from: 'draft', to: 'submitted' },
-  { from: 'submitted', to: 'in_review' },
-  { from: 'in_review', to: 'approved' },
-  { from: 'in_review', to: 'rejected' },
-  { from: 'approved', to: 'published' },
-  { from: 'published', to: 'suspended' },
-  { from: 'suspended', to: 'published' },
+  { from: 'pending', to: 'approved' },
+  { from: 'pending', to: 'rejected' },
+  { from: 'approved', to: 'suspended' },
 ];
 
 export function canTransitionCatalogStatus(
