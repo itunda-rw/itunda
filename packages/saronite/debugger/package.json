@@ -2,11 +2,17 @@
   "name": "@itunda/saronite-debugger",
   "private": true,
   "version": "0.1.0",
-  "description": "Transport-agnostic Saronite debugger session contracts.",
+  "description": "Development-only Saronite debugger session and inspection contracts.",
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@itunda/saronite-protocol": "file:../protocol"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
   }
 }
