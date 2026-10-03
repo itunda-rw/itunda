@@ -357,4 +357,10 @@ dependencies {
     // newer platforms correctly.
     androidTestImplementation(libs.espresso.core)
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
