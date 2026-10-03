@@ -225,6 +225,9 @@ async function publish(input) {
       "X-Api-Key": apiKey,
     },
     body: JSON.stringify({
+      id: m.id,
+      version: m.version,
+      manifestVersion: m.manifestVersion,
       name: m.name,
       description: m.description,
       iconUrl: m.icon.url,
