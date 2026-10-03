@@ -6,10 +6,12 @@ on:
       - main
     paths:
       - "packages/saronite/**"
+      - "tools/itunda-miniapp/**"
       - ".github/workflows/saronite-web-boundary.yml"
   pull_request:
     paths:
       - "packages/saronite/**"
+      - "tools/itunda-miniapp/**"
       - ".github/workflows/saronite-web-boundary.yml"
   workflow_dispatch:
 
@@ -36,6 +38,9 @@ jobs:
       - name: Install Saronite dependencies
         working-directory: packages/saronite
         run: npm install
+
+      - name: Validate mini-app CLI syntax
+        run: node --check tools/itunda-miniapp/bin/itunda-miniapp.mjs
 
       - name: Typecheck Saronite debugger
         working-directory: packages/saronite/debugger
