@@ -27,7 +27,7 @@ export type SaroniteWebTransport = {
   close(): void;
 };
 
-type Pending = {
+type Pending<TResult> = {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
   timer: ReturnType<typeof setTimeout>;
@@ -49,7 +49,7 @@ export function createSaroniteWebTransport(
   const sourceWindow = options.sourceWindow ?? window;
   const targetOrigin = options.targetOrigin ?? '*';
   const defaultTimeoutMs = options.timeoutMs ?? 10_000;
-  const pending = new Map<string, Pending>();
+  const pending = new Map<string, Pending<unknown>>();
   const listeners = new Set<(event: SaroniteEvent) => void>();
 
   const onMessage = (event: MessageEvent<unknown>) => {
@@ -103,7 +103,7 @@ export function createSaroniteWebTransport(
           reject(new SaroniteWebError('TIMEOUT', `Saronite request timed out: ${capability}.${method}`));
         }, timeoutMs);
 
-        pending.set(id, { resolve, reject, timer });
+        pending.set(id, { resolve: resolve as (value: unknown) => void, reject, timer });
         options.target.postMessage(request, targetOrigin);
       });
     },
