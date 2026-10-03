@@ -126,6 +126,18 @@ class PartnerMiniApp(
     @Column(name = "bundle_url", nullable = false, length = 500)
     var bundleUrl: String,
 
+    @Column(name = "release_id", nullable = false, unique = true, length = 64)
+    var releaseId: String = "",
+
+    @Column(name = "manifest_sha256", nullable = false, length = 64)
+    var manifestSha256: String = "",
+
+    @Column(name = "bundle_sha256", length = 64)
+    var bundleSha256: String? = null,
+
+    @Column(name = "bundle_size_bytes")
+    var bundleSizeBytes: Long? = null,
+
     @Column(nullable = false, length = 500)
     var permissions: String,
 
@@ -149,14 +161,24 @@ class PartnerMiniApp(
     @Column(name = "decision_reason")
     var decisionReason: String? = null,
 
-    // Real bug found live (2026-08-02): PartnerService.decide reads this exact entity,
-    // checks `status != PENDING`, then writes APPROVED/REJECTED -- the same check-then-
-    // act shape SupportTicket/Incident/HoodReport's own @Version fixes already address.
-    // Two admins concurrently reviewing the same submission could both pass the status
-    // check and race to a conflicting final decision.
+    @Column(name = "published_at")
+    var publishedAt: Instant? = null,
+
+    // Optimistic-lock revision is deliberately separate from the semantic mini-app
+    // `version` above. The previous model declared both as `version`, which cannot
+    // represent two Kotlin properties and would also confuse JPA's @Version field.
     @Version
-    @Column(nullable = false)
-    var version: Long = 0,
+    @Column(name = "revision", nullable = false)
+    var revision: Long = 0,
 ) {
-    protected constructor() : this(id = "", partnerId = "", appId = "", version = "0.0.0", name = "", description = "", bundleUrl = "", permissions = "")
+    protected constructor() : this(
+        id = "",
+        partnerId = "",
+        appId = "",
+        version = "0.0.0",
+        name = "",
+        description = "",
+        bundleUrl = "",
+        permissions = "",
+    )
 }
