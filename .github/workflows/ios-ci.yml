@@ -79,7 +79,7 @@ jobs:
       - name: Build Saronite iOS host
         working-directory: ios
         run: |
-          xcodebuild             -project Itunda.xcodeproj             -target CoreSaronite             -sdk iphonesimulator             -configuration Debug             -derivedDataPath .ci-derived-data             CODE_SIGNING_ALLOWED=NO             build
+          xcodebuild             -project Itunda.xcodeproj             -scheme CoreSaronite             -sdk iphonesimulator             -configuration Debug             -derivedDataPath .ci-derived-data             CODE_SIGNING_ALLOWED=NO             build
 
       - name: Verify Saronite iOS artifact
         working-directory: ios
