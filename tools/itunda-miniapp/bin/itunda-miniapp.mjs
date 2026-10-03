@@ -28,6 +28,7 @@ Options:
   --id <id>                   Mini-app identifier
   --category <category>       FINANCE|SHOPPING|PRODUCTIVITY|LIFESTYLE|OTHER
   --bundle <https-url>        Production bundle URL
+  --manifest-url <https-url>  Published manifest URL
   --bundle-file <path>        Local bundle to hash for release integrity
   --permission <scope>        Repeat to request a Saronite scope
   --endpoint <url>            Platform API endpoint
@@ -221,11 +222,13 @@ async function publish(input) {
   const errors = validateManifest(loaded.manifest);
   if (errors.length) return errors.forEach(error => console.error("x " + error));
   const endpoint = flag("--endpoint");
+  const manifestUrl = flag("--manifest-url");
   if (args.includes("--dry-run")) {
     console.log(JSON.stringify({ operation: "publish", id: loaded.manifest.id, version: loaded.manifest.version, endpoint: endpoint || null, manifestUrl: manifestUrl || null, dryRun: true }, null, 2));
     return;
   }
   if (!endpoint) return fail("publish requires --endpoint, or use --dry-run");
+  if (!manifestUrl || !manifestUrl.startsWith("https://")) return fail("publish requires --manifest-url with an HTTPS URL");
   const apiKey = flag("--api-key", process.env.ITUNDA_PARTNER_API_KEY);
   if (!apiKey) return fail("publish requires --api-key or ITUNDA_PARTNER_API_KEY");
   const m = loaded.manifest;
@@ -267,6 +270,7 @@ async function publish(input) {
       bundleSha256: releaseIntegrity.bundleSha256,
       bundleSizeBytes: releaseIntegrity.bundleSizeBytes,
       category: m.category,
+      manifestUrl,
     })
   });
   const body = await response.text();
