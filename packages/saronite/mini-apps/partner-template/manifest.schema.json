@@ -15,65 +15,34 @@
     "permissions"
   ],
   "properties": {
-    "manifestVersion": {
-      "const": 1
-    },
+    "manifestVersion": { "const": 1 },
     "id": {
       "type": "string",
-      "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+      "pattern": "^rw\\.[a-z0-9]+(?:[._-][a-z0-9]+)+$"
     },
-    "name": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 80
-    },
+    "name": { "type": "string", "minLength": 1, "maxLength": 255 },
     "version": {
       "type": "string",
       "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$"
     },
     "category": {
-      "enum": [
-        "FINANCE",
-        "SHOPPING",
-        "PRODUCTIVITY",
-        "LIFESTYLE",
-        "OTHER"
-      ]
+      "enum": ["FINANCE", "SHOPPING", "PRODUCTIVITY", "LIFESTYLE", "OTHER"]
     },
-    "description": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 240
-    },
+    "description": { "type": "string", "minLength": 1, "maxLength": 500 },
     "entry": {
       "type": "object",
-      "required": [
-        "type",
-        "bundleUrl"
-      ],
+      "required": ["type", "bundleUrl"],
       "properties": {
-        "type": {
-          "const": "saronite"
-        },
-        "bundleUrl": {
-          "type": "string",
-          "format": "uri",
-          "pattern": "^https://"
-        }
+        "type": { "const": "saronite" },
+        "bundleUrl": { "type": "string", "format": "uri", "pattern": "^https://" }
       },
       "additionalProperties": false
     },
     "icon": {
       "type": "object",
-      "required": [
-        "url"
-      ],
+      "required": ["url"],
       "properties": {
-        "url": {
-          "type": "string",
-          "format": "uri",
-          "pattern": "^https://"
-        }
+        "url": { "type": "string", "format": "uri", "pattern": "^https://" }
       },
       "additionalProperties": false
     },
@@ -82,37 +51,20 @@
       "uniqueItems": true,
       "items": {
         "enum": [
-          "identity",
-          "navigation",
-          "share",
-          "storage",
-          "notifications",
-          "payments",
-          "location",
-          "camera",
-          "contacts"
+          "account:read", "transactions:read", "profile:read",
+          "identity", "auth", "navigation", "share", "storage", "notifications",
+          "payments", "location", "camera", "contacts", "clipboard", "haptic",
+          "analytics", "events", "deepLinks"
         ]
       }
     },
     "brandTheme": {
       "type": "object",
-      "required": [
-        "themeId",
-        "light",
-        "dark"
-      ],
+      "required": ["themeId", "light", "dark"],
       "properties": {
-        "themeId": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 64
-        },
-        "light": {
-          "$ref": "#/$defs/brandPalette"
-        },
-        "dark": {
-          "$ref": "#/$defs/brandPalette"
-        }
+        "themeId": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "light": { "$ref": "#/$defs/brandPalette" },
+        "dark": { "$ref": "#/$defs/brandPalette" }
       },
       "additionalProperties": false
     }
@@ -120,39 +72,14 @@
   "$defs": {
     "brandPalette": {
       "type": "object",
-      "required": [
-        "brand",
-        "brandStrong",
-        "brandSurface",
-        "onBrand",
-        "focus",
-        "pressed"
-      ],
+      "required": ["brand", "brandStrong", "brandSurface", "onBrand", "focus", "pressed"],
       "properties": {
-        "brand": {
-          "type": "string",
-          "pattern": "^#[0-9A-Fa-f]{6}$"
-        },
-        "brandStrong": {
-          "type": "string",
-          "pattern": "^#[0-9A-Fa-f]{6}$"
-        },
-        "brandSurface": {
-          "type": "string",
-          "pattern": "^#[0-9A-Fa-f]{6}$"
-        },
-        "onBrand": {
-          "type": "string",
-          "pattern": "^#[0-9A-Fa-f]{6}$"
-        },
-        "focus": {
-          "type": "string",
-          "pattern": "^#[0-9A-Fa-f]{6}$"
-        },
-        "pressed": {
-          "type": "string",
-          "pattern": "^#[0-9A-Fa-f]{6}$"
-        }
+        "brand": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+        "brandStrong": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+        "brandSurface": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+        "onBrand": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+        "focus": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+        "pressed": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
       },
       "additionalProperties": false
     }
