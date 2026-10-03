@@ -206,7 +206,7 @@ object PartnerMiniAppLoader {
         val request = Request.Builder().url(url).build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                throw IOException("Manifest download failed: HTTP \${response.code} for \$url")
+                throw IOException("Manifest download failed: HTTP ${response.code} for \$url")
             }
             val body = response.body ?: throw IOException("Empty manifest response from \$url")
             val digest = MessageDigest.getInstance("SHA-256")
