@@ -146,6 +146,9 @@ class PartnerService(
         if (manifestVersion != 1) {
             throw InvalidMiniAppSubmissionException("manifestVersion must be 1")
         }
+        if (partnerMiniAppRepository.existsByPartnerIdAndAppIdAndVersion(partner.id, trimmedAppId, trimmedVersion)) {
+            throw InvalidMiniAppSubmissionException("This app version has already been submitted")
+        }
         val trimmedName = name.trim()
         val trimmedDescription = description.trim()
         val trimmedIconUrl = iconUrl?.trim()?.ifBlank { null }
