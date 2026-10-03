@@ -30,6 +30,7 @@ Options:
   --bundle <https-url>        Production bundle URL
   --permission <scope>        Repeat to request a Saronite scope
   --endpoint <url>            Platform API endpoint
+  --api-key <key>             Partner API key (or ITUNDA_PARTNER_API_KEY)
   --dry-run                   Validate and print the operation without network I/O`);
 }
 
@@ -213,10 +214,24 @@ async function publish(input) {
     return;
   }
   if (!endpoint) return fail("publish requires --endpoint, or use --dry-run");
+  const apiKey = flag("--api-key", process.env.ITUNDA_PARTNER_API_KEY);
+  if (!apiKey) return fail("publish requires --api-key or ITUNDA_PARTNER_API_KEY");
+  const m = loaded.manifest;
   const response = await fetch(endpoint, {
     method: "POST",
-    headers: { "content-type": "application/json", "accept": "application/json" },
-    body: JSON.stringify({ manifest: loaded.manifest })
+    headers: {
+      "content-type": "application/json",
+      "accept": "application/json",
+      "X-Api-Key": apiKey,
+    },
+    body: JSON.stringify({
+      name: m.name,
+      description: m.description,
+      iconUrl: m.icon.url,
+      bundleUrl: m.entry.bundleUrl,
+      permissions: m.permissions,
+      category: m.category,
+    })
   });
   const body = await response.text();
   if (!response.ok) return fail("publish failed (" + response.status + "): " + body);
@@ -226,8 +241,10 @@ async function publish(input) {
 async function status(id) {
   const endpoint = flag("--endpoint");
   if (!endpoint) return fail("status requires --endpoint");
+  const apiKey = flag("--api-key", process.env.ITUNDA_PARTNER_API_KEY);
+  if (!apiKey) return fail("status requires --api-key or ITUNDA_PARTNER_API_KEY");
   const response = await fetch(endpoint.replace(/\/$/, "") + "/" + encodeURIComponent(id), {
-    headers: { "accept": "application/json" }
+    headers: { "accept": "application/json", "X-Api-Key": apiKey }
   });
   const body = await response.text();
   if (!response.ok) return fail("status failed (" + response.status + "): " + body);
