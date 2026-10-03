@@ -41,6 +41,10 @@ jobs:
         working-directory: packages/saronite/debugger
         run: npm run typecheck
 
+      - name: Test Saronite debugger contracts
+        working-directory: packages/saronite/debugger
+        run: npm run contract-test
+
       - name: Typecheck Saronite web host
         working-directory: packages/saronite/host-web
         run: npm run typecheck
