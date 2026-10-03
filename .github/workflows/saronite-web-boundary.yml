@@ -37,6 +37,14 @@ jobs:
         working-directory: packages/saronite
         run: npm install
 
+      - name: Typecheck Saronite packages
+        working-directory: packages/saronite
+        run: npm run typecheck
+
+      - name: Test Saronite web transport
+        working-directory: packages/saronite/host-web
+        run: npm run contract-test
+
       - name: Typecheck web demo
         working-directory: packages/saronite/mini-apps/web-demo
         run: npm run typecheck
