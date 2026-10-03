@@ -134,6 +134,7 @@ class PartnerService(
         category: String? = null,
         bundleSha256: String? = null,
         bundleSizeBytes: Long? = null,
+        manifestUrl: String? = null,
     ): PartnerMiniApp {
         val partner = resolvePartner(apiKey)
         // Real gap found live (2026-09-11, Mini-Apps hub pass) -- register() above has
@@ -162,6 +163,10 @@ class PartnerService(
         bundleSha256?.let { validateSha256("bundleSha256", it) }
         if (bundleSizeBytes != null && bundleSizeBytes < 0) {
             throw InvalidMiniAppReleaseIntegrityException("bundleSizeBytes must be non-negative")
+        }
+        val trimmedManifestUrl = manifestUrl?.trim()?.ifBlank { null }
+        if (trimmedManifestUrl != null && !trimmedManifestUrl.startsWith("https://")) {
+            throw InvalidMiniAppReleaseIntegrityException("manifestUrl must use HTTPS")
         }
         if (partnerMiniAppRepository.existsByPartnerIdAndAppIdAndVersion(partner.id, trimmedAppId, trimmedVersion)) {
             throw InvalidMiniAppSubmissionException("This app version has already been submitted")
@@ -205,6 +210,7 @@ class PartnerService(
             manifestSha256 = manifestSha256.lowercase(),
             bundleSha256 = bundleSha256?.lowercase(),
             bundleSizeBytes = bundleSizeBytes,
+            manifestUrl = trimmedManifestUrl,
             permissions = permissions.joinToString(","),
             status = PartnerMiniAppStatus.PENDING,
             category = resolvedCategory,
