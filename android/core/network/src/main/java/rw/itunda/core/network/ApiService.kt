@@ -752,6 +752,7 @@ data class PartnerMiniAppDto(
     val bundleSha256: String? = null,
     val bundleSizeBytes: Long? = null,
     val publishedAt: String? = null,
+    val manifestUrl: String? = null,
     // Real Toss/Kakao mini-app-store reference (2026-09-11, Mini-Apps hub pass) --
     // matches the backend's own PartnerMiniAppCategory enum names exactly.
     val category: String,
