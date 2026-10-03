@@ -105,6 +105,15 @@ class PartnerMiniApp(
     @Column(name = "partner_id", nullable = false, length = 64)
     val partnerId: String,
 
+    @Column(name = "app_id", nullable = false, length = 255)
+    var appId: String,
+
+    @Column(nullable = false, length = 64)
+    var version: String,
+
+    @Column(name = "manifest_version", nullable = false)
+    var manifestVersion: Int = 1,
+
     @Column(nullable = false)
     var name: String,
 
@@ -149,5 +158,5 @@ class PartnerMiniApp(
     @Column(nullable = false)
     var version: Long = 0,
 ) {
-    protected constructor() : this(id = "", partnerId = "", name = "", description = "", bundleUrl = "", permissions = "")
+    protected constructor() : this(id = "", partnerId = "", appId = "", version = "0.0.0", name = "", description = "", bundleUrl = "", permissions = "")
 }
