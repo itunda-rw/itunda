@@ -71,43 +71,6 @@ jobs:
 
       # Keep icon generation isolated from the runner's externally-managed Python.
       # The source SVG lives under ios/Assets; App/Resources contains only generated XCAssets.
-      - name: Generate iOS app icon asset catalog
-        working-directory: ios
-        run: |
-          python3 -m venv .ci-venv
-          .ci-venv/bin/python -m pip install --disable-pip-version-check cairosvg pillow
-          .ci-venv/bin/python <<'PY'
-          import cairosvg
-          from pathlib import Path
-
-          src = Path("Assets/ItundaIcon.svg")
-          out = Path("App/Resources/ItundaIcon.xcassets/ItundaIcon.appiconset/ItundaIcon.png")
-          out.parent.mkdir(parents=True, exist_ok=True)
-
-          cairosvg.svg2png(
-              url=str(src),
-              write_to=str(out),
-              output_width=1024,
-              output_height=1024,
-          )
-          PY
-          cat > App/Resources/ItundaIcon.xcassets/ItundaIcon.appiconset/Contents.json <<'JSON'
-          {
-            "images": [
-              {
-                "filename": "ItundaIcon.png",
-                "idiom": "universal",
-                "scale": "1x",
-                "size": "1024x1024"
-              }
-            ],
-            "info": {
-              "author": "Itunda",
-              "version": 1
-            }
-          }
-          JSON
-
       - name: Generate Xcode project
         working-directory: ios
         run: |
