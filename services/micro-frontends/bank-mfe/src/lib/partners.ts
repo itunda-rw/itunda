@@ -51,7 +51,9 @@ export function hasValidPartnerMiniAppRelease(app: PartnerMiniApp): boolean {
     typeof app.bundleSizeBytes === 'number' &&
     Number.isSafeInteger(app.bundleSizeBytes) &&
     app.bundleSizeBytes >= 0 &&
-    app.bundleUrl.startsWith('https://')
+    app.bundleUrl.startsWith('https://') &&
+    typeof app.manifestUrl === 'string' &&
+    app.manifestUrl.startsWith('https://')
   );
 }
 
