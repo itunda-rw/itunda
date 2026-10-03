@@ -17,6 +17,7 @@ import rw.itunda.partners.InvalidApiKeyException
 import rw.itunda.partners.InvalidMiniAppCategoryException
 import rw.itunda.partners.InvalidMiniAppDecisionReasonException
 import rw.itunda.partners.InvalidMiniAppSubmissionException
+import rw.itunda.partners.InvalidMiniAppReleaseIntegrityException
 import rw.itunda.partners.InvalidPermissionScopeException
 import rw.itunda.partners.PartnerEmailAlreadyRegisteredException
 import rw.itunda.partners.InvalidPartnerEmailException
@@ -30,8 +31,15 @@ data class SubmitMiniAppRequest(
     val id: String,
     val version: String,
     val manifestVersion: Int = 1,
-    val name: String, val description: String, val iconUrl: String? = null, val bundleUrl: String, val permissions: List<String>,
+    val name: String,
+    val description: String,
+    val iconUrl: String? = null,
+    val bundleUrl: String,
+    val permissions: List<String>,
+    val manifestSha256: String,
     val category: String? = null,
+    val bundleSha256: String? = null,
+    val bundleSizeBytes: Long? = null,
 )
 
 // Partner-facing developer platform -- mapped outside /api/v1/system/** since a partner
@@ -63,8 +71,19 @@ class PartnerController(private val partnerService: PartnerService) {
         @RequestHeader("X-Api-Key") apiKey: String,
     ): ResponseEntity<Map<String, Any?>> {
         val miniApp = partnerService.submitMiniApp(
-            apiKey, request.id, request.version, request.manifestVersion, request.name, request.description, request.iconUrl, request.bundleUrl, request.permissions,
+            apiKey,
+            request.id,
+            request.version,
+            request.manifestVersion,
+            request.name,
+            request.description,
+            request.iconUrl,
+            request.bundleUrl,
+            request.permissions,
+            request.manifestSha256,
             request.category,
+            request.bundleSha256,
+            request.bundleSizeBytes,
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "miniApp" to miniApp))
     }
@@ -108,6 +127,10 @@ class PartnerController(private val partnerService: PartnerService) {
     @ExceptionHandler(InvalidMiniAppSubmissionException::class)
     fun handleInvalidSubmission(ex: InvalidMiniAppSubmissionException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MINI_APP_SUBMISSION", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidMiniAppReleaseIntegrityException::class)
+    fun handleInvalidReleaseIntegrity(ex: InvalidMiniAppReleaseIntegrityException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MINI_APP_RELEASE_INTEGRITY", ex.message ?: "Invalid release integrity metadata"))
 
     @ExceptionHandler(MissingRequestHeaderException::class)
     fun handleMissingHeader(ex: MissingRequestHeaderException) =
