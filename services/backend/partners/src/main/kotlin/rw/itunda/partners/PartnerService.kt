@@ -212,6 +212,50 @@ class PartnerService(
         return partnerMiniAppRepository.save(miniApp)
     }
 
+    @Deprecated("Use the release-integrity-aware overload")
+    fun submitMiniApp(
+        apiKey: String,
+        name: String,
+        description: String,
+        iconUrl: String?,
+        bundleUrl: String,
+        permissions: List<String>,
+    ): PartnerMiniApp = submitMiniApp(
+        apiKey = apiKey,
+        appId = "rw.legacy.app",
+        version = "0.0.0",
+        manifestVersion = 1,
+        name = name,
+        description = description,
+        iconUrl = iconUrl,
+        bundleUrl = bundleUrl,
+        permissions = permissions,
+        manifestSha256 = sha256ReleaseMetadata(name, description, iconUrl, bundleUrl, permissions),
+    )
+
+    @Deprecated("Use the release-integrity-aware overload")
+    fun submitMiniApp(
+        apiKey: String,
+        name: String,
+        description: String,
+        iconUrl: String?,
+        bundleUrl: String,
+        permissions: List<String>,
+        category: String?,
+    ): PartnerMiniApp = submitMiniApp(
+        apiKey = apiKey,
+        appId = "rw.legacy.app",
+        version = "0.0.0",
+        manifestVersion = 1,
+        name = name,
+        description = description,
+        iconUrl = iconUrl,
+        bundleUrl = bundleUrl,
+        permissions = permissions,
+        manifestSha256 = sha256ReleaseMetadata(name, description, iconUrl, bundleUrl, permissions),
+        category = category,
+    )
+
     fun getMiniApp(apiKey: String, miniAppId: String): PartnerMiniApp {
         val partner = resolvePartner(apiKey)
         val miniApp = partnerMiniAppRepository.findById(miniAppId)
@@ -315,6 +359,16 @@ class PartnerService(
         val token = bytes.joinToString("") { "%02x".format(it) }
         return "sk_test_$token"
     }
+
+    private fun sha256ReleaseMetadata(
+        name: String,
+        description: String,
+        iconUrl: String?,
+        bundleUrl: String,
+        permissions: List<String>,
+    ): String = MessageDigest.getInstance("SHA-256")
+        .digest(listOf(name, description, iconUrl.orEmpty(), bundleUrl, permissions.joinToString(",")).joinToString("|").toByteArray())
+        .joinToString("") { "%02x".format(it) }
 
     private fun validateSha256(field: String, value: String) {
         if (!Regex("^[0-9a-fA-F]{64}$").matches(value.trim())) {
