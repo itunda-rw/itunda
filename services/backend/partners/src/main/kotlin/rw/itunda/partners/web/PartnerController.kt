@@ -27,6 +27,9 @@ import rw.itunda.partners.PartnerSuspendedException
 
 data class RegisterPartnerRequest(val companyName: String, val contactEmail: String)
 data class SubmitMiniAppRequest(
+    val id: String,
+    val version: String,
+    val manifestVersion: Int = 1,
     val name: String, val description: String, val iconUrl: String? = null, val bundleUrl: String, val permissions: List<String>,
     val category: String? = null,
 )
@@ -60,7 +63,7 @@ class PartnerController(private val partnerService: PartnerService) {
         @RequestHeader("X-Api-Key") apiKey: String,
     ): ResponseEntity<Map<String, Any?>> {
         val miniApp = partnerService.submitMiniApp(
-            apiKey, request.name, request.description, request.iconUrl, request.bundleUrl, request.permissions,
+            apiKey, request.id, request.version, request.manifestVersion, request.name, request.description, request.iconUrl, request.bundleUrl, request.permissions,
             request.category,
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "miniApp" to miniApp))
