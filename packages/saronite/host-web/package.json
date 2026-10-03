@@ -1,0 +1,18 @@
+{
+  "name": "@itunda/saronite-host-web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Browser transport and host-side bridge for the Saronite protocol.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "contract-test": "node --experimental-strip-types src/index.test.ts"
+  },
+  "dependencies": {
+    "@itunda/saronite-protocol": "file:../protocol"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}
