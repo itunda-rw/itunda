@@ -71,6 +71,9 @@ class PartnerController(private val partnerService: PartnerService) {
         @RequestBody request: SubmitMiniAppRequest,
         @RequestHeader("X-Api-Key") apiKey: String,
     ): ResponseEntity<Map<String, Any?>> {
+        if (request.manifestUrl.isNullOrBlank()) {
+            throw InvalidMiniAppReleaseIntegrityException("manifestUrl is required for partner releases")
+        }
         val miniApp = partnerService.submitMiniApp(
             apiKey,
             request.id,
