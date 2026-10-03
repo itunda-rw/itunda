@@ -10,6 +10,7 @@ function createWindowPair() {
   const make = (
     listeners: Set<Listener>,
     peer: Set<Listener>,
+    self: object,
   ) => ({
     addEventListener(_type: 'message', listener: Listener) {
       listeners.add(listener);
@@ -18,15 +19,14 @@ function createWindowPair() {
       listeners.delete(listener);
     },
     postMessage(data: unknown) {
-      const event = { data, origin: 'https://itunda.test', source: undefined };
+      const event = { data, origin: 'https://itunda.test', source: self };
       for (const listener of peer) listener(event as MessageEvent);
     },
   });
 
-  return {
-    a: make(listenersA, listenersB),
-    b: make(listenersB, listenersA),
-  };
+  const a = make(listenersA, listenersB, {});
+  const b = make(listenersB, listenersA, {});
+  return { a, b };
 }
 
 const pair = createWindowPair();
@@ -41,18 +41,8 @@ const transport = createSaroniteWebTransport({
 });
 
 const response = transport.request('identity', 'getCurrentIdentity');
+await assert.rejects(response, (error: Error) => error.message.includes('timed out'));
 
-await new Promise<void>((resolve) => {
-  setTimeout(() => {
-    const request = { protocolVersion: 1, kind: 'request', id: 'unknown' };
-    void request;
-    resolve();
-  }, 0);
-});
-
-// The transport uses postMessage; the synthetic target cannot observe the
-// generated id directly, so this test validates lifecycle cleanup and event
-// subscription without depending on browser globals.
 const unsubscribe = transport.subscribe(() => {});
 unsubscribe();
 transport.close();
