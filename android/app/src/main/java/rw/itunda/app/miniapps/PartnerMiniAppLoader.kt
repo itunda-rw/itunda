@@ -13,6 +13,8 @@ import okhttp3.Request
 import rw.itunda.core.network.PartnerMiniAppDto
 import java.io.File
 import java.io.IOException
+import java.net.URL
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 /**
@@ -97,7 +99,7 @@ object PartnerMiniAppLoader {
     suspend fun launch(activity: Activity, app: PartnerMiniAppDto, onError: (String) -> Unit) {
         val application = activity.applicationContext as ItundaApplication
         try {
-            val bundleFile = downloadBundle(activity, app)
+            val bundleFile = downloadAndVerifyBundle(activity, app)
             reloadHostWithBundle(application, bundleFile.absolutePath)
             MiniAppSecurityContext.activeScopes = app.permissions
                 .split(",")
@@ -130,21 +132,92 @@ object PartnerMiniAppLoader {
         restoreScope.launch { restoreFirstPartyBundle(activity) }
     }
 
-    private suspend fun downloadBundle(context: Context, app: PartnerMiniAppDto): File = withContext(Dispatchers.IO) {
-        val request = Request.Builder().url(app.bundleUrl).build()
+    /**
+     * Downloads a published release and verifies the immutable catalog metadata before
+     * the bundle can reach React Native.
+     */
+    private suspend fun downloadAndVerifyBundle(context: Context, app: PartnerMiniAppDto): File = withContext(Dispatchers.IO) {
+        val releaseId = app.releaseId?.takeIf { it.isNotBlank() }
+            ?: throw IOException("Mini-app release is missing releaseId")
+        requireSha256(app.manifestSha256, "manifestSha256")
+        val bundleSha256 = requireSha256(app.bundleSha256, "bundleSha256")
+        val expectedSize = app.bundleSizeBytes
+            ?: throw IOException("Mini-app release is missing bundleSizeBytes")
+        if (expectedSize < 0) throw IOException("Mini-app release has invalid bundleSizeBytes")
+
+        val bundleUrl = runCatching { URL(app.bundleUrl) }.getOrElse {
+            throw IOException("Mini-app bundle URL is invalid")
+        }
+        if (bundleUrl.protocol != "https") {
+            throw IOException("Mini-app bundle URL must use HTTPS")
+        }
+
+        val safeReleaseId = releaseId.replace(Regex("[^A-Za-z0-9._-]"), "_")
+        val file = File(context.cacheDir, "partner-mini-app-$safeReleaseId.bundle.js")
+        if (file.isFile && file.length() == expectedSize) {
+            if (sha256(file).equals(bundleSha256, ignoreCase = true)) return@withContext file
+            file.delete()
+        }
+
+        val request = Request.Builder().url(bundleUrl).build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 throw IOException("Bundle download failed: HTTP ${response.code} for ${app.bundleUrl}")
             }
             val body = response.body ?: throw IOException("Empty bundle response from ${app.bundleUrl}")
-            // Keyed by mini-app id so two different partner apps don't clobber each
-            // other's cached file if a user backs out and taps a different one before
-            // this one's file would otherwise be evicted.
-            val file = File(context.cacheDir, "partner-mini-app-${app.id}.bundle.js")
-            file.outputStream().use { out -> body.byteStream().copyTo(out) }
-            file
+            val digest = MessageDigest.getInstance("SHA-256")
+            var byteCount = 0L
+            file.outputStream().use { out ->
+                body.byteStream().use { input ->
+                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        if (read == 0) continue
+                        digest.update(buffer, 0, read)
+                        out.write(buffer, 0, read)
+                        byteCount += read
+                    }
+                }
+            }
+            if (byteCount != expectedSize) {
+                file.delete()
+                throw IOException("Bundle size mismatch for release $releaseId: expected $expectedSize bytes, got $byteCount")
+            }
+            val actualSha = digest.digest().toHex()
+            if (!actualSha.equals(bundleSha256, ignoreCase = true)) {
+                file.delete()
+                throw IOException("Bundle SHA-256 mismatch for release $releaseId")
+            }
         }
+        file
     }
+
+    private fun requireSha256(value: String?, field: String): String {
+        val normalized = value?.trim()?.lowercase()
+            ?: throw IOException("Mini-app release is missing $field")
+        if (!normalized.matches(SHA256_PATTERN)) {
+            throw IOException("Mini-app release has invalid $field")
+        }
+        return normalized
+    }
+
+    private fun sha256(file: File): String =
+        file.inputStream().use { input ->
+            val digest = MessageDigest.getInstance("SHA-256")
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                if (read > 0) digest.update(buffer, 0, read)
+            }
+            digest.digest().toHex()
+        }
+
+    private fun ByteArray.toHex(): String =
+        joinToString("") { "%02x".format(it) }
+
+    private const val SHA256_PATTERN = "^[0-9a-f]{64}$"
 
     /**
      * [filePath] non-null: point the shared ReactHost's bundle source at that real
