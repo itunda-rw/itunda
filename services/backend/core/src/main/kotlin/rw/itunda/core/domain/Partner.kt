@@ -138,6 +138,9 @@ class PartnerMiniApp(
     @Column(name = "bundle_size_bytes")
     var bundleSizeBytes: Long? = null,
 
+    @Column(name = "manifest_url", length = 500)
+    var manifestUrl: String? = null,
+
     @Column(nullable = false, length = 500)
     var permissions: String,
 
