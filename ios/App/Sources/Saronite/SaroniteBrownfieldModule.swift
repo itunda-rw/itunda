@@ -25,26 +25,6 @@ import CoreNetwork
 /// anyway, since the bridge discovers modules via ObjC runtime introspection on the class's
 /// `@objc` selectors, not Swift protocol witness tables.
 @objc(SaroniteBrownfieldModule)
-/// Process-wide partner scope context, intentionally inert until an iOS partner
-/// bundle loader activates it. This mirrors Android's single-active-bundle constraint.
-/// nil means first-party/trusted mini-apps; a non-nil set is the partner's approved scopes.
-final class MiniAppSecurityContext {
-    static var activeScopes: Set<String>?
-
-    static func isAllowed(_ requiredScope: String?) -> Bool {
-        guard let scopes = activeScopes else { return true }
-        return requiredScope != nil && scopes.contains(requiredScope!)
-    }
-
-    static func requireScope(_ requiredScope: String?, reject: @escaping RCTPromiseRejectBlock) -> Bool {
-        guard isAllowed(requiredScope) else {
-            reject("SARONITE_SCOPE_DENIED", "This mini-app's approved permissions do not include" + (requiredScope.map { " \"\\($0)\"" } ?? " this call"), nil)
-            return false
-        }
-        return true
-    }
-}
-
 final class SaroniteBrownfieldModule: NSObject {
     static func moduleName() -> String! { "SaroniteBrownfieldModule" }
     static func requiresMainQueueSetup() -> Bool { false }
