@@ -50,12 +50,12 @@ class PartnerControllerTest : BehaviorSpec({
         val controller = PartnerController(service)
         val miniApp = mockk<PartnerMiniApp>(relaxed = true)
         every {
-            service.submitMiniApp("sk_test_key", "rw.acme.app", "1.0.0", 1, "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "a".repeat(64), null, null, null)
+            service.submitMiniApp("sk_test_key", "rw.acme.app", "1.0.0", 1, "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "a".repeat(64), null, null, "https://example.com/manifest.json")
         } returns miniApp
 
         When("submitting") {
             val response = controller.submitMiniApp(
-                SubmitMiniAppRequest("rw.acme.app", "1.0.0", 1, "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "a".repeat(64)),
+                SubmitMiniAppRequest("rw.acme.app", "1.0.0", 1, "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "a".repeat(64), null, null, "https://example.com/manifest.json"),
                 "sk_test_key",
             )
 
@@ -79,7 +79,7 @@ class PartnerControllerTest : BehaviorSpec({
 
         When("submitting") {
             val response = controller.submitMiniApp(
-                SubmitMiniAppRequest("rw.acme.app", "1.0.0", 1, "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "a".repeat(64), "finance"),
+                SubmitMiniAppRequest("rw.acme.app", "1.0.0", 1, "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "a".repeat(64), "finance", null, "https://example.com/manifest.json"),
                 "sk_test_key",
             )
 
