@@ -1,0 +1,9 @@
+{
+  "name": "@itunda/saronite-protocol",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Versioned wire contract for Saronite host, mini-app and developer tooling communication.",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts"
+}

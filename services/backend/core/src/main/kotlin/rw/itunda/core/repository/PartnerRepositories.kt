@@ -15,6 +15,7 @@ interface PartnerRepository : JpaRepository<Partner, String> {
 
 interface PartnerMiniAppRepository : JpaRepository<PartnerMiniApp, String> {
     fun findByPartnerIdOrderByCreatedAtDesc(partnerId: String): List<PartnerMiniApp>
+    fun existsByPartnerIdAndAppIdAndVersion(partnerId: String, appId: String, version: String): Boolean
     // Paginated -- see PageResponse.kt's doc comment for why (admin review queue and
     // published catalog can both grow past a safe single-response size).
     fun findByStatusOrderByCreatedAtAsc(status: PartnerMiniAppStatus, pageable: Pageable): Page<PartnerMiniApp>

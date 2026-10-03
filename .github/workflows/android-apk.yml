@@ -25,7 +25,7 @@ jobs:
 
       - name: Install Saronite dependencies
         working-directory: packages/saronite
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Setup JDK
         uses: actions/setup-java@v4

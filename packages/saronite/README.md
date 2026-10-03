@@ -260,3 +260,5 @@ Sources: [toss/granite on GitHub](https://github.com/toss/granite),
 [Toss mini-app intro (tossfeed)](https://toss.im/tossfeed/article/toss_miniapp_intro),
 [Toss surpasses 1,000 partner mini-apps (아시아경제)](https://cm.asiae.co.kr/en/article/2026020914185712770),
 [digitaltoday.co.kr coverage](https://www.digitaltoday.co.kr/en/view/3334/toss-app-in-toss-partner-mini-apps-top-1000).
+
+> CI note: `packages/saronite` is an independent npm workspace. CI installs it with `npm install` rather than the root Yarn workspace so native and web Saronite checks resolve the local package graph consistently.\n\n

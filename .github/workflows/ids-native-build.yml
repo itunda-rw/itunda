@@ -45,7 +45,7 @@ jobs:
 
       - name: Install Saronite JS dependencies
         working-directory: packages/saronite
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Setup JDK
         uses: actions/setup-java@v4
@@ -108,7 +108,7 @@ jobs:
 
       - name: Install Saronite JS dependencies
         working-directory: packages/saronite
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Generate BrickCodegen iOS bridge
         working-directory: packages/saronite/host-app

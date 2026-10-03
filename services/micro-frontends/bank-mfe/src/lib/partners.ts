@@ -22,10 +22,39 @@ export interface PartnerMiniApp {
   name: string;
   description: string;
   iconUrl: string | null;
+  bundleUrl: string;
   permissions: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
+  // Immutable release-integrity metadata shared with native Saronite hosts.
+  // Optional at the type boundary so older catalog records remain decodable;
+  // executable runtimes must fail closed when the complete contract is absent.
+  releaseId?: string | null;
+  manifestSha256?: string | null;
+  bundleSha256?: string | null;
+  bundleSizeBytes?: number | null;
+  publishedAt?: string | null;
+  manifestUrl?: string | null;
   category: string;
   createdAt: string;
+}
+
+const SHA256_RE = /^[0-9a-f]{64}$/i;
+
+export function hasValidPartnerMiniAppRelease(app: PartnerMiniApp): boolean {
+  return (
+    typeof app.releaseId === 'string' &&
+    app.releaseId.trim().length > 0 &&
+    typeof app.manifestSha256 === 'string' &&
+    SHA256_RE.test(app.manifestSha256) &&
+    typeof app.bundleSha256 === 'string' &&
+    SHA256_RE.test(app.bundleSha256) &&
+    typeof app.bundleSizeBytes === 'number' &&
+    Number.isSafeInteger(app.bundleSizeBytes) &&
+    app.bundleSizeBytes >= 0 &&
+    app.bundleUrl.startsWith('https://') &&
+    typeof app.manifestUrl === 'string' &&
+    app.manifestUrl.startsWith('https://')
+  );
 }
 
 // Real Mini-Apps hub pass (2026-09-11) -- was page-based (`?page=`), replaced

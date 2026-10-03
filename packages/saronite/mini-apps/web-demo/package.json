@@ -10,7 +10,7 @@
     "production-boundary": "node ./scripts/verify-production-boundary.mjs"
   },
   "devDependencies": {
-    "@itunda/saronite-devtools": "workspace:*",
+    "@itunda/saronite-devtools": "file:../../devtools",
     "typescript": "^5.8.3",
     "vite": "^7.1.7"
   }

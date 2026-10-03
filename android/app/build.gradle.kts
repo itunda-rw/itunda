@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.testing.Test
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -258,6 +260,7 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":core:risk"))
     implementation(project(":core:identity"))
+    implementation(project(":core:saronite"))
     // Real shared networking layer (2026-07-22) -- NetworkClient/ApiService/
     // TokenStore/etc. relocated here from :app itself, see :core:network's own
     // build.gradle.kts doc comment for why.
@@ -356,4 +359,10 @@ dependencies {
     // newer platforms correctly.
     androidTestImplementation(libs.espresso.core)
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
 }

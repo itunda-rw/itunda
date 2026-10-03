@@ -128,6 +128,7 @@ include(":core:identity")
 include(":core:consent")
 include(":core:ledger")
 include(":core:risk")
+include(":core:saronite")
 
 // Feature Bounded Contexts
 include(":features:payments:api")

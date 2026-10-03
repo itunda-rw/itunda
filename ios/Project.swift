@@ -87,7 +87,7 @@ func makeMicroFeature(
 
 var allTargets: [Target] = []
 
-let coreModules = ["DesignSystem", "SDUI", "Network", "Testing", "Identity", "Consent", "Ledger", "Risk"]
+let coreModules = ["DesignSystem", "SDUI", "Network", "Testing", "Identity", "Consent", "Ledger", "Risk", "Saronite"]
 for core in coreModules {
     allTargets.append(
         Target.target(
@@ -266,6 +266,7 @@ appDependencies.append(.target(name: "CoreIdentity"))
 // directly rather than relying on transitive linking, the same lesson the
 // CoreDesignSystem->CoreNetwork dependency comment above already documents.
 appDependencies.append(.target(name: "CoreNetwork"))
+appDependencies.append(.target(name: "CoreSaronite"))
 
 allTargets.append(
     Target.target(

@@ -1,25 +1,13 @@
 import React from 'react';
 
 export interface KeypadButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  children: React.ReactNode;
-  ariaLabel?: string;
+  tone?: 'default' | 'delete';
 }
 
-export function KeypadButton({
-  children,
-  ariaLabel,
-  className = '',
-  type = 'button',
-  ...props
-}: KeypadButtonProps) {
-  return (
-    <button
-      {...props}
-      type={type}
-      aria-label={ariaLabel}
-      className={`ids-keypad-button ${className}`.trim()}
-    >
-      {children}
-    </button>
-  );
+export function KeypadButton({ tone = 'default', className = '', type = 'button', ...props }: KeypadButtonProps) {
+  return <button {...props} type={type} className={[
+    'ids-keypad-button',
+    tone === 'delete' ? 'ids-keypad-button--delete' : '',
+    className,
+  ].filter(Boolean).join(' ')} />;
 }

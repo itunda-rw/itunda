@@ -66,7 +66,7 @@ app.set('trust proxy', TRUST_PROXY_CIDRS);
 app.use(cors({
     origin: (origin, callback) => callback(null, isAllowedCorsOrigin(origin)),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key', 'X-Api-Key'],
     exposedHeaders: ['X-Request-ID'],
     maxAge: 600,
 }));

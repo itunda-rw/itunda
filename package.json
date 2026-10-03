@@ -91,7 +91,13 @@
     "audit:ids": "node ./scripts/audit-ids.mjs",
     "audit:monorepo": "node ./scripts/audit-monorepo.mjs",
     "miniapp:new": "node ./tools/itunda-miniapp/bin/itunda-miniapp.mjs new",
-    "miniapp:validate": "node ./tools/itunda-miniapp/bin/itunda-miniapp.mjs validate"
+    "miniapp:validate": "node ./tools/itunda-miniapp/bin/itunda-miniapp.mjs validate",
+    "miniapp:dev": "node ./tools/itunda-miniapp/bin/itunda-miniapp.mjs dev",
+    "miniapp:test": "node ./tools/itunda-miniapp/bin/itunda-miniapp.mjs test",
+    "miniapp:build": "node ./tools/itunda-miniapp/bin/itunda-miniapp.mjs build",
+    "miniapp:inspect": "node ./tools/itunda-miniapp/bin/itunda-miniapp.mjs inspect",
+    "miniapp:publish": "node ./tools/itunda-miniapp/bin/itunda-miniapp.mjs publish",
+    "miniapp:status": "node ./tools/itunda-miniapp/bin/itunda-miniapp.mjs status"
   },
   "devDependencies": {
     "dependency-cruiser": "catalog:",

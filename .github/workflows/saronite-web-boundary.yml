@@ -6,10 +6,12 @@ on:
       - main
     paths:
       - "packages/saronite/**"
+      - "tools/itunda-miniapp/**"
       - ".github/workflows/saronite-web-boundary.yml"
   pull_request:
     paths:
       - "packages/saronite/**"
+      - "tools/itunda-miniapp/**"
       - ".github/workflows/saronite-web-boundary.yml"
   workflow_dispatch:
 
@@ -36,6 +38,33 @@ jobs:
       - name: Install Saronite dependencies
         working-directory: packages/saronite
         run: npm install
+
+      - name: Validate mini-app CLI syntax
+        run: node --check tools/itunda-miniapp/bin/itunda-miniapp.mjs
+
+      - name: Typecheck Saronite debugger
+        working-directory: packages/saronite/debugger
+        run: npm run typecheck
+
+      - name: Test Saronite debugger contracts
+        working-directory: packages/saronite/debugger
+        run: npm run contract-test
+
+      - name: Typecheck Saronite web host
+        working-directory: packages/saronite/host-web
+        run: npm run typecheck
+
+      - name: Typecheck Saronite devtools
+        working-directory: packages/saronite/devtools
+        run: npm run typecheck
+
+      - name: Test Saronite web transport
+        working-directory: packages/saronite/host-web
+        run: npm run contract-test
+
+      - name: Test Saronite devtools contracts
+        working-directory: packages/saronite/devtools
+        run: npm run contract-test
 
       - name: Typecheck web demo
         working-directory: packages/saronite/mini-apps/web-demo

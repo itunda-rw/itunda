@@ -16,7 +16,7 @@ steps:
     image: bash
     directory: packages/saronite/host-app
     commands:
-      - npm ci
+      - npm install --no-audit --no-fund
       - node ../node_modules/.bin/brick-codegen --platform ios --output-ios ../../../ios/.brick --projectRoot .
     when:
       - event: [push, pull_request]

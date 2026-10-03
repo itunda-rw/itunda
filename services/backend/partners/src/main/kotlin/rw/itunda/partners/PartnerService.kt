@@ -29,6 +29,7 @@ class PartnerMiniAppNotPendingException(message: String) : RuntimeException(mess
 class InvalidMiniAppSubmissionException(message: String) : RuntimeException(message)
 class InvalidMiniAppDecisionReasonException(message: String) : RuntimeException(message)
 class InvalidMiniAppCategoryException(message: String) : RuntimeException(message)
+class InvalidMiniAppReleaseIntegrityException(message: String) : RuntimeException(message)
 class PartnerNotFoundException(message: String) : RuntimeException(message)
 
 /**
@@ -41,7 +42,12 @@ class PartnerNotFoundException(message: String) : RuntimeException(message)
  * honest scope boundary.
  */
 object PartnerMiniAppPermissions {
-    val ALLOWED = setOf("account:read", "transactions:read", "profile:read")
+    val ALLOWED = setOf(
+        "account:read", "transactions:read", "profile:read",
+        "identity", "auth", "navigation", "share", "storage", "notifications",
+        "payments", "location", "camera", "contacts", "clipboard", "haptic",
+        "analytics", "events", "deepLinks",
+    )
 }
 
 // Shared parse helper (2026-09-11, Mini-Apps hub pass) -- both submitMiniApp's own
@@ -115,8 +121,20 @@ class PartnerService(
 
     @Transactional
     fun submitMiniApp(
-        apiKey: String, name: String, description: String, iconUrl: String?, bundleUrl: String, permissions: List<String>,
+        apiKey: String,
+        appId: String,
+        version: String,
+        manifestVersion: Int,
+        name: String,
+        description: String,
+        iconUrl: String?,
+        bundleUrl: String,
+        permissions: List<String>,
+        manifestSha256: String,
         category: String? = null,
+        bundleSha256: String? = null,
+        bundleSizeBytes: Long? = null,
+        manifestUrl: String? = null,
     ): PartnerMiniApp {
         val partner = resolvePartner(apiKey)
         // Real gap found live (2026-09-11, Mini-Apps hub pass) -- register() above has
@@ -130,6 +148,29 @@ class PartnerService(
         if (invalidScopes.isNotEmpty()) {
             throw InvalidPermissionScopeException("Unknown permission scope(s): ${invalidScopes.joinToString(", ")}")
         }
+        val trimmedAppId = appId.trim()
+        val trimmedVersion = version.trim()
+        if (!Regex("^rw\\.[a-z0-9]+(?:[._-][a-z0-9]+)+$").matches(trimmedAppId)) {
+            throw InvalidMiniAppSubmissionException("id must be a valid Itunda mini-app identifier")
+        }
+        if (!Regex("^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$").matches(trimmedVersion)) {
+            throw InvalidMiniAppSubmissionException("version must be semantic")
+        }
+        if (manifestVersion != 1) {
+            throw InvalidMiniAppSubmissionException("manifestVersion must be 1")
+        }
+        validateSha256("manifestSha256", manifestSha256)
+        bundleSha256?.let { validateSha256("bundleSha256", it) }
+        if (bundleSizeBytes != null && bundleSizeBytes < 0) {
+            throw InvalidMiniAppReleaseIntegrityException("bundleSizeBytes must be non-negative")
+        }
+        val trimmedManifestUrl = manifestUrl?.trim()?.ifBlank { null }
+        if (trimmedManifestUrl != null && !trimmedManifestUrl.startsWith("https://")) {
+            throw InvalidMiniAppReleaseIntegrityException("manifestUrl must use HTTPS")
+        }
+        if (partnerMiniAppRepository.existsByPartnerIdAndAppIdAndVersion(partner.id, trimmedAppId, trimmedVersion)) {
+            throw InvalidMiniAppSubmissionException("This app version has already been submitted")
+        }
         val trimmedName = name.trim()
         val trimmedDescription = description.trim()
         val trimmedIconUrl = iconUrl?.trim()?.ifBlank { null }
@@ -141,8 +182,14 @@ class PartnerService(
         // across Commerce/Eats/Marketplace/Jobs/RealEstate/Community/Messaging/Maps the
         // same day -- these columns are VARCHAR(255)/500/500/500, and this DB's real
         // STRICT_TRANS_TABLES mode throws a raw, unhandled 500 on an over-length insert.
-        if (trimmedName.length > 255 || trimmedDescription.length > 500 || (trimmedIconUrl?.length ?: 0) > 500 || trimmedBundleUrl.length > 500) {
-            throw InvalidMiniAppSubmissionException("Name must be 255 characters or fewer; description, iconUrl, and bundleUrl 500 or fewer")
+        if (trimmedName.length > 255 || trimmedDescription.length > 500 || (trimmedIconUrl?.length ?: 0) > 500 || trimmedBundleUrl.length > 500 || (trimmedManifestUrl?.length ?: 0) > 500) {
+            throw InvalidMiniAppSubmissionException("Name must be 255 characters or fewer; description, iconUrl, bundleUrl, and manifestUrl 500 or fewer")
+        }
+        if (!trimmedBundleUrl.startsWith("https://")) {
+            throw InvalidMiniAppSubmissionException("bundleUrl must use HTTPS")
+        }
+        if (trimmedIconUrl != null && !trimmedIconUrl.startsWith("https://")) {
+            throw InvalidMiniAppSubmissionException("iconUrl must use HTTPS")
         }
         // Real Mini-Apps hub pass (2026-09-11) -- a blank/omitted category is a real,
         // honest default (OTHER), same fail-closed-on-garbage-input convention as the
@@ -152,15 +199,77 @@ class PartnerService(
         val miniApp = PartnerMiniApp(
             id = "partner_app_${UUID.randomUUID()}",
             partnerId = partner.id,
+            appId = trimmedAppId,
+            version = trimmedVersion,
+            manifestVersion = manifestVersion,
             name = trimmedName,
             description = trimmedDescription,
             iconUrl = trimmedIconUrl,
             bundleUrl = trimmedBundleUrl,
+            releaseId = "release_${UUID.randomUUID()}",
+            manifestSha256 = manifestSha256.lowercase(),
+            bundleSha256 = bundleSha256?.lowercase(),
+            bundleSizeBytes = bundleSizeBytes,
+            manifestUrl = trimmedManifestUrl,
             permissions = permissions.joinToString(","),
             status = PartnerMiniAppStatus.PENDING,
             category = resolvedCategory,
         )
         return partnerMiniAppRepository.save(miniApp)
+    }
+
+    @Deprecated("Use the release-integrity-aware overload")
+    fun submitMiniApp(
+        apiKey: String,
+        name: String,
+        description: String,
+        iconUrl: String?,
+        bundleUrl: String,
+        permissions: List<String>,
+    ): PartnerMiniApp = submitMiniApp(
+        apiKey = apiKey,
+        appId = "rw.legacy.app",
+        version = "0.0.0",
+        manifestVersion = 1,
+        name = name,
+        description = description,
+        iconUrl = iconUrl,
+        bundleUrl = bundleUrl,
+        permissions = permissions,
+        manifestSha256 = sha256ReleaseMetadata(name, description, iconUrl, bundleUrl, permissions),
+    )
+
+    @Deprecated("Use the release-integrity-aware overload")
+    fun submitMiniApp(
+        apiKey: String,
+        name: String,
+        description: String,
+        iconUrl: String?,
+        bundleUrl: String,
+        permissions: List<String>,
+        category: String?,
+    ): PartnerMiniApp = submitMiniApp(
+        apiKey = apiKey,
+        appId = "rw.legacy.app",
+        version = "0.0.0",
+        manifestVersion = 1,
+        name = name,
+        description = description,
+        iconUrl = iconUrl,
+        bundleUrl = bundleUrl,
+        permissions = permissions,
+        manifestSha256 = sha256ReleaseMetadata(name, description, iconUrl, bundleUrl, permissions),
+        category = category,
+    )
+
+    fun getMiniApp(apiKey: String, miniAppId: String): PartnerMiniApp {
+        val partner = resolvePartner(apiKey)
+        val miniApp = partnerMiniAppRepository.findById(miniAppId)
+            .orElseThrow { PartnerMiniAppNotFoundException("Mini-app submission not found") }
+        if (miniApp.partnerId != partner.id) {
+            throw PartnerMiniAppNotFoundException("Mini-app submission not found")
+        }
+        return miniApp
     }
 
     fun getMyMiniApps(apiKey: String): List<PartnerMiniApp> {
@@ -198,6 +307,7 @@ class PartnerService(
             throw InvalidMiniAppDecisionReasonException("Decision reason must be 255 characters or fewer")
         }
         miniApp.status = if (approve) PartnerMiniAppStatus.APPROVED else PartnerMiniAppStatus.REJECTED
+        miniApp.publishedAt = if (approve) Instant.now() else null
         miniApp.reviewedBy = reviewerId
         miniApp.reviewedAt = java.time.Instant.now()
         miniApp.decisionReason = reason
@@ -254,6 +364,22 @@ class PartnerService(
         secureRandom.nextBytes(bytes)
         val token = bytes.joinToString("") { "%02x".format(it) }
         return "sk_test_$token"
+    }
+
+    private fun sha256ReleaseMetadata(
+        name: String,
+        description: String,
+        iconUrl: String?,
+        bundleUrl: String,
+        permissions: List<String>,
+    ): String = MessageDigest.getInstance("SHA-256")
+        .digest(listOf(name, description, iconUrl.orEmpty(), bundleUrl, permissions.joinToString(",")).joinToString("|").toByteArray())
+        .joinToString("") { "%02x".format(it) }
+
+    private fun validateSha256(field: String, value: String) {
+        if (!Regex("^[0-9a-fA-F]{64}$").matches(value.trim())) {
+            throw InvalidMiniAppReleaseIntegrityException("$field must be a 64-character SHA-256 hex digest")
+        }
     }
 
     private fun hashApiKey(rawKey: String): String =
