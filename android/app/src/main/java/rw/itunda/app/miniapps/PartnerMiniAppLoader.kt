@@ -141,6 +141,8 @@ object PartnerMiniAppLoader {
             ?: throw IOException("Mini-app release is missing releaseId")
         requireSha256(app.manifestSha256, "manifestSha256")
         val bundleSha256 = requireSha256(app.bundleSha256, "bundleSha256")
+        val manifestUrl = app.manifestUrl?.trim()?.takeIf { it.isNotEmpty() }
+            ?: throw IOException("Mini-app release is missing manifestUrl")
         val expectedSize = app.bundleSizeBytes
             ?: throw IOException("Mini-app release is missing bundleSizeBytes")
         if (expectedSize < 0) throw IOException("Mini-app release has invalid bundleSizeBytes")
@@ -151,6 +153,13 @@ object PartnerMiniAppLoader {
         if (bundleUrl.protocol != "https") {
             throw IOException("Mini-app bundle URL must use HTTPS")
         }
+        val manifestUri = runCatching { URL(manifestUrl) }.getOrElse {
+            throw IOException("Mini-app manifest URL is invalid")
+        }
+        if (manifestUri.protocol != "https") {
+            throw IOException("Mini-app manifest URL must use HTTPS")
+        }
+        verifyManifest(manifestUri, app.manifestSha256!!, releaseId)
 
         val safeReleaseId = releaseId.replace(Regex("[^A-Za-z0-9._-]"), "_")
         val file = File(context.cacheDir, "partner-mini-app-$safeReleaseId.bundle.js")
@@ -191,6 +200,29 @@ object PartnerMiniAppLoader {
             }
         }
         file
+    }
+
+    private fun verifyManifest(url: URL, expectedSha256: String, releaseId: String) {
+        val request = Request.Builder().url(url).build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IOException("Manifest download failed: HTTP \${response.code} for \$url")
+            }
+            val body = response.body ?: throw IOException("Empty manifest response from \$url")
+            val digest = MessageDigest.getInstance("SHA-256")
+            body.byteStream().use { input ->
+                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    if (read > 0) digest.update(buffer, 0, read)
+                }
+            }
+            val actualSha = digest.digest().toHex()
+            if (!actualSha.equals(expectedSha256, ignoreCase = true)) {
+                throw IOException("Manifest SHA-256 mismatch for release \$releaseId")
+            }
+        }
     }
 
     private fun requireSha256(value: String?, field: String): String {
