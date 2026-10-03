@@ -33,6 +33,7 @@ export interface PartnerMiniApp {
   bundleSha256?: string | null;
   bundleSizeBytes?: number | null;
   publishedAt?: string | null;
+  manifestUrl?: string | null;
   category: string;
   createdAt: string;
 }
