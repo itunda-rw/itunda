@@ -4,11 +4,20 @@ export type ItundaCatalogStatus =
   | 'rejected'
   | 'suspended';
 
+/**
+ * Published/registered mini-app metadata shared by the developer platform and
+ * Saronite hosts. Release integrity fields are first-class so a host can pin
+ * the exact approved artifact instead of treating bundleUrl as mutable content.
+ */
 export type ItundaCatalogEntry = {
   id: string;
   appId: string;
   version: string;
   manifestVersion: 1;
+  releaseId: string;
+  manifestSha256: string;
+  bundleSha256?: string;
+  bundleSizeBytes?: number;
   name: string;
   category: string;
   description: string;
@@ -20,6 +29,7 @@ export type ItundaCatalogEntry = {
   reviewedAt?: string;
   reviewedBy?: string;
   decisionReason?: string;
+  publishedAt?: string;
 };
 
 export type ItundaCatalogTransition =
