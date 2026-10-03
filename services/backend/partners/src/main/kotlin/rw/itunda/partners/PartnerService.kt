@@ -29,6 +29,7 @@ class PartnerMiniAppNotPendingException(message: String) : RuntimeException(mess
 class InvalidMiniAppSubmissionException(message: String) : RuntimeException(message)
 class InvalidMiniAppDecisionReasonException(message: String) : RuntimeException(message)
 class InvalidMiniAppCategoryException(message: String) : RuntimeException(message)
+class InvalidMiniAppReleaseIntegrityException(message: String) : RuntimeException(message)
 class PartnerNotFoundException(message: String) : RuntimeException(message)
 
 /**
@@ -120,8 +121,19 @@ class PartnerService(
 
     @Transactional
     fun submitMiniApp(
-        apiKey: String, appId: String, version: String, manifestVersion: Int, name: String, description: String, iconUrl: String?, bundleUrl: String, permissions: List<String>,
+        apiKey: String,
+        appId: String,
+        version: String,
+        manifestVersion: Int,
+        name: String,
+        description: String,
+        iconUrl: String?,
+        bundleUrl: String,
+        permissions: List<String>,
+        manifestSha256: String,
         category: String? = null,
+        bundleSha256: String? = null,
+        bundleSizeBytes: Long? = null,
     ): PartnerMiniApp {
         val partner = resolvePartner(apiKey)
         // Real gap found live (2026-09-11, Mini-Apps hub pass) -- register() above has
@@ -145,6 +157,11 @@ class PartnerService(
         }
         if (manifestVersion != 1) {
             throw InvalidMiniAppSubmissionException("manifestVersion must be 1")
+        }
+        validateSha256("manifestSha256", manifestSha256)
+        bundleSha256?.let { validateSha256("bundleSha256", it) }
+        if (bundleSizeBytes != null && bundleSizeBytes < 0) {
+            throw InvalidMiniAppReleaseIntegrityException("bundleSizeBytes must be non-negative")
         }
         if (partnerMiniAppRepository.existsByPartnerIdAndAppIdAndVersion(partner.id, trimmedAppId, trimmedVersion)) {
             throw InvalidMiniAppSubmissionException("This app version has already been submitted")
@@ -184,6 +201,10 @@ class PartnerService(
             description = trimmedDescription,
             iconUrl = trimmedIconUrl,
             bundleUrl = trimmedBundleUrl,
+            releaseId = "release_${UUID.randomUUID()}",
+            manifestSha256 = manifestSha256.lowercase(),
+            bundleSha256 = bundleSha256?.lowercase(),
+            bundleSizeBytes = bundleSizeBytes,
             permissions = permissions.joinToString(","),
             status = PartnerMiniAppStatus.PENDING,
             category = resolvedCategory,
@@ -236,6 +257,7 @@ class PartnerService(
             throw InvalidMiniAppDecisionReasonException("Decision reason must be 255 characters or fewer")
         }
         miniApp.status = if (approve) PartnerMiniAppStatus.APPROVED else PartnerMiniAppStatus.REJECTED
+        miniApp.publishedAt = if (approve) Instant.now() else null
         miniApp.reviewedBy = reviewerId
         miniApp.reviewedAt = java.time.Instant.now()
         miniApp.decisionReason = reason
@@ -292,6 +314,12 @@ class PartnerService(
         secureRandom.nextBytes(bytes)
         val token = bytes.joinToString("") { "%02x".format(it) }
         return "sk_test_$token"
+    }
+
+    private fun validateSha256(field: String, value: String) {
+        if (!Regex("^[0-9a-fA-F]{64}$").matches(value.trim())) {
+            throw InvalidMiniAppReleaseIntegrityException("$field must be a 64-character SHA-256 hex digest")
+        }
     }
 
     private fun hashApiKey(rawKey: String): String =
