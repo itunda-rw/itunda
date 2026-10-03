@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
@@ -21,6 +22,7 @@ import rw.itunda.partners.PartnerEmailAlreadyRegisteredException
 import rw.itunda.partners.InvalidPartnerEmailException
 import rw.itunda.partners.PartnerMiniAppPermissions
 import rw.itunda.partners.PartnerService
+import rw.itunda.partners.PartnerMiniAppNotFoundException
 import rw.itunda.partners.PartnerSuspendedException
 
 data class RegisterPartnerRequest(val companyName: String, val contactEmail: String)
@@ -64,6 +66,10 @@ class PartnerController(private val partnerService: PartnerService) {
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "miniApp" to miniApp))
     }
 
+    @GetMapping("/mini-apps/{miniAppId}")
+    fun getMiniApp(@RequestHeader("X-Api-Key") apiKey: String, @PathVariable miniAppId: String): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "miniApp" to partnerService.getMiniApp(apiKey, miniAppId)))
+
     @GetMapping("/mini-apps")
     fun getMyMiniApps(@RequestHeader("X-Api-Key") apiKey: String): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "miniApps" to partnerService.getMyMiniApps(apiKey)))
@@ -87,6 +93,10 @@ class PartnerController(private val partnerService: PartnerService) {
     @ExceptionHandler(PartnerSuspendedException::class)
     fun handleSuspended(ex: PartnerSuspendedException) =
         ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("PARTNER_SUSPENDED", ex.message ?: "Forbidden"))
+
+    @ExceptionHandler(PartnerMiniAppNotFoundException::class)
+    fun handleMiniAppNotFound(ex: PartnerMiniAppNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MINI_APP_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidPermissionScopeException::class)
     fun handleInvalidScope(ex: InvalidPermissionScopeException) =
