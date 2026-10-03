@@ -222,7 +222,7 @@ async function publish(input) {
   if (errors.length) return errors.forEach(error => console.error("x " + error));
   const endpoint = flag("--endpoint");
   if (args.includes("--dry-run")) {
-    console.log(JSON.stringify({ operation: "publish", id: loaded.manifest.id, version: loaded.manifest.version, endpoint: endpoint || null, dryRun: true }, null, 2));
+    console.log(JSON.stringify({ operation: "publish", id: loaded.manifest.id, version: loaded.manifest.version, endpoint: endpoint || null, manifestUrl: manifestUrl || null, dryRun: true }, null, 2));
     return;
   }
   if (!endpoint) return fail("publish requires --endpoint, or use --dry-run");
