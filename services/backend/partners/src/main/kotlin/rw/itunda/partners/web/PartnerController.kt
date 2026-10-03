@@ -36,7 +36,7 @@ data class SubmitMiniAppRequest(
     val iconUrl: String? = null,
     val bundleUrl: String,
     val permissions: List<String>,
-    val manifestSha256: String,
+    val manifestSha256: String = "",
     val category: String? = null,
     val bundleSha256: String? = null,
     val bundleSizeBytes: Long? = null,
