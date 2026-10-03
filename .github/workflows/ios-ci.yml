@@ -41,8 +41,6 @@ jobs:
         with:
           path: |
             ios/.ci-derived-data
-            ios/Pods
-            ~/Library/Caches/CocoaPods
             ~/.cache/tuist
             ~/.local/share/mise
           key: ios-native-macos15-${{ hashFiles('ios/Podfile.lock', 'ios/Project.swift', 'packages/saronite/package.json', 'packages/saronite/package-lock.json') }}
@@ -69,16 +67,10 @@ jobs:
           brew install --cask tuist
           tuist version
 
-      # Keep icon generation isolated from the runner's externally-managed Python.
-      # The source SVG lives under ios/Assets; App/Resources contains only generated XCAssets.
       - name: Generate Xcode project
         working-directory: ios
         run: |
           tuist generate --no-open
-
-      - name: Install CocoaPods
-        working-directory: ios
-        run: pod install --no-repo-update
 
       # The Saronite PR gate validates the native host directly. The full
       # React Native application is intentionally kept out of this gate:
