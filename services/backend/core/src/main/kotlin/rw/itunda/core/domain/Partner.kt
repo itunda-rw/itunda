@@ -173,15 +173,4 @@ class PartnerMiniApp(
     @Version
     @Column(name = "revision", nullable = false)
     var revision: Long = 0,
-) {
-    protected constructor() : this(
-        id = "",
-        partnerId = "",
-        appId = "",
-        version = "0.0.0",
-        name = "",
-        description = "",
-        bundleUrl = "",
-        permissions = "",
-    )
-}
+)
