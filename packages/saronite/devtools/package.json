@@ -2,12 +2,16 @@
   "name": "@itunda/saronite-devtools",
   "private": true,
   "version": "0.1.0",
-  "description": "Development-only mock host and inspection contract for Saronite mini-apps.",
+  "description": "Development-only mock host and cross-platform inspection tools for Saronite mini-apps.",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "contract-test": "node --experimental-strip-types src/mock.contract.test.ts && node --experimental-strip-types src/capabilities.test.ts"
+  },
+  "dependencies": {
+    "@itunda/saronite-debugger": "file:../debugger",
+    "@itunda/saronite-protocol": "file:../protocol"
   },
   "devDependencies": {
     "typescript": "^5.8.3"
