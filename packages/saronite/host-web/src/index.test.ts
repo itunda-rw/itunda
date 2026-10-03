@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createSaroniteWebTransport } from './index';
+import { createSaroniteWebTransport } from './index.ts';
 
 type Listener = (event: MessageEvent) => void;
 
