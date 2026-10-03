@@ -35,7 +35,12 @@ export function createSaroniteInspector(
       handler(session.getState());
       return () => subscribers.delete(handler);
     },
-    async send<TPayload, TResult>(capability, method, payload, timeoutMs) {
+    async send<TPayload, TResult>(
+      capability: string,
+      method: string,
+      payload?: TPayload,
+      timeoutMs?: number,
+    ) {
       const response = await session.sendRequest<TPayload, TResult>({
         capability,
         method,
