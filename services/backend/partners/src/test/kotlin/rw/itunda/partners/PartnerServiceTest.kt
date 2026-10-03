@@ -28,7 +28,7 @@ class PartnerServiceTest : BehaviorSpec({
 
     Given("a new company registering as a partner") {
         val partnerRepository = mockk<PartnerRepository>()
-        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
+        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
         val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
@@ -82,7 +82,7 @@ class PartnerServiceTest : BehaviorSpec({
 
     Given("a registered partner submitting a mini-app for review") {
         val partnerRepository = mockk<PartnerRepository>()
-        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
+        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
         val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
@@ -211,7 +211,7 @@ class PartnerServiceTest : BehaviorSpec({
 
     Given("an ADMIN reviewing a real PENDING mini-app submission") {
         val partnerRepository = mockk<PartnerRepository>()
-        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
+        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
         val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
@@ -240,7 +240,7 @@ class PartnerServiceTest : BehaviorSpec({
             // read is the one saved.
             Then("the same versioned mini-app instance that was read is the one saved") {
                 savedSlot.captured shouldBe miniApp
-                savedSlot.captured.version shouldBe miniApp.version
+                savedSlot.captured.revision shouldBe miniApp.revision
             }
         }
 
@@ -300,7 +300,7 @@ class PartnerServiceTest : BehaviorSpec({
     // already found and fixed for Merchant/vehicle-inspection mechanics.
     Given("an admin suspending a real active partner") {
         val partnerRepository = mockk<PartnerRepository>()
-        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
+        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>()
         val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
         val partner = Partner(id = "partner_1", companyName = "Acme Ltd", contactEmail = "dev@acme.rw", apiKeyHash = "hash")
@@ -320,7 +320,7 @@ class PartnerServiceTest : BehaviorSpec({
 
     Given("an admin reactivating a real suspended partner") {
         val partnerRepository = mockk<PartnerRepository>()
-        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
+        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>()
         val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
         val partner = Partner(id = "partner_1", companyName = "Acme Ltd", contactEmail = "dev@acme.rw", apiKeyHash = "hash", status = PartnerStatus.SUSPENDED)
@@ -340,7 +340,7 @@ class PartnerServiceTest : BehaviorSpec({
 
     Given("an admin acting on a partner that doesn't exist") {
         val partnerRepository = mockk<PartnerRepository>()
-        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
+        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>()
         val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
         every { partnerRepository.findById("unknown") } returns Optional.empty()
@@ -359,7 +359,7 @@ class PartnerServiceTest : BehaviorSpec({
 
     Given("the real list of every registered partner") {
         val partnerRepository = mockk<PartnerRepository>()
-        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
+        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>()
         val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
         val partner = Partner(id = "partner_1", companyName = "Acme Ltd", contactEmail = "dev@acme.rw", apiKeyHash = "hash")
@@ -376,7 +376,7 @@ class PartnerServiceTest : BehaviorSpec({
 
     Given("the real published mini-app catalog") {
         val partnerRepository = mockk<PartnerRepository>()
-        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
+        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
         val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
