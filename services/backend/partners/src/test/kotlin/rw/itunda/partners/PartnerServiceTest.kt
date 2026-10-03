@@ -217,8 +217,10 @@ class PartnerServiceTest : BehaviorSpec({
         val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
 
         val miniApp = PartnerMiniApp(
-            id = "partner_app_1", partnerId = "partner_1", name = "Acme Delivery", description = "desc",
-            bundleUrl = "https://acme.rw/bundle.js", permissions = "account:read", status = PartnerMiniAppStatus.PENDING,
+            id = "partner_app_1", partnerId = "partner_1", appId = "rw.acme.delivery", version = "1.0.0",
+            name = "Acme Delivery", description = "desc", bundleUrl = "https://acme.rw/bundle.js",
+            releaseId = "release_partner_app_1", manifestSha256 = "a".repeat(64), manifestUrl = "https://acme.rw/manifest.json",
+            permissions = "account:read", status = PartnerMiniAppStatus.PENDING,
         )
         every { partnerMiniAppRepository.findById("partner_app_1") } returns Optional.of(miniApp)
         val savedSlot = slot<PartnerMiniApp>()
@@ -246,8 +248,10 @@ class PartnerServiceTest : BehaviorSpec({
 
         When("rejecting with a reason") {
             val pendingAgain = PartnerMiniApp(
-                id = "partner_app_2", partnerId = "partner_1", name = "Sketchy App", description = "desc",
-                bundleUrl = "https://sketchy.example.com/bundle.js", permissions = "", status = PartnerMiniAppStatus.PENDING,
+                id = "partner_app_2", partnerId = "partner_1", appId = "rw.sketchy.app", version = "1.0.0",
+                name = "Sketchy App", description = "desc", bundleUrl = "https://sketchy.example.com/bundle.js",
+                releaseId = "release_partner_app_2", manifestSha256 = "b".repeat(64), manifestUrl = "https://sketchy.example.com/manifest.json",
+                permissions = "", status = PartnerMiniAppStatus.PENDING,
             )
             every { partnerMiniAppRepository.findById("partner_app_2") } returns Optional.of(pendingAgain)
 
@@ -261,8 +265,10 @@ class PartnerServiceTest : BehaviorSpec({
 
         When("rejecting with a reason over 255 characters") {
             val pendingYetAgain = PartnerMiniApp(
-                id = "partner_app_4", partnerId = "partner_1", name = "Verbose App", description = "desc",
-                bundleUrl = "https://verbose.example.com/bundle.js", permissions = "", status = PartnerMiniAppStatus.PENDING,
+                id = "partner_app_4", partnerId = "partner_1", appId = "rw.verbose.app", version = "1.0.0",
+                name = "Verbose App", description = "desc", bundleUrl = "https://verbose.example.com/bundle.js",
+                releaseId = "release_partner_app_4", manifestSha256 = "c".repeat(64), manifestUrl = "https://verbose.example.com/manifest.json",
+                permissions = "", status = PartnerMiniAppStatus.PENDING,
             )
             every { partnerMiniAppRepository.findById("partner_app_4") } returns Optional.of(pendingYetAgain)
 
@@ -278,8 +284,10 @@ class PartnerServiceTest : BehaviorSpec({
 
         When("trying to decide an already-decided submission") {
             val alreadyDecided = PartnerMiniApp(
-                id = "partner_app_3", partnerId = "partner_1", name = "x", description = "y",
-                bundleUrl = "z", permissions = "", status = PartnerMiniAppStatus.APPROVED,
+                id = "partner_app_3", partnerId = "partner_1", appId = "rw.already.decided", version = "1.0.0",
+                name = "x", description = "y", bundleUrl = "https://example.com/bundle.js",
+                releaseId = "release_partner_app_3", manifestSha256 = "d".repeat(64), manifestUrl = "https://example.com/manifest.json",
+                permissions = "", status = PartnerMiniAppStatus.APPROVED,
             )
             every { partnerMiniAppRepository.findById("partner_app_3") } returns Optional.of(alreadyDecided)
 
@@ -381,7 +389,7 @@ class PartnerServiceTest : BehaviorSpec({
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
         val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
 
-        val approved = PartnerMiniApp(id = "partner_app_1", partnerId = "partner_1", name = "Acme Delivery", description = "desc", bundleUrl = "z", permissions = "", status = PartnerMiniAppStatus.APPROVED)
+        val approved = PartnerMiniApp(id = "partner_app_1", partnerId = "partner_1", appId = "rw.acme.delivery", version = "1.0.0", name = "Acme Delivery", description = "desc", bundleUrl = "https://example.com/bundle.js", releaseId = "release_partner_app_1", manifestSha256 = "e".repeat(64), manifestUrl = "https://example.com/manifest.json", permissions = "", status = PartnerMiniAppStatus.APPROVED)
         val pageable = PageRequest.of(0, 20)
         every { partnerMiniAppRepository.findByStatus(PartnerMiniAppStatus.APPROVED, pageable) } returns PageImpl(listOf(approved))
 
@@ -394,7 +402,7 @@ class PartnerServiceTest : BehaviorSpec({
         }
 
         When("fetched filtered to a real category") {
-            val financeApp = PartnerMiniApp(id = "partner_app_2", partnerId = "partner_1", name = "Acme Wallet", description = "desc", bundleUrl = "z", permissions = "", status = PartnerMiniAppStatus.APPROVED, category = PartnerMiniAppCategory.FINANCE)
+            val financeApp = PartnerMiniApp(id = "partner_app_2", partnerId = "partner_1", appId = "rw.acme.wallet", version = "1.0.0", name = "Acme Wallet", description = "desc", bundleUrl = "https://example.com/bundle.js", releaseId = "release_partner_app_2", manifestSha256 = "f".repeat(64), manifestUrl = "https://example.com/manifest.json", permissions = "", status = PartnerMiniAppStatus.APPROVED, category = PartnerMiniAppCategory.FINANCE)
             every { partnerMiniAppRepository.findByStatusAndCategory(PartnerMiniAppStatus.APPROVED, PartnerMiniAppCategory.FINANCE, pageable) } returns PageImpl(listOf(financeApp))
 
             val catalog = service.getCatalog(pageable, PartnerMiniAppCategory.FINANCE)
