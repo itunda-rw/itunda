@@ -182,8 +182,8 @@ class PartnerService(
         // across Commerce/Eats/Marketplace/Jobs/RealEstate/Community/Messaging/Maps the
         // same day -- these columns are VARCHAR(255)/500/500/500, and this DB's real
         // STRICT_TRANS_TABLES mode throws a raw, unhandled 500 on an over-length insert.
-        if (trimmedName.length > 255 || trimmedDescription.length > 500 || (trimmedIconUrl?.length ?: 0) > 500 || trimmedBundleUrl.length > 500) {
-            throw InvalidMiniAppSubmissionException("Name must be 255 characters or fewer; description, iconUrl, and bundleUrl 500 or fewer")
+        if (trimmedName.length > 255 || trimmedDescription.length > 500 || (trimmedIconUrl?.length ?: 0) > 500 || trimmedBundleUrl.length > 500 || (trimmedManifestUrl?.length ?: 0) > 500) {
+            throw InvalidMiniAppSubmissionException("Name must be 255 characters or fewer; description, iconUrl, bundleUrl, and manifestUrl 500 or fewer")
         }
         if (!trimmedBundleUrl.startsWith("https://")) {
             throw InvalidMiniAppSubmissionException("bundleUrl must use HTTPS")
