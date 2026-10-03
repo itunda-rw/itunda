@@ -2,10 +2,7 @@ import type {
   SaroniteDebuggerSession,
   SaroniteDebuggerState,
 } from '@itunda/saronite-debugger';
-import type {
-  SaroniteEvent,
-  SaroniteResponse,
-} from '@itunda/saronite-protocol';
+import type { SaroniteResponse } from '@itunda/saronite-protocol';
 
 export type SaroniteInspector = {
   getSnapshot(): SaroniteDebuggerState;
@@ -29,7 +26,7 @@ export function createSaroniteInspector(
     subscribers.forEach((subscriber) => subscriber(snapshot));
   };
 
-  const unsubscribe = session.subscribe((_event: SaroniteEvent) => emit());
+  const unsubscribe = session.subscribe(() => emit());
 
   return {
     getSnapshot: session.getState,
@@ -38,15 +35,15 @@ export function createSaroniteInspector(
       handler(session.getState());
       return () => subscribers.delete(handler);
     },
-    async send(capability, method, payload, timeoutMs) {
-      const response = await session.sendRequest({
+    async send<TPayload, TResult>(capability, method, payload, timeoutMs) {
+      const response = await session.sendRequest<TPayload, TResult>({
         capability,
         method,
         payload,
         ...(timeoutMs === undefined ? {} : { timeoutMs }),
       });
       emit();
-      return response as SaroniteResponse<TResult>;
+      return response;
     },
     async close() {
       unsubscribe();
