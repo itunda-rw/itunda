@@ -45,6 +45,43 @@ class PartnerControllerTest : BehaviorSpec({
         }
     }
 
+    Given("a mini-app submission request without a manifest URL") {
+        val service = mockk<PartnerService>()
+        val controller = PartnerController(service)
+
+        When("submitting") {
+            val exception = runCatching {
+                controller.submitMiniApp(
+                    SubmitMiniAppRequest(
+                        "rw.acme.app",
+                        "1.0.0",
+                        1,
+                        "My App",
+                        "Does things",
+                        null,
+                        "https://example.com/bundle.js",
+                        listOf("account:read"),
+                        "a".repeat(64),
+                        null,
+                        null,
+                        null,
+                    ),
+                    "sk_test_key",
+                )
+            }.exceptionOrNull()
+
+            Then("it fails closed before delegating to the partner service") {
+                exception shouldBe InvalidMiniAppReleaseIntegrityException("manifestUrl is required for partner releases")
+                verify(exactly = 0) {
+                    service.submitMiniApp(
+                        any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                        any(), any(), any(), any(),
+                    )
+                }
+            }
+        }
+    }
+
     Given("a real mini-app submission request") {
         val service = mockk<PartnerService>()
         val controller = PartnerController(service)
