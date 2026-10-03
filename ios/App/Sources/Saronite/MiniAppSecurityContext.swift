@@ -1,3 +1,5 @@
+import React
+
 /// Process-wide partner scope context, intentionally inert until an iOS partner
 /// bundle loader activates it. This mirrors Android's single-active-bundle constraint.
 /// nil means first-party/trusted mini-apps; a non-nil set is the partner's approved scopes.
