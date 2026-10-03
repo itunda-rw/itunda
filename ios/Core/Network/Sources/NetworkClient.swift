@@ -7708,6 +7708,7 @@ public struct PartnerMiniAppDto: Decodable, Identifiable {
     public let bundleSha256: String?
     public let bundleSizeBytes: Int64?
     public let publishedAt: String?
+    public let manifestUrl: String?
     // Real Toss/Kakao mini-app-store reference (2026-09-11, Mini-Apps hub pass) --
     // matches the backend's own PartnerMiniAppCategory enum names exactly.
     public let category: String
