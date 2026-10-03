@@ -3,180 +3,128 @@ import { createSaroniteWebTransport, SaroniteWebError } from './index.ts';
 import {
   SARONITE_PROTOCOL_VERSION,
   type SaroniteEvent,
-  type SaroniteMessage,
   type SaroniteRequest,
 } from '@itunda/saronite-protocol';
 
 type Listener = (event: MessageEvent) => void;
 
-function createWindowPair() {
-  const listenersA = new Set<Listener>();
-  const listenersB = new Set<Listener>();
-
-  const make = (
-    listeners: Set<Listener>,
-    peer: Set<Listener>,
-    self: object,
-  ) => ({
-    addEventListener(_type: 'message', listener: Listener) {
-      listeners.add(listener);
-    },
-    removeEventListener(_type: 'message', listener: Listener) {
-      listeners.delete(listener);
-    },
-    postMessage(data: unknown, _targetOrigin?: string) {
-      const event = { data, origin: 'https://itunda.test', source: self };
-      for (const listener of peer) listener(event as MessageEvent);
-    },
-  });
-
-  const aIdentity = {};
-  const bIdentity = {};
-  const a = make(listenersA, listenersB, aIdentity);
-  const b = make(listenersB, listenersA, bIdentity);
-  return { a, b, aIdentity, bIdentity };
-}
-
-function dispatch(
-  listeners: Set<Listener>,
-  source: object,
-  data: SaroniteMessage,
-  origin = 'https://itunda.test',
-) {
-  const event = { data, origin, source } as MessageEvent;
-  for (const listener of listeners) listener(event);
-}
-
-const pair = createWindowPair();
-const sourceWindow = pair.a as unknown as Window;
-const targetWindow = pair.b as unknown as Window;
-const sourceListeners = (pair.a as unknown as { addEventListener: (type: 'message', listener: Listener) => void });
-
-const transport = createSaroniteWebTransport({
-  target: targetWindow,
-  sourceWindow,
-  targetOrigin: 'https://itunda.test',
-  timeoutMs: 1000,
-});
-
-// Successful request/response correlation.
-const success = transport.request<{ value: number }, number>(
-  'identity',
-  'getValue',
-  { value: 42 },
-);
-const request = await new Promise<SaroniteRequest>((resolve) => {
-  const originalPostMessage = targetWindow.postMessage.bind(targetWindow);
-  targetWindow.postMessage = ((message: SaroniteRequest, origin?: string) => {
-    resolve(message);
-    originalPostMessage(message, origin);
-  }) as Window['postMessage'];
-});
-dispatch(
-  (pair.b as unknown as { __listeners?: Set<Listener> }).__listeners ?? new Set(),
-  pair.bIdentity,
-  {
-    protocolVersion: SARONITE_PROTOCOL_VERSION,
-    kind: 'response',
-    id: request.id,
-    ok: true,
-    result: 84,
-  },
-);
-
-// The pair above intentionally does not expose B's listeners, so verify the
-// public transport contract with a deterministic standalone event bridge.
-transport.close();
-
 const listeners = new Set<Listener>();
-const bridgeWindow = {
+let posted: SaroniteRequest | undefined;
+
+const windowMock = {
   addEventListener(_type: 'message', listener: Listener) {
     listeners.add(listener);
   },
   removeEventListener(_type: 'message', listener: Listener) {
     listeners.delete(listener);
   },
-  postMessage(_message: unknown, _origin?: string) {},
+  postMessage(message: unknown, _origin?: string) {
+    posted = message as SaroniteRequest;
+  },
 } as unknown as Window;
 
-const bridge = createSaroniteWebTransport({
-  target: bridgeWindow,
-  sourceWindow: bridgeWindow,
+function receive(
+  data: unknown,
+  source: object = windowMock,
+  origin = 'https://itunda.test',
+) {
+  const event = { data, origin, source } as MessageEvent;
+  for (const listener of listeners) listener(event);
+}
+
+function response(
+  id: string,
+  result?: unknown,
+  error?: { code: string; message: string },
+) {
+  return {
+    protocolVersion: SARONITE_PROTOCOL_VERSION,
+    kind: 'response' as const,
+    id,
+    ok: error === undefined,
+    ...(error ? { error } : { result }),
+  };
+}
+
+const transport = createSaroniteWebTransport({
+  target: windowMock,
+  sourceWindow: windowMock,
   targetOrigin: 'https://itunda.test',
-  timeoutMs: 50,
+  timeoutMs: 100,
 });
 
-// Success.
-const successPromise = bridge.request<undefined, string>('identity', 'getCurrentIdentity');
-const successRequestId = [...listeners][0] ? undefined : undefined;
-assert.ok(successPromise instanceof Promise);
-
-// Error mapping.
-const errorPromise = bridge.request('payments', 'charge');
-const requestListeners = [...listeners];
-assert.equal(requestListeners.length, 1);
-const originalListener = requestListeners[0]!;
-originalListener({
-  data: {
-    protocolVersion: SARONITE_PROTOCOL_VERSION,
-    kind: 'response',
-    id: 'unrelated',
-    ok: false,
-    error: { code: 'PERMISSION_DENIED', message: 'Permission denied' },
-  },
-  origin: 'https://itunda.test',
-  source: bridgeWindow,
-} as MessageEvent);
-
-await assert.rejects(successPromise, (error: unknown) =>
-  error instanceof SaroniteWebError && error.code === 'TIMEOUT',
+// Successful request/response correlation.
+const successPromise = transport.request<undefined, { userId: string }>(
+  'identity',
+  'getCurrentIdentity',
 );
+assert.ok(posted);
+const successId = posted.id;
+receive(response(successId, { userId: 'demo-user' }));
+assert.deepEqual(await successPromise, { userId: 'demo-user' });
+
+// Error response is converted to a typed SaroniteWebError.
+const errorPromise = transport.request('payments', 'charge');
+assert.ok(posted);
+const errorId = posted.id;
+receive(response(errorId, undefined, {
+  code: 'PERMISSION_DENIED',
+  message: 'Permission denied',
+}));
 await assert.rejects(errorPromise, (error: unknown) =>
-  error instanceof SaroniteWebError && error.code === 'TIMEOUT',
+  error instanceof SaroniteWebError
+  && error.code === 'PERMISSION_DENIED'
+  && error.message === 'Permission denied',
 );
 
-// Origin/source filtering is enforced before protocol handling.
-const eventPromise = bridge.request('identity', 'getCurrentIdentity', undefined, 1000);
-const pendingId = [...listeners].length > 0 ? undefined : undefined;
-const event: SaroniteEvent = {
+// Event subscription receives valid events.
+const receivedEvents: SaroniteEvent[] = [];
+const unsubscribe = transport.subscribe((event) => receivedEvents.push(event));
+receive({
   protocolVersion: SARONITE_PROTOCOL_VERSION,
   kind: 'event',
   id: 'evt-test',
   event: 'lifecycle.changed',
   lifecycle: 'visible',
-};
-const receivedEvents: SaroniteEvent[] = [];
-const unsubscribe = bridge.subscribe((value) => receivedEvents.push(value));
-
-originalListener({
-  data: event,
-  origin: 'https://attacker.test',
-  source: bridgeWindow,
-} as MessageEvent);
-assert.equal(receivedEvents.length, 0);
-
-originalListener({
-  data: event,
-  origin: 'https://itunda.test',
-  source: bridgeWindow,
-} as MessageEvent);
+});
 assert.equal(receivedEvents.length, 1);
 assert.equal(receivedEvents[0]?.event, 'lifecycle.changed');
 unsubscribe();
+receive({
+  protocolVersion: SARONITE_PROTOCOL_VERSION,
+  kind: 'event',
+  id: 'evt-ignored',
+  event: 'lifecycle.changed',
+  lifecycle: 'hidden',
+});
+assert.equal(receivedEvents.length, 1);
 
-bridge.close();
-await assert.rejects(eventPromise, (error: unknown) =>
+// Origin filtering rejects messages from another origin.
+const filteredPromise = transport.request('identity', 'getCurrentIdentity');
+assert.ok(posted);
+receive(response(posted.id, { userId: 'attacker' }), windowMock, 'https://attacker.test');
+await assert.rejects(filteredPromise, (error: unknown) =>
   error instanceof SaroniteWebError && error.code === 'TIMEOUT',
 );
 
-// Invalid protocol messages are ignored.
-assert.doesNotThrow(() => {
-  originalListener({
-    data: { hello: 'world' },
-    origin: 'https://itunda.test',
-    source: bridgeWindow,
-  } as MessageEvent);
-});
+// Source filtering rejects messages from an unexpected window.
+const foreignWindow = {} as Window;
+const sourceFilteredPromise = transport.request('identity', 'getCurrentIdentity');
+assert.ok(posted);
+receive(response(posted.id, { userId: 'foreign' }), foreignWindow);
+await assert.rejects(sourceFilteredPromise, (error: unknown) =>
+  error instanceof SaroniteWebError && error.code === 'TIMEOUT',
+);
 
-void sourceListeners;
+// Invalid protocol payloads are ignored.
+assert.doesNotThrow(() => receive({ hello: 'world' }));
+
+// close() rejects pending work and detaches the listener.
+const closePromise = transport.request('identity', 'getCurrentIdentity');
+transport.close();
+await assert.rejects(closePromise, (error: unknown) =>
+  error instanceof SaroniteWebError && error.code === 'INVALID_STATE',
+);
+assert.equal(listeners.size, 0);
+
 console.log('Saronite web transport contract passed.');
