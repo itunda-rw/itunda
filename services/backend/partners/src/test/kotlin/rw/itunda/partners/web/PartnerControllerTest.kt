@@ -73,7 +73,7 @@ class PartnerControllerTest : BehaviorSpec({
             }.exceptionOrNull()
 
             Then("it fails closed before delegating to the partner service") {
-                exception shouldBeInstanceOf InvalidMiniAppReleaseIntegrityException
+                exception shouldBeInstanceOf<InvalidMiniAppReleaseIntegrityException>()
                 exception?.message shouldBe "manifestUrl is required for partner releases"
                 verify(exactly = 0) {
                     service.submitMiniApp(
@@ -115,7 +115,7 @@ class PartnerControllerTest : BehaviorSpec({
 
             Then("it real-delegates with the caller's own API key") {
                 verify(exactly = 1) {
-                    service.submitMiniApp("sk_test_key", "rw.acme.app", "1.0.0", 1, "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "a".repeat(64), null, null, "https://example.com/manifest.json")
+                    service.submitMiniApp("sk_test_key", "rw.acme.app", "1.0.0", 1, "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "a".repeat(64), null, null, null, "https://example.com/manifest.json")
                 }
                 response.statusCode shouldBe HttpStatus.CREATED
                 response.body?.get("miniApp") shouldBe miniApp
@@ -153,7 +153,7 @@ class PartnerControllerTest : BehaviorSpec({
 
             Then("the category is real-passed through to the service") {
                 verify(exactly = 1) {
-                    service.submitMiniApp("sk_test_key", "rw.acme.app", "1.0.0", 1, "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "a".repeat(64), "finance", null, "https://example.com/manifest.json")
+                    service.submitMiniApp("sk_test_key", "rw.acme.app", "1.0.0", 1, "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "a".repeat(64), "finance", null, null, "https://example.com/manifest.json")
                 }
                 response.statusCode shouldBe HttpStatus.CREATED
             }
