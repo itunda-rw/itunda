@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {
   createDebuggerSession,
   type SaroniteDebuggerTransport,
-} from './index.ts';
+} from './index';
 import {
   SARONITE_PROTOCOL_VERSION,
   type SaroniteMessage,
