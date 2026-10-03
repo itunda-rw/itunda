@@ -71,7 +71,8 @@ class PartnerControllerTest : BehaviorSpec({
             }.exceptionOrNull()
 
             Then("it fails closed before delegating to the partner service") {
-                exception shouldBe InvalidMiniAppReleaseIntegrityException("manifestUrl is required for partner releases")
+                exception shouldBeInstanceOf InvalidMiniAppReleaseIntegrityException::class
+                exception?.message shouldBe "manifestUrl is required for partner releases"
                 verify(exactly = 0) {
                     service.submitMiniApp(
                         any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
