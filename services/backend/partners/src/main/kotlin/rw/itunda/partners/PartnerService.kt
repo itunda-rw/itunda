@@ -120,7 +120,7 @@ class PartnerService(
 
     @Transactional
     fun submitMiniApp(
-        apiKey: String, name: String, description: String, iconUrl: String?, bundleUrl: String, permissions: List<String>,
+        apiKey: String, appId: String, version: String, manifestVersion: Int, name: String, description: String, iconUrl: String?, bundleUrl: String, permissions: List<String>,
         category: String? = null,
     ): PartnerMiniApp {
         val partner = resolvePartner(apiKey)
@@ -134,6 +134,17 @@ class PartnerService(
         val invalidScopes = permissions.filterNot { PartnerMiniAppPermissions.ALLOWED.contains(it) }
         if (invalidScopes.isNotEmpty()) {
             throw InvalidPermissionScopeException("Unknown permission scope(s): ${invalidScopes.joinToString(", ")}")
+        }
+        val trimmedAppId = appId.trim()
+        val trimmedVersion = version.trim()
+        if (!Regex("^rw\\.[a-z0-9]+(?:[._-][a-z0-9]+)+$").matches(trimmedAppId)) {
+            throw InvalidMiniAppSubmissionException("id must be a valid Itunda mini-app identifier")
+        }
+        if (!Regex("^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$").matches(trimmedVersion)) {
+            throw InvalidMiniAppSubmissionException("version must be semantic")
+        }
+        if (manifestVersion != 1) {
+            throw InvalidMiniAppSubmissionException("manifestVersion must be 1")
         }
         val trimmedName = name.trim()
         val trimmedDescription = description.trim()
@@ -157,6 +168,9 @@ class PartnerService(
         val miniApp = PartnerMiniApp(
             id = "partner_app_${UUID.randomUUID()}",
             partnerId = partner.id,
+            appId = trimmedAppId,
+            version = trimmedVersion,
+            manifestVersion = manifestVersion,
             name = trimmedName,
             description = trimmedDescription,
             iconUrl = trimmedIconUrl,
