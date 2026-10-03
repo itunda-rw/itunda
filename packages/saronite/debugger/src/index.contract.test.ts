@@ -92,7 +92,6 @@ assert.equal(state.events.length, 2);
 
 unsubscribe();
 
-// Error responses are retained as diagnostics.
 const errorPromise = session.sendRequest({
   capability: 'payments',
   method: 'request',
@@ -109,7 +108,6 @@ const errorResponse = await errorPromise;
 assert.equal(errorResponse.ok, false);
 assert.equal(session.getState().requests.at(-1)?.status, 'error');
 
-// Request timeout is recorded.
 const timeoutPromise = session.sendRequest({
   capability: 'identity',
   method: 'slow',
@@ -118,7 +116,6 @@ const timeoutPromise = session.sendRequest({
 await assert.rejects(timeoutPromise, /timed out/);
 assert.equal(session.getState().requests.at(-1)?.status, 'timeout');
 
-// Closing rejects pending requests and closes transport.
 const pendingPromise = session.sendRequest({
   capability: 'identity',
   method: 'pending',
