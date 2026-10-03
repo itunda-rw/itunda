@@ -40,6 +40,7 @@ data class SubmitMiniAppRequest(
     val category: String? = null,
     val bundleSha256: String? = null,
     val bundleSizeBytes: Long? = null,
+    val manifestUrl: String? = null,
 )
 
 // Partner-facing developer platform -- mapped outside /api/v1/system/** since a partner
@@ -84,6 +85,7 @@ class PartnerController(private val partnerService: PartnerService) {
             request.category,
             request.bundleSha256,
             request.bundleSizeBytes,
+            request.manifestUrl,
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "miniApp" to miniApp))
     }
