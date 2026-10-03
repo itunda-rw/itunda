@@ -249,7 +249,7 @@ object PartnerMiniAppLoader {
     private fun ByteArray.toHex(): String =
         joinToString("") { "%02x".format(it) }
 
-    private const val SHA256_PATTERN = "^[0-9a-f]{64}$"
+    private val SHA256_PATTERN = Regex("^[0-9a-f]{64}$")
 
     /**
      * [filePath] non-null: point the shared ReactHost's bundle source at that real
