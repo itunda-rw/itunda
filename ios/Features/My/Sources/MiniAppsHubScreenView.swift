@@ -25,6 +25,8 @@ struct MiniAppsHubScreenView: View {
     @State private var miniApps: [PartnerMiniAppDto]?
     @State private var selectedCategory: String?
     @State private var searchQuery = ""
+    @State private var selectedApp: PartnerMiniAppDto?
+    @State private var launchError: String?
 
     private var filtered: [PartnerMiniAppDto] {
         let query = searchQuery.trimmingCharacters(in: .whitespaces)
@@ -72,12 +74,25 @@ struct MiniAppsHubScreenView: View {
                             .font(.caption).foregroundColor(IDS.Colors.textSecondary).padding(.top, 24)
                     } else {
                         ForEach(filtered) { app in
-                            PartnerMiniAppRow(app: app)
+                            Button {
+                                selectedApp = app
+                            } label: {
+                                PartnerMiniAppRow(app: app)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
                 .padding(.horizontal, 20)
             }
+        }
+        .sheet(item: $selectedApp) { app in
+            PartnerMiniAppRuntimeView(app: app) { launchError = $0 }
+        }
+        .alert("Mini app unavailable", isPresented: Binding(get: { launchError != nil }, set: { if !$0 { launchError = nil } })) {
+            Button("OK") { launchError = nil }
+        } message: {
+            Text(launchError ?? "")
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .task(id: selectedCategory) {
@@ -104,4 +119,20 @@ private struct MiniAppCategoryChip: View {
         }
         .buttonStyle(.plain)
     }
+}
+
+private struct PartnerMiniAppRuntimeView: UIViewControllerRepresentable {
+    let app: PartnerMiniAppDto
+    let onError: (String) -> Void
+
+    func makeUIViewController(context: Context) -> SaroniteMiniAppViewController {
+        do {
+            return try PartnerSaroniteMiniAppViewController(app: app)
+        } catch {
+            onError(error.localizedDescription)
+            return SaroniteMiniAppViewController(mainComponentName: "SaronitePartnerMiniApp", miniAppScheme: "itunda://saronite/partnerminiapp")
+        }
+    }
+
+    func updateUIViewController(_ uiViewController: SaroniteMiniAppViewController, context: Context) {}
 }
