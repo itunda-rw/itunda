@@ -109,6 +109,7 @@ struct ContentView: View {
     @State private var showCommunity = false
     @State private var showJobs = false
     @State private var showProperty = false
+    @State private var selectedPartnerMiniApp: PartnerMiniAppDto?
     // Real account/savings data (2026-07-11) -- see BankViewModel.swift for why this
     // lives here rather than inside BankView's own module.
     @StateObject private var bankViewModel = BankViewModel()
@@ -751,6 +752,7 @@ struct ContentView: View {
                 onSwitchToMarketplace: { showMarketplace = true },
                 onSwitchToJobs: { showJobs = true },
                 onSwitchToProperty: { showProperty = true },
+                onLaunchPartnerMiniApp: { selectedPartnerMiniApp = $0 },
                 onUpdatePin: { currentCredential, newPin in
                     switch await SessionManager.shared.updateAccountPin(currentCredential: currentCredential, newPin: newPin) {
                     case .success: return nil
@@ -780,6 +782,7 @@ struct ContentView: View {
         .fullScreenCover(isPresented: $showMapFromDeepLink) {
             MapScreenView(initialSearchQuery: mapSearchFromDeepLink, initialSharedFolder: mapSharedFolderFromDeepLink)
         }
+        .sheet(item: $selectedPartnerMiniApp, content: SaronitePartnerMiniAppView.init)
         .fullScreenCover(isPresented: $showIdentityVerifyFromDeepLink) {
             if let identityVerifyRequestId {
                 IdentityVerificationConsentView(requestId: identityVerifyRequestId, onDone: { showIdentityVerifyFromDeepLink = false })
@@ -841,3 +844,4 @@ private extension URL {
 // where the Pay tab could never reach it. This is that real UI, moved to where
 // "Pay" actually means pay -- same fix as Android's identical PayTab mock the
 // same day.
+

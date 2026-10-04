@@ -87,7 +87,7 @@ func makeMicroFeature(
 
 var allTargets: [Target] = []
 
-let coreModules = ["DesignSystem", "SDUI", "Network", "Testing", "Identity", "Consent", "Ledger", "Risk"]
+let coreModules = ["DesignSystem", "SDUI", "Network", "Testing", "Identity", "Consent", "Ledger", "Risk", "Saronite"]
 for core in coreModules {
     allTargets.append(
         Target.target(
@@ -266,6 +266,7 @@ appDependencies.append(.target(name: "CoreIdentity"))
 // directly rather than relying on transitive linking, the same lesson the
 // CoreDesignSystem->CoreNetwork dependency comment above already documents.
 appDependencies.append(.target(name: "CoreNetwork"))
+appDependencies.append(.target(name: "CoreSaronite"))
 
 allTargets.append(
     Target.target(
@@ -441,6 +442,20 @@ allTargets.append(
 // tree via XCUITest -- the same underlying tree VoiceOver reads -- rather than
 // leaving it as "no live device, can't check" indefinitely. See
 // App/UITests/FocusOrderTests.swift.
+allTargets.append(
+    Target.target(
+        name: "ItundaAppTests",
+        destinations: .iOS,
+        product: .unitTests,
+        bundleId: "rw.itunda.app.tests",
+        infoPlist: .default,
+        sources: ["App/Tests/**"],
+        dependencies: [
+            .target(name: "ItundaApp")
+        ]
+    )
+)
+
 allTargets.append(
     Target.target(
         name: "ItundaAppUITests",

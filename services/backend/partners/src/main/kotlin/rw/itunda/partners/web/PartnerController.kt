@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
@@ -16,17 +17,30 @@ import rw.itunda.partners.InvalidApiKeyException
 import rw.itunda.partners.InvalidMiniAppCategoryException
 import rw.itunda.partners.InvalidMiniAppDecisionReasonException
 import rw.itunda.partners.InvalidMiniAppSubmissionException
+import rw.itunda.partners.InvalidMiniAppReleaseIntegrityException
 import rw.itunda.partners.InvalidPermissionScopeException
 import rw.itunda.partners.PartnerEmailAlreadyRegisteredException
 import rw.itunda.partners.InvalidPartnerEmailException
 import rw.itunda.partners.PartnerMiniAppPermissions
 import rw.itunda.partners.PartnerService
+import rw.itunda.partners.PartnerMiniAppNotFoundException
 import rw.itunda.partners.PartnerSuspendedException
 
 data class RegisterPartnerRequest(val companyName: String, val contactEmail: String)
 data class SubmitMiniAppRequest(
-    val name: String, val description: String, val iconUrl: String? = null, val bundleUrl: String, val permissions: List<String>,
+    val id: String,
+    val version: String,
+    val manifestVersion: Int = 1,
+    val name: String,
+    val description: String,
+    val iconUrl: String? = null,
+    val bundleUrl: String,
+    val permissions: List<String>,
+    val manifestSha256: String = "",
     val category: String? = null,
+    val bundleSha256: String? = null,
+    val bundleSizeBytes: Long? = null,
+    val manifestUrl: String? = null,
 )
 
 // Partner-facing developer platform -- mapped outside /api/v1/system/** since a partner
@@ -57,12 +71,31 @@ class PartnerController(private val partnerService: PartnerService) {
         @RequestBody request: SubmitMiniAppRequest,
         @RequestHeader("X-Api-Key") apiKey: String,
     ): ResponseEntity<Map<String, Any?>> {
+        if (request.manifestUrl.isNullOrBlank()) {
+            throw InvalidMiniAppReleaseIntegrityException("manifestUrl is required for partner releases")
+        }
         val miniApp = partnerService.submitMiniApp(
-            apiKey, request.name, request.description, request.iconUrl, request.bundleUrl, request.permissions,
+            apiKey,
+            request.id,
+            request.version,
+            request.manifestVersion,
+            request.name,
+            request.description,
+            request.iconUrl,
+            request.bundleUrl,
+            request.permissions,
+            request.manifestSha256,
             request.category,
+            request.bundleSha256,
+            request.bundleSizeBytes,
+            request.manifestUrl,
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "miniApp" to miniApp))
     }
+
+    @GetMapping("/mini-apps/{miniAppId}")
+    fun getMiniApp(@RequestHeader("X-Api-Key") apiKey: String, @PathVariable miniAppId: String): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "miniApp" to partnerService.getMiniApp(apiKey, miniAppId)))
 
     @GetMapping("/mini-apps")
     fun getMyMiniApps(@RequestHeader("X-Api-Key") apiKey: String): ResponseEntity<Map<String, Any?>> =
@@ -88,6 +121,10 @@ class PartnerController(private val partnerService: PartnerService) {
     fun handleSuspended(ex: PartnerSuspendedException) =
         ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("PARTNER_SUSPENDED", ex.message ?: "Forbidden"))
 
+    @ExceptionHandler(PartnerMiniAppNotFoundException::class)
+    fun handleMiniAppNotFound(ex: PartnerMiniAppNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MINI_APP_NOT_FOUND", ex.message ?: "Not found"))
+
     @ExceptionHandler(InvalidPermissionScopeException::class)
     fun handleInvalidScope(ex: InvalidPermissionScopeException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PERMISSION_SCOPE", ex.message ?: "Bad request"))
@@ -95,6 +132,10 @@ class PartnerController(private val partnerService: PartnerService) {
     @ExceptionHandler(InvalidMiniAppSubmissionException::class)
     fun handleInvalidSubmission(ex: InvalidMiniAppSubmissionException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MINI_APP_SUBMISSION", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidMiniAppReleaseIntegrityException::class)
+    fun handleInvalidReleaseIntegrity(ex: InvalidMiniAppReleaseIntegrityException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MINI_APP_RELEASE_INTEGRITY", ex.message ?: "Invalid release integrity metadata"))
 
     @ExceptionHandler(MissingRequestHeaderException::class)
     fun handleMissingHeader(ex: MissingRequestHeaderException) =

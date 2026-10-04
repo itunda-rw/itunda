@@ -744,6 +744,15 @@ data class PartnerMiniAppDto(
     val bundleUrl: String,
     val permissions: String,
     val status: String,
+    // Immutable release identity/integrity metadata from the published catalog.
+    // These are optional for backward-compatible catalog reads, but the Saronite
+    // runtime refuses to execute a partner release unless all integrity fields are present.
+    val releaseId: String? = null,
+    val manifestSha256: String? = null,
+    val bundleSha256: String? = null,
+    val bundleSizeBytes: Long? = null,
+    val publishedAt: String? = null,
+    val manifestUrl: String? = null,
     // Real Toss/Kakao mini-app-store reference (2026-09-11, Mini-Apps hub pass) --
     // matches the backend's own PartnerMiniAppCategory enum names exactly.
     val category: String,

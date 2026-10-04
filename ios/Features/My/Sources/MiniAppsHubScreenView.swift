@@ -25,6 +25,8 @@ struct MiniAppsHubScreenView: View {
     @State private var miniApps: [PartnerMiniAppDto]?
     @State private var selectedCategory: String?
     @State private var searchQuery = ""
+    @State private var selectedApp: PartnerMiniAppDto?
+    var onLaunchPartnerMiniApp: (PartnerMiniAppDto) -> Void = { _ in }
 
     private var filtered: [PartnerMiniAppDto] {
         let query = searchQuery.trimmingCharacters(in: .whitespaces)
@@ -72,7 +74,7 @@ struct MiniAppsHubScreenView: View {
                             .font(.caption).foregroundColor(IDS.Colors.textSecondary).padding(.top, 24)
                     } else {
                         ForEach(filtered) { app in
-                            PartnerMiniAppRow(app: app)
+                            Button { onLaunchPartnerMiniApp(app) } label: { PartnerMiniAppRow(app: app) }.buttonStyle(.plain)
                         }
                     }
                 }

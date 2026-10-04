@@ -259,7 +259,7 @@ jobs:
       # ios-build already has below; android-build was just missing it.
       - name: Install Saronite JS dependencies (own npm workspace, not the root yarn workspace)
         working-directory: packages/saronite
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Setup JDK
         uses: actions/setup-java@v4
@@ -312,7 +312,7 @@ jobs:
 
       - name: Install Saronite JS dependencies (own npm workspace, not the root yarn workspace)
         working-directory: packages/saronite
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       # Real CI fix (2026-09-03): ios/.brick/ (BrickCodegen's own podspec + generated
       # bridge sources) is gitignored, regenerated from each mini-app's *.brick.ts spec
@@ -332,7 +332,7 @@ jobs:
 
       - name: Install CocoaPods dependencies
         working-directory: ios
-        run: pod install --deployment
+        run: pod install --no-repo-update
 
       - name: Build ItundaApp
         working-directory: ios

@@ -121,3 +121,5 @@ button,.btn,.cta,.theme-toggle,.nav a{touch-action:manipulation}
 .code {
   background-image: none;
 }
+
+.brand-mark{width:30px;height:30px;display:block;flex:0 0 auto}

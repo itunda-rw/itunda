@@ -81,7 +81,7 @@ final class SaroniteBrownfieldModule: NSObject {
     }
 
     @objc func getAccountBalance(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-        authorizedCall(path: "api/v1/account", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+        guard MiniAppSecurityContext.requireScope("account:read", reject: reject) else { return }; authorizedCall(path: "api/v1/account", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
             var totalBalance = 0.0
             var currency = "RWF"
             let accounts = ((root["accounts"] as? [[String: Any]]) ?? []).map { w -> [String: Any] in

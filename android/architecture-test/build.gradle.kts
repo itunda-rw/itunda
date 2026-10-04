@@ -2,6 +2,8 @@
 // Plain Kotlin/JVM, not an Android library: Konsist parses .kt source files
 // directly off disk via Konsist.scopeFromProject(), so this module needs no
 // project(...) dependency on any feature module to see their code.
+import org.gradle.api.tasks.testing.Test
+
 plugins {
     id("org.jetbrains.kotlin.jvm")
 }
@@ -17,6 +19,6 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-tasks.test {
+tasks.withType<Test>().configureEach {
     useJUnitPlatform()
 }

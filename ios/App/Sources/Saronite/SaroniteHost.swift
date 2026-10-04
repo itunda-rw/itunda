@@ -19,6 +19,9 @@ import React_RCTAppDelegate
 /// mini-app bundling had before this pass.
 final class SaroniteReactNativeFactoryDelegate: RCTDefaultReactNativeFactoryDelegate {
     override func bundleURL() -> URL? {
+        if let partnerBundleURL = SaronitePartnerReleaseLoader.activeBundleURL {
+            return partnerBundleURL
+        }
         #if DEBUG
         return RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
         #else

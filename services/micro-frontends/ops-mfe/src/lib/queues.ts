@@ -299,6 +299,13 @@ export interface PartnerMiniAppSubmission {
   bundleUrl: string;
   permissions: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
+  // Immutable release-integrity metadata surfaced to reviewers so the approval
+  // queue describes the exact executable release, not only a mutable URL.
+  releaseId?: string | null;
+  manifestSha256?: string | null;
+  bundleSha256?: string | null;
+  bundleSizeBytes?: number | null;
+  publishedAt?: string | null;
   category: string;
   createdAt: string;
   reviewedBy: string | null;

@@ -3,6 +3,7 @@ package rw.itunda.partners.web
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -14,6 +15,7 @@ import rw.itunda.partners.InvalidApiKeyException
 import rw.itunda.partners.InvalidMiniAppCategoryException
 import rw.itunda.partners.InvalidMiniAppDecisionReasonException
 import rw.itunda.partners.InvalidMiniAppSubmissionException
+import rw.itunda.partners.InvalidMiniAppReleaseIntegrityException
 import rw.itunda.partners.InvalidPartnerEmailException
 import rw.itunda.partners.InvalidPermissionScopeException
 import rw.itunda.partners.PartnerEmailAlreadyRegisteredException
@@ -44,23 +46,76 @@ class PartnerControllerTest : BehaviorSpec({
         }
     }
 
+    Given("a mini-app submission request without a manifest URL") {
+        val service = mockk<PartnerService>()
+        val controller = PartnerController(service)
+
+        When("submitting") {
+            val exception = runCatching {
+                controller.submitMiniApp(
+                    SubmitMiniAppRequest(
+                            id = "rw.acme.app",
+                            version = "1.0.0",
+                            manifestVersion = 1,
+                            name = "My App",
+                            description = "Does things",
+                            iconUrl = null,
+                            bundleUrl = "https://example.com/bundle.js",
+                            permissions = listOf("account:read"),
+                            manifestSha256 = "a".repeat(64),
+                            category = null,
+                            bundleSha256 = null,
+                            bundleSizeBytes = null,
+                            manifestUrl = null,
+                        ),
+                    "sk_test_key",
+                )
+            }.exceptionOrNull()
+
+            Then("it fails closed before delegating to the partner service") {
+                exception.shouldBeInstanceOf<InvalidMiniAppReleaseIntegrityException>()
+                exception?.message shouldBe "manifestUrl is required for partner releases"
+                verify(exactly = 0) {
+                    service.submitMiniApp(
+                        any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                        any(), any(), any(), any(),
+                    )
+                }
+            }
+        }
+    }
+
     Given("a real mini-app submission request") {
         val service = mockk<PartnerService>()
         val controller = PartnerController(service)
         val miniApp = mockk<PartnerMiniApp>(relaxed = true)
         every {
-            service.submitMiniApp("sk_test_key", "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), null)
+            service.submitMiniApp("sk_test_key", "rw.acme.app", "1.0.0", 1, "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "a".repeat(64), null, null, null, "https://example.com/manifest.json")
         } returns miniApp
 
         When("submitting") {
             val response = controller.submitMiniApp(
-                SubmitMiniAppRequest("My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read")),
+                SubmitMiniAppRequest(
+                    id = "rw.acme.app",
+                    version = "1.0.0",
+                    manifestVersion = 1,
+                    name = "My App",
+                    description = "Does things",
+                    iconUrl = null,
+                    bundleUrl = "https://example.com/bundle.js",
+                    permissions = listOf("account:read"),
+                    manifestSha256 = "a".repeat(64),
+                    category = null,
+                    bundleSha256 = null,
+                    bundleSizeBytes = null,
+                    manifestUrl = "https://example.com/manifest.json",
+                ),
                 "sk_test_key",
             )
 
             Then("it real-delegates with the caller's own API key") {
                 verify(exactly = 1) {
-                    service.submitMiniApp("sk_test_key", "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), null)
+                    service.submitMiniApp("sk_test_key", "rw.acme.app", "1.0.0", 1, "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "a".repeat(64), null, null, null, "https://example.com/manifest.json")
                 }
                 response.statusCode shouldBe HttpStatus.CREATED
                 response.body?.get("miniApp") shouldBe miniApp
@@ -73,18 +128,32 @@ class PartnerControllerTest : BehaviorSpec({
         val controller = PartnerController(service)
         val miniApp = mockk<PartnerMiniApp>(relaxed = true)
         every {
-            service.submitMiniApp("sk_test_key", "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "finance")
+            service.submitMiniApp("sk_test_key", "rw.acme.app", "1.0.0", 1, "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "a".repeat(64), "finance", null, null, "https://example.com/manifest.json")
         } returns miniApp
 
         When("submitting") {
             val response = controller.submitMiniApp(
-                SubmitMiniAppRequest("My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "finance"),
+                SubmitMiniAppRequest(
+                    id = "rw.acme.app",
+                    version = "1.0.0",
+                    manifestVersion = 1,
+                    name = "My App",
+                    description = "Does things",
+                    iconUrl = null,
+                    bundleUrl = "https://example.com/bundle.js",
+                    permissions = listOf("account:read"),
+                    manifestSha256 = "a".repeat(64),
+                    category = "finance",
+                    bundleSha256 = null,
+                    bundleSizeBytes = null,
+                    manifestUrl = "https://example.com/manifest.json",
+                ),
                 "sk_test_key",
             )
 
             Then("the category is real-passed through to the service") {
                 verify(exactly = 1) {
-                    service.submitMiniApp("sk_test_key", "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "finance")
+                    service.submitMiniApp("sk_test_key", "rw.acme.app", "1.0.0", 1, "My App", "Does things", null, "https://example.com/bundle.js", listOf("account:read"), "a".repeat(64), "finance", null, null, "https://example.com/manifest.json")
                 }
                 response.statusCode shouldBe HttpStatus.CREATED
             }
@@ -127,6 +196,7 @@ class PartnerControllerTest : BehaviorSpec({
         Triple(PartnerSuspendedException("Forbidden"), HttpStatus.FORBIDDEN, "PARTNER_SUSPENDED"),
         Triple(InvalidPermissionScopeException("Bad request"), HttpStatus.BAD_REQUEST, "INVALID_PERMISSION_SCOPE"),
         Triple(InvalidMiniAppSubmissionException("Bad request"), HttpStatus.BAD_REQUEST, "INVALID_MINI_APP_SUBMISSION"),
+        Triple(InvalidMiniAppReleaseIntegrityException("Bad release metadata"), HttpStatus.BAD_REQUEST, "INVALID_MINI_APP_RELEASE_INTEGRITY"),
         Triple(RateLimitExceededException("Too many requests"), HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMITED"),
         Triple(InvalidMiniAppDecisionReasonException("Invalid decision reason"), HttpStatus.BAD_REQUEST, "INVALID_DECISION_REASON"),
         Triple(InvalidMiniAppCategoryException("Invalid category"), HttpStatus.BAD_REQUEST, "INVALID_MINI_APP_CATEGORY"),
@@ -143,6 +213,7 @@ class PartnerControllerTest : BehaviorSpec({
                     is PartnerSuspendedException -> controller.handleSuspended(exception)
                     is InvalidPermissionScopeException -> controller.handleInvalidScope(exception)
                     is InvalidMiniAppSubmissionException -> controller.handleInvalidSubmission(exception)
+                    is InvalidMiniAppReleaseIntegrityException -> controller.handleInvalidReleaseIntegrity(exception)
                     is RateLimitExceededException -> controller.handleRateLimit(exception)
                     is InvalidMiniAppDecisionReasonException -> controller.handleInvalidDecisionReason(exception)
                     is InvalidMiniAppCategoryException -> controller.handleInvalidCategory(exception)

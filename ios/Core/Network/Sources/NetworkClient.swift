@@ -7699,6 +7699,16 @@ public struct IdentityVerificationRequestResponse: Decodable {
 public struct PartnerMiniAppDto: Decodable, Identifiable {
     public let id: String; public let partnerId: String; public let name: String; public let description: String
     public let iconUrl: String?; public let bundleUrl: String; public let permissions: String; public let status: String
+    // Immutable release-integrity metadata shared with the Android Saronite host.
+    // Optional fields keep catalog decoding backward-compatible; the iOS runtime
+    // must not execute a partner bundle until a native runtime path consumes and
+    // validates the complete release contract.
+    public let releaseId: String?
+    public let manifestSha256: String?
+    public let bundleSha256: String?
+    public let bundleSizeBytes: Int64?
+    public let publishedAt: String?
+    public let manifestUrl: String?
     // Real Toss/Kakao mini-app-store reference (2026-09-11, Mini-Apps hub pass) --
     // matches the backend's own PartnerMiniAppCategory enum names exactly.
     public let category: String
