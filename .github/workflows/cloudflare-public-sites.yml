@@ -9,6 +9,7 @@ on:
       - "sites/developers/**"
       - "sites/business/**"
       - "services/blog/**"
+      - "client/brand/itunda-icon.svg"
       - ".github/workflows/cloudflare-public-sites.yml"
   workflow_dispatch:
 
@@ -46,6 +47,8 @@ jobs:
         run: |
           cp sites/public/ids.css "${{ matrix.directory }}/ids.css"
           cp sites/public/theme.js "${{ matrix.directory }}/theme.js"
+          mkdir -p "${{ matrix.directory }}/brand"
+          cp client/brand/itunda-icon.svg "${{ matrix.directory }}/brand/itunda-icon.svg"
 
       - name: Enable Corepack for Wrangler
         run: corepack enable
