@@ -107,6 +107,19 @@ final class SaronitePartnerReleaseLoader {
            normalized(bundleSha) != normalized(release.bundleSha256) {
             throw SaronitePartnerReleaseError.integrity("manifest bundleSha256")
         }
+        guard let entry = json["entry"] as? [String: Any],
+              let manifestBundle = entry["bundleUrl"] as? String,
+              let manifestBundleURL = URL(string: manifestBundle),
+              manifestBundleURL == release.bundleUrl else {
+            throw SaronitePartnerReleaseError.integrity("manifest bundleUrl")
+        }
+        guard (entry["type"] as? String) == "saronite" else {
+            throw SaronitePartnerReleaseError.invalid("manifest entry.type")
+        }
+        guard let permissions = json["permissions"] as? [String],
+              Set(permissions) == release.permissions else {
+            throw SaronitePartnerReleaseError.integrity("manifest permissions")
+        }
         if let size = json["bundleSizeBytes"] as? NSNumber,
            size.int64Value != release.bundleSizeBytes {
             throw SaronitePartnerReleaseError.integrity("manifest bundleSizeBytes")
