@@ -25,6 +25,7 @@ struct MiniAppsHubScreenView: View {
     @State private var miniApps: [PartnerMiniAppDto]?
     @State private var selectedCategory: String?
     @State private var searchQuery = ""
+    @State private var selectedMiniApp: PartnerMiniAppDto?
     @State private var selectedApp: PartnerMiniAppDto?
     var onLaunchPartnerMiniApp: (PartnerMiniAppDto) -> Void = { _ in }
 
@@ -82,6 +83,9 @@ struct MiniAppsHubScreenView: View {
             }
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+        .sheet(item: $selectedMiniApp) { app in
+            SaronitePartnerMiniAppView(app: app)
+        }
         .task(id: selectedCategory) {
             miniApps = nil
             let result = try? await NetworkClient.shared.getMiniAppCatalog(category: selectedCategory?.uppercased())
