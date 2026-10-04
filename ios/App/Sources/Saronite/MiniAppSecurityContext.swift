@@ -13,10 +13,9 @@ final class MiniAppSecurityContext {
 
     static func requireScope(_ requiredScope: String?, reject: @escaping RCTPromiseRejectBlock) -> Bool {
         guard isAllowed(requiredScope) else {
-            reject("SARONITE_SCOPE_DENIED", "This mini-app's approved permissions do not include" + (requiredScope.map { " \"\($0)\"" } ?? " this call"), nil)
+            reject("SARONITE_SCOPE_DENIED", "This mini-app's approved permissions do not include" + (requiredScope.map { scope in " \"\(scope)\"" } ?? " this call"), nil)
             return false
         }
         return true
     }
 }
-
