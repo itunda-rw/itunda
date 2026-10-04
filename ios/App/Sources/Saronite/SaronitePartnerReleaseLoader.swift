@@ -114,11 +114,11 @@ final class SaronitePartnerReleaseLoader {
 
         // The manifest is authenticated by manifestSha256. These identity checks prevent
         // a valid manifest from a different release being paired with this catalog entry.
-        if let id = json["releaseId"] as? String, id != release.releaseId {
+        guard let id = json["releaseId"] as? String, id == release.releaseId else {
             throw SaronitePartnerReleaseError.integrity("manifest releaseId")
         }
-        if let bundleSha = json["bundleSha256"] as? String,
-           normalized(bundleSha) != normalized(release.bundleSha256) {
+        guard let bundleSha = json["bundleSha256"] as? String,
+              normalized(bundleSha) == normalized(release.bundleSha256) else {
             throw SaronitePartnerReleaseError.integrity("manifest bundleSha256")
         }
         guard let entry = json["entry"] as? [String: Any],
@@ -134,8 +134,8 @@ final class SaronitePartnerReleaseLoader {
               Set(permissions) == release.permissions else {
             throw SaronitePartnerReleaseError.integrity("manifest permissions")
         }
-        if let size = json["bundleSizeBytes"] as? NSNumber,
-           size.int64Value != release.bundleSizeBytes {
+        guard let size = json["bundleSizeBytes"] as? NSNumber,
+              size.int64Value == release.bundleSizeBytes else {
             throw SaronitePartnerReleaseError.integrity("manifest bundleSizeBytes")
         }
     }
