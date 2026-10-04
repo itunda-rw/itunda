@@ -159,7 +159,7 @@ final class SaronitePartnerReleaseLoader {
     private func cacheURL(_ releaseId: String) throws -> URL {
         let base = try fileManager.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
         let safe = releaseId.map { $0.isLetter || $0.isNumber || "._-".contains($0) ? String($0) : "_" }.joined()
-        return base.appendingPathComponent("saronite-partner-(safe).jsbundle")
+        return base.appendingPathComponent("saronite-partner-\(safe).jsbundle")
     }
 
     private func download(_ url: URL) async throws -> Data {
