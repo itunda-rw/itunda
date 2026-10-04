@@ -67,6 +67,7 @@ public struct MyTabView: View {
         onSwitchToMarketplace: @escaping () -> Void = {},
         onSwitchToJobs: @escaping () -> Void = {},
         onSwitchToProperty: @escaping () -> Void = {},
+        onLaunchPartnerMiniApp: @escaping (PartnerMiniAppDto) -> Void = { _ in },
         onUpdatePin: @escaping (_ currentCredential: String, _ newPin: String) async -> String? = { _, _ in nil }
     ) {
         self.onBack = onBack
@@ -75,6 +76,7 @@ public struct MyTabView: View {
         self.onSwitchToMarketplace = onSwitchToMarketplace
         self.onSwitchToJobs = onSwitchToJobs
         self.onSwitchToProperty = onSwitchToProperty
+        self.onLaunchPartnerMiniApp = onLaunchPartnerMiniApp
         self.onUpdatePin = onUpdatePin
     }
 
