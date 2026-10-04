@@ -33,6 +33,7 @@ public struct MyTabView: View {
     var onSwitchToJobs: () -> Void = {}
     var onSwitchToProperty: () -> Void = {}
     var onUpdatePin: (_ currentCredential: String, _ newPin: String) async -> String? = { _, _ in nil }
+    var onLaunchPartnerMiniApp: (PartnerMiniAppDto) -> Void = { _ in }
 
     @State private var shopOrders: [OrderDto] = []
     @State private var eatsOrders: [EatsOrderDto] = []
@@ -208,7 +209,7 @@ public struct MyTabView: View {
             }
         }
         .sheet(isPresented: $showMiniAppsHub) {
-            MiniAppsHubScreenView(onBack: { showMiniAppsHub = false })
+            MiniAppsHubScreenView(onBack: { showMiniAppsHub = false }, onLaunchPartnerMiniApp: onLaunchPartnerMiniApp)
         }
     }
 
