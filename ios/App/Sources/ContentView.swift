@@ -783,7 +783,7 @@ struct ContentView: View {
             MapScreenView(initialSearchQuery: mapSearchFromDeepLink, initialSharedFolder: mapSharedFolderFromDeepLink)
         }
         .sheet(item: $selectedPartnerMiniApp) { app in
-            PartnerMiniAppRuntimeView(app: app)
+            SaronitePartnerMiniAppView(app: app)
         }
         .fullScreenCover(isPresented: $showIdentityVerifyFromDeepLink) {
             if let identityVerifyRequestId {
