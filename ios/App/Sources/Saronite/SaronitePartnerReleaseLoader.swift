@@ -40,7 +40,7 @@ final class SaronitePartnerReleaseLoader {
 
     /// Read by SaroniteReactNativeFactoryDelegate.bundleURL().
     /// A nil value means normal first-party Metro/packaged-bundle behavior.
-    static private(set) var activeBundleURL: URL?
+    static var activeBundleURL: URL?
 
     private let session: URLSession
     private let fileManager = FileManager.default
