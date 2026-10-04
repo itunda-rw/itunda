@@ -444,6 +444,20 @@ allTargets.append(
 // App/UITests/FocusOrderTests.swift.
 allTargets.append(
     Target.target(
+        name: "ItundaAppTests",
+        destinations: .iOS,
+        product: .unitTests,
+        bundleId: "rw.itunda.app.tests",
+        infoPlist: .default,
+        sources: ["App/Tests/**"],
+        dependencies: [
+            .target(name: "ItundaApp")
+        ]
+    )
+)
+
+allTargets.append(
+    Target.target(
         name: "ItundaAppUITests",
         destinations: .iOS,
         product: .uiTests,
