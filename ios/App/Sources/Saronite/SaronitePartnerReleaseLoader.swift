@@ -13,6 +13,19 @@ struct SaronitePartnerRelease {
     let permissions: Set<String>
 }
 
+extension SaronitePartnerRelease {
+    static func from(_ app: PartnerMiniAppDto) throws -> SaronitePartnerRelease {
+        guard let releaseId = app.releaseId, !releaseId.isEmpty else { throw SaronitePartnerReleaseError.missing("releaseId") }
+        guard let manifestSha256 = app.manifestSha256 else { throw SaronitePartnerReleaseError.missing("manifestSha256") }
+        guard let bundleSha256 = app.bundleSha256 else { throw SaronitePartnerReleaseError.missing("bundleSha256") }
+        guard let bundleSizeBytes = app.bundleSizeBytes else { throw SaronitePartnerReleaseError.missing("bundleSizeBytes") }
+        guard let manifestUrlString = app.manifestUrl, let manifestUrl = URL(string: manifestUrlString) else { throw SaronitePartnerReleaseError.missing("manifestUrl") }
+        guard let bundleUrl = URL(string: app.bundleUrl) else { throw SaronitePartnerReleaseError.invalid("bundleUrl") }
+        let permissions = Set(app.permissions.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })
+        return SaronitePartnerRelease(releaseId: releaseId, manifestUrl: manifestUrl, manifestSha256: manifestSha256, bundleUrl: bundleUrl, bundleSha256: bundleSha256, bundleSizeBytes: bundleSizeBytes, permissions: permissions)
+    }
+}
+
 enum SaronitePartnerReleaseError: LocalizedError {
     case missing(String)
     case invalid(String)
