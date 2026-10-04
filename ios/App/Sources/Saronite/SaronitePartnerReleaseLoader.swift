@@ -91,7 +91,7 @@ final class SaronitePartnerReleaseLoader {
         MiniAppSecurityContext.activeScopes = nil
     }
 
-    private func validate(_ release: SaronitePartnerRelease) throws {
+    func validate(_ release: SaronitePartnerRelease) throws {
         guard !release.releaseId.isEmpty else { throw SaronitePartnerReleaseError.missing("releaseId") }
         guard release.manifestUrl.scheme?.lowercased() == "https" else {
             throw SaronitePartnerReleaseError.invalid("manifestUrl (HTTPS required)")
@@ -107,7 +107,7 @@ final class SaronitePartnerReleaseLoader {
         }
     }
 
-    private func validateManifest(_ data: Data, release: SaronitePartnerRelease) throws {
+    func validateManifest(_ data: Data, release: SaronitePartnerRelease) throws {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw SaronitePartnerReleaseError.invalid("manifest JSON")
         }
@@ -170,7 +170,7 @@ final class SaronitePartnerReleaseLoader {
         return url
     }
 
-    private func cacheURL(_ releaseId: String) throws -> URL {
+    func cacheURL(_ releaseId: String) throws -> URL {
         let base = try fileManager.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
         let safe = releaseId.map { $0.isLetter || $0.isNumber || "._-".contains($0) ? String($0) : "_" }.joined()
         return base.appendingPathComponent("saronite-partner-\(safe).jsbundle")
