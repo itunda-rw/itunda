@@ -1,5 +1,6 @@
 import UIKit
 import React
+import CoreNetwork
 import BrickModule
 import GraniteBrownfield
 
