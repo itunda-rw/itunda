@@ -8,7 +8,7 @@ final class MiniAppSecurityContext {
 
     static func isAllowed(_ requiredScope: String?) -> Bool {
         guard let scopes = activeScopes else { return true }
-        return requiredScope != nil && scopes.contains(requiredScope!)
+        return requiredScope.map { scopes.contains($0) } ?? false
     }
 
     static func requireScope(_ requiredScope: String?, reject: @escaping RCTPromiseRejectBlock) -> Bool {
