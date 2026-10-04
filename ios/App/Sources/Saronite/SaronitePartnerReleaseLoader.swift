@@ -1,4 +1,5 @@
 import Foundation
+import CoreNetwork
 import CryptoKit
 
 /// Immutable release descriptor consumed by the iOS partner loader.
