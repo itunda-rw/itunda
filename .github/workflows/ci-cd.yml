@@ -344,7 +344,9 @@ jobs:
 
       - name: Install CocoaPods dependencies
         working-directory: ios
-        run: pod install --deployment
+        # Saronite/BrickCodegen generates local podspec state during CI. Do not
+        # enforce the committed lockfile before that generated state is reconciled.
+        run: pod install
 
       - name: Build ItundaApp
         working-directory: ios
