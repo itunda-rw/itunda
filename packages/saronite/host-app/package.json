@@ -2,7 +2,7 @@
   "name": "saronite-host-app",
   "private": true,
   "version": "0.1.0",
-  "description": "The Metro/JS entry point that actually runs Saronite mini-apps inside itunda's native Android app. Registers one AppRegistry component per mini-app in mini-apps/*; each mini-app gets its own concrete Activity subclass hardcoding which component to render (see android/app/.../miniapps/MiniAppActivity.kt) -- not an Intent-extra dispatch, which was tried and reverted after a real crash (ReactActivity builds its delegate in <init>, before Android attaches the launch Intent).",
+  "description": "The Metro/JS entry point that actually runs Saronite mini-apps inside itunda's native Android app.",
   "scripts": {
     "start": "react-native start",
     "typecheck": "tsc --noEmit"
@@ -11,6 +11,7 @@
     "@granite-js/brownfield-module": "^1.0.36",
     "@granite-js/native": "^1.0.36",
     "@granite-js/react-native": "^1.0.36",
+    "brick-module": "0.5.2",
     "react": "19.2.3",
     "react-native": "0.84.0",
     "react-native-safe-area-context": "5.6.2",
@@ -33,7 +34,5 @@
     "@types/react": "^19.2.0",
     "typescript": "^5.8.3"
   },
-  "engines": {
-    "node": ">=18"
-  }
+  "engines": { "node": ">=18" }
 }
