@@ -74,6 +74,14 @@ jobs:
           done < <(find /tmp/itunda-brand -type f -print0 | sort -z)
           sha256sum --check packages/brand-assets/SHA256SUMS
 
+      - name: Verify web launch assets remain canonical
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmp -s packages/brand-assets/canonical/itunda-brand/splash/itunda-splash-light.svg client/public/brand/itunda-splash-light.svg
+          cmp -s packages/brand-assets/canonical/itunda-brand/app-icons/itunda-app-icon.svg client/public/brand/itunda-app-icon.svg
+          echo "Web launch splash and PWA icon match the canonical brand assets byte-for-byte."
+
       - name: Verify product brand copies remain canonical
         run: |
           set -euo pipefail
