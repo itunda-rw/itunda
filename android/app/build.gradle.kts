@@ -141,16 +141,15 @@ android {
             "\"${project.findProperty("miniAppBundleCdnUrl") ?: ""}\""
         )
 
-        // Real login/session flow needs a real base URL -- NetworkClient.kt previously
-        // hardcoded "http://10.0.2.2:8080/", the emulator-only loopback alias, at the
-        // wrong port (services/backend listens on 4001, see its application.yml) --
-        // and a physical device can't resolve 10.0.2.2 at all. Defaults to the emulator
-        // alias at the right port; override for a physical device on the same LAN with
-        // e.g. `-PapiBaseUrl=http://192.168.0.63:4001/` (2026-07-11 fix).
+        // Real physical-device login endpoint (2026-10-06): the previous default was
+        // 10.0.2.2:4001, which is Android-emulator-only and is unreachable from a
+        // physical phone. Production/test APKs must use the deployed HTTPS API by
+        // default; emulator/LAN development can still override with -PapiBaseUrl=...
+        // when needed.
         buildConfigField(
             "String",
             "API_BASE_URL",
-            "\"${project.findProperty("apiBaseUrl") ?: "http://10.0.2.2:4001/"}\""
+            "\"${project.findProperty("apiBaseUrl") ?: "https://itunda-api-hptgu43hsa-du.a.run.app/"}\""
         )
 
         // Same real gap as API_BASE_URL above, just discovered later (2026-07-21):
