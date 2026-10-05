@@ -264,7 +264,7 @@ jobs:
       # receive the same linked Saronite packages and React Native dependencies.
       - name: Install Saronite JS dependencies (own Yarn workspace, not the root workspace)
         working-directory: packages/saronite
-        run: yarn install
+        run: yarn install --no-immutable
 
       - name: Setup JDK
         uses: actions/setup-java@v4
@@ -322,7 +322,7 @@ jobs:
       # receive the same linked Saronite packages and React Native dependencies.
       - name: Install Saronite JS dependencies (own Yarn workspace, not the root workspace)
         working-directory: packages/saronite
-        run: yarn install
+        run: yarn install --no-immutable
 
       # Real CI fix (2026-09-03): ios/.brick/ (BrickCodegen's own podspec + generated
       # bridge sources) is gitignored, regenerated from each mini-app's *.brick.ts spec
