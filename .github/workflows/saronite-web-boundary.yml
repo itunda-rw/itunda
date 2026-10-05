@@ -33,6 +33,9 @@ jobs:
           # Saronite is a Yarn 4 project; do not let setup-node invoke global npm/Yarn caching before Corepack.
           package-manager-cache: false
 
+      - name: Enable Corepack
+        run: corepack enable
+
       - name: Install Saronite dependencies
         working-directory: packages/saronite
         run: yarn install --no-immutable
