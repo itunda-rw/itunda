@@ -1,0 +1,2 @@
+# This lockfile intentionally marks packages/saronite as an independent Yarn project.
+# Saronite has its own workspaces and is excluded from the root workspace.
