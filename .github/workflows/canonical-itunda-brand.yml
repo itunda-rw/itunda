@@ -79,8 +79,9 @@ jobs:
         run: |
           set -euo pipefail
           cmp -s packages/brand-assets/canonical/itunda-brand/splash/itunda-splash-light.svg client/public/brand/itunda-splash-light.svg
+          cmp -s packages/brand-assets/canonical/itunda-brand/splash/itunda-splash-dark.svg client/public/brand/itunda-splash-dark.svg
           cmp -s packages/brand-assets/canonical/itunda-brand/app-icons/itunda-app-icon.svg client/public/brand/itunda-app-icon.svg
-          echo "Web launch splash and PWA icon match the canonical brand assets byte-for-byte."
+          echo "Web light/dark launch splashes and PWA icon match the canonical brand assets byte-for-byte."
 
       - name: Verify product brand copies remain canonical
         run: |
