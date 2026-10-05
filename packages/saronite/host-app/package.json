@@ -8,9 +8,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@granite-js/brownfield-module": "^1.0.36",
-    "@granite-js/native": "^1.0.36",
-    "@granite-js/react-native": "^1.0.36",
+    "@granite-js/brownfield-module": "1.0.36",
+    "@granite-js/native": "1.0.36",
+    "@granite-js/react-native": "1.0.36",
     "brick-module": "0.5.2",
     "react": "19.2.3",
     "react-native": "0.84.0",
