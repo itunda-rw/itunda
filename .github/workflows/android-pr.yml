@@ -39,12 +39,15 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: "24"
-          cache: npm
-          cache-dependency-path: packages/saronite/package.json
+          cache: yarn
+          cache-dependency-path: packages/saronite/yarn.lock
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Install Saronite dependencies
         working-directory: packages/saronite
-        run: npm install
+        run: yarn install
 
       - name: Verify dependency catalog usage
         shell: bash
