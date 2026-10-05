@@ -6,7 +6,7 @@ on:
     workflows: ["CI"]
     types: [completed]
     branches:
-      - agent/itunda-agent-network
+      - main
   workflow_dispatch:
     inputs:
       app:
@@ -28,7 +28,7 @@ concurrency:
 jobs:
   deploy:
     if: >
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'agent/itunda-agent-network') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main') ||
       github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -71,7 +71,7 @@ jobs:
 
       - name: Ensure customer Pages project
         if: matrix.app == 'customer' && (github.event_name == 'workflow_run' || inputs.app == 'customer')
-        run: npx --yes wrangler@4.39.0 pages project create itunda-app --production-branch agent/itunda-agent-network || true
+        run: npx --yes wrangler@4.39.0 pages project create itunda-app --production-branch main || true
 
       - name: Deploy customer web app
         if: matrix.app == 'customer' && (github.event_name == 'workflow_run' || inputs.app == 'customer')
@@ -79,7 +79,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy services/micro-frontends/host-app/dist --project-name=itunda-app --branch=agent/itunda-agent-network --commit-message="Deploy customer web app"
+          command: pages deploy services/micro-frontends/host-app/dist --project-name=itunda-app --branch=main --commit-message="Deploy customer web app"
 
       - name: Browser smoke test customer production
         if: matrix.app == 'customer' && (github.event_name == 'workflow_run' || inputs.app == 'customer')
