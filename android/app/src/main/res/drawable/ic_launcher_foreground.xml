@@ -1,31 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-<!-- Real itunda mark (2026-08-22, direct user identity work): replaces the old
-     shield-check glyph with the "petal" shape in indigo, chosen after a full 14-shape
-     x 16-color exploration pass - see the itunda-identity.html design artifact and
-     project_itunda_brand_identity.md for the full derivation (indigo is not
-     invented: same OKLCH hue-rotation technique Toss's own eng blog documents,
-     toss.tech/article/tds-color-system-update, applied to the real itunda blue
-     anchor this token held before). Two independent flat facets rather than the
-     exploration artifact's full 3D gradient rendering - Android VectorDrawable
-     gradients inside adaptive-icon layers render unreliably across launcher
-     implementations/densities, and a flat two-tone reads just as clearly at
-     launcher-icon scale (matches how Google's own apps flatten otherwise-gradient
-     marks for this exact context). Right facet uses the mark's own "mid" tone
-     (indigo family rm), left facet its darker "mid" counterpart (lm) - the same
-     two real tones the gradient's own mid-stop uses, so this stays a true flattening
-     of the real mark rather than a separately-invented icon color. Scaled to 0.60x
-     and centered on (54,54), fitting inside Android's real 66dp safe-zone circle
-     (108dp canvas) - verified against both a circular and squircle mask via a real
-     SVG render before this file was written (rsvg-convert, not eyeballed). -->
-    <path
-        android:fillColor="#7C7BFD"
-        android:pathData="M48.6,34.8 C67.8,30 79.8,51.6 57,78 C53.4,64.8 47.4,49.2 48.6,34.8 Z" />
-    <path
-        android:fillColor="#5C55D8"
-        android:pathData="M48.6,34.8 C47.4,49.2 53.4,64.8 57,78 C37.8,76.8 28.2,54 48.6,34.8 Z" />
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FFFFFF" android:fillType="evenOdd" android:pathData="M55.655,72.681 L58.155,73.712 L60.277,74.282 L62.706,74.610 L65.092,74.616 L67.127,74.316 L69.071,73.695 L70.951,72.735 L72.504,71.564 L73.774,70.160 L74.774,68.637 L75.563,66.730 L75.969,64.828 L75.975,62.452 L75.619,60.379 L74.810,58.162 L73.624,56.028 L73.568,56.639 L73.255,57.694 L72.744,58.667 L72.052,59.522 L71.206,60.225 L70.240,60.750 L69.190,61.077 L68.096,61.192 L67.446,61.132 L68.014,62.615 L68.081,64.080 L67.744,64.990 L67.085,65.788 L66.132,66.341 L65.076,66.652 L63.772,66.734 L62.267,66.595 L59.802,69.378 L57.905,71.079 L55.655,72.681 Z M54.816,54.437 L57.317,54.746 L58.971,55.101 L61.296,55.899 L63.803,57.240 L65.880,58.890 L66.568,59.251 L67.312,59.471 L68.085,59.542 L68.857,59.461 L69.598,59.230 L70.280,58.860 L70.877,58.363 L71.366,57.760 L71.727,57.072 L71.947,56.328 L72.018,55.555 L71.937,54.783 L71.706,54.042 L71.336,53.360 L70.839,52.763 L68.647,50.962 L66.721,49.782 L64.461,48.638 L61.525,47.586 L58.645,46.938 L55.713,46.607 L54.939,46.670 L54.193,46.884 L53.503,47.239 L52.895,47.722 L52.393,48.314 L52.016,48.992 L51.779,49.732 L51.691,50.503 L51.754,51.277 L51.968,52.023 L52.323,52.713 L52.806,53.321 L53.398,53.823 L54.076,54.200 L54.816,54.437 Z M63.919,39.164 L62.947,37.820 L61.791,36.576 L60.638,35.604 L59.277,34.737 L57.974,34.124 L56.336,33.617 L54.792,33.373 L53.282,33.367 L51.776,33.591 L50.138,34.081 L48.723,34.737 L47.460,35.532 L46.209,36.576 L45.088,37.779 L44.081,39.164 L43.272,40.614 L44.687,40.150 L45.784,40.074 L46.875,40.215 L47.917,40.565 L48.871,41.112 L49.701,41.834 L50.373,42.705 L50.743,43.449 L51.665,42.317 L52.667,41.612 L53.821,41.269 L54.828,41.410 L55.847,41.914 L56.715,42.715 L57.409,43.707 L58.092,45.193 L59.920,45.505 L62.272,46.088 L64.921,47.042 L66.644,47.872 L66.342,45.479 L65.810,43.289 L64.975,41.130 L63.919,39.164 Z M64.216,60.321 L64.441,59.837 L63.846,59.341 L64.216,60.321 Z M55.738,59.297 L53.393,62.244 L51.875,63.646 L49.471,65.264 L48.232,65.841 L46.525,66.475 L45.863,66.882 L45.294,67.410 L44.839,68.038 L44.515,68.744 L44.335,69.499 L44.305,70.275 L44.428,71.041 L44.697,71.769 L45.104,72.431 L45.632,73.000 L46.260,73.455 L46.966,73.779 L47.721,73.959 L48.497,73.989 L49.263,73.866 L51.555,73.033 L53.738,71.944 L56.631,69.980 L58.522,68.320 L60.549,66.098 L62.178,63.890 L62.616,62.907 L62.762,62.145 L62.756,61.368 L62.599,60.608 L62.296,59.893 L61.860,59.251 L61.307,58.706 L60.659,58.280 L59.939,57.988 L59.177,57.842 L58.400,57.848 L57.640,58.005 L56.925,58.308 L56.283,58.744 L55.738,59.297 Z M51.760,54.587 L51.753,54.581 L51.755,54.588 L51.760,54.587 Z M51.660,46.639 L51.150,46.687 L51.020,47.404 L51.660,46.639 Z M42.006,44.059 L41.414,46.798 L41.262,48.784 L41.353,51.252 L41.510,52.802 L41.964,55.075 L42.534,57.168 L43.556,59.787 L44.394,61.363 L44.926,61.929 L45.557,62.380 L46.265,62.700 L47.021,62.875 L47.797,62.899 L48.563,62.772 L49.289,62.497 L49.947,62.086 L50.513,61.554 L50.964,60.923 L51.284,60.215 L51.459,59.459 L51.483,58.683 L51.356,57.917 L50.140,54.957 L49.376,51.863 L49.182,49.001 L49.576,45.799 L49.523,45.025 L49.320,44.276 L48.974,43.580 L48.500,42.966 L47.915,42.456 L47.241,42.070 L46.505,41.823 L45.735,41.724 L44.961,41.777 L44.212,41.980 L43.516,42.326 L42.902,42.800 L42.392,43.385 L42.006,44.059 Z M46.087,64.344 L46.395,64.771 L47.074,64.519 L46.087,64.344 Z M39.675,50.742 L37.410,52.531 L35.634,54.331 L34.352,56.066 L33.210,58.118 L32.483,60.021 L32.080,61.917 L31.997,64.226 L32.244,66.039 L32.877,67.901 L33.748,69.504 L35.158,71.234 L36.662,72.486 L38.596,73.554 L40.611,74.252 L42.721,74.602 L45.077,74.624 L44.579,74.271 L43.824,73.472 L43.238,72.541 L42.846,71.514 L42.662,70.429 L42.693,69.330 L42.937,68.258 L43.386,67.254 L43.757,66.731 L42.425,66.536 L41.700,66.265 L41.052,65.894 L40.256,64.990 L39.938,64.161 L39.926,63.013 L40.161,62.016 L40.786,60.720 L41.640,59.494 L40.975,57.714 L40.175,54.643 L39.873,53.009 L39.675,50.742 Z M46.087,64.344 L46.395,64.771 L47.074,64.519 L46.087,64.344 Z"/>
 </vector>
