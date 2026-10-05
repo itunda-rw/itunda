@@ -33,8 +33,7 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: "24"
-          cache: yarn
-          cache-dependency-path: packages/saronite/yarn.lock
+          # Do not use setup-node's Yarn cache here: it invokes global Yarn before Corepack is enabled.
 
       - name: Cache macOS native build state
         uses: actions/cache@v4
