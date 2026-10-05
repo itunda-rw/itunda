@@ -68,4 +68,9 @@ jobs:
           curl --fail --silent --show-error --location --max-time 30 "${URL}/" > /tmp/index.html
           test -s /tmp/index.html
           grep -Eiq '<(html|body|div|main|script)[ >]' /tmp/index.html
-          echo "Customer web app is live at ${URL}"
+          for asset in manifest.webmanifest brand/itunda-splash-light.svg brand/itunda-splash-dark.svg brand/itunda-app-icon.svg; do
+            curl --fail --silent --show-error --location --max-time 30 "${URL}/${asset}" -o /dev/null
+          done
+          grep -q 'manifest.webmanifest' /tmp/index.html
+          grep -q 'itunda-splash-light.svg' /tmp/index.html
+          echo "Customer web app and canonical launch assets are live at ${URL}"
