@@ -105,7 +105,6 @@ jobs:
             client/brand/itunda-icon.svg \\
             ios/Assets/ItundaIcon.svg \\
             services/blog/public/brand/itunda-icon.svg \\
-            site/favicon.svg \\
             services/micro-frontends/host-app/public/favicon.svg \\
             services/micro-frontends/bank-mfe/public/favicon.svg \\
             services/micro-frontends/merchant-mfe/public/favicon.svg \\
