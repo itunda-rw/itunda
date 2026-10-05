@@ -58,6 +58,9 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
+      - name: Verify canonical Itunda brand assets
+        run: node scripts/verify-brand-assets.mjs
+
       - name: Lint
         run: yarn lint
 
