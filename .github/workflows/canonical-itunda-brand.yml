@@ -105,17 +105,20 @@ jobs:
             client/brand/itunda-icon.svg \\
             ios/Assets/ItundaIcon.svg \\
             services/blog/public/brand/itunda-icon.svg \\
+            business/brand/itunda-icon.svg \\
+            business/developers/brand/itunda-icon.svg; do
+            test "$(sha256sum "$f" | cut -d' ' -f1)" = "$(sha256sum "$canonical_symbol" | cut -d' ' -f1)" || { echo "Brand drift: $f"; exit 1; }
+          done
+          for f in \\
+            site/favicon.svg \\
             services/micro-frontends/host-app/public/favicon.svg \\
             services/micro-frontends/bank-mfe/public/favicon.svg \\
             services/micro-frontends/merchant-mfe/public/favicon.svg \\
             services/micro-frontends/maps-mfe/public/favicon.svg \\
             services/micro-frontends/kyc-mfe/public/favicon.svg \\
             services/micro-frontends/ops-mfe/public/favicon.svg \\
-            business/brand/itunda-icon.svg \\
-            business/developers/brand/itunda-icon.svg; do
-            test "$(sha256sum "$f" | cut -d' ' -f1)" = "$(sha256sum "$canonical_symbol" | cut -d' ' -f1)" || { echo "Brand drift: $f"; exit 1; }
-          done
-          for f in business/favicon.svg business/developers/favicon.svg; do
+            business/favicon.svg \\
+            business/developers/favicon.svg; do
             test "$(sha256sum "$f" | cut -d' ' -f1)" = "$(sha256sum "$canonical_favicon" | cut -d' ' -f1)" || { echo "Favicon drift: $f"; exit 1; }
           done
 
