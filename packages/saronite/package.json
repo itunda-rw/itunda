@@ -15,5 +15,6 @@
   },
   "devDependencies": {
     "patch-package": "^8.0.1"
-  }
+  },
+  "packageManager": "yarn@4.17.0"
 }
