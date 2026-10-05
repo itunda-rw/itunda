@@ -54,7 +54,7 @@ jobs:
 
       - name: Install Saronite dependencies
         working-directory: packages/saronite
-        run: yarn install --no-audit --no-fund
+        run: yarn install --no-immutable --no-audit --no-fund
 
       - name: Install mise
         run: |
