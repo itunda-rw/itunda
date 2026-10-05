@@ -40,6 +40,7 @@ jobs:
         with:
           node-version: "24"
           # Do not use setup-node's Yarn cache here: it invokes global Yarn before Corepack is enabled.
+          package-manager-cache: false
 
       - name: Enable Corepack
         run: corepack enable
@@ -59,7 +60,7 @@ jobs:
             exit 1
           fi
 
-          if grep -RInE "^[[:space:]]*(implementation|api|runtimeOnly|compileOnly|testImplementation|androidTestImplementation|kapt|ksp)[[:space:]]*\\('[^']*:[0-9][^']*\\')" android --include='*.gradle' --include='*.gradle.kts'; then
+          if grep -RInE "^[[:space:]]*(implementation|api|runtimeOnly|compileOnly|testImplementation|androidTestImplementation|kapt|ksp)[[:space:]]*\\('[^']*:[^']*[0-9][^']*\\')" android --include='*.gradle' --include='*.gradle.kts'; then
             echo "Found a hard-coded Android dependency version using single-quoted notation."
             echo "Use android/gradle/libs.versions.toml instead."
             exit 1
