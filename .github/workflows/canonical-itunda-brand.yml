@@ -74,6 +74,20 @@ jobs:
           done < <(find /tmp/itunda-brand -type f -print0 | sort -z)
           sha256sum --check packages/brand-assets/SHA256SUMS
 
+      - name: Verify product brand copies remain canonical
+        run: |
+          set -euo pipefail
+          declare -A EXPECTED
+          EXPECTED[client/brand/itunda-icon.svg]=packages/brand-assets/canonical/itunda-brand/symbol/itunda-symbol.svg
+          EXPECTED[ios/Assets/ItundaIcon.svg]=packages/brand-assets/canonical/itunda-brand/symbol/itunda-symbol.svg
+          EXPECTED[services/blog/public/brand/itunda-icon.svg]=packages/brand-assets/canonical/itunda-brand/symbol/itunda-symbol.svg
+          EXPECTED[site/favicon.svg]=packages/brand-assets/canonical/itunda-brand/app-icons/itunda-favicon.svg
+          for dst in "${!EXPECTED[@]}"; do
+            src="${EXPECTED[$dst]}"
+            test -f "$dst"
+            test -f "$src"
+            test "$(sha256sum "$dst" | cut -d' ' -f1)" = "$(sha256sum "$src" | cut -d' ' -f1)"
+          done
       - name: Reject logo regeneration in CI
         run: |
           set -euo pipefail
