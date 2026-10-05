@@ -77,7 +77,7 @@ jobs:
       - name: Reject placeholder logo references
         run: |
           set -euo pipefail
-          if git grep -n -i -E 'placeholder[-_ ]logo|generated[-_ ]logo|temporary[-_ ]logo|fake[-_ ]logo|fallback[-_ ]logo' -- ':!itunda-brand.zip' ':!packages/brand-assets/**'; then
+          if git grep -n -i -E 'placeholder[-_ ]logo|generated[-_ ]logo|temporary[-_ ]logo|fake[-_ ]logo|fallback[-_ ]logo' -- ':!itunda-brand.zip' ':!packages/brand-assets/**' ':!.github/workflows/canonical-itunda-brand.yml'; then
             echo 'Found forbidden placeholder/generated logo reference.'
             exit 1
           fi
