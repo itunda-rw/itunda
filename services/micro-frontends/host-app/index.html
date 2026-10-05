@@ -3,10 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#7472F4" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#090B0F" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Itunda</title>
   </head>
   <body>
+    <style>
+      #itunda-launch-splash{position:fixed;inset:0;z-index:10000;background:#fff;display:grid;place-items:center;opacity:1;transition:opacity .28s ease;pointer-events:auto}
+      #itunda-launch-splash.is-hidden{opacity:0;pointer-events:none}
+      #itunda-launch-splash picture,#itunda-launch-splash img{width:100%;height:100%;display:block}
+      #itunda-launch-splash img{object-fit:cover}
+      @media (prefers-color-scheme:dark){#itunda-launch-splash{background:#090B0F}}
+      @media (prefers-reduced-motion:reduce){#itunda-launch-splash{transition:none}}
+    </style>
+    <div id="itunda-launch-splash" aria-label="itunda" role="status"><picture><source media="(prefers-color-scheme: dark)" srcset="/brand/itunda-splash-dark.svg" /><img src="/brand/itunda-splash-light.svg" alt="" /></picture></div>
+    <script>window.addEventListener("load",function(){var s=document.getElementById("itunda-launch-splash");if(!s)return;var hide=function(){s.classList.add("is-hidden");setTimeout(function(){s.remove()},320)};setTimeout(hide,520)},{once:true});</script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
