@@ -74,6 +74,14 @@ jobs:
           done < <(find /tmp/itunda-brand -type f -print0 | sort -z)
           sha256sum --check packages/brand-assets/SHA256SUMS
 
+      - name: Reject logo regeneration in CI
+        run: |
+          set -euo pipefail
+          if git grep -n -E 'cairosvg|svg2png|generate-native-icons' -- '.github/workflows/**'; then
+            echo 'Found a CI logo regeneration/rasterization path.'
+            exit 1
+          fi
+
       - name: Reject placeholder logo references
         run: |
           set -euo pipefail
