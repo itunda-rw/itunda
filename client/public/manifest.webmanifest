@@ -1,0 +1,19 @@
+{
+  "name": "Itunda",
+  "short_name": "Itunda",
+  "description": "Itunda — money, services and everyday life, together.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#7472F4",
+  "icons": [
+    {
+      "src": "/brand/itunda-app-icon.svg",
+      "sizes": "1024x1024",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
