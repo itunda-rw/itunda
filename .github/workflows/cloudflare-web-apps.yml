@@ -92,6 +92,12 @@ jobs:
           const page = await browser.newPage({viewport:{width:390,height:844}});
           page.on('pageerror', e => pageErrors.push(String(e)));
           page.on('console', m => { if (m.type() === 'error') consoleErrors.push(m.text()); });
+          const manifest = await (await page.request.get('https://itunda-app.pages.dev/manifest.webmanifest')).json();
+          if (manifest.name !== 'Itunda' || manifest.display !== 'standalone' || manifest.theme_color !== '#7472F4') throw new Error('Customer manifest mismatch');
+          for (const asset of ['/brand/itunda-splash-light.svg','/brand/itunda-splash-dark.svg','/brand/itunda-app-icon.svg']) {
+            const response = await page.request.get('https://itunda-app.pages.dev'+asset);
+            if (!response.ok()) throw new Error(`Customer brand asset failed: ${asset} (${response.status()})`);
+          }
           await page.goto('https://itunda-app.pages.dev/', {waitUntil:'networkidle', timeout:60000});
           const tab = page.getByRole('tab', {name:/home/i});
           if (!(await tab.count())) throw new Error('Customer Home tab not rendered');
