@@ -77,7 +77,7 @@ jobs:
       - name: Reject logo regeneration in CI
         run: |
           set -euo pipefail
-          if git grep -n -E 'cairosvg|svg2png|generate-native-icons' -- '.github/workflows/**'; then
+          if git grep -n -E 'cairosvg|svg2png|generate-native-icons' -- '.github/workflows/**' ':!.github/workflows/canonical-itunda-brand.yml'; then
             echo 'Found a CI logo regeneration/rasterization path.'
             exit 1
           fi
