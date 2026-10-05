@@ -1,5 +1,7 @@
 name: CI
 
+# CI heartbeat: keep push-to-main execution observable while native Saronite lanes are being repaired.
+
 concurrency:
   group: itunda-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
