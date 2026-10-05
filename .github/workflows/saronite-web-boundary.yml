@@ -30,21 +30,21 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: "24"
-          cache: npm
-          cache-dependency-path: packages/saronite/package-lock.json
+          # Saronite is a Yarn 4 project; do not let setup-node invoke global npm/Yarn caching before Corepack.
+          package-manager-cache: false
 
       - name: Install Saronite dependencies
         working-directory: packages/saronite
-        run: npm install
+        run: yarn install --no-immutable
 
       - name: Typecheck web demo
         working-directory: packages/saronite/mini-apps/web-demo
-        run: npm run typecheck
+        run: yarn run typecheck
 
       - name: Build web demo
         working-directory: packages/saronite/mini-apps/web-demo
-        run: npm run build
+        run: yarn run build
 
       - name: Verify production boundary
         working-directory: packages/saronite/mini-apps/web-demo
-        run: npm run production-boundary
+        run: yarn run production-boundary
