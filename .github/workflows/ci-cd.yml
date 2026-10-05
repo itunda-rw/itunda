@@ -248,8 +248,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
-          cache: npm
-          cache-dependency-path: packages/saronite/package-lock.json
+
+      - name: Enable Corepack
+        run: corepack enable
 
       # Real CI fix (2026-09-03): android/settings.gradle.kts applies the
       # `com.facebook.react.settings` plugin from
@@ -257,9 +258,13 @@ jobs:
       # installing Saronite's JS deps first, Gradle fails at settings-evaluation
       # time with "does not exist" before a single Kotlin file compiles. Same step
       # ios-build already has below; android-build was just missing it.
-      - name: Install Saronite JS dependencies (own npm workspace, not the root yarn workspace)
+      # Saronite is an independent Yarn workspace. Its web-demo workspace uses
+      # Yarn's workspace:* protocol, which npm does not support (EUNSUPPORTEDPROTOCOL).
+      # Install with the workspace-native package manager so Android and iOS both
+      # receive the same linked Saronite packages and React Native dependencies.
+      - name: Install Saronite JS dependencies (own Yarn workspace, not the root workspace)
         working-directory: packages/saronite
-        run: npm ci
+        run: yarn install
 
       - name: Setup JDK
         uses: actions/setup-java@v4
@@ -307,12 +312,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
-          cache: npm
-          cache-dependency-path: packages/saronite/package-lock.json
 
-      - name: Install Saronite JS dependencies (own npm workspace, not the root yarn workspace)
+      - name: Enable Corepack
+        run: corepack enable
+
+      # Saronite is an independent Yarn workspace. Its web-demo workspace uses
+      # Yarn's workspace:* protocol, which npm does not support (EUNSUPPORTEDPROTOCOL).
+      # Install with the workspace-native package manager so Android and iOS both
+      # receive the same linked Saronite packages and React Native dependencies.
+      - name: Install Saronite JS dependencies (own Yarn workspace, not the root workspace)
         working-directory: packages/saronite
-        run: npm ci
+        run: yarn install
 
       # Real CI fix (2026-09-03): ios/.brick/ (BrickCodegen's own podspec + generated
       # bridge sources) is gitignored, regenerated from each mini-app's *.brick.ts spec
