@@ -2,6 +2,10 @@
 
 Source of truth: `itunda-brand.zip` supplied by the Itunda brand package.
 
+Package SHA-256: `922d93772ad57b005339cba7e34309f26999c186b4c86513d07e7a47b5486546`
+
+The exact file hashes are pinned in `BRAND_ASSET_SHA256_MANIFEST.md`.
+
 Do not redraw, recolor, optimize, replace, or regenerate these assets.
 
 ## Canonical directories
