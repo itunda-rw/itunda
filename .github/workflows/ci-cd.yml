@@ -297,6 +297,16 @@ jobs:
         working-directory: android
         run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
 
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: itunda-android-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+          archive: false
+
   # ios/: Tuist-generated Xcode project (real Feature/Interface/Testing microfeature
   # split, see docs/MULTI_AGENT_ISOLATION.md) + CocoaPods-integrated React Native
   # bridge for the Saronite mini-app host. Verified building locally 2026-07-23 (the
