@@ -34,6 +34,7 @@ jobs:
         with:
           node-version: "24"
           # Do not use setup-node's Yarn cache here: it invokes global Yarn before Corepack is enabled.
+          package-manager-cache: false
 
       - name: Cache macOS native build state
         uses: actions/cache@v4
