@@ -7,8 +7,23 @@
  * for tooling that expects it. Path/package fixed 2026-07-10 after the
  * packages/services restructure (was pointing at a pre-restructure path
  * and the wrong applicationId).
+ *
+ * brick-module is deliberately excluded from Android RN autolinking. It uses
+ * Toss's brick-codegen output rather than React Native's standard CMake/codegen
+ * autolinking path, and itunda already wires BrickModulePackage plus the
+ * brick_modules.gradle integration manually in android/settings.gradle.kts.
+ * Allowing the RN CLI to autolink it as a normal CMake module produces an
+ * Android-autolinking.cmake entry for a generated JNI directory that
+ * brick-codegen owns instead, causing :app:configureCMakeDebug to fail.
  */
 module.exports = {
+  dependencies: {
+    'brick-module': {
+      platforms: {
+        android: null,
+      },
+    },
+  },
   project: {
     android: {
       sourceDir: '../../../android',
