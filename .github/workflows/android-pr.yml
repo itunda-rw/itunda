@@ -47,7 +47,7 @@ jobs:
 
       - name: Install Saronite dependencies
         working-directory: packages/saronite
-        run: yarn install
+        run: yarn install --no-immutable
 
       - name: Verify dependency catalog usage
         shell: bash
