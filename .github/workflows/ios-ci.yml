@@ -69,44 +69,15 @@ jobs:
           mise install tuist@3.42.3
           mise exec tuist@3.42.3 -- tuist version
 
-      # Keep icon generation isolated from the runner's externally-managed Python.
-      # The source SVG lives under ios/Assets; App/Resources contains only generated XCAssets.
-      - name: Generate iOS app icon asset catalog
-        working-directory: ios
+      # Brand assets are consumed from the canonical package.
+      # Do not rasterize, regenerate, recolor, or rewrite the supplied SVGs in CI.
+      - name: Verify canonical iOS brand source
         run: |
-          python3 -m venv .ci-venv
-          .ci-venv/bin/python -m pip install --disable-pip-version-check cairosvg pillow
-          .ci-venv/bin/python <<'PY'
-          import cairosvg
-          from pathlib import Path
-
-          src = Path("Assets/ItundaIcon.svg")
-          out = Path("App/Resources/ItundaIcon.xcassets/ItundaIcon.appiconset/ItundaIcon.png")
-          out.parent.mkdir(parents=True, exist_ok=True)
-
-          cairosvg.svg2png(
-              url=str(src),
-              write_to=str(out),
-              output_width=1024,
-              output_height=1024,
-          )
-          PY
-          cat > App/Resources/ItundaIcon.xcassets/ItundaIcon.appiconset/Contents.json <<'JSON'
-          {
-            "images": [
-              {
-                "filename": "ItundaIcon.png",
-                "idiom": "universal",
-                "scale": "1x",
-                "size": "1024x1024"
-              }
-            ],
-            "info": {
-              "author": "Itunda",
-              "version": 1
-            }
-          }
-          JSON
+          set -euo pipefail
+          test -s packages/brand-assets/canonical/itunda-brand/app-icons/itunda-app-icon.svg
+          test -s packages/brand-assets/canonical/itunda-brand/app-icons/itunda-ios-dark.svg
+          test -s packages/brand-assets/canonical/itunda-brand/app-icons/itunda-ios-tinted.svg
+          test -s packages/brand-assets/canonical/itunda-brand/symbol/itunda-symbol.svg
 
       - name: Generate Xcode project
         working-directory: ios
