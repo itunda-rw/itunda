@@ -1,0 +1,90 @@
+name: canonical Itunda brand assets
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'itunda-brand.zip'
+      - 'packages/brand-assets/**'
+      - '.github/workflows/canonical-itunda-brand.yml'
+  pull_request:
+    paths:
+      - 'itunda-brand.zip'
+      - 'packages/brand-assets/**'
+      - '.github/workflows/canonical-itunda-brand.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify canonical ZIP identity
+        env:
+          EXPECTED_BLOB_SHA: de861493959a5f3b04624e0363636378c040a069
+          EXPECTED_SIZE: '63522'
+        run: |
+          set -euo pipefail
+          test -f itunda-brand.zip
+          test "$(stat -c '%s' itunda-brand.zip)" = "$EXPECTED_SIZE"
+          test "$(git rev-parse HEAD:itunda-brand.zip)" = "$EXPECTED_BLOB_SHA"
+          sha256sum itunda-brand.zip | tee /tmp/itunda-brand-zip.sha256
+
+      - name: Bootstrap exact extracted assets when absent
+        if: ${{ github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
+        run: |
+          set -euo pipefail
+          ZIP_SHA="$(cut -d' ' -f1 /tmp/itunda-brand-zip.sha256)"
+          if [ ! -f packages/brand-assets/CANONICAL_ZIP_SHA256 ]; then
+            rm -rf /tmp/itunda-brand packages/brand-assets/canonical
+            mkdir -p /tmp/itunda-brand packages/brand-assets/canonical
+            unzip -q itunda-brand.zip -d /tmp/itunda-brand
+            rsync -a /tmp/itunda-brand/ packages/brand-assets/canonical/
+            printf '%s\n' "$ZIP_SHA" > packages/brand-assets/CANONICAL_ZIP_SHA256
+            printf '%s\n' '# Canonical Itunda brand assets' '' 'Canonical source: `itunda-brand.zip`.' '' 'The files under `canonical/` are exact byte-for-byte copies of the canonical brand package.' '' 'Do not regenerate, redraw, recolor, optimize, reformat, replace, or otherwise edit these assets independently of the canonical package.' > packages/brand-assets/README.md
+            find packages/brand-assets/canonical -type f -print0 | sort -z | xargs -0 sha256sum > packages/brand-assets/SHA256SUMS
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add packages/brand-assets
+            git commit -m 'build: install canonical Itunda brand assets'
+            git push
+          fi
+
+      - name: Verify canonical ZIP SHA-256 and extracted assets
+        run: |
+          set -euo pipefail
+          test -f packages/brand-assets/CANONICAL_ZIP_SHA256
+          test "$(sha256sum itunda-brand.zip | cut -d' ' -f1)" = "$(cat packages/brand-assets/CANONICAL_ZIP_SHA256)"
+          rm -rf /tmp/itunda-brand
+          mkdir -p /tmp/itunda-brand
+          unzip -q itunda-brand.zip -d /tmp/itunda-brand
+          while IFS= read -r -d '' src; do
+            rel="${src#/tmp/itunda-brand/}"
+            dst="packages/brand-assets/canonical/$rel"
+            test -f "$dst"
+            test "$(sha256sum "$src" | cut -d' ' -f1)" = "$(sha256sum "$dst" | cut -d' ' -f1)"
+          done < <(find /tmp/itunda-brand -type f -print0 | sort -z)
+          sha256sum --check packages/brand-assets/SHA256SUMS
+
+      - name: Reject placeholder logo references
+        run: |
+          set -euo pipefail
+          if git grep -n -i -E 'placeholder[-_ ]logo|generated[-_ ]logo|temporary[-_ ]logo|fake[-_ ]logo|fallback[-_ ]logo' -- ':!itunda-brand.zip' ':!packages/brand-assets/**'; then
+            echo 'Found forbidden placeholder/generated logo reference.'
+            exit 1
+          fi
+
+      - name: Upload verification inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: itunda-brand-verification
+          path: |
+            /tmp/itunda-brand-zip.sha256
+            packages/brand-assets/SHA256SUMS
+            packages/brand-assets/CANONICAL_ZIP_SHA256
