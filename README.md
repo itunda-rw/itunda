@@ -206,3 +206,6 @@ of GitHub-hosted runners — see [docs/CI_WOODPECKER_SETUP.md](docs/CI_WOODPECKE
 - Prefer Rwanda-local terminology and rails over generic fintech language.
 - Make operational state visible: route, risk, settlement, consent, and reconciliation.
 - Use restrained Toss-like UI: quiet surfaces, clear hierarchy, rounded but compact rows, precise icons, and minimal decoration.
+
+
+> Android launcher branding is verified against the current Itunda identity; CI builds include the canonical launcher assets.
