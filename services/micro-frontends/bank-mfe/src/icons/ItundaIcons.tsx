@@ -30,7 +30,7 @@
 // (`<Icon size={18} />`, color inherited from the parent's own `color` style).
 
 import type { SVGProps } from 'react';
-import canonicalItundaSymbolUrl from '../../../../packages/brand-assets/canonical/itunda-brand/symbol/itunda-symbol.svg';
+import canonicalItundaSymbolUrl from '../../../../../packages/brand-assets/canonical/itunda-brand/symbol/itunda-symbol.svg';
 
 type ItundaIconProps = SVGProps<SVGSVGElement> & { size?: number };
 
