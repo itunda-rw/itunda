@@ -105,3 +105,54 @@
 .tds-dialog[open]{animation:tds-dialog-in 220ms var(--tds-ease-out)}
 @keyframes tds-dialog-in{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.tds-dialog[open]{animation:none}}
+
+
+/* IDS refinement — border-light, content-first surfaces */
+.tds-surface,.tds-surface-sunken,.tds-card,.tds-list,.tds-modal,.tds-sheet{
+  border-color:transparent;
+}
+.tds-card{
+  padding:28px;
+  border-radius:24px;
+  box-shadow:var(--itunda-shadow-sm);
+}
+.tds-card:hover{
+  transform:translateY(-1px);
+  border-color:transparent;
+  box-shadow:var(--itunda-shadow-md);
+}
+.tds-list{
+  border-radius:24px;
+  box-shadow:var(--itunda-shadow-sm);
+}
+.tds-list-row{
+  min-height:76px;
+  border-bottom:0;
+  position:relative;
+}
+.tds-list-row:not(:last-child)::after{
+  content:"";
+  position:absolute;
+  left:74px;
+  right:16px;
+  bottom:0;
+  height:1px;
+  background:color-mix(in srgb,var(--itunda-color-text) 7%,transparent);
+}
+.tds-button-primary{box-shadow:none}
+.tds-button-primary:hover{box-shadow:var(--itunda-shadow-sm)}
+.tds-button-secondary{border-color:transparent;background:var(--itunda-color-surface-sunken)}
+.tds-input,.tds-select,.tds-textarea{
+  border-color:transparent;
+  background:var(--itunda-color-surface-sunken);
+}
+.tds-input:focus,.tds-select:focus,.tds-textarea:focus{
+  border-color:transparent;
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--itunda-color-brand) 18%,transparent);
+}
+.tds-divider{background:color-mix(in srgb,var(--itunda-color-text) 7%,transparent)}
+.tds-bottom-cta{
+  border-top:0;
+  box-shadow:0 -8px 28px rgba(16,19,24,.05);
+}
+[data-theme="dark"] .tds-bottom-cta{box-shadow:0 -8px 28px rgba(0,0,0,.22)}
