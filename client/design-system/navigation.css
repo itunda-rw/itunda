@@ -47,3 +47,19 @@
 [data-theme="dark"] .ids-mobile-panel{
   background:var(--itunda-color-bg);
 }
+
+/* IDS refinement — complete dark-theme navigation parity */
+[data-theme="dark"] .ids-navitem,
+[data-theme="dark"] .ids-lang,
+[data-theme="dark"] .ids-nav-links a{color:var(--itunda-color-text-muted)}
+[data-theme="dark"] .ids-navitem:hover,
+[data-theme="dark"] .ids-navitem[aria-expanded="true"]{color:var(--itunda-color-text);background:var(--itunda-color-surface-sunken)}
+[data-theme="dark"] .ids-mobile-toggle{background:var(--itunda-color-surface-sunken);color:var(--itunda-color-text)}
+[data-theme="dark"] .ids-mobile-toggle span,
+[data-theme="dark"] .ids-mobile-toggle span:before,
+[data-theme="dark"] .ids-mobile-toggle span:after{background:currentColor}
+[data-theme="dark"] .ids-mobile-toggle.open span{background:transparent}
+[data-theme="dark"] .ids-mega-col a:hover,
+[data-theme="dark"] .ids-mobile-links a:hover{background:var(--itunda-color-surface-sunken);color:var(--itunda-color-brand)}
+[data-theme="dark"] .ids-mega-intro h3,
+[data-theme="dark"] .ids-mega-col strong{color:var(--itunda-color-text)}
