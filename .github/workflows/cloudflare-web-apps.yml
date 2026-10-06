@@ -84,8 +84,13 @@ jobs:
       - name: Browser smoke test customer production
         if: matrix.app == 'customer' && (github.event_name == 'workflow_run' || inputs.app == 'customer')
         run: |
-          npx --yes playwright@1.55.0 install --with-deps chromium
-          node --input-type=module <<'EOF'
+          rm -rf /tmp/itunda-playwright
+          mkdir -p /tmp/itunda-playwright
+          cd /tmp/itunda-playwright
+          npm init -y >/dev/null 2>&1
+          npm install --no-package-lock --no-save playwright@1.55.0 >/dev/null 2>&1
+          ./node_modules/.bin/playwright install --with-deps chromium
+          cat > smoke.mjs <<'EOF'
           import { chromium } from 'playwright';
           const browser = await chromium.launch({headless:true});
           const pageErrors=[]; const consoleErrors=[];
@@ -154,8 +159,13 @@ jobs:
       - name: Browser smoke test business production
         if: matrix.app == 'business' && (github.event_name == 'workflow_run' || inputs.app == 'business')
         run: |
-          npx --yes playwright@1.55.0 install --with-deps chromium
-          node --input-type=module <<'EOF'
+          rm -rf /tmp/itunda-playwright
+          mkdir -p /tmp/itunda-playwright
+          cd /tmp/itunda-playwright
+          npm init -y >/dev/null 2>&1
+          npm install --no-package-lock --no-save playwright@1.55.0 >/dev/null 2>&1
+          ./node_modules/.bin/playwright install --with-deps chromium
+          cat > smoke.mjs <<'EOF'
           import { chromium } from 'playwright';
           const browser = await chromium.launch({headless:true});
           const pageErrors=[]; const consoleErrors=[];
