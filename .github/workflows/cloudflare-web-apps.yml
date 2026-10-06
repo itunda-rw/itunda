@@ -116,6 +116,7 @@ jobs:
           if (!(await page.getByRole('tab', {name:/home/i}).count())) throw new Error('Customer dark-mode render failed');
           await browser.close();
           EOF
+          node smoke.mjs
 
       - name: Upload customer production evidence
         if: always() && matrix.app == 'customer' && (github.event_name == 'workflow_run' || inputs.app == 'customer')
@@ -185,6 +186,7 @@ jobs:
           if (!darkBodyText) throw new Error('Business dark-mode render failed');
           await browser.close();
           EOF
+          node smoke.mjs
 
       - name: Upload business production evidence
         if: always() && matrix.app == 'business' && (github.event_name == 'workflow_run' || inputs.app == 'business')
