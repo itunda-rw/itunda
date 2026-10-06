@@ -2,7 +2,6 @@ package rw.itunda.feature.home.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,7 +20,6 @@ import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -77,9 +75,9 @@ internal fun HomeTopBar(
         Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(999.dp))
-                .border(1.dp, Ids.colors.divider, RoundedCornerShape(999.dp))
+                .background(Ids.colors.surfaceSunken)
                 .pressScaleClickable(onClick = onOpenPay)
-                .padding(horizontal = 14.dp, vertical = 8.dp),
+                .padding(horizontal = 14.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(stringResource(R.string.home_pay_shortcut), color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
@@ -149,7 +147,7 @@ private fun AccountSwitcherSheet(onDismiss: () -> Unit, onOpenOverview: () -> Un
                 linkedAccounts == null -> {}
                 linkedAccounts!!.isEmpty() -> {}
                 else -> linkedAccounts!!.forEach { account ->
-                    Divider(color = Ids.colors.divider, modifier = Modifier.padding(horizontal = 18.dp))
+                    Spacer(modifier = Modifier.size(1.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
