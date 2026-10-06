@@ -265,5 +265,62 @@ addEventListener("mousemove",e=>{const x=e.clientX/innerWidth-.5,y=e.clientY/inn
 
 </script>
 
-<script>(function(){const links=[...document.querySelectorAll('a[href]')];links.forEach(a=>a.addEventListener('click',e=>{const u=new URL(a.href,location.href);if(u.origin!==location.origin||u.hash||a.target==='_blank')return;e.preventDefault();document.body.classList.add('ids-leaving');setTimeout(()=>location.href=u.href,280)}));})();</script><script>(function(){const n=document.getElementById('globalNav');if(!n)return;const panels=[...n.querySelectorAll('.ids-mega')],buttons=[...n.querySelectorAll('[data-mega]')];function close(){panels.forEach(p=>p.classList.remove('open'));buttons.forEach(b=>b.setAttribute('aria-expanded','false'))}buttons.forEach(b=>{b.addEventListener('click',()=>{const p=n.querySelector('[data-panel="'+b.dataset.mega+'"]');const open=p.classList.contains('open');close();if(!open){p.classList.add('open');b.setAttribute('aria-expanded','true')}});b.addEventListener('mouseenter',()=>{if(matchMedia('(min-width:901px)').matches){const p=n.querySelector('[data-panel="'+b.dataset.mega+'"]');close();p.classList.add('open');b.setAttribute('aria-expanded','true')}});b.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){e.preventDefault();const p=n.querySelector('[data-panel="'+b.dataset.mega+'"]');p.classList.add('open');b.setAttribute('aria-expanded','true');p.querySelector('a')?.focus()}})});document.addEventListener('click',e=>{if(!n.contains(e.target))close()});n.addEventListener('mouseleave',()=>{if(matchMedia('(min-width:901px)').matches)close()});document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});let last=0;addEventListener('scroll',()=>{n.classList.toggle('is-scrolled',scrollY>12);if(scrollY>last+8&&!n.matches(':hover'))n.style.transform='translateY(-100%)';else if(scrollY<last-8||scrollY<24)n.style.transform='translateY(0)';last=scrollY},{passive:true});const t=document.getElementById('idsMobileToggle'),m=document.getElementById('idsMobilePanel');t?.addEventListener('click',()=>{const open=m.classList.toggle('open');t.classList.toggle('open',open);t.setAttribute('aria-expanded',open);if(open)close()});m?.querySelectorAll('.ids-mobile-group>button').forEach(b=>b.addEventListener('click',()=>b.parentElement.classList.toggle('open')));m?.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{m.classList.remove('open');t.classList.remove('open')}));})();</script><script>(function(){const s=document.getElementById('itundaSplash');if(!s)return;const hide=()=>setTimeout(()=>s.classList.add('is-hidden'),520);if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hide,{once:true});else hide();setTimeout(()=>s.classList.add('is-hidden'),1600)})();</script></body>
+<script>(function(){const links=[...document.querySelectorAll('a[href]')];links.forEach(a=>a.addEventListener('click',e=>{const u=new URL(a.href,location.href);if(u.origin!==location.origin||u.hash||a.target==='_blank')return;e.preventDefault();document.body.classList.add('ids-leaving');setTimeout(()=>location.href=u.href,280)}));})();</script><script>(function(){const n=document.getElementById('globalNav');if(!n)return;const panels=[...n.querySelectorAll('.ids-mega')],buttons=[...n.querySelectorAll('[data-mega]')];function close(){panels.forEach(p=>p.classList.remove('open'));buttons.forEach(b=>b.setAttribute('aria-expanded','false'))}buttons.forEach(b=>{b.addEventListener('click',()=>{const p=n.querySelector('[data-panel="'+b.dataset.mega+'"]');const open=p.classList.contains('open');close();if(!open){p.classList.add('open');b.setAttribute('aria-expanded','true')}});b.addEventListener('mouseenter',()=>{if(matchMedia('(min-width:901px)').matches){const p=n.querySelector('[data-panel="'+b.dataset.mega+'"]');close();p.classList.add('open');b.setAttribute('aria-expanded','true')}});b.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){e.preventDefault();const p=n.querySelector('[data-panel="'+b.dataset.mega+'"]');p.classList.add('open');b.setAttribute('aria-expanded','true');p.querySelector('a')?.focus()}})});document.addEventListener('click',e=>{if(!n.contains(e.target))close()});n.addEventListener('mouseleave',()=>{if(matchMedia('(min-width:901px)').matches)close()});document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});let last=0;addEventListener('scroll',()=>{n.classList.toggle('is-scrolled',scrollY>12);if(scrollY>last+8&&!n.matches(':hover'))n.style.transform='translateY(-100%)';else if(scrollY<last-8||scrollY<24)n.style.transform='translateY(0)';last=scrollY},{passive:true});const t=document.getElementById('idsMobileToggle'),m=document.getElementById('idsMobilePanel');t?.addEventListener('click',()=>{const open=m.classList.toggle('open');t.classList.toggle('open',open);t.setAttribute('aria-expanded',open);if(open)close()});m?.querySelectorAll('.ids-mobile-group>button').forEach(b=>b.addEventListener('click',()=>b.parentElement.classList.toggle('open')));m?.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{m.classList.remove('open');t.classList.remove('open')}));})();</script><script>(function(){const s=document.getElementById('itundaSplash');if(!s)return;const hide=()=>setTimeout(()=>s.classList.add('is-hidden'),520);if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hide,{once:true});else hide();setTimeout(()=>s.classList.add('is-hidden'),1600)})();</script><script id="itunda-host-experience">
+(function(){
+  const host=location.hostname.toLowerCase();
+  const configs={
+    "business.itunda.im":{
+      title:"Itunda Business — Grow with Itunda.",
+      description:"Itunda Business helps merchants and companies accept payments, reach customers and build everyday commerce in Rwanda.",
+      eyebrow:"ITUNDA BUSINESS · FOR MERCHANTS",
+      heading:"Business,<br><em>made simpler.</em>",
+      sub:"Payments, customers and commerce — connected in one business experience.",
+      cta:"Open Itunda Business"
+    },
+    "developers.itunda.im":{
+      title:"Itunda Developers — Build on Itunda.",
+      description:"Build mini apps, integrations and services for the Itunda platform with Saronite and the Itunda developer platform.",
+      eyebrow:"ITUNDA DEVELOPERS · BUILD ON ITUNDA",
+      heading:"Build for<br><em>what comes next.</em>",
+      sub:"APIs, Saronite and platform capabilities for developers building the next generation of Itunda experiences.",
+      cta:"Explore Itunda Developers"
+    },
+    "tech-blog.itunda.im":{
+      title:"Itunda Tech — Engineering the everyday.",
+      description:"Itunda Tech covers the engineering, infrastructure, design systems and platform technology behind Itunda.",
+      eyebrow:"ITUNDA TECH · ENGINEERING",
+      heading:"Engineering<br><em>the everyday.</em>",
+      sub:"Architecture, engineering and product technology behind Itunda — shared openly and built for scale.",
+      cta:"Read Itunda Tech"
+    },
+    "app.itunda.im":{
+      title:"Itunda App — Money, services and everyday life.",
+      description:"Open the Itunda web experience for money, services, commerce and identity.",
+      eyebrow:"ITUNDA · YOUR EVERYDAY",
+      heading:"Everyday life,<br><em>made simpler.</em>",
+      sub:"Money, services, commerce and identity — connected around Rwanda.",
+      cta:"Open Itunda"
+    }
+  };
+  const cfg=configs[host];
+  if(!cfg)return;
+  document.title=cfg.title;
+  const meta=document.querySelector('meta[name="description"]');
+  if(meta)meta.setAttribute("content",cfg.description);
+  document.documentElement.dataset.itundaHost=host.split(".")[0];
+  const final=document.querySelector(".final");
+  if(final){
+    const eyebrow=final.querySelector(".eyebrow");
+    const h2=final.querySelector("h2");
+    const p=final.querySelector("p");
+    const a=final.querySelector("a");
+    if(eyebrow)eyebrow.textContent=cfg.eyebrow;
+    if(h2)h2.innerHTML=cfg.heading;
+    if(p)p.textContent=cfg.sub;
+    if(a){a.textContent=cfg.cta; a.href=host==="developers.itunda.im"?"#developers":host==="tech-blog.itunda.im"?"#proof":host==="business.itunda.im"?"#services":"app/";}
+  }
+  const brand=document.querySelector(".brand");
+  if(brand)brand.setAttribute("aria-label",cfg.title);
+})();
+</script></body>
 </html>
