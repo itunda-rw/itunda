@@ -150,3 +150,23 @@
 @media (pointer:coarse){
   :root{--tds-target-min:48px}
 }
+
+
+/* IDS refinement — quiet surfaces, stronger hierarchy */
+:root{
+  --itunda-font-body: "Pretendard",-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;
+  --itunda-color-border: transparent;
+  --itunda-color-border-strong:#D9DDE3;
+  --itunda-color-surface-sunken:#F6F7F9;
+  --itunda-shadow-sm:0 1px 3px rgba(16,19,24,.035),0 6px 18px rgba(16,19,24,.035);
+  --itunda-shadow-md:0 10px 32px rgba(16,19,24,.075);
+  --itunda-shadow-lg:0 24px 64px rgba(16,19,24,.13);
+}
+[data-theme="dark"]{
+  --itunda-color-border:transparent;
+  --itunda-color-border-strong:#454650;
+  --itunda-color-surface-sunken:#24242C;
+  --itunda-shadow-sm:0 2px 12px rgba(0,0,0,.20);
+  --itunda-shadow-md:0 12px 36px rgba(0,0,0,.28);
+  --itunda-shadow-lg:0 24px 70px rgba(0,0,0,.38);
+}
