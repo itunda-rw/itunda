@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#7472F4"><meta name="robots" content="index,follow"><meta property="og:title" content="Itunda — everyday life, connected."><meta property="og:description" content="Itunda brings money, commerce, identity and everyday experiences together.">
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="light dark">
 <meta name="description" content="Itunda — a Rwanda-first super app connecting money, services, commerce and identity.">
 <title>Itunda — Money, services and everyday life — together.</title>
 <style>
@@ -133,6 +133,11 @@
 .itunda-splash-mark{width:76px;height:76px;filter:drop-shadow(0 18px 36px rgba(116,114,244,.22));animation:itundaSplashIn .65s cubic-bezier(.22,1,.36,1) both}
 .itunda-splash-word{margin-top:18px;text-align:center;font-size:24px;font-weight:850;letter-spacing:-1.5px;color:#191F28}
 .itunda-splash-word span{color:#7472F4}
+@media(prefers-color-scheme:dark){
+#itundaSplash{background:#080A10}
+.itunda-splash-word{color:#fff}
+.itunda-splash-mark{filter:drop-shadow(0 18px 36px rgba(116,114,244,.32))}
+}
 @keyframes itundaSplashIn{from{opacity:0;transform:scale(.82) translateY(10px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){#itundaSplash{transition:none}.itunda-splash-mark{animation:none}}
 </style></head>
