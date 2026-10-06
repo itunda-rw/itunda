@@ -36,7 +36,7 @@ jobs:
       name: production
       url: ${{ matrix.app == 'customer' && 'https://itunda-app.pages.dev' || 'https://itunda-business-app.pages.dev' }}
     concurrency:
-      group: itunda-production-web
+      group: itunda-production-web-${{ matrix.app }}
       cancel-in-progress: true
     strategy:
       fail-fast: false
@@ -141,7 +141,7 @@ jobs:
 
       - name: Ensure business Pages project
         if: matrix.app == 'business' && (github.event_name == 'workflow_run' || inputs.app == 'business')
-        run: npx --yes wrangler@4.39.0 pages project create itunda-business-app --production-branch agent/itunda-agent-network || true
+        run: npx --yes wrangler@4.39.0 pages project create itunda-business-app --production-branch main || true
 
       - name: Deploy business web app
         if: matrix.app == 'business' && (github.event_name == 'workflow_run' || inputs.app == 'business')
@@ -149,7 +149,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy services/micro-frontends/merchant-mfe/dist --project-name=itunda-business-app --branch=agent/itunda-agent-network --commit-message="Deploy business web app"
+          command: pages deploy services/micro-frontends/merchant-mfe/dist --project-name=itunda-business-app --branch=main --commit-message="Deploy business web app"
 
       - name: Browser smoke test business production
         if: matrix.app == 'business' && (github.event_name == 'workflow_run' || inputs.app == 'business')
