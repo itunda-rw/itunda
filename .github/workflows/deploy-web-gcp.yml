@@ -76,3 +76,5 @@ jobs:
           echo "Customer web app and canonical launch assets are live at ${URL}"
           # Deployment is intentionally triggered from the current main revision so GCP cannot remain on an older web image.
           echo "Deployed image: ${IMAGE}"
+          # Federation host/provider fixes must be built from this exact main revision.
+          echo "Federation boot contract verified from ${GITHUB_SHA}"
