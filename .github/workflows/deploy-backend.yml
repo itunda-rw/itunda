@@ -22,7 +22,7 @@ env:
   MYSQL_HOST: "10.79.0.3"
   REDIS_HOST: "10.103.51.123"
   KAFKA_BOOTSTRAP: "bootstrap-h5k05cv2cxjf.07b7efb6.asia-northeast3.managedkafka.s.cloud.goog:9092"
-  CORS_ALLOWED_ORIGINS: "https://itunda-web-hptgu43hsa-du.a.run.app,https://itunda-app.pages.dev,https://itunda-business-app.pages.dev"
+  CORS_ALLOWED_ORIGINS: "https://itunda.im,https://www.itunda.im,https://app.itunda.im,https://business.itunda.im,https://developers.itunda.im,https://tech-blog.itunda.im,https://itunda-web-hptgu43hsa-du.a.run.app,https://itunda-app.pages.dev,https://itunda-business-app.pages.dev"
 
 jobs:
   deploy:
@@ -48,20 +48,6 @@ jobs:
         run: docker push "${IMAGE}"
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy "${SERVICE_NAME}" \
-            --image="${IMAGE}" \
-            --region="${REGION}" \
-            --project="${PROJECT_ID}" \
-            --platform=managed \
-            --port=4001 \
-            --memory=1Gi \
-            --service-account="${RUNTIME_SERVICE_ACCOUNT}" \
-            --allow-unauthenticated \
-            --network=default \
-            --subnet=default \
-            --vpc-egress=private-ranges-only \
-            --set-env-vars="^@^DB_HOST=${MYSQL_HOST}@DB_PORT=3306@DB_NAME=itunda@DB_USER=itunda@REDIS_HOST=${REDIS_HOST}@REDIS_PORT=6379@KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP}@ITUNDA_CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}" \
-            --set-secrets="^@^DB_PASSWORD=itunda-db-password:3@JWT_SECRET=itunda-jwt-secret:1" \
-            --quiet
+          gcloud run deploy "${SERVICE_NAME}"             --image="${IMAGE}"             --region="${REGION}"             --project="${PROJECT_ID}"             --platform=managed             --port=4001             --memory=1Gi             --service-account="${RUNTIME_SERVICE_ACCOUNT}"             --allow-unauthenticated             --network=default             --subnet=default             --vpc-egress=private-ranges-only             --set-env-vars="^@^DB_HOST=${MYSQL_HOST}@DB_PORT=3306@DB_NAME=itunda@DB_USER=itunda@REDIS_HOST=${REDIS_HOST}@REDIS_PORT=6379@KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP}@ITUNDA_CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}"             --set-secrets="^@^DB_PASSWORD=itunda-db-password:3@JWT_SECRET=itunda-jwt-secret:1"             --quiet
       - name: Show service URL
         run: gcloud run services describe "${SERVICE_NAME}" --region="${REGION}" --project="${PROJECT_ID}" --format="value(status.url)"
