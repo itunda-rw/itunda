@@ -22,7 +22,7 @@ env:
   MYSQL_HOST: "10.79.0.3"
   REDIS_HOST: "10.103.51.123"
   KAFKA_BOOTSTRAP: "bootstrap-h5k05cv2cxjf.07b7efb6.asia-northeast3.managedkafka.s.cloud.goog:9092"
-  CORS_ALLOWED_ORIGINS: "https://itunda.im,https://www.itunda.im,https://app.itunda.im,https://business.itunda.im,https://developers.itunda.im,https://tech-blog.itunda.im,https://itunda-web-hptgu43hsa-du.a.run.app,https://itunda-app.pages.dev,https://itunda-business-app.pages.dev"
+  CORS_ALLOWED_ORIGINS: "https://itunda.im,https://www.itunda.im,https://app.itunda.im,https://business.itunda.im,https://business-app.itunda.im,https://developers.itunda.im,https://tech-blog.itunda.im,https://itunda-web-hptgu43hsa-du.a.run.app,https://itunda-app.pages.dev,https://itunda-business-app.pages.dev"
 
 jobs:
   deploy:
