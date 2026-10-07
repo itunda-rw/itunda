@@ -299,7 +299,7 @@ body[data-itunda-product] > .footer{display:none!important}
 
 .itunda-dev-groups{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}.itunda-dev-group{padding:26px 28px;border-radius:28px;background:#fff;box-shadow:0 20px 60px #1823330a}.itunda-dev-group small{font-size:10px;font-weight:850;letter-spacing:.1em;color:#625FE0}.itunda-dev-group h3{margin:28px 0 9px;font-size:20px;letter-spacing:-.5px}.itunda-dev-group p{margin:0;color:#6B7684;font-size:13px;line-height:1.55}@media(max-width:800px){.itunda-dev-groups{grid-template-columns:1fr}}
 
-.itunda-dev-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.itunda-dev-quick a{padding:20px;border-radius:22px;background:#F7F8FA;color:#191F28;transition:.2s}.itunda-dev-quick a:hover{background:#F0EFFF;transform:translateY(-2px)}.itunda-dev-quick b{display:block;font-size:14px}.itunda-dev-quick span{display:block;margin-top:7px;color:#6B7684;font-size:12px;line-height:1.45}@media(max-width:800px){.itunda-dev-quick{grid-template-columns:1fr 1fr}}@media(max-width:520px){.itunda-dev-quick{grid-template-columns:1fr}}
+.itunda-dev-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.itunda-dev-command{margin-top:14px;padding:22px 24px;border-radius:24px;background:#10131A;color:#DDE2EA;font:13px/1.8 ui-monospace,SFMono-Regular,Menlo,monospace;box-shadow:0 18px 50px #18233312}.itunda-dev-command b{color:#9D9BFF}.itunda-dev-command span{color:#7D8795}.itunda-dev-quick a{padding:20px;border-radius:22px;background:#F7F8FA;color:#191F28;transition:.2s}.itunda-dev-quick a:hover{background:#F0EFFF;transform:translateY(-2px)}.itunda-dev-quick b{display:block;font-size:14px}.itunda-dev-quick span{display:block;margin-top:7px;color:#6B7684;font-size:12px;line-height:1.45}@media(max-width:800px){.itunda-dev-quick{grid-template-columns:1fr 1fr}}@media(max-width:520px){.itunda-dev-quick{grid-template-columns:1fr}}
 </style>
 <script id="itunda-host-experience">
 (function(){
@@ -412,7 +412,7 @@ body[data-itunda-product] > .footer{display:none!important}
         '<a href="#itunda-product-content">Support</a>'+
       '</div>'+
       '<div class="itunda-dev-quick"><a href="#itunda-product-content"><b>Start</b><span>Choose a product and create your first integration.</span></a><a href="#itunda-product-content"><b>Docs</b><span>Read API, SDK, authentication and webhook guides.</span></a><a href="#itunda-product-content"><b>Sandbox</b><span>Build against a safe environment before launch.</span></a><a href="#itunda-product-content"><b>Launch</b><span>Test, review and submit your experience.</span></a></div>'+
-      '<div class="itunda-dev-code"><b>$</b> create-itunda-app my-app<br><b>→</b> Create credentials · Run in sandbox · Test · Submit for launch</div>+
+      '<div class="itunda-dev-command"><b>$</b> npx create-itunda-app my-app<br><span>→ Create credentials · Run in sandbox · Test · Submit for launch</span></div>
       '<div class="itunda-dev-groups">'+
         '<article class="itunda-dev-group"><small>START</small><h3>Build your first app</h3><p>Start from a clear app boundary, create credentials and get a working Itunda experience running quickly.</p></article>'+
         '<article class="itunda-dev-group"><small>INTEGRATE</small><h3>Use the platform</h3><p>Choose the right API or SDK for Payments, Business, Identity, Place or Itunda Apps without crossing product boundaries.</p></article>'+
