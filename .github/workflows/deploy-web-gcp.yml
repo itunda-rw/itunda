@@ -8,7 +8,7 @@ on:
       - "packages/design-system-web/**"
       - "packages/design-tokens/**"
       - "scripts/cloudflare-build-web-app.sh"
-      - ".dockerignore.gcp"
+      - "services/micro-frontends/Dockerfile.dockerignore"
       - "yarn.lock"
       - ".github/workflows/deploy-web-gcp.yml"
   workflow_dispatch:
@@ -45,7 +45,7 @@ jobs:
         run: |
           IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${GAR_REPOSITORY}/itunda-web:${GITHUB_SHA}"
           echo "IMAGE=${IMAGE}" >> "${GITHUB_ENV}"
-          cp .dockerignore.gcp .dockerignore
+          cp services/micro-frontends/Dockerfile.dockerignore .dockerignore
           docker build --build-arg VITE_API_BASE_URL="${API_BASE_URL}" -f services/micro-frontends/Dockerfile.gcp -t "${IMAGE}" .
       - name: Push customer web image
         run: docker push "${IMAGE}"
