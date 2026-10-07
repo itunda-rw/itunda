@@ -25,7 +25,19 @@ const KycI18nProvider = lazy(() => import('kyc_mfe/I18nProvider'));
 
 type Tab = 'bank' | 'kyc';
 
+type ProductConfig = { kicker:string; title:string; lead:string; primary:string; secondary:string; cards:[string,string,string][] };
+const productConfigs: Record<string, ProductConfig> = {
+  'business.itunda.im': { kicker:'ITUNDA BUSINESS · FOR MERCHANTS', title:'Business, made simpler.', lead:'Payments, customers and commerce — connected in one business experience.', primary:'Start with Itunda Business', secondary:'Open Itunda', cards:[['GROW','Reach customers','Build a business presence that fits naturally into everyday Itunda journeys.'],['PAY','Accept payments','Give customers simple, familiar ways to pay and keep your business moving.'],['CONNECT','Build the relationship','Bring orders, messages and customer journeys together.']] },
+  'developers.itunda.im': { kicker:'ITUNDA DEVELOPERS · BUILD ON ITUNDA', title:'Build for what comes next.', lead:'APIs, Saronite and platform capabilities for developers building the next generation of Itunda experiences.', primary:'Explore the platform', secondary:'Open Itunda', cards:[['SARONITE','Build mini apps','Create modular experiences that live inside the Itunda ecosystem.'],['APIs','Connect services','Use focused platform capabilities to build useful integrations.'],['SHIP','Release confidently','Design, verify and publish experiences that respect platform boundaries.']] },
+  'tech-blog.itunda.im': { kicker:'ITUNDA TECH · ENGINEERING', title:'Engineering the everyday.', lead:'Architecture, infrastructure, design systems and product technology behind Itunda — shared openly and built for scale.', primary:'Explore Itunda Tech', secondary:'View Developers', cards:[['ARCHITECTURE','Systems that scale','Explore the boundaries between products, platform services and infrastructure.'],['IDS','Design as infrastructure','A shared language across web, Android and iOS.'],['OPEN SOURCE','Build in public','Engineering notes, platform decisions and reusable work from Itunda.']] },
+};
+function HostProductShell({ config }: { config: ProductConfig }) {
+  return <main className="host-product-shell"><header className="host-product-nav"><a href="https://itunda.im/" className="host-product-brand" aria-label="Itunda home">itunda.</a><span className="host-product-label">{config.kicker.split(' · ')[0]}</span><a href="https://app.itunda.im/" className="host-product-nav-link">Open Itunda</a></header><section className="host-product-hero"><p className="host-product-kicker">{config.kicker}</p><h1>{config.title}</h1><p className="host-product-lead">{config.lead}</p><div className="host-product-actions"><a href="#host-product-content" className="host-product-primary">{config.primary}</a><a href="https://app.itunda.im/" className="host-product-secondary">{config.secondary}</a></div></section><section id="host-product-content" className="host-product-grid" aria-label="Product capabilities">{config.cards.map(([eyebrow,title,body])=><article className="host-product-card" key={eyebrow}><span>{eyebrow}</span><h2>{title}</h2><p>{body}</p></article>)}</section><p className="host-product-footnote"><strong>Itunda.</strong> Rwanda-first, simple, secure and customer-first.</p></main>;
+}
+
 export default function App() {
+  const product = productConfigs[window.location.hostname.toLowerCase()];
+  if (product) return <HostProductShell config={product} />;
   const [tab, setTab] = useState<Tab>('bank');
   const { t } = useI18n();
   const bankTabRef = useRef<HTMLButtonElement>(null);
