@@ -73,6 +73,25 @@ jobs:
             --allow-unauthenticated \
             --quiet
 
+      - name: Ensure Business app custom domain mapping
+        run: |
+          DOMAIN="business-app.itunda.im"
+          if ! gcloud run domain-mappings describe \
+            --domain="${DOMAIN}" \
+            --region="${REGION}" \
+            --project="${PROJECT_ID}" >/dev/null 2>&1; then
+            gcloud run domain-mappings create \
+              --service="${SERVICE_NAME}" \
+              --domain="${DOMAIN}" \
+              --region="${REGION}" \
+              --project="${PROJECT_ID}" \
+              --quiet
+          fi
+          gcloud run domain-mappings describe \
+            --domain="${DOMAIN}" \
+            --region="${REGION}" \
+            --project="${PROJECT_ID}" \
+            --format="yaml(metadata.name,spec.routeName,status.conditions,status.resourceRecords)"
       - name: Verify Business app
         run: |
           URL="$(gcloud run services describe "${SERVICE_NAME}" --region="${REGION}" --project="${PROJECT_ID}" --format="value(status.url)")"
