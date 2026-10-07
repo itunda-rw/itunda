@@ -331,6 +331,21 @@ body[data-itunda-product] > .footer{display:none!important}
       ],
       strip:"One platform layer, many experiences — with IDS keeping the interface coherent across products."
     },
+    "business-app.itunda.im":{
+      title:"Itunda Business App — Run your business with Itunda.",
+      description:"The dedicated Itunda Business App for merchants to manage payments, customers and everyday business operations.",
+      kicker:"ITUNDA BUSINESS APP · FOR MERCHANTS",
+      heading:"Run your business,<br><em>simply.</em>",
+      lead:"A dedicated business experience for merchants managing payments, customers and commerce.",
+      primary:"Open Business App",
+      secondary:"Open Itunda",
+      cards:[
+        ["PAY","Manage payments","Collect and manage customer payments through the dedicated Business App."],
+        ["BUSINESS","Manage your business","Keep your business experience separate from the everyday Itunda consumer app."],
+        ["SECURITY","Protected by design","Device verification helps protect sensitive money movement and business actions."]
+      ],
+      strip:"Itunda Business App is the dedicated merchant experience — separate from the consumer Itunda app."
+    },
     "tech-blog.itunda.im":{
       title:"Itunda Tech — Engineering the everyday.",
       description:"Itunda Tech covers the engineering, infrastructure, design systems and platform technology behind Itunda.",
@@ -352,6 +367,18 @@ body[data-itunda-product] > .footer{display:none!important}
   document.title=cfg.title;
   const meta=document.querySelector('meta[name="description"]');
   if(meta)meta.setAttribute("content",cfg.description);
+  const canonical=document.querySelector('link[rel="canonical"]');
+  if(canonical)canonical.setAttribute("href",location.origin+"/");
+  const ogTitle=document.querySelector('meta[property="og:title"]');
+  const ogDescription=document.querySelector('meta[property="og:description"]');
+  const ogUrl=document.querySelector('meta[property="og:url"]');
+  if(ogTitle)ogTitle.setAttribute("content",cfg.title);
+  if(ogDescription)ogDescription.setAttribute("content",cfg.description);
+  if(ogUrl)ogUrl.setAttribute("content",location.origin+"/");
+  const twitterTitle=document.querySelector('meta[name="twitter:title"]');
+  const twitterDescription=document.querySelector('meta[name="twitter:description"]');
+  if(twitterTitle)twitterTitle.setAttribute("content",cfg.title);
+  if(twitterDescription)twitterDescription.setAttribute("content",cfg.description);
   document.documentElement.dataset.itundaHost=host.split(".")[0];
   document.body.dataset.itundaProduct=host.split(".")[0];
   const shell=document.createElement("section");
