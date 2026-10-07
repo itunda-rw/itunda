@@ -265,41 +265,77 @@ addEventListener("mousemove",e=>{const x=e.clientX/innerWidth-.5,y=e.clientY/inn
 
 </script>
 
-<script>(function(){const links=[...document.querySelectorAll('a[href]')];links.forEach(a=>a.addEventListener('click',e=>{const u=new URL(a.href,location.href);if(u.origin!==location.origin||u.hash||a.target==='_blank')return;e.preventDefault();document.body.classList.add('ids-leaving');setTimeout(()=>location.href=u.href,280)}));})();</script><script>(function(){const n=document.getElementById('globalNav');if(!n)return;const panels=[...n.querySelectorAll('.ids-mega')],buttons=[...n.querySelectorAll('[data-mega]')];function close(){panels.forEach(p=>p.classList.remove('open'));buttons.forEach(b=>b.setAttribute('aria-expanded','false'))}buttons.forEach(b=>{b.addEventListener('click',()=>{const p=n.querySelector('[data-panel="'+b.dataset.mega+'"]');const open=p.classList.contains('open');close();if(!open){p.classList.add('open');b.setAttribute('aria-expanded','true')}});b.addEventListener('mouseenter',()=>{if(matchMedia('(min-width:901px)').matches){const p=n.querySelector('[data-panel="'+b.dataset.mega+'"]');close();p.classList.add('open');b.setAttribute('aria-expanded','true')}});b.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){e.preventDefault();const p=n.querySelector('[data-panel="'+b.dataset.mega+'"]');p.classList.add('open');b.setAttribute('aria-expanded','true');p.querySelector('a')?.focus()}})});document.addEventListener('click',e=>{if(!n.contains(e.target))close()});n.addEventListener('mouseleave',()=>{if(matchMedia('(min-width:901px)').matches)close()});document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});let last=0;addEventListener('scroll',()=>{n.classList.toggle('is-scrolled',scrollY>12);if(scrollY>last+8&&!n.matches(':hover'))n.style.transform='translateY(-100%)';else if(scrollY<last-8||scrollY<24)n.style.transform='translateY(0)';last=scrollY},{passive:true});const t=document.getElementById('idsMobileToggle'),m=document.getElementById('idsMobilePanel');t?.addEventListener('click',()=>{const open=m.classList.toggle('open');t.classList.toggle('open',open);t.setAttribute('aria-expanded',open);if(open)close()});m?.querySelectorAll('.ids-mobile-group>button').forEach(b=>b.addEventListener('click',()=>b.parentElement.classList.toggle('open')));m?.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{m.classList.remove('open');t.classList.remove('open')}));})();</script><script>(function(){const s=document.getElementById('itundaSplash');if(!s)return;const hide=()=>setTimeout(()=>s.classList.add('is-hidden'),520);if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hide,{once:true});else hide();setTimeout(()=>s.classList.add('is-hidden'),1600)})();</script><script id="itunda-host-experience">
+<script>(function(){const links=[...document.querySelectorAll('a[href]')];links.forEach(a=>a.addEventListener('click',e=>{const u=new URL(a.href,location.href);if(u.origin!==location.origin||u.hash||a.target==='_blank')return;e.preventDefault();document.body.classList.add('ids-leaving');setTimeout(()=>location.href=u.href,280)}));})();</script><script>(function(){const n=document.getElementById('globalNav');if(!n)return;const panels=[...n.querySelectorAll('.ids-mega')],buttons=[...n.querySelectorAll('[data-mega]')];function close(){panels.forEach(p=>p.classList.remove('open'));buttons.forEach(b=>b.setAttribute('aria-expanded','false'))}buttons.forEach(b=>{b.addEventListener('click',()=>{const p=n.querySelector('[data-panel="'+b.dataset.mega+'"]');const open=p.classList.contains('open');close();if(!open){p.classList.add('open');b.setAttribute('aria-expanded','true')}});b.addEventListener('mouseenter',()=>{if(matchMedia('(min-width:901px)').matches){const p=n.querySelector('[data-panel="'+b.dataset.mega+'"]');close();p.classList.add('open');b.setAttribute('aria-expanded','true')}});b.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){e.preventDefault();const p=n.querySelector('[data-panel="'+b.dataset.mega+'"]');p.classList.add('open');b.setAttribute('aria-expanded','true');p.querySelector('a')?.focus()}})});document.addEventListener('click',e=>{if(!n.contains(e.target))close()});n.addEventListener('mouseleave',()=>{if(matchMedia('(min-width:901px)').matches)close()});document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});let last=0;addEventListener('scroll',()=>{n.classList.toggle('is-scrolled',scrollY>12);if(scrollY>last+8&&!n.matches(':hover'))n.style.transform='translateY(-100%)';else if(scrollY<last-8||scrollY<24)n.style.transform='translateY(0)';last=scrollY},{passive:true});const t=document.getElementById('idsMobileToggle'),m=document.getElementById('idsMobilePanel');t?.addEventListener('click',()=>{const open=m.classList.toggle('open');t.classList.toggle('open',open);t.setAttribute('aria-expanded',open);if(open)close()});m?.querySelectorAll('.ids-mobile-group>button').forEach(b=>b.addEventListener('click',()=>b.parentElement.classList.toggle('open')));m?.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{m.classList.remove('open');t.classList.remove('open')}));})();</script><script>(function(){const s=document.getElementById('itundaSplash');if(!s)return;const hide=()=>setTimeout(()=>s.classList.add('is-hidden'),520);if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hide,{once:true});else hide();setTimeout(()=>s.classList.add('is-hidden'),1600)})();</script><style id="itunda-host-products">
+body[data-itunda-product]{background:#fff}
+body[data-itunda-product] #top,
+body[data-itunda-product] > .footer{display:none!important}
+.itunda-product{min-height:100svh;padding:150px 32px 100px;background:linear-gradient(180deg,#F7F6FF 0,#fff 52%)}
+.itunda-product-inner{max-width:1180px;margin:auto}
+.itunda-product-kicker{font-size:12px;font-weight:850;letter-spacing:.12em;color:#625FE0}
+.itunda-product h1{margin:22px 0 24px;max-width:900px;font-size:clamp(54px,8vw,104px);line-height:.9;letter-spacing:-6px}
+.itunda-product h1 em{font-style:normal;color:#7472F4}
+.itunda-product-lead{max-width:720px;color:#6B7684;font-size:20px;line-height:1.6}
+.itunda-product-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:32px}
+.itunda-product-actions a{padding:13px 20px;border-radius:999px;font-size:14px;font-weight:800;background:#7472F4;color:#fff}
+.itunda-product-actions a.secondary{background:#F0EFFF;color:#625FE0}
+.itunda-product-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:90px}
+.itunda-product-card{min-height:220px;padding:28px;border-radius:28px;background:#fff;box-shadow:0 24px 70px #1823330b}
+.itunda-product-card small{font-size:10px;font-weight:850;letter-spacing:.1em;color:#8A949F}
+.itunda-product-card h3{margin:38px 0 10px;font-size:22px;letter-spacing:-.7px}
+.itunda-product-card p{margin:0;color:#6B7684;font-size:14px;line-height:1.55}
+.itunda-product-strip{margin-top:14px;padding:24px 28px;border-radius:24px;background:#F7F8FA;color:#68717D;font-size:14px;line-height:1.6}
+.itunda-product-strip b{color:#191F28}
+@media(max-width:800px){.itunda-product{padding:124px 20px 70px}.itunda-product h1{letter-spacing:-4px}.itunda-product-grid{grid-template-columns:1fr;margin-top:58px}.itunda-product-card{min-height:180px}}
+@media(prefers-color-scheme:dark){body[data-itunda-product]{background:#080A10;color:#fff}.itunda-product{background:linear-gradient(180deg,#10101B 0,#080A10 58%)}.itunda-product h1{color:#fff}.itunda-product-lead{color:#A8B0BB}.itunda-product-card{background:#11141D;box-shadow:none}.itunda-product-strip{background:#11141D;color:#A8B0BB}.itunda-product-strip b{color:#fff}}
+</style>
+<script id="itunda-host-experience">
 (function(){
   const host=location.hostname.toLowerCase();
   const configs={
     "business.itunda.im":{
       title:"Itunda Business — Grow with Itunda.",
       description:"Itunda Business helps merchants and companies accept payments, reach customers and build everyday commerce in Rwanda.",
-      eyebrow:"ITUNDA BUSINESS · FOR MERCHANTS",
+      kicker:"ITUNDA BUSINESS · FOR MERCHANTS",
       heading:"Business,<br><em>made simpler.</em>",
-      sub:"Payments, customers and commerce — connected in one business experience.",
-      cta:"Open Itunda Business"
+      lead:"Payments, customers and commerce — connected in one business experience.",
+      primary:"Start with Itunda Business",
+      secondary:"Open Itunda",
+      cards:[
+        ["GROW","Reach customers","Create a business presence that fits naturally into everyday Itunda journeys."],
+        ["PAY","Accept payments","Give customers simple, familiar ways to pay and keep your business moving."],
+        ["CONNECT","Build the relationship","Orders, messages and customer journeys belong together — not in separate tools."]
+      ],
+      strip:"Built for Rwanda-first commerce, with the same simple, secure and customer-first experience as Itunda."
     },
     "developers.itunda.im":{
       title:"Itunda Developers — Build on Itunda.",
       description:"Build mini apps, integrations and services for the Itunda platform with Saronite and the Itunda developer platform.",
-      eyebrow:"ITUNDA DEVELOPERS · BUILD ON ITUNDA",
+      kicker:"ITUNDA DEVELOPERS · BUILD ON ITUNDA",
       heading:"Build for<br><em>what comes next.</em>",
-      sub:"APIs, Saronite and platform capabilities for developers building the next generation of Itunda experiences.",
-      cta:"Explore Itunda Developers"
+      lead:"APIs, Saronite and platform capabilities for developers building the next generation of Itunda experiences.",
+      primary:"Explore the platform",
+      secondary:"Open Itunda",
+      cards:[
+        ["SARONITE","Build mini apps","Create modular experiences that can live inside the Itunda ecosystem."],
+        ["APIs","Connect services","Use clear platform capabilities to build useful, focused integrations."],
+        ["SHIP","Release confidently","Design, verify and publish experiences that respect the Itunda platform boundary."]
+      ],
+      strip:"One platform layer, many experiences — with IDS keeping the interface coherent across products."
     },
     "tech-blog.itunda.im":{
       title:"Itunda Tech — Engineering the everyday.",
       description:"Itunda Tech covers the engineering, infrastructure, design systems and platform technology behind Itunda.",
-      eyebrow:"ITUNDA TECH · ENGINEERING",
+      kicker:"ITUNDA TECH · ENGINEERING",
       heading:"Engineering<br><em>the everyday.</em>",
-      sub:"Architecture, engineering and product technology behind Itunda — shared openly and built for scale.",
-      cta:"Read Itunda Tech"
-    },
-    "app.itunda.im":{
-      title:"Itunda App — Money, services and everyday life.",
-      description:"Open the Itunda web experience for money, services, commerce and identity.",
-      eyebrow:"ITUNDA · YOUR EVERYDAY",
-      heading:"Everyday life,<br><em>made simpler.</em>",
-      sub:"Money, services, commerce and identity — connected around Rwanda.",
-      cta:"Open Itunda"
+      lead:"Architecture, infrastructure, design systems and product technology behind Itunda — shared openly and built for scale.",
+      primary:"Explore Itunda Tech",
+      secondary:"View Developers",
+      cards:[
+        ["ARCHITECTURE","Systems that scale","Explore the boundaries between product experiences, platform services and infrastructure."],
+        ["IDS","Design as infrastructure","Follow the Itunda Design System as the shared language across web, Android and iOS."],
+        ["OPEN SOURCE","Build in public","Engineering notes, platform decisions and reusable work from the Itunda ecosystem."]
+      ],
+      strip:"Technology is part of the product: fast, accessible, observable and designed around the people using it."
     }
   };
   const cfg=configs[host];
@@ -308,19 +344,25 @@ addEventListener("mousemove",e=>{const x=e.clientX/innerWidth-.5,y=e.clientY/inn
   const meta=document.querySelector('meta[name="description"]');
   if(meta)meta.setAttribute("content",cfg.description);
   document.documentElement.dataset.itundaHost=host.split(".")[0];
-  const final=document.querySelector(".final");
-  if(final){
-    const eyebrow=final.querySelector(".eyebrow");
-    const h2=final.querySelector("h2");
-    const p=final.querySelector("p");
-    const a=final.querySelector("a");
-    if(eyebrow)eyebrow.textContent=cfg.eyebrow;
-    if(h2)h2.innerHTML=cfg.heading;
-    if(p)p.textContent=cfg.sub;
-    if(a){a.textContent=cfg.cta; a.href=host==="developers.itunda.im"?"#developers":host==="tech-blog.itunda.im"?"#proof":host==="business.itunda.im"?"#services":"app/";}
-  }
-  const brand=document.querySelector(".brand");
+  document.body.dataset.itundaProduct=host.split(".")[0];
+  const shell=document.createElement("section");
+  shell.className="itunda-product";
+  shell.innerHTML='<div class="itunda-product-inner">'+
+    '<div class="itunda-product-kicker">'+cfg.kicker+'</div>'+
+    '<h1>'+cfg.heading+'</h1>'+
+    '<p class="itunda-product-lead">'+cfg.lead+'</p>'+
+    '<div class="itunda-product-actions"><a href="#itunda-product-content">'+cfg.primary+'</a><a class="secondary" href="app/">'+cfg.secondary+'</a></div>'+
+    '<div class="itunda-product-grid" id="itunda-product-content">'+
+      cfg.cards.map(c=>'<article class="itunda-product-card"><small>'+c[0]+'</small><h3>'+c[1]+'</h3><p>'+c[2]+'</p></article>').join("")+
+    '</div>'+
+    '<div class="itunda-product-strip"><b>Itunda.</b> '+cfg.strip+'</div>'+
+  '</div>';
+  const nav=document.getElementById("globalNav");
+  if(nav)nav.insertAdjacentElement("afterend",shell);else document.body.prepend(shell);
+  const brand=document.querySelector(".ids-brand");
   if(brand)brand.setAttribute("aria-label",cfg.title);
+  const download=document.querySelector(".ids-download");
+  if(download){download.textContent=host==="business.itunda.im"?"Business":host==="developers.itunda.im"?"Developers":"Itunda Tech";download.href="#itunda-product-content";}
 })();
 </script></body>
 </html>
