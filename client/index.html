@@ -397,7 +397,18 @@ body[data-itunda-product] > .footer{display:none!important}
     '<div class="itunda-product-grid" id="itunda-product-content">'+
       cfg.cards.map(c=>'<article class="itunda-product-card"><small>'+c[0]+'</small><h3>'+c[1]+'</h3><p>'+c[2]+'</p></article>').join("")+
     '</div>'+
-    '<div class="itunda-product-strip"><b>Itunda.</b> '+cfg.strip+'</div>'+
+    (host==="developers.itunda.im"?
+      '<div class="itunda-dev-nav">'+
+        '<a href="#itunda-product-content">Getting started</a>'+
+        '<a href="#itunda-product-content">API Reference</a>'+
+        '<a href="#itunda-product-content">SDKs</a>'+
+        '<a href="#itunda-product-content">Sandbox</a>'+
+        '<a href="#itunda-product-content">Webhooks</a>'+
+        '<a href="#itunda-product-content">Release Notes</a>'+
+        '<a href="#itunda-product-content">Support</a>'+
+      '</div>'+
+      '<div class="itunda-dev-code"><b>$</b> create-itunda-app my-app<br><b>→</b> Create credentials · Run in sandbox · Test · Submit for launch</div>'
+      :"")+\n    '<div class="itunda-product-strip"><b>Itunda.</b> '+cfg.strip+'</div>'+
   '</div>';
   const nav=document.getElementById("globalNav");
   if(nav)nav.insertAdjacentElement("afterend",shell);else document.body.prepend(shell);
