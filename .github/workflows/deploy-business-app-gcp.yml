@@ -73,25 +73,28 @@ jobs:
             --allow-unauthenticated \
             --quiet
 
-      - name: Ensure Business app custom domain mapping
+      - name: Verify Business app routing
         run: |
           DOMAIN="business-app.itunda.im"
-          if ! gcloud run domain-mappings describe \
-            --domain="${DOMAIN}" \
-            --region="${REGION}" \
-            --project="${PROJECT_ID}" >/dev/null 2>&1; then
-            gcloud run domain-mappings create \
-              --service="${SERVICE_NAME}" \
-              --domain="${DOMAIN}" \
-              --region="${REGION}" \
-              --project="${PROJECT_ID}" \
-              --quiet
-          fi
-          gcloud run domain-mappings describe \
-            --domain="${DOMAIN}" \
+          URL_MAP="itunda-global-url-map"
+          BACKEND="itunda-business-app-backend"
+          NEG="itunda-business-app-neg"
+
+          gcloud compute url-maps describe "${URL_MAP}" \
+            --global \
+            --project="${PROJECT_ID}" \
+            --format="yaml(hostRules,pathMatchers)" | tee /tmp/business-routing.yaml
+
+          grep -Fq "${DOMAIN}" /tmp/business-routing.yaml
+          grep -Fq "${BACKEND}" /tmp/business-routing.yaml
+
+          gcloud compute network-endpoint-groups describe "${NEG}" \
             --region="${REGION}" \
             --project="${PROJECT_ID}" \
-            --format="yaml(metadata.name,spec.routeName,status.conditions,status.resourceRecords)"
+            --format="value(cloudRun.service)" | grep -Fxq "${SERVICE_NAME}"
+
+          echo "Business App host routing is attached to ${SERVICE_NAME} through ${BACKEND}."
+
       - name: Verify Business app
         run: |
           URL="$(gcloud run services describe "${SERVICE_NAME}" --region="${REGION}" --project="${PROJECT_ID}" --format="value(status.url)")"
