@@ -1,6 +1,7 @@
 import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from 'react';
 
 const ConsumerApp = lazy(() => import('bank_mfe/App'));
+const ConsumerI18nProvider = lazy(() => import('bank_mfe/I18nProvider'));
 
 class ConsumerAppBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null };
@@ -14,8 +15,6 @@ class ConsumerAppBoundary extends Component<{ children: ReactNode }, { error: Er
   }
 
   retry = () => {
-    // A fresh navigation is intentional: it also refreshes a potentially stale
-    // Module Federation remoteEntry.js after a deployment.
     window.location.reload();
   };
 
@@ -39,11 +38,7 @@ class ConsumerAppBoundary extends Component<{ children: ReactNode }, { error: Er
             <p style={{ margin: '0 0 20px', color: 'var(--itunda-text-secondary)', lineHeight: 1.5 }}>
               The app shell started, but the customer experience did not finish loading.
             </p>
-            <button
-              type="button"
-              onClick={this.retry}
-              className="itunda-btn itunda-btn-primary"
-            >
+            <button type="button" onClick={this.retry} className="itunda-btn itunda-btn-primary">
               Try again
             </button>
           </div>
@@ -74,7 +69,9 @@ export default function App() {
           </div>
         }
       >
-        <ConsumerApp />
+        <ConsumerI18nProvider>
+          <ConsumerApp />
+        </ConsumerI18nProvider>
       </Suspense>
     </ConsumerAppBoundary>
   );
