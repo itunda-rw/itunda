@@ -256,7 +256,7 @@ jobs:
     # failure. A real, explicit job timeout replaces that silent kill: if the heap
     # fix below doesn't fully resolve it, this at least fails cleanly with a real,
     # readable log instead of vanishing.
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
