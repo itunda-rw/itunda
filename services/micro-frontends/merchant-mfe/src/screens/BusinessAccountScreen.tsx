@@ -116,6 +116,7 @@ function MoveMoneyCard({ onMoved }: { onMoved: () => void }) {
   const [moving, setMoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+  const [pendingDirection, setPendingDirection] = useState<'TO_BUSINESS' | 'TO_PERSONAL'>('TO_BUSINESS');
 
   const move = async (direction: 'TO_BUSINESS' | 'TO_PERSONAL') => {
     const value = Number(amount);
@@ -132,6 +133,7 @@ function MoveMoneyCard({ onMoved }: { onMoved: () => void }) {
       onMoved();
     } catch (err) {
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        setPendingDirection(direction);
         setNeedsDeviceVerification(true);
       } else {
         setError(err instanceof ApiError ? err.message : t('business.moveError'));
@@ -144,7 +146,10 @@ function MoveMoneyCard({ onMoved }: { onMoved: () => void }) {
   if (needsDeviceVerification) {
     return (
       <div className="itunda-card">
-        <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+        <DeviceStepUpPrompt
+          onVerified={() => { setNeedsDeviceVerification(false); void move(pendingDirection); }}
+          onCancel={() => setNeedsDeviceVerification(false)}
+        />
       </div>
     );
   }
