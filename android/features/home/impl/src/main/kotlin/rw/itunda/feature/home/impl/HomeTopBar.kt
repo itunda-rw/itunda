@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -75,7 +76,7 @@ internal fun HomeTopBar(
         Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(999.dp))
-                .background(Ids.colors.surfaceSunken)
+                .background(Ids.colors.surface)
                 .pressScaleClickable(onClick = onOpenPay)
                 .padding(horizontal = 14.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
