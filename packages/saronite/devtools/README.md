@@ -35,3 +35,10 @@ Itunda-owned.
 Import `@itunda/saronite-devtools/panel` only from a development entrypoint and call `mountSaroniteDevTools()` after installing the browser mock. The panel is intentionally dependency-free and is not a production runtime capability.
 
 The first panel surfaces platform, network, locale, latency, authentication, permissions, reset, and recent runtime logs. More capability-specific inspectors can be added without changing the host protocol.
+
+
+## Capability inspection
+
+The mock host exposes a capability protocol through registerCapability() and callCapability(). Calls are logged as request/response pairs, latency and offline simulation apply automatically, and unregistered capabilities fail closed with CAPABILITY_NOT_MOCKED.
+
+The panel includes inspection controls for Auth, Navigation, Permissions, Storage, Payment, and Analytics. These are inspection calls, not production API implementations; real capability behavior remains owned by the native/web host integration.
