@@ -1,0 +1,105 @@
+{
+  "protocol": "saronite",
+  "protocolVersion": 1,
+  "sdkVersion": "0.1.0",
+  "capabilities": {
+    "navigation": {
+      "permission": null,
+      "methods": [
+        "closeView",
+        "openURL"
+      ],
+      "stability": "stable"
+    },
+    "account": {
+      "permission": "identity",
+      "methods": [
+        "getWalletBalance"
+      ],
+      "stability": "stable"
+    },
+    "bills": {
+      "permission": "payments",
+      "methods": [
+        "getPendingBills",
+        "payBill",
+        "getBillProviders",
+        "buyAirtime",
+        "getAutoPaySettings",
+        "setAutoPay",
+        "clearAutoPay"
+      ],
+      "stability": "stable"
+    },
+    "rewards": {
+      "permission": "identity",
+      "methods": [
+        "getRewardTasks",
+        "claimRewardTask"
+      ],
+      "stability": "stable"
+    },
+    "insurance": {
+      "permission": "payments",
+      "methods": [
+        "getInsurancePlans",
+        "getMyPolicies",
+        "enrollInsurance"
+      ],
+      "stability": "stable"
+    },
+    "savings": {
+      "permission": "payments",
+      "methods": [
+        "createPremiumFund",
+        "contributeToFund",
+        "cancelFund",
+        "getMyPremiumFunds"
+      ],
+      "stability": "experimental"
+    },
+    "claims": {
+      "permission": "identity",
+      "methods": [
+        "submitClaim",
+        "getMyClaims"
+      ],
+      "stability": "experimental"
+    },
+    "agriculture": {
+      "permission": "identity",
+      "methods": [
+        "getCropIndexCatalog",
+        "getMyCropIndexPolicies",
+        "enrollCropIndexPolicy",
+        "cancelCropIndexPolicy",
+        "getCropIndexSeasonIndex"
+      ],
+      "stability": "experimental"
+    },
+    "referrals": {
+      "permission": "identity",
+      "methods": [
+        "getReferralInfo"
+      ],
+      "stability": "experimental"
+    },
+    "activity": {
+      "permission": "identity",
+      "methods": [
+        "reportSteps",
+        "getTodaySteps"
+      ],
+      "stability": "experimental"
+    },
+    "profile": {
+      "permission": "identity",
+      "methods": [
+        "updateProfilePhoto",
+        "requestEmailVerification",
+        "confirmEmailVerification"
+      ],
+      "stability": "experimental"
+    }
+  }
+}
