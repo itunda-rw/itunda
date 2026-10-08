@@ -1,0 +1,1 @@
+{"name":"@itunda/saronite-debug-console","private":true,"version":"0.1.0","description":"Self-gated lightweight in-app diagnostics console for Saronite debug builds.","type":"module","scripts":{"typecheck":"tsc --noEmit"},"dependencies":{"@itunda/saronite-debug-protocol":"0.1.0"},"devDependencies":{"typescript":"^5.8.3"},"exports":{".":"./src/index.ts","./auto":"./src/auto.ts"}}
