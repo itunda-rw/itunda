@@ -9,6 +9,10 @@ on:
       - "sites/developers/**"
       - "sites/business/**"
       - "services/blog/**"
+      - "client/llms.txt"
+      - "client/llms-full.txt"
+      - "client/agents.md"
+      - "sites/developers/_redirects"
       - ".github/workflows/cloudflare-public-sites.yml"
   workflow_dispatch:
 
@@ -47,6 +51,11 @@ jobs:
         run: |
           cp sites/public/ids.css "${{ matrix.directory }}/ids.css"
           cp sites/public/theme.js "${{ matrix.directory }}/theme.js"
+          if [ "${{ matrix.name }}" = "itunda-developers" ]; then
+            cp client/llms.txt "${{ matrix.directory }}/llms.txt"
+            cp client/llms-full.txt "${{ matrix.directory }}/llms-full.txt"
+            cp client/agents.md "${{ matrix.directory }}/agents.md"
+          fi
 
       - name: Enable Corepack for Wrangler
         run: corepack enable
