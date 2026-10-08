@@ -141,7 +141,7 @@ async function submit(file) {
     const root = projectRoot(file || ".");
     const m = readManifest(path.join(root, "manifest.json"));
     const key = process.env.ITUNDA_API_KEY;
-    const base = (process.env.ITUNDA_API_BASE_URL || "https://api.itunda.im").replace(/\\/$/, "");
+    const base = (process.env.ITUNDA_API_BASE_URL || "https://api.itunda.im").replace(/\/$/, "");
     if (!key) return fail("ITUNDA_API_KEY is required; never put partner keys in source control or manifest files");
     if (!m.name || !m.description || !m.icon?.url || !m.entry?.bundleUrl) return fail("manifest is missing required submission metadata");
     validate(path.join(root, "manifest.json"));
