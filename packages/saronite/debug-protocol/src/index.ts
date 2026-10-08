@@ -17,3 +17,25 @@ export function isSaroniteDebugMessage(value: unknown): value is SaroniteDebugMe
   const message = value as Record<string, unknown>;
   return message.version === SARONITE_DEBUG_PROTOCOL_VERSION && typeof message.type === 'string';
 }
+
+
+export function createSaroniteDebugTransport(
+  send: (message: SaroniteDebugMessage) => void,
+  close?: () => void,
+): SaroniteDebugTransport {
+  return { send, close };
+}
+
+export function installSaroniteDebugTransport(
+  transport: SaroniteDebugTransport | undefined,
+): void {
+  (globalThis as typeof globalThis & {
+    __saroniteDebugTransport?: SaroniteDebugTransport;
+  }).__saroniteDebugTransport = transport;
+}
+
+export function clearSaroniteDebugTransport(): void {
+  delete (globalThis as typeof globalThis & {
+    __saroniteDebugTransport?: SaroniteDebugTransport;
+  }).__saroniteDebugTransport;
+}
