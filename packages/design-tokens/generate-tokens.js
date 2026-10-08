@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Real single-source-of-truth codegen for itunda's primitive color scale.
-// Reads tokens.json (this repo's real, sourced-from-Toss's-own-docs canonical
+// Real single-source-of-truth codegen for Itunda's platform color primitives.
+// Reads tokens.json (this repo's canonical, Itunda-owned
 // values) and regenerates the GENERATED:BEGIN/GENERATED:END-marked block in
 // each target file. Everything outside those markers -- semantic aliases,
 // dark-mode mappings, doc comments -- is hand-authored and never touched.
@@ -20,7 +20,8 @@ const fs = require('fs');
 const path = require('path');
 
 const tokensPath = path.join(__dirname, 'tokens.json');
-const tokens = JSON.parse(fs.readFileSync(tokensPath, 'utf8')).colors;
+const source = JSON.parse(fs.readFileSync(tokensPath, 'utf8'));
+const tokens = source.colors;
 
 const SCALE_ORDER = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900'];
 
@@ -82,4 +83,4 @@ const iosFile = path.join(
 replaceMarked(androidFile, generateKotlin());
 replaceMarked(iosFile, generateSwift());
 
-console.log('Done. Diff the two files to confirm the regenerated block matches what was already there (or intentionally differs after a tokens.json edit).');
+console.log('Done. Run `node packages/design-tokens/validate-tokens.mjs` to validate the semantic light/dark contract and accessibility checks.');
