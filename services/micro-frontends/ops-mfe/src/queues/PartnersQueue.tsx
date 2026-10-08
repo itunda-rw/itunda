@@ -6,9 +6,8 @@ import { QueueEmpty, QueueError, QueueHeader, QueueLoadMore, QueueSkeleton } fro
 
 // Real third-party mini-app review queue -- closes the "allow partners to build apps
 // in itunda like apps in Toss" gap. See PartnerService.kt's own doc comment for the
-// full account of what's real here (a real registry + review workflow + published
-// catalog) vs. the honestly-scoped-out follow-up (the mobile Saronite host doesn't yet
-// actually run a partner's bundle at runtime).
+// full account of what's real here: registry + review workflow + published catalog,
+// immutable release history, integrity verification, and the mobile Saronite runtime loader.
 function PartnerMiniAppCard({ submission, onDecided }: { submission: PartnerMiniAppSubmission; onDecided: () => void }) {
   const [pending, setPending] = useState(false);
   const [rejecting, setRejecting] = useState(false);
