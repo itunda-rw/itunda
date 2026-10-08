@@ -8,241 +8,212 @@ Itunda Developers is the developer platform for building apps and integrations a
 
 Developer portal: https://developers.itunda.im/
 
-The platform is organized around six capability areas:
+The product taxonomy is organized around:
+- Apps — modular Itunda experiences.
+- Payments — payment and transaction workflows.
+- Business — merchant, customer and commerce workflows.
+- Identity — authenticated and user-authorized experiences.
+- Place — location-aware commerce and everyday experiences.
+- Platform — shared developer tooling and release workflows.
 
-- Apps — build modular Itunda experiences.
-- Payments — integrate payment and transaction workflows.
-- Business — connect merchants, customers, orders and commerce.
-- Identity — build authenticated, user-authorized experiences.
-- Place — build location-aware commerce and everyday experiences.
-- Platform — shared developer tooling, environments and release workflows.
+The taxonomy above describes product capabilities. It is not an assertion that each capability has a public HTTP prefix of the same name.
 
-## 2. Developer journey
+## 2. Verified API contract
 
-The recommended integration path is:
+The verified backend API uses the /api/v1 namespace.
 
-1. Choose a product capability.
-2. Create credentials with the minimum required permissions.
-3. Build locally where appropriate.
-4. Test against sandbox-compatible flows.
-5. Validate authentication, authorization and security boundaries.
-6. Review the integration.
-7. Request production access and launch.
+The public gateway aggregates the independently deployed API services. Its OpenAPI document is generated at runtime from each service's actual Spring MVC contract:
 
-Do not infer undocumented behavior from the rendered website. Prefer explicit API contracts and platform documentation.
+    GET /openapi.json
 
-## 3. Apps
+The gateway fails closed with 503 OPENAPI_CONTRACT_UNAVAILABLE if any registered API service cannot provide its contract. A partial or inferred specification must never be published as the public contract.
 
-Itunda Apps are modular experiences that can participate in the Itunda ecosystem.
+Service-local OpenAPI documents are available at:
 
-Quick-start command:
+    GET /v3/api-docs
 
-    npx create-itunda-app my-app
+The exact paths, request schemas, response schemas, parameters, authentication requirements and response codes in the generated OpenAPI document are authoritative. docs/API_SPECIFICATION.md remains useful human documentation, but it is not treated as an exhaustive machine contract where the generated document provides newer verified information.
 
-The intended flow is:
+## 3. API surface verification
 
-    Create credentials
-    → Run in sandbox
-    → Test
-    → Submit for launch
+The backend is implemented as Kotlin/Spring services behind the Itunda API Gateway.
 
-Keep an app's responsibilities within its documented product boundary. Do not assume access to internal Itunda services.
+Verification rules:
+- Controller mappings are discovered from the actual RestController classes.
+- Request and response schemas are generated from the actual Spring/Kotlin types at runtime.
+- Security requirements are derived from the actual service configuration.
+- Independently deployed services are included in the gateway aggregate.
+- Duplicate public paths across services cause contract generation to fail.
+- If a service is unavailable during aggregation, the public aggregate is not generated.
+- Do not create endpoints, fields, error codes or permissions from UI examples or marketing copy.
 
-## 4. Payments
+## 4. Authentication and authorization
 
-The documented developer entry point for payment integrations is:
+The canonical user API uses:
 
-    /v1/payments
-
-Payment state is server-authoritative. Client-side state must never be treated as proof that a payment completed.
-
-For sensitive money operations:
-
-- authenticate the caller;
-- authorize the requested operation;
-- validate server-side state;
-- use the documented device-verification requirements where applicable;
-- do not place credentials or access tokens in client code;
-- preserve request identifiers when diagnosing failures.
-
-Only use request and response fields that are explicitly documented by the API contract.
-
-## 5. Business
-
-The documented developer entry point for business and merchant integrations is:
-
-    /v1/business
-
-Business integrations may connect merchants, customers, orders and commerce workflows.
-
-Merchant authorization must be enforced server-side. Do not infer merchant privileges from UI state.
-
-The Business website explains the platform. The separate Business App is the operational merchant experience.
-
-## 6. Identity
-
-The documented identity context entry point is:
-
-    GET /v1/me
-
-Example request shape:
-
-    GET /v1/me
     Authorization: Bearer <access_token>
-    Accept: application/json
 
-The endpoint is authenticated. Keep access tokens server-side and request only the minimum permissions needed.
+The backend security model distinguishes authentication from authorization.
+- 401 means the caller is not authenticated.
+- 403 means the caller is authenticated but not permitted.
+- Admin routes under /api/v1/system/** require the ADMIN role.
+- Partner-facing routes use the documented partner API-key boundary where applicable.
+- Public endpoints are explicitly permitted by the real service security configuration.
+- Clients must never infer authorization from UI state.
 
-Identity data must be treated as user-authorized and server-authoritative.
+Keep access tokens and other secrets server-side. Request only the minimum permissions required.
 
-## 7. Place
+## 5. Payments and money movement
 
-Itunda Place is the platform capability for location-aware commerce and everyday experiences in Rwanda.
+Payment and money state is server-authoritative.
 
-Use only documented Place APIs and permissions. Do not invent endpoint paths, geographic identifiers, response fields or location behavior.
+For money-moving mutations:
+- authenticate the caller when required;
+- authorize the operation server-side;
+- validate current server state;
+- preserve the Idempotency-Key where the API contract requires it;
+- never treat a client-side success state as proof of settlement;
+- do not blindly retry mutations;
+- retain the X-Request-ID request identifier when diagnosing failures.
 
-## 8. Authentication and credentials
+The exact payment routes are those exposed by the verified OpenAPI contract. Do not substitute undocumented aliases such as /v1/payments.
 
-Developer integrations use credentials and authenticated API access according to the documented product contract.
+## 6. Business and merchant integrations
 
-General rules:
+Business capabilities connect merchants, customers, orders and commerce workflows.
 
-- keep secrets server-side;
-- never commit credentials;
-- never put access tokens in browser bundles or mobile source;
-- request minimum required permissions;
-- validate authorization on the server;
-- treat authentication and authorization as separate concerns.
+The separate Business website explains the platform; the Business App is the operational merchant experience.
 
-A typical boundary is:
+Merchant authorization is enforced server-side. UI state is never sufficient evidence of merchant privileges.
 
-    Client
-      ↓
-    Itunda API
-      ↓
-    Authorized service
+The exact business and merchant routes are those exposed by the verified OpenAPI contract.
 
-The client should not bypass the API boundary to reach internal services.
+## 7. Identity
+
+Identity data is user-authorized and server-authoritative.
+
+Use the verified API contract for the actual identity routes. Do not publish or implement an inferred shortcut such as GET /v1/me unless it exists in the generated OpenAPI document.
+
+Identity integrations must:
+- authenticate the caller;
+- request minimum required access;
+- validate authorization server-side;
+- avoid exposing private identity data to clients that do not need it.
+
+## 8. Place
+
+Itunda Place covers location-aware commerce and everyday experiences in Rwanda.
+
+Use only documented Place APIs and permissions.
+
+Do not invent endpoint paths, geographic identifiers, location fields, map behavior or permission scopes.
+
+The verified OpenAPI contract is the source of truth for HTTP Place APIs.
 
 ## 9. Environments
 
-Use the appropriate environment for each stage:
+Use the environment explicitly provided for the integration stage.
 
 ### Local
-
-Use for local development and integration work that does not require production resources.
+Local development and integration work that does not require production resources.
 
 ### Sandbox
-
-Use for safe integration testing before production access.
+Use only where a documented sandbox environment and credentials are provided. Do not assume production credentials or permissions work in sandbox, or vice versa.
 
 ### Production
-
-Production access follows the documented review and launch process. Do not assume sandbox credentials or permissions work in production.
+Production access follows the documented review and launch process. Never perform undocumented production mutations.
 
 ## 10. API lifecycle
 
-The current developer portal describes the public API surface as v1.
-
 The intended lifecycle is:
 
-    Documented contract
-    → Sandbox
-    → Integration test
-    → Security/review
+    Verified contract
+    → Local development
+    → Sandbox/integration testing where available
+    → Security and integration review
     → Production access
     → Launch
 
-Treat documented contracts as stable boundaries. Do not build against inferred internal routes.
+Treat the generated OpenAPI document as the exact HTTP boundary.
 
 ## 11. Errors
 
-The developer portal currently documents these common API classes:
-
+The common HTTP classes include:
+- 400 — invalid request or validation failure.
 - 401 — unauthenticated.
-- 403 — not permitted.
+- 403 — authenticated but not permitted.
+- 404 — resource or route not found.
+- 409 — state or idempotency conflict.
+- 422 — business validation or insufficient funds where specified by the endpoint.
 - 429 — rate limited.
+- 5xx — server or upstream failure.
 
-For an error:
+The exact error shape and error codes must come from the endpoint's verified OpenAPI contract and implementation. Do not invent a global error registry.
 
-1. Read the documented error response.
-2. Preserve the request ID or equivalent request-tracking identifier.
-3. Fix authentication or authorization issues before retrying.
-4. For 429 responses, use exponential backoff and avoid retry storms.
-5. Do not blindly retry mutations.
-
-Exact error fields and codes must come from the API contract; this document does not invent them.
+Preserve X-Request-ID when reporting failures.
 
 ## 12. Rate limits
 
-The developer portal documents rate limiting as a first-class API concern.
+Rate limiting is a first-class platform concern.
 
 When a request is rate limited:
-
-- respect the documented limit;
+- respect the response's documented limit;
 - use exponential backoff;
 - add jitter where appropriate;
 - cap retries;
 - avoid synchronized retry storms.
 
-Do not invent numeric limits when the applicable API contract has not provided them.
+Do not invent numeric limits when the applicable contract has not specified them.
 
-## 13. Webhooks
+## 13. Webhooks and callbacks
 
-Webhooks are intended for platform events delivered to an integration backend.
+Webhook or callback behavior is only part of the public contract when it is present in the verified API specification.
 
-General handling:
+When a documented webhook exists:
+1. validate the documented authenticity mechanism;
+2. process events idempotently where required;
+3. persist the event/request identifier needed for troubleshooting;
+4. return the documented response;
+5. never treat an unverified client signal as proof of a completed server operation.
 
-1. Receive the documented event.
-2. Validate the webhook according to the applicable contract.
-3. Process it safely and idempotently.
-4. Persist the necessary event/request identifier for troubleshooting.
-5. Return the documented response.
-6. Do not treat an incoming client-side signal as proof of a completed server operation.
-
-Exact event names, payload fields and signature requirements must come from the applicable webhook contract.
+Do not invent event names, payloads or signature rules.
 
 ## 14. Security
 
-Security boundaries are part of the developer platform rather than an optional implementation detail.
-
 Required practices:
-
 - secrets stay server-side;
 - access tokens stay server-side;
-- use minimum permissions;
-- enforce authorization server-side;
-- treat payment and identity state as server-authoritative;
-- preserve request IDs;
-- do not expose internal services directly;
-- do not bypass sandbox or review requirements.
-
-Never place production credentials in source control, client bundles, screenshots or logs.
+- minimum permissions are preferred;
+- authorization is enforced server-side;
+- payment and identity state comes from authoritative server responses;
+- internal services are not exposed as public application dependencies;
+- production credentials never enter source control;
+- credentials, tokens and private user data never enter logs or screenshots.
 
 ## 15. Observability and troubleshooting
 
-When an integration fails, collect enough context to diagnose it safely:
-
-- request ID or equivalent tracking identifier;
+When an integration fails, collect:
+- request ID / X-Request-ID;
 - endpoint and HTTP method;
 - environment;
 - sanitized server-side logs;
-- relevant API error class;
-- platform status.
+- HTTP status;
+- documented API error code where present.
 
-Do not include secrets, access tokens, passwords or private user data in support requests or logs.
+Never include passwords, access tokens, API keys or unnecessary private user data in support requests.
 
 ## 16. Launch checklist
 
-Before requesting production launch:
-
+Before production launch:
 - [ ] Credentials configured.
 - [ ] Minimum permissions selected.
-- [ ] Sandbox integration works.
+- [ ] Verified OpenAPI contract used.
+- [ ] Sandbox/integration tests pass where available.
 - [ ] Authentication is implemented safely.
 - [ ] Authorization is enforced server-side.
-- [ ] Secrets are not present in client code.
-- [ ] Payment and identity state comes from authoritative server responses.
+- [ ] Secrets are absent from client code.
+- [ ] Payment and identity state is server-authoritative.
+- [ ] Idempotency requirements are respected.
 - [ ] Rate-limit handling is safe.
 - [ ] Webhook handling is safe and idempotent where required.
 - [ ] Request identifiers are retained for troubleshooting.
@@ -251,43 +222,48 @@ Before requesting production launch:
 
 ## 17. AI agent instructions
 
-Use https://developers.itunda.im/llms.txt as the short resource map.
-
-Use https://developers.itunda.im/agents.md for agent-specific safety instructions.
-
 When working on an Itunda integration:
-
-1. Identify the capability before coding.
-2. Prefer documented contracts over inference.
-3. Start in sandbox.
-4. Never invent endpoints, fields, permissions or SDK behavior.
-5. Keep secrets and access tokens server-side.
-6. Treat payment and identity state as server-authoritative.
-7. Preserve request identifiers.
-8. Respect rate limits.
-9. Do not perform undocumented production mutations.
-10. Ask for clarification when the requested behavior is not represented by a documented contract.
+1. Identify the product capability before coding.
+2. Read /llms.txt for the resource map.
+3. Read /llms-full.txt for the full developer guidance.
+4. Read /agents.md for agent-specific safety rules.
+5. Read /openapi.json for exact API paths and schemas.
+6. Prefer the verified API contract over prose, UI examples or inference.
+7. Never invent endpoints, fields, permissions, SDK behavior or error codes.
+8. Keep secrets and access tokens server-side.
+9. Treat payment and identity state as server-authoritative.
+10. Preserve X-Request-ID.
+11. Respect rate limits.
+12. Do not perform undocumented production mutations.
+13. Ask for clarification when requested behavior is not represented by the verified contract.
 
 ## 18. Machine-readable resources
 
 Short index:
-
     /llms.txt
 
 Full documentation:
-
     /llms-full.txt
 
 Agent instructions:
-
     /agents.md
 
-The portal should add an OpenAPI document only when the complete public API contract can be generated from verified backend schemas. Do not fabricate an OpenAPI specification from marketing-page examples.
+Verified API contract:
+    /openapi.json
+
+Service-local OpenAPI:
+    /v3/api-docs
+
+The OpenAPI document is generated from verified backend runtime schemas. It must not be replaced by a hand-written approximation.
 
 ## 19. Scope and source of truth
 
-This document describes the developer capabilities and safety boundaries currently exposed by the Itunda developer portal.
+This document describes the developer capabilities and safety boundaries exposed by the Itunda developer platform.
 
-Where this document and a verified API specification differ, the verified API specification is the source of truth for exact paths, parameters, schemas, authentication requirements and response codes.
+For exact HTTP behavior, the source-of-truth order is:
+1. Runtime-generated /openapi.json.
+2. Service runtime /v3/api-docs.
+3. Actual backend controllers, DTOs and security configuration.
+4. Human documentation such as docs/API_SPECIFICATION.md.
 
 Undocumented internal services are not part of the public developer contract.
