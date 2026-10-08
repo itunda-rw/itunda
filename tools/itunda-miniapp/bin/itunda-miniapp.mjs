@@ -115,14 +115,16 @@ function release(file) {
     const canonical = JSON.stringify(m);
     const manifestSha256 = crypto.createHash("sha256").update(canonical).digest("hex");
     const bundleFile = flag("--bundle-file");
-    const bundleSha256 = bundleFile && fs.existsSync(path.resolve(root, bundleFile))
-      ? crypto.createHash("sha256").update(fs.readFileSync(path.resolve(root, bundleFile))).digest("hex")
-      : null;
+    const bundlePath = bundleFile ? path.resolve(root, bundleFile) : null;
+    const bundleBytes = bundlePath && fs.existsSync(bundlePath) ? fs.readFileSync(bundlePath) : null;
+    const bundleSha256 = bundleBytes ? crypto.createHash("sha256").update(bundleBytes).digest("hex") : null;
+    const bundleSizeBytes = bundleBytes ? bundleBytes.length : null;
     const releaseId = crypto.createHash("sha256").update(manifestSha256 + ":" + (bundleSha256 || bundle)).digest("hex").slice(0, 24);
     writeJson(path.join(root, "release.manifest.json"), {
       releaseId,
       manifestSha256,
       bundleSha256,
+      bundleSizeBytes,
       bundleFile: bundleSha256 ? bundleFile : null,
       appId: m.id,
       version: m.version,
