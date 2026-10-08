@@ -61,6 +61,7 @@ async function main() {
 
     assert.equal(isOperationalEndpoint({ path: '/health' }), true);
     assert.equal(isOperationalEndpoint({ path: '/metrics' }), true);
+    assert.equal(isOperationalEndpoint({ path: '/openapi.json' }), true);
     assert.equal(isOperationalEndpoint({ path: '/api/v1/payments' }), false);
     assert.deepEqual([...parseAllowedOrigins('https://app.example, http://localhost:5000')], ['https://app.example', 'http://localhost:5000']);
     assert.equal(isAllowedCorsOrigin('http://localhost:5000'), true);
