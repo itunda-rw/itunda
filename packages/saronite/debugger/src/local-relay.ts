@@ -1,6 +1,7 @@
 import { createServer, type Server } from 'node:net';
 import { randomBytes } from 'node:crypto';
 import type { SaroniteDebugMessage } from '@itunda/saronite-debug-protocol';
+import { createSaroniteDebugInspector } from './inspector.js';
 import { createSaroniteDebugSessionManager, type SaroniteDebugSessionManager } from './session.js';
 
 export interface SaroniteLocalRelay {
@@ -8,6 +9,7 @@ export interface SaroniteLocalRelay {
   readonly host: string;
   readonly port: number;
   readonly token: string;
+  readonly inspector: ReturnType<typeof createSaroniteDebugInspector>;
   start(): Promise<void>;
   stop(): Promise<void>;
 }
@@ -15,6 +17,7 @@ export interface SaroniteLocalRelay {
 export function createSaroniteLocalRelay(host = '127.0.0.1', port = 0): SaroniteLocalRelay {
   const token = randomBytes(24).toString('hex');
   const manager = createSaroniteDebugSessionManager();
+  const inspector = createSaroniteDebugInspector(manager);
   const server: Server = createServer((socket) => {
     let buffer = '';
     socket.setEncoding('utf8');
@@ -46,6 +49,7 @@ export function createSaroniteLocalRelay(host = '127.0.0.1', port = 0): Saronite
     host,
     get port() { return activePort; },
     token,
+    inspector,
     async start() {
       await new Promise<void>((resolve, reject) => {
         server.once('error', reject);
