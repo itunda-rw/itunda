@@ -43,3 +43,5 @@ export function createSaroniteDebugger(): SaroniteDebugHost {
     },
   };
 }
+
+export { createSaroniteDebugInspector, type SaroniteDebugInspector } from './inspector.js';
