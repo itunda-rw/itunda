@@ -51,6 +51,7 @@ export interface SaroniteDevTools {
   clearLogs(): void;
   reset(): void;
   subscribe(listener: (state: Readonly<SaroniteMockState>) => void): () => void;
+  getCapabilities(): string[];
   registerCapability(capability: string, handler: SaroniteCapabilityHandler): void;
   callCapability(call: SaroniteCapabilityCall): Promise<SaroniteCapabilityResult>;
 }
@@ -85,6 +86,7 @@ export function createSaroniteDevTools(initial?: Partial<SaroniteMockState>): Sa
   const notify = () => listeners.forEach((listener) => listener(clone(state)));
 
   const api: SaroniteDevTools = {
+    getCapabilities() { return [...capabilities.keys()]; },
     registerCapability(capability, handler) { capabilities.set(capability, handler); },
     async callCapability(call) {
       const started = Date.now();
