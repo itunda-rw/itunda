@@ -20,7 +20,7 @@ if (!response.ok) {
 
 const document = await response.json();
 
-if (document.openapi !== '3.0.3') {
+if (!/^3\.0\./.test(document.openapi ?? '')) {
   console.error(`Unexpected OpenAPI version: ${document.openapi ?? 'missing'}`);
   process.exit(1);
 }
