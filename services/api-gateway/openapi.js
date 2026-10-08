@@ -79,8 +79,7 @@ function mergeComponents(target, source, prefix) {
     }
 }
 
-async function buildOpenApiDocument() {
-    const upstreams = openApiUpstreams();
+async function buildOpenApiDocument(upstreams = openApiUpstreams()) {
     const documents = await Promise.all(
         upstreams.map(async ([name, baseUrl]) => {
             const url = new URL('/v3/api-docs', baseUrl).toString();
