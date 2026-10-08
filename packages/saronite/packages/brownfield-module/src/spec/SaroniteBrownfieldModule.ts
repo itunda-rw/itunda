@@ -14,7 +14,21 @@
  * different tooling.
  */
 import { NativeEventEmitter, NativeModules } from 'react-native';
-import { sanitizeSaroniteDebugValue } from '@itunda/saronite-debug-protocol';
+import { sanitizeSaroniteDebugValue, type SaroniteDebugMessage, type SaroniteDebugTransport } from '@itunda/saronite-debug-protocol';
+
+type SaroniteDebugGlobals = typeof globalThis & {
+  __saroniteDebugTransport?: SaroniteDebugTransport;
+  __SARONITE_DEBUG_BUILD__?: boolean;
+};
+
+const debugGlobals = globalThis as SaroniteDebugGlobals;
+
+function emitNativeDebug(
+  message: Omit<Extract<SaroniteDebugMessage, { type: 'log' }>, 'version'>,
+): void {
+  if (debugGlobals.__SARONITE_DEBUG_BUILD__ !== true) return;
+  debugGlobals.__saroniteDebugTransport?.send({ version: 1, ...message });
+}
 import type { EmitterSubscription } from 'react-native';
 
 export interface WalletSummary {
@@ -513,22 +527,32 @@ export const SaroniteBrownfieldModule: SaroniteBrownfieldModuleSpec = new Proxy(
         const inspector = devtools();
         const started = Date.now();
         const capability = CAPABILITY_BY_METHOD[property] ?? 'runtime';
-        inspector?.record({ direction: 'request', capability, method: property, payload: sanitizeSaroniteDebugValue(args) });
+        const requestPayload = sanitizeSaroniteDebugValue(args);
+        inspector?.record({ direction: 'request', capability, method: property, payload: requestPayload });
+        emitNativeDebug({ id: `native-${started}`, timestamp: started, direction: 'request', capability, method: property, payload: requestPayload });
         const result = (value as (...input: unknown[]) => unknown).apply(target, args);
         if (result && typeof (result as Promise<unknown>).then === 'function') {
           return (result as Promise<unknown>).then(
             (response) => {
-              inspector?.record({ direction: 'response', capability, method: property, payload: sanitizeSaroniteDebugValue(response), durationMs: Date.now() - started });
+              const durationMs = Date.now() - started;
+              const responsePayload = sanitizeSaroniteDebugValue(response);
+              inspector?.record({ direction: 'response', capability, method: property, payload: responsePayload, durationMs });
+              emitNativeDebug({ id: `native-${started}-response`, timestamp: Date.now(), direction: 'response', capability, method: property, payload: responsePayload, durationMs });
               return response;
             },
             (error) => {
               const message = error instanceof Error ? error.message : String(error);
-              inspector?.record({ direction: 'response', capability, method: property, durationMs: Date.now() - started, error: sanitizeSaroniteDebugValue(message) as string });
+              const durationMs = Date.now() - started;
+              inspector?.record({ direction: 'response', capability, method: property, durationMs, error: message });
+              emitNativeDebug({ id: `native-${started}-error`, timestamp: Date.now(), direction: 'response', capability, method: property, durationMs, error: String(sanitizeSaroniteDebugValue(message)) });
               throw error;
             },
           );
         }
-        inspector?.record({ direction: 'response', capability, method: property, payload: sanitizeSaroniteDebugValue(result), durationMs: Date.now() - started });
+        const durationMs = Date.now() - started;
+        const responsePayload = sanitizeSaroniteDebugValue(result);
+        inspector?.record({ direction: 'response', capability, method: property, payload: responsePayload, durationMs });
+        emitNativeDebug({ id: `native-${started}-response`, timestamp: Date.now(), direction: 'response', capability, method: property, payload: responsePayload, durationMs });
         return result;
       };
     },
