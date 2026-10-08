@@ -134,6 +134,19 @@ class PartnerService(
         val trimmedDescription = description.trim()
         val trimmedIconUrl = iconUrl?.trim()?.ifBlank { null }
         val trimmedBundleUrl = bundleUrl.trim()
+        val hex64 = Regex("^[0-9a-fA-F]{64}$")
+        if (releaseId != null && (releaseId.isBlank() || releaseId.length > 64)) {
+            throw InvalidMiniAppSubmissionException("releaseId must be 1-64 characters")
+        }
+        if (manifestSha256 != null && !hex64.matches(manifestSha256)) {
+            throw InvalidMiniAppSubmissionException("manifestSha256 must be a 64-character SHA-256 hex digest")
+        }
+        if (bundleSha256 != null && !hex64.matches(bundleSha256)) {
+            throw InvalidMiniAppSubmissionException("bundleSha256 must be a 64-character SHA-256 hex digest")
+        }
+        if (bundleSizeBytes != null && bundleSizeBytes < 0) {
+            throw InvalidMiniAppSubmissionException("bundleSizeBytes must be non-negative")
+        }
         if (trimmedName.isEmpty() || trimmedDescription.isEmpty() || trimmedBundleUrl.isEmpty()) {
             throw InvalidMiniAppSubmissionException("Name, description, and bundleUrl are all required")
         }
@@ -156,6 +169,10 @@ class PartnerService(
             description = trimmedDescription,
             iconUrl = trimmedIconUrl,
             bundleUrl = trimmedBundleUrl,
+            releaseId = releaseId?.trim(),
+            manifestSha256 = manifestSha256?.lowercase(),
+            bundleSha256 = bundleSha256?.lowercase(),
+            bundleSizeBytes = bundleSizeBytes,
             permissions = permissions.joinToString(","),
             status = PartnerMiniAppStatus.PENDING,
             category = resolvedCategory,
