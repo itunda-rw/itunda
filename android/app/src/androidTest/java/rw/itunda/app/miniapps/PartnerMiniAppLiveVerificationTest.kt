@@ -12,7 +12,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import rw.itunda.app.MainActivity
 import rw.itunda.core.network.AuthResult
-import rw.itunda.core.network.PartnerMiniAppDto
+import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SessionManager
 
 /**
