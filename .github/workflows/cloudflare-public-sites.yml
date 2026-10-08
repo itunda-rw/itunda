@@ -13,6 +13,7 @@ on:
       - "client/llms-full.txt"
       - "client/agents.md"
       - "sites/developers/_redirects"
+      - "packages/design-tokens/**"
       - ".github/workflows/cloudflare-public-sites.yml"
   workflow_dispatch:
 
@@ -77,6 +78,19 @@ jobs:
           done
           test -s /tmp/site.html
           grep -q '<h1' /tmp/site.html
+
+  verify-ids-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Test IDS design-token contract
+        working-directory: packages/design-tokens
+        run: node validate-tokens.mjs
 
   verify-openapi-contract:
     runs-on: ubuntu-latest
