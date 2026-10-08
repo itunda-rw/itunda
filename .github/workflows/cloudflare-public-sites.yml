@@ -78,6 +78,19 @@ jobs:
           test -s /tmp/site.html
           grep -q '<h1' /tmp/site.html
 
+  verify-openapi-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Test OpenAPI aggregator
+        working-directory: services/api-gateway
+        run: node openapi.test.js
+
   deploy-tech:
     runs-on: ubuntu-latest
     timeout-minutes: 15
