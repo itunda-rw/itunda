@@ -49,7 +49,10 @@ process.env.PAYMENT_SERVICE_URL = 'http://payments';
 const { buildOpenApiDocument } = require('./openapi');
 
 async function main() {
-  const document = await buildOpenApiDocument();
+  const document = await buildOpenApiDocument([
+    ['backend', 'http://backend'],
+    ['payments', 'http://payments'],
+  ]);
 
   assert.equal(document.openapi, '3.0.3');
   assert.equal(document['x-itunda-contract-source'], 'runtime-service-openapi');
@@ -61,6 +64,14 @@ async function main() {
   assert.ok(document.components.securitySchemes.payments__bearerAuth);
   assert.deepEqual(document.paths['/api/v1/example'].get.security, [{ backend__bearerAuth: [] }]);
   assert.deepEqual(document.paths['/api/v1/payments'].post.security, [{ payments__bearerAuth: [] }]);
+
+  await assert.rejects(
+    () => buildOpenApiDocument([
+      ['backend', 'http://backend'],
+      ['payments', 'http://duplicate'],
+    ]),
+    /Duplicate OpenAPI path across services: \/api\/v1\/example/,
+  );
 
   console.log('OpenAPI aggregation tests passed.');
 }
