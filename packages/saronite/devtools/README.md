@@ -21,3 +21,9 @@ Every mocked capability call is represented as:
 Status is one of `ok`, `denied`, `unsupported`, or `error`.
 
 The mock must fail loudly for unknown capabilities instead of pretending an API exists.
+
+## Capability registry
+
+DevTools must consume the same `packages/saronite/sdk-manifest.json` registry as the SDK and developer console. A capability not present in the registry is unsupported and must produce an explicit error.
+
+This keeps local browser development aligned with the native Android/iOS contract instead of allowing a mock-only API to drift into production assumptions.
