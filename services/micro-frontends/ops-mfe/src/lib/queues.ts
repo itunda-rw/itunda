@@ -104,6 +104,10 @@ export interface PropertyOwnershipSubmission {
   manifestSha256: string | null;
   bundleSha256: string | null;
   bundleSizeBytes: number | null;
+  releaseId: string | null;
+  manifestSha256: string | null;
+  bundleSha256: string | null;
+  bundleSizeBytes: number | null;
 }
 
 export const fetchPropertyOwnershipQueue = (page = 0) =>
