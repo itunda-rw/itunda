@@ -31,4 +31,12 @@ subprojects {
         implementation(kotlin("reflect"))
         testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     }
+
+    // Runtime-generated OpenAPI is the source of truth for the public contract.
+    // Spring Boot 3.3.x is supported by springdoc 2.6.x.
+    plugins.withId("org.springframework.boot") {
+        dependencies {
+            implementation("org.springdoc:springdoc-openapi-starter-webmvc-api:2.6.0")
+        }
+    }
 }
