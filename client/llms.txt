@@ -34,3 +34,9 @@ Itunda Developers: https://developers.itunda.im/
 - Treat API responses and payment state as server-authoritative.
 - Preserve request IDs when reporting failures.
 - Respect rate limits and use exponential backoff.
+
+## Machine-readable documentation
+
+- [Full documentation](https://developers.itunda.im/llms-full.txt): The complete developer documentation in one machine-readable text file.
+- [Agent instructions](https://developers.itunda.im/agents.md): Safety and integration rules for coding agents.
+- OpenAPI: publish only after the verified backend API contract is available; do not infer a specification from UI examples.
