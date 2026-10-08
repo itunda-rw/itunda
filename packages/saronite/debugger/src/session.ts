@@ -2,11 +2,11 @@ import { isSaroniteDebugMessage, type SaroniteDebugMessage, type SaroniteDebugTr
 
 export interface SaroniteDebugSession {
   readonly sessionId: string;
-  readonly authToken: string;
   readonly platform: 'android' | 'ios' | 'web';
   readonly appId?: string;
   readonly createdAt: number;
   readonly messageCount: number;
+  readonly attached: boolean;
 }
 
 export interface SaroniteDebugSessionManager {
@@ -52,6 +52,7 @@ export function createSaroniteDebugSessionManager(): SaroniteDebugSessionManager
         appId: input.appId,
         createdAt: Date.now(),
         messageCount: 0,
+        attached: false,
       });
       return { sessionId, authToken };
     },
@@ -89,7 +90,7 @@ export function createSaroniteDebugSessionManager(): SaroniteDebugSessionManager
     },
 
     inspect() {
-      return [...sessions.values()].map(({ token: _token, authToken: _authToken, ...safe }) => safe);
+      return [...sessions.values()].map(({ token: _token, authToken: _authToken, transport, ...safe }) => ({ ...safe, attached: transport !== undefined }));
     },
   };
 }
