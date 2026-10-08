@@ -147,6 +147,10 @@ class PartnerService(
         if (bundleSizeBytes != null && bundleSizeBytes < 0) {
             throw InvalidMiniAppSubmissionException("bundleSizeBytes must be non-negative")
         }
+        val integrityValues = listOf(releaseId, manifestSha256, bundleSha256, bundleSizeBytes)
+        if (integrityValues.any { it != null } && integrityValues.any { it == null }) {
+            throw InvalidMiniAppSubmissionException("releaseId, manifestSha256, bundleSha256 and bundleSizeBytes must be supplied together")
+        }
         if (trimmedName.isEmpty() || trimmedDescription.isEmpty() || trimmedBundleUrl.isEmpty()) {
             throw InvalidMiniAppSubmissionException("Name, description, and bundleUrl are all required")
         }
