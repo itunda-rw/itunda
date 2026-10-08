@@ -166,7 +166,9 @@ async function submit(file) {
   } catch (e) { fail(e.message); }
 }
 
-if (command === "plan") plan(args.find(a => !a.startsWith("--")));
+if (command === "new") scaffold(args.find(a => !a.startsWith("--")) || "mini-app");
+else if (command === "plan") plan(args.find(a => !a.startsWith("--")));
+else if (command === "validate") validate(args.find(a => !a.startsWith("--")) || "manifest.json");
 else if (command === "dev" || command === "build" || command === "test") runProjectCommand(command, args.find(a => !a.startsWith("--")), args.filter(a => a !== args.find(x => !x.startsWith("--"))));
 else if (command === "release") release(args.find(a => !a.startsWith("--")));
 else if (command === "submit") submit(args.find(a => !a.startsWith("--")));
