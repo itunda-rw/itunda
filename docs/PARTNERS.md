@@ -62,7 +62,7 @@ X-Api-Key: sk_test_...
 `account:read`, `transactions:read`, `profile:read` (`INVALID_PERMISSION_SCOPE`, 400, if not).
 Field limits mirror the shared DB column bounds fixed across every other user-submitted-text
 service the same day: `name` ≤ 255 chars, `description`/`iconUrl`/`bundleUrl` ≤ 500
-(`INVALID_MINI_APP_SUBMISSION`, 400). Release integrity metadata is optional for legacy submissions but should be supplied by the CLI release manifest; `manifestSha256` and `bundleSha256` must be SHA-256 hex digests and `bundleSizeBytes` must be non-negative. Every submission starts `PENDING` review
+(`INVALID_MINI_APP_SUBMISSION`, 400). Release integrity metadata is optional only for legacy records already in the database; new submissions that provide any integrity field must provide the complete release tuple (`releaseId`, `manifestSha256`, `bundleSha256`, `bundleSizeBytes`). `manifestSha256` and `bundleSha256` must be SHA-256 hex digests and `bundleSizeBytes` must be non-negative. The Android runtime requires an approved release to have bundle integrity metadata before execution. Every submission starts `PENDING` review
 (`PartnerMiniAppStatus`) — `GET /api/v1/partners/mini-apps` returns the calling partner's own
 apps at any status; there is a separate, operator-only review queue
 (`PartnerService.getQueue`) not exposed under this partner-facing controller.
