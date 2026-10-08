@@ -742,6 +742,10 @@ data class PartnerMiniAppDto(
     val description: String,
     val iconUrl: String?,
     val bundleUrl: String,
+    val releaseId: String? = null,
+    val manifestSha256: String? = null,
+    val bundleSha256: String? = null,
+    val bundleSizeBytes: Long? = null,
     val permissions: String,
     val status: String,
     // Real Toss/Kakao mini-app-store reference (2026-09-11, Mini-Apps hub pass) --
