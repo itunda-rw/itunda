@@ -45,3 +45,4 @@ export function createSaroniteDebugger(): SaroniteDebugHost {
 }
 
 export { createSaroniteDebugInspector, type SaroniteDebugInspector } from './inspector.js';
+export { createSaroniteRelayClient, type SaroniteRelayClient, type SaroniteRelayClientOptions } from './relay-client.js';
