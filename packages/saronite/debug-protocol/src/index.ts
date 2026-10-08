@@ -25,6 +25,21 @@ export function isSaroniteDebugMessage(value: unknown): value is SaroniteDebugMe
 }
 
 
+const SENSITIVE_KEY = /(authorization|access.?token|refresh.?token|password|passwd|secret|pin|otp|one.?time|cvv|cvc|card.?number|account.?number|national.?id|id.?number|phone|email)/i;
+
+/** Redacts common credentials and direct identifiers before diagnostics leave the app. */
+export function sanitizeSaroniteDebugValue(value: unknown, depth = 0): unknown {
+  if (depth > 6) return '[MAX_DEPTH]';
+  if (Array.isArray(value)) return value.map((item) => sanitizeSaroniteDebugValue(item, depth + 1));
+  if (!value || typeof value !== 'object') return value;
+  const source = value as Record<string, unknown>;
+  const output: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(source)) {
+    output[key] = SENSITIVE_KEY.test(key) ? '[REDACTED]' : sanitizeSaroniteDebugValue(item, depth + 1);
+  }
+  return output;
+}
+
 export function createSaroniteDebugTransport(
   send: (message: SaroniteDebugMessage) => void,
   close?: () => void,
