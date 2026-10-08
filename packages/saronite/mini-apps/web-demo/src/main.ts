@@ -1,6 +1,6 @@
 import type { SaroniteMockHost } from '@itunda/saronite-devtools';
 import './style.css';
-import canonicalItundaSymbolUrl from '../../../brand-assets/canonical/itunda-brand/symbol/itunda-symbol.svg';
+import canonicalItundaSymbolUrl from '../../../../brand-assets/canonical/itunda-brand/symbol/itunda-symbol.svg';
 
 type DemoState = {
   result: string;
