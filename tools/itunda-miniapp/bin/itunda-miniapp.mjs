@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import crypto from "node:crypto";
 
 const [, , command, ...args] = process.argv;
 const categories = new Set(["FINANCE","SHOPPING","PRODUCTIVITY","LIFESTYLE","OTHER"]);
@@ -111,7 +112,6 @@ function release(file) {
     const m = readManifest(path.join(root, "manifest.json"));
     const bundle = m.entry?.bundleUrl;
     if (!bundle?.startsWith("https://")) return fail("release requires an HTTPS bundleUrl");
-    const crypto = await import("node:crypto");
     const canonical = JSON.stringify(m);
     const releaseId = crypto.createHash("sha256").update(canonical).digest("hex").slice(0, 24);
     writeJson(path.join(root, "release.manifest.json"), {
