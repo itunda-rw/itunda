@@ -60,6 +60,10 @@ class PartnerController(private val partnerService: PartnerService) {
         val miniApp = partnerService.submitMiniApp(
             apiKey, request.name, request.description, request.iconUrl, request.bundleUrl, request.permissions,
             request.category,
+            request.releaseId,
+            request.manifestSha256,
+            request.bundleSha256,
+            request.bundleSizeBytes,
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "miniApp" to miniApp))
     }
