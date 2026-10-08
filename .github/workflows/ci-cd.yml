@@ -217,6 +217,10 @@ jobs:
       # compatibility detected for tasks 'compileJava' (21) and 'compileKotlin' (17)"
       # on every CI run. 17 matches the project's own pin (and android-build's own
       # JDK setup below), not an arbitrary downgrade.
+      - name: Type-check Saronite browser DevTools
+        working-directory: packages/saronite
+        run: npm run typecheck --workspace=@itunda/saronite-devtools
+
       - name: Setup JDK
         uses: actions/setup-java@v4
         with:
