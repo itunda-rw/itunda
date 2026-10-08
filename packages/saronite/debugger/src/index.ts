@@ -2,6 +2,7 @@ import { isSaroniteDebugMessage, type SaroniteDebugMessage, type SaroniteDebugTr
 
 export { createWebSocketDebugTransport, decodeSaroniteRelayFrame, encodeSaroniteRelayFrame, type SaroniteRelayFrame } from './relay.js';
 export { createSaroniteDebugSessionManager, type SaroniteDebugSession, type SaroniteDebugSessionManager } from './session.js';
+export { createSaroniteRelayServer, type SaroniteRelayServer, type SaroniteRelayServerOptions } from './relay-server.js';
 
 export interface SaroniteDebugHost {
   attach(transport: SaroniteDebugTransport): void;
