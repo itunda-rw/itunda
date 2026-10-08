@@ -1,6 +1,7 @@
 import { isSaroniteDebugMessage, type SaroniteDebugMessage, type SaroniteDebugTransport } from '@itunda/saronite-debug-protocol';
 
 export { createWebSocketDebugTransport, decodeSaroniteRelayFrame, encodeSaroniteRelayFrame, type SaroniteRelayFrame } from './relay.js';
+export { createSaroniteDebugSessionManager, type SaroniteDebugSession, type SaroniteDebugSessionManager } from './session.js';
 
 export interface SaroniteDebugHost {
   attach(transport: SaroniteDebugTransport): void;
