@@ -10,8 +10,11 @@ import rw.itunda.core.domain.PartnerMiniApp
 import rw.itunda.core.domain.PartnerMiniAppCategory
 import rw.itunda.core.domain.PartnerMiniAppStatus
 import rw.itunda.core.domain.PartnerStatus
+import rw.itunda.core.domain.PartnerMiniAppRelease
+import rw.itunda.core.domain.PartnerMiniAppReleaseStatus
 import rw.itunda.core.repository.PartnerMiniAppRepository
 import rw.itunda.core.repository.PartnerRepository
+import rw.itunda.core.repository.PartnerMiniAppReleaseRepository
 import rw.itunda.core.validation.isValidEmail
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -79,6 +82,7 @@ class PartnerService(
     private val partnerRepository: PartnerRepository,
     private val partnerMiniAppRepository: PartnerMiniAppRepository,
     private val rateLimiter: RateLimiter,
+    private val partnerMiniAppReleaseRepository: PartnerMiniAppReleaseRepository? = null,
 ) {
     private val secureRandom = SecureRandom()
 
@@ -117,6 +121,10 @@ class PartnerService(
     fun submitMiniApp(
         apiKey: String, name: String, description: String, iconUrl: String?, bundleUrl: String, permissions: List<String>,
         category: String? = null,
+        releaseId: String? = null,
+        manifestSha256: String? = null,
+        bundleSha256: String? = null,
+        bundleSizeBytes: Long? = null,
     ): PartnerMiniApp {
         val partner = resolvePartner(apiKey)
         // Real gap found live (2026-09-11, Mini-Apps hub pass) -- register() above has
@@ -222,7 +230,21 @@ class PartnerService(
         miniApp.reviewedBy = reviewerId
         miniApp.reviewedAt = java.time.Instant.now()
         miniApp.decisionReason = reason
-        return partnerMiniAppRepository.save(miniApp)
+        val saved = partnerMiniAppRepository.save(miniApp)
+        if (approve && saved.releaseId != null && saved.manifestSha256 != null && saved.bundleSha256 != null && saved.bundleSizeBytes != null) {
+            partnerMiniAppReleaseRepository?.save(
+                PartnerMiniAppRelease(
+                    releaseId = saved.releaseId!!,
+                    miniAppId = saved.id,
+                    bundleUrl = saved.bundleUrl,
+                    manifestSha256 = saved.manifestSha256!!,
+                    bundleSha256 = saved.bundleSha256!!,
+                    bundleSizeBytes = saved.bundleSizeBytes!!,
+                    status = PartnerMiniAppReleaseStatus.APPROVED,
+                ),
+            )
+        }
+        return saved
     }
 
     // Real admin moderation surface (2026-09-07, Partners product-completeness pass) --
