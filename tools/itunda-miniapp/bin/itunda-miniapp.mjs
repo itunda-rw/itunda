@@ -6,9 +6,21 @@ import process from "node:process";
 const [, , command, ...args] = process.argv;
 const categories = new Set(["FINANCE","SHOPPING","PRODUCTIVITY","LIFESTYLE","OTHER"]);
 const permissions = new Set(["identity","navigation","share","storage","notifications","payments","location","camera","contacts"]);
+const commands = ["new","plan","dev","build","validate","test","release"];
+function projectRoot(file = ".") {
+  return path.resolve(file);
+}
+function readManifest(file = "manifest.json") {
+  const target = projectRoot(file);
+  if (!fs.existsSync(target)) throw new Error("manifest not found: " + target);
+  return JSON.parse(fs.readFileSync(target, "utf8"));
+}
+function writeJson(file, value) {
+  fs.writeFileSync(file, JSON.stringify(value, null, 2) + "\n");
+}
 
 function usage() {
-  console.log("Itunda mini-app developer tool\n\n  new <name>       Scaffold a mini-app\n  validate [path]  Validate a manifest");
+  console.log("Itunda mini-app developer tool\n\n  new <name>       Scaffold a mini-app\n  plan [path]      Show the development/release plan\n  dev [path]       Start the local development command when configured\n  build [path]     Build a mini-app when configured\n  validate [path]  Validate a manifest and platform rules\n  test [path]      Run the project's configured tests\n  release [path]   Generate an immutable release manifest (no production publish)");
 }
 function fail(message) {
   console.error("x " + message);
@@ -24,10 +36,10 @@ function slugify(value) {
 function scaffold(name) {
   const directory = path.resolve(slugify(name));
   if (fs.existsSync(directory) && fs.readdirSync(directory).length) return fail("directory already exists and is not empty: " + directory);
-  const id = flag("--id", "rw.example." + slugify(name));
+  const id = flag("--id", slugify(name));
   const category = (flag("--category", "OTHER") || "OTHER").toUpperCase();
   const bundle = flag("--bundle", "https://example.com/itunda-mini-app.bundle.js");
-  if (!/^rw\.[a-z0-9]+(?:[._-][a-z0-9]+)+$/.test(id)) return fail("invalid mini-app id");
+  if (!/^[a-z0-9]+(?:[.-][a-z0-9]+)*$/.test(id)) return fail("invalid mini-app id");
   if (!categories.has(category)) return fail("invalid category: " + category);
   if (!bundle.startsWith("https://") && !args.includes("--local")) return fail("bundle URL must use HTTPS, or pass --local");
   fs.mkdirSync(path.join(directory, "src"), {recursive:true});
@@ -40,8 +52,8 @@ function scaffold(name) {
     permissions: [],
     brandTheme: {
       themeId: slugify(name),
-      light: {brand:"#4F46E5",brandStrong:"#4338CA",brandSurface:"#EEF2FF",onBrand:"#FFFFFF",focus:"#4F46E5",pressed:"#4338CA"},
-      dark: {brand:"#A5B4FC",brandStrong:"#C7D2FE",brandSurface:"#312E81",onBrand:"#111827",focus:"#C7D2FE",pressed:"#A5B4FC"}
+      light: {brand:"#7472F4",brandStrong:"#5E5BE6",brandSurface:"#F0EFFF",onBrand:"#FFFFFF",focus:"#7472F4",pressed:"#5E5BE6"},
+      dark: {brand:"#8A88FF",brandStrong:"#A9A7FF",brandSurface:"#2C2B46",onBrand:"#111118",focus:"#A9A7FF",pressed:"#8A88FF"}
     }
   };
   fs.writeFileSync(path.join(directory,"manifest.json"), JSON.stringify(manifest,null,2)+"\\n");
@@ -56,7 +68,7 @@ function validate(file) {
   try { m = JSON.parse(fs.readFileSync(target,"utf8")); } catch { return fail("manifest is not valid JSON"); }
   const e = [];
   if (m.manifestVersion !== 1) e.push("manifestVersion must be 1");
-  if (typeof m.id !== "string" || !/^rw\.[a-z0-9]+(?:[._-][a-z0-9]+)+$/.test(m.id)) e.push("id is invalid");
+  if (typeof m.id !== "string" || !/^[a-z0-9]+(?:[.-][a-z0-9]+)*$/.test(m.id)) e.push("id is invalid");
   if (typeof m.name !== "string" || !m.name.trim()) e.push("name is required");
   if (typeof m.version !== "string" || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(m.version)) e.push("version must be semantic");
   if (!categories.has(m.category)) e.push("category is invalid");
@@ -69,8 +81,51 @@ function validate(file) {
   if (e.length) { e.forEach(x => console.error("x "+x)); process.exitCode=1; return; }
   console.log("valid Itunda mini-app manifest: " + target);
 }
-if (command === "new") {
-  const name = args.find(a => !a.startsWith("--"));
-  if (!name) { usage(); process.exitCode=1; } else scaffold(name);
-} else if (command === "validate") validate(args.find(a => !a.startsWith("--")));
-else { usage(); if (command) process.exitCode=1; }
+async function runProjectCommand(command, file, args) {
+  const target = projectRoot(file || ".");
+  const packageFile = path.join(target, "package.json");
+  if (!fs.existsSync(packageFile)) return fail("package.json not found: " + packageFile);
+  let pkg;
+  try { pkg = JSON.parse(fs.readFileSync(packageFile, "utf8")); } catch { return fail("package.json is not valid JSON"); }
+  const script = command === "dev" ? "dev" : command === "build" ? "build" : "test";
+  if (!pkg.scripts?.[script]) return fail("package.json has no \"" + script + "\" script");
+  const {spawnSync} = await import("node:child_process");
+  const result = spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", ["run", script, ...args], {cwd: target, stdio: "inherit"});
+  process.exitCode = result.status ?? 1;
+}
+function plan(file) {
+  try {
+    const m = readManifest(path.join(file || ".", "manifest.json"));
+    console.log(JSON.stringify({
+      app: m.id,
+      version: m.version,
+      stages: ["create","develop","validate","build","sandbox","test-device","release"],
+      permissions: m.permissions,
+      productionPublish: "requires developer-console approval"
+    }, null, 2));
+  } catch (e) { fail(e.message); }
+}
+function release(file) {
+  try {
+    const root = projectRoot(file || ".");
+    const m = readManifest(path.join(root, "manifest.json"));
+    const bundle = m.entry?.bundleUrl;
+    if (!bundle?.startsWith("https://")) return fail("release requires an HTTPS bundleUrl");
+    const crypto = await import("node:crypto");
+    const canonical = JSON.stringify(m);
+    const releaseId = crypto.createHash("sha256").update(canonical).digest("hex").slice(0, 24);
+    writeJson(path.join(root, "release.manifest.json"), {
+      releaseId,
+      manifestSha256: crypto.createHash("sha256").update(canonical).digest("hex"),
+      appId: m.id,
+      version: m.version,
+      bundleUrl: bundle,
+      publishedAt: null,
+      status: "READY_FOR_CONSOLE_PUBLISH"
+    });
+    console.log("release manifest generated: " + releaseId);
+  } catch (e) { fail(e.message); }
+}
+if (command === "plan") plan(args.find(a => !a.startsWith("--")));
+else if (command === "dev" || command === "build" || command === "test") runProjectCommand(command, args.find(a => !a.startsWith("--")), args.filter(a => a !== args.find(x => !x.startsWith("--"))));
+else if (command === "release") release(args.find(a => !a.startsWith("--")));
