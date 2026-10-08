@@ -1,3 +1,5 @@
+data class MiniAppCatalogResponse(val success: Boolean, val miniApps: List<PartnerMiniAppDto>, val page: Int, val totalPages: Int)
+
 package rw.itunda.core.network
 
 import retrofit2.http.Body
@@ -115,35 +117,6 @@ data class GroupSummaryDto(
 data class SetGroupPhotoUrlRequest(val photoUrl: String)
 data class SetGroupDescriptionRequest(val description: String)
 data class GroupSummaryResponse(val success: Boolean, val group: GroupSummaryDto)
-data class GroupMessageDto(
-    val id: String,
-    val groupConversationId: String,
-    val senderId: String,
-    val body: String,
-    val sentAt: String,
-    val deletedAt: String? = null,
-    val replyToMessageId: String? = null,
-    val reactions: List<ReactionGroupDto> = emptyList(),
-    // Real KakaoTalk Emoticon Store, group-send side (item 133/204) -- see
-    // sendGroupEmoticon's own doc comment. Set only on a message actually sent via
-    // EmoticonController's /groups/{id}/send endpoint. Found 2026-07-29 via the
-    // defined-but-uncalled-method sweep: the backend/DTO field existed on bank-mfe's
-    // equivalent type, but this DTO never carried it and no client ever sent one.
-    val emoticonId: String? = null,
-    // Real photo message (2026-08-04) -- see SendMessageRequest's own doc comment.
-    val imageUrl: String? = null,
-    // Real message forwarding (2026-08-04) -- see ForwardMessageRequest's own doc
-    // comment.
-    val forwardedFromMessageId: String? = null,
-    val forwardedFromType: String? = null,
-    // Real Kakao-style per-message unread countdown (backend since 2026-07-26, client
-    // gap found 2026-08-05 via a doc-accuracy audit) -- see GroupMessagingController
-    // .getMessages's own doc comment. Counts real members whose lastReadAt is still
-    // before this message's sentAt; decrements live as members open the thread.
-    val unreadCount: Long = 0,
-    // Real Thread support (2026-08-05) -- see MessageDto.replyCount's own doc comment.
-    val replyCount: Long = 0,
-)
 data class GroupResponse(val success: Boolean, val group: GroupSummaryDto)
 data class GroupsResponse(val success: Boolean, val groups: List<GroupSummaryDto>, val page: Int = 0, val totalPages: Int = 1)
 
