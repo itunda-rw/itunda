@@ -643,13 +643,6 @@ data class Grow31SavingsActionResponse(
 
 // Retrofit Interface to map to your Spring endpoints -- all require the real
 // Bearer token NetworkClient's authInterceptor now injects (2026-07-11).
-// Real, minimal product-analytics event (2026-08-10) -- see the backend's own
-// AnalyticsEvent.kt doc comment and the "itunda: the wedge, not the mirror" strategy
-// memo, recommendation (ii). eventName must be one of AnalyticsController.KNOWN_EVENTS
-// on the backend (currently "home_view"/"coop_rail_tap") -- a mismatched name real-400s
-// rather than silently recording garbage.
-data class RecordAnalyticsEventRequest(val eventName: String, val platform: String = "android", val metadata: String? = null)
-
 
 data class UpfrontDepositDto(
     val id: String, val userId: String, val accountId: String, val principal: Double,
