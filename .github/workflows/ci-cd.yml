@@ -221,6 +221,18 @@ jobs:
         working-directory: packages/saronite
         run: npm run typecheck --workspace=@itunda/saronite-devtools
 
+      - name: Type-check Saronite debug protocol
+        working-directory: packages/saronite
+        run: npm run typecheck --workspace=@itunda/saronite-debug-protocol
+
+      - name: Type-check Saronite debug console
+        working-directory: packages/saronite
+        run: npm run typecheck --workspace=@itunda/saronite-debug-console
+
+      - name: Type-check Saronite debugger
+        working-directory: packages/saronite
+        run: npm run typecheck --workspace=@itunda/saronite-debugger
+
       - name: Setup JDK
         uses: actions/setup-java@v4
         with:
