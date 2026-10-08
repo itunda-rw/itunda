@@ -24,6 +24,15 @@ export function mountSaroniteDevTools(host: SaroniteDevTools = window.__saronite
       </div>
       <h4>Permissions</h4>
       <div>${Object.entries(state.permissions).map(([name,value]) => `<button data-permission="${name}" style="margin:3px;padding:5px 8px;border-radius:9px;border:1px solid #ddd;background:#fafafa">${name}: ${value}</button>`).join('')}</div>
+      <h4>Capabilities</h4>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button data-capability="auth">Auth</button>
+        <button data-capability="navigation">Navigation</button>
+        <button data-capability="permissions">Permissions</button>
+        <button data-capability="storage">Storage</button>
+        <button data-capability="payment">Payment</button>
+        <button data-capability="analytics">Analytics</button>
+      </div>
       <h4>Runtime</h4>
       <div style="display:flex;gap:6px"><button data-auth>${state.authenticated?'Sign out':'Sign in'}</button><button data-reset>Reset</button><button data-clear>Clear logs</button></div>
       <h4>Logs (${state.logs.length})</h4>
@@ -35,6 +44,10 @@ export function mountSaroniteDevTools(host: SaroniteDevTools = window.__saronite
     body.querySelector('[data-network]')!.addEventListener('change',e=>host.update({network:(e.target as HTMLSelectElement).value as SaroniteMockState['network']}));
     body.querySelector('[data-locale]')!.addEventListener('change',e=>host.update({locale:(e.target as HTMLInputElement).value}));
     body.querySelector('[data-latency]')!.addEventListener('change',e=>host.setLatency(Number((e.target as HTMLInputElement).value)));
+    body.querySelectorAll('[data-capability]').forEach(button => button.addEventListener('click', async () => {
+      const capability=(button as HTMLElement).dataset.capability!;
+      await host.callCapability({ capability, method: 'inspect', payload: { source: 'devtools' } });
+    }));
     body.querySelector('[data-auth]')!.addEventListener('click',()=>host.update({authenticated:!state.authenticated}));
     body.querySelector('[data-reset]')!.addEventListener('click',()=>host.reset());
     body.querySelector('[data-clear]')!.addEventListener('click',()=>host.clearLogs());
