@@ -1,10 +1,11 @@
 {
   "name": "@itunda/design-tokens",
   "version": "1.0.0",
-  "description": "Single source of truth for itunda's design tokens. tokens.json (2026-07-13) is the real canonical primitive color scale, sourced from Toss's own official TDS docs; generate-tokens.js regenerates the matching marked block in android/core/designsystem's TdsColors.kt and ios/Core/DesignSystem's TdsTheme.swift. tokens.css is web's own semantic/light-dark-reactive layer, manually kept in sync with tokens.json's base values (see its own header comment for why it isn't codegen'd the same way).",
+  "description": "Single source of truth for Itunda IDS design tokens. The semantic light/dark contract and platform primitives live in tokens.json; Toss is used only as a public benchmark for system maturity, not as Itunda's visual source.",
   "main": "tokens.css",
   "private": true,
   "scripts": {
-    "generate": "node generate-tokens.js"
+    "generate": "node generate-tokens.js",
+    "validate": "node validate-tokens.mjs"
   }
 }
