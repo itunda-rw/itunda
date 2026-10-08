@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://developers.itunda.im/saronite/manifest.schema.json",
+  "title": "Itunda Saronite Mini-App Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "name",
+    "version",
+    "entry",
+    "capabilities"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{2,63}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$"
+    },
+    "entry": {
+      "type": "string",
+      "minLength": 1
+    },
+    "icon": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 280
+    },
+    "minimumHostVersion": {
+      "type": "string"
+    },
+    "protocolVersion": {
+      "type": "string",
+      "const": "1"
+    },
+    "capabilities": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "auth",
+          "navigation",
+          "environment",
+          "permissions",
+          "storage",
+          "location",
+          "camera",
+          "contacts",
+          "clipboard",
+          "haptics",
+          "payment",
+          "notification",
+          "analytics",
+          "partner",
+          "events",
+          "game"
+        ]
+      }
+    },
+    "permissions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "location",
+          "camera",
+          "contacts",
+          "notifications",
+          "clipboard"
+        ]
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "channel": {
+          "type": "string",
+          "enum": [
+            "development",
+            "preview",
+            "sandbox",
+            "beta",
+            "production"
+          ]
+        },
+        "bundleSha256": {
+          "type": "string",
+          "pattern": "^[A-Fa-f0-9]{64}$"
+        },
+        "rolloutPercent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    }
+  }
+}
