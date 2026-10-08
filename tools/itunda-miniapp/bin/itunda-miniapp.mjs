@@ -113,10 +113,17 @@ function release(file) {
     const bundle = m.entry?.bundleUrl;
     if (!bundle?.startsWith("https://")) return fail("release requires an HTTPS bundleUrl");
     const canonical = JSON.stringify(m);
-    const releaseId = crypto.createHash("sha256").update(canonical).digest("hex").slice(0, 24);
+    const manifestSha256 = crypto.createHash("sha256").update(canonical).digest("hex");
+    const bundleFile = flag("--bundle-file");
+    const bundleSha256 = bundleFile && fs.existsSync(path.resolve(root, bundleFile))
+      ? crypto.createHash("sha256").update(fs.readFileSync(path.resolve(root, bundleFile))).digest("hex")
+      : null;
+    const releaseId = crypto.createHash("sha256").update(manifestSha256 + ":" + (bundleSha256 || bundle)).digest("hex").slice(0, 24);
     writeJson(path.join(root, "release.manifest.json"), {
       releaseId,
-      manifestSha256: crypto.createHash("sha256").update(canonical).digest("hex"),
+      manifestSha256,
+      bundleSha256,
+      bundleFile: bundleSha256 ? bundleFile : null,
       appId: m.id,
       version: m.version,
       bundleUrl: bundle,
