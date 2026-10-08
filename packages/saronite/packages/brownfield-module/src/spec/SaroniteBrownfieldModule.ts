@@ -454,6 +454,21 @@ const NativeOrMissingSaronite: SaroniteBrownfieldModuleSpec = NativeSaronite
       },
     ) as SaroniteBrownfieldModuleSpec);
 
+const CAPABILITY_BY_METHOD: Record<string, string> = {
+  closeView: 'navigation', openURL: 'navigation',
+  getWalletBalance: 'storage', getPendingBills: 'payment', payBill: 'payment',
+  getBillProviders: 'payment', buyAirtime: 'payment', getAutoPaySettings: 'payment',
+  setAutoPay: 'payment', clearAutoPay: 'payment', getRewardTasks: 'game',
+  claimRewardTask: 'game', getInsurancePlans: 'insurance', getMyPolicies: 'insurance',
+  enrollInsurance: 'insurance', createPremiumFund: 'insurance', contributeToFund: 'insurance',
+  cancelPremiumFund: 'insurance', getMyPremiumFunds: 'insurance', submitClaim: 'insurance',
+  getMyClaims: 'insurance', getCropIndexCatalog: 'insurance', getMyCropIndexPolicies: 'insurance',
+  enrollCropIndexPolicy: 'insurance', cancelCropIndexPolicy: 'insurance',
+  getCropIndexSeasonIndex: 'insurance', getReferralInfo: 'partner', reportSteps: 'game',
+  getTodaySteps: 'game', updateProfilePhoto: 'profile', requestEmailVerification: 'auth',
+  confirmEmailVerification: 'auth',
+};
+
 const INSPECTABLE_METHODS = new Set<string>([
   'closeView', 'openURL', 'getWalletBalance', 'getPendingBills', 'payBill',
   'getBillProviders', 'buyAirtime', 'getAutoPaySettings', 'setAutoPay',
@@ -496,9 +511,9 @@ export const SaroniteBrownfieldModule: SaroniteBrownfieldModuleSpec = new Proxy(
       return (...args: unknown[]) => {
         const inspector = devtools();
         const started = Date.now();
-        const capability = property.replace(/^get|^set|^update|^report|^request|^confirm|^cancel/, '').toLowerCase() || 'runtime';
+        const capability = CAPABILITY_BY_METHOD[property] ?? 'runtime';
         inspector?.record({ direction: 'request', capability, method: property, payload: args });
-        const result = (value as (...input: unknown[]) => unknown)(...args);
+        const result = (value as (...input: unknown[]) => unknown).apply(target, args);
         if (result && typeof (result as Promise<unknown>).then === 'function') {
           return (result as Promise<unknown>).then(
             (response) => {
