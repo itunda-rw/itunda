@@ -28,3 +28,10 @@ __saronite.clearLogs()
 This follows the useful public pattern of browser mocks and floating runtime
 inspection used by Apps in Toss, while keeping the protocol and UI entirely
 Itunda-owned.
+
+
+## Floating panel
+
+Import `@itunda/saronite-devtools/panel` only from a development entrypoint and call `mountSaroniteDevTools()` after installing the browser mock. The panel is intentionally dependency-free and is not a production runtime capability.
+
+The first panel surfaces platform, network, locale, latency, authentication, permissions, reset, and recent runtime logs. More capability-specific inspectors can be added without changing the host protocol.
