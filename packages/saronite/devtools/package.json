@@ -4,6 +4,14 @@
   "version": "0.1.0",
   "description": "Development-only browser mock and inspection protocol for Saronite mini-apps.",
   "type": "module",
-  "scripts": { "typecheck": "tsc --noEmit" },
-  "devDependencies": { "typescript": "^5.8.3" }
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./panel": "./src/panel.ts"
+  }
 }
