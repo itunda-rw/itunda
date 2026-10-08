@@ -14,6 +14,7 @@ dependencies {
     runtimeOnly(project(":payment-service:payment-db"))
     
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-api:2.6.0")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.kafka:spring-kafka") // For Outbox CDC or direct API event emission
     // Real k8s liveness/readiness probes need a real health endpoint (2026-07-11,
