@@ -13,6 +13,7 @@ import okhttp3.Request
 import rw.itunda.core.network.PartnerMiniAppDto
 import java.io.File
 import java.io.IOException
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 /**
@@ -98,6 +99,7 @@ object PartnerMiniAppLoader {
         val application = activity.applicationContext as ItundaApplication
         try {
             val bundleFile = downloadBundle(activity, app)
+            verifyBundleIntegrity(bundleFile, app)
             reloadHostWithBundle(application, bundleFile.absolutePath)
             MiniAppSecurityContext.activeScopes = app.permissions
                 .split(",")
@@ -158,6 +160,26 @@ object PartnerMiniAppLoader {
      * own (only a blocking `waitForCompletion()`), so that wait is pushed onto IO rather
      * than blocking Main.
      */
+    private fun verifyBundleIntegrity(file: File, app: PartnerMiniAppDto) {
+        val expected = app.bundleSha256?.trim()?.lowercase()
+        if (expected.isNullOrBlank()) {
+            throw IOException("Approved mini-app release is missing bundle integrity metadata")
+        }
+        val actual = MessageDigest.getInstance("SHA-256")
+            .digest(file.readBytes())
+            .joinToString("") { "%02x".format(it) }
+        if (actual != expected) {
+            file.delete()
+            throw IOException("Mini-app bundle integrity check failed")
+        }
+        app.bundleSizeBytes?.let { expectedSize ->
+            if (file.length() != expectedSize) {
+                file.delete()
+                throw IOException("Mini-app bundle size check failed")
+            }
+        }
+    }
+
     private suspend fun reloadHostWithBundle(application: ItundaApplication, filePath: String?) {
         val reactHost = application.reactHost
         val task = withContext(Dispatchers.Main) {
