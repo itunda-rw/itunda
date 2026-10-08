@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { usePagedQueue } from '../hooks/useQueue';
-import { decidePartnerMiniApp, fetchPartnersQueue, type PartnerMiniAppSubmission } from '../lib/queues';
+import { activatePartnerMiniAppRelease, decidePartnerMiniApp, fetchPartnerMiniAppReleases, rollbackPartnerMiniAppRelease, stagePartnerMiniAppRelease, type PartnerMiniAppRelease, type PartnerMiniAppSubmission } from '../lib/queues';
 import { ApiError } from '../lib/api';
 import { QueueEmpty, QueueError, QueueHeader, QueueLoadMore, QueueSkeleton } from '../QueueState';
 
@@ -104,10 +104,29 @@ function PartnerMiniAppCard({ submission, onDecided }: { submission: PartnerMini
           </>
         )}
       </div>
+      {submission.status === 'APPROVED' && <ReleaseControls submission={submission} />}
     </div>
   );
 }
 
+function ReleaseControls({ submission }: { submission: PartnerMiniAppSubmission }) {
+  const [releases, setReleases] = useState<PartnerMiniAppRelease[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const load = async () => { try { setError(null); setReleases(await fetchPartnerMiniAppReleases(submission.id)); } catch (err) { setError(err instanceof ApiError ? err.message : 'Could not load releases.'); } };
+  const run = async (fn: () => Promise<unknown>) => { setBusy(true); setError(null); try { await fn(); await load(); } catch (err) { setError(err instanceof ApiError ? err.message : 'Release action failed.'); } finally { setBusy(false); } };
+  return <div style={{ marginTop: '10px' }}>
+    <button className='itunda-btn itunda-btn-secondary' disabled={busy} onClick={load}>Release history</button>
+    {error && <p style={{ fontSize: '12px', color: 'var(--itunda-field-border-error)' }}>{error}</p>}
+    {releases?.map((r) => <div key={r.releaseId} style={{ marginTop: '8px', padding: '10px', borderRadius: '12px', background: 'var(--itunda-surface-secondary)' }}>
+      <strong style={{ fontSize: '12px' }}>{r.releaseId}</strong> <span style={{ fontSize: '11px' }}>{r.status}</span>
+      <p style={{ fontSize: '11px', color: 'var(--itunda-text-tertiary)' }}>{r.bundleSizeBytes.toLocaleString()} bytes · SHA-256 {r.bundleSha256.slice(0, 12)}…</p>
+      {r.status === 'APPROVED' || r.status === 'ROLLED_BACK' ? <button className='itunda-btn itunda-btn-secondary' disabled={busy} onClick={() => run(() => stagePartnerMiniAppRelease(r.releaseId))}>Stage</button> : null}
+      {r.status === 'STAGED' ? <button className='itunda-btn itunda-btn-primary' disabled={busy} onClick={() => run(() => activatePartnerMiniAppRelease(r.releaseId))}>Activate</button> : null}
+      {r.status === 'ROLLED_BACK' ? <button className='itunda-btn itunda-btn-primary' disabled={busy} onClick={() => run(() => rollbackPartnerMiniAppRelease(r.releaseId, 'Operator restore'))}>Restore</button> : null}
+    </div>)}
+  </div>;
+}
 export default function PartnersQueue() {
   const { items, error, refreshing, reload, loadMore, loadingMore, totalElements, hasMore } = usePagedQueue(fetchPartnersQueue);
 
