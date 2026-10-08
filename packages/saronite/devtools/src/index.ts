@@ -34,6 +34,7 @@ export interface SaroniteDevTools {
   record(log: Omit<SaroniteLog, 'id' | 'timestamp'>): void;
   clearLogs(): void;
   reset(): void;
+  subscribe(listener: (state: Readonly<SaroniteMockState>) => void): () => void;
 }
 
 const defaultState = (): SaroniteMockState => ({
@@ -61,21 +62,28 @@ export function createSaroniteDevTools(initial?: Partial<SaroniteMockState>): Sa
   state.storage = { ...(initial?.storage ?? {}) };
   state.logs = [...(initial?.logs ?? [])];
 
+  const listeners = new Set<(state: Readonly<SaroniteMockState>) => void>();
+  const notify = () => listeners.forEach((listener) => listener(clone(state)));
+
   const api: SaroniteDevTools = {
     get state() { return clone(state); },
-    update(patch) { state = { ...state, ...patch }; },
-    setPermission(permission, value) { state.permissions = { ...state.permissions, [permission]: value }; },
-    setStorage(key, value) { state.storage = { ...state.storage, [key]: value }; },
-    clearStorage() { state.storage = {}; },
+    update(patch) { state = { ...state, ...patch }; notify(); },
+    setPermission(permission, value) { state.permissions = { ...state.permissions, [permission]: value }; notify(); },
+    setStorage(key, value) { state.storage = { ...state.storage, [key]: value }; notify(); },
+    clearStorage() { state.storage = {}; notify(); },
     setLatency(ms) {
       if (!Number.isInteger(ms) || ms < 0 || ms > 10000) throw new RangeError('latency must be 0..10000ms');
-      state.latencyMs = ms;
+      state.latencyMs = ms; notify();
     },
     record(log) {
-      state.logs = [...state.logs, { ...log, id: `${Date.now()}-${state.logs.length + 1}`, timestamp: Date.now() }].slice(-500);
+      state.logs = [...state.logs, { ...log, id: `${Date.now()}-${state.logs.length + 1}`, timestamp: Date.now() }].slice(-500); notify();
     },
-    clearLogs() { state.logs = []; },
-    reset() { state = defaultState(); },
+    clearLogs() { state.logs = []; notify(); },
+    reset() { state = defaultState(); notify(); },
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
   };
   return api;
 }
