@@ -33,6 +33,8 @@ class InvalidMiniAppSubmissionException(message: String) : RuntimeException(mess
 class InvalidMiniAppDecisionReasonException(message: String) : RuntimeException(message)
 class InvalidMiniAppCategoryException(message: String) : RuntimeException(message)
 class PartnerNotFoundException(message: String) : RuntimeException(message)
+class PartnerMiniAppReleaseNotFoundException(message: String) : RuntimeException(message)
+class PartnerMiniAppReleaseStateException(message: String) : RuntimeException(message)
 
 /**
  * The real scopes a partner mini-app can request review for -- deliberately a small,
@@ -245,6 +247,69 @@ class PartnerService(
             )
         }
         return saved
+    }
+
+    @Transactional
+    fun stageRelease(releaseId: String): PartnerMiniAppRelease {
+        val repository = partnerMiniAppReleaseRepository
+            ?: throw PartnerMiniAppReleaseNotFoundException("Mini-app release repository is unavailable")
+        val release = repository.findById(releaseId).orElseThrow {
+            PartnerMiniAppReleaseNotFoundException("Mini-app release not found")
+        }
+        if (release.status != PartnerMiniAppReleaseStatus.APPROVED && release.status != PartnerMiniAppReleaseStatus.ROLLED_BACK) {
+            throw PartnerMiniAppReleaseStateException("Only approved or rolled-back releases can be staged")
+        }
+        release.status = PartnerMiniAppReleaseStatus.STAGED
+        return repository.save(release)
+    }
+
+    @Transactional
+    fun activateRelease(releaseId: String): PartnerMiniAppRelease {
+        val repository = partnerMiniAppReleaseRepository
+            ?: throw PartnerMiniAppReleaseNotFoundException("Mini-app release repository is unavailable")
+        val release = repository.findById(releaseId).orElseThrow {
+            PartnerMiniAppReleaseNotFoundException("Mini-app release not found")
+        }
+        if (release.status != PartnerMiniAppReleaseStatus.STAGED) {
+            throw PartnerMiniAppReleaseStateException("Only staged releases can be activated")
+        }
+        repository.findByMiniAppIdAndStatus(release.miniAppId, PartnerMiniAppReleaseStatus.ACTIVE)
+            .forEach {
+                it.status = PartnerMiniAppReleaseStatus.ROLLED_BACK
+                it.rolledBackAt = Instant.now()
+                it.rollbackReason = "Superseded by release ${release.releaseId}"
+                repository.save(it)
+            }
+        release.status = PartnerMiniAppReleaseStatus.ACTIVE
+        release.activatedAt = Instant.now()
+        return repository.save(release)
+    }
+
+    @Transactional
+    fun rollbackRelease(releaseId: String, reason: String?): PartnerMiniAppRelease {
+        val repository = partnerMiniAppReleaseRepository
+            ?: throw PartnerMiniAppReleaseNotFoundException("Mini-app release repository is unavailable")
+        val target = repository.findById(releaseId).orElseThrow {
+            PartnerMiniAppReleaseNotFoundException("Mini-app release not found")
+        }
+        if (target.status != PartnerMiniAppReleaseStatus.ROLLED_BACK && target.status != PartnerMiniAppReleaseStatus.STAGED) {
+            throw PartnerMiniAppReleaseStateException("Only a prior or staged release can be restored")
+        }
+        if (reason != null && reason.length > 255) {
+            throw PartnerMiniAppReleaseStateException("Rollback reason must be 255 characters or fewer")
+        }
+        repository.findByMiniAppIdAndStatus(target.miniAppId, PartnerMiniAppReleaseStatus.ACTIVE)
+            .forEach {
+                it.status = PartnerMiniAppReleaseStatus.ROLLED_BACK
+                it.rolledBackAt = Instant.now()
+                it.rollbackReason = reason ?: "Rollback to release ${target.releaseId}"
+                repository.save(it)
+            }
+        target.status = PartnerMiniAppReleaseStatus.ACTIVE
+        target.activatedAt = Instant.now()
+        target.rolledBackAt = null
+        target.rollbackReason = null
+        return repository.save(target)
     }
 
     // Real admin moderation surface (2026-09-07, Partners product-completeness pass) --
