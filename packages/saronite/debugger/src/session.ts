@@ -62,8 +62,9 @@ export function createSaroniteDebugSessionManager(): SaroniteDebugSessionManager
     },
 
     attach(sessionId, authToken, transport) {
-      if (!this.authenticate(sessionId, authToken)) throw new Error('invalid debug session');
-      sessions.get(sessionId)!.transport = transport;
+      const session = sessions.get(sessionId);
+      if (!session || session.token !== authToken) throw new Error('invalid debug session');
+      session.transport = transport;
     },
 
     detach(sessionId) {
@@ -80,8 +81,8 @@ export function createSaroniteDebugSessionManager(): SaroniteDebugSessionManager
     },
 
     sendCommand(sessionId, authToken, command) {
-      if (!this.authenticate(sessionId, authToken)) return false;
       const session = sessions.get(sessionId);
+      if (!session || session.token !== authToken) return false;
       if (!session?.transport) return false;
       session.transport.send(command);
       return true;
