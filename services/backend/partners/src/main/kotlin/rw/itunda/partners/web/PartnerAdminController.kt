@@ -17,10 +17,13 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.partners.PartnerMiniAppNotFoundException
 import rw.itunda.partners.PartnerMiniAppNotPendingException
+import rw.itunda.partners.PartnerMiniAppReleaseNotFoundException
+import rw.itunda.partners.PartnerMiniAppReleaseStateException
 import rw.itunda.partners.PartnerNotFoundException
 import rw.itunda.partners.PartnerService
 
 data class DecidePartnerMiniAppRequest(val approve: Boolean, val reason: String? = null)
+data class RollbackPartnerMiniAppReleaseRequest(val reason: String? = null)
 
 // Mapped under /api/v1/system/partners specifically so it inherits SecurityConfig's
 // existing hasRole("ADMIN") rule on the system path prefix, same convention
@@ -63,6 +66,21 @@ class PartnerAdminController(private val partnerService: PartnerService) {
     // that already captures currentUser.userId -- same real gap class this codebase
     // already closed for Merchant (MerchantModerationAdminController) and Vehicle
     // Inspection's mechanics.
+    @PostMapping("/releases/{releaseId}/stage")
+    fun stageRelease(@PathVariable releaseId: String): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "release" to partnerService.stageRelease(releaseId)))
+
+    @PostMapping("/releases/{releaseId}/activate")
+    fun activateRelease(@PathVariable releaseId: String): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "release" to partnerService.activateRelease(releaseId)))
+
+    @PostMapping("/releases/{releaseId}/rollback")
+    fun rollbackRelease(
+        @PathVariable releaseId: String,
+        @RequestBody request: RollbackPartnerMiniAppReleaseRequest,
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "release" to partnerService.rollbackRelease(releaseId, request.reason)))
+
     @PostMapping("/{partnerId}/suspend")
     fun suspend(@PathVariable partnerId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "partner" to partnerService.suspendPartner(partnerId, currentUser.userId)))
@@ -78,6 +96,14 @@ class PartnerAdminController(private val partnerService: PartnerService) {
     @ExceptionHandler(PartnerMiniAppNotPendingException::class)
     fun handleNotPending(ex: PartnerMiniAppNotPendingException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("PARTNER_MINI_APP_NOT_PENDING", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(PartnerMiniAppReleaseNotFoundException::class)
+    fun handleReleaseNotFound(ex: PartnerMiniAppReleaseNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("PARTNER_MINI_APP_RELEASE_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(PartnerMiniAppReleaseStateException::class)
+    fun handleReleaseState(ex: PartnerMiniAppReleaseStateException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("PARTNER_MINI_APP_RELEASE_STATE_INVALID", ex.message ?: "Conflict"))
 
     @ExceptionHandler(PartnerNotFoundException::class)
     fun handlePartnerNotFound(ex: PartnerNotFoundException) =
