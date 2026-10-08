@@ -20,7 +20,22 @@ if (manifest.protocolVersion && manifest.protocolVersion !== '1') fail('unsuppor
 if (manifest.permissions) {
   if (!Array.isArray(manifest.permissions)) fail('permissions must be an array');
   const allowed = new Set(['location','camera','contacts','notifications','clipboard']);
-  for (const permission of manifest.permissions) if (!allowed.has(permission)) fail(`unsupported permission: ${permission}`);
+  for (const permission of manifest.permissions) {
+    if (!allowed.has(permission)) fail(`unsupported permission: ${permission}`);
+  }
+  const capabilityForPermission = {
+    location: 'location',
+    camera: 'camera',
+    contacts: 'contacts',
+    notifications: 'notification',
+    clipboard: 'clipboard',
+  };
+  for (const permission of manifest.permissions) {
+    const requiredCapability = capabilityForPermission[permission];
+    if (requiredCapability && !capabilities.has(requiredCapability)) {
+      fail(`permission ${permission} requires capability ${requiredCapability}`);
+    }
+  }
 }
 if (manifest.release) {
   const channels = new Set(['development','preview','sandbox','beta','production']);
