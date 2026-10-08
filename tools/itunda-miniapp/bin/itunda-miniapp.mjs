@@ -168,4 +168,5 @@ async function submit(file) {
 
 if (command === "plan") plan(args.find(a => !a.startsWith("--")));
 else if (command === "dev" || command === "build" || command === "test") runProjectCommand(command, args.find(a => !a.startsWith("--")), args.filter(a => a !== args.find(x => !x.startsWith("--"))));
-else if (command === "release") release(args.find(a => !a.startsWith("--")));\nelse if (command === "submit") submit(args.find(a => !a.startsWith("--")));
+else if (command === "release") release(args.find(a => !a.startsWith("--")));
+else if (command === "submit") submit(args.find(a => !a.startsWith("--")));
