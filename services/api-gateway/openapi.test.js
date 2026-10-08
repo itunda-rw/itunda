@@ -34,7 +34,7 @@ const docs = {
   },
 };
 
-docs['http://duplicate/v3/api-docs'] = docs['http://payments/v3/api-docs'];
+docs['http://duplicate/v3/api-docs'] = docs['http://backend/v3/api-docs'];
 
 global.fetch = async (url) => {
   const document = docs[url];
