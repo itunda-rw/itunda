@@ -249,6 +249,12 @@ class PartnerService(
         return saved
     }
 
+    fun getReleaseHistory(miniAppId: String): List<PartnerMiniAppRelease> {
+        val repository = partnerMiniAppReleaseRepository
+            ?: throw PartnerMiniAppReleaseNotFoundException("Mini-app release repository is unavailable")
+        return repository.findByMiniAppIdOrderByCreatedAtDesc(miniAppId)
+    }
+
     @Transactional
     fun stageRelease(releaseId: String): PartnerMiniAppRelease {
         val repository = partnerMiniAppReleaseRepository
