@@ -12,31 +12,6 @@ import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
-// Mirrors services/backend/auth/src/main/kotlin/rw/itunda/auth/AuthDtos.kt exactly --
-// same field names/nullability, so Gson deserializes the real backend's JSON directly.
-data class PartnerMiniAppDto(
-    val id: String,
-    val partnerId: String,
-    val name: String,
-    val description: String,
-    val iconUrl: String?,
-    val bundleUrl: String,
-    val permissions: String,
-    val status: String,
-    // Real Toss/Kakao mini-app-store reference (2026-09-11, Mini-Apps hub pass) --
-    // matches the backend's own PartnerMiniAppCategory enum names exactly.
-    val category: String,
-    val createdAt: String,
-)
-
-// Real Mini-Apps hub pass (2026-09-11) -- was page-based (see this class's own
-// prior doc comment on the 2026-09-11 pagination-discard fix); replaced with a
-// single size=100 "browse all (optionally category-filtered)" fetch, matching
-// bank-mfe's identical fetchMiniAppCatalog change: the real catalog is
-// genuinely tiny today (no seed data, no onboarded partners), so real
-// pagination is building ahead of real need.
-data class MiniAppCatalogResponse(val success: Boolean, val miniApps: List<PartnerMiniAppDto>, val page: Int, val totalPages: Int)
-
 // Mirrors services/backend/messaging's real DTOs exactly (2026-07-18) -- backs the new
 // "Talk" bottom-nav tab (Kakao-style 1:1 chat). See rw.itunda.messaging.MessagingService
 // / MessagingController's own doc comments for the full backend account, including the
@@ -73,40 +48,6 @@ data class ConversationSummaryDto(
     // Real KakaoTalk favorite chat toggle (itunda Talk redesign, 2026-08-28) -- see
     // TalkApi.kt's own doc comment.
     val favorite: Boolean = false,
-)
-
-// Real emoji reactions (2026-07-19) -- see MessagingService.toggleReaction's own doc
-// comment for the real toggle semantics (tapping an active reaction removes it).
-data class ReactionGroupDto(val emoji: String, val userIds: List<String>)
-
-data class MessageDto(
-    val id: String,
-    val conversationId: String,
-    val senderId: String,
-    val body: String,
-    val sentAt: String,
-    val readAt: String?,
-    val deletedAt: String? = null,
-    val replyToMessageId: String? = null,
-    val reactions: List<ReactionGroupDto> = emptyList(),
-    // Real KakaoTalk Emoticon Store (item 135) -- see EmoticonPackDto's own doc
-    // comment. Only ever set on a message actually created via the real
-    // /api/v1/emoticons/.../send endpoints.
-    val emoticonId: String? = null,
-    // Real photo message (2026-08-04) -- see SendMessageRequest's own doc comment.
-    // Backend (MessagingService.sendMessage) already validated/enforced a real
-    // /api/v1/uploads/ URL since before this field existed on the Android DTO; this
-    // just finally reads it back.
-    val imageUrl: String? = null,
-    // Real message forwarding (2026-08-04) -- see ForwardMessageRequest's own doc
-    // comment. MessageForwardService (backend, 2026-07-25) already stamped these on a
-    // real forwarded message's genuine provenance; no Android DTO ever read them back.
-    val forwardedFromMessageId: String? = null,
-    val forwardedFromType: String? = null,
-    // Real Thread support (2026-08-05) -- see docs/DESIGN_REFERENCES.md Talk section
-    // recommendation #3's own account. A real, read-time-computed count of direct
-    // replies to this message (0 for a message no one has replied to).
-    val replyCount: Long = 0,
 )
 
 data class StartConversationRequest(val phoneNumber: String? = null, val otherUserId: String? = null)
@@ -469,7 +410,6 @@ data class CreateJobPostRequest(
     val latitude: Double? = null, val longitude: Double? = null,
 )
 data class JobPostResponse(val success: Boolean, val post: JobPostDto)
-data class SuccessResponse(val success: Boolean)
 data class JobPostsResponse(val success: Boolean, val posts: List<JobPostDto>, val trustScores: Map<String, Int> = emptyMap(), val page: Int = 0, val totalPages: Int = 1, val totalElements: Int = 0)
 data class JobCategoriesResponse(val success: Boolean, val categories: List<JobCategoryDto>)
 data class FavoriteJobPostDto(val jobPostId: String, val title: String, val payAmount: Double, val category: String, val favoritedAt: String)
