@@ -1,0 +1,36 @@
+# Itunda Developers
+
+> Developer platform for building apps and integrations on Itunda.
+
+Itunda Developers: https://developers.itunda.im/
+
+## Core resources
+
+- [Getting started](https://developers.itunda.im/#itunda-product-content): Start building and understand the developer journey.
+- [Products](https://developers.itunda.im/#itunda-dev-products): Apps, Payments, Business, Identity, Place and Platform.
+- [API guidance](https://developers.itunda.im/#itunda-product-content): Authentication, permissions, API lifecycle, errors and rate limits.
+- [Security](https://developers.itunda.im/#itunda-dev-security): Credential handling, authorization and server-side boundaries.
+- [Troubleshooting](https://developers.itunda.im/#itunda-dev-observability): Request IDs, logs and platform status.
+- [Launch](https://developers.itunda.im/#itunda-dev-final): Sandbox, review and production launch flow.
+
+## API entry points
+
+- `GET /v1/me` — authenticated identity context.
+- `/v1/payments` — payment integrations.
+- `/v1/business` — business and merchant integrations.
+
+## Development model
+
+1. Choose a product capability.
+2. Create credentials with minimum required permissions.
+3. Build and test in sandbox.
+4. Validate security and integration behavior.
+5. Request production access and launch.
+
+## Rules
+
+- Keep credentials and access tokens server-side.
+- Use the minimum permissions required.
+- Treat API responses and payment state as server-authoritative.
+- Preserve request IDs when reporting failures.
+- Respect rate limits and use exponential backoff.
