@@ -7,7 +7,7 @@ import crypto from "node:crypto";
 const [, , command, ...args] = process.argv;
 const categories = new Set(["FINANCE","SHOPPING","PRODUCTIVITY","LIFESTYLE","OTHER"]);
 const permissions = new Set(["identity","navigation","share","storage","notifications","payments","location","camera","contacts"]);
-const commands = ["new","plan","dev","build","validate","test","release"];
+const commands = ["new","plan","dev","build","validate","test","release","submit"];
 function projectRoot(file = ".") {
   return path.resolve(file);
 }
@@ -126,6 +126,39 @@ function release(file) {
     console.log("release manifest generated: " + releaseId);
   } catch (e) { fail(e.message); }
 }
+
+async function submit(file) {
+  try {
+    const root = projectRoot(file || ".");
+    const m = readManifest(path.join(root, "manifest.json"));
+    const key = process.env.ITUNDA_API_KEY;
+    const base = (process.env.ITUNDA_API_BASE_URL || "https://api.itunda.im").replace(/\\/$/, "");
+    if (!key) return fail("ITUNDA_API_KEY is required; never put partner keys in source control or manifest files");
+    if (!m.name || !m.description || !m.icon?.url || !m.entry?.bundleUrl) return fail("manifest is missing required submission metadata");
+    validate(path.join(root, "manifest.json"));
+    if (process.exitCode) return;
+    const permissionMap = {identity:"profile:read"};
+    const requested = [...new Set((m.permissions || []).map((p) => permissionMap[p]).filter(Boolean))];
+    const unsupported = (m.permissions || []).filter((p) => !permissionMap[p] && !["navigation","share","storage","notifications","payments","location","camera","contacts"].includes(p));
+    if (unsupported.length) return fail("manifest permissions cannot be submitted to the partner API: " + unsupported.join(", "));
+    const response = await fetch(base + "/api/v1/partners/mini-apps", {
+      method: "POST",
+      headers: {"Content-Type":"application/json","X-Api-Key":key},
+      body: JSON.stringify({
+        name: m.name,
+        description: m.description,
+        iconUrl: m.icon.url,
+        bundleUrl: m.entry.bundleUrl,
+        permissions: requested
+      })
+    });
+    const body = await response.text();
+    if (!response.ok) return fail("partner submission failed (" + response.status + "): " + body);
+    console.log("mini-app submitted for human review:");
+    console.log(body);
+  } catch (e) { fail(e.message); }
+}
+
 if (command === "plan") plan(args.find(a => !a.startsWith("--")));
 else if (command === "dev" || command === "build" || command === "test") runProjectCommand(command, args.find(a => !a.startsWith("--")), args.filter(a => a !== args.find(x => !x.startsWith("--"))));
-else if (command === "release") release(args.find(a => !a.startsWith("--")));
+else if (command === "release") release(args.find(a => !a.startsWith("--")));\nelse if (command === "submit") submit(args.find(a => !a.startsWith("--")));
