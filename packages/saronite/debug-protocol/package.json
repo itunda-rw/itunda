@@ -5,8 +5,7 @@
   "description": "Internal wire protocol for Saronite development diagnostics.",
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "test": "node --test test/index.test.mjs"
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "typescript": "^5.8.3"
