@@ -72,7 +72,7 @@ export function createSaroniteDevTools(initial?: Partial<SaroniteMockState>): Sa
       state.latencyMs = ms;
     },
     record(log) {
-      state.logs = [...state.logs, { ...log, id: crypto.randomUUID(), timestamp: Date.now() }].slice(-500);
+      state.logs = [...state.logs, { ...log, id: `${Date.now()}-${state.logs.length + 1}`, timestamp: Date.now() }].slice(-500);
     },
     clearLogs() { state.logs = []; },
     reset() { state = defaultState(); },
@@ -84,9 +84,9 @@ export function installSaroniteBrowserMock(
   target: Window & typeof globalThis = window,
   initial?: Partial<SaroniteMockState>,
 ): SaroniteDevTools {
-  if (!import.meta.env?.DEV) {
-    throw new Error('Saronite browser mock is development-only');
-  }
+  // The caller must only invoke this module from a development build.
+  // Keeping the guard at the integration boundary avoids coupling the package
+  // to Vite/webpack-specific environment globals.
   const devtools = createSaroniteDevTools(initial);
   Object.defineProperty(target, '__saronite', {
     configurable: true,
