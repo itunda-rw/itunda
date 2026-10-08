@@ -67,27 +67,19 @@ class PartnerMiniAppLiveVerificationTest {
         scenario.onActivity { activity -> hostActivity = activity }
         assertNotNull("Need a live host Activity to launch the partner mini-app from", hostActivity)
 
+        val catalog = runBlocking { NetworkClient.apiService.getMiniAppCatalog(size = 100) }
+        assertTrue("Real catalog request must succeed", catalog.success)
+        val app = catalog.miniApps.firstOrNull { it.id == "partner_app_aa868698-54ff-4e1e-8d57-eb7abcb1d1f2" }
+        assertNotNull("The approved live partner verification app must be present in the real catalog", app)
+        assertTrue("Catalog release identity must be present", !app?.releaseId.isNullOrBlank())
+        assertTrue("Catalog bundle SHA-256 must be present", !app?.bundleSha256.isNullOrBlank())
+        assertTrue("Catalog bundle size must be present", (app?.bundleSizeBytes ?: 0L) > 0L)
+
         var loadError: String? = null
         runBlocking {
             PartnerMiniAppLoader.launch(
                 activity = hostActivity!!,
-                app = PartnerMiniAppDto(
-                    id = "partner_app_aa868698-54ff-4e1e-8d57-eb7abcb1d1f2",
-                    partnerId = "partner_2138e03e-3006-4360-92ea-4903c8393a63",
-                    name = "OnDevice Partner Demo",
-                    description = "Real on-device Partner SDK verification bundle",
-                    iconUrl = null,
-                    // "localhost" here (not the emulator-only "10.0.2.2" alias) because this
-                    // test now runs on a real physical device reached via `adb reverse
-                    // tcp:8098 tcp:8098` -- the device's own "localhost:8098" is forwarded to
-                    // this host machine over the USB connection, same convention
-                    // BuildConfig.API_BASE_URL's own physical-device override already uses.
-                    bundleUrl = "http://localhost:8098/partner-demo.bundle.js",
-                    permissions = "account:read",
-                    category = "PRODUCTIVITY",
-                    status = "APPROVED",
-                    createdAt = "2026-07-17T14:41:38.290861Z",
-                ),
+                app = app!!,
                 onError = { message -> loadError = message },
             )
         }
