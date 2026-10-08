@@ -282,7 +282,9 @@ class PartnerService(
             }
         release.status = PartnerMiniAppReleaseStatus.ACTIVE
         release.activatedAt = Instant.now()
-        return repository.save(release)
+        val savedRelease = repository.save(release)
+        syncCatalogToRelease(savedRelease)
+        return savedRelease
     }
 
     @Transactional
@@ -309,7 +311,21 @@ class PartnerService(
         target.activatedAt = Instant.now()
         target.rolledBackAt = null
         target.rollbackReason = null
-        return repository.save(target)
+        val savedTarget = repository.save(target)
+        syncCatalogToRelease(savedTarget)
+        return savedTarget
+    }
+
+    private fun syncCatalogToRelease(release: PartnerMiniAppRelease) {
+        val miniApp = partnerMiniAppRepository.findById(release.miniAppId).orElseThrow {
+            PartnerMiniAppNotFoundException("Mini-app for release not found")
+        }
+        miniApp.releaseId = release.releaseId
+        miniApp.bundleUrl = release.bundleUrl
+        miniApp.manifestSha256 = release.manifestSha256
+        miniApp.bundleSha256 = release.bundleSha256
+        miniApp.bundleSizeBytes = release.bundleSizeBytes
+        partnerMiniAppRepository.save(miniApp)
     }
 
     // Real admin moderation surface (2026-09-07, Partners product-completeness pass) --
