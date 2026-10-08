@@ -117,6 +117,21 @@ class PartnerMiniApp(
     @Column(name = "bundle_url", nullable = false, length = 500)
     var bundleUrl: String,
 
+    // Immutable artifact integrity captured at submission time. The partner supplies
+    // these values from its local release manifest; Itunda stores them for reviewer
+    // verification and later runtime/release checks.
+    @Column(name = "release_id", length = 64)
+    var releaseId: String? = null,
+
+    @Column(name = "manifest_sha256", length = 64)
+    var manifestSha256: String? = null,
+
+    @Column(name = "bundle_sha256", length = 64)
+    var bundleSha256: String? = null,
+
+    @Column(name = "bundle_size_bytes")
+    var bundleSizeBytes: Long? = null,
+
     @Column(nullable = false, length = 500)
     var permissions: String,
 
