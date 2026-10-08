@@ -11,32 +11,37 @@ Itunda Developers: https://developers.itunda.im/
 - [API guidance](https://developers.itunda.im/#itunda-product-content): Authentication, permissions, API lifecycle, errors and rate limits.
 - [Security](https://developers.itunda.im/#itunda-dev-security): Credential handling, authorization and server-side boundaries.
 - [Troubleshooting](https://developers.itunda.im/#itunda-dev-observability): Request IDs, logs and platform status.
-- [Launch](https://developers.itunda.im/#itunda-dev-final): Sandbox, review and production launch flow.
+- [Launch](https://developers.itunda.im/#itunda-dev-final): Integration review and production launch flow.
 
-## API entry points
+## Verified API contract
 
-- `GET /v1/me` — authenticated identity context.
-- `/v1/payments` — payment integrations.
-- `/v1/business` — business and merchant integrations.
+- API namespace: /api/v1
+- Verified aggregate OpenAPI: GET /openapi.json
+- Service-local OpenAPI: GET /v3/api-docs
+
+The aggregate contract is generated from the actual Spring service schemas behind the API gateway. It fails closed if a registered service cannot provide its contract.
 
 ## Development model
 
 1. Choose a product capability.
-2. Create credentials with minimum required permissions.
-3. Build and test in sandbox.
-4. Validate security and integration behavior.
-5. Request production access and launch.
+2. Read the verified OpenAPI contract.
+3. Create credentials with minimum required permissions.
+4. Build and test in the appropriate environment.
+5. Validate security and integration behavior.
+6. Request production access and launch.
 
 ## Rules
 
+- Never invent endpoints, fields, permissions, SDK behavior or error codes.
 - Keep credentials and access tokens server-side.
 - Use the minimum permissions required.
 - Treat API responses and payment state as server-authoritative.
-- Preserve request IDs when reporting failures.
+- Preserve X-Request-ID when reporting failures.
 - Respect rate limits and use exponential backoff.
+- Do not perform undocumented production mutations.
 
 ## Machine-readable documentation
 
-- [Full documentation](https://developers.itunda.im/llms-full.txt): The complete developer documentation in one machine-readable text file.
+- [Full documentation](https://developers.itunda.im/llms-full.txt): Complete machine-readable developer guidance.
 - [Agent instructions](https://developers.itunda.im/agents.md): Safety and integration rules for coding agents.
-- OpenAPI: publish only after the verified backend API contract is available; do not infer a specification from UI examples.
+- OpenAPI: https://developers.itunda.im/openapi.json
