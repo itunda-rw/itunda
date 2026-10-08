@@ -14,7 +14,7 @@
  * different tooling.
  */
 import { NativeEventEmitter, NativeModules } from 'react-native';
-import type { SaroniteDebugMessage, SaroniteDebugTransport } from '@itunda/saronite-debug-protocol';
+import { sanitizeSaroniteDebugValue, type SaroniteDebugMessage, type SaroniteDebugTransport } from '@itunda/saronite-debug-protocol';
 
 type SaroniteDebugGlobals = typeof globalThis & {
   __saroniteDebugTransport?: SaroniteDebugTransport;
@@ -550,7 +550,7 @@ export const SaroniteBrownfieldModule: SaroniteBrownfieldModuleSpec = new Proxy(
             },
           );
         }
-        inspector?.record({ direction: 'response', capability, method: property, payload: result, durationMs: Date.now() - started });
+        inspector?.record({ direction: 'response', capability, method: property, payload: sanitizeSaroniteDebugValue(result), durationMs: Date.now() - started });
         return result;
       };
     },
