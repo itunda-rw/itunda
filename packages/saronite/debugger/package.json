@@ -14,5 +14,12 @@
   },
   "dependencies": {
     "@itunda/saronite-debug-protocol": "0.1.0"
+  },
+  "bin": {
+    "saronite-debug": "./src/cli.js"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./cli": "./src/cli.ts"
   }
 }
