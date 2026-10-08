@@ -144,6 +144,8 @@ async function submit(file) {
     if (!m.name || !m.description || !m.icon?.url || !m.entry?.bundleUrl) return fail("manifest is missing required submission metadata");
     validate(path.join(root, "manifest.json"));
     if (process.exitCode) return;
+    const releasePath = path.join(root, "release.manifest.json");
+    const release = fs.existsSync(releasePath) ? JSON.parse(fs.readFileSync(releasePath, "utf8")) : null;
     const permissionMap = {identity:"profile:read"};
     const requested = [...new Set((m.permissions || []).map((p) => permissionMap[p]).filter(Boolean))];
     const unsupported = (m.permissions || []).filter((p) => !permissionMap[p] && !["navigation","share","storage","notifications","payments","location","camera","contacts"].includes(p));
@@ -156,7 +158,11 @@ async function submit(file) {
         description: m.description,
         iconUrl: m.icon.url,
         bundleUrl: m.entry.bundleUrl,
-        permissions: requested
+        permissions: requested,
+        releaseId: release?.releaseId ?? null,
+        manifestSha256: release?.manifestSha256 ?? null,
+        bundleSha256: release?.bundleSha256 ?? null,
+        bundleSizeBytes: release?.bundleSizeBytes ?? null
       })
     });
     const body = await response.text();
