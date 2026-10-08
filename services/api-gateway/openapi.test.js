@@ -34,6 +34,8 @@ const docs = {
   },
 };
 
+docs['http://duplicate/v3/api-docs'] = docs['http://payments/v3/api-docs'];
+
 global.fetch = async (url) => {
   const document = docs[url];
   if (!document) return new Response('not found', { status: 404 });
