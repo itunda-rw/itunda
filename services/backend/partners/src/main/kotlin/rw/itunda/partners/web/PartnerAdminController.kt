@@ -66,6 +66,10 @@ class PartnerAdminController(private val partnerService: PartnerService) {
     // that already captures currentUser.userId -- same real gap class this codebase
     // already closed for Merchant (MerchantModerationAdminController) and Vehicle
     // Inspection's mechanics.
+    @GetMapping("/{miniAppId}/releases")
+    fun releaseHistory(@PathVariable miniAppId: String): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "releases" to partnerService.getReleaseHistory(miniAppId)))
+
     @PostMapping("/releases/{releaseId}/stage")
     fun stageRelease(@PathVariable releaseId: String): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "release" to partnerService.stageRelease(releaseId)))
