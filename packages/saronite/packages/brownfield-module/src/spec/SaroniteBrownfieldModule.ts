@@ -443,7 +443,7 @@ const NativeSaronite = NativeModules.SaroniteBrownfieldModule as
   | SaroniteBrownfieldModuleSpec
   | undefined;
 
-export const SaroniteBrownfieldModule: SaroniteBrownfieldModuleSpec = NativeSaronite
+const NativeOrMissingSaronite: SaroniteBrownfieldModuleSpec = NativeSaronite
   ? NativeSaronite
   : (new Proxy(
       {},
@@ -453,6 +453,71 @@ export const SaroniteBrownfieldModule: SaroniteBrownfieldModuleSpec = NativeSaro
         },
       },
     ) as SaroniteBrownfieldModuleSpec);
+
+const INSPECTABLE_METHODS = new Set<string>([
+  'closeView', 'openURL', 'getWalletBalance', 'getPendingBills', 'payBill',
+  'getBillProviders', 'buyAirtime', 'getAutoPaySettings', 'setAutoPay',
+  'clearAutoPay', 'getRewardTasks', 'claimRewardTask', 'getInsurancePlans',
+  'getMyPolicies', 'enrollInsurance', 'createPremiumFund', 'contributeToFund',
+  'cancelPremiumFund', 'getMyPremiumFunds', 'submitClaim', 'getMyClaims',
+  'getCropIndexCatalog', 'getMyCropIndexPolicies', 'enrollCropIndexPolicy',
+  'cancelCropIndexPolicy', 'getCropIndexSeasonIndex', 'getReferralInfo',
+  'reportSteps', 'getTodaySteps', 'updateProfilePhoto', 'requestEmailVerification',
+  'confirmEmailVerification',
+]);
+
+const devtools = (): { record(log: {
+  direction: 'request' | 'response' | 'event';
+  capability: string;
+  method: string;
+  payload?: unknown;
+  durationMs?: number;
+  error?: string;
+}): void } | undefined =>
+  typeof globalThis !== 'undefined' ? (globalThis as typeof globalThis & {
+    __saronite?: { record: (log: {
+      direction: 'request' | 'response' | 'event';
+      capability: string;
+      method: string;
+      payload?: unknown;
+      durationMs?: number;
+      error?: string;
+    }) => void };
+  }).__saronite : undefined;
+
+export const SaroniteBrownfieldModule: SaroniteBrownfieldModuleSpec = new Proxy(
+  NativeOrMissingSaronite,
+  {
+    get(target, property, receiver) {
+      const value = Reflect.get(target, property, receiver);
+      if (typeof property !== 'string' || !INSPECTABLE_METHODS.has(property) || typeof value !== 'function') {
+        return value;
+      }
+      return (...args: unknown[]) => {
+        const inspector = devtools();
+        const started = Date.now();
+        const capability = property.replace(/^get|^set|^update|^report|^request|^confirm|^cancel/, '').toLowerCase() || 'runtime';
+        inspector?.record({ direction: 'request', capability, method: property, payload: args });
+        const result = (value as (...input: unknown[]) => unknown)(...args);
+        if (result && typeof (result as Promise<unknown>).then === 'function') {
+          return (result as Promise<unknown>).then(
+            (response) => {
+              inspector?.record({ direction: 'response', capability, method: property, payload: response, durationMs: Date.now() - started });
+              return response;
+            },
+            (error) => {
+              const message = error instanceof Error ? error.message : String(error);
+              inspector?.record({ direction: 'response', capability, method: property, durationMs: Date.now() - started, error: message });
+              throw error;
+            },
+          );
+        }
+        inspector?.record({ direction: 'response', capability, method: property, payload: result, durationMs: Date.now() - started });
+        return result;
+      };
+    },
+  },
+);
 
 const saroniteEventEmitter = new NativeEventEmitter(
   NativeModules.SaroniteBrownfieldModule,
