@@ -653,6 +653,7 @@ Itunda reaches the target when:
 - payment flows have server-authoritative confirmation
 - webhooks are signed, replay-safe and observable
 - releases are immutable and rollbackable
+- approved partner bundles are verified by SHA-256 and size before runtime loading
 - IDS is shared across all product surfaces
 - internal tools cover support, risk, reconciliation and releases
 - product events have a common analytics contract
