@@ -27,6 +27,10 @@ data class RegisterPartnerRequest(val companyName: String, val contactEmail: Str
 data class SubmitMiniAppRequest(
     val name: String, val description: String, val iconUrl: String? = null, val bundleUrl: String, val permissions: List<String>,
     val category: String? = null,
+    val releaseId: String? = null,
+    val manifestSha256: String? = null,
+    val bundleSha256: String? = null,
+    val bundleSizeBytes: Long? = null,
 )
 
 // Partner-facing developer platform -- mapped outside /api/v1/system/** since a partner
