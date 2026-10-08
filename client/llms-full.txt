@@ -1,0 +1,293 @@
+# Itunda Developers — Full Documentation
+
+> Machine-readable developer documentation for building on Itunda.
+
+## 1. Overview
+
+Itunda Developers is the developer platform for building apps and integrations across the Itunda ecosystem.
+
+Developer portal: https://developers.itunda.im/
+
+The platform is organized around six capability areas:
+
+- Apps — build modular Itunda experiences.
+- Payments — integrate payment and transaction workflows.
+- Business — connect merchants, customers, orders and commerce.
+- Identity — build authenticated, user-authorized experiences.
+- Place — build location-aware commerce and everyday experiences.
+- Platform — shared developer tooling, environments and release workflows.
+
+## 2. Developer journey
+
+The recommended integration path is:
+
+1. Choose a product capability.
+2. Create credentials with the minimum required permissions.
+3. Build locally where appropriate.
+4. Test against sandbox-compatible flows.
+5. Validate authentication, authorization and security boundaries.
+6. Review the integration.
+7. Request production access and launch.
+
+Do not infer undocumented behavior from the rendered website. Prefer explicit API contracts and platform documentation.
+
+## 3. Apps
+
+Itunda Apps are modular experiences that can participate in the Itunda ecosystem.
+
+Quick-start command:
+
+    npx create-itunda-app my-app
+
+The intended flow is:
+
+    Create credentials
+    → Run in sandbox
+    → Test
+    → Submit for launch
+
+Keep an app's responsibilities within its documented product boundary. Do not assume access to internal Itunda services.
+
+## 4. Payments
+
+The documented developer entry point for payment integrations is:
+
+    /v1/payments
+
+Payment state is server-authoritative. Client-side state must never be treated as proof that a payment completed.
+
+For sensitive money operations:
+
+- authenticate the caller;
+- authorize the requested operation;
+- validate server-side state;
+- use the documented device-verification requirements where applicable;
+- do not place credentials or access tokens in client code;
+- preserve request identifiers when diagnosing failures.
+
+Only use request and response fields that are explicitly documented by the API contract.
+
+## 5. Business
+
+The documented developer entry point for business and merchant integrations is:
+
+    /v1/business
+
+Business integrations may connect merchants, customers, orders and commerce workflows.
+
+Merchant authorization must be enforced server-side. Do not infer merchant privileges from UI state.
+
+The Business website explains the platform. The separate Business App is the operational merchant experience.
+
+## 6. Identity
+
+The documented identity context entry point is:
+
+    GET /v1/me
+
+Example request shape:
+
+    GET /v1/me
+    Authorization: Bearer <access_token>
+    Accept: application/json
+
+The endpoint is authenticated. Keep access tokens server-side and request only the minimum permissions needed.
+
+Identity data must be treated as user-authorized and server-authoritative.
+
+## 7. Place
+
+Itunda Place is the platform capability for location-aware commerce and everyday experiences in Rwanda.
+
+Use only documented Place APIs and permissions. Do not invent endpoint paths, geographic identifiers, response fields or location behavior.
+
+## 8. Authentication and credentials
+
+Developer integrations use credentials and authenticated API access according to the documented product contract.
+
+General rules:
+
+- keep secrets server-side;
+- never commit credentials;
+- never put access tokens in browser bundles or mobile source;
+- request minimum required permissions;
+- validate authorization on the server;
+- treat authentication and authorization as separate concerns.
+
+A typical boundary is:
+
+    Client
+      ↓
+    Itunda API
+      ↓
+    Authorized service
+
+The client should not bypass the API boundary to reach internal services.
+
+## 9. Environments
+
+Use the appropriate environment for each stage:
+
+### Local
+
+Use for local development and integration work that does not require production resources.
+
+### Sandbox
+
+Use for safe integration testing before production access.
+
+### Production
+
+Production access follows the documented review and launch process. Do not assume sandbox credentials or permissions work in production.
+
+## 10. API lifecycle
+
+The current developer portal describes the public API surface as v1.
+
+The intended lifecycle is:
+
+    Documented contract
+    → Sandbox
+    → Integration test
+    → Security/review
+    → Production access
+    → Launch
+
+Treat documented contracts as stable boundaries. Do not build against inferred internal routes.
+
+## 11. Errors
+
+The developer portal currently documents these common API classes:
+
+- 401 — unauthenticated.
+- 403 — not permitted.
+- 429 — rate limited.
+
+For an error:
+
+1. Read the documented error response.
+2. Preserve the request ID or equivalent request-tracking identifier.
+3. Fix authentication or authorization issues before retrying.
+4. For 429 responses, use exponential backoff and avoid retry storms.
+5. Do not blindly retry mutations.
+
+Exact error fields and codes must come from the API contract; this document does not invent them.
+
+## 12. Rate limits
+
+The developer portal documents rate limiting as a first-class API concern.
+
+When a request is rate limited:
+
+- respect the documented limit;
+- use exponential backoff;
+- add jitter where appropriate;
+- cap retries;
+- avoid synchronized retry storms.
+
+Do not invent numeric limits when the applicable API contract has not provided them.
+
+## 13. Webhooks
+
+Webhooks are intended for platform events delivered to an integration backend.
+
+General handling:
+
+1. Receive the documented event.
+2. Validate the webhook according to the applicable contract.
+3. Process it safely and idempotently.
+4. Persist the necessary event/request identifier for troubleshooting.
+5. Return the documented response.
+6. Do not treat an incoming client-side signal as proof of a completed server operation.
+
+Exact event names, payload fields and signature requirements must come from the applicable webhook contract.
+
+## 14. Security
+
+Security boundaries are part of the developer platform rather than an optional implementation detail.
+
+Required practices:
+
+- secrets stay server-side;
+- access tokens stay server-side;
+- use minimum permissions;
+- enforce authorization server-side;
+- treat payment and identity state as server-authoritative;
+- preserve request IDs;
+- do not expose internal services directly;
+- do not bypass sandbox or review requirements.
+
+Never place production credentials in source control, client bundles, screenshots or logs.
+
+## 15. Observability and troubleshooting
+
+When an integration fails, collect enough context to diagnose it safely:
+
+- request ID or equivalent tracking identifier;
+- endpoint and HTTP method;
+- environment;
+- sanitized server-side logs;
+- relevant API error class;
+- platform status.
+
+Do not include secrets, access tokens, passwords or private user data in support requests or logs.
+
+## 16. Launch checklist
+
+Before requesting production launch:
+
+- [ ] Credentials configured.
+- [ ] Minimum permissions selected.
+- [ ] Sandbox integration works.
+- [ ] Authentication is implemented safely.
+- [ ] Authorization is enforced server-side.
+- [ ] Secrets are not present in client code.
+- [ ] Payment and identity state comes from authoritative server responses.
+- [ ] Rate-limit handling is safe.
+- [ ] Webhook handling is safe and idempotent where required.
+- [ ] Request identifiers are retained for troubleshooting.
+- [ ] Integration has passed review requirements.
+- [ ] Production access has been granted.
+
+## 17. AI agent instructions
+
+Use https://developers.itunda.im/llms.txt as the short resource map.
+
+Use https://developers.itunda.im/agents.md for agent-specific safety instructions.
+
+When working on an Itunda integration:
+
+1. Identify the capability before coding.
+2. Prefer documented contracts over inference.
+3. Start in sandbox.
+4. Never invent endpoints, fields, permissions or SDK behavior.
+5. Keep secrets and access tokens server-side.
+6. Treat payment and identity state as server-authoritative.
+7. Preserve request identifiers.
+8. Respect rate limits.
+9. Do not perform undocumented production mutations.
+10. Ask for clarification when the requested behavior is not represented by a documented contract.
+
+## 18. Machine-readable resources
+
+Short index:
+
+    /llms.txt
+
+Full documentation:
+
+    /llms-full.txt
+
+Agent instructions:
+
+    /agents.md
+
+The portal should add an OpenAPI document only when the complete public API contract can be generated from verified backend schemas. Do not fabricate an OpenAPI specification from marketing-page examples.
+
+## 19. Scope and source of truth
+
+This document describes the developer capabilities and safety boundaries currently exposed by the Itunda developer portal.
+
+Where this document and a verified API specification differ, the verified API specification is the source of truth for exact paths, parameters, schemas, authentication requirements and response codes.
+
+Undocumented internal services are not part of the public developer contract.
