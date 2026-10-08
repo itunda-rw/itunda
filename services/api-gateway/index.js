@@ -4,6 +4,7 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 const promClient = require('prom-client');
+const { buildOpenApiDocument } = require('./openapi');
 
 const app = express();
 app.disable('x-powered-by');
@@ -90,7 +91,7 @@ app.use((req, res, next) => {
 });
 
 function isOperationalEndpoint(req) {
-    return req.path === '/health' || req.path === '/metrics';
+    return req.path === '/health' || req.path === '/metrics' || req.path === '/openapi.json';
 }
 
 // Real rate limiting (2026-07-25) -- this gateway is now reachable from the
@@ -158,6 +159,20 @@ app.use((req, res, next) => {
 app.get('/metrics', async (req, res) => {
     res.set('Content-Type', metricsRegistry.contentType);
     res.end(await metricsRegistry.metrics());
+});
+
+app.get('/openapi.json', async (req, res) => {
+    try {
+        const document = await buildOpenApiDocument();
+        res.set('Cache-Control', 'no-store');
+        res.type('application/json').send(JSON.stringify(document));
+    } catch (error) {
+        // Fail closed: a partial contract is more dangerous than no contract.
+        // The detailed upstream error stays server-side; callers only receive a
+        // stable contract-generation failure and can use X-Request-ID for support.
+        console.error('OpenAPI aggregation failed', error);
+        res.status(503).json({ success: false, error: 'OPENAPI_CONTRACT_UNAVAILABLE' });
+    }
 });
 
 // Toss-style API Gateway: Route mobile requests to internal Spring Boot services.
