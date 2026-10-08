@@ -14,6 +14,29 @@
  * different tooling.
  */
 import { NativeEventEmitter, NativeModules } from 'react-native';
+import type { SaroniteDebugMessage, SaroniteDebugTransport } from '@itunda/saronite-debug-protocol';
+
+type SaroniteDebugGlobals = typeof globalThis & {
+  __saroniteDebugTransport?: SaroniteDebugTransport;
+  __SARONITE_DEBUG_BUILD__?: boolean;
+};
+
+const debugGlobals = globalThis as SaroniteDebugGlobals;
+
+function emitNativeDebug(
+  message: Omit<Extract<SaroniteDebugMessage, { type: 'log' }>, 'version'>,
+): void {
+  if (debugGlobals.__SARONITE_DEBUG_BUILD__ !== true) return;
+  debugGlobals.__saroniteDebugTransport?.send({ version: 1, ...message });
+}
+
+function debugPayload(args: unknown[]): unknown {
+  try {
+    return args.length === 0 ? undefined : args.length === 1 ? args[0] : args;
+  } catch {
+    return '[unserializable]';
+  }
+}
 import type { EmitterSubscription } from 'react-native';
 
 export interface WalletSummary {
