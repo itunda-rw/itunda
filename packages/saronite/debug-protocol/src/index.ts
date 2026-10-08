@@ -15,7 +15,13 @@ export interface SaroniteDebugTransport {
 export function isSaroniteDebugMessage(value: unknown): value is SaroniteDebugMessage {
   if (!value || typeof value !== 'object') return false;
   const message = value as Record<string, unknown>;
-  return message.version === SARONITE_DEBUG_PROTOCOL_VERSION && typeof message.type === 'string';
+  if (message.version !== SARONITE_DEBUG_PROTOCOL_VERSION || typeof message.type !== 'string') return false;
+  if (message.type === 'hello') return typeof message.sessionId === 'string' && ['android', 'ios', 'web'].includes(String(message.platform));
+  if (message.type === 'log') return typeof message.id === 'string' && typeof message.timestamp === 'number' && ['request', 'response', 'event'].includes(String(message.direction)) && typeof message.capability === 'string' && typeof message.method === 'string';
+  if (message.type === 'state') return typeof message.state === 'object' && message.state !== null && !Array.isArray(message.state);
+  if (message.type === 'command') return typeof message.id === 'string' && ['reset', 'clearLogs', 'setLatency', 'setPermission'].includes(String(message.command));
+  if (message.type === 'commandResult') return typeof message.id === 'string' && typeof message.ok === 'boolean';
+  return false;
 }
 
 
