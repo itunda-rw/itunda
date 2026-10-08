@@ -12,6 +12,7 @@
   },
   "scripts": {
     "start": "node index.js",
-    "test": "node test.js"
+    "test": "node test.js",
+    "test:openapi": "node openapi.test.js"
   }
 }
