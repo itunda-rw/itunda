@@ -84,6 +84,7 @@ class PartnerMiniAppLiveVerificationTest {
                     // BuildConfig.API_BASE_URL's own physical-device override already uses.
                     bundleUrl = "http://localhost:8098/partner-demo.bundle.js",
                     permissions = "account:read",
+                    category = "PRODUCTIVITY",
                     status = "APPROVED",
                     createdAt = "2026-07-17T14:41:38.290861Z",
                 ),
