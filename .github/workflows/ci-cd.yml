@@ -291,7 +291,7 @@ jobs:
       # ios-build already has below; android-build was just missing it.
       - name: Install Saronite JS dependencies (own npm workspace, not the root yarn workspace)
         working-directory: packages/saronite
-        run: npm ci --prefer-offline --no-audit --no-fund
+        run: npm ci --prefer-offline --no-audit --no-fund --ignore-scripts
 
       - name: Setup JDK
         uses: actions/setup-java@v4
