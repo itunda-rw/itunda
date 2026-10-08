@@ -142,7 +142,9 @@ object PartnerMiniAppLoader {
             // Keyed by mini-app id so two different partner apps don't clobber each
             // other's cached file if a user backs out and taps a different one before
             // this one's file would otherwise be evicted.
-            val file = File(context.cacheDir, "partner-mini-app-${app.id}.bundle.js")
+            val releaseKey = app.releaseId?.trim()?.replace(Regex("[^A-Za-z0-9._-]"), "_")
+                ?: throw IOException("Mini-app release identity is missing")
+            val file = File(context.cacheDir, "partner-mini-app-${app.id}-$releaseKey.bundle.js")
             file.outputStream().use { out -> body.byteStream().copyTo(out) }
             file
         }
@@ -161,6 +163,10 @@ object PartnerMiniAppLoader {
      * than blocking Main.
      */
     private fun verifyBundleIntegrity(file: File, app: PartnerMiniAppDto) {
+        val releaseId = app.releaseId?.trim()
+        if (releaseId.isNullOrBlank()) {
+            throw IOException("Approved mini-app release is missing release identity")
+        }
         val expected = app.bundleSha256?.trim()?.lowercase()
         if (expected.isNullOrBlank()) {
             throw IOException("Approved mini-app release is missing bundle integrity metadata")
