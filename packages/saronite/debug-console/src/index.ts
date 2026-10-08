@@ -1,4 +1,9 @@
-import type { SaroniteDebugMessage, SaroniteDebugTransport } from '@itunda/saronite-debug-protocol';
+import {
+  clearSaroniteDebugTransport,
+  installSaroniteDebugTransport,
+  type SaroniteDebugMessage,
+  type SaroniteDebugTransport,
+} from '@itunda/saronite-debug-protocol';
 
 export interface DebugConsoleOptions { target?: Window & typeof globalThis; appId?: string; sessionId?: string; transport?: SaroniteDebugTransport; }
 export interface SaroniteDebugConsole { readonly sessionId: string; readonly transport: SaroniteDebugTransport; mount(): void; unmount(): void; close(): void; }
@@ -43,6 +48,7 @@ export function createSaroniteDebugConsole(options: DebugConsoleOptions = {}): S
     const body = target.document.createElement('pre');
     body.style.cssText = 'white-space:pre-wrap;margin:0;max-height:34vh;overflow:auto;opacity:.9'; root.appendChild(body);
     const write = (line: string) => { body.textContent = (body.textContent ? body.textContent + '\\n' : '') + line; body.scrollTop = body.scrollHeight; };
+    installSaroniteDebugTransport(transport);
     emit({ version: 1, type: 'hello', sessionId, platform: 'web', appId: options.appId }); write(`session ${sessionId}`);
     const host = target.__saronite;
     if (host?.subscribe) unsubscribe = host.subscribe(state => emit({ version: 1, type: 'state', state: state as Record<string, unknown> }));
@@ -53,7 +59,13 @@ export function createSaroniteDebugConsole(options: DebugConsoleOptions = {}): S
     };
     target.addEventListener('saronite:debug', onDebugEvent);
   };
-  const unmount = () => { unsubscribe?.(); unsubscribe = undefined; if (onDebugEvent) target.removeEventListener('saronite:debug', onDebugEvent); onDebugEvent = undefined; root?.remove(); root = undefined; };
+  const unmount = () => {
+    unsubscribe?.(); unsubscribe = undefined;
+    if (onDebugEvent) target.removeEventListener('saronite:debug', onDebugEvent);
+    onDebugEvent = undefined;
+    clearSaroniteDebugTransport();
+    root?.remove(); root = undefined;
+  };
   const emit = (message: SaroniteDebugMessage) => transport.send(message);
   return { sessionId, transport, mount, unmount, close: unmount };
 }
