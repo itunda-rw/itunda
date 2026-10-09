@@ -1,3 +1,11 @@
+# Archived deployment proposal — not active
+
+Itunda production hosting is now **Google Cloud Platform only**. This document is retained solely as historical context; do not use its Cloudflare architecture or deployment commands for production.
+
+Current deployment contract: [WEB_DEPLOYMENT_BOUNDARIES.md](WEB_DEPLOYMENT_BOUNDARIES.md).
+
+---
+
 # Itunda on Cloudflare Workers
 
 Itunda's web layer is moving from a Pages-only static deployment to **Workers Static Assets + an edge Worker**.
