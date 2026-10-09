@@ -22,6 +22,7 @@ env:
   REGION: ${{ vars.GCP_REGION || 'asia-northeast3' }}
   PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'itunda-org' }}
   GAR_REPOSITORY: ${{ vars.GAR_REPOSITORY || 'itunda' }}
+  PUBLIC_SITE_RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_PUBLIC_SITE_RUNTIME_SERVICE_ACCOUNT || 'itunda-public-site@itunda-org.iam.gserviceaccount.com' }}
 
 jobs:
   deploy:
@@ -117,6 +118,7 @@ jobs:
             --cpu=1 \
             --min-instances=0 \
             --max-instances=5 \
+            --service-account="${PUBLIC_SITE_RUNTIME_SERVICE_ACCOUNT}" \
             --allow-unauthenticated \
             --quiet
 
