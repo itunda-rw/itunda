@@ -48,6 +48,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Use canonical Itunda brand asset in Tech blog
+        if: matrix.build_blog
+        run: |
+          mkdir -p services/blog/public/brand
+          cp services/micro-frontends/host-app/public/brand/itunda-app-icon.svg services/blog/public/brand/itunda-icon.svg
+
       - name: Set up Node.js for Tech blog
         if: matrix.build_blog
         uses: actions/setup-node@v4
