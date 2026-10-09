@@ -147,8 +147,7 @@ async function submit(file) {
     validate(path.join(root, "manifest.json"));
     if (process.exitCode) return;
     const releasePath = path.join(root, "release.manifest.json");
-    if (!fs.existsSync(releasePath)) return fail("release.manifest.json is required; run release with --bundle-file pointing to the built bundle before submitting");
-    const release = JSON.parse(fs.readFileSync(releasePath, "utf8"));
+    const release = fs.existsSync(releasePath) ? JSON.parse(fs.readFileSync(releasePath, "utf8")) : null;
     // Manifest capabilities and partner API scopes are different contracts. Never
     // silently drop a requested capability: the current submission API only accepts
     // explicit read scopes, and only identity has a safe mapping today.
@@ -156,6 +155,7 @@ async function submit(file) {
     const unmapped = [...new Set((m.permissions || []).filter((p) => !permissionMap[p]))];
     if (unmapped.length) return fail("cannot submit manifest permissions without an explicit partner API scope mapping: " + unmapped.join(", ") + ". Currently supported manifest permission: identity (maps to profile:read)");
     const requested = [...new Set((m.permissions || []).map((p) => permissionMap[p]))];
+    if (!release) return fail("release.manifest.json is required; run release with --bundle-file pointing to the built bundle before submitting");
     if (release && (!release.releaseId || !release.manifestSha256 || !release.bundleSha256 || !Number.isInteger(release.bundleSizeBytes) || release.bundleSizeBytes < 0)) {
       return fail("release.manifest.json has incomplete integrity metadata; rerun release with --bundle-file pointing to the built bundle before submitting");
     }
