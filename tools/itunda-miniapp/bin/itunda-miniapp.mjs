@@ -20,6 +20,23 @@ function writeJson(file, value) {
   fs.writeFileSync(file, JSON.stringify(value, null, 2) + "\n");
 }
 
+function resolveBundlePath(root, bundleFile) {
+  const candidate = path.resolve(root, bundleFile);
+  const relativeCandidate = path.relative(root, candidate);
+  if (!relativeCandidate || relativeCandidate === ".." || relativeCandidate.startsWith(".." + path.sep) || path.isAbsolute(relativeCandidate)) {
+    throw new Error("bundle file must stay inside the mini-app project directory");
+  }
+  if (fs.existsSync(candidate)) {
+    const realRoot = fs.realpathSync(root);
+    const realCandidate = fs.realpathSync(candidate);
+    const realRelative = path.relative(realRoot, realCandidate);
+    if (!realRelative || realRelative === ".." || realRelative.startsWith(".." + path.sep) || path.isAbsolute(realRelative)) {
+      throw new Error("bundle file must resolve inside the mini-app project directory");
+    }
+  }
+  return candidate;
+}
+
 function usage() {
   console.log("Itunda mini-app developer tool\n\n  new <name>       Scaffold a mini-app\n  plan [path]      Show the development/release plan\n  dev [path]       Start the local development command when configured\n  build [path]     Build a mini-app when configured\n  validate [path]  Validate a manifest and platform rules\n  test [path]      Run the project's configured tests\n  release [path]   Generate an immutable release manifest (no production publish)\n  submit [path]    Submit a mini-app for human review using ITUNDA_API_KEY");
 }
@@ -116,7 +133,7 @@ function release(file) {
     const manifestSha256 = crypto.createHash("sha256").update(canonical).digest("hex");
     const bundleFile = flag("--bundle-file");
     if (!bundleFile) return fail("release requires --bundle-file pointing to the exact built bundle");
-    const bundlePath = path.resolve(root, bundleFile);
+    const bundlePath = resolveBundlePath(root, bundleFile);
     if (!fs.existsSync(bundlePath) || !fs.statSync(bundlePath).isFile()) return fail("bundle file not found: " + bundlePath);
     const bundleBytes = fs.readFileSync(bundlePath);
     if (bundleBytes.length === 0) return fail("bundle file must not be empty");
@@ -164,7 +181,7 @@ async function submit(file) {
     }
     const currentManifestSha256 = crypto.createHash("sha256").update(JSON.stringify(m)).digest("hex");
     if (release.manifestSha256 !== currentManifestSha256) return fail("release manifest digest does not match manifest.json; regenerate the release");
-    const bundlePath = path.resolve(root, release.bundleFile);
+    const bundlePath = resolveBundlePath(root, release.bundleFile);
     if (!fs.existsSync(bundlePath) || !fs.statSync(bundlePath).isFile()) return fail("release bundle file not found: " + bundlePath);
     const bundleBytes = fs.readFileSync(bundlePath);
     const actualBundleSha256 = crypto.createHash("sha256").update(bundleBytes).digest("hex");
