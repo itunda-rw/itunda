@@ -229,3 +229,19 @@ test("validate rejects valid JSON that is not a manifest object", (t) => {
     assert.doesNotMatch(result.stderr, /TypeError|SyntaxError/);
   }
 });
+
+test("submit rejects valid JSON release manifests that are not objects", (t) => {
+  const cwd = tempProject(t);
+  assert.equal(run(["new", "Release Shape Test"], cwd).status, 0);
+  const project = path.join(cwd, "release-shape-test");
+  for (const [name, value] of [["null", "null"], ["array", "[]"], ["string", '"release"']]) {
+    fs.writeFileSync(path.join(project, "release.manifest.json"), value);
+    const result = run(["submit", project], cwd, {
+      ITUNDA_API_KEY: "test-only-not-a-real-key",
+      ITUNDA_API_BASE_URL: "https://api.itunda.im",
+    });
+    assert.notEqual(result.status, 0, `expected rejection for ${value}`);
+    assert.match(result.stderr, /release\.manifest\.json must be a JSON object/);
+    assert.doesNotMatch(result.stderr, /TypeError|SyntaxError|fetch failed/);
+  }
+});
