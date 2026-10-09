@@ -179,7 +179,11 @@ async function submit(file) {
     validate(path.join(root, "manifest.json"));
     if (process.exitCode) return;
     const releasePath = path.join(root, "release.manifest.json");
-    const release = fs.existsSync(releasePath) ? JSON.parse(fs.readFileSync(releasePath, "utf8")) : null;
+    let release = null;
+    if (fs.existsSync(releasePath)) {
+      try { release = JSON.parse(fs.readFileSync(releasePath, "utf8")); }
+      catch { return fail("release.manifest.json is not valid JSON; regenerate the release"); }
+    }
     // Manifest capabilities and partner API scopes are different contracts. Never
     // silently drop a requested capability: the current submission API only accepts
     // explicit read scopes, and only identity has a safe mapping today.
