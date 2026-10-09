@@ -115,11 +115,14 @@ function release(file) {
     const canonical = JSON.stringify(m);
     const manifestSha256 = crypto.createHash("sha256").update(canonical).digest("hex");
     const bundleFile = flag("--bundle-file");
-    const bundlePath = bundleFile ? path.resolve(root, bundleFile) : null;
-    const bundleBytes = bundlePath && fs.existsSync(bundlePath) ? fs.readFileSync(bundlePath) : null;
-    const bundleSha256 = bundleBytes ? crypto.createHash("sha256").update(bundleBytes).digest("hex") : null;
-    const bundleSizeBytes = bundleBytes ? bundleBytes.length : null;
-    const releaseId = crypto.createHash("sha256").update(manifestSha256 + ":" + (bundleSha256 || bundle)).digest("hex").slice(0, 24);
+    if (!bundleFile) return fail("release requires --bundle-file pointing to the exact built bundle");
+    const bundlePath = path.resolve(root, bundleFile);
+    if (!fs.existsSync(bundlePath) || !fs.statSync(bundlePath).isFile()) return fail("bundle file not found: " + bundlePath);
+    const bundleBytes = fs.readFileSync(bundlePath);
+    if (bundleBytes.length === 0) return fail("bundle file must not be empty");
+    const bundleSha256 = crypto.createHash("sha256").update(bundleBytes).digest("hex");
+    const bundleSizeBytes = bundleBytes.length;
+    const releaseId = crypto.createHash("sha256").update(manifestSha256 + ":" + bundleSha256).digest("hex").slice(0, 24);
     writeJson(path.join(root, "release.manifest.json"), {
       releaseId,
       manifestSha256,
@@ -156,9 +159,18 @@ async function submit(file) {
     if (unmapped.length) return fail("cannot submit manifest permissions without an explicit partner API scope mapping: " + unmapped.join(", ") + ". Currently supported manifest permission: identity (maps to profile:read)");
     const requested = [...new Set((m.permissions || []).map((p) => permissionMap[p]))];
     if (!release) return fail("release.manifest.json is required; run release with --bundle-file pointing to the built bundle before submitting");
-    if (release && (!release.releaseId || !release.manifestSha256 || !release.bundleSha256 || !Number.isInteger(release.bundleSizeBytes) || release.bundleSizeBytes < 0)) {
+    if (!release.releaseId || !/^[a-f0-9]{64}$/.test(release.manifestSha256 || "") || !/^[a-f0-9]{64}$/.test(release.bundleSha256 || "") || !Number.isInteger(release.bundleSizeBytes) || release.bundleSizeBytes <= 0 || typeof release.bundleFile !== "string" || !release.bundleFile) {
       return fail("release.manifest.json has incomplete integrity metadata; rerun release with --bundle-file pointing to the built bundle before submitting");
     }
+    const currentManifestSha256 = crypto.createHash("sha256").update(JSON.stringify(m)).digest("hex");
+    if (release.manifestSha256 !== currentManifestSha256) return fail("release manifest digest does not match manifest.json; regenerate the release");
+    const bundlePath = path.resolve(root, release.bundleFile);
+    if (!fs.existsSync(bundlePath) || !fs.statSync(bundlePath).isFile()) return fail("release bundle file not found: " + bundlePath);
+    const bundleBytes = fs.readFileSync(bundlePath);
+    const actualBundleSha256 = crypto.createHash("sha256").update(bundleBytes).digest("hex");
+    if (actualBundleSha256 !== release.bundleSha256 || bundleBytes.length !== release.bundleSizeBytes) return fail("release bundle integrity check failed; regenerate the release from the exact built bundle");
+    const expectedReleaseId = crypto.createHash("sha256").update(release.manifestSha256 + ":" + release.bundleSha256).digest("hex").slice(0, 24);
+    if (release.releaseId !== expectedReleaseId) return fail("releaseId does not match release integrity metadata");
     const response = await fetch(base + "/api/v1/partners/mini-apps", {
       method: "POST",
       headers: {"Content-Type":"application/json","X-Api-Key":key},
