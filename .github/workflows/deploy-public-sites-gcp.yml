@@ -9,6 +9,7 @@ on:
       - "sites/business/**"
       - "sites/developers/**"
       - "services/blog/**"
+      - "services/micro-frontends/host-app/public/brand/**"
       - "yarn.lock"
       - ".github/workflows/deploy-public-sites-gcp.yml"
   workflow_dispatch:
@@ -64,6 +65,8 @@ jobs:
         run: |
           cp sites/public/ids.css "${{ matrix.source }}/ids.css"
           cp sites/public/theme.js "${{ matrix.source }}/theme.js"
+          mkdir -p "${{ matrix.source }}/brand"
+          cp services/micro-frontends/host-app/public/brand/itunda-app-icon.svg "${{ matrix.source }}/brand/itunda-app-icon.svg"
 
       - name: Prepare static-site container
         run: |
