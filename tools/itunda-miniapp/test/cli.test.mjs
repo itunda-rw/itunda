@@ -36,6 +36,20 @@ test("new scaffolds a manifest that validates", (t) => {
   assert.doesNotMatch(agentRules, /\\\\n/);
 });
 
+test("validate rejects malformed HTTPS asset URLs and embedded credentials", (t) => {
+  const cwd = tempProject(t);
+  assert.equal(run(["new", "Asset URL Test"], cwd).status, 0);
+  const manifestPath = path.join(cwd, "asset-url-test", "manifest.json");
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  manifest.entry.bundleUrl = "https://";
+  manifest.icon.url = "https://user:pass@assets.example.com/icon.png";
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  const result = run(["validate", manifestPath], cwd);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /entry\.bundleUrl must be a valid HTTPS URL without embedded credentials/);
+  assert.match(result.stderr, /icon\.url must be a valid HTTPS URL without embedded credentials/);
+});
+
 test("submit fails closed when a manifest capability has no API scope mapping", (t) => {
   const cwd = tempProject(t);
   assert.equal(run(["new", "Permission Test"], cwd).status, 0);
