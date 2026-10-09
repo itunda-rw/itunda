@@ -72,6 +72,19 @@ test("submit rejects incomplete release integrity metadata before network access
 });
 
 
+test("submit rejects insecure non-loopback API URLs before sending credentials", (t) => {
+  const cwd = tempProject(t);
+  assert.equal(run(["new", "API URL Test"], cwd).status, 0);
+  const project = path.join(cwd, "api-url-test");
+  const result = run(["submit", project], cwd, {
+    ITUNDA_API_KEY: "test-only-not-a-real-key",
+    ITUNDA_API_BASE_URL: "http://api.example.com",
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /ITUNDA_API_BASE_URL must use HTTPS/);
+  assert.doesNotMatch(result.stderr, /fetch failed|ECONNREFUSED/);
+});
+
 test("submit requires a release manifest before network access", (t) => {
   const cwd = tempProject(t);
   assert.equal(run(["new", "Missing Release"], cwd).status, 0);
