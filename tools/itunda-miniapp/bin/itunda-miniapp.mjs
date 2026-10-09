@@ -20,6 +20,18 @@ function writeJson(file, value) {
   fs.writeFileSync(file, JSON.stringify(value, null, 2) + "\n");
 }
 
+function normalizeApiBaseUrl(value) {
+  let parsed;
+  try { parsed = new URL(value); } catch { throw new Error("ITUNDA_API_BASE_URL must be a valid absolute URL"); }
+  if (parsed.username || parsed.password) throw new Error("ITUNDA_API_BASE_URL must not contain embedded credentials");
+  if (parsed.search || parsed.hash) throw new Error("ITUNDA_API_BASE_URL must not contain a query string or fragment");
+  const loopback = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+  if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && loopback.has(parsed.hostname))) {
+    throw new Error("ITUNDA_API_BASE_URL must use HTTPS; HTTP is allowed only for localhost tests");
+  }
+  return value.replace(/\\/$/, "");
+}
+
 function resolveBundlePath(root, bundleFile) {
   const candidate = path.resolve(root, bundleFile);
   const relativeCandidate = path.relative(root, candidate);
@@ -161,7 +173,7 @@ async function submit(file) {
     const root = projectRoot(file || ".");
     const m = readManifest(path.join(root, "manifest.json"));
     const key = process.env.ITUNDA_API_KEY;
-    const base = (process.env.ITUNDA_API_BASE_URL || "https://api.itunda.im").replace(/\/$/, "");
+    const base = normalizeApiBaseUrl(process.env.ITUNDA_API_BASE_URL || "https://api.itunda.im");
     if (!key) return fail("ITUNDA_API_KEY is required; never put partner keys in source control or manifest files");
     if (!m.name || !m.description || !m.icon?.url || !m.entry?.bundleUrl) return fail("manifest is missing required submission metadata");
     validate(path.join(root, "manifest.json"));
