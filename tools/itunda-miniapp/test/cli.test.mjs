@@ -108,6 +108,18 @@ test("submit rejects insecure or ambiguous API URLs before sending credentials",
   }
 });
 
+test("submit permits HTTP only for explicit loopback development endpoints", (t) => {
+  const cwd = tempProject(t);
+  assert.equal(run(["new", "Loopback URL Test"], cwd).status, 0);
+  const project = path.join(cwd, "loopback-url-test");
+  for (const url of ["http://localhost:8080", "http://127.0.0.1:8080", "http://[::1]:8080"]) {
+    const result = run(["submit", project], cwd, {ITUNDA_API_BASE_URL: url});
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /ITUNDA_API_KEY is required/);
+    assert.doesNotMatch(result.stderr, /must use HTTPS|fetch failed|ECONNREFUSED/);
+  }
+});
+
 test("submit rejects malformed release JSON before network access", (t) => {
   const cwd = tempProject(t);
   assert.equal(run(["new", "Malformed Release"], cwd).status, 0);
