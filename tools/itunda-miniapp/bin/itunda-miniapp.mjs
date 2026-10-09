@@ -121,7 +121,7 @@ function validate(file) {
   if (!isValidHttpsUrl(m.entry?.bundleUrl)) e.push("entry.bundleUrl must be a valid HTTPS URL without embedded credentials");
   if (!isValidHttpsUrl(m.icon?.url)) e.push("icon.url must be a valid HTTPS URL without embedded credentials");
   if (!Array.isArray(m.permissions) || m.permissions.some(p => !permissions.has(p))) e.push("permissions contains an unsupported scope");
-  if (new Set(m.permissions || []).size !== (m.permissions || []).length) e.push("permissions must not contain duplicates");
+  if (Array.isArray(m.permissions) && new Set(m.permissions).size !== m.permissions.length) e.push("permissions must not contain duplicates");
   if (m.brandTheme) for (const mode of ["light","dark"]) for (const role of ["brand","brandStrong","brandSurface","onBrand","focus","pressed"]) if (!/^#[0-9A-Fa-f]{6}$/.test(m.brandTheme?.[mode]?.[role] || "")) e.push("brandTheme."+mode+"."+role+" must be six-digit hex");
   if (e.length) { e.forEach(x => console.error("x "+x)); process.exitCode=1; return; }
   console.log("valid Itunda mini-app manifest: " + target);
