@@ -245,3 +245,17 @@ test("submit rejects valid JSON release manifests that are not objects", (t) => 
     assert.doesNotMatch(result.stderr, /TypeError|SyntaxError|fetch failed/);
   }
 });
+
+test("validate rejects non-array permissions without crashing", (t) => {
+  const cwd = tempProject(t);
+  assert.equal(run(["new", "Permission Shape Test"], cwd).status, 0);
+  const manifestPath = path.join(cwd, "permission-shape-test", "manifest.json");
+  const original = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  for (const [name, permissions] of [["object", {identity: true}], ["string", "identity"], ["null", null]]) {
+    fs.writeFileSync(manifestPath, JSON.stringify({...original, permissions}, null, 2));
+    const result = run(["validate", manifestPath], cwd);
+    assert.notEqual(result.status, 0, `expected rejection for ${name} permissions`);
+    assert.match(result.stderr, /permissions contains an unsupported scope/);
+    assert.doesNotMatch(result.stderr, /TypeError|SyntaxError/);
+  }
+});
