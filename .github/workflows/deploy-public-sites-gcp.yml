@@ -1,0 +1,118 @@
+name: Deploy Itunda Public Sites to Google Cloud
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "sites/public/**"
+      - "sites/itunda/**"
+      - "sites/business/**"
+      - "sites/developers/**"
+      - "services/blog/**"
+      - "yarn.lock"
+      - ".github/workflows/deploy-public-sites-gcp.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  REGION: ${{ vars.GCP_REGION || 'asia-northeast3' }}
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'itunda-org' }}
+  GAR_REPOSITORY: ${{ vars.GAR_REPOSITORY || 'itunda' }}
+  RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT || 'itunda-api@itunda-org.iam.gserviceaccount.com' }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - product: itunda-public-site
+            source: sites/itunda
+            build_blog: false
+          - product: itunda-business-site
+            source: sites/business
+            build_blog: false
+          - product: itunda-developers-site
+            source: sites/developers
+            build_blog: false
+          - product: itunda-tech-blog
+            source: services/blog/dist
+            build_blog: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        if: matrix.build_blog
+        run: corepack enable
+
+      - name: Install monorepo dependencies
+        if: matrix.build_blog
+        run: yarn install --immutable
+
+      - name: Build Itunda Tech
+        if: matrix.build_blog
+        run: yarn workspace itunda-tech-blog build
+
+      - name: Assemble shared IDS assets
+        if: ${{ !matrix.build_blog }}
+        run: |
+          cp sites/public/ids.css "${{ matrix.source }}/ids.css"
+          cp sites/public/theme.js "${{ matrix.source }}/theme.js"
+
+      - name: Prepare static-site container
+        run: |
+          cat > "${{ matrix.source }}/Dockerfile.gcp-static" <<'EOF'
+          FROM nginx:1.28-alpine
+          COPY . /usr/share/nginx/html/
+          EXPOSE 8080
+          RUN printf 'server { listen 8080; server_name _; root /usr/share/nginx/html; index index.html; location / { try_files $uri $uri/ /index.html; } }\n' > /etc/nginx/conf.d/default.conf
+          EOF
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Artifact Registry authentication
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build and push site image
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${GAR_REPOSITORY}/${{ matrix.product }}:${GITHUB_SHA}"
+          echo "IMAGE=${IMAGE}" >> "${GITHUB_ENV}"
+          docker build -f "${{ matrix.source }}/Dockerfile.gcp-static" -t "${IMAGE}" "${{ matrix.source }}"
+          docker push "${IMAGE}"
+
+      - name: Deploy site to Cloud Run
+        run: |
+          gcloud run deploy "${{ matrix.product }}" \
+            --image="${IMAGE}" \
+            --region="${REGION}" \
+            --project="${PROJECT_ID}" \
+            --platform=managed \
+            --port=8080 \
+            --memory=256Mi \
+            --cpu=1 \
+            --min-instances=0 \
+            --max-instances=5 \
+            --service-account="${RUNTIME_SERVICE_ACCOUNT}" \
+            --allow-unauthenticated \
+            --quiet
+
+      - name: Verify deployed site
+        run: |
+          URL="$(gcloud run services describe "${{ matrix.product }}" --region="${REGION}" --project="${PROJECT_ID}" --format='value(status.url)')"
+          curl --fail --silent --show-error --location --max-time 30 "${URL}/" -o /tmp/site.html
+          test -s /tmp/site.html
+          grep -Eiq '<(html|body|div|main|script)[ >]' /tmp/site.html
+          echo "Verified ${{ matrix.product }} at ${URL}"
