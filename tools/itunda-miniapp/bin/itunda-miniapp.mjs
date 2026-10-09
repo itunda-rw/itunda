@@ -47,6 +47,9 @@ function normalizeApiBaseUrl(value) {
 }
 
 function resolveBundlePath(root, bundleFile) {
+  if (typeof bundleFile !== "string" || !bundleFile || path.isAbsolute(bundleFile)) {
+    throw new Error("bundle file must be a relative path inside the mini-app project directory");
+  }
   const candidate = path.resolve(root, bundleFile);
   const relativeCandidate = path.relative(root, candidate);
   if (!relativeCandidate || relativeCandidate === ".." || relativeCandidate.startsWith(".." + path.sep) || path.isAbsolute(relativeCandidate)) {
@@ -172,7 +175,7 @@ function release(file) {
       manifestSha256,
       bundleSha256,
       bundleSizeBytes,
-      bundleFile: bundleSha256 ? bundleFile : null,
+      bundleFile: path.relative(root, bundlePath).split(path.sep).join("/"),
       appId: m.id,
       version: m.version,
       bundleUrl: bundle,
