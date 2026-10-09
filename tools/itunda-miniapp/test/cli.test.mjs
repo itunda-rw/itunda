@@ -86,6 +86,18 @@ test("submit requires a release manifest before network access", (t) => {
 });
 
 
+test("release rejects bundle paths that escape the project directory", (t) => {
+  const cwd = tempProject(t);
+  assert.equal(run(["new", "Path Test"], cwd).status, 0);
+  const project = path.join(cwd, "path-test");
+  const outside = path.join(cwd, "outside.js");
+  fs.writeFileSync(outside, "not part of the app");
+  const result = run(["release", project, "--bundle-file", "../outside.js"], cwd);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /bundle file must stay inside the mini-app project directory/);
+  assert.equal(fs.existsSync(path.join(project, "release.manifest.json")), false);
+});
+
 test("release requires an existing non-empty built bundle and records its digest", (t) => {
   const cwd = tempProject(t);
   assert.equal(run(["new", "Bundle Test"], cwd).status, 0);
