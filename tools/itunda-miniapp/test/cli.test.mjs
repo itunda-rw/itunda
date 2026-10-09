@@ -3,9 +3,10 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import {fileURLToPath} from "node:url";
 import {spawnSync} from "node:child_process";
 
-const cli = path.resolve("tools/itunda-miniapp/bin/itunda-miniapp.mjs");
+const cli = fileURLToPath(new URL("../bin/itunda-miniapp.mjs", import.meta.url));
 
 function run(args, cwd, extraEnv = {}) {
   return spawnSync(process.execPath, [cli, ...args], {
