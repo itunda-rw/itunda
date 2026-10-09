@@ -179,6 +179,7 @@ async function submit(file) {
     if (!release.releaseId || !/^[a-f0-9]{64}$/.test(release.manifestSha256 || "") || !/^[a-f0-9]{64}$/.test(release.bundleSha256 || "") || !Number.isInteger(release.bundleSizeBytes) || release.bundleSizeBytes <= 0 || typeof release.bundleFile !== "string" || !release.bundleFile) {
       return fail("release.manifest.json has incomplete integrity metadata; rerun release with --bundle-file pointing to the built bundle before submitting");
     }
+    if (release.appId !== m.id || release.version !== m.version || release.bundleUrl !== m.entry.bundleUrl) return fail("release metadata does not match manifest.json; regenerate the release");
     const currentManifestSha256 = crypto.createHash("sha256").update(JSON.stringify(m)).digest("hex");
     if (release.manifestSha256 !== currentManifestSha256) return fail("release manifest digest does not match manifest.json; regenerate the release");
     const bundlePath = resolveBundlePath(root, release.bundleFile);
