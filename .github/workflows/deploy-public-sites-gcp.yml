@@ -96,6 +96,14 @@ jobs:
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: Verify dedicated runtime identity and attach permission
+        run: |
+          gcloud iam service-accounts describe "${PUBLIC_SITE_RUNTIME_SERVICE_ACCOUNT}" --project="${PROJECT_ID}" --format='value(email)' >/dev/null
+          POLICY="$(gcloud iam service-accounts get-iam-policy "${PUBLIC_SITE_RUNTIME_SERVICE_ACCOUNT}" --project="${PROJECT_ID}" --format=json)"
+          echo "${POLICY}" | jq -e --arg deployer "serviceAccount:${{ vars.GCP_SERVICE_ACCOUNT || 'github-deployer@itunda-org.iam.gserviceaccount.com' }}" '.bindings[]? | select(.role == "roles/iam.serviceAccountUser") | .members[]? | select(. == $deployer)' >/dev/null || {
+            echo "Missing roles/iam.serviceAccountUser binding for the GitHub deployer on ${PUBLIC_SITE_RUNTIME_SERVICE_ACCOUNT}" >&2
+            exit 1
+          }
       - name: Configure Artifact Registry authentication
         run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
 
