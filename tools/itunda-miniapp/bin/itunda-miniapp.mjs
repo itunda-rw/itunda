@@ -29,7 +29,7 @@ function normalizeApiBaseUrl(value) {
   if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && loopback.has(parsed.hostname))) {
     throw new Error("ITUNDA_API_BASE_URL must use HTTPS; HTTP is allowed only for localhost tests");
   }
-  return value.replace(/\\/$/, "");
+  return value.endsWith("/") ? value.slice(0, -1) : value;
 }
 
 function resolveBundlePath(root, bundleFile) {
