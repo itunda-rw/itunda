@@ -48,17 +48,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Enable Corepack
+      - name: Set up Node.js for Tech blog
         if: matrix.build_blog
-        run: corepack enable
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: services/blog/package-lock.json
 
-      - name: Install monorepo dependencies
+      - name: Install Tech blog dependencies
         if: matrix.build_blog
-        run: yarn install --immutable
+        run: npm ci --prefix services/blog
 
       - name: Build Itunda Tech
         if: matrix.build_blog
-        run: yarn workspace itunda-tech-blog build
+        run: npm run build --prefix services/blog
 
       - name: Assemble shared IDS assets
         if: ${{ !matrix.build_blog }}
