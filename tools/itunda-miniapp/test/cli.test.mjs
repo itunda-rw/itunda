@@ -72,17 +72,26 @@ test("submit rejects incomplete release integrity metadata before network access
 });
 
 
-test("submit rejects insecure non-loopback API URLs before sending credentials", (t) => {
+test("submit rejects insecure or ambiguous API URLs before sending credentials", (t) => {
   const cwd = tempProject(t);
   assert.equal(run(["new", "API URL Test"], cwd).status, 0);
   const project = path.join(cwd, "api-url-test");
-  const result = run(["submit", project], cwd, {
-    ITUNDA_API_KEY: "test-only-not-a-real-key",
-    ITUNDA_API_BASE_URL: "http://api.example.com",
-  });
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /ITUNDA_API_BASE_URL must use HTTPS/);
-  assert.doesNotMatch(result.stderr, /fetch failed|ECONNREFUSED/);
+  const cases = [
+    ["http://api.example.com", /must use HTTPS/],
+    ["https://user:pass@api.example.com", /embedded credentials/],
+    ["https://api.example.com?token=unsafe", /query string or fragment/],
+    ["https://api.example.com#fragment", /query string or fragment/],
+    ["not-a-url", /valid absolute URL/],
+  ];
+  for (const [url, expected] of cases) {
+    const result = run(["submit", project], cwd, {
+      ITUNDA_API_KEY: "test-only-not-a-real-key",
+      ITUNDA_API_BASE_URL: url,
+    });
+    assert.notEqual(result.status, 0, `expected rejection for ${url}`);
+    assert.match(result.stderr, expected, `unexpected error for ${url}`);
+    assert.doesNotMatch(result.stderr, /fetch failed|ECONNREFUSED/);
+  }
 });
 
 test("submit requires a release manifest before network access", (t) => {
