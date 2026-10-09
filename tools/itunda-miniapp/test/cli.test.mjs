@@ -119,6 +119,26 @@ test("release requires an existing non-empty built bundle and records its digest
   assert.match(release.releaseId, /^[a-f0-9]{24}$/);
 });
 
+test("submit rejects release metadata changed after release generation", (t) => {
+  const cwd = tempProject(t);
+  assert.equal(run(["new", "Metadata Test"], cwd).status, 0);
+  const project = path.join(cwd, "metadata-test");
+  fs.mkdirSync(path.join(project, "dist"));
+  fs.writeFileSync(path.join(project, "dist", "app.js"), "valid bundle");
+  assert.equal(run(["release", project, "--bundle-file", "dist/app.js"], cwd).status, 0);
+  const releasePath = path.join(project, "release.manifest.json");
+  const release = JSON.parse(fs.readFileSync(releasePath, "utf8"));
+  release.bundleUrl = "https://attacker.example/changed.js";
+  fs.writeFileSync(releasePath, JSON.stringify(release, null, 2));
+  const result = run(["submit", project], cwd, {
+    ITUNDA_API_KEY: "test-only-not-a-real-key",
+    ITUNDA_API_BASE_URL: "http://127.0.0.1:1",
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /release metadata does not match manifest\.json/);
+  assert.doesNotMatch(result.stderr, /fetch failed|ECONNREFUSED/);
+});
+
 test("submit detects bundle tampering before network access", (t) => {
   const cwd = tempProject(t);
   assert.equal(run(["new", "Tamper Test"], cwd).status, 0);
