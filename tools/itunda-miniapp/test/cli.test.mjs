@@ -259,3 +259,30 @@ test("validate rejects non-array permissions without crashing", (t) => {
     assert.doesNotMatch(result.stderr, /TypeError|SyntaxError/);
   }
 });
+
+
+test("release rejects absolute bundle paths even when they point inside the project", (t) => {
+  const cwd = tempProject(t);
+  assert.equal(run(["new", "Absolute Path Test"], cwd).status, 0);
+  const project = path.join(cwd, "absolute-path-test");
+  const bundlePath = path.join(project, "dist", "app.js");
+  fs.mkdirSync(path.dirname(bundlePath), {recursive: true});
+  fs.writeFileSync(bundlePath, "valid bundle");
+  const result = run(["release", project, "--bundle-file", bundlePath], cwd);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /bundle file must be a relative path/);
+  assert.equal(fs.existsSync(path.join(project, "release.manifest.json")), false);
+});
+
+test("release stores bundle paths as portable project-relative paths", (t) => {
+  const cwd = tempProject(t);
+  assert.equal(run(["new", "Portable Path Test"], cwd).status, 0);
+  const project = path.join(cwd, "portable-path-test");
+  fs.mkdirSync(path.join(project, "dist"));
+  fs.writeFileSync(path.join(project, "dist", "app.js"), "valid bundle");
+  const result = run(["release", project, "--bundle-file", "./dist/app.js"], cwd);
+  assert.equal(result.status, 0, result.stderr);
+  const release = JSON.parse(fs.readFileSync(path.join(project, "release.manifest.json"), "utf8"));
+  assert.equal(release.bundleFile, "dist/app.js");
+  assert.equal(path.isAbsolute(release.bundleFile), false);
+});
