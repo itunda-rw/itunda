@@ -84,8 +84,8 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
-          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER || 'projects/1019859645463/locations/global/workloadIdentityPools/github/providers/itunda-github' }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT || 'github-deployer@itunda-org.iam.gserviceaccount.com' }}
 
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
