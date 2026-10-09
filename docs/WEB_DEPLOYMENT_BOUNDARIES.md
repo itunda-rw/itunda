@@ -53,27 +53,10 @@ Android and iOS distribution remain separate from web hosting. Shared Itunda bra
 
 The public-site workflow deploys Cloud Run services but intentionally does not mutate the production load balancer or DNS. Complete these steps in order; do not switch host rules before the corresponding service passes its smoke test.
 
-### 1. Prepare a dedicated runtime identity
+### 1. Runtime identity
 
-Create a runtime identity for static public sites rather than reusing the API's runtime identity:
+The static-site containers serve public HTML/CSS/JS and do not call Google APIs. The deployment workflow therefore omits an explicit `--service-account` override and uses Cloud Run's project-default runtime identity. This avoids a custom service-account `actAs` binding becoming a deployment blocker. Before production rollout, confirm the project-default runtime identity's IAM roles are appropriate for a static web workload; do not grant it additional permissions for these sites. If a dedicated least-privilege runtime identity is introduced later, grant the GitHub deployer `roles/iam.serviceAccountUser` on that identity and restore an explicit identity check in the workflow.
 
-```sh
-gcloud iam service-accounts create itunda-public-site \
-  --project=itunda-org \
-  --display-name="Itunda public sites Cloud Run runtime"
-```
-
-Grant only the runtime permissions the static containers actually need (normally none beyond logging/monitoring defaults). Allow the GitHub deployer to attach this identity by granting `roles/iam.serviceAccountUser` on this specific service account, not project-wide:
-
-```sh
-gcloud iam service-accounts add-iam-policy-binding \
-  itunda-public-site@itunda-org.iam.gserviceaccount.com \
-  --project=itunda-org \
-  --member="serviceAccount:github-deployer@itunda-org.iam.gserviceaccount.com" \
-  --role="roles/iam.serviceAccountUser"
-```
-
-Then configure the public-site Cloud Run deployment to explicitly use `itunda-public-site@itunda-org.iam.gserviceaccount.com`. Verify the deployer can attach this identity before dispatching the production workflow. Do not use `itunda-api@itunda-org.iam.gserviceaccount.com` as the static-site runtime identity.
 
 ### 2. Deploy and verify services
 
