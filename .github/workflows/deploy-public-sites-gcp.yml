@@ -67,7 +67,7 @@ jobs:
 
       - name: Prepare static-site container
         run: |
-          cat > "${{ matrix.source }}/Dockerfile.gcp-static" <<'EOF'
+          cat > /tmp/Dockerfile.gcp-static <<'EOF'
           FROM nginx:1.28-alpine
           COPY . /usr/share/nginx/html/
           EXPOSE 8080
@@ -90,7 +90,7 @@ jobs:
         run: |
           IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${GAR_REPOSITORY}/${{ matrix.product }}:${GITHUB_SHA}"
           echo "IMAGE=${IMAGE}" >> "${GITHUB_ENV}"
-          docker build -f "${{ matrix.source }}/Dockerfile.gcp-static" -t "${IMAGE}" "${{ matrix.source }}"
+          docker build -f /tmp/Dockerfile.gcp-static -t "${IMAGE}" "${{ matrix.source }}"
           docker push "${IMAGE}"
 
       - name: Deploy site to Cloud Run
