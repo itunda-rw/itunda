@@ -21,7 +21,7 @@ function writeJson(file, value) {
 }
 
 function usage() {
-  console.log("Itunda mini-app developer tool\n\n  new <name>       Scaffold a mini-app\n  plan [path]      Show the development/release plan\n  dev [path]       Start the local development command when configured\n  build [path]     Build a mini-app when configured\n  validate [path]  Validate a manifest and platform rules\n  test [path]      Run the project's configured tests\n  release [path]   Generate an immutable release manifest (no production publish)\\n  submit [path]    Submit a mini-app for human review using ITUNDA_API_KEY");
+  console.log("Itunda mini-app developer tool\n\n  new <name>       Scaffold a mini-app\n  plan [path]      Show the development/release plan\n  dev [path]       Start the local development command when configured\n  build [path]     Build a mini-app when configured\n  validate [path]  Validate a manifest and platform rules\n  test [path]      Run the project's configured tests\n  release [path]   Generate an immutable release manifest (no production publish)\n  submit [path]    Submit a mini-app for human review using ITUNDA_API_KEY");
 }
 function fail(message) {
   console.error("x " + message);
