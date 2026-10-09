@@ -122,4 +122,13 @@ jobs:
           curl --fail --silent --show-error --location --max-time 30 "${URL}/" -o /tmp/site.html
           test -s /tmp/site.html
           grep -Eiq '<(html|body|div|main|script)[ >]' /tmp/site.html
-          echo "Verified ${{ matrix.product }} at ${URL}"
+          if [ "${{ matrix.build_blog }}" = "true" ]; then
+            grep -q 'assets/' /tmp/site.html
+            curl --fail --silent --show-error --location --max-time 30 "${URL}/brand/itunda-icon.svg" -o /dev/null
+          else
+            for asset in ids.css theme.js brand/itunda-app-icon.svg; do
+              curl --fail --silent --show-error --location --max-time 30 "${URL}/${asset}" -o /dev/null
+            done
+            grep -q 'brand/itunda-app-icon.svg' /tmp/site.html
+          fi
+          echo "Verified ${{ matrix.product }} HTML and required brand/theme assets at ${URL}"
