@@ -20,6 +20,16 @@ function writeJson(file, value) {
   fs.writeFileSync(file, JSON.stringify(value, null, 2) + "\n");
 }
 
+function isValidHttpsUrl(value) {
+  if (typeof value !== "string") return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" && Boolean(parsed.hostname) && !parsed.username && !parsed.password;
+  } catch {
+    return false;
+  }
+}
+
 function normalizeApiBaseUrl(value) {
   let parsed;
   try { parsed = new URL(value); } catch { throw new Error("ITUNDA_API_BASE_URL must be a valid absolute URL"); }
@@ -103,8 +113,8 @@ function validate(file) {
   if (typeof m.version !== "string" || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(m.version)) e.push("version must be semantic");
   if (!categories.has(m.category)) e.push("category is invalid");
   if (m.entry?.type !== "saronite") e.push("entry.type must be saronite");
-  if (typeof m.entry?.bundleUrl !== "string" || !m.entry.bundleUrl.startsWith("https://")) e.push("entry.bundleUrl must be HTTPS");
-  if (typeof m.icon?.url !== "string" || !m.icon.url.startsWith("https://")) e.push("icon.url must be HTTPS");
+  if (!isValidHttpsUrl(m.entry?.bundleUrl)) e.push("entry.bundleUrl must be a valid HTTPS URL without embedded credentials");
+  if (!isValidHttpsUrl(m.icon?.url)) e.push("icon.url must be a valid HTTPS URL without embedded credentials");
   if (!Array.isArray(m.permissions) || m.permissions.some(p => !permissions.has(p))) e.push("permissions contains an unsupported scope");
   if (new Set(m.permissions || []).size !== (m.permissions || []).length) e.push("permissions must not contain duplicates");
   if (m.brandTheme) for (const mode of ["light","dark"]) for (const role of ["brand","brandStrong","brandSurface","onBrand","focus","pressed"]) if (!/^#[0-9A-Fa-f]{6}$/.test(m.brandTheme?.[mode]?.[role] || "")) e.push("brandTheme."+mode+"."+role+" must be six-digit hex");
@@ -140,7 +150,7 @@ function release(file) {
     const root = projectRoot(file || ".");
     const m = readManifest(path.join(root, "manifest.json"));
     const bundle = m.entry?.bundleUrl;
-    if (!bundle?.startsWith("https://")) return fail("release requires an HTTPS bundleUrl");
+    if (!isValidHttpsUrl(bundle)) return fail("release requires a valid HTTPS bundleUrl without embedded credentials");
     const canonical = JSON.stringify(m);
     const manifestSha256 = crypto.createHash("sha256").update(canonical).digest("hex");
     const bundleFile = flag("--bundle-file");
