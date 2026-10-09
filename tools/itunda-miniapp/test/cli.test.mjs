@@ -217,3 +217,15 @@ test("submit detects bundle tampering before network access", (t) => {
   assert.match(result.stderr, /bundle integrity check failed/);
   assert.doesNotMatch(result.stderr, /fetch failed|ECONNREFUSED/);
 });
+
+test("validate rejects valid JSON that is not a manifest object", (t) => {
+  const cwd = tempProject(t);
+  for (const [name, value] of [["null", "null"], ["array", "[]"], ["string", '"manifest"']]) {
+    const manifestPath = path.join(cwd, name + ".json");
+    fs.writeFileSync(manifestPath, value);
+    const result = run(["validate", manifestPath], cwd);
+    assert.notEqual(result.status, 0, `expected rejection for ${value}`);
+    assert.match(result.stderr, /manifest must be a JSON object/);
+    assert.doesNotMatch(result.stderr, /TypeError|SyntaxError/);
+  }
+});
