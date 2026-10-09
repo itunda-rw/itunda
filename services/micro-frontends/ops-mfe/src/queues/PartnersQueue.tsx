@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { usePagedQueue } from '../hooks/useQueue';
-import { activatePartnerMiniAppRelease, decidePartnerMiniApp, fetchPartnerMiniAppReleases, rollbackPartnerMiniAppRelease, stagePartnerMiniAppRelease, type PartnerMiniAppRelease, type PartnerMiniAppSubmission } from '../lib/queues';
+import { activatePartnerMiniAppRelease, decidePartnerMiniApp, fetchPartnersQueue, fetchPartnerMiniAppReleases, rollbackPartnerMiniAppRelease, stagePartnerMiniAppRelease, type PartnerMiniAppRelease, type PartnerMiniAppSubmission } from '../lib/queues';
 import { ApiError } from '../lib/api';
 import { QueueEmpty, QueueError, QueueHeader, QueueLoadMore, QueueSkeleton } from '../QueueState';
 
