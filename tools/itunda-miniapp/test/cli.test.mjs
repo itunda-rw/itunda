@@ -30,6 +30,9 @@ test("new scaffolds a manifest that validates", (t) => {
   const checked = run(["validate", path.join(project, "manifest.json")], cwd);
   assert.equal(checked.status, 0, checked.stderr);
   assert.match(checked.stdout, /valid Itunda mini-app manifest/);
+  const agentRules = fs.readFileSync(path.join(project, "AGENTS.md"), "utf8");
+  assert.match(agentRules, /# Itunda mini-app rules\n\n- Use IDS/);
+  assert.doesNotMatch(agentRules, /\\\\n/);
 });
 
 test("submit fails closed when a manifest capability has no API scope mapping", (t) => {
@@ -64,5 +67,19 @@ test("submit rejects incomplete release integrity metadata before network access
   });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /incomplete integrity metadata/);
+  assert.doesNotMatch(result.stderr, /fetch failed|ECONNREFUSED/);
+});
+
+
+test("submit requires a release manifest before network access", (t) => {
+  const cwd = tempProject(t);
+  assert.equal(run(["new", "Missing Release"], cwd).status, 0);
+  const project = path.join(cwd, "missing-release");
+  const result = run(["submit", project], cwd, {
+    ITUNDA_API_KEY: "test-only-not-a-real-key",
+    ITUNDA_API_BASE_URL: "http://127.0.0.1:1",
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /release\.manifest\.json is required/);
   assert.doesNotMatch(result.stderr, /fetch failed|ECONNREFUSED/);
 });
