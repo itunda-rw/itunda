@@ -57,8 +57,8 @@ function scaffold(name) {
       dark: {brand:"#8A88FF",brandStrong:"#A9A7FF",brandSurface:"#2C2B46",onBrand:"#111118",focus:"#A9A7FF",pressed:"#8A88FF"}
     }
   };
-  fs.writeFileSync(path.join(directory,"manifest.json"), JSON.stringify(manifest,null,2)+"\\n");
-  fs.writeFileSync(path.join(directory,"src","README.md"), "# " + name.trim() + "\\n\\nBuild feature UI here and keep host capabilities behind explicit Saronite permissions.\\n");
+  fs.writeFileSync(path.join(directory,"manifest.json"), JSON.stringify(manifest,null,2)+"\n");
+  fs.writeFileSync(path.join(directory,"src","README.md"), "# " + name.trim() + "\n\nBuild feature UI here and keep host capabilities behind explicit Saronite permissions.\n");
   fs.writeFileSync(path.join(directory,"AGENTS.md"), "# Itunda mini-app rules\\n\\n- Use IDS component anatomy and accessibility states.\\n- Keep partner branding inside semantic brand-theme roles.\\n- Request only permissions actually needed.\\n- Do not embed host credentials or unrestricted native APIs.\\n- Provide loading, empty, error, unsupported and reduced-motion states.\\n");
   console.log("created " + directory);
 }
