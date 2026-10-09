@@ -14,7 +14,11 @@ function projectRoot(file = ".") {
 function readManifest(file = "manifest.json") {
   const target = projectRoot(file);
   if (!fs.existsSync(target)) throw new Error("manifest not found: " + target);
-  return JSON.parse(fs.readFileSync(target, "utf8"));
+  const manifest = JSON.parse(fs.readFileSync(target, "utf8"));
+  if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
+    throw new Error("manifest must be a JSON object");
+  }
+  return manifest;
 }
 function writeJson(file, value) {
   fs.writeFileSync(file, JSON.stringify(value, null, 2) + "\n");
@@ -106,6 +110,7 @@ function validate(file) {
   if (!fs.existsSync(target)) return fail("manifest not found: " + target);
   let m;
   try { m = JSON.parse(fs.readFileSync(target,"utf8")); } catch { return fail("manifest is not valid JSON"); }
+  if (!m || typeof m !== "object" || Array.isArray(m)) return fail("manifest must be a JSON object");
   const e = [];
   if (m.manifestVersion !== 1) e.push("manifestVersion must be 1");
   if (typeof m.id !== "string" || !/^[a-z0-9]+(?:[.-][a-z0-9]+)*$/.test(m.id)) e.push("id is invalid");
