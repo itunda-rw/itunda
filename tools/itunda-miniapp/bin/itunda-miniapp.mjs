@@ -21,7 +21,7 @@ function writeJson(file, value) {
 }
 
 function usage() {
-  console.log("Itunda mini-app developer tool\n\n  new <name>       Scaffold a mini-app\n  plan [path]      Show the development/release plan\n  dev [path]       Start the local development command when configured\n  build [path]     Build a mini-app when configured\n  validate [path]  Validate a manifest and platform rules\n  test [path]      Run the project's configured tests\n  release [path]   Generate an immutable release manifest (no production publish)");
+  console.log("Itunda mini-app developer tool\n\n  new <name>       Scaffold a mini-app\n  plan [path]      Show the development/release plan\n  dev [path]       Start the local development command when configured\n  build [path]     Build a mini-app when configured\n  validate [path]  Validate a manifest and platform rules\n  test [path]      Run the project's configured tests\n  release [path]   Generate an immutable release manifest (no production publish)\\n  submit [path]    Submit a mini-app for human review using ITUNDA_API_KEY");
 }
 function fail(message) {
   console.error("x " + message);
@@ -148,10 +148,16 @@ async function submit(file) {
     if (process.exitCode) return;
     const releasePath = path.join(root, "release.manifest.json");
     const release = fs.existsSync(releasePath) ? JSON.parse(fs.readFileSync(releasePath, "utf8")) : null;
+    // Manifest capabilities and partner API scopes are different contracts. Never
+    // silently drop a requested capability: the current submission API only accepts
+    // explicit read scopes, and only identity has a safe mapping today.
     const permissionMap = {identity:"profile:read"};
-    const requested = [...new Set((m.permissions || []).map((p) => permissionMap[p]).filter(Boolean))];
-    const unsupported = (m.permissions || []).filter((p) => !permissionMap[p] && !["navigation","share","storage","notifications","payments","location","camera","contacts"].includes(p));
-    if (unsupported.length) return fail("manifest permissions cannot be submitted to the partner API: " + unsupported.join(", "));
+    const unmapped = [...new Set((m.permissions || []).filter((p) => !permissionMap[p]))];
+    if (unmapped.length) return fail("cannot submit manifest permissions without an explicit partner API scope mapping: " + unmapped.join(", ") + ". Currently supported manifest permission: identity (maps to profile:read)");
+    const requested = [...new Set((m.permissions || []).map((p) => permissionMap[p]))];
+    if (release && (!release.releaseId || !release.manifestSha256 || !release.bundleSha256 || !Number.isInteger(release.bundleSizeBytes) || release.bundleSizeBytes < 0)) {
+      return fail("release.manifest.json has incomplete integrity metadata; rerun release with --bundle-file pointing to the built bundle before submitting");
+    }
     const response = await fetch(base + "/api/v1/partners/mini-apps", {
       method: "POST",
       headers: {"Content-Type":"application/json","X-Api-Key":key},
