@@ -59,7 +59,7 @@ function scaffold(name) {
   };
   fs.writeFileSync(path.join(directory,"manifest.json"), JSON.stringify(manifest,null,2)+"\n");
   fs.writeFileSync(path.join(directory,"src","README.md"), "# " + name.trim() + "\n\nBuild feature UI here and keep host capabilities behind explicit Saronite permissions.\n");
-  fs.writeFileSync(path.join(directory,"AGENTS.md"), "# Itunda mini-app rules\\n\\n- Use IDS component anatomy and accessibility states.\\n- Keep partner branding inside semantic brand-theme roles.\\n- Request only permissions actually needed.\\n- Do not embed host credentials or unrestricted native APIs.\\n- Provide loading, empty, error, unsupported and reduced-motion states.\\n");
+  fs.writeFileSync(path.join(directory,"AGENTS.md"), "# Itunda mini-app rules\n\n- Use IDS component anatomy and accessibility states.\n- Keep partner branding inside semantic brand-theme roles.\n- Request only permissions actually needed.\n- Do not embed host credentials or unrestricted native APIs.\n- Provide loading, empty, error, unsupported and reduced-motion states.\n");
   console.log("created " + directory);
 }
 function validate(file) {
@@ -147,7 +147,8 @@ async function submit(file) {
     validate(path.join(root, "manifest.json"));
     if (process.exitCode) return;
     const releasePath = path.join(root, "release.manifest.json");
-    const release = fs.existsSync(releasePath) ? JSON.parse(fs.readFileSync(releasePath, "utf8")) : null;
+    if (!fs.existsSync(releasePath)) return fail("release.manifest.json is required; run release with --bundle-file pointing to the built bundle before submitting");
+    const release = JSON.parse(fs.readFileSync(releasePath, "utf8"));
     // Manifest capabilities and partner API scopes are different contracts. Never
     // silently drop a requested capability: the current submission API only accepts
     // explicit read scopes, and only identity has a safe mapping today.
