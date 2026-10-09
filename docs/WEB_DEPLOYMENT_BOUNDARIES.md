@@ -1,79 +1,49 @@
 # Itunda Web Deployment Boundaries
 
-Web applications and public/information sites are separate deployment products.
+**Production hosting policy: Google Cloud Platform only.** GitHub Actions is the CI/CD runner; it must deploy production workloads to GCP. GitHub Pages and Cloudflare Pages are not production targets.
 
-## Cloudflare Pages projects
+## Product boundaries
 
-| Cloudflare Pages project | Product | Repository source | Build command | Output directory |
-|---|---|---|---|---|
-| `itunda-app` | Customer web application | `services/micro-frontends/host-app` + bank/KYC/maps remotes | `bash scripts/cloudflare-build-web-app.sh customer` | `services/micro-frontends/host-app/dist` |
-| `itunda-business-app` | Merchant/business web application | `services/micro-frontends/merchant-mfe` | `bash scripts/cloudflare-build-web-app.sh business` | `services/micro-frontends/merchant-mfe/dist` |
+| Product | Intended hostname | GCP service / deployment boundary |
+|---|---|---|
+| Itunda public site | `itunda.im` | Dedicated public-site service and host rule |
+| Consumer app | `app.itunda.im` | Cloud Run `itunda-web` |
+| Itunda Business public site | `business.itunda.im` | Dedicated business-site service and host rule |
+| Merchant app | `business-app.itunda.im` | Cloud Run `itunda-business-app` |
+| Itunda Developers | `developers.itunda.im` | Dedicated developer-site service and host rule |
+| Itunda Tech | `tech-blog.itunda.im` | Dedicated tech-site service and host rule |
+| API | `api.itunda.im` | Cloud Run `itunda-api` |
 
-Both projects are standalone web applications. They must not be treated as the public Itunda or public Business information sites.
+Public information sites must remain separate products from the authenticated consumer and merchant apps. Do not route every hostname to the same generic site.
 
-## Public / information sites
+## Existing GCP deployment services
 
-These remain separate Cloudflare Pages products:
+The verified Cloud Run inventory in `asia-northeast3` contains:
 
-- Itunda public site
-- Itunda Business public/information site
-- Itunda Developers
-- Itunda Tech Blog
+- `itunda-api`
+- `itunda-web`
+- `itunda-business-app`
 
-The public sites should not be used as the deployment target for the authenticated customer or merchant applications.
+The global HTTPS load balancer currently has `itunda-web-backend` as the URL map's default service. Dedicated public-site services and host rules must be provisioned and verified before claiming the public-site hostname split is complete. Domain DNS being configured does not by itself prove that each hostname reaches the correct product.
 
-## Customer application
+## App deployment contracts
 
-`itunda-app` is a standalone root-hosted Vite application.
+- Consumer app source: `services/micro-frontends/host-app` plus its bundled remotes; image build: `services/micro-frontends/Dockerfile.gcp`; Cloud Run service: `itunda-web`.
+- Merchant app source: `services/micro-frontends/merchant-mfe`; image build: `services/micro-frontends/Dockerfile.business-gcp`; Cloud Run service: `itunda-business-app`.
+- API source: `services/backend`; Cloud Run service: `itunda-api`.
+- GCP deployments use Artifact Registry and GitHub Actions Workload Identity Federation. Do not add long-lived service-account keys to repository secrets.
 
-The production shell is served from `/`, not `/app/`.
+## Required release verification
 
-Its Module Federation remotes are assembled into the same Pages artifact:
+For every product hostname, verify independently:
 
-- `/remotes/maps/`
-- `/remotes/bank/`
-- `/remotes/kyc/`
+1. DNS points at the GCP load balancer or the intended GCP custom-domain target.
+2. HTTPS certificate is active.
+3. Host-based routing reaches the intended product, not the URL map's unrelated default.
+4. HTML, JS/CSS bundles, canonical Itunda brand assets and splash screen load.
+5. Browser startup has no fatal errors; light and dark themes render.
+6. Consumer/business apps can reach the GCP API and complete the authentication journey.
 
-This avoids requiring a separate Pages project just to serve the customer's internal remotes.
+## Native distribution
 
-## Business application
-
-`itunda-business-app` is the standalone merchant application built from `merchant-mfe`.
-
-It is independent of the public `itunda-business` site. The public site explains the product; the app is where authenticated merchants operate their business.
-
-## Deployment architecture
-
-```
-GitHub
-  ├── public/information web source
-  ├── customer web app source
-  ├── merchant web app source
-  └── native Android/iOS source
-
-Cloudflare Pages
-  ├── Itunda public site
-  ├── Itunda Business public site
-  ├── Itunda Developers
-  ├── Itunda Tech Blog
-  ├── itunda-app
-  └── itunda-business-app
-
-Native distribution
-  ├── Android
-  └── iOS
-```
-
-GitHub Pages is not part of this deployment model.
-
-## Cloudflare configuration notes
-
-For both Pages projects:
-
-- connect the `itunda-rw/itunda` repository;
-- use branch `agent/itunda-agent-network` for this deployment lane;
-- keep the Pages output directory specific to the application above;
-- do not point either project at the repository root as a generic static site;
-- keep application environment variables separate from public-site variables.
-
-Cloudflare dashboard project creation/verification is external account state; repository configuration is committed here so the intended boundaries remain explicit and reproducible.
+Android and iOS distribution remain separate from web hosting. Shared Itunda brand assets must be used unchanged from the canonical brand package.
