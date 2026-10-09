@@ -198,6 +198,9 @@ async function submit(file) {
     if (fs.existsSync(releasePath)) {
       try { release = JSON.parse(fs.readFileSync(releasePath, "utf8")); }
       catch { return fail("release.manifest.json is not valid JSON; regenerate the release"); }
+      if (!release || typeof release !== "object" || Array.isArray(release)) {
+        return fail("release.manifest.json must be a JSON object; regenerate the release");
+      }
     }
     // Manifest capabilities and partner API scopes are different contracts. Never
     // silently drop a requested capability: the current submission API only accepts
