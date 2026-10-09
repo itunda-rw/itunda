@@ -128,6 +128,11 @@ jobs:
           grep -q 'brand/itunda-app-icon.svg' sites/business/index.html
           grep -q 'brand/itunda-app-icon.svg' sites/developers/index.html
 
+      - name: Stage canonical Itunda brand asset for Tech blog
+        run: |
+          mkdir -p services/blog/public/brand
+          cp services/micro-frontends/host-app/public/brand/itunda-app-icon.svg services/blog/public/brand/itunda-icon.svg
+
       - name: Verify canonical Tech blog brand asset
         run: cmp services/micro-frontends/host-app/public/brand/itunda-app-icon.svg services/blog/public/brand/itunda-icon.svg
 
