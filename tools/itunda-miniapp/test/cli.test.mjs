@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -81,5 +82,44 @@ test("submit requires a release manifest before network access", (t) => {
   });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /release\.manifest\.json is required/);
+  assert.doesNotMatch(result.stderr, /fetch failed|ECONNREFUSED/);
+});
+
+
+test("release requires an existing non-empty built bundle and records its digest", (t) => {
+  const cwd = tempProject(t);
+  assert.equal(run(["new", "Bundle Test"], cwd).status, 0);
+  const project = path.join(cwd, "bundle-test");
+  const missing = run(["release", project], cwd);
+  assert.notEqual(missing.status, 0);
+  assert.match(missing.stderr, /requires --bundle-file/);
+  const bundleDir = path.join(project, "dist");
+  fs.mkdirSync(bundleDir);
+  const bundlePath = path.join(bundleDir, "app.js");
+  const bytes = Buffer.from("globalThis.itundaMiniApp = true;\n");
+  fs.writeFileSync(bundlePath, bytes);
+  const released = run(["release", project, "--bundle-file", "dist/app.js"], cwd);
+  assert.equal(released.status, 0, released.stderr);
+  const release = JSON.parse(fs.readFileSync(path.join(project, "release.manifest.json"), "utf8"));
+  assert.equal(release.bundleSha256, crypto.createHash("sha256").update(bytes).digest("hex"));
+  assert.equal(release.bundleSizeBytes, bytes.length);
+  assert.equal(release.bundleFile, "dist/app.js");
+  assert.match(release.releaseId, /^[a-f0-9]{24}$/);
+});
+
+test("submit detects bundle tampering before network access", (t) => {
+  const cwd = tempProject(t);
+  assert.equal(run(["new", "Tamper Test"], cwd).status, 0);
+  const project = path.join(cwd, "tamper-test");
+  fs.mkdirSync(path.join(project, "dist"));
+  fs.writeFileSync(path.join(project, "dist", "app.js"), "original bundle");
+  assert.equal(run(["release", project, "--bundle-file", "dist/app.js"], cwd).status, 0);
+  fs.writeFileSync(path.join(project, "dist", "app.js"), "modified bundle");
+  const result = run(["submit", project], cwd, {
+    ITUNDA_API_KEY: "test-only-not-a-real-key",
+    ITUNDA_API_BASE_URL: "http://127.0.0.1:1",
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /bundle integrity check failed/);
   assert.doesNotMatch(result.stderr, /fetch failed|ECONNREFUSED/);
 });
