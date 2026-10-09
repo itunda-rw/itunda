@@ -103,6 +103,42 @@ jobs:
       - name: Build host-app
         run: yarn build
 
+  public-sites-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: services/blog/package-lock.json
+
+      - name: Verify public-site source and canonical brand asset
+        run: |
+          test -f sites/itunda/index.html
+          test -f sites/business/index.html
+          test -f sites/developers/index.html
+          test -f sites/public/ids.css
+          test -f services/micro-frontends/host-app/public/brand/itunda-app-icon.svg
+          grep -q 'business-app.itunda.im' sites/business/index.html
+          grep -q 'brand/itunda-app-icon.svg' sites/itunda/index.html
+          grep -q 'brand/itunda-app-icon.svg' sites/business/index.html
+          grep -q 'brand/itunda-app-icon.svg' sites/developers/index.html
+
+      - name: Install Tech blog dependencies
+        run: npm ci --prefix services/blog
+
+      - name: Build Tech blog
+        run: npm run build --prefix services/blog
+
+      - name: Verify Tech blog build output
+        run: |
+          test -s services/blog/dist/index.html
+          test -s services/blog/dist/brand/itunda-icon.svg
+
   api-gateway-test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
