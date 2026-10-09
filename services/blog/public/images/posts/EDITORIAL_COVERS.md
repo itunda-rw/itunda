@@ -10,4 +10,4 @@ Every Itunda Tech article is guaranteed to have a visual cover through `getEdito
 - Generated fallback covers are deterministic SVG artwork, so discovery cards and article pages never render without an image.
 - When a generated raster asset is available, store it under `public/images/posts/<slug>/hero.webp` or `hero.avif` and keep `imageAlt` descriptive.
 
-The blog is independently deployed by the Cloudflare Pages `itunda-tech` project from `services/blog`.
+The blog is built from `services/blog` and deployed as the dedicated `itunda-tech-blog` Cloud Run service on Google Cloud Platform. Its custom hostname is `tech-blog.itunda.im`.
