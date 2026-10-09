@@ -94,6 +94,20 @@ test("submit rejects insecure or ambiguous API URLs before sending credentials",
   }
 });
 
+test("submit rejects malformed release JSON before network access", (t) => {
+  const cwd = tempProject(t);
+  assert.equal(run(["new", "Malformed Release"], cwd).status, 0);
+  const project = path.join(cwd, "malformed-release");
+  fs.writeFileSync(path.join(project, "release.manifest.json"), "{not-json");
+  const result = run(["submit", project], cwd, {
+    ITUNDA_API_KEY: "test-only-not-a-real-key",
+    ITUNDA_API_BASE_URL: "https://api.itunda.im",
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /release\.manifest\.json is not valid JSON/);
+  assert.doesNotMatch(result.stderr, /SyntaxError|fetch failed|ECONNREFUSED/);
+});
+
 test("submit requires a release manifest before network access", (t) => {
   const cwd = tempProject(t);
   assert.equal(run(["new", "Missing Release"], cwd).status, 0);
