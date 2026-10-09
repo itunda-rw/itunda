@@ -24,7 +24,7 @@ The verified Cloud Run inventory in `asia-northeast3` contains:
 - `itunda-web`
 - `itunda-business-app`
 
-The global HTTPS load balancer currently has `itunda-web-backend` as the URL map's default service. Dedicated public-site services and host rules must be provisioned and verified before claiming the public-site hostname split is complete. Domain DNS being configured does not by itself prove that each hostname reaches the correct product.
+The global HTTPS load balancer currently maps `app.itunda.im`, `business.itunda.im`, `developers.itunda.im`, `itunda.im`, `tech-blog.itunda.im`, and `www.itunda.im` to the same `itunda-web` path matcher. `api.itunda.im` maps to `itunda-api`; `business-app.itunda.im` maps to `itunda-business-app`. The `itunda-web` default is therefore still serving multiple distinct public-site hostnames. Dedicated public-site services need corresponding backend services/NEGs and explicit host rules before the split is complete. Domain DNS and active TLS alone do not prove correct product routing.
 
 ## App deployment contracts
 
