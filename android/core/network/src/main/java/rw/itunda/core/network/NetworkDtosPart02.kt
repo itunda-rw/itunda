@@ -1,5 +1,3 @@
-data class MiniAppCatalogResponse(val success: Boolean, val miniApps: List<PartnerMiniAppDto>, val page: Int, val totalPages: Int)
-
 package rw.itunda.core.network
 
 import retrofit2.http.Body
@@ -13,6 +11,9 @@ import retrofit2.http.Part
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
+
+data class MiniAppCatalogResponse(val success: Boolean, val miniApps: List<PartnerMiniAppDto>, val page: Int, val totalPages: Int)
+
 
 // Mirrors services/backend/messaging's real DTOs exactly (2026-07-18) -- backs the new
 // "Talk" bottom-nav tab (Kakao-style 1:1 chat). See rw.itunda.messaging.MessagingService
