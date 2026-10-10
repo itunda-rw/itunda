@@ -1,11 +1,11 @@
 // IDS semantic color contract for native mini-app surfaces.
 // Keep these roles aligned with packages/design-tokens/tokens.json.
 export const colors = {
-  primaryIndigo: '#7472F4',
-  primaryIndigoPressed: '#625FE6',
+  primaryIndigo: '#8F89FF',
+  primaryIndigoPressed: '#6F67E8',
   background: '#F2F4F6',
   surface: '#FFFFFF',
-  surfaceBrand: '#F0EFFF',
+  surfaceBrand: '#F1EFFF',
   textPrimary: '#191F28',
   textSecondary: '#4E5968',
   textTertiary: '#6B7684',
