@@ -40,7 +40,7 @@ class SecurityConfig(
     // real external merchant's customer's browser loads it) -- CORS here only matters
     // for local dev against this same-origin page anyway, since /api/v1/pay/checkout
     // is a public GET with no credentials to protect.
-    @Value("\${itunda.cors.allowed-origins:http://localhost:5000,http://localhost:5001,http://localhost:5002,http://localhost:5003,http://localhost:5004,http://localhost:5005}")
+    @Value("\${itunda.cors.allowed-origins:http://localhost:5000,http://localhost:5001,http://localhost:5002,http://localhost:5003,http://localhost:5004,http://localhost:5005,https://itunda.im,https://www.itunda.im,https://app.itunda.im,https://business.itunda.im,https://business-app.itunda.im,https://developers.itunda.im,https://tech-blog.itunda.im}")
     private val allowedOrigins: List<String>,
 ) {
 
