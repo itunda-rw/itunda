@@ -18,13 +18,21 @@ Public information sites must remain separate products from the authenticated co
 
 ## Existing GCP deployment services
 
-The verified Cloud Run inventory in `asia-northeast3` contains:
+The production Cloud Run inventory includes the app services and dedicated public-site services `itunda-public-site`, `itunda-business-site`, `itunda-developers-site`, and `itunda-tech-blog` in `asia-northeast3`.
 
-- `itunda-api`
-- `itunda-web`
-- `itunda-business-app`
+**Configuration audit (2026-10-10):** the live global URL map `itunda-global-url-map` now has explicit host rules and separate backend services/serverless NEGs for all seven product hostnames:
 
-The global HTTPS load balancer currently maps `app.itunda.im`, `business.itunda.im`, `developers.itunda.im`, `itunda.im`, `tech-blog.itunda.im`, and `www.itunda.im` to the same `itunda-web` path matcher. `api.itunda.im` maps to `itunda-api`; `business-app.itunda.im` maps to `itunda-business-app`. The `itunda-web` default is therefore still serving multiple distinct public-site hostnames. Dedicated public-site services need corresponding backend services/NEGs and explicit host rules before the split is complete. Domain DNS and active TLS alone do not prove correct product routing.
+| Hostname | URL-map matcher | Backend service | Cloud Run target |
+|---|---|---|---|
+| `itunda.im`, `www.itunda.im` | `itunda-public-site` | `itunda-public-site-backend` | `itunda-public-site` |
+| `app.itunda.im` | `itunda-web` | `itunda-web-backend` | `itunda-web` |
+| `business.itunda.im` | `itunda-business-site` | `itunda-business-site-backend` | `itunda-business-site` |
+| `business-app.itunda.im` | `itunda-business-app` | `itunda-business-app-backend` | `itunda-business-app` |
+| `developers.itunda.im` | `itunda-developers-site` | `itunda-developers-site-backend` | `itunda-developers-site` |
+| `tech-blog.itunda.im` | `itunda-tech-blog` | `itunda-tech-blog-backend` | `itunda-tech-blog` |
+| `api.itunda.im` | `itunda-api` | `itunda-api-backend` | `itunda-api` |
+
+This is verified load-balancer configuration, not proof of successful end-to-end browser rendering, authentication, or API calls. Independently smoke-test each HTTPS hostname and app login journey before declaring production acceptance. The URL-map default remains `itunda-web-backend`; every distinct hostname must continue to have an explicit host rule.
 
 ## App deployment contracts
 
@@ -71,7 +79,7 @@ Each should return non-empty HTML and its required IDS/theme and canonical brand
 
 ### 3. Split the global HTTPS load balancer
 
-For each public site, create a regional serverless NEG in `asia-northeast3` targeting its corresponding Cloud Run service, then a global backend service. Update `itunda-global-url-map` so that:
+The dedicated serverless NEGs, global backend services, and explicit host rules are already present in the audited configuration above. Do not recreate them blindly. If a future change is needed, review the proposed URL map first and update `itunda-global-url-map` so that:
 
 - `itunda.im` and `www.itunda.im` target `itunda-public-site`
 - `business.itunda.im` targets `itunda-business-site`
