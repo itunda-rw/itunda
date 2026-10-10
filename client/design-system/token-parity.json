@@ -3,8 +3,8 @@
   "version": "1.1.0",
   "purpose": "Cross-platform IDS semantic parity contract.",
   "brand": {
-    "light": "#7472F4",
-    "dark": "#7675F8"
+    "light": "#8F89FF",
+    "dark": "#A6A2FF"
   },
   "semanticRoles": [
     "background",
