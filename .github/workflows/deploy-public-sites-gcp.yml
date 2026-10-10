@@ -22,6 +22,7 @@ env:
   REGION: ${{ vars.GCP_REGION || 'asia-northeast3' }}
   PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'itunda-org' }}
   GAR_REPOSITORY: ${{ vars.GAR_REPOSITORY || 'itunda' }}
+  PUBLIC_SITE_RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_PUBLIC_SITE_RUNTIME_SERVICE_ACCOUNT || 'itunda-public-site@itunda-org.iam.gserviceaccount.com' }}
 
 jobs:
   deploy:
@@ -83,7 +84,7 @@ jobs:
           FROM nginx:1.28-alpine
           COPY . /usr/share/nginx/html/
           EXPOSE 8080
-          RUN printf 'server { listen 8080; server_name _; root /usr/share/nginx/html; index index.html; location / { try_files $uri $uri/ /index.html; } }\n' > /etc/nginx/conf.d/default.conf
+          RUN printf 'server { listen 8080; server_name _; root /usr/share/nginx/html; index index.html; location / { try_files $uri $uri/ /index.html; } }\\n' > /etc/nginx/conf.d/default.conf
           EOF
 
       - name: Authenticate to Google Cloud
@@ -107,17 +108,18 @@ jobs:
 
       - name: Deploy site to Cloud Run
         run: |
-          gcloud run deploy "${{ matrix.product }}" \
-            --image="${IMAGE}" \
-            --region="${REGION}" \
-            --project="${PROJECT_ID}" \
-            --platform=managed \
-            --port=8080 \
-            --memory=256Mi \
-            --cpu=1 \
-            --min-instances=0 \
-            --max-instances=5 \
-            --allow-unauthenticated \
+          gcloud run deploy "${{ matrix.product }}" \\
+            --image="${IMAGE}" \\
+            --region="${REGION}" \\
+            --project="${PROJECT_ID}" \\
+            --platform=managed \\
+            --service-account="${PUBLIC_SITE_RUNTIME_SERVICE_ACCOUNT}" \\
+            --port=8080 \\
+            --memory=256Mi \\
+            --cpu=1 \\
+            --min-instances=0 \\
+            --max-instances=5 \\
+            --allow-unauthenticated \\
             --quiet
 
       - name: Verify deployed site
