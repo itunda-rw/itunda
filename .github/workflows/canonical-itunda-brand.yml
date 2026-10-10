@@ -81,10 +81,11 @@ jobs:
           cmp -s packages/brand-assets/canonical/itunda-brand/splash/itunda-splash-light.svg client/public/brand/itunda-splash-light.svg
           cmp -s packages/brand-assets/canonical/itunda-brand/splash/itunda-splash-dark.svg client/public/brand/itunda-splash-dark.svg
           cmp -s packages/brand-assets/canonical/itunda-brand/app-icons/itunda-app-icon.svg client/public/brand/itunda-app-icon.svg
+          cmp -s packages/brand-assets/canonical/itunda-brand/symbol/itunda-symbol.svg sites/public/brand/itunda-symbol.svg
           cmp -s packages/brand-assets/canonical/itunda-brand/splash/itunda-splash-light.svg services/micro-frontends/host-app/public/brand/itunda-splash-light.svg
           cmp -s packages/brand-assets/canonical/itunda-brand/splash/itunda-splash-dark.svg services/micro-frontends/host-app/public/brand/itunda-splash-dark.svg
           cmp -s packages/brand-assets/canonical/itunda-brand/app-icons/itunda-app-icon.svg services/micro-frontends/host-app/public/brand/itunda-app-icon.svg
-          echo "Web and host-app light/dark launch splashes and PWA icons match the canonical brand assets byte-for-byte."
+          echo "Web and host-app light/dark launch splashes and PWA icons, plus public-site transparent symbol, match canonical brand assets byte-for-byte."
 
       - name: Verify product brand copies remain canonical
         run: |
