@@ -32,8 +32,8 @@ class SecurityConfig(
     private val deviceVerificationFilter: DeviceVerificationFilter,
     // No CORS config existed anywhere in this backend until ops-mfe (2026-07-16) --
     // bank-mfe/kyc-mfe never actually called it from a browser (mocked fetch only), so
-    // the gap was never hit. Origins are the micro-frontends' Vite dev ports; override
-    // via ITUNDA_CORS_ALLOWED_ORIGINS (comma-separated) for non-local environments.
+    // the gap was never hit. Defaults include local Vite ports and explicit first-party
+    // production origins; override via ITUNDA_CORS_ALLOWED_ORIGINS for deployment-specific needs.
     // Port 5004 added 2026-07-17 for merchant-mfe. Port 5005 added 2026-07-21 for
     // pay-checkout -- see PaymentsApiController's own doc comment. This is the one
     // origin in this list that isn't itunda's own team's dev server in production (a
