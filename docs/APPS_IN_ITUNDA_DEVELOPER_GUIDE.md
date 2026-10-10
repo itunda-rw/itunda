@@ -103,7 +103,7 @@ IDS still controls:
 - non-brand colors
 - interaction behavior
 
-Default Itunda brand remains #7472F4.
+Default Itunda brand remains #8F89FF.
 
 ## 6. Submission checklist
 

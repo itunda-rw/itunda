@@ -30,9 +30,9 @@ Page-specific styling should consume these primitives instead of creating a comp
 
 | Token | Value |
 |---|---|
-| Itunda Indigo | #7472F4 |
-| Indigo Dark | #625FE0 |
-| Indigo Soft | #F0EFFF |
+| Itunda Indigo | #8F89FF |
+| Indigo Dark | #6F67E8 |
+| Indigo Soft | #F1EFFF |
 | Ink | #191F28 |
 | Muted | #6B7684 |
 | Soft | #F7F8FA |
