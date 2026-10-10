@@ -72,16 +72,73 @@ a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}
 @media(max-width:900px){.layout{grid-template-columns:1fr}.side{display:none}.menu{display:block}.mobile-nav{position:fixed;top:64px;left:12px;right:12px;z-index:60;display:none;padding:8px;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow-md)}.mobile-nav.open{display:grid;gap:2px}.mobile-nav a{padding:11px 12px;border-radius:10px;color:var(--secondary);font-size:13px;font-weight:650}.mobile-nav a:hover,.mobile-nav a:focus-visible{background:var(--surface-subtle);color:var(--ink)}.mobile-nav a:focus-visible{outline:0;box-shadow:var(--focus)}.wrap{padding:0 20px}.card,.card.wide,.card.third{grid-column:1/-1}.swatches{grid-template-columns:repeat(3,1fr)}.platform{grid-template-columns:1fr}}
 @media(max-width:560px){.hero{padding-top:64px}.hero h1{font-size:48px}.section{padding:64px 0}.swatches{grid-template-columns:repeat(2,1fr)}.state-grid{grid-template-columns:1fr 1fr}.head h2{font-size:30px}.card{padding:22px 0}.stage{padding:22px}.ids-btn{min-height:48px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}.ids-btn:active,.motion-dot:hover,.motion-dot:active{transform:none!important}}
+
+
+.surface-preview{overflow:hidden;border-radius:20px;background:var(--surface-subtle);padding:12px}
+.preview-backdrop{position:relative;min-height:240px;overflow:hidden;border-radius:14px;background:linear-gradient(135deg,#EDEBFF 0%,#F7F8FA 54%,#E9EDFF 100%);color:#191F28}
+[data-theme="dark"] .preview-backdrop{background:linear-gradient(135deg,#242144 0%,#171C22 54%,#20283B 100%);color:#F7F8FA}
+.preview-orb{position:absolute;width:190px;height:190px;right:-35px;top:-65px;border-radius:50%;background:rgba(143,137,255,.18);filter:blur(1px)}
+.preview-copy{position:relative;display:grid;gap:8px;padding:28px 22px 92px;max-width:380px}
+.preview-label{font-size:10px;font-weight:750;letter-spacing:.12em;color:var(--brand-strong)}
+.preview-copy strong{font-size:25px;letter-spacing:-.04em;line-height:1.1}
+.preview-copy>span:last-child{font-size:12px;line-height:1.5;color:var(--secondary)}
+.preview-nav{position:absolute;left:12px;right:12px;bottom:12px;min-height:56px;display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid rgba(255,255,255,.65);border-radius:15px;background:rgba(255,255,255,.72);-webkit-backdrop-filter:blur(18px) saturate(145%);backdrop-filter:blur(18px) saturate(145%);box-shadow:0 8px 22px rgba(20,24,40,.08)}
+[data-theme="dark"] .preview-nav{background:rgba(17,21,26,.78);border-color:rgba(255,255,255,.12)}
+.preview-brand{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:800;margin-right:auto}
+.preview-mark{display:grid;place-items:center;width:24px;height:24px;border-radius:8px;background:var(--brand);color:#fff;font-weight:800}
+.preview-item{padding:9px 10px;border-radius:10px;color:#4E5968;font-size:11px;font-weight:650}
+[data-theme="dark"] .preview-item{color:#D1D6DB}
+.preview-item.selected{background:rgba(143,137,255,.18);color:#6F67E8}
+[data-theme="dark"] .preview-item.selected{color:#B0AEFF}
+.surface-rules{display:grid;gap:18px;padding-top:8px}
+.surface-rules>div{display:flex;align-items:center;gap:14px}
+.surface-rules b,.surface-rules small{display:block}
+.surface-rules b{font-size:13px;margin-bottom:4px}
+.surface-rules small{font-size:12px;color:var(--tertiary);line-height:1.45}
+.surface-sample{display:block;width:54px;height:42px;flex:0 0 54px;border-radius:12px;background:var(--surface-subtle)}
+.surface-sample.glass{background:color-mix(in srgb,var(--brand) 20%,var(--surface));border:1px solid color-mix(in srgb,var(--brand) 30%,var(--line));box-shadow:0 6px 16px rgba(20,24,40,.08)}
+.surface-sample.overlay{background:var(--surface);border:1px solid var(--line-strong);box-shadow:var(--shadow-sm)}
+@media(prefers-reduced-transparency:reduce){.preview-nav{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none;border-color:var(--line-strong)}}
+@media(forced-colors:active){.preview-nav{background:Canvas;border:1px solid CanvasText;-webkit-backdrop-filter:none;backdrop-filter:none}.preview-item.selected{outline:1px solid Highlight}}
+@media(max-width:560px){.preview-nav{gap:2px;padding:6px}.preview-item{padding:9px 7px}.preview-copy strong{font-size:22px}}
+\n/* Itunda glass + flat showcase refinement — 2026-10-10 */
+.top{
+  background:color-mix(in srgb,var(--bg) 76%,transparent);
+  -webkit-backdrop-filter:blur(22px) saturate(150%);
+  backdrop-filter:blur(22px) saturate(150%);
+  border-bottom:1px solid color-mix(in srgb,var(--line) 58%,transparent);
+}
+[data-theme="dark"] .top{
+  background:color-mix(in srgb,#090B0F 78%,transparent);
+  border-bottom-color:color-mix(in srgb,var(--line) 70%,transparent);
+}
+.mobile-nav{
+  background:color-mix(in srgb,var(--surface) 82%,transparent);
+  -webkit-backdrop-filter:blur(22px) saturate(145%);
+  backdrop-filter:blur(22px) saturate(145%);
+  border-color:color-mix(in srgb,var(--line) 70%,transparent);
+  box-shadow:0 14px 36px rgba(10,14,24,.12);
+}
+[data-theme="dark"] .mobile-nav{background:color-mix(in srgb,#11151A 84%,transparent);box-shadow:0 14px 36px rgba(0,0,0,.32)}
+/* Glass is reserved for floating navigation; content, controls and examples stay flat. */
+@media(prefers-reduced-transparency:reduce){
+  .top,.mobile-nav{background:var(--bg);-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+@media(forced-colors:active){
+  .top,.mobile-nav{background:Canvas;border:1px solid CanvasText;-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+@media(prefers-reduced-motion:reduce){.top,.mobile-nav{scroll-behavior:auto;transition:none}}
+
 </style>
 </head>
 <body><a class="skip" href="#main-content">Skip to content</a>
 <header class="top"><div class="topin">
 <a class="brand" href="/"><img class="mark" src="/brand/itunda-symbol.svg" alt="">itunda.</a>
 <span class="crumb">/ Design System / Showcase</span><span class="spacer"></span><button class="menu" aria-expanded="false" aria-controls="mobile-nav" id="menu" type="button" aria-label="Open design system navigation">☰</button><button class="theme" id="theme" type="button" aria-label="Switch to dark mode" aria-pressed="false">☾</button>
-</div></header><nav id="mobile-nav" class="mobile-nav" aria-label="Mobile design system navigation" hidden><a href="#overview">Introduction</a><a href="#principles">Principles</a><a href="#foundations">Foundations</a><a href="#components">Components</a><a href="#accessibility">Accessibility</a><a href="#platforms">Platforms</a></nav>
+</div></header><nav id="mobile-nav" class="mobile-nav" aria-label="Mobile design system navigation" hidden><a href="#overview">Introduction</a><a href="#principles">Principles</a><a href="#foundations">Foundations</a><a href="#surfaces">Surfaces</a><a href="#components">Components</a><a href="#accessibility">Accessibility</a><a href="#platforms">Platforms</a></nav>
 <div class="layout">
 <aside class="side">
-<div class="side-group"><div class="side-title">Overview</div><a class="active" href="#overview">Introduction</a><a href="#principles">Principles</a><a href="#foundations">Foundations</a><a href="#components">Components</a></div>
+<div class="side-group"><div class="side-title">Overview</div><a class="active" href="#overview">Introduction</a><a href="#principles">Principles</a><a href="#foundations">Foundations</a><a href="#surfaces">Surfaces</a><a href="#components">Components</a></div>
 <div class="side-group"><div class="side-title">Foundations</div><a href="#color">Color</a><a href="#type">Typography</a><a href="#spacing">Spacing</a><a href="#motion">Motion</a></div>
 <div class="side-group"><div class="side-title">Components</div><a href="#actions">Actions</a><a href="#forms">Forms</a><a href="#selection">Selection</a><a href="#navigation">Navigation</a><a href="#feedback">Feedback</a><a href="#states">States</a></div>
 <div class="side-group"><div class="side-title">Quality</div><a href="#accessibility">Accessibility</a><a href="#platforms">Platforms</a><a href="https://github.com/itunda-rw/itunda/tree/main/design-system/components">Component catalog →</a><a href="https://github.com/itunda-rw/itunda/tree/main/design-system">Patterns →</a><a href="https://itunda-rw.github.io/itundaface/">ItundaFace →</a></div>
@@ -108,7 +165,22 @@ a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}
 </div>
 </section>
 
-<section class="section" id="foundations">
+
+<section class="section" id="surfaces">
+<div class="head"><div class="eyebrow">02 · Surface language</div><h2>Glass for navigation. Flat for the work.</h2><p>Translucency belongs to floating navigation and temporary overlays—not every card. This keeps the interface layered enough to feel modern without sacrificing focus, legibility or a distinctly Itunda visual identity.</p></div>
+<div class="grid">
+<article class="card wide"><h3>Floating navigation preview</h3><p>Preview the same restraint used by the showcase header: a translucent surface, soft blur and quiet edge. The content underneath remains solid and readable.</p>
+<div class="surface-preview">
+<div class="preview-backdrop">
+<div class="preview-orb" aria-hidden="true"></div>
+<div class="preview-copy"><span class="preview-label">ITUNDA · ACCOUNT</span><strong>Your money, at a glance.</strong><span>Balance and recent activity stay on solid surfaces.</span></div>
+<div class="preview-nav" aria-label="Decorative navigation preview"><span class="preview-brand"><span class="preview-mark" aria-hidden="true">i</span>itunda.</span><span class="preview-item selected">Home</span><span class="preview-item">Activity</span><span class="preview-item">You</span></div>
+</div>
+</div></article>
+<article class="card"><h3>Surface rules</h3><div class="surface-rules"><div><span class="surface-sample flat"></span><span><b>Flat content</b><small>Forms, lists, balances and core cards</small></span></div><div><span class="surface-sample glass"></span><span><b>Restrained glass</b><small>Sticky header, bottom navigation, popovers</small></span></div><div><span class="surface-sample overlay"></span><span><b>Solid fallback</b><small>Reduced transparency and forced colors</small></span></div></div></article>
+</div>
+</section>
+\n<section class="section" id="foundations">
 <div class="head"><div class="eyebrow">02 · Foundations</div><h2>Small decisions, repeated consistently.</h2><p>The showcase uses the current IDS token language rather than the older standalone blue palette. Brand color is an identity role; components consume semantic roles. Layout stays intentionally quiet so hierarchy comes from content, not chrome.</p></div>
 <div class="grid">
 <article class="card wide" id="color"><h3>Color roles</h3><p>Indigo is the current Itunda brand role. Neutrals carry most of the interface; semantic colors communicate intent.</p><div class="swatches"><button class="swatch itunda-brand" type="button" aria-label="Copy Itunda Indigo #8F89FF" data-copy="#8F89FF">brand<br>#8F89FF</button><button class="swatch strong" type="button" aria-label="Copy strong indigo #6F67E8" data-copy="#6F67E8">strong<br>#6F67E8</button><button class="swatch soft" type="button" aria-label="Copy brand soft #F0EFFF" data-copy="#F0EFFF">brand soft<br>#F0EFFF</button><button class="swatch ink" type="button" aria-label="Copy text #191F28" data-copy="#191F28">text<br>#191F28</button><button class="swatch surface" type="button" aria-label="Copy surface #F7F8FA" data-copy="#F7F8FA">surface<br>#F7F8FA</button></div></article>
