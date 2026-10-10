@@ -12,7 +12,7 @@ IDS is the shared product-quality contract for Itunda Web, Android, and iOS. It 
 - Platform implementation map: `design-system/components/PLATFORM_IMPLEMENTATIONS.md`
 - Accessibility: `design-system/accessibility/`
 - Automated audit: `scripts/audit-ids.mjs`
-- Interactive showcase source: `sites/developers/design/index.html`
+- Interactive showcase: `business/developers/design/index.html`
 
 ## Quality model
 
@@ -28,12 +28,12 @@ See [QUALITY_MODEL.md](./QUALITY_MODEL.md) for release gates and evidence levels
 
 ## Showcase
 
-The interactive IDS showcase is served at `https://developers.itunda.im/design/` as part of the Itunda Developers site. Its source lives in `sites/developers/design/index.html` and ships with the Developers static-site image through the standard GCP deployment workflow.
+The interactive IDS showcase is deployed independently from the Itunda Developers documentation so the design system can be reviewed as a product rather than as a page inside another site.
 
 ## Principles
 
 - **Reference the discipline, not the identity.** IDS can learn from mature Korean fintech systems such as Toss—clear hierarchy, restrained surfaces, compact type scales, predictable spacing, and direct actions—without reproducing their brand assets or visual identity.
-- **Itunda Indigo is the canonical Itunda brand role:** `#8F89FF`, with `#6F67E8` as the stronger interaction role.
+- **Itunda Indigo is the canonical Itunda brand role:** `#7472F4`, with `#625FE6` as the stronger interaction role.
 - **Typography is structural.** Use the Pretendard stack and the shared semantic scale before introducing one-off font sizes.
 - **Spacing creates hierarchy.** The 4px base rhythm and named spacing steps should determine layout before decorative containers do.
 - **Quiet surfaces, strong content.** Prefer whitespace, typography, alignment, and semantic color over unnecessary cards, borders, gradients, or shadows.
