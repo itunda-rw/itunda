@@ -33,7 +33,7 @@ The interactive IDS showcase is deployed independently from the Itunda Developer
 ## Principles
 
 - **Reference the discipline, not the identity.** IDS can learn from mature Korean fintech systems such as Toss—clear hierarchy, restrained surfaces, compact type scales, predictable spacing, and direct actions—without reproducing their brand assets or visual identity.
-- **Itunda Indigo is the canonical Itunda brand role:** `#7472F4`, with `#625FE6` as the stronger interaction role.
+- **Itunda Indigo is the canonical Itunda brand role:** `#8F89FF`, with `#6F67E8` as the stronger interaction role.
 - **Typography is structural.** Use the Pretendard stack and the shared semantic scale before introducing one-off font sizes.
 - **Spacing creates hierarchy.** The 4px base rhythm and named spacing steps should determine layout before decorative containers do.
 - **Quiet surfaces, strong content.** Prefer whitespace, typography, alignment, and semantic color over unnecessary cards, borders, gradients, or shadows.
