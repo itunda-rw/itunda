@@ -1,6 +1,78 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#7472F4"><title>Itunda Developers — Build on Itunda</title><link rel="icon" type="image/svg+xml" href="/brand/itunda-symbol.svg">
-<link rel="stylesheet" href="/ids.css"></head><body><header class="top shell"><a class="brand" href="/"><img class="brand-logo" src="/brand/itunda-symbol.svg" alt="" width="32" height="32">itunda</a><nav class="nav"><a href="https://itunda.im/">Itunda</a><a href="https://tech-blog.itunda.im/">Tech</a><a href="https://developers.itunda.im/">Developers</a><a href="https://developers.itunda.im/design/">Design</a><a href="https://business.itunda.im/">Business</a><a class="cta" href="https://app.itunda.im/">Open Itunda app</a></nav></header><main><section class="hero"><div class="shell hero-grid"><div><div class="eyebrow">ITUNDA DEVELOPERS</div><h1>Build on<br><em>Itunda.</em></h1><p>Clear contracts for payments, webhooks, Saronite and merchant integrations — with a design language that stays consistent from documentation to product.</p><div class="actions"><a class="btn primary" href="#start">Explore API</a><a class="btn secondary" href="#system">IDS</a></div></div><div class="hero-aside"><strong>Start small. Ship clearly.</strong><span>Choose one integration surface, follow its contract, then expand without learning a noisy platform.</span></div></div></section><section class="section" id="start"><div class="shell"><div class="section-head"><div><div class="eyebrow">BUILDING BLOCKS</div><h2>Everything starts with a clear contract.</h2></div><p>Developer surfaces are organized around jobs rather than a wall of tools.</p></div><div class="grid"><article class="item"><span class="item-index">01</span><div><b>Pay Itunda</b><span>Create payments, hosted checkout and webhook flows with predictable server-side contracts.</span></div></article><article class="item"><span class="item-index">02</span><div><b>Saronite</b><span>Build reviewed mini-app experiences that can live inside the Itunda host.</span></div></article><article class="item"><span class="item-index">03</span><div><b>Merchant</b><span>Connect registration, QR collection, settlement and business workflows.</span></div></article><article class="item"><span class="item-index">04</span><div><b>IDS</b><span>Use the same tokens, geometry and accessibility principles across your integration UI.</span></div></article></div></div></section><section class="section alt"><div class="shell"><div class="section-head"><div><div class="eyebrow">A SMALLER PATH</div><h2>From idea to integration.</h2></div><p>Keep the first implementation focused, then add capabilities when the product actually needs them.</p></div><div class="steps"><div class="step"><b>01 · Choose</b><span>Pick the API, Saronite surface or merchant workflow you need.</span></div><div class="step"><b>02 · Integrate</b><span>Implement the documented request, response and event contract.</span></div><div class="step"><b>03 · Grow</b><span>Add products without changing the underlying interaction language.</span></div></div></div></section><section class="section" id="system"><div class="shell"><div class="section-head"><div><div class="eyebrow">ITUNDA DESIGN SYSTEM</div><h2>Developer tools should feel like Itunda.</h2></div><p>Calm surfaces, strong hierarchy and accessible states carry from the consumer app into technical products.</p></div><pre class="code">brand: #7472F4
+<link rel="stylesheet" href="/ids.css"></head><body><header class="top shell"><a class="brand" href="/"><img class="brand-logo" src="/brand/itunda-symbol.svg" alt="" width="32" height="32">itunda</a><nav class="nav"><a href="https://itunda.im/">Itunda</a><a href="https://tech-blog.itunda.im/">Tech</a><a href="https://developers.itunda.im/">Developers</a><a href="https://developers.itunda.im/design/">Design</a><a href="https://business.itunda.im/">Business</a><a class="cta" href="https://app.itunda.im/">Open Itunda app</a></nav></header><main><section class="hero"><div class="shell hero-grid"><div><div class="eyebrow">ITUNDA DEVELOPERS</div><h1>Build on<br><em>Itunda.</em></h1><p>Clear contracts for payments, webhooks, Saronite and merchant integrations — with a design language that stays consistent from documentation to product.</p><div class="actions"><a class="btn primary" href="#start">Explore API</a><a class="btn secondary" href="#system">IDS</a></div></div><div class="hero-aside"><strong>Start small. Ship clearly.</strong><span>Choose one integration surface, follow its contract, then expand without learning a noisy platform.</span></div></div></section><section class="section" id="start"><div class="shell"><div class="section-head"><div><div class="eyebrow">BUILDING BLOCKS</div><h2>Everything starts with a clear contract.</h2></div><p>Developer surfaces are organized around jobs rather than a wall of tools.</p></div><div class="grid"><article class="item"><span class="item-index">01</span><div><b>Pay Itunda</b><span>Create payments, hosted checkout and webhook flows with predictable server-side contracts.</span></div></article><article class="item"><span class="item-index">02</span><div><b>Saronite</b><span>Build reviewed mini-app experiences that can live inside the Itunda host.</span></div></article><article class="item"><span class="item-index">03</span><div><b>Merchant</b><span>Connect registration, QR collection, settlement and business workflows.</span></div></article><article class="item"><span class="item-index">04</span><div><b>IDS</b><span>Use the same tokens, geometry and accessibility principles across your integration UI.</span></div></article></div></div></section>
+<section class="section" id="sandbox">
+  <div class="shell">
+    <div class="section-head">
+      <div><div class="eyebrow">API SANDBOX</div><h2>Try the connection before you integrate.</h2></div>
+      <p>A safe, unauthenticated health request. No API key is needed, and this page never stores credentials.</p>
+    </div>
+    <div class="grid">
+      <article class="item">
+        <span class="item-index">GET</span>
+        <div><b>API health</b><span>Send a read-only request to the production API health endpoint and inspect the status, response, and round-trip time.</span></div>
+      </article>
+      <article class="item">
+        <span class="item-index">01</span>
+        <div><b>Start with the contract</b><span>Review the real endpoint and error shapes before building an authenticated integration.</span></div>
+      </article>
+    </div>
+    <div class="sandbox-panel" style="margin-top:24px;padding:24px;border-radius:20px;background:var(--surface-subtle);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+        <div><div class="eyebrow">REQUEST</div><strong style="font-size:18px">GET https://api.itunda.im/health</strong></div>
+        <button class="btn primary" id="health-check" type="button">Send test request</button>
+      </div>
+      <p id="health-status" role="status" aria-live="polite" style="color:var(--secondary);margin:14px 0 0">Ready. This sends only a public GET request.</p>
+      <pre class="code" id="health-response" style="margin-top:12px;white-space:pre-wrap;overflow-wrap:anywhere">No request sent yet.</pre>
+      <p style="font-size:13px;color:var(--tertiary);margin:12px 0 0">The browser may block this request if the API is unreachable or its CORS policy rejects this origin. That result is shown here; it is not hidden as a successful test.</p>
+    </div>
+    <div class="grid" style="margin-top:24px">
+      <article class="item"><span class="item-index">API</span><div><b><a href="https://github.com/itunda-rw/itunda/blob/main/docs/API_SPECIFICATION.md">API reference ↗</a></b><span>Actual routes, request bodies, response shapes, authentication and error codes.</span></div></article>
+      <article class="item"><span class="item-index">PAY</span><div><b><a href="https://github.com/itunda-rw/itunda/blob/main/docs/PAYMENTS.md">Payments guide ↗</a></b><span>Payment lifecycle, idempotency and sandbox/live key conventions.</span></div></article>
+      <article class="item"><span class="item-index">SDK</span><div><b><a href="https://github.com/itunda-rw/itunda/tree/main/packages/saronite">Saronite SDK ↗</a></b><span>Itunda's own mini-app host and bridge packages.</span></div></article>
+      <article class="item"><span class="item-index">IDS</span><div><b><a href="https://developers.itunda.im/design/">Design system ↗</a></b><span>Shared tokens, components, states and accessibility guidance.</span></div></article>
+    </div>
+  </div>
+</section>
+<section class="section alt"><div class="shell"><div class="section-head"><div><div class="eyebrow">A SMALLER PATH</div><h2>From idea to integration.</h2></div><p>Keep the first implementation focused, then add capabilities when the product actually needs them.</p></div><div class="steps"><div class="step"><b>01 · Choose</b><span>Pick the API, Saronite surface or merchant workflow you need.</span></div><div class="step"><b>02 · Integrate</b><span>Implement the documented request, response and event contract.</span></div><div class="step"><b>03 · Grow</b><span>Add products without changing the underlying interaction language.</span></div></div></div></section><section class="section" id="system"><div class="shell"><div class="section-head"><div><div class="eyebrow">ITUNDA DESIGN SYSTEM</div><h2>Developer tools should feel like Itunda.</h2></div><p>Calm surfaces, strong hierarchy and accessible states carry from the consumer app into technical products.</p></div><pre class="code">brand: #7472F4
 control-radius: 12px
 surface-radius: 16px
 theme: light / dark
-states: default · focus · disabled · error</pre></div></section></main><footer class="footer shell"><span>© Itunda Developers</span><span><a href="https://github.com/itunda-rw/itunda">Open source</a></span></footer><script src="/theme.js"></script></body></html>
+states: default · focus · disabled · error</pre></div></section></main><footer class="footer shell"><span>© Itunda Developers</span><span><a href="https://github.com/itunda-rw/itunda">Open source</a></span></footer><script>
+(() => {
+  const button = document.getElementById('health-check');
+  const status = document.getElementById('health-status');
+  const response = document.getElementById('health-response');
+  if (!button || !status || !response) return;
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    button.textContent = 'Checking…';
+    status.textContent = 'Sending GET /health…';
+    response.textContent = 'Waiting for API response…';
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const started = performance.now();
+    try {
+      const res = await fetch('https://api.itunda.im/health', {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        cache: 'no-store',
+        signal: controller.signal
+      });
+      const body = await res.text();
+      const elapsed = Math.round(performance.now() - started);
+      status.textContent = (res.ok ? 'HTTP ' : 'Request returned HTTP ') + res.status + ' · ' + elapsed + ' ms';
+      response.textContent = body ? body.slice(0, 4000) : '(empty response body)';
+    } catch (error) {
+      status.textContent = error && error.name === 'AbortError'
+        ? 'Timed out after 8 seconds.'
+        : 'Request failed. Check API availability and browser CORS.';
+      response.textContent = error && error.message ? error.message : String(error);
+    } finally {
+      clearTimeout(timeout);
+      button.disabled = false;
+      button.textContent = 'Send test request';
+    }
+  });
+})();
+</script>
+<script src="/theme.js"></script></body></html>
