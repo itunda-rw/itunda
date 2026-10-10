@@ -1,0 +1,140 @@
+name: Deploy Itunda Public Sites to Google Cloud
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "sites/public/**"
+      - "sites/itunda/**"
+      - "sites/business/**"
+      - "sites/developers/**"
+      - "services/blog/**"
+      - "services/micro-frontends/host-app/public/brand/**"
+      - "yarn.lock"
+      - ".github/workflows/deploy-public-sites-gcp.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  REGION: ${{ vars.GCP_REGION || 'asia-northeast3' }}
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'itunda-org' }}
+  GAR_REPOSITORY: ${{ vars.GAR_REPOSITORY || 'itunda' }}
+  PUBLIC_SITE_RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_PUBLIC_SITE_RUNTIME_SERVICE_ACCOUNT || 'itunda-public-site@itunda-org.iam.gserviceaccount.com' }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - product: itunda-public-site
+            source: sites/itunda
+            build_blog: false
+          - product: itunda-business-site
+            source: sites/business
+            build_blog: false
+          - product: itunda-developers-site
+            source: sites/developers
+            build_blog: false
+          - product: itunda-tech-blog
+            source: services/blog/dist
+            build_blog: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use canonical Itunda brand asset in Tech blog
+        if: matrix.build_blog
+        run: |
+          mkdir -p services/blog/public/brand
+          cp services/micro-frontends/host-app/public/brand/itunda-app-icon.svg services/blog/public/brand/itunda-icon.svg
+
+      - name: Set up Node.js for Tech blog
+        if: matrix.build_blog
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: services/blog/package-lock.json
+
+      - name: Install Tech blog dependencies
+        if: matrix.build_blog
+        run: npm ci --prefix services/blog
+
+      - name: Build Itunda Tech
+        if: matrix.build_blog
+        run: npm run build --prefix services/blog
+
+      - name: Assemble shared IDS assets
+        if: ${{ !matrix.build_blog }}
+        run: |
+          cp sites/public/ids.css "${{ matrix.source }}/ids.css"
+          cp sites/public/theme.js "${{ matrix.source }}/theme.js"
+          mkdir -p "${{ matrix.source }}/brand"
+          cp services/micro-frontends/host-app/public/brand/itunda-app-icon.svg "${{ matrix.source }}/brand/itunda-app-icon.svg"
+
+      - name: Prepare static-site container
+        run: |
+          cat > /tmp/Dockerfile.gcp-static <<'EOF'
+          FROM nginx:1.28-alpine
+          COPY . /usr/share/nginx/html/
+          EXPOSE 8080
+          RUN printf 'server { listen 8080; server_name _; root /usr/share/nginx/html; index index.html; location / { try_files $uri $uri/ /index.html; } }\n' > /etc/nginx/conf.d/default.conf
+          EOF
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER || 'projects/1019859645463/locations/global/workloadIdentityPools/github/providers/itunda-github' }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT || 'github-deployer@itunda-org.iam.gserviceaccount.com' }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Artifact Registry authentication
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build and push site image
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${GAR_REPOSITORY}/${{ matrix.product }}:${GITHUB_SHA}"
+          echo "IMAGE=${IMAGE}" >> "${GITHUB_ENV}"
+          docker build -f /tmp/Dockerfile.gcp-static -t "${IMAGE}" "${{ matrix.source }}"
+          docker push "${IMAGE}"
+
+      - name: Deploy site to Cloud Run
+        run: |
+          gcloud run deploy "${{ matrix.product }}" \
+            --image="${IMAGE}" \
+            --region="${REGION}" \
+            --project="${PROJECT_ID}" \
+            --platform=managed \
+            --service-account="${PUBLIC_SITE_RUNTIME_SERVICE_ACCOUNT}" \
+            --port=8080 \
+            --memory=256Mi \
+            --cpu=1 \
+            --min-instances=0 \
+            --max-instances=5 \
+            --allow-unauthenticated \
+            --quiet
+
+      - name: Verify deployed site
+        run: |
+          URL="$(gcloud run services describe "${{ matrix.product }}" --region="${REGION}" --project="${PROJECT_ID}" --format='value(status.url)')"
+          curl --fail --silent --show-error --location --max-time 30 "${URL}/" -o /tmp/site.html
+          test -s /tmp/site.html
+          grep -Eiq '<(html|body|div|main|script)[ >]' /tmp/site.html
+          if [ "${{ matrix.build_blog }}" = "true" ]; then
+            grep -q 'assets/' /tmp/site.html
+            curl --fail --silent --show-error --location --max-time 30 "${URL}/brand/itunda-icon.svg" -o /dev/null
+          else
+            for asset in ids.css theme.js brand/itunda-app-icon.svg; do
+              curl --fail --silent --show-error --location --max-time 30 "${URL}/${asset}" -o /dev/null
+            done
+            grep -q 'brand/itunda-app-icon.svg' /tmp/site.html
+          fi
+          echo "Verified ${{ matrix.product }} HTML and required brand/theme assets at ${URL}"

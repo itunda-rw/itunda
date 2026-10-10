@@ -121,3 +121,6 @@ button,.btn,.cta,.theme-toggle,.nav a{touch-action:manipulation}
 .code {
   background-image: none;
 }
+
+/* Canonical brand asset used by all public-site headers. */
+.brand-logo{display:block;width:32px;height:32px;object-fit:contain;flex:none}.brand{display:inline-flex;align-items:center}
