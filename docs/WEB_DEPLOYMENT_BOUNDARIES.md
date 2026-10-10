@@ -55,7 +55,7 @@ The public-site workflow deploys Cloud Run services but intentionally does not m
 
 ### 1. Runtime identity
 
-The static-site containers serve public HTML/CSS/JS and do not call Google APIs. The deployment workflow therefore omits an explicit `--service-account` override and uses Cloud Run's project-default runtime identity. This avoids a custom service-account `actAs` binding becoming a deployment blocker. Before production rollout, confirm the project-default runtime identity's IAM roles are appropriate for a static web workload; do not grant it additional permissions for these sites. If a dedicated least-privilege runtime identity is introduced later, grant the GitHub deployer `roles/iam.serviceAccountUser` on that identity and restore an explicit identity check in the workflow.
+The deployment workflow explicitly sets `--service-account` to `itunda-public-site@itunda-org.iam.gserviceaccount.com` by default (override with the repository variable `GCP_PUBLIC_SITE_RUNTIME_SERVICE_ACCOUNT` only when intentionally changing the runtime identity). Do not silently fall back to the project-default Compute identity. Before deployment, grant `github-deployer@itunda-org.iam.gserviceaccount.com` the `roles/iam.serviceAccountUser` role scoped to the dedicated `itunda-public-site` service account. This least-privilege runtime identity is intended for static HTML/CSS/JS containers that do not call Google APIs. If the grant is missing, deployment should fail safely; resolve the IAM binding through the supported GCP IAM interface rather than broadening project-level roles.
 
 
 ### 2. Deploy and verify services
