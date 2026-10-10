@@ -52,7 +52,7 @@ jobs:
         if: matrix.build_blog
         run: |
           mkdir -p services/blog/public/brand
-          cp services/micro-frontends/host-app/public/brand/itunda-app-icon.svg services/blog/public/brand/itunda-icon.svg
+          cp packages/brand-assets/canonical/itunda-brand/symbol/itunda-symbol.svg services/blog/public/brand/itunda-icon.svg
 
       - name: Set up Node.js for Tech blog
         if: matrix.build_blog
@@ -77,6 +77,7 @@ jobs:
           cp sites/public/theme.js "${{ matrix.source }}/theme.js"
           mkdir -p "${{ matrix.source }}/brand"
           cp services/micro-frontends/host-app/public/brand/itunda-app-icon.svg "${{ matrix.source }}/brand/itunda-app-icon.svg"
+          cp packages/brand-assets/canonical/itunda-brand/symbol/itunda-symbol.svg "${{ matrix.source }}/brand/itunda-symbol.svg"
 
       - name: Prepare static-site container
         run: |
@@ -132,9 +133,9 @@ jobs:
             grep -q 'assets/' /tmp/site.html
             curl --fail --silent --show-error --location --max-time 30 "${URL}/brand/itunda-icon.svg" -o /dev/null
           else
-            for asset in ids.css theme.js brand/itunda-app-icon.svg; do
+            for asset in ids.css theme.js brand/itunda-app-icon.svg brand/itunda-symbol.svg; do
               curl --fail --silent --show-error --location --max-time 30 "${URL}/${asset}" -o /dev/null
             done
-            grep -q 'brand/itunda-app-icon.svg' /tmp/site.html
+            grep -q 'brand/itunda-symbol.svg' /tmp/site.html
           fi
           echo "Verified ${{ matrix.product }} HTML and required brand/theme assets at ${URL}"

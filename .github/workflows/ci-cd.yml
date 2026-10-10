@@ -123,18 +123,21 @@ jobs:
           test -f sites/developers/index.html
           test -f sites/public/ids.css
           test -f services/micro-frontends/host-app/public/brand/itunda-app-icon.svg
+          test -f packages/brand-assets/canonical/itunda-brand/symbol/itunda-symbol.svg
+          test -f sites/public/brand/itunda-symbol.svg
+          cmp packages/brand-assets/canonical/itunda-brand/symbol/itunda-symbol.svg sites/public/brand/itunda-symbol.svg
           grep -q 'business-app.itunda.im' sites/business/index.html
-          grep -q 'brand/itunda-app-icon.svg' sites/itunda/index.html
-          grep -q 'brand/itunda-app-icon.svg' sites/business/index.html
-          grep -q 'brand/itunda-app-icon.svg' sites/developers/index.html
+          grep -q 'brand/itunda-symbol.svg' sites/itunda/index.html
+          grep -q 'brand/itunda-symbol.svg' sites/business/index.html
+          grep -q 'brand/itunda-symbol.svg' sites/developers/index.html
 
       - name: Stage canonical Itunda brand asset for Tech blog
         run: |
           mkdir -p services/blog/public/brand
-          cp services/micro-frontends/host-app/public/brand/itunda-app-icon.svg services/blog/public/brand/itunda-icon.svg
+          cp packages/brand-assets/canonical/itunda-brand/symbol/itunda-symbol.svg services/blog/public/brand/itunda-icon.svg
 
       - name: Verify canonical Tech blog brand asset
-        run: cmp services/micro-frontends/host-app/public/brand/itunda-app-icon.svg services/blog/public/brand/itunda-icon.svg
+        run: cmp packages/brand-assets/canonical/itunda-brand/symbol/itunda-symbol.svg services/blog/public/brand/itunda-icon.svg
 
       - name: Install Tech blog dependencies
         run: npm ci --prefix services/blog
