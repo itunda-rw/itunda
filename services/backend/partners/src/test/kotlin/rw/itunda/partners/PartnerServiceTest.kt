@@ -17,7 +17,10 @@ import rw.itunda.core.domain.PartnerMiniApp
 import rw.itunda.core.domain.PartnerMiniAppCategory
 import rw.itunda.core.domain.PartnerMiniAppStatus
 import rw.itunda.core.domain.PartnerStatus
+import rw.itunda.core.domain.PartnerMiniAppRelease
+import rw.itunda.core.domain.PartnerMiniAppReleaseStatus
 import rw.itunda.core.repository.PartnerMiniAppRepository
+import rw.itunda.core.repository.PartnerMiniAppReleaseRepository
 import rw.itunda.core.repository.PartnerRepository
 import java.security.MessageDigest
 import java.util.Optional
@@ -31,7 +34,7 @@ class PartnerServiceTest : BehaviorSpec({
         val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
-        val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
+        val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter, mockk<PartnerMiniAppReleaseRepository>())
 
         every { partnerRepository.findByContactEmail("dev@acme.rw") } returns null
         val savedSlot = slot<Partner>()
@@ -293,6 +296,59 @@ class PartnerServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("release integrity submission validation") {
+        val partnerRepository = mockk<PartnerRepository>()
+        val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+        val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
+        val partner = Partner(id = "partner_1", companyName = "Acme Ltd", contactEmail = "dev@acme.rw", apiKeyHash = "hash")
+        every { partnerRepository.findByApiKeyHash(any()) } returns partner
+        every { partnerMiniAppRepository.save(any()) } answers { firstArg() }
+
+        When("a complete integrity tuple is submitted") {
+            val saved = service.submitMiniApp(
+                apiKey = "api-key",
+                name = "Acme",
+                description = "desc",
+                iconUrl = null,
+                bundleUrl = "https://acme.rw/v1.js",
+                permissions = emptyList(),
+                releaseId = "rel_001",
+                manifestSha256 = "A".repeat(64),
+                bundleSha256 = "B".repeat(64),
+                bundleSizeBytes = 1234,
+            )
+
+            Then("the release metadata is normalized and persisted") {
+                saved.releaseId shouldBe "rel_001"
+                saved.manifestSha256 shouldBe "a".repeat(64)
+                saved.bundleSha256 shouldBe "b".repeat(64)
+                saved.bundleSizeBytes shouldBe 1234
+            }
+        }
+
+        When("only part of the integrity tuple is submitted") {
+            Then("the submission is rejected before persistence") {
+                try {
+                    service.submitMiniApp(
+                        apiKey = "api-key",
+                        name = "Acme",
+                        description = "desc",
+                        iconUrl = null,
+                        bundleUrl = "https://acme.rw/v1.js",
+                        permissions = emptyList(),
+                        releaseId = "rel_002",
+                    )
+                    error("expected InvalidMiniAppSubmissionException")
+                } catch (e: InvalidMiniAppSubmissionException) {
+                    verify(exactly = 0) { partnerMiniAppRepository.save(any()) }
+                }
+            }
+        }
+    }
+
 
     // Real gap closed 2026-09-07 (Partners product-completeness pass): resolvePartner
     // already real-enforces PartnerStatus.SUSPENDED, but nothing anywhere could ever

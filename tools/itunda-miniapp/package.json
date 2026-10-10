@@ -3,6 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "bin": { "itunda-miniapp": "./bin/itunda-miniapp.mjs" },
-  "engines": { "node": ">=20" }
+  "bin": {
+    "itunda-miniapp": "./bin/itunda-miniapp.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
 }

@@ -11,7 +11,8 @@
   ],
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "validate:manifest": "node ./scripts/validate-sdk-manifest.mjs"
   },
   "devDependencies": {
     "patch-package": "^8.0.1"

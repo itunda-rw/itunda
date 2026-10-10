@@ -10,8 +10,11 @@ import rw.itunda.core.domain.PartnerMiniApp
 import rw.itunda.core.domain.PartnerMiniAppCategory
 import rw.itunda.core.domain.PartnerMiniAppStatus
 import rw.itunda.core.domain.PartnerStatus
+import rw.itunda.core.domain.PartnerMiniAppRelease
+import rw.itunda.core.domain.PartnerMiniAppReleaseStatus
 import rw.itunda.core.repository.PartnerMiniAppRepository
 import rw.itunda.core.repository.PartnerRepository
+import rw.itunda.core.repository.PartnerMiniAppReleaseRepository
 import rw.itunda.core.validation.isValidEmail
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -30,6 +33,8 @@ class InvalidMiniAppSubmissionException(message: String) : RuntimeException(mess
 class InvalidMiniAppDecisionReasonException(message: String) : RuntimeException(message)
 class InvalidMiniAppCategoryException(message: String) : RuntimeException(message)
 class PartnerNotFoundException(message: String) : RuntimeException(message)
+class PartnerMiniAppReleaseNotFoundException(message: String) : RuntimeException(message)
+class PartnerMiniAppReleaseStateException(message: String) : RuntimeException(message)
 
 /**
  * The real scopes a partner mini-app can request review for -- deliberately a small,
@@ -79,6 +84,7 @@ class PartnerService(
     private val partnerRepository: PartnerRepository,
     private val partnerMiniAppRepository: PartnerMiniAppRepository,
     private val rateLimiter: RateLimiter,
+    private val partnerMiniAppReleaseRepository: PartnerMiniAppReleaseRepository? = null,
 ) {
     private val secureRandom = SecureRandom()
 
@@ -117,6 +123,10 @@ class PartnerService(
     fun submitMiniApp(
         apiKey: String, name: String, description: String, iconUrl: String?, bundleUrl: String, permissions: List<String>,
         category: String? = null,
+        releaseId: String? = null,
+        manifestSha256: String? = null,
+        bundleSha256: String? = null,
+        bundleSizeBytes: Long? = null,
     ): PartnerMiniApp {
         val partner = resolvePartner(apiKey)
         // Real gap found live (2026-09-11, Mini-Apps hub pass) -- register() above has
@@ -134,6 +144,23 @@ class PartnerService(
         val trimmedDescription = description.trim()
         val trimmedIconUrl = iconUrl?.trim()?.ifBlank { null }
         val trimmedBundleUrl = bundleUrl.trim()
+        val hex64 = Regex("^[0-9a-fA-F]{64}$")
+        if (releaseId != null && (releaseId.isBlank() || releaseId.length > 64)) {
+            throw InvalidMiniAppSubmissionException("releaseId must be 1-64 characters")
+        }
+        if (manifestSha256 != null && !hex64.matches(manifestSha256)) {
+            throw InvalidMiniAppSubmissionException("manifestSha256 must be a 64-character SHA-256 hex digest")
+        }
+        if (bundleSha256 != null && !hex64.matches(bundleSha256)) {
+            throw InvalidMiniAppSubmissionException("bundleSha256 must be a 64-character SHA-256 hex digest")
+        }
+        if (bundleSizeBytes != null && bundleSizeBytes < 0) {
+            throw InvalidMiniAppSubmissionException("bundleSizeBytes must be non-negative")
+        }
+        val integrityValues = listOf(releaseId, manifestSha256, bundleSha256, bundleSizeBytes)
+        if (integrityValues.any { it != null } && integrityValues.any { it == null }) {
+            throw InvalidMiniAppSubmissionException("releaseId, manifestSha256, bundleSha256 and bundleSizeBytes must be supplied together")
+        }
         if (trimmedName.isEmpty() || trimmedDescription.isEmpty() || trimmedBundleUrl.isEmpty()) {
             throw InvalidMiniAppSubmissionException("Name, description, and bundleUrl are all required")
         }
@@ -156,6 +183,10 @@ class PartnerService(
             description = trimmedDescription,
             iconUrl = trimmedIconUrl,
             bundleUrl = trimmedBundleUrl,
+            releaseId = releaseId?.trim(),
+            manifestSha256 = manifestSha256?.lowercase(),
+            bundleSha256 = bundleSha256?.lowercase(),
+            bundleSizeBytes = bundleSizeBytes,
             permissions = permissions.joinToString(","),
             status = PartnerMiniAppStatus.PENDING,
             category = resolvedCategory,
@@ -201,7 +232,106 @@ class PartnerService(
         miniApp.reviewedBy = reviewerId
         miniApp.reviewedAt = java.time.Instant.now()
         miniApp.decisionReason = reason
-        return partnerMiniAppRepository.save(miniApp)
+        val saved = partnerMiniAppRepository.save(miniApp)
+        if (approve && saved.releaseId != null && saved.manifestSha256 != null && saved.bundleSha256 != null && saved.bundleSizeBytes != null) {
+            partnerMiniAppReleaseRepository?.save(
+                PartnerMiniAppRelease(
+                    releaseId = saved.releaseId!!,
+                    miniAppId = saved.id,
+                    bundleUrl = saved.bundleUrl,
+                    manifestSha256 = saved.manifestSha256!!,
+                    bundleSha256 = saved.bundleSha256!!,
+                    bundleSizeBytes = saved.bundleSizeBytes!!,
+                    status = PartnerMiniAppReleaseStatus.APPROVED,
+                ),
+            )
+        }
+        return saved
+    }
+
+    fun getReleaseHistory(miniAppId: String): List<PartnerMiniAppRelease> {
+        val repository = partnerMiniAppReleaseRepository
+            ?: throw PartnerMiniAppReleaseNotFoundException("Mini-app release repository is unavailable")
+        return repository.findByMiniAppIdOrderByCreatedAtDesc(miniAppId)
+    }
+
+    @Transactional
+    fun stageRelease(releaseId: String): PartnerMiniAppRelease {
+        val repository = partnerMiniAppReleaseRepository
+            ?: throw PartnerMiniAppReleaseNotFoundException("Mini-app release repository is unavailable")
+        val release = repository.findById(releaseId).orElseThrow {
+            PartnerMiniAppReleaseNotFoundException("Mini-app release not found")
+        }
+        if (release.status != PartnerMiniAppReleaseStatus.APPROVED && release.status != PartnerMiniAppReleaseStatus.ROLLED_BACK) {
+            throw PartnerMiniAppReleaseStateException("Only approved or rolled-back releases can be staged")
+        }
+        release.status = PartnerMiniAppReleaseStatus.STAGED
+        return repository.save(release)
+    }
+
+    @Transactional
+    fun activateRelease(releaseId: String): PartnerMiniAppRelease {
+        val repository = partnerMiniAppReleaseRepository
+            ?: throw PartnerMiniAppReleaseNotFoundException("Mini-app release repository is unavailable")
+        val release = repository.findById(releaseId).orElseThrow {
+            PartnerMiniAppReleaseNotFoundException("Mini-app release not found")
+        }
+        if (release.status != PartnerMiniAppReleaseStatus.STAGED) {
+            throw PartnerMiniAppReleaseStateException("Only staged releases can be activated")
+        }
+        repository.findByMiniAppIdAndStatus(release.miniAppId, PartnerMiniAppReleaseStatus.ACTIVE)
+            .forEach {
+                it.status = PartnerMiniAppReleaseStatus.ROLLED_BACK
+                it.rolledBackAt = Instant.now()
+                it.rollbackReason = "Superseded by release ${release.releaseId}"
+                repository.save(it)
+            }
+        release.status = PartnerMiniAppReleaseStatus.ACTIVE
+        release.activatedAt = Instant.now()
+        val savedRelease = repository.save(release)
+        syncCatalogToRelease(savedRelease)
+        return savedRelease
+    }
+
+    @Transactional
+    fun rollbackRelease(releaseId: String, reason: String?): PartnerMiniAppRelease {
+        val repository = partnerMiniAppReleaseRepository
+            ?: throw PartnerMiniAppReleaseNotFoundException("Mini-app release repository is unavailable")
+        val target = repository.findById(releaseId).orElseThrow {
+            PartnerMiniAppReleaseNotFoundException("Mini-app release not found")
+        }
+        if (target.status != PartnerMiniAppReleaseStatus.ROLLED_BACK && target.status != PartnerMiniAppReleaseStatus.STAGED) {
+            throw PartnerMiniAppReleaseStateException("Only a prior or staged release can be restored")
+        }
+        if (reason != null && reason.length > 255) {
+            throw PartnerMiniAppReleaseStateException("Rollback reason must be 255 characters or fewer")
+        }
+        repository.findByMiniAppIdAndStatus(target.miniAppId, PartnerMiniAppReleaseStatus.ACTIVE)
+            .forEach {
+                it.status = PartnerMiniAppReleaseStatus.ROLLED_BACK
+                it.rolledBackAt = Instant.now()
+                it.rollbackReason = reason ?: "Rollback to release ${target.releaseId}"
+                repository.save(it)
+            }
+        target.status = PartnerMiniAppReleaseStatus.ACTIVE
+        target.activatedAt = Instant.now()
+        target.rolledBackAt = null
+        target.rollbackReason = null
+        val savedTarget = repository.save(target)
+        syncCatalogToRelease(savedTarget)
+        return savedTarget
+    }
+
+    private fun syncCatalogToRelease(release: PartnerMiniAppRelease) {
+        val miniApp = partnerMiniAppRepository.findById(release.miniAppId).orElseThrow {
+            PartnerMiniAppNotFoundException("Mini-app for release not found")
+        }
+        miniApp.releaseId = release.releaseId
+        miniApp.bundleUrl = release.bundleUrl
+        miniApp.manifestSha256 = release.manifestSha256
+        miniApp.bundleSha256 = release.bundleSha256
+        miniApp.bundleSizeBytes = release.bundleSizeBytes
+        partnerMiniAppRepository.save(miniApp)
     }
 
     // Real admin moderation surface (2026-09-07, Partners product-completeness pass) --

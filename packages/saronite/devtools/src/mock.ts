@@ -34,10 +34,11 @@ export function createSaroniteMockHost(
     calls: [],
     permissions: {},
     lifecycle: 'visible',
-    ...initial,
-    calls: [...(initial.calls ?? [])],
-    permissions: { ...(initial.permissions ?? {}) },
   };
+
+  Object.assign(state, initial);
+  state.calls = [...(initial.calls ?? [])];
+  state.permissions = { ...(initial.permissions ?? {}) };
 
   const record = (
     capability: string,

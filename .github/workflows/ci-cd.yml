@@ -43,6 +43,10 @@ jobs:
         with:
           node-version: 20.x
 
+      - name: Test Itunda mini-app developer CLI safety boundaries
+        working-directory: tools/itunda-miniapp
+        run: npm test
+
       # Real CI fix (2026-09-03): package.json pins "packageManager": "yarn@4.17.0"
       # (Corepack-managed), but the runner's global Yarn is 1.22.22 -- without this,
       # `yarn install --immutable` fails immediately with "Corepack must currently be
