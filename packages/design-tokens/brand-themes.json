@@ -6,20 +6,20 @@
   "themes": {
     "itunda": {
       "light": {
-        "brand": "#7472F4",
-        "brandStrong": "#625FE6",
-        "brandSurface": "#F0EFFF",
+        "brand": "#8F89FF",
+        "brandStrong": "#6F67E8",
+        "brandSurface": "#F1EFFF",
         "onBrand": "#FFFFFF",
-        "focus": "#7472F4",
-        "pressed": "#625FE6"
+        "focus": "#8F89FF",
+        "pressed": "#6F67E8"
       },
       "dark": {
-        "brand": "#9B98FF",
+        "brand": "#A6A2FF",
         "brandStrong": "#B0AEFF",
         "brandSurface": "#27244A",
         "onBrand": "#191F28",
         "focus": "#B0AEFF",
-        "pressed": "#9B98FF"
+        "pressed": "#A6A2FF"
       }
     }
   }
