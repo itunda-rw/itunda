@@ -11,7 +11,7 @@ const required = {
 };
 const errors = [];
 const idsShowcase = fs.readFileSync(path.join(root, "design-system/index.html"), "utf8");
-if (!idsShowcase.includes("#7472F4")) errors.push("design-system/index.html: canonical Itunda Indigo #7472F4 is missing");
+if (!idsShowcase.includes("#8F89FF")) errors.push("design-system/index.html: canonical Itunda brand #8F89FF is missing");
 if (idsShowcase.includes("#1F78FF") || idsShowcase.includes("#1769E0")) errors.push("design-system/index.html: stale legacy blue identity detected");
 if (idsShowcase.includes("IDS v2.1")) errors.push("design-system/index.html: stale IDS v2.1 label detected");
 for (const [name, version] of Object.entries(required)) {
