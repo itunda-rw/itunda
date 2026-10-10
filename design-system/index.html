@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#7472F4">
+<meta name="theme-color" content="#8F89FF">
 <meta name="description" content="Itunda Design System — foundations, components, states and accessibility.">
 <title>Itunda Design System · IDS</title>
 <style>
-:root{--brand:#7472F4;--brand-strong:#625FE6;--ink:#191F28;--muted:#6B7684;--line:#E5E8EB;--soft:#F7F8FA;--bg:#fff;--surface:#fff;--brand-soft:#F0EFFF;--max:1120px}
+:root{--brand:#8F89FF;--brand-strong:#625FE6;--ink:#191F28;--muted:#6B7684;--line:#E5E8EB;--soft:#F7F8FA;--bg:#fff;--surface:#fff;--brand-soft:#F0EFFF;--max:1120px}
 [data-theme=dark]{--ink:#F7F8FA;--muted:#AEB5BD;--line:#2A3038;--soft:#15191F;--bg:#090B0F;--surface:#171C22;--brand-soft:#27244A}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
 a{color:inherit;text-decoration:none}button{font:inherit}.top{position:sticky;top:0;z-index:20;height:64px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(18px)}.topin{height:100%;max-width:1200px;margin:auto;padding:0 24px;display:flex;align-items:center;gap:12px}.brand{font-size:21px;font-weight:800;letter-spacing:-.05em}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--brand);margin-right:7px}.label{font-size:13px;color:var(--muted)}.spacer{flex:1}.theme{width:38px;height:38px;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--ink);cursor:pointer}
 main{max-width:var(--max);margin:auto;padding:0 24px}.hero{padding:96px 0 76px;border-bottom:1px solid var(--line)}.eyebrow{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--brand)}h1{font-size:clamp(48px,7vw,80px);line-height:1;letter-spacing:-.06em;margin:14px 0 20px;max-width:850px}h2{font-size:36px;line-height:1.08;letter-spacing:-.045em;margin:8px 0 12px}h3{font-size:18px;margin:0 0 8px;letter-spacing:-.02em}p{color:var(--muted);line-height:1.65;margin:0}.hero p{font-size:18px;max-width:680px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:28px}.chip{padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:var(--soft);font-size:12px;font-weight:700;color:var(--muted)}
 section{padding:72px 0;border-bottom:1px solid var(--line)}.head{max-width:720px;margin-bottom:32px}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}.card{grid-column:span 6;border:1px solid var(--line);border-radius:20px;background:var(--surface);padding:24px}.wide{grid-column:span 8}.narrow{grid-column:span 4}.full{grid-column:1/-1}.stage{padding:24px;border-radius:16px;background:var(--soft);border:1px solid var(--line)}
-.swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.swatch{min-height:90px;border-radius:14px;padding:12px;font-size:12px;font-weight:750}.brand-swatch{background:#7472F4;color:white}.strong-swatch{background:#625FE6;color:white}.soft-swatch{background:#F0EFFF;color:#625FE6}.ink-swatch{background:#191F28;color:white}
+.swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.swatch{min-height:90px;border-radius:14px;padding:12px;font-size:12px;font-weight:750}.brand-swatch{background:#8F89FF;color:white}.strong-swatch{background:#625FE6;color:white}.soft-swatch{background:#F0EFFF;color:#625FE6}.ink-swatch{background:#191F28;color:white}
 .row{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}.row:last-child{border-bottom:0}.avatar{width:40px;height:40px;border-radius:12px;background:var(--brand-soft);display:grid;place-items:center;font-weight:800;color:var(--brand-strong)}.rowmain{flex:1}.meta{font-size:13px;color:var(--muted)}.value{font-weight:750}
 .btn{border:0;border-radius:16px;min-height:48px;padding:0 18px;background:var(--surface);color:var(--ink);border:1px solid var(--line);cursor:pointer}.btn.primary{background:var(--brand);color:white;border-color:var(--brand)}.btn:disabled{opacity:.45;cursor:not-allowed}.buttons{display:flex;gap:10px;flex-wrap:wrap}
 .field{display:block;width:100%;margin-top:8px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit}.help{display:block;font-size:13px;color:var(--muted);margin-top:7px}
@@ -31,7 +31,7 @@ section{padding:72px 0;border-bottom:1px solid var(--line)}.head{max-width:720px
 <div class="eyebrow">Itunda · IDS 3.x</div>
 <h1>One system.<br>Every Itunda surface.</h1>
 <p>IDS is the shared product-quality contract for Web, Android and iOS: semantic tokens, native components, states, accessibility, motion and platform parity.</p>
-<div class="chips"><span class="chip">#7472F4 Itunda Indigo</span><span class="chip">Light + dark</span><span class="chip">4px rhythm</span><span class="chip">44–48px targets</span><span class="chip">Web · Android · iOS</span></div>
+<div class="chips"><span class="chip">#8F89FF Itunda Violet</span><span class="chip">Light + dark</span><span class="chip">4px rhythm</span><span class="chip">44–48px targets</span><span class="chip">Web · Android · iOS</span></div>
 </section>
 
 <section><div class="head"><div class="eyebrow">01 · Principles</div><h2>Quiet by default.<br>Precise when it matters.</h2><p>Identity is Itunda's. Public references inform craft and principles; implementation, semantics and assets remain original to Itunda.</p></div><div class="grid">
@@ -42,7 +42,7 @@ section{padding:72px 0;border-bottom:1px solid var(--line)}.head{max-width:720px
 </div></section>
 
 <section><div class="head"><div class="eyebrow">02 · Foundations</div><h2>Identity outside.<br>Semantics inside.</h2><p>Products consume semantic roles so themes and platforms can adapt without changing product meaning.</p></div><div class="grid">
-<div class="card wide"><h3>Brand palette</h3><div class="swatches"><div class="swatch brand-swatch">Brand<br>#7472F4</div><div class="swatch strong-swatch">Strong<br>#625FE6</div><div class="swatch soft-swatch">Brand surface<br>#F0EFFF</div><div class="swatch ink-swatch">Primary text<br>#191F28</div></div></div>
+<div class="card wide"><h3>Brand palette</h3><div class="swatches"><div class="swatch brand-swatch">Brand<br>#8F89FF</div><div class="swatch strong-swatch">Strong<br>#625FE6</div><div class="swatch soft-swatch">Brand surface<br>#F0EFFF</div><div class="swatch ink-swatch">Primary text<br>#191F28</div></div></div>
 <div class="card narrow"><h3>Core rhythm</h3><div class="token"><b>Spacing</b> 4 · 8 · 12 · 16 · 20 · 24 · 32 · 40 · 48 · 64 · 80<br><b>Radius</b> 8 · 12 · 16 · 20 · 28<br><b>Motion</b> 0 · 140 · 220 · 420ms</div></div>
 </div></section>
 
@@ -71,7 +71,7 @@ section{padding:72px 0;border-bottom:1px solid var(--line)}.head{max-width:720px
 <a href="./components/"><strong>Component catalog</strong><span>Contracts, states and anatomy</span></a>
 <a href="https://github.com/itunda-rw/itunda"><strong>Source</strong><span>Canonical Itunda monorepo</span></a>
 </div></section>
-<footer class="footer">© 2026 Itunda · Itunda Design System · Canonical identity: #7472F4</footer>
+<footer class="footer">© 2026 Itunda · Itunda Design System · Canonical identity: #8F89FF</footer>
 </main>
 <script>
 const root=document.documentElement,button=document.getElementById('theme');
