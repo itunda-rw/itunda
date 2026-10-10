@@ -4,8 +4,8 @@ import androidx.compose.ui.graphics.Color
 
 /** Generated from client/design-system/tokens.json. Do not hand-edit token values. */
 object IDSColors {
-    val indigo500 = Color(0xFF7472F4)
-    val indigo600 = Color(0xFF625FE0)
+    val indigo500 = Color(0xFF8F89FF)
+    val indigo600 = Color(0xFF6F67E8)
     val ink900 = Color(0xFF191F28)
     val ink500 = Color(0xFF6B7684)
     val surface = Color(0xFFFFFFFF)
