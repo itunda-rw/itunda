@@ -90,8 +90,9 @@ val IdsLightSemanticColors = IdsSemanticColors(
     // Not invented: same OKLCH hue-rotation technique Toss's own eng blog documents
     // (toss.tech/article/tds-color-system-update) applied to this exact real anchor --
     // hold L/C of the old 0xFF3182F6, rotate hue to 280deg, clamp chroma to gamut.
-    // WCAG-verified: white-on-brand 3.85:1 (was 3.71:1, both clear the real 3:1
-    // AA-large/UI-component bar this role is held to).
+    // Brand foreground is a separate semantic role: #121216 on #8F89FF clears
+    // WCAG AA normal-text contrast, unlike white on this light indigo. Keep the
+    // container and foreground paired through IdsButton rather than hardcoding white.
     brand = Color(0xFF8F89FF),
     onBrand = Color(0xFF121216),
     textBrand = Color(0xFF8F89FF),
@@ -131,8 +132,10 @@ val IdsDarkSemanticColors = IdsSemanticColors(
     // far below 4.5:1. Lightened to 0xFF848A96 (5.15:1 / 4.67:1). Matches the same-day
     // fix on web/iOS.
     textTertiary = Color(0xFF848A96),
-    // Dark-mode semantic brand token: the accessible blue counterpart used by the cross-platform contract.
+    // Keep the same foreground pairing in dark mode: the indigo CTA fill remains
+    // #8F89FF, so its foreground must not revert to white with the theme.
     brand = Color(0xFF8F89FF),
+    onBrand = Color(0xFF121216),
     textBrand = Color(0xFF8F89FF),
     divider = Color(0xFF3C3C47),
     chip = Color(0xFF2C2C35),
