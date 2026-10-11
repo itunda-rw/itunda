@@ -370,7 +370,7 @@ public struct IdsBadge: View {
     public var body: some View {
         Text(text)
             .font(.caption2).fontWeight(.bold)
-            .foregroundColor(filled ? .white : tint)
+            .foregroundColor(filled ? IDS.Colors.onBrand : tint)
             .padding(.horizontal, 6).padding(.vertical, 2)
             .background(filled ? tint : tint.opacity(0.12))
             .cornerRadius(6)
