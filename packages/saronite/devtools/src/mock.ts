@@ -1,3 +1,5 @@
+import { SARONITE_CAPABILITIES, type SaroniteCapabilityName } from './capabilities';
+
 export type MockStatus = 'ok' | 'denied' | 'unsupported' | 'error';
 
 export type MockCall = {
@@ -52,6 +54,10 @@ export function createSaroniteMockHost(
       if (options.supported === false) {
         record(capability, method, 'unsupported');
         return undefined;
+      }
+      const methods = SARONITE_CAPABILITIES[capability as SaroniteCapabilityName];
+      if (!methods || !Object.values(methods).includes(method as never)) {
+        throw new Error(`Unknown Saronite capability method: ${capability}.${method}`);
       }
       if (options.permission && state.permissions[options.permission] !== true) {
         record(capability, method, 'denied', options.permission);
