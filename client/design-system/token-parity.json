@@ -88,5 +88,9 @@
   "legacyCompatibility": {
     "source": "packages/design-tokens/tokens.json",
     "rule": "Legacy primitive scales remain compatibility inputs; product-facing code consumes semantic roles."
+  },
+  "pressedSurface": {
+    "light": "#EEF0FF",
+    "dark": "#2B2C52"
   }
 }
