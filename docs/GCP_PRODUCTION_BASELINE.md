@@ -49,7 +49,7 @@ This is the highest-priority verified resilience gap for a money-moving applicat
 ### P0 — Transport security to data services
 
 - Cloud SQL reports `requireSsl=false` and `sslMode=ALLOW_UNENCRYPTED_AND_ENCRYPTED`.
-- Memorystore reports `transitEncryptionMode=DISABLED`.
+- Memorystore reports `transitEncryptionMode=DISABLED`, persistence mode `DISABLED`, and `BASIC` tier with one node.
 
 These settings do not enforce encrypted transport. Verify client support and rollout safety, then enforce TLS for Cloud SQL and enable in-transit encryption for Redis where supported. Test certificate/CA handling and reconnect behavior before rollout. Do not rotate credentials or flip enforcement blindly.
 
@@ -59,11 +59,11 @@ The deployed API revision explicitly configures Redis. That differs from the pre
 
 ### P1 — Kafka resilience and event correctness
 
-The managed Kafka cluster is `ACTIVE` and the API has a bootstrap-server setting. The audit did not establish broker count, replication factor, minimum in-sync replicas, topic retention, ACLs, TLS/SASL enforcement, consumer lag alerting, cross-region recovery, or end-to-end message delivery. Verify those settings and run a producer → topic → consumer integration test plus a broker/consumer restart drill. Do not describe this as Toss-style active-active: no second independent cluster, mirroring, or offset synchronization was verified.
+The managed Kafka cluster is `ACTIVE` and the API has a bootstrap-server setting. The describe output exposes a standard bootstrap address on port `9092` and an mTLS bootstrap address on port `9192`, but the audit did not establish which address the application uses or verify broker count, replication factor, minimum in-sync replicas, topic retention, ACLs, client authentication policy, consumer lag alerting, cross-region recovery, or end-to-end message delivery. Verify those settings and run a producer → topic → consumer integration test plus a broker/consumer restart drill. Do not describe this as Toss-style active-active: no second independent cluster, mirroring, or offset synchronization was verified.
 
 ### P1 — Public API exposure and identity boundaries
 
-Cloud Run reports API ingress as `all`. That means the service is reachable through its Cloud Run endpoint; it does not prove the application is unauthenticated. Verify the intended public ingress model, authentication on every protected route, rate limits, service-to-service identity, CORS behavior, abuse controls, and whether direct `.run.app` access should be blocked or intentionally supported. CORS is not an authentication control.
+Cloud Run reports API ingress as `all`, and `gcloud run services get-iam-policy` returned `roles/run.invoker` bound to `allUsers`. This confirms public invocation is allowed at the Cloud Run IAM layer; it does **not** prove that application routes are unauthenticated. Verify authentication on every protected route, rate limits, service-to-service identity, CORS behavior, abuse controls, and whether direct `.run.app` access should be blocked or intentionally supported. If public invocation is not the intended design, plan an ingress/IAM change only after confirming the intended public API and testing custom-domain, gateway, and health-check paths. CORS is not an authentication control.
 
 ### P1 — Capacity and operational readiness
 
