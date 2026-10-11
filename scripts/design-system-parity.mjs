@@ -97,4 +97,4 @@ if (failures.length) {
   process.exit(1);
 }
 console.log("IDS semantic parity: PASS");
-console.log(`Checked ${contract.semanticRoles.length} semantic roles plus exact brand and pressed-surface values across Web, Android and iOS.`);
+console.log(`Checked ${contract.semanticRoles.length} semantic roles, exact brand and pressed-surface values across Web, Android and iOS, plus generated indigo500/indigo600 outputs against client/design-system/tokens.json.`);
