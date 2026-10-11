@@ -42,14 +42,14 @@ if sql="$(fetch_json "Cloud SQL $SQL_INSTANCE" gcloud sql instances describe "$S
   tier="$(jq -r '.settings.tier // "UNKNOWN"' <<<"$sql")"
   availability="$(jq -r '.settings.availabilityType // "UNKNOWN"' <<<"$sql")"
   backup_enabled="$(jq -r '.settings.backupConfiguration.enabled // false' <<<"$sql")"
-  pitr_enabled="$(jq -r '.settings.backupConfiguration.binaryLogEnabled // false' <<<"$sql")"
+  pitr_enabled="$(jq -r '.settings.backupConfiguration.pointInTimeRecoveryEnabled // .settings.backupConfiguration.binaryLogEnabled // false' <<<"$sql")"
   require_ssl="$(jq -r '.settings.ipConfiguration.requireSsl // false' <<<"$sql")"
   ssl_mode="$(jq -r '.settings.ipConfiguration.sslMode // "UNKNOWN"' <<<"$sql")"
   private_ip="$(jq -r '[.ipAddresses[]? | select(.type == "PRIVATE")] | length > 0' <<<"$sql")"
   if [[ "$state" == "RUNNABLE" ]]; then pass "Cloud SQL state RUNNABLE"; else fail "Cloud SQL state is $state"; errors=$((errors + 1)); fi
   if [[ "$private_ip" == "true" ]]; then pass "Cloud SQL has private IP"; else warn "Cloud SQL has no private IP"; warnings=$((warnings + 1)); fi
   if [[ "$backup_enabled" == "true" ]]; then pass "Cloud SQL automated backups enabled"; else fail "Cloud SQL automated backups DISABLED"; errors=$((errors + 1)); fi
-  if [[ "$pitr_enabled" == "true" ]]; then pass "Cloud SQL point-in-time recovery binary logging enabled"; else fail "Cloud SQL PITR/binary logging not enabled"; errors=$((errors + 1)); fi
+  if [[ "$pitr_enabled" == "true" ]]; then pass "Cloud SQL point-in-time recovery enabled"; else fail "Cloud SQL PITR not enabled"; errors=$((errors + 1)); fi
   if [[ "$require_ssl" == "true" || "$ssl_mode" == "ENCRYPTED_ONLY" ]]; then pass "Cloud SQL enforces encrypted connections"; else warn "Cloud SQL does not enforce encrypted connections (requireSsl=$require_ssl, sslMode=$ssl_mode)"; warnings=$((warnings + 1)); fi
   echo "INFO  Cloud SQL tier=$tier availability=$availability (capacity/HA suitability requires workload review)"
 else
