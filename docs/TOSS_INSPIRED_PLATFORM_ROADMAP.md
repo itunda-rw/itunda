@@ -37,10 +37,11 @@ The repository already contains substantial work. Do not rebuild these just to i
 
 ## Priority 1 — super-app shell and mini-app lifecycle
 
-Study Granite's host/mini-app separation, dynamic bundle model, brownfield integration, and small feature bundles. Compare it to **packages/saronite/**, **android/**, and **ios/** before adopting code.
+Granite integration already exists in the repository's documented Android/iOS mini-app host. Treat the runtime choice as made for now; verify the real dependency/codegen wiring and reconcile older docs that still describe Saronite as hand-rolled or Granite as not integrated.
 
-- Write an ADR comparing the current Saronite architecture with Granite's public architecture and license. Explicitly decide whether to adopt Granite, selectively reuse compatible ideas, or keep the current implementation.
-- Define a versioned mini-app manifest: app ID, version, entry point, required permissions, supported shell/SDK versions, integrity metadata, and rollback version.
+- Keep the Saronite SDK and manifest as Itunda-owned contracts around the Granite runtime; do not add a competing runtime.
+- Verify the existing versioned manifest schema and partner template, then extend the manifest with supported shell/SDK compatibility and immutable artifact integrity metadata where the current runtime consumes those fields.
+- Record the exact Granite/React Native/React/BrickModule versions as one compatibility set and test them against both native platforms.
 - Make loading, cancellation, timeout, offline fallback, and crash isolation explicit lifecycle states.
 - Define a signed artifact and compatibility policy before runtime remote bundle loading is treated as production-ready.
 - Keep feature modules independently testable and prevent feature-to-feature imports that bypass stable contracts.
@@ -49,10 +50,10 @@ Study Granite's host/mini-app separation, dynamic bundle model, brownfield integ
 
 ## Priority 2 — Itunda SDK and developer CLI
 
-Use create-ait-app as a reference for reproducible scaffolding and sdk-example as a reference for executable API examples.
+Use create-ait-app as a reference for reproducible scaffolding and sdk-example as a reference for executable API examples. Itunda already has tools/itunda-miniapp/ with new and validate commands; harden that tool instead of starting another CLI.
 
 - Publish a versioned Saronite SDK contract with semver, deprecation policy, typed errors, timeout rules, permission requirements, and platform capability detection.
-- Build an **itunda create** CLI that generates a minimal mini-app, tests, manifest, sample screen, and CI workflow from maintained templates.
+- Extend the existing itunda-miniapp generator to produce tests, manifest, sample screen, and CI workflow from maintained templates; document its current commands and limitations.
 - Generate SDK reference documentation from the same type definitions used to build the SDK; do not hand-maintain a second, drifting API list.
 - Maintain a sample app that exercises every public SDK API and can run against both a native bridge and a deterministic browser mock.
 - Provide a compatibility matrix for SDK version × Android shell × iOS shell × mini-app runtime.
@@ -123,12 +124,12 @@ A green build only proves the checks that actually ran. Reports must list skippe
 
 ## Execution order
 
-1. Resolve canonical ownership and reconcile stale documentation.
-2. Audit Saronite against Granite and publish the ADR.
-3. Establish SDK contracts, CLI scaffolding, and executable examples.
-4. Build the mock-first sandbox and machine-generated API docs.
-5. Harden payment/API reliability and service boundaries.
-6. Unify IDS tokens and critical product patterns.
+1. Reconcile stale architecture docs and verify the current Granite/React Native/BrickModule version set.
+2. Fix and test the manifest schema/CLI contract (including the template's $schema field); run the tests in CI.
+3. Harden the existing itunda-miniapp CLI and publish executable SDK examples.
+4. Verify artifact integrity, compatibility enforcement, staged rollout, and rollback before production remote bundle delivery.
+5. Build the mock-first sandbox and machine-generated API docs.
+6. Harden payment/API reliability and unify IDS tokens and critical product patterns.
 7. Complete host routing, internal operations tooling, and production rollout gates.
 
 ## Out of scope
