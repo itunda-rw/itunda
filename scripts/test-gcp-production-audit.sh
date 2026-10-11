@@ -15,9 +15,15 @@ case "$joined" in
     pitr="${MOCK_PITR_ENABLED:-true}"
     pitr_field="${MOCK_PITR_FIELD:-pointInTimeRecoveryEnabled}"
     legacy_pitr="${MOCK_PITR_LEGACY:-$pitr}"
-    cat <<JSON
-{"state":"RUNNABLE","settings":{"tier":"db-f1-micro","availabilityType":"REGIONAL","backupConfiguration":{"enabled":$backup,"$pitr_field":$pitr,"binaryLogEnabled":$legacy_pitr},"ipConfiguration":{"requireSsl":true,"sslMode":"ENCRYPTED_ONLY"}},"ipAddresses":[{"type":"PRIVATE","ipAddress":"10.0.0.2"}]}
+    if [[ "$pitr_field" == "binaryLogEnabled" ]]; then
+      cat <<JSON
+{"state":"RUNNABLE","settings":{"tier":"db-f1-micro","availabilityType":"REGIONAL","backupConfiguration":{"enabled":$backup,"binaryLogEnabled":$pitr},"ipConfiguration":{"requireSsl":true,"sslMode":"ENCRYPTED_ONLY"}},"ipAddresses":[{"type":"PRIVATE","ipAddress":"10.0.0.2"}]}
 JSON
+    else
+      cat <<JSON
+{"state":"RUNNABLE","settings":{"tier":"db-f1-micro","availabilityType":"REGIONAL","backupConfiguration":{"enabled":$backup,"pointInTimeRecoveryEnabled":$pitr,"binaryLogEnabled":$legacy_pitr},"ipConfiguration":{"requireSsl":true,"sslMode":"ENCRYPTED_ONLY"}},"ipAddresses":[{"type":"PRIVATE","ipAddress":"10.0.0.2"}]}
+JSON
+    fi
     ;;
   "redis instances describe "*)
     cat <<'JSON'
