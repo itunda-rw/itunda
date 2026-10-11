@@ -78,6 +78,7 @@ if (revokedResult !== undefined || revokedHandlerExecuted) {
 }
 
 // Exceptions in mocked native handlers are recorded and fail closed.
+host.setPermission('identity:read', true);
 const failedResult = host.request('identity', 'getCurrentIdentity', () => {
   throw new Error('simulated native bridge failure');
 });
