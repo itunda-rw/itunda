@@ -28,26 +28,34 @@ const android = fs.readFileSync(path.join(root, files.android), "utf8");
 const ios = fs.readFileSync(path.join(root, files.ios), "utf8");
 
 const brand = contract.brand;
+const pressedSurface = contract.pressedSurface;
 const toAndroidColor = value => `0xFF${value.replace("#", "")}`;
 const toIosColor = value => `0x${value.replace("#", "")}`;
-const brandChecks = [
-  ["web light", web, brand.light],
-  ["web dark", web, brand.dark],
-  ["android light", android, toAndroidColor(brand.light)],
-  ["android dark", android, toAndroidColor(brand.dark)],
-  ["ios light", ios, toIosColor(brand.light)],
-  ["ios dark", ios, toIosColor(brand.dark)],
-];
-
-for (const [label, source, anchor] of brandChecks) {
-  if (!source.includes(anchor)) failures.push(`${label}: missing brand anchor ${anchor}`);
-}
+const expect = (label, source, pattern, expected) => {
+  const match = source.match(pattern);
+  if (!match || match[1].toUpperCase() !== expected.toUpperCase()) {
+    failures.push(`${label}: expected ${expected}, found ${match?.[1] ?? "missing"}`);
+  }
+};
+const webLight = web.split('[data-theme="dark"]')[0];
+const webDark = web.split('[data-theme="dark"]')[1] ?? "";
+expect("web light brand", webLight, /--itunda-color-brand:\s*(#[0-9A-Fa-f]{6})/i, brand.light);
+expect("web dark brand", webDark, /--itunda-color-brand:\s*(#[0-9A-Fa-f]{6})/i, brand.dark);
+expect("web light pressed surface", webLight, /--itunda-color-pressed:\s*(#[0-9A-Fa-f]{6})/i, pressedSurface.light);
+expect("web dark pressed surface", webDark, /--itunda-color-pressed:\s*(#[0-9A-Fa-f]{6})/i, pressedSurface.dark);
+expect("android light brand", android, /val IdsLightSemanticColors[\s\S]*?brand = Color\((0x[0-9A-Fa-f]{8})\)/, toAndroidColor(brand.light));
+expect("android dark brand", android, /val IdsDarkSemanticColors[\s\S]*?brand = Color\((0x[0-9A-Fa-f]{8})\)/, toAndroidColor(brand.dark));
+expect("android light pressed surface", android, /val IdsLightSemanticColors[\s\S]*?pressed = Color\((0x[0-9A-Fa-f]{8})\)/, toAndroidColor(pressedSurface.light));
+expect("android dark pressed surface", android, /val IdsDarkSemanticColors[\s\S]*?pressed = Color\((0x[0-9A-Fa-f]{8})\)/, toAndroidColor(pressedSurface.dark));
+expect("ios brand light", ios, /public static let brand = Color\(light:\s*(0x[0-9A-Fa-f]+), dark:/, toIosColor(brand.light));
+expect("ios brand dark", ios, /public static let brand = Color\(light:\s*0x[0-9A-Fa-f]+, dark:\s*(0x[0-9A-Fa-f]+)/, toIosColor(brand.dark));
+expect("ios pressed surface light", ios, /public static let pressed = Color\(light:\s*(0x[0-9A-Fa-f]+), dark:/, toIosColor(pressedSurface.light));
+expect("ios pressed surface dark", ios, /public static let pressed = Color\(light:\s*0x[0-9A-Fa-f]+, dark:\s*(0x[0-9A-Fa-f]+)/, toIosColor(pressedSurface.dark));
 
 if (failures.length) {
   console.error("IDS semantic parity: FAIL");
   failures.forEach(f => console.error(" - " + f));
   process.exit(1);
 }
-
 console.log("IDS semantic parity: PASS");
-console.log(`Checked ${contract.semanticRoles.length} semantic roles across Web, Android and iOS.`);
+console.log(`Checked ${contract.semanticRoles.length} semantic roles plus exact brand and pressed-surface values across Web, Android and iOS.`);
