@@ -7,19 +7,19 @@
     "itunda": {
       "light": {
         "brand": "#8F89FF",
-        "brandStrong": "#625FE6",
-        "brandSurface": "#F0EFFF",
-        "onBrand": "#FFFFFF",
+        "brandStrong": "#6960F9",
+        "brandSurface": "#F1F0FF",
+        "onBrand": "#121216",
         "focus": "#8F89FF",
-        "pressed": "#625FE6"
+        "pressed": "#7D77F7"
       },
       "dark": {
         "brand": "#8F89FF",
-        "brandStrong": "#B0AEFF",
-        "brandSurface": "#27244A",
+        "brandStrong": "#8F89FF",
+        "brandSurface": "#25234A",
         "onBrand": "#191F28",
-        "focus": "#B0AEFF",
-        "pressed": "#8F89FF"
+        "focus": "#8F89FF",
+        "pressed": "#7D77F7"
       }
     }
   }
