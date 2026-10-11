@@ -72,7 +72,7 @@
   --itunda-color-bg:#FFFFFF;
   --itunda-color-surface:#FFFFFF;
   --itunda-color-surface-sunken:#F2F4F6;
-  --itunda-color-surface-brand:#E2E0FF;
+  --itunda-color-surface-brand:#F1F0FF;
   --itunda-color-text:#191F28;
   --itunda-color-text-strong:#101318;
   --itunda-color-text-muted:#4E5968;
@@ -80,8 +80,8 @@
   --itunda-color-border:#E5E8EB;
   --itunda-color-border-strong:#DDE2E7;
   --itunda-color-brand:#8F89FF;
-  --itunda-color-brand-strong:#625FE0;
-  --itunda-color-brand-soft:#E2E0FF;
+  --itunda-color-brand-strong:#6960F9;
+  --itunda-color-brand-soft:#F1F0FF;
   --itunda-color-success:#05804A;
   --itunda-color-success-soft:#F5FAFF;
   --itunda-color-warning:#FFA000;
@@ -93,7 +93,7 @@
   --itunda-focus:#A7A4FF;
   --itunda-color-icon-primary:#2C3643;
   --itunda-color-icon-secondary:#6B7684;
-  --itunda-color-pressed:#EEF0FF;
+  --itunda-color-pressed:#F1F0FF;
   --itunda-color-shadow:rgba(0,0,0,.08);
   /* Canonical names consumed by parity tooling and new components. */
   --itunda-color-background:var(--itunda-color-bg);
@@ -103,7 +103,7 @@
   --itunda-color-text-tertiary:var(--itunda-color-text-subtle);
   --itunda-color-text-brand:var(--itunda-color-brand-strong);
   --itunda-color-divider:var(--itunda-color-border);
-  --itunda-color-brand-pressed:var(--itunda-color-pressed);
+  --itunda-color-brand-pressed:#7D77F7;
   --itunda-color-icon-primary:var(--itunda-color-icon-primary);
   --itunda-color-icon-secondary:var(--itunda-color-icon-secondary);
   --itunda-shadow-sm:0 2px 10px rgba(16,19,24,.06);
@@ -111,14 +111,14 @@
   --itunda-shadow-lg:0 24px 64px rgba(16,19,24,.14);
 }
 [data-theme="dark"]{
-  --itunda-color-bg:#17171C; --itunda-color-surface:#202027; --itunda-color-surface-sunken:#2C2C35;
-  --itunda-color-surface-brand:#2B2C52; --itunda-color-text:#FFFFFF; --itunda-color-text-strong:#FFFFFF;
-  --itunda-color-text-muted:#989EAA; --itunda-color-text-subtle:#848A96; --itunda-color-border:#3C3C47;
-  --itunda-color-border-strong:#3C3C47; --itunda-color-brand:#8F89FF; --itunda-color-brand-strong:#A7A4FF;
-  --itunda-color-brand-soft:#2B2C52; --itunda-color-success:#20D394; --itunda-color-success-soft:#10321F;
+  --itunda-color-bg:#121216; --itunda-color-surface:#1C1C22; --itunda-color-surface-sunken:#25252D;
+  --itunda-color-surface-brand:#25234A; --itunda-color-text:#FFFFFF; --itunda-color-text-strong:#FFFFFF;
+  --itunda-color-text-muted:#9AA1AD; --itunda-color-text-subtle:#9AA1AD; --itunda-color-border:#2E2E37;
+  --itunda-color-border-strong:#2E2E37; --itunda-color-brand:#8F89FF; --itunda-color-brand-strong:#8F89FF;
+  --itunda-color-brand-soft:#25234A; --itunda-color-success:#20D394; --itunda-color-success-soft:#10321F;
   --itunda-color-warning:#FFC24C; --itunda-color-warning-soft:#3A2E10;
   --itunda-color-error:#FF6B7A; --itunda-color-error-soft:#3A1418;
-  --itunda-color-info:#8F89FF; --itunda-color-info-soft:#2B2C52; --itunda-color-pressed:#2B2C52;
+  --itunda-color-info:#8F89FF; --itunda-color-info-soft:#25234A; --itunda-color-pressed:#25234A;
   --itunda-color-icon-primary:#E8EAED; --itunda-color-icon-secondary:#989EAA;
   --itunda-color-shadow:rgba(0,0,0,.25); --itunda-overlay:rgba(0,0,0,.64);
   --itunda-shadow-sm:0 2px 12px rgba(0,0,0,.22); --itunda-shadow-md:0 12px 36px rgba(0,0,0,.30);
