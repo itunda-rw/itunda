@@ -55,6 +55,18 @@ test("CLI scaffolds a valid mini-app using Itunda Indigo", () => {
   }
 });
 
+test("CLI refuses an HTTP bundle even when the undocumented local flag is supplied", () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "itunda-local-bundle-test-"));
+  try {
+    const result = spawnSync(process.execPath, [cli, "new", "Unsafe App", "--bundle", "http://localhost:3000/app.js", "--local"], { cwd, encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /valid HTTPS URL/);
+    assert.equal(fs.existsSync(path.join(cwd, "unsafe-app")), false);
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
 test("CLI rejects an unsupported permission", () => {
   const manifest = JSON.parse(fs.readFileSync(templatePath, "utf8"));
   manifest.permissions = ["root-access"];
