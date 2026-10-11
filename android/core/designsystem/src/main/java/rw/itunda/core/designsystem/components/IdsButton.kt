@@ -99,7 +99,7 @@ fun IdsButton(
     }
     val widthModifier = if (size == IdsButtonSize.Large) Modifier.fillMaxWidth() else Modifier
     val (containerColor, contentColor) = when (variant) {
-        IdsButtonVariant.Filled -> Ids.colors.brand to IdsColors.White
+        IdsButtonVariant.Filled -> Ids.colors.brand to Ids.colors.onBrand
         IdsButtonVariant.Tinted -> Ids.colors.pressed to Ids.colors.textBrand
         IdsButtonVariant.Tertiary -> Color.Transparent to Ids.colors.textBrand
         IdsButtonVariant.Destructive -> Ids.colors.danger to IdsColors.White
@@ -112,7 +112,7 @@ fun IdsButton(
     // Only applies to Filled -- Tinted's own disabled state (a secondary style, not
     // shown in the reference) keeps the existing neutral fallback.
     val (disabledContainerColor, disabledContentColor) = when (variant) {
-        IdsButtonVariant.Filled -> Ids.colors.brand.copy(alpha = 0.35f) to IdsColors.White
+        IdsButtonVariant.Filled -> Ids.colors.brand.copy(alpha = 0.35f) to Ids.colors.onBrand
         IdsButtonVariant.Tinted -> Ids.colors.divider to Ids.colors.textTertiary
         IdsButtonVariant.Tertiary -> Color.Transparent to Ids.colors.textTertiary
         IdsButtonVariant.Destructive -> Ids.colors.danger.copy(alpha = 0.35f) to IdsColors.White
