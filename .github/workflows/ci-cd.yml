@@ -344,6 +344,101 @@ jobs:
         working-directory: android
         run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
 
+      - name: Assemble Android Release and verify embedded Saronite bundle
+        working-directory: android
+        run: |
+          set -euo pipefail
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace
+          APK="app/build/outputs/apk/release/app-release-unsigned.apk"
+          if [ ! -s "$APK" ]; then
+            echo "::error::Release APK not found or empty: $APK"
+            find app/build/outputs/apk -maxdepth 3 -type f -print
+            exit 1
+          fi
+          unzip -l "$APK" | grep -E 'assets/index.android.bundle
+  # ios/: Tuist-generated Xcode project (real Feature/Interface/Testing microfeature
+  # split, see docs/MULTI_AGENT_ISOLATION.md) + CocoaPods-integrated React Native
+  # bridge for the Saronite mini-app host. Verified building locally 2026-07-23 (the
+  # `Target(...)` manifest calls needed updating to Tuist's current
+  # `Target.target(destinations:...)` API, and `pod install` must run after
+  # `tuist generate` -- see ios/Podfile's own comment) -- this is the first time
+  # that's been a real, run green check instead of an untested claim.
+  ios-build:
+    runs-on: macos-15-intel
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      # Saronite is an independent Yarn workspace. Its web-demo workspace uses
+      # Yarn's workspace:* protocol, which npm does not support (EUNSUPPORTEDPROTOCOL).
+      # Install with the workspace-native package manager so Android and iOS both
+      # receive the same linked Saronite packages and React Native dependencies.
+      - name: Install Saronite JS dependencies (own Yarn workspace, not the root workspace)
+        working-directory: packages/saronite
+        run: yarn install --no-immutable
+
+      # Real CI fix (2026-09-03): ios/.brick/ (BrickCodegen's own podspec + generated
+      # bridge sources) is gitignored, regenerated from each mini-app's *.brick.ts spec
+      # -- a fresh CI checkout never has it, so `pod install` below failed with "No
+      # podspec found for BrickCodegen in .brick". Same command the Podfile's own
+      # BrickCodegen doc comment already documents for local regeneration.
+      - name: Generate BrickCodegen iOS bridge
+        working-directory: packages/saronite/host-app
+        run: node ../node_modules/.bin/brick-codegen --platform ios --output-ios ../../../ios/.brick --projectRoot .
+
+      - name: Install Tuist
+        run: brew install --cask tuist
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: tuist generate --no-open
+
+      - name: Install CocoaPods dependencies
+        working-directory: ios
+        # Saronite/BrickCodegen generates local podspec state during CI. Do not
+        # enforce the committed lockfile before that generated state is reconciled.
+        run: pod install
+
+      - name: Build ItundaApp
+        working-directory: ios
+        run: |
+          xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp \
+            -destination 'generic/platform=iOS Simulator' build \
+            CODE_SIGNING_ALLOWED=NO
+
+  # Offline test for the read-only GCP posture audit. This deliberately mocks gcloud;
+  # it does not authenticate to or mutate the live GCP project.
+  gcp-audit-script:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Bash syntax
+        run: bash -n scripts/gcp-production-audit.sh && bash -n scripts/test-gcp-production-audit.sh
+      - name: Install audit test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes jq shellcheck
+      - name: Lint audit scripts
+        run: shellcheck --severity=warning scripts/gcp-production-audit.sh scripts/test-gcp-production-audit.sh
+      - name: Run offline smoke tests
+        run: bash scripts/test-gcp-production-audit.sh
+ || {
+            echo "::error::Release APK is missing assets/index.android.bundle"
+            exit 1
+          }
+          unzip -p "$APK" assets/index.android.bundle > "$RUNNER_TEMP/itunda-index.android.bundle"
+          test -s "$RUNNER_TEMP/itunda-index.android.bundle"
+          echo "Verified Android release bundle ($(wc -c < "$RUNNER_TEMP/itunda-index.android.bundle" | tr -d ' ') bytes)"
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
@@ -411,3 +506,21 @@ jobs:
           xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp \
             -destination 'generic/platform=iOS Simulator' build \
             CODE_SIGNING_ALLOWED=NO
+
+  # Offline test for the read-only GCP posture audit. This deliberately mocks gcloud;
+  # it does not authenticate to or mutate the live GCP project.
+  gcp-audit-script:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Bash syntax
+        run: bash -n scripts/gcp-production-audit.sh && bash -n scripts/test-gcp-production-audit.sh
+      - name: Install audit test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes jq shellcheck
+      - name: Lint audit scripts
+        run: shellcheck --severity=warning scripts/gcp-production-audit.sh scripts/test-gcp-production-audit.sh
+      - name: Run offline smoke tests
+        run: bash scripts/test-gcp-production-audit.sh

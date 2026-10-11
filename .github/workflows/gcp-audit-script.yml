@@ -1,0 +1,35 @@
+name: GCP Audit Script
+
+on:
+  pull_request:
+    paths:
+      - "scripts/gcp-production-audit.sh"
+      - "scripts/test-gcp-production-audit.sh"
+      - ".github/workflows/gcp-audit-script.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/gcp-production-audit.sh"
+      - "scripts/test-gcp-production-audit.sh"
+      - ".github/workflows/gcp-audit-script.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shell-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Bash syntax
+        run: bash -n scripts/gcp-production-audit.sh && bash -n scripts/test-gcp-production-audit.sh
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes shellcheck
+      - name: Lint audit scripts
+        run: shellcheck --severity=warning scripts/gcp-production-audit.sh scripts/test-gcp-production-audit.sh
+      - name: Run offline smoke tests
+        run: bash scripts/test-gcp-production-audit.sh

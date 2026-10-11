@@ -1,0 +1,36 @@
+name: Product completeness inventory
+
+on:
+  pull_request:
+    paths:
+      - "docs/TOSS_PARITY_MATRIX.md"
+      - "docs/PRODUCT_COMPLETENESS_AUDIT.md"
+      - "scripts/verify-product-audit-inventory.mjs"
+      - ".github/workflows/product-audit-inventory.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/TOSS_PARITY_MATRIX.md"
+      - "docs/PRODUCT_COMPLETENESS_AUDIT.md"
+      - "scripts/verify-product-audit-inventory.mjs"
+      - ".github/workflows/product-audit-inventory.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Verify all product rows are represented in the audit register
+        run: node scripts/verify-product-audit-inventory.mjs

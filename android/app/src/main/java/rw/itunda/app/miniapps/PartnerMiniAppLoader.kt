@@ -98,13 +98,33 @@ object PartnerMiniAppLoader {
         val application = activity.applicationContext as ItundaApplication
         try {
             val bundleFile = downloadBundle(activity, app)
-            reloadHostWithBundle(application, bundleFile.absolutePath)
+            // Arm the least-privilege boundary BEFORE reload(): the partner bundle can
+            // execute JS and call native modules as part of startup, before reload()
+            // reports completion. Setting scopes afterwards leaves a startup window in
+            // which activeScopes == null and the partner inherits first-party trust.
             MiniAppSecurityContext.activeScopes = app.permissions
                 .split(",")
                 .map { it.trim() }
                 .filter { it.isNotEmpty() }
                 .toSet()
-            activity.startActivity(Intent(activity, PartnerMiniAppActivity::class.java))
+            try {
+                reloadHostWithBundle(application, bundleFile.absolutePath)
+                activity.startActivity(Intent(activity, PartnerMiniAppActivity::class.java))
+            } catch (e: Exception) {
+                // If loading or Activity launch fails, attempt to restore the trusted
+                // bundle while the partner bridge remains denied. Only clear the
+                // security context after a successful restore; a failed restore must
+                // fail closed rather than expose a possibly still-running partner JS
+                // runtime to first-party privileges.
+                MiniAppSecurityContext.activeScopes = emptySet()
+                try {
+                    reloadHostWithBundle(application, filePath = null)
+                    MiniAppSecurityContext.activeScopes = null
+                } catch (restoreError: Exception) {
+                    e.addSuppressed(restoreError)
+                }
+                throw e
+            }
         } catch (e: IOException) {
             onError(e.message ?: "Could not download this mini-app's bundle")
         } catch (e: Exception) {
@@ -119,8 +139,14 @@ object PartnerMiniAppLoader {
      * working correctly the next time any of them is opened. */
     suspend fun restoreFirstPartyBundle(activity: Activity) {
         val application = activity.applicationContext as ItundaApplication
-        MiniAppSecurityContext.activeScopes = null
+        // Deny all bridge capabilities during the transition. The old partner JS
+        // context may still execute until reload completes, so clearing to null first
+        // would briefly grant it first-party trust.
+        MiniAppSecurityContext.activeScopes = emptySet()
         reloadHostWithBundle(application, filePath = null)
+        // Only a successful restore makes the shared runtime trusted again. If reload
+        // throws, keep the empty scope set and fail closed.
+        MiniAppSecurityContext.activeScopes = null
     }
 
     /** Fire-and-forget wrapper around [restoreFirstPartyBundle] for call sites (namely

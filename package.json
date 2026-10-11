@@ -13,6 +13,9 @@
     "services/api-gateway"
   ],
   "scripts": {
+    "test:design-system-parity": "node scripts/design-system-parity.mjs",
+    "generate:client-design-tokens": "node scripts/client-design-tokens.mjs",
+    "check:client-design-tokens": "node scripts/client-design-tokens.mjs --check",
     "dev": "bash ./scripts/local-ecosystem.sh web-dev",
     "dev:web": "bash ./scripts/local-ecosystem.sh web-dev",
     "dev:lan": "bash ./scripts/local-ecosystem.sh web-lan",

@@ -140,6 +140,13 @@ android {
             "MINIAPP_BUNDLE_CDN_URL",
             "\"${project.findProperty("miniAppBundleCdnUrl") ?: ""}\""
         )
+        // Optional integrity pin for a remotely delivered executable JS bundle.
+        // Empty by default, so CDN bundle loading stays disabled until configured.
+        buildConfigField(
+            "String",
+            "MINIAPP_BUNDLE_CDN_SHA256",
+            "\"${project.findProperty("miniAppBundleSha256") ?: ""}\""
+        )
 
         // Real login/session flow needs a real base URL -- NetworkClient.kt previously
         // hardcoded "http://10.0.2.2:8080/", the emulator-only loopback alias, at the
@@ -338,6 +345,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.okhttp)
     implementation(libs.gson)
+    testImplementation(libs.junit4)
     // Real instrumented UI tests (2026-07-11) -- androidx.compose.ui.test reads the
     // same semantics tree TalkBack does, so this is a real live accessibility check
     // against a real emulator, not a static-analysis proxy for one. See

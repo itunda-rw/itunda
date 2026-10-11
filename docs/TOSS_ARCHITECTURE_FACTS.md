@@ -58,8 +58,7 @@ Source: [바이라인네트워크](https://byline.network/2022/06/10-234/), [토
 
 ## 3. Frontend/mobile — the actual "super app" mechanism
 
-This is the most distinctive and most copyable part of Toss's architecture, and the part
-`saronite/` in this repo is currently hand-imitating instead of building on the real thing.
+This is the most distinctive and most copyable part of Toss's architecture. Itunda's repository now has an existing Granite-based React Native runtime integration plus the Itunda-owned Saronite SDK/manifest/partner tooling. The audit must verify the exact runtime and codegen versions, clean Android/iOS builds, API parity, and production artifact-delivery gates rather than repeat the earlier, superseded claim that Saronite is only a hand imitation.
 
 Source: [toss/granite (GitHub)](https://github.com/toss/granite), [토스가 꿈꾸는 React Native 기술의 미래](https://toss.tech/article/react-native-2024), [SLASH23 — 달리는 토스 앱에 React Native 엔진 더하기](https://velog.io/@badbeoti/%ED%86%A0%EC%8A%A4%E3%85%A3SLASH-23-%EB%8B%AC%EB%A6%AC%EB%8A%94-%ED%86%A0%EC%8A%A4-%EC%95%B1%EC%97%90-React-Native-%EC%97%94%EC%A7%80-%EB%8D%94%ED%95%98%EA%B8%B0), [토스 RN Framework 팀 커리어 아티클](https://toss.im/career/article/rn_framework_2511)
 

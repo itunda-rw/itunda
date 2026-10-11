@@ -7,6 +7,17 @@ on:
     paths:
       - "client/design-system/**"
       - "scripts/design-system-parity.mjs"
+      - "scripts/client-design-tokens.mjs"
+      - ".github/workflows/ids-parity.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "client/design-system/**"
+      - "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/theme/IdsSemanticColors.kt"
+      - "ios/Core/DesignSystem/Sources/IDS.swift"
+      - "scripts/design-system-parity.mjs"
+      - "package.json"
       - ".github/workflows/ids-parity.yml"
   workflow_dispatch:
 
@@ -18,5 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check generated native token outputs
+        run: node scripts/client-design-tokens.mjs --check
       - name: Check IDS semantic parity
         run: node scripts/design-system-parity.mjs

@@ -15,6 +15,10 @@
     "permissions"
   ],
   "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri"
+    },
     "manifestVersion": {
       "const": 1
     },

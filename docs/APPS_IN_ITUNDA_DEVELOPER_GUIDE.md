@@ -48,6 +48,17 @@ Partner code must never receive unrestricted host credentials or arbitrary nativ
 
 ## 3. Development lifecycle
 
+### Scaffold and validate
+
+From the repository root, use the checked-in CLI. It derives the schema, manifest version, and default semantic theme from the canonical partner template:
+
+```sh
+node tools/itunda-miniapp/bin/itunda-miniapp.mjs new "My Service"
+node tools/itunda-miniapp/bin/itunda-miniapp.mjs validate my-service/manifest.json
+```
+
+The generated `manifest.json` uses placeholder bundle and icon URLs so the scaffold is deterministic. Replace both with your real HTTPS assets before submitting; the validator rejects HTTP URLs and URLs containing embedded credentials. Choose the narrowest supported permission list and set a stable partner app ID before publishing.
+
 1. Scaffold from the Itunda mini-app template.
 2. Run the mini-app in a browser/mock host.
 3. Exercise host APIs through the Saronite SDK.
@@ -103,7 +114,7 @@ IDS still controls:
 - non-brand colors
 - interaction behavior
 
-Default Itunda brand remains #7472F4.
+The default partner theme follows Itunda Brand v3: light primary `#8F89FF`, pressed `#7D77F7`, and dark brand surface `#25252D`. Treat old `#7472F4` values in legacy examples as stale; use the canonical partner manifest and semantic IDS tokens instead.
 
 ## 6. Submission checklist
 

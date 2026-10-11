@@ -4,12 +4,12 @@
 */
 :root{
   --itunda-indigo-50:#F7F6FF;
-  --itunda-indigo-100:#F0EFFF;
+  --itunda-indigo-100:#F1F0FF;
   --itunda-indigo-200:#E2E0FF;
   --itunda-indigo-300:#C9C6FF;
   --itunda-indigo-400:#A7A4FF;
-  --itunda-indigo-500:#7472F4;
-  --itunda-indigo-600:#625FE0;
+  --itunda-indigo-500:#8F89FF;
+  --itunda-indigo-600:#7D77F7;
   --itunda-indigo-700:#514FC4;
   --itunda-ink-950:#101318;
   --itunda-ink-900:#191F28;
@@ -29,8 +29,8 @@
   --itunda-warning-100:#FFF7D9;
   --itunda-error-500:#C53D3D;
   --itunda-error-100:#FFF0EF;
-  --itunda-info-500:#7472F4;
-  --itunda-info-100:#F0EFFF;
+  --itunda-info-500:#8F89FF;
+  --itunda-info-100:#F1F0FF;
 
   --itunda-space-1:4px; --itunda-space-2:8px; --itunda-space-3:12px;
   --itunda-space-4:16px; --itunda-space-5:20px; --itunda-space-6:24px;
@@ -70,27 +70,28 @@
    Web/Android/iOS converge on the same semantic values. */
 :root{
   --itunda-color-bg:#FFFFFF;
-  --itunda-color-surface:#FFFFFF;
-  --itunda-color-surface-sunken:#F2F4F6;
-  --itunda-color-surface-brand:#E2E0FF;
+  --itunda-color-surface:#F4F5F8;
+  --itunda-color-surface-sunken:#FFFFFF;
+  --itunda-color-surface-brand:#F1F0FF;
   --itunda-color-text:#191F28;
-  --itunda-color-text-strong:#101318;
-  --itunda-color-text-muted:#4E5968;
-  --itunda-color-text-subtle:#636E7C;
+  --itunda-color-text-strong:#121216;
+  --itunda-color-text-muted:#6B7684;
+  --itunda-color-text-subtle:#6B7684;
   --itunda-color-border:#E5E8EB;
   --itunda-color-border-strong:#DDE2E7;
-  --itunda-color-brand:#7472F4;
-  --itunda-color-brand-strong:#625FE0;
-  --itunda-color-brand-soft:#E2E0FF;
+  --itunda-color-brand:#8F89FF;
+  --itunda-color-on-brand:#121216;
+  --itunda-color-brand-strong:#7D77F7;
+  --itunda-color-brand-soft:#F1F0FF;
   --itunda-color-success:#05804A;
   --itunda-color-success-soft:#F5FAFF;
   --itunda-color-warning:#FFA000;
   --itunda-color-warning-soft:#FFF4D6;
   --itunda-color-error:#F04452;
   --itunda-color-error-soft:#FFECEB;
-  --itunda-color-info:#7472F4;
-  --itunda-color-info-soft:#F0EFFF;
-  --itunda-focus:#A7A4FF;
+  --itunda-color-info:#8F89FF;
+  --itunda-color-info-soft:#F1F0FF;
+  --itunda-focus:#6960F9;
   --itunda-color-icon-primary:#2C3643;
   --itunda-color-icon-secondary:#6B7684;
   --itunda-color-pressed:#EEF0FF;
@@ -103,7 +104,7 @@
   --itunda-color-text-tertiary:var(--itunda-color-text-subtle);
   --itunda-color-text-brand:var(--itunda-color-brand);
   --itunda-color-divider:var(--itunda-color-border);
-  --itunda-color-brand-pressed:var(--itunda-color-pressed);
+  --itunda-color-brand-pressed:var(--itunda-color-brand-strong);
   --itunda-color-icon-primary:var(--itunda-color-icon-primary);
   --itunda-color-icon-secondary:var(--itunda-color-icon-secondary);
   --itunda-shadow-sm:0 2px 10px rgba(16,19,24,.06);
@@ -111,14 +112,14 @@
   --itunda-shadow-lg:0 24px 64px rgba(16,19,24,.14);
 }
 [data-theme="dark"]{
-  --itunda-color-bg:#17171C; --itunda-color-surface:#202027; --itunda-color-surface-sunken:#2C2C35;
-  --itunda-color-surface-brand:#2B2C52; --itunda-color-text:#FFFFFF; --itunda-color-text-strong:#FFFFFF;
-  --itunda-color-text-muted:#989EAA; --itunda-color-text-subtle:#848A96; --itunda-color-border:#3C3C47;
-  --itunda-color-border-strong:#3C3C47; --itunda-color-brand:#7675F8; --itunda-color-brand-strong:#A7A4FF;
-  --itunda-color-brand-soft:#2B2C52; --itunda-color-success:#20D394; --itunda-color-success-soft:#10321F;
+  --itunda-color-bg:#121216; --itunda-color-surface:#1C1C22; --itunda-color-surface-sunken:#121216;
+  --itunda-color-surface-brand:#25252D; --itunda-color-text:#F4F5F7; --itunda-color-text-strong:#FFFFFF;
+  --itunda-color-text-muted:#9AA1AD; --itunda-color-text-subtle:#9AA1AD; --itunda-color-border:#2E2E37;
+  --itunda-color-border-strong:#2E2E37; --itunda-color-brand:#8F89FF; --itunda-color-on-brand:#121216; --itunda-color-brand-strong:#7D77F7;
+  --itunda-color-brand-soft:#25252D; --itunda-color-success:#20D394; --itunda-color-success-soft:#10321F;
   --itunda-color-warning:#FFC24C; --itunda-color-warning-soft:#3A2E10;
   --itunda-color-error:#FF6B7A; --itunda-color-error-soft:#3A1418;
-  --itunda-color-info:#7675F8; --itunda-color-info-soft:#2B2C52; --itunda-color-pressed:#2B2C52;
+  --itunda-color-info:#8F89FF; --itunda-color-info-soft:#25252D; --itunda-color-pressed:#2B2C52;
   --itunda-color-icon-primary:#E8EAED; --itunda-color-icon-secondary:#989EAA;
   --itunda-color-shadow:rgba(0,0,0,.25); --itunda-overlay:rgba(0,0,0,.64);
   --itunda-shadow-sm:0 2px 12px rgba(0,0,0,.22); --itunda-shadow-md:0 12px 36px rgba(0,0,0,.30);
@@ -130,7 +131,7 @@
   --itunda-color-text-tertiary:var(--itunda-color-text-subtle);
   --itunda-color-text-brand:var(--itunda-color-brand);
   --itunda-color-divider:var(--itunda-color-border);
-  --itunda-color-brand-pressed:var(--itunda-color-pressed);
+  --itunda-color-brand-pressed:var(--itunda-color-brand-strong);
   --itunda-color-icon-primary:var(--itunda-color-icon-primary);
   --itunda-color-icon-secondary:var(--itunda-color-icon-secondary);
 }

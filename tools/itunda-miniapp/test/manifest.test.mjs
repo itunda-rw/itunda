@@ -1,0 +1,152 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(here, "../../..");
+const cli = path.join(repoRoot, "tools/itunda-miniapp/bin/itunda-miniapp.mjs");
+const schemaPath = path.join(repoRoot, "packages/saronite/mini-apps/partner-template/manifest.schema.json");
+const templatePath = path.join(repoRoot, "packages/saronite/mini-apps/partner-template/manifest.json");
+
+function validateManifest(manifest) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "itunda-manifest-test-"));
+  const file = path.join(dir, "manifest.json");
+  fs.writeFileSync(file, JSON.stringify(manifest));
+  try {
+    return spawnSync(process.execPath, [cli, "validate", file], { encoding: "utf8" });
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test("partner template declares its schema URI as an allowed manifest property", () => {
+  const schema = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
+  const manifest = JSON.parse(fs.readFileSync(templatePath, "utf8"));
+  assert.equal(schema.additionalProperties, false);
+  assert.ok(schema.properties.$schema, "root schema must allow the template's $schema property");
+  assert.match(schema.properties.$schema.format, /uri/);
+  assert.ok(manifest.$schema, "template should declare the schema used to validate it");
+});
+
+test("CLI accepts the checked-in partner template", () => {
+  const manifest = JSON.parse(fs.readFileSync(templatePath, "utf8"));
+  const result = validateManifest(manifest);
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /valid Itunda mini-app manifest/);
+});
+
+test("CLI scaffolds a valid mini-app from the canonical Brand v3 partner manifest", () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "itunda-scaffold-test-"));
+  try {
+    const created = spawnSync(process.execPath, [cli, "new", "Demo App"], { cwd, encoding: "utf8" });
+    assert.equal(created.status, 0, created.stderr || created.stdout);
+    const manifestPath = path.join(cwd, "demo-app", "manifest.json");
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    const canonical = JSON.parse(fs.readFileSync(templatePath, "utf8"));
+    assert.equal(manifest.$schema, canonical.$schema);
+    assert.equal(manifest.manifestVersion, canonical.manifestVersion);
+    assert.deepEqual(manifest.brandTheme, {...structuredClone(canonical.brandTheme), themeId: "demo-app"});
+    assert.equal(manifest.brandTheme.light.brand, "#8F89FF");
+    assert.equal(manifest.brandTheme.light.pressed, "#7D77F7");
+    assert.equal(manifest.brandTheme.dark.brandSurface, "#25252D");
+    const checked = spawnSync(process.execPath, [cli, "validate", manifestPath], { encoding: "utf8" });
+    assert.equal(checked.status, 0, checked.stderr || checked.stdout);
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("CLI rejects an empty or overlong scaffold name without creating a directory", () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "itunda-name-test-"));
+  try {
+    const empty = spawnSync(process.execPath, [cli, "new", "   "], { cwd, encoding: "utf8" });
+    assert.notEqual(empty.status, 0);
+    assert.match(empty.stderr, /name must contain 1-80 characters/);
+    const long = spawnSync(process.execPath, [cli, "new", "x".repeat(81)], { cwd, encoding: "utf8" });
+    assert.notEqual(long.status, 0);
+    assert.match(long.stderr, /name must contain 1-80 characters/);
+    assert.deepEqual(fs.readdirSync(cwd), []);
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("CLI refuses an HTTP bundle even when the undocumented local flag is supplied", () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "itunda-local-bundle-test-"));
+  try {
+    const result = spawnSync(process.execPath, [cli, "new", "Unsafe App", "--bundle", "http://localhost:3000/app.js", "--local"], { cwd, encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /valid HTTPS URL/);
+    assert.equal(fs.existsSync(path.join(cwd, "unsafe-app")), false);
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("CLI rejects credentialed HTTPS bundle URLs", () => {
+  const manifest = JSON.parse(fs.readFileSync(templatePath, "utf8"));
+  manifest.entry.bundleUrl = "https://user:password@example.com/app.js";
+  const result = validateManifest(manifest);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /embedded credentials/);
+});
+
+test("CLI rejects an unsupported permission", () => {
+  const manifest = JSON.parse(fs.readFileSync(templatePath, "utf8"));
+  manifest.permissions = ["root-access"];
+  const result = validateManifest(manifest);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unsupported scope/);
+});
+
+test("CLI rejects non-HTTPS bundle URLs", () => {
+  const manifest = JSON.parse(fs.readFileSync(templatePath, "utf8"));
+  manifest.entry.bundleUrl = "http://example.com/app.js";
+  const result = validateManifest(manifest);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /valid HTTPS URL/);
+});
+
+test("CLI rejects malformed semantic versions", () => {
+  const manifest = JSON.parse(fs.readFileSync(templatePath, "utf8"));
+  manifest.version = "latest";
+  const result = validateManifest(manifest);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /semantic/);
+});
+
+test("CLI rejects undeclared root properties", () => {
+  const manifest = JSON.parse(fs.readFileSync(templatePath, "utf8"));
+  manifest.debugBypassAuth = true;
+  const result = validateManifest(manifest);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unknown manifest property/);
+});
+
+test("CLI rejects malformed schema URLs", () => {
+  const manifest = JSON.parse(fs.readFileSync(templatePath, "utf8"));
+  manifest.$schema = "file:///tmp/evil-schema.json";
+  const result = validateManifest(manifest);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /\$schema must be a valid HTTPS URL/);
+});
+
+test("CLI rejects duplicate permissions", () => {
+  const manifest = JSON.parse(fs.readFileSync(templatePath, "utf8"));
+  manifest.permissions = ["storage", "storage"];
+  const result = validateManifest(manifest);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /must not contain duplicates/);
+});
+
+test("CLI rejects incomplete theme palettes", () => {
+  const manifest = JSON.parse(fs.readFileSync(templatePath, "utf8"));
+  delete manifest.brandTheme.dark.focus;
+  const result = validateManifest(manifest);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /brandTheme.dark.focus/);
+});

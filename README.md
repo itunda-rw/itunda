@@ -4,7 +4,7 @@ Itunda is a Rwanda-first financial super-app prototype modeled on the Toss produ
 
 The goal is not to copy Toss visually only. The product target is Toss-like simplicity on top of Rwanda-native rails: MTN Mobile Money, Airtel Money, bank transfers, eKash-style interoperability, Irembo/RRA bill flows, RWF-first money formatting, National ID KYC, merchant QR, Face Pay concepts, settlement monitoring, fraud review, and reconciliation.
 
-The canonical product, architecture, and UI/UX map is [docs/TOSS_RWANDA_ALIGNMENT.md](docs/TOSS_RWANDA_ALIGNMENT.md). The implementation checklist is [docs/TOSS_PARITY_MATRIX.md](docs/TOSS_PARITY_MATRIX.md). The source-backed product map is [docs/FACT_CHECKED_TOSS_RWANDA_MAP.md](docs/FACT_CHECKED_TOSS_RWANDA_MAP.md).
+The canonical product, architecture, and UI/UX map is [docs/TOSS_RWANDA_ALIGNMENT.md](docs/TOSS_RWANDA_ALIGNMENT.md). The implementation checklist is [docs/TOSS_PARITY_MATRIX.md](docs/TOSS_PARITY_MATRIX.md). The source-backed product map is [docs/FACT_CHECKED_TOSS_RWANDA_MAP.md](docs/FACT_CHECKED_TOSS_RWANDA_MAP.md). The end-to-end readiness standard and full 61-row product inventory is [docs/PRODUCT_COMPLETENESS_AUDIT.md](docs/PRODUCT_COMPLETENESS_AUDIT.md).
 The current private-cloud gap analysis and Toss comparison is [docs/PRIVATE_CLOUD_BLUEPRINT.md](docs/PRIVATE_CLOUD_BLUEPRINT.md).
 The operational private-cloud workflow is [docs/PRIVATE_CLOUD_OPERATIONS.md](docs/PRIVATE_CLOUD_OPERATIONS.md).
 
@@ -38,8 +38,7 @@ Top-level layout (restructured 2026-07-11 for naming clarity — see
   integrators, modeled on docs.tosspayments.com — a small static site (same pattern as
   `services/blog`), not yet deployed anywhere. Content is a direct port of
   `docs/PAYMENTS.md`'s own accurate internal reference; update that file first, then this one.
-- `packages/saronite/`: mini-app SDK modeled on Toss's real open-source `granite` — currently a
-  hand-rolled approximation, not yet built on Granite itself.
+- `packages/saronite/`: Itunda-owned mini-app SDK, manifest contract, partner tooling and developer CLI around the existing Granite-based React Native runtime. Granite is the runtime/framework; Saronite is Itunda's SDK/platform contract, not a competing runtime. Treat clean native builds, exact runtime/codegen compatibility, signed artifact delivery, staged rollout and rollback as separately verified gates; do not infer production readiness from the existence of the integration.
 - `android/`, `ios/`: native mobile shells with real bounded-context modules (design system,
   ledger, risk, identity, banking, payments) — both platforms verified building and running
   (Android: `./gradlew :app:compileDebugKotlin` / real on-device runs; iOS: full `ItundaApp`

@@ -1,5 +1,7 @@
 # Itunda Private Cloud Blueprint
 
+> **Historical document — superseded as the current infrastructure baseline (2026-10-11).** Itunda's active infrastructure target is Google Cloud Platform (project `itunda-org`), not the Multipass/private-cloud topology described below. Use [GCP_PRODUCTION_BASELINE.md](GCP_PRODUCTION_BASELINE.md) for the read-only inventory of deployed GCP resources and verified security/reliability gaps. This file is retained only for migration history and lessons learned; do not use its VM/Kubernetes/Redis/Kafka topology as a description of current production.
+
 Last updated: 2026-07-16
 
 This document separates three things that were getting conflated:

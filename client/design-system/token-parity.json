@@ -3,8 +3,10 @@
   "version": "1.1.0",
   "purpose": "Cross-platform IDS semantic parity contract.",
   "brand": {
-    "light": "#7472F4",
-    "dark": "#7675F8"
+    "light": "#8F89FF",
+    "dark": "#8F89FF",
+    "pressed": "#7D77F7",
+    "darkSurface": "#25252D"
   },
   "semanticRoles": [
     "background",
@@ -14,6 +16,7 @@
     "textSecondary",
     "textTertiary",
     "brand",
+    "onBrand",
     "textBrand",
     "divider",
     "pressed",
@@ -40,7 +43,8 @@
       "warning": "--itunda-color-warning",
       "danger": "--itunda-color-error",
       "iconPrimary": "--itunda-color-icon-primary",
-      "iconSecondary": "--itunda-color-icon-secondary"
+      "iconSecondary": "--itunda-color-icon-secondary",
+      "onBrand": "--itunda-color-on-brand"
     }
   },
   "android": {
@@ -60,7 +64,8 @@
       "warning": "warning",
       "danger": "danger",
       "iconPrimary": "iconPrimary",
-      "iconSecondary": "iconSecondary"
+      "iconSecondary": "iconSecondary",
+      "onBrand": "onBrand"
     }
   },
   "ios": {
@@ -80,11 +85,16 @@
       "warning": "warning",
       "danger": "danger",
       "iconPrimary": "iconPrimary",
-      "iconSecondary": "iconSecondary"
+      "iconSecondary": "iconSecondary",
+      "onBrand": "onBrand"
     }
   },
   "legacyCompatibility": {
     "source": "packages/design-tokens/tokens.json",
     "rule": "Legacy primitive scales remain compatibility inputs; product-facing code consumes semantic roles."
+  },
+  "pressedSurface": {
+    "light": "#EEF0FF",
+    "dark": "#2B2C52"
   }
 }

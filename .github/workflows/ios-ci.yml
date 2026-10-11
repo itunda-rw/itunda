@@ -67,10 +67,10 @@ jobs:
           rm -rf ../../../ios/.brick
           node ../node_modules/.bin/brick-codegen             --platform ios             --output-ios ../../../ios/.brick             --projectRoot .
 
-      - name: Install Tuist 3.42.3
+      - name: Install Tuist 4.205.0
         run: |
-          mise install tuist@3.42.3
-          mise exec tuist@3.42.3 -- tuist version
+          mise install tuist@4.205.0
+          mise exec tuist@4.205.0 -- tuist version
 
       # Brand assets are consumed from the canonical package.
       # Do not rasterize, regenerate, recolor, or rewrite the supplied SVGs in CI.
@@ -85,7 +85,7 @@ jobs:
       - name: Generate Xcode project
         working-directory: ios
         run: |
-          mise exec tuist@3.42.3 -- tuist generate --no-open
+          mise exec tuist@4.205.0 -- tuist generate --no-open
 
       - name: Install CocoaPods
         working-directory: ios
@@ -95,6 +95,13 @@ jobs:
         working-directory: ios
         run: |
           xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp -destination 'generic/platform=iOS Simulator' -derivedDataPath .ci-derived-data -parallelizeTargets -jobs 4 CODE_SIGNING_ALLOWED=NO build
+
+      - name: Build iOS Release and require packaged mini-app bundle
+        working-directory: ios
+        run: |
+          set -euo pipefail
+          xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp -configuration Release -destination 'generic/platform=iOS' -derivedDataPath .ci-derived-data CODE_SIGNING_ALLOWED=NO build
+          test -s .ci-derived-data/Build/Products/Release-iphoneos/ItundaApp.app/main.jsbundle || { echo "Release app is missing main.jsbundle"; exit 1; }
 
       - name: Run iOS UI tests
         working-directory: ios

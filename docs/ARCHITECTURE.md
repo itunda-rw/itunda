@@ -10,6 +10,8 @@ Status labels below follow the repo convention: `real` (exists and runs), `demo`
 mocked/local data), `target` (designed, not built), `stub` (scaffold with little/no logic),
 `superseded` (duplicate, not canonical).
 
+**Infrastructure source of truth:** Itunda's active target is GCP. The current live resource inventory and verified production hardening gaps are recorded in [docs/GCP_PRODUCTION_BASELINE.md](GCP_PRODUCTION_BASELINE.md). [docs/PRIVATE_CLOUD_BLUEPRINT.md](PRIVATE_CLOUD_BLUEPRINT.md) is historical migration evidence, not the current production topology.
+
 ## 0. The one architectural idea to copy first
 
 Toss is not one backend wearing one app's face. "Toss," Toss Bank, Toss Securities, and Toss
@@ -22,8 +24,7 @@ React Native mini-app bundles per feature (§3 of the facts doc, productized as
 That reframes what "100% Toss-like" should mean for itunda: **not** one monolithic set of 12
 generically-named microservices sharing one repo, but (a) a small number of real bounded-context
 backends that can evolve independently, unified by (b) one real super-app shell that loads
-feature bundles independently. Itunda currently has neither cleanly — it has fragments of both,
-scattered across duplicate trees. This document's job is to say which fragment is the real one.
+feature bundles independently. Itunda has substantial implementations of both patterns: a canonical Kotlin/Spring backend plus a smaller separately deployable MSA prototype, and a Granite-based mini-app runtime with Itunda-owned Saronite contracts. The remaining work is to reconcile ownership and deployment boundaries, verify the exact runtime/codegen set across platforms, and prove production artifact lifecycle and operational readiness. See [docs/PRODUCT_COMPLETENESS_AUDIT.md](PRODUCT_COMPLETENESS_AUDIT.md) for the cross-product completion gates.
 
 ## 1. Backend architecture
 

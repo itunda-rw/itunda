@@ -1,0 +1,37 @@
+name: Mini-app manifest contract
+
+on:
+  pull_request:
+    paths:
+      - "tools/itunda-miniapp/**"
+      - "packages/saronite/mini-apps/partner-template/manifest.json"
+      - "packages/saronite/mini-apps/partner-template/manifest.schema.json"
+      - ".github/workflows/miniapp-manifest-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "tools/itunda-miniapp/**"
+      - "packages/saronite/mini-apps/partner-template/manifest.json"
+      - "packages/saronite/mini-apps/partner-template/manifest.schema.json"
+      - ".github/workflows/miniapp-manifest-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  manifest-contract:
+    name: Validate mini-app manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run manifest contract tests
+        working-directory: tools/itunda-miniapp
+        run: npm test
+      - name: Validate partner template with Itunda CLI
+        run: node tools/itunda-miniapp/bin/itunda-miniapp.mjs validate packages/saronite/mini-apps/partner-template/manifest.json

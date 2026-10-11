@@ -1,7 +1,18 @@
 :root {
+  color-scheme: light dark;
+  --ids-brand: #8F89FF;
+  --ids-brand-pressed: #7D77F7;
+  --ids-brand-soft: #F1EFFF;
+  --ids-canvas: #F4F5F8;
+  --ids-surface: rgba(255, 255, 255, .88);
+  --ids-text: #191F28;
+  --ids-muted: #667085;
+  --ids-border: rgba(25, 31, 40, .07);
+  --ids-control-text: #FFFFFF;
+  --ids-focus: #6F67E8;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #191f28;
-  background: #f7f7fb;
+  color: var(--ids-text);
+  background: var(--ids-canvas);
   font-synthesis: none;
 }
 
@@ -11,43 +22,48 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background: var(--ids-canvas);
 }
 
 button {
+  min-height: 44px;
   border: 0;
-  border-radius: 14px;
-  padding: 12px 16px;
-  background: #7472f4;
-  color: white;
+  border-radius: 999px;
+  padding: 12px 18px;
+  background: var(--ids-brand);
+  color: var(--ids-control-text);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+  transition: background-color 140ms ease, transform 140ms ease;
 }
 
+button:hover { background: var(--ids-brand-pressed); }
+button:active { transform: scale(.98); }
 button:focus-visible {
-  outline: 3px solid rgba(116, 114, 244, .32);
+  outline: 3px solid color-mix(in srgb, var(--ids-focus) 38%, transparent);
   outline-offset: 3px;
 }
 
 .shell {
   width: min(680px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 72px 0 140px;
+  padding: clamp(44px, 8vh, 84px) 0 140px;
 }
 
 .brand-mark {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border-radius: 14px;
-  background: #7472f4;
-  color: white;
+  width: 44px;
+  height: 44px;
+  display: block;
+  padding: 9px;
+  border-radius: 15px;
+  background: var(--ids-brand);
+  object-fit: contain;
 }
 
 .eyebrow {
   margin: 24px 0 8px;
-  color: #7472f4;
+  color: var(--ids-focus);
   font-size: 14px;
   font-weight: 800;
   letter-spacing: .02em;
@@ -63,7 +79,7 @@ h1 {
 .lede {
   max-width: 580px;
   margin: 18px 0 36px;
-  color: #667085;
+  color: var(--ids-muted);
   font-size: 17px;
   line-height: 1.6;
 }
@@ -75,19 +91,24 @@ h1 {
   gap: 20px;
   padding: 18px 20px;
   margin-top: 12px;
-  background: white;
-  border: 1px solid rgba(25, 31, 40, .08);
-  border-radius: 20px;
+  background: var(--ids-surface);
+  border: 1px solid var(--ids-border);
+  border-radius: 22px;
+  box-shadow: 0 8px 28px rgba(25, 31, 40, .035);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
 }
 
 .card div {
   display: grid;
   gap: 5px;
+  min-width: 0;
 }
 
 .card span {
-  color: #667085;
+  color: var(--ids-muted);
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .result {
@@ -95,18 +116,56 @@ h1 {
   gap: 8px;
   margin-top: 20px;
   padding: 18px 20px;
-  border-radius: 20px;
-  background: rgba(116, 114, 244, .08);
+  border-radius: 22px;
+  background: var(--ids-brand-soft);
 }
 
 .result span {
-  color: #667085;
+  color: var(--ids-focus);
   font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: .04em;
 }
 
 output {
   overflow-wrap: anywhere;
+  color: var(--ids-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@media (max-width: 480px) {
+  .card {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .card button { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ids-brand: #A6A2FF;
+    --ids-brand-pressed: #B0AEFF;
+    --ids-brand-soft: #25252D;
+    --ids-canvas: #19191F;
+    --ids-surface: rgba(37, 37, 45, .92);
+    --ids-text: #F7F7FA;
+    --ids-muted: #B7BAC6;
+    --ids-border: rgba(255, 255, 255, .07);
+    --ids-control-text: #191F28;
+    --ids-focus: #B0AEFF;
+  }
+
+  .card { box-shadow: 0 8px 28px rgba(0, 0, 0, .14); }
 }
