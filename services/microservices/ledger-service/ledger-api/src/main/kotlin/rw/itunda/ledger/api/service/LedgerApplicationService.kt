@@ -32,12 +32,11 @@ class LedgerApplicationService(
             LedgerIdempotencyClaim.Claimed -> {
                 try {
                     transferExecutor.executeTransfer(request, recordKey)
-                } catch (rejected: IllegalArgumentException) {
-                    // The executor raises these validation errors before any account
-                    // or outbox writes. Release only known pre-write rejections.
-                    // Do NOT release on arbitrary database/commit errors: the commit
-                    // outcome can be ambiguous, and deleting a possibly committed
-                    // idempotency result could permit a duplicate debit on retry.
+                } catch (rejected: TransferRejectedException) {
+                    // This exception is emitted only by validation paths that run
+                    // before account/outbox writes. Keep claims on other exceptions:
+                    // a database commit error can have an ambiguous outcome, and
+                    // deleting a possibly committed key could permit a duplicate debit.
                     try {
                         idempotencyClaimStore.release(recordKey)
                     } catch (releaseFailure: Exception) {
