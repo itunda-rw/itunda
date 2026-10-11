@@ -130,7 +130,7 @@
   --itunda-color-text-tertiary:var(--itunda-color-text-subtle);
   --itunda-color-text-brand:var(--itunda-color-brand-strong);
   --itunda-color-divider:var(--itunda-color-border);
-  --itunda-color-brand-pressed:var(--itunda-color-pressed);
+  --itunda-color-brand-pressed:#7D77F7;
   --itunda-color-icon-primary:var(--itunda-color-icon-primary);
   --itunda-color-icon-secondary:var(--itunda-color-icon-secondary);
 }
