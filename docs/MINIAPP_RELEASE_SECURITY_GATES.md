@@ -20,7 +20,8 @@ The host package currently declares React Native `0.84.0` and Granite packages `
 
 ## Required acceptance tests
 
-- Reject HTTP URLs, URL credentials, invalid/missing digest pins, hash mismatches, empty bundles, oversized bodies, non-success responses, and HTTPS-to-HTTP redirects. (Source checks are implemented; automated tests remain required.)
+- Reject HTTP URLs, URL credentials, malformed URLs, and invalid digest pins. Pure policy unit tests now cover URL and digest validation in `android/app/src/test/java/rw/itunda/app/miniapps/MiniAppBundleSecurityPolicyTest.kt`; CI must confirm they run and pass.
+- Automated downloader integration tests are still required for hash mismatches, empty/oversized bodies, non-success responses, HTTPS-to-HTTP redirects, interrupted writes, timeouts, cache replacement failure, and last-known-good recovery.
 - Simulate network timeout, connection loss, cache-write failure, and corrupt partial downloads. The app must load its packaged/last-known-good bundle and must not replace it with an unverified file.
 - Assert bundle acquisition runs off the main thread and has bounded total time. Background acquisition and packaged-bundle fallback are implemented; tests and startup instrumentation are still required.
 - Build the same source twice in clean runners and compare the resulting bundle hashes; explain any expected nondeterminism.
