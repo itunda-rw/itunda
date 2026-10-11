@@ -83,11 +83,11 @@ object PartnerMiniAppLoader {
     private val restoreScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     /**
-     * Downloads [app]'s real `bundleUrl`, swaps it into the shared ReactHost, waits for
-     * the reload to actually finish, arms [MiniAppSecurityContext] with this partner's
-     * real approved scopes, and only then launches [PartnerMiniAppActivity] -- in that
-     * order, so the Activity's `ReactActivityDelegate.onCreate()` never races a JS bundle
-     * that hasn't registered `SaronitePartnerMiniApp` yet.
+     * Downloads [app]'s real `bundleUrl`, arms [MiniAppSecurityContext] with this
+     * partner's approved scopes BEFORE swapping the bundle into the shared ReactHost,
+     * waits for reload to finish, and only then launches [PartnerMiniAppActivity].
+     * Scopes must be active before reload because partner JS can call native modules
+     * during bundle startup, before the reload task reports completion.
      *
      * Every failure path (download, HTTP error, reload fault) calls [onError] with a
      * real, specific message instead of silently doing nothing or crashing -- launching
