@@ -37,14 +37,18 @@ The API revision's environment includes `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USE
 
 ### P0 — Database backup and recovery
 
-The live Cloud SQL configuration reports:
+The live Cloud SQL configuration was rechecked on 2026-10-11 after the backup change:
 
-- automated backups: **disabled**
+- automated backups: **enabled** (verified by a successful Cloud SQL UPDATE operation and a fresh instance describe)
+- backup schedule: daily at `13:00 UTC` (22:00 Korea Standard Time)
+- retained backups: `7`
+- point-in-time recovery (PITR): **not enabled/verified**; transaction-log retention alone does not prove PITR is active
 - availability type: **ZONAL**
 - machine tier: `db-f1-micro`
 - disk: 10 GB
+- backups list immediately after enabling returned an empty list; no completed backup or restore has been verified yet
 
-This is the highest-priority verified resilience gap for a money-moving application. Configure and validate automated backups and point-in-time recovery appropriate to the chosen Cloud SQL edition/configuration, define retention/RPO/RTO, and perform a restore drill into a separate instance. Decide whether regional high availability is required; do not infer it from a running instance.
+The initial backup gap is closed at the configuration level, but recoverability is not yet proven. Wait for the first successful scheduled backup, confirm it appears in `gcloud sql backups list`, then restore it to an isolated instance and run application consistency checks. Define RPO/RTO and decide whether PITR and regional high availability are required. PITR was deliberately not enabled in this pass because it needs a separate impact/restart and log-storage review.
 
 ### P0 — Transport security to data services
 
@@ -77,7 +81,7 @@ The API revision is configured with 1 vCPU / 1 GiB and max scale 20; the databas
 
 ## Required next verification gates
 
-1. **Backup/restore:** automated backup enabled; a restore into an isolated instance passes application consistency checks; recovery time and data loss measured.
+1. **Backup/restore:** automated daily backup is now configured (13:00 UTC, 7 retained); verify the first completed backup, enable PITR only after reviewing its restart/storage impact, then restore into an isolated instance and measure recovery time and data loss.
 2. **Security:** SQL TLS enforced; Redis in-transit encryption enabled or documented exception; Kafka transport/authentication and topic ACLs verified; secrets are never logged.
 3. **Runtime connectivity:** automated tests from the deployed API identity prove DB transactions, Redis failure handling, and Kafka produce/consume; tests fail loudly when a dependency is unavailable.
 4. **Ledger correctness:** concurrent transfer/idempotency tests against the actual Cloud SQL engine; transaction rollback and outbox delivery tested under process restarts.
