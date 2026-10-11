@@ -106,6 +106,35 @@ class LedgerApplicationServiceTest {
     }
 
     @Test
+    fun `classifies an idempotency insert race against the winning request`() {
+        val key = "POST:/api/v1/ledger/transfer:racing-key"
+        val winner = LedgerIdempotencyRecord(
+            recordKey = key,
+            requestJson = "different-request-body",
+            statusCode = -1,
+            transactionId = null,
+            createdAt = Instant.now()
+        )
+        val repository = object : LedgerIdempotencyRepository {
+            private var reads = 0
+
+            override fun findByKey(recordKey: String): LedgerIdempotencyRecord? =
+                if (reads++ == 0) null else winner
+
+            override fun insertIfAbsent(record: LedgerIdempotencyRecord): Boolean = false
+
+            override fun complete(recordKey: String, statusCode: Int, transactionId: String): Int = 0
+
+            override fun deleteByKey(recordKey: String) = Unit
+        }
+
+        assertEquals(
+            LedgerIdempotencyClaim.Conflict,
+            LedgerIdempotencyClaimStore(repository).claim(key, "our-request-body")
+        )
+    }
+
+    @Test
     fun `does not expire old unresolved claims`() {
         val repository = RecordingIdempotencyRepository()
         val key = "POST:/api/v1/ledger/transfer:old-processing-key"
