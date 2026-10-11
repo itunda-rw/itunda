@@ -2,7 +2,7 @@ import { createSaroniteMockHost } from './mock';
 
 const host = createSaroniteMockHost();
 
-if (host.request('location', 'getCurrentLocation', () => ({ latitude: -1.94, longitude: 30.06 }), { permission: 'location' }) !== undefined) {
+if (host.request('location', 'getCurrentLocation', () => ({ latitude: -1.94, longitude: 30.06 }), { permission: 'location:read' }) !== undefined) {
   throw new Error('denied permissions must not execute a capability');
 }
 
@@ -12,12 +12,20 @@ const location = host.request(
   'location',
   'getCurrentLocation',
   () => ({ latitude: -1.94, longitude: 30.06 }),
-  { permission: 'location' },
+  { permission: 'location:read' },
 );
 
 if (!location || location.latitude !== -1.94) throw new Error('granted mock capability did not return its value');
 
 host.request('camera', 'openCamera', () => undefined, { supported: false });
+
+let unknownCapabilityRejected = false;
+try {
+  host.request('camera', 'openCamera', () => undefined);
+} catch (error) {
+  unknownCapabilityRejected = error instanceof Error && error.message.includes('Unknown Saronite capability method');
+}
+if (!unknownCapabilityRejected) throw new Error('unknown capabilities must not execute as if supported');
 
 host.setLifecycle('hidden');
 
