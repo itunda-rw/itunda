@@ -376,7 +376,7 @@
     --itunda-indigo: #8F89FF;
     --itunda-logo-color: #8F89FF;
     --itunda-indigo-active: #7D77F7;
-    --itunda-indigo-light: #25234A;
+    --itunda-indigo-light: #25252D;
     --itunda-red: #ff6b7a;
     --itunda-red-light: #3a1418;
     --itunda-green: #20d394;
@@ -433,7 +433,7 @@ html[data-theme="dark"] {
     color-scheme: dark;
     --itunda-indigo: #8F89FF;
     --itunda-indigo-active: #7D77F7;
-    --itunda-indigo-light: #25234A;
+    --itunda-indigo-light: #25252D;
     --itunda-red: #ff6b7a;
     --itunda-red-light: #3a1418;
     --itunda-green: #20d394;
