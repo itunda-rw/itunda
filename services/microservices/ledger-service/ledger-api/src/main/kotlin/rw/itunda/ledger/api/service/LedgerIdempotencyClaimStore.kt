@@ -31,22 +31,8 @@ class LedgerIdempotencyClaimStore(
     fun claim(recordKey: String, requestJson: String): LedgerIdempotencyClaim {
         val existing = repository.findByKey(recordKey)
         if (existing != null) {
-            // Never expire an in-progress claim automatically. A prior commit may
-            // have succeeded even if the caller lost the response; deleting this
-            // marker could permit a duplicate debit. Reconcile stale claims manually.
-            if (existing.requestJson != requestJson) {
-                return LedgerIdempotencyClaim.Conflict
-            }
-            if (existing.statusCode == PROCESSING_STATUS) {
-                return LedgerIdempotencyClaim.InProgress
-            }
-            if (Duration.between(existing.createdAt, Instant.now()) > IDEMPOTENCY_RETENTION) {
-                repository.deleteByKey(recordKey)
-            } else {
-                return existing.transactionId
-                    ?.let(LedgerIdempotencyClaim::Replay)
-                    ?: LedgerIdempotencyClaim.InProgress
-            }
+            val resolved = resolveExisting(recordKey, requestJson, existing)
+            if (resolved != null) return resolved
         }
 
         val inserted = repository.insertIfAbsent(
@@ -58,7 +44,37 @@ class LedgerIdempotencyClaimStore(
                 createdAt = Instant.now()
             )
         )
-        return if (inserted) LedgerIdempotencyClaim.Claimed else LedgerIdempotencyClaim.InProgress
+        if (inserted) return LedgerIdempotencyClaim.Claimed
+
+        // A concurrent request may have inserted the key after our first read.
+        // Re-read the winner so a different payload gets a conflict, and a
+        // completed request gets replayed rather than a misleading processing result.
+        val winner = repository.findByKey(recordKey) ?: return LedgerIdempotencyClaim.InProgress
+        return resolveExisting(recordKey, requestJson, winner)
+            ?: LedgerIdempotencyClaim.InProgress
+    }
+
+    /**
+     * Returns null only when an expired completed record was removed and a new
+     * claim may be attempted. Unresolved claims never expire automatically:
+     * a prior commit may have succeeded even if the caller lost its response.
+     */
+    private fun resolveExisting(
+        recordKey: String,
+        requestJson: String,
+        existing: LedgerIdempotencyRecord
+    ): LedgerIdempotencyClaim? {
+        if (existing.requestJson != requestJson) return LedgerIdempotencyClaim.Conflict
+        if (existing.statusCode == PROCESSING_STATUS) return LedgerIdempotencyClaim.InProgress
+
+        if (Duration.between(existing.createdAt, Instant.now()) > IDEMPOTENCY_RETENTION) {
+            repository.deleteByKey(recordKey)
+            return null
+        }
+
+        return existing.transactionId
+            ?.let(LedgerIdempotencyClaim::Replay)
+            ?: LedgerIdempotencyClaim.InProgress
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
