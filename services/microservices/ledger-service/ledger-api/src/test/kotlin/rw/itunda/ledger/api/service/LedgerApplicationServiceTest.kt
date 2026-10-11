@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.springframework.http.HttpStatus
 import org.springframework.web.server.ResponseStatusException
 import rw.itunda.ledger.api.controller.TransferRequest
 import rw.itunda.ledger.domain.AccountStatus
@@ -68,8 +69,34 @@ class LedgerApplicationServiceTest {
             )
         }
 
-        assertEquals(409, error.statusCode.value())
+        assertEquals(HttpStatus.CONFLICT, error.statusCode)
         assertEquals(1, accounts.saveCalls)
+    }
+
+    @Test
+    fun `reports in-progress when another request owns the key claim`() {
+        val repository = RecordingIdempotencyRepository()
+        val claimStore = LedgerIdempotencyClaimStore(repository)
+        val key = "POST:/api/v1/ledger/transfer:processing-key"
+        val body = """{"sourceAccountId":"source","destinationAccountId":"destination"}"""
+
+        assertEquals(LedgerIdempotencyClaim.Claimed, claimStore.claim(key, body))
+        assertEquals(LedgerIdempotencyClaim.InProgress, claimStore.claim(key, body))
+    }
+
+    @Test
+    fun `rejects blank idempotency key before claiming or writing`() {
+        val accounts = RecordingLedgerAccountRepository(listOf(account("source", "100.00")))
+        val idempotency = RecordingIdempotencyRepository()
+        val service = service(accounts, RecordingOutboxRepository(), idempotency)
+
+        val error = assertThrows(ResponseStatusException::class.java) {
+            service.executeTransfer(TransferRequest("source", "source", BigDecimal("10.00"), " "))
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, error.statusCode)
+        assertEquals(0, idempotency.records.size)
+        assertEquals(0, accounts.saveCalls)
     }
 
     @Test
