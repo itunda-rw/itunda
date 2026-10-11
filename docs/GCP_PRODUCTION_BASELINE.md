@@ -5,7 +5,7 @@
 **Region:** `asia-northeast3` (Seoul)  
 **Purpose:** current infrastructure evidence for the Toss-vs-Itunda architecture audit.
 
-This document supersedes the private-cloud blueprint as the description of Itunda's current infrastructure target. The private-cloud document is retained as historical migration/rehearsal evidence only. This is a read-only audit: no GCP resources were changed.
+This document supersedes the private-cloud blueprint as the description of Itunda's current infrastructure target. The private-cloud document is retained as historical migration/rehearsal evidence only. This document combines read-only inspection with a recorded, narrowly scoped live change: automated Cloud SQL backups were enabled on 2026-10-11. No other live GCP changes are recorded here.
 
 ## Evidence standard
 
@@ -18,7 +18,7 @@ This document supersedes the private-cloud blueprint as the description of Itund
 
 | Component | Live evidence | What this proves |
 |---|---|---|
-| Cloud Run API | `itunda-api`, Ready; revision `itunda-api-00023-xr2`; 100% traffic on latest ready revision | A deployed API service exists and Cloud Run reports it Ready |
+| Cloud Run API | `itunda-api`, Ready; revision `itunda-api-00023-xr2`; 100% traffic on latest ready revision; image tag `c85d7fcc4177aafa667215677c661af456e76d3e` | A deployed API service exists and Cloud Run reports it Ready; the tag resolves to source commit `c85d7fcc` |
 | Cloud Run web app | `itunda-web`, Ready; revision `itunda-web-00119-7tz` | A deployed web app service exists |
 | Consumer site | `itunda-public-site`, Ready | Public site is deployed |
 | Business app/site | `itunda-business-app` and `itunda-business-site`, Ready | Both business surfaces are deployed separately |
@@ -32,6 +32,8 @@ This document supersedes the private-cloud blueprint as the description of Itund
 | Pub/Sub | No topics returned by the audit command | No Pub/Sub topics were found in this project at audit time; Kafka is the configured event-bus path |
 
 The API revision's environment includes `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `REDIS_HOST`, `REDIS_PORT`, and `KAFKA_BOOTSTRAP_SERVERS`, plus Secret Manager references for the database password and JWT secret. This is evidence of wiring configuration, **not** a successful DB/Redis/Kafka integration test.
+
+The deployed API image tag maps to source commit [`c85d7fcc`](https://github.com/itunda-rw/itunda/commit/c85d7fcc4177aafa667215677c661af456e76d3e). Comparing it with the audited PR head `bdc648d5005a0c8be3a02ebaed17b85bce4ce78c` showed the PR head is 98 commits ahead of that deployed source commit. Therefore, the current PR's security review and other branch-level changes must not be represented as already deployed. Plan a tested deployment after CI passes and release checks are satisfied.
 
 ## Critical findings — resolve before calling this production-hardened
 
@@ -73,7 +75,7 @@ Cloud Run reports API ingress as `all`, and `gcloud run services get-iam-policy`
 
 I inspected the current PR branch's `services/backend/security/.../SecurityConfig.kt` and `JwtAuthenticationFilter.kt`. The code defines a JWT-by-default policy: most routes require a verified access JWT, while explicit public exceptions include health/actuator paths, selected auth bootstrap endpoints, `/ws/**` (with a separate JWT handshake interceptor), partner routes (API-key checked inside the service), public pay/checkout routes (with merchant API-key checks on protected payment operations), public certificate verification/status, GET uploads, GET public shared-map folders, and a USSD webhook path. Admin/system routes have explicit role checks. The JWT filter rejects invalid/refresh/revoked access tokens when it processes a bearer header.
 
-This is **source-code evidence for the PR branch only**, not proof that the running Cloud Run revision contains this exact code or that each exception's secondary gate behaves correctly in production. Before closing this finding, map the deployed image digest/revision to a source commit, run unauthenticated/invalid/expired/wrong-owner tests against the deployed API for each protected route family, and separately verify the partner API-key, merchant-key, WebSocket handshake, and USSD webhook controls. Keep Cloud Run public invocation only if it is the intended public API boundary; IAM `allUsers` is not itself a route-authentication bug when application-level auth is correctly enforced.
+This is **source-code evidence for the PR branch only**. The live Cloud Run image tag was mapped to source commit `c85d7fcc`, which is 98 commits behind the audited PR head, so the PR-branch policy is not yet evidence of deployed behavior. Before closing this finding, deploy a reviewed commit through CI/CD, map the resulting image digest/revision to that exact source commit, run unauthenticated/invalid/expired/wrong-owner tests against the deployed API for each protected route family, and separately verify the partner API-key, merchant-key, WebSocket handshake, and USSD webhook controls. Keep Cloud Run public invocation only if it is the intended public API boundary; IAM `allUsers` is not itself a route-authentication bug when application-level auth is correctly enforced.
 
 ### P1 — Capacity and operational readiness
 
