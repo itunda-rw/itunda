@@ -21,6 +21,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.Executors
 
 /**
  * Custom Application class providing the React Native host that Apps-in-Itunda
@@ -63,20 +64,15 @@ class ItundaApplication : Application(), ReactApplication, ImageLoaderFactory {
             .build()
 
     override val reactHost: ReactHost by lazy {
-        // Same conditional logic as the pre-rewrite getJSBundleFile() override:
-        // debug builds (every mode exercised on-device this session) and an unset
-        // CDN URL both fall through to null -> getDefaultReactHost's own default
-        // asset-bundle loader; only an explicit -PminiAppBundleCdnUrl in a release
-        // build activates the downloader. Same honest, documented risk as before:
-        // this makes a synchronous network call, not yet confirmed live off the
-        // main thread under the new ReactHost startup sequence.
+        // Host construction must never perform network I/O. Use only a previously
+        // downloaded, digest-verified cache; a cold install uses the packaged bundle.
+        // onCreate() warms the cache on a background executor for the next launch.
         val cdnUrl = BuildConfig.MINIAPP_BUNDLE_CDN_URL
         val cdnSha256 = BuildConfig.MINIAPP_BUNDLE_CDN_SHA256
         val cdnBundleFilePath = if (BuildConfig.DEBUG || cdnUrl.isBlank() || cdnSha256.isBlank()) {
-            // Remote executable code is disabled unless the release pins its digest.
             null
         } else {
-            MiniAppBundleDownloader.downloadAndCache(this, cdnUrl, cdnSha256)
+            MiniAppBundleDownloader.verifiedCachedBundlePath(this, cdnSha256)
         }
         getDefaultReactHost(
             context = applicationContext,
@@ -107,6 +103,13 @@ class ItundaApplication : Application(), ReactApplication, ImageLoaderFactory {
         // SoLoader.init(this, OpenSourceMergedSoMapping) call fixed, one step
         // before this rewrite superseded that call site).
         loadReactNative(this)
+        // Never block application startup or ReactHost construction on a CDN. A
+        // successfully verified bundle becomes eligible on the next process launch.
+        val cdnUrl = BuildConfig.MINIAPP_BUNDLE_CDN_URL
+        val cdnSha256 = BuildConfig.MINIAPP_BUNDLE_CDN_SHA256
+        if (!BuildConfig.DEBUG && cdnUrl.isNotBlank() && cdnSha256.isNotBlank()) {
+            MiniAppBundleDownloader.warmCacheAsync(this, cdnUrl, cdnSha256)
+        }
         // Real login/session flow (2026-07-11) -- must run before any screen can make
         // an authenticated request. See network/NetworkClient.kt/SessionManager.kt.
         NetworkClient.init(this, rw.itunda.app.BuildConfig.API_BASE_URL)
@@ -134,11 +137,41 @@ class ItundaApplication : Application(), ReactApplication, ImageLoaderFactory {
  */
 private object MiniAppBundleDownloader {
     private const val MAX_BUNDLE_BYTES = 50L * 1024L * 1024L
+    private val executor = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "itunda-miniapp-bundle").apply { isDaemon = true }
+    }
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .callTimeout(45, TimeUnit.SECONDS)
         .build()
+
+    fun warmCacheAsync(context: Application, url: String, expectedSha256: String) {
+        if (!expectedSha256.matches(Regex("(?i)[0-9a-f]{64}"))) return
+        executor.execute { downloadAndCache(context, url, expectedSha256) }
+    }
+
+    fun verifiedCachedBundlePath(context: Application, expectedSha256: String): String? {
+        if (!expectedSha256.matches(Regex("(?i)[0-9a-f]{64}"))) return null
+        val cacheFile = File(context.cacheDir, "miniapp-bundle.js")
+        return try {
+            if (!cacheFile.isFile || cacheFile.length() <= 0L ||
+                cacheFile.length() > MAX_BUNDLE_BYTES) return null
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            cacheFile.inputStream().buffered().use { input ->
+                val buffer = ByteArray(16 * 1024)
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    digest.update(buffer, 0, count)
+                }
+            }
+            val actual = digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
+            if (actual.equals(expectedSha256, ignoreCase = true)) cacheFile.absolutePath else null
+        } catch (e: Exception) {
+            null
+        }
+    }
 
     fun downloadAndCache(context: Application, url: String, expectedSha256: String): String? {
         if (!expectedSha256.matches(Regex("(?i)[0-9a-f]{64}"))) return null
