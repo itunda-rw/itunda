@@ -58,6 +58,25 @@ class LedgerApplicationServiceTest {
     }
 
     @Test
+    fun `replays semantically equal decimal amounts with different scales`() {
+        val accounts = RecordingLedgerAccountRepository(
+            listOf(account("source", "100.00"), account("destination", "0.00"))
+        )
+        val service = service(accounts, RecordingOutboxRepository(), RecordingIdempotencyRepository())
+
+        val first = service.executeTransfer(
+            TransferRequest("source", "destination", BigDecimal("25.0"), "decimal-scale-key")
+        )
+        val second = service.executeTransfer(
+            TransferRequest("source", "destination", BigDecimal("25.00"), "decimal-scale-key")
+        )
+
+        assertEquals(first, second)
+        assertEquals(1, accounts.saveCalls)
+        assertEquals(0, accounts.accounts.getValue("source").balance.compareTo(BigDecimal("75.00")))
+    }
+
+    @Test
     fun `rejects reuse of idempotency key with a different request body`() {
         val accounts = RecordingLedgerAccountRepository(
             listOf(account("source", "100.00"), account("destination", "0.00"))
