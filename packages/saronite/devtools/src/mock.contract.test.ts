@@ -89,4 +89,5 @@ if (failedCall?.status !== 'error' || failedCall.detail !== 'simulated native br
 }
 
 host.clearCalls();
-if (host.state.calls.length !== 0) throw new Error('clearCalls must empty the call log');
+const remainingCallCount: number = host.state.calls.length;
+if (remainingCallCount !== 0) throw new Error('clearCalls must empty the call log');
