@@ -28,12 +28,12 @@ const android = fs.readFileSync(path.join(root, files.android), "utf8");
 const ios = fs.readFileSync(path.join(root, files.ios), "utf8");
 
 const brandChecks = [
-  ["web light", web, "#7472F4"],
-  ["web dark", web, "#7675F8"],
-  ["android light", android, "0xFF7472F4"],
-  ["android dark", android, "0xFF9B98FF"],
-  ["ios light", ios, "0x7472F4"],
-  ["ios dark", ios, "0x9B98FF"],
+  ["web light", web, "#8F89FF"],
+  ["web dark", web, "#8F89FF"],
+  ["android light", android, "0xFF8F89FF"],
+  ["android dark", android, "0xFF8F89FF"],
+  ["ios light", ios, "0x8F89FF"],
+  ["ios dark", ios, "0x8F89FF"],
 ];
 for (const [label, source, anchor] of brandChecks) {
   if (!source.includes(anchor)) failures.push(`${label}: missing brand anchor ${anchor}`);
