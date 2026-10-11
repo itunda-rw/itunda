@@ -28,5 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check generated native token outputs
+        run: node scripts/client-design-tokens.mjs --check
       - name: Check IDS semantic parity
         run: node scripts/design-system-parity.mjs
