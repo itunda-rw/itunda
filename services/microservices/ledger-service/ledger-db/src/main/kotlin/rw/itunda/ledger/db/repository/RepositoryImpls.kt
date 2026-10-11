@@ -3,13 +3,17 @@ package rw.itunda.ledger.db.repository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Repository
 import rw.itunda.ledger.db.entity.LedgerAccountEntity
+import rw.itunda.ledger.db.entity.LedgerIdempotencyEntity
 import rw.itunda.ledger.db.entity.OutboxEventEntity
 import rw.itunda.ledger.domain.AccountStatus
 import rw.itunda.ledger.domain.AccountType
 import rw.itunda.ledger.domain.LedgerAccount
 import rw.itunda.ledger.domain.LedgerAccountRepository
+import rw.itunda.ledger.domain.LedgerIdempotencyRecord
+import rw.itunda.ledger.domain.LedgerIdempotencyRepository
 import rw.itunda.ledger.domain.OutboxEvent
 import rw.itunda.ledger.domain.OutboxEventRepository
+import java.time.Instant
 
 @Repository
 class LedgerAccountRepositoryImpl(
@@ -68,4 +72,36 @@ class OutboxEventRepositoryImpl(
         )
         return event
     }
+}
+
+@Repository
+class LedgerIdempotencyRepositoryImpl(
+    private val jpaRepository: LedgerIdempotencyJpaRepository
+) : LedgerIdempotencyRepository {
+
+    override fun findByKey(recordKey: String): LedgerIdempotencyRecord? =
+        jpaRepository.findByIdOrNull(recordKey)?.toDomain()
+
+    override fun insertIfAbsent(record: LedgerIdempotencyRecord): Boolean =
+        jpaRepository.insertIfAbsent(
+            recordKey = record.recordKey,
+            requestJson = record.requestJson,
+            statusCode = record.statusCode,
+            createdAt = record.createdAt
+        ) > 0
+
+    override fun complete(recordKey: String, statusCode: Int, transactionId: String): Int =
+        jpaRepository.complete(recordKey, statusCode, transactionId)
+
+    override fun deleteByKey(recordKey: String) {
+        jpaRepository.deleteById(recordKey)
+    }
+
+    private fun LedgerIdempotencyEntity.toDomain() = LedgerIdempotencyRecord(
+        recordKey = recordKey,
+        requestJson = requestJson,
+        statusCode = statusCode,
+        transactionId = transactionId,
+        createdAt = createdAt
+    )
 }
