@@ -55,6 +55,21 @@ test("CLI scaffolds a valid mini-app using Itunda Indigo", () => {
   }
 });
 
+test("CLI rejects an empty or overlong scaffold name without creating a directory", () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "itunda-name-test-"));
+  try {
+    const empty = spawnSync(process.execPath, [cli, "new", "   "], { cwd, encoding: "utf8" });
+    assert.notEqual(empty.status, 0);
+    assert.match(empty.stderr, /name must contain 1-80 characters/);
+    const long = spawnSync(process.execPath, [cli, "new", "x".repeat(81)], { cwd, encoding: "utf8" });
+    assert.notEqual(long.status, 0);
+    assert.match(long.stderr, /name must contain 1-80 characters/);
+    assert.deepEqual(fs.readdirSync(cwd), []);
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
 test("CLI refuses an HTTP bundle even when the undocumented local flag is supplied", () => {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "itunda-local-bundle-test-"));
   try {
@@ -65,6 +80,14 @@ test("CLI refuses an HTTP bundle even when the undocumented local flag is suppli
   } finally {
     fs.rmSync(cwd, { recursive: true, force: true });
   }
+});
+
+test("CLI rejects credentialed HTTPS bundle URLs", () => {
+  const manifest = JSON.parse(fs.readFileSync(templatePath, "utf8"));
+  manifest.entry.bundleUrl = "https://user:password@example.com/app.js";
+  const result = validateManifest(manifest);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /embedded credentials/);
 });
 
 test("CLI rejects an unsupported permission", () => {
