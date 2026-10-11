@@ -59,7 +59,7 @@ expect("ios brand light", ios, /public static let brand = Color\(light:\s*(0x[0-
 expect("ios on-brand foreground", ios, /public static let onBrand = Color\(light:\s*(0x[0-9A-Fa-f]+), dark:/, toIosColor("#121216"));
 expect("ios dark on-brand foreground", ios, /public static let onBrand = Color\(light:\s*0x[0-9A-Fa-f]+, dark:\s*(0x[0-9A-Fa-f]+)/, toIosColor("#121216"));
 expect("shared Android on-brand token", sharedAndroid, /val onBrand = Color\((0x[0-9A-Fa-f]{8})\)/, toAndroidColor("#121216"));
-expect("shared iOS on-brand token", sharedIos, /public static let onBrand = Color\(red:\s*(0x[0-9A-Fa-f]+)\/255\.0/, toIosColor("#121216"));
+expect("shared iOS on-brand token", sharedIos, /public static let onBrand = Color\(red:\s*(0x12\/255\.0, green:\s*0x12\/255\.0, blue:\s*0x16)\/255\.0\)/, "0x12/255.0, green: 0x12/255.0, blue: 0x16");
 if (!/contentColor=IDSColors\.onBrand/.test(sharedAndroidComponents)) failures.push("shared Android IDSPrimaryButton: missing onBrand content color");
 if (!/foregroundStyle\(IDSColor\.onBrand\)/.test(sharedIosComponents)) failures.push("shared iOS IDSPrimaryButton: missing onBrand foreground style");
 expect("ios brand dark", ios, /public static let brand = Color\(light:\s*0x[0-9A-Fa-f]+, dark:\s*(0x[0-9A-Fa-f]+)/, toIosColor(brand.dark));
