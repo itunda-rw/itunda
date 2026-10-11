@@ -42,7 +42,7 @@ if sql="$(fetch_json "Cloud SQL $SQL_INSTANCE" gcloud sql instances describe "$S
   tier="$(jq -r '.settings.tier // "UNKNOWN"' <<<"$sql")"
   availability="$(jq -r '.settings.availabilityType // "UNKNOWN"' <<<"$sql")"
   backup_enabled="$(jq -r '.settings.backupConfiguration.enabled // false' <<<"$sql")"
-  pitr_enabled="$(jq -r '.settings.backupConfiguration.pointInTimeRecoveryEnabled // .settings.backupConfiguration.binaryLogEnabled // false' <<<"$sql")"
+  pitr_enabled="$(jq -r 'if .settings.backupConfiguration.pointInTimeRecoveryEnabled != null then .settings.backupConfiguration.pointInTimeRecoveryEnabled else (.settings.backupConfiguration.binaryLogEnabled // false) end' <<<"$sql")"
   require_ssl="$(jq -r '.settings.ipConfiguration.requireSsl // false' <<<"$sql")"
   ssl_mode="$(jq -r '.settings.ipConfiguration.sslMode // "UNKNOWN"' <<<"$sql")"
   private_ip="$(jq -r '[.ipAddresses[]? | select(.type == "PRIVATE")] | length > 0' <<<"$sql")"
