@@ -35,7 +35,7 @@ function scaffold(name) {
   const bundle = flag("--bundle", "https://example.com/itunda-mini-app.bundle.js");
   if (!/^rw\.[a-z0-9]+(?:[._-][a-z0-9]+)+$/.test(id)) return fail("invalid mini-app id");
   if (!categories.has(category)) return fail("invalid category: " + category);
-  if (!isHttpsUrl(bundle) && !args.includes("--local")) return fail("bundle URL must use HTTPS, or pass --local");
+  if (!isHttpsUrl(bundle)) return fail("bundle URL must be a valid HTTPS URL; local HTTP bundles are not accepted by the manifest contract");
   fs.mkdirSync(path.join(directory, "src"), {recursive:true});
   const manifest = {
     $schema: "https://raw.githubusercontent.com/itunda-rw/itunda/main/packages/saronite/mini-apps/partner-template/manifest.schema.json",
