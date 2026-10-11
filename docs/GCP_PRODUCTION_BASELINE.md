@@ -95,3 +95,13 @@ Read-only inventory commands included:
 - `gcloud pubsub topics list --project=itunda-org`
 
 This baseline is a dated snapshot, not a substitute for automated drift detection. Re-run it after infrastructure changes.
+
+## Repeatable audit
+
+Run the read-only posture check from the repository root:
+
+```bash
+bash scripts/gcp-production-audit.sh
+```
+
+The script checks Cloud SQL backups/PITR/TLS, Memorystore TLS/AUTH, Managed Kafka resource state, Cloud Run readiness, and whether the API revision declares its dependency settings. It does not mutate resources, read secret payloads, or replace end-to-end integration tests. It returns a failing exit code when required resources are unreadable or database backup/PITR checks fail; other hardening gaps are reported as warnings for review.
