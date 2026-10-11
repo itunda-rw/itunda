@@ -52,7 +52,7 @@ test("CLI rejects non-HTTPS bundle URLs", () => {
   manifest.entry.bundleUrl = "http://example.com/app.js";
   const result = validateManifest(manifest);
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /must be HTTPS/);
+  assert.match(result.stderr, /valid HTTPS URL/);
 });
 
 test("CLI rejects malformed semantic versions", () => {
@@ -61,4 +61,36 @@ test("CLI rejects malformed semantic versions", () => {
   const result = validateManifest(manifest);
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /semantic/);
+});
+
+test("CLI rejects undeclared root properties", () => {
+  const manifest = JSON.parse(fs.readFileSync(templatePath, "utf8"));
+  manifest.debugBypassAuth = true;
+  const result = validateManifest(manifest);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unknown manifest property/);
+});
+
+test("CLI rejects malformed schema URLs", () => {
+  const manifest = JSON.parse(fs.readFileSync(templatePath, "utf8"));
+  manifest.$schema = "file:///tmp/evil-schema.json";
+  const result = validateManifest(manifest);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /\$schema must be a valid HTTPS URL/);
+});
+
+test("CLI rejects duplicate permissions", () => {
+  const manifest = JSON.parse(fs.readFileSync(templatePath, "utf8"));
+  manifest.permissions = ["storage", "storage"];
+  const result = validateManifest(manifest);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /must not contain duplicates/);
+});
+
+test("CLI rejects incomplete theme palettes", () => {
+  const manifest = JSON.parse(fs.readFileSync(templatePath, "utf8"));
+  delete manifest.brandTheme.dark.focus;
+  const result = validateManifest(manifest);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /brandTheme.dark.focus/);
 });
