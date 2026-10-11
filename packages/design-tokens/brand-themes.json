@@ -14,7 +14,7 @@
     "itunda": {
       "light": {
         "brand": "#8F89FF",
-        "brandStrong": "#6960F9",
+        "brandStrong": "#7D77F7",
         "brandSurface": "#F1F0FF",
         "onBrand": "#121216",
         "focus": "#6960F9",
@@ -23,7 +23,7 @@
       "dark": {
         "brand": "#8F89FF",
         "brandStrong": "#8F89FF",
-        "brandSurface": "#25234A",
+        "brandSurface": "#25252D",
         "onBrand": "#121216",
         "focus": "#8F89FF",
         "pressed": "#7D77F7"
