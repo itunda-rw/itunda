@@ -9,7 +9,7 @@ import androidx.compose.ui.unit.dp
 
 /** IDS component contract: variants, states, focus and disabled behavior stay consistent with Web/iOS. */
 @Composable fun IDSPrimaryButton(text:String, enabled:Boolean=true, loading:Boolean=false, onClick:()->Unit) {
-    Button(onClick=onClick, enabled=enabled && !loading, shape=RoundedCornerShape(IDSRadii.md.dp), modifier=Modifier.height(48.dp)) {
+    Button(onClick=onClick, enabled=enabled && !loading, shape=RoundedCornerShape(IDSRadii.md.dp), modifier=Modifier.height(48.dp), colors=ButtonDefaults.buttonColors(containerColor=IDSColors.indigo500, contentColor=IDSColors.onBrand)) {
         if (loading) CircularProgressIndicator(modifier=Modifier.size(18.dp), strokeWidth=2.dp) else Text(text)
     }
 }
