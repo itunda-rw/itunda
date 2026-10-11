@@ -33,7 +33,7 @@ This document supersedes the private-cloud blueprint as the description of Itund
 
 The API revision's environment includes `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `REDIS_HOST`, `REDIS_PORT`, and `KAFKA_BOOTSTRAP_SERVERS`, plus Secret Manager references for the database password and JWT secret. This is evidence of wiring configuration, **not** a successful DB/Redis/Kafka integration test.
 
-The deployed API image tag maps to source commit [`c85d7fcc`](https://github.com/itunda-rw/itunda/commit/c85d7fcc4177aafa667215677c661af456e76d3e). Comparing it with the audited PR head `bdc648d5005a0c8be3a02ebaed17b85bce4ce78c` showed the PR head is 98 commits ahead of that deployed source commit. Therefore, the current PR's security review and other branch-level changes must not be represented as already deployed. Plan a tested deployment after CI passes and release checks are satisfied.
+The deployed API image tag maps to source commit [`c85d7fcc`](https://github.com/itunda-rw/itunda/commit/c85d7fcc4177aafa667215677c661af456e76d3e). Comparing it with the audited PR head `e85d2391a1ec4c56d9f803274ba74f713e6d5744` showed the PR head is 98 commits ahead of that deployed source commit (at the time of this audit). Therefore, the current PR's security review and other branch-level changes must not be represented as already deployed. Plan a tested deployment after CI passes and release checks are satisfied.
 
 ## Critical findings — resolve before calling this production-hardened
 
