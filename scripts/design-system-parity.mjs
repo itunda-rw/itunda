@@ -26,6 +26,10 @@ for (const role of contract.semanticRoles) {
 const web = fs.readFileSync(path.join(root, files.web), "utf8");
 const android = fs.readFileSync(path.join(root, files.android), "utf8");
 const ios = fs.readFileSync(path.join(root, files.ios), "utf8");
+const sharedAndroid = fs.readFileSync(path.join(root, "client/design-system/android/IDSTheme.kt"), "utf8");
+const sharedAndroidComponents = fs.readFileSync(path.join(root, "client/design-system/android/IDSComponents.kt"), "utf8");
+const sharedIos = fs.readFileSync(path.join(root, "client/design-system/ios/IDS.swift"), "utf8");
+const sharedIosComponents = fs.readFileSync(path.join(root, "client/design-system/ios/IDSComponents.swift"), "utf8");
 
 const brand = contract.brand;
 const pressedSurface = contract.pressedSurface;
@@ -54,6 +58,10 @@ expect("android dark pressed surface", android, /val IdsDarkSemanticColors[\s\S]
 expect("ios brand light", ios, /public static let brand = Color\(light:\s*(0x[0-9A-Fa-f]+), dark:/, toIosColor(brand.light));
 expect("ios on-brand foreground", ios, /public static let onBrand = Color\(light:\s*(0x[0-9A-Fa-f]+), dark:/, toIosColor("#121216"));
 expect("ios dark on-brand foreground", ios, /public static let onBrand = Color\(light:\s*0x[0-9A-Fa-f]+, dark:\s*(0x[0-9A-Fa-f]+)/, toIosColor("#121216"));
+expect("shared Android on-brand token", sharedAndroid, /val onBrand = Color\((0x[0-9A-Fa-f]{8})\)/, toAndroidColor("#121216"));
+expect("shared iOS on-brand token", sharedIos, /public static let onBrand = Color\(red:\s*(0x[0-9A-Fa-f]+)\/255\.0/, toIosColor("#121216"));
+if (!/contentColor=IDSColors\.onBrand/.test(sharedAndroidComponents)) failures.push("shared Android IDSPrimaryButton: missing onBrand content color");
+if (!/foregroundStyle\(IDSColor\.onBrand\)/.test(sharedIosComponents)) failures.push("shared iOS IDSPrimaryButton: missing onBrand foreground style");
 expect("ios brand dark", ios, /public static let brand = Color\(light:\s*0x[0-9A-Fa-f]+, dark:\s*(0x[0-9A-Fa-f]+)/, toIosColor(brand.dark));
 expect("ios pressed surface light", ios, /public static let pressed = Color\(light:\s*(0x[0-9A-Fa-f]+), dark:/, toIosColor(pressedSurface.light));
 expect("ios pressed surface dark", ios, /public static let pressed = Color\(light:\s*0x[0-9A-Fa-f]+, dark:\s*(0x[0-9A-Fa-f]+)/, toIosColor(pressedSurface.dark));
