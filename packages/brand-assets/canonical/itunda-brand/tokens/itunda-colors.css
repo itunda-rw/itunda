@@ -1,0 +1,4 @@
+:root{--itunda-brand:#8F89FF;--itunda-brand-pressed:#7D77F7;--itunda-on-brand:#121216;--itunda-brand-text:#6960F9;--itunda-brand-tint:#F1F0FF;
+--bg:#FFFFFF;--surface:#F4F5F8;--line:#E5E8EB;--text:#191F28;--text-muted:#6B7684}
+@media (prefers-color-scheme:dark){:root{--itunda-brand-text:#8F89FF;--itunda-brand-tint:#25234A;--bg:#121216;--surface:#1C1C22;--line:#2E2E37;--text:#F4F5F7;--text-muted:#9AA1AD}}
+/* Brand and pressed colors remain stable across modes. */
