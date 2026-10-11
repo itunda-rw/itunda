@@ -16,6 +16,8 @@ import rw.itunda.ledger.domain.LedgerIdempotencyRepository
 import rw.itunda.ledger.domain.OutboxEvent
 import rw.itunda.ledger.domain.OutboxEventRepository
 import java.math.BigDecimal
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 class LedgerApplicationServiceTest {
     private val objectMapper = ObjectMapper()
@@ -85,6 +87,23 @@ class LedgerApplicationServiceTest {
     }
 
     @Test
+    fun `does not expire old unresolved claims`() {
+        val repository = RecordingIdempotencyRepository()
+        val key = "POST:/api/v1/ledger/transfer:old-processing-key"
+        val body = """{"sourceAccountId":"source","destinationAccountId":"destination"}"""
+        repository.records[key] = LedgerIdempotencyRecord(
+            recordKey = key,
+            requestJson = body,
+            statusCode = -1,
+            transactionId = null,
+            createdAt = Instant.now().minus(30, ChronoUnit.DAYS)
+        )
+
+        assertEquals(LedgerIdempotencyClaim.InProgress, LedgerIdempotencyClaimStore(repository).claim(key, body))
+        assertEquals(-1, repository.records.getValue(key).statusCode)
+    }
+
+    @Test
     fun `rejects blank idempotency key before claiming or writing`() {
         val accounts = RecordingLedgerAccountRepository(listOf(account("source", "100.00")))
         val idempotency = RecordingIdempotencyRepository()
@@ -106,7 +125,7 @@ class LedgerApplicationServiceTest {
         val idempotency = RecordingIdempotencyRepository()
         val service = service(accounts, outbox, idempotency)
 
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows(TransferRejectedException::class.java) {
             service.executeTransfer(request("same", "same", "self-transfer"))
         }
 
