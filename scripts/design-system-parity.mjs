@@ -40,14 +40,17 @@ const expect = (label, source, pattern, expected) => {
 const webLight = web.split('[data-theme="dark"]')[0];
 const webDark = web.split('[data-theme="dark"]')[1] ?? "";
 expect("web light brand", webLight, /--itunda-color-brand:\s*(#[0-9A-Fa-f]{6})/i, brand.light);
+expect("web on-brand foreground", web, /--itunda-color-on-brand:\s*(#[0-9A-Fa-f]{6})/i, "#121216");
 expect("web dark brand", webDark, /--itunda-color-brand:\s*(#[0-9A-Fa-f]{6})/i, brand.dark);
 expect("web light pressed surface", webLight, /--itunda-color-pressed:\s*(#[0-9A-Fa-f]{6})/i, pressedSurface.light);
 expect("web dark pressed surface", webDark, /--itunda-color-pressed:\s*(#[0-9A-Fa-f]{6})/i, pressedSurface.dark);
 expect("android light brand", android, /val IdsLightSemanticColors[\s\S]*?brand = Color\((0x[0-9A-Fa-f]{8})\)/, toAndroidColor(brand.light));
+expect("android on-brand foreground", android, /onBrand = Color\((0x[0-9A-Fa-f]{8})\)/, toAndroidColor("#121216"));
 expect("android dark brand", android, /val IdsDarkSemanticColors[\s\S]*?brand = Color\((0x[0-9A-Fa-f]{8})\)/, toAndroidColor(brand.dark));
 expect("android light pressed surface", android, /val IdsLightSemanticColors[\s\S]*?pressed = Color\((0x[0-9A-Fa-f]{8})\)/, toAndroidColor(pressedSurface.light));
 expect("android dark pressed surface", android, /val IdsDarkSemanticColors[\s\S]*?pressed = Color\((0x[0-9A-Fa-f]{8})\)/, toAndroidColor(pressedSurface.dark));
 expect("ios brand light", ios, /public static let brand = Color\(light:\s*(0x[0-9A-Fa-f]+), dark:/, toIosColor(brand.light));
+expect("ios on-brand foreground", ios, /public static let onBrand = Color\(light:\s*(0x[0-9A-Fa-f]+), dark:/, toIosColor("#121216"));
 expect("ios brand dark", ios, /public static let brand = Color\(light:\s*0x[0-9A-Fa-f]+, dark:\s*(0x[0-9A-Fa-f]+)/, toIosColor(brand.dark));
 expect("ios pressed surface light", ios, /public static let pressed = Color\(light:\s*(0x[0-9A-Fa-f]+), dark:/, toIosColor(pressedSurface.light));
 expect("ios pressed surface dark", ios, /public static let pressed = Color\(light:\s*0x[0-9A-Fa-f]+, dark:\s*(0x[0-9A-Fa-f]+)/, toIosColor(pressedSurface.dark));
