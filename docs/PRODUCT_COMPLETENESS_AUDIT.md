@@ -117,7 +117,7 @@ This register enumerates every row currently present in the source parity matrix
 - **Provider isolation:** mock, sandbox and live adapters share a contract but have unmistakable mode labels and separate credentials.
 - **Identity and permissions:** phone/session/device controls, consent, account ownership, least privilege, step-up authentication for sensitive actions, privacy-safe logs.
 - **Localization:** Kinyarwanda-first MVP copy, correct RWF amounts and formatting, local institution/rail names, low-bandwidth behavior and meaningful timestamps/time zones.
-- **Design:** Itunda Indigo `#7472F4`, canonical logo assets only, light/dark mode, quiet whitespace, accessible contrast/focus, reduced motion and no Toss branding.
+- **Design:** Brand v3 primary `#8F89FF` (pressed `#7D77F7`; light neutral `#F4F5F8`; dark soft surface `#25252D`), canonical logo assets from the supplied Brand v3 archive only, light/dark mode, quiet whitespace, accessible contrast/focus, reduced motion and no Toss branding. Treat older `#7472F4` references as legacy until the Brand v3 token and asset rollout is merged and verified across web, Android, and iOS.
 - **Observability:** a request can be followed across client, gateway, backend, provider adapter, ledger and event relay with one trace/request correlation.
 - **Recovery:** each critical flow explains what happened, what is still pending, whether retry is safe, and how to get help.
 
