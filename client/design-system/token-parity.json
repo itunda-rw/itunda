@@ -16,6 +16,7 @@
     "textSecondary",
     "textTertiary",
     "brand",
+    "onBrand",
     "textBrand",
     "divider",
     "pressed",
@@ -42,7 +43,8 @@
       "warning": "--itunda-color-warning",
       "danger": "--itunda-color-error",
       "iconPrimary": "--itunda-color-icon-primary",
-      "iconSecondary": "--itunda-color-icon-secondary"
+      "iconSecondary": "--itunda-color-icon-secondary",
+      "onBrand": "--itunda-color-on-brand"
     }
   },
   "android": {
@@ -62,7 +64,8 @@
       "warning": "warning",
       "danger": "danger",
       "iconPrimary": "iconPrimary",
-      "iconSecondary": "iconSecondary"
+      "iconSecondary": "iconSecondary",
+      "onBrand": "onBrand"
     }
   },
   "ios": {
@@ -82,7 +85,8 @@
       "warning": "warning",
       "danger": "danger",
       "iconPrimary": "iconPrimary",
-      "iconSecondary": "iconSecondary"
+      "iconSecondary": "iconSecondary",
+      "onBrand": "onBrand"
     }
   },
   "legacyCompatibility": {
