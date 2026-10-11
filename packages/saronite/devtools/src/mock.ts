@@ -1,4 +1,4 @@
-import { SARONITE_CAPABILITIES, permissionFor, type SaroniteCapabilityName } from './capabilities';
+import { SARONITE_CAPABILITIES, SARONITE_METHODS, permissionFor, type SaroniteCapabilityName } from './capabilities';
 
 export type MockStatus = 'ok' | 'denied' | 'unsupported' | 'error';
 
@@ -27,12 +27,6 @@ export type SaroniteMockHost = {
   setPermission: (permission: string, granted: boolean) => void;
   setLifecycle: (lifecycle: MockHostState['lifecycle']) => void;
   clearCalls: () => void;
-};
-
-const SUPPORTED_METHODS: Record<SaroniteCapabilityName, readonly string[]> = {
-  identity: ['getCurrentIdentity'],
-  location: ['getCurrentLocation'],
-  navigation: ['open', 'close'],
 };
 
 function isCapabilityName(value: string): value is SaroniteCapabilityName {
@@ -64,7 +58,7 @@ export function createSaroniteMockHost(
       if (!isCapabilityName(capability)) {
         throw new Error(`Unknown Saronite capability: ${capability}`);
       }
-      if (!SUPPORTED_METHODS[capability].includes(method)) {
+      if (!SARONITE_METHODS[capability].includes(method)) {
         throw new Error(`Unknown Saronite method: ${capability}.${method}`);
       }
       if (options.supported === false) {
@@ -72,17 +66,14 @@ export function createSaroniteMockHost(
         return undefined;
       }
 
-      // The mock must enforce the same manifest permission even when callers omit
-      // options.permission; an explicit option can only select a stricter scope.
       const capabilityPermission = permissionFor(capability);
-      const requiredPermission = options.permission ?? capabilityPermission;
-      if (
-        capabilityPermission &&
-        requiredPermission !== capabilityPermission
-      ) {
+      const requestedPermission = options.permission;
+      // A caller cannot downgrade or replace the permission defined by the SDK.
+      if (capabilityPermission && requestedPermission && requestedPermission !== capabilityPermission) {
         record(capability, method, 'denied', capabilityPermission);
         return undefined;
       }
+      const requiredPermission = capabilityPermission ?? requestedPermission;
       if (requiredPermission && state.permissions[requiredPermission] !== true) {
         record(capability, method, 'denied', requiredPermission);
         return undefined;
