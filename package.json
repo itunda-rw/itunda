@@ -13,6 +13,7 @@
     "services/api-gateway"
   ],
   "scripts": {
+    "test:design-system-parity": "node scripts/design-system-parity.mjs",
     "dev": "bash ./scripts/local-ecosystem.sh web-dev",
     "dev:web": "bash ./scripts/local-ecosystem.sh web-dev",
     "dev:lan": "bash ./scripts/local-ecosystem.sh web-lan",
