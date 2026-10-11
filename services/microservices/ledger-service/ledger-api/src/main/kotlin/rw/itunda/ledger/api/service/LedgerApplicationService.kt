@@ -1,74 +1,46 @@
 package rw.itunda.ledger.api.service
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.server.ResponseStatusException
 import rw.itunda.ledger.api.controller.TransferRequest
-import rw.itunda.ledger.domain.LedgerAccountRepository
-import rw.itunda.ledger.domain.OutboxEvent
-import rw.itunda.ledger.domain.OutboxEventRepository
-import rw.itunda.ledger.domain.TransferService
-import java.util.UUID
+
+private const val MAX_IDEMPOTENCY_KEY_LENGTH = 300
+private const val TRANSFER_ENDPOINT_SCOPE = "POST:/api/v1/ledger/transfer:"
 
 @Service
 class LedgerApplicationService(
-    private val ledgerAccountRepository: LedgerAccountRepository,
-    private val outboxEventRepository: OutboxEventRepository
+    private val idempotencyClaimStore: LedgerIdempotencyClaimStore,
+    private val transferExecutor: LedgerTransferExecutor,
+    private val objectMapper: ObjectMapper
 ) {
-    private val transferService = TransferService()
-
-    @Transactional
     fun executeTransfer(request: TransferRequest): String {
-        require(request.sourceAccountId != request.destinationAccountId) {
-            "Source and destination accounts must be different"
+        if (request.idempotencyKey.isBlank() || request.idempotencyKey.length > MAX_IDEMPOTENCY_KEY_LENGTH) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "IDEMPOTENCY_KEY_REQUIRED_OR_INVALID")
         }
 
-        // Lock both rows in deterministic order. Every competing transfer touching
-        // either account therefore serializes against the same database rows, while
-        // deterministic ordering reduces opposite-direction transfer deadlocks.
-        val lockedAccounts = listOf(
-            request.sourceAccountId,
-            request.destinationAccountId
-        ).sorted().associateWith { accountId ->
-            ledgerAccountRepository.findByIdForUpdate(accountId)
-                ?: throw IllegalArgumentException(
-                    if (accountId == request.sourceAccountId) {
-                        "Source account not found"
-                    } else {
-                        "Destination account not found"
+        val recordKey = TRANSFER_ENDPOINT_SCOPE + request.idempotencyKey
+        val requestJson = objectMapper.writeValueAsString(request)
+
+        return when (val claim = idempotencyClaimStore.claim(recordKey, requestJson)) {
+            LedgerIdempotencyClaim.Conflict ->
+                throw ResponseStatusException(HttpStatus.CONFLICT, "IDEMPOTENCY_KEY_CONFLICT")
+            LedgerIdempotencyClaim.InProgress ->
+                throw ResponseStatusException(HttpStatus.CONFLICT, "IDEMPOTENT_REQUEST_PROCESSING")
+            is LedgerIdempotencyClaim.Replay -> claim.transactionId
+            LedgerIdempotencyClaim.Claimed -> {
+                try {
+                    transferExecutor.executeTransfer(request, recordKey)
+                } catch (failure: Exception) {
+                    try {
+                        idempotencyClaimStore.release(recordKey)
+                    } catch (releaseFailure: Exception) {
+                        failure.addSuppressed(releaseFailure)
                     }
-                )
-        }
-        val source = lockedAccounts.getValue(request.sourceAccountId)
-        val destination = lockedAccounts.getValue(request.destinationAccountId)
-
-        // Execute pure business logic only after the latest balances are locked/read.
-        val (updatedSource, updatedDestination) = transferService.executeTransfer(
-            source = source,
-            destination = destination,
-            amount = request.amount
-        )
-
-        ledgerAccountRepository.saveAll(listOf(updatedSource, updatedDestination))
-
-        // Persist the event in the same transaction as the balance changes.
-        val transactionId = "TXN_RW_${UUID.randomUUID().toString().take(8)}"
-        val outboxEvent = OutboxEvent(
-            eventId = UUID.randomUUID().toString(),
-            aggregateType = "LEDGER_TRANSFER",
-            aggregateId = transactionId,
-            payload = """
-                {
-                    "transactionId": "$transactionId",
-                    "sourceAccountId": "${request.sourceAccountId}",
-                    "destinationAccountId": "${request.destinationAccountId}",
-                    "amount": ${request.amount},
-                    "currency": "${source.currency}",
-                    "idempotencyKey": "${request.idempotencyKey}"
+                    throw failure
                 }
-            """.trimIndent()
-        )
-        outboxEventRepository.save(outboxEvent)
-
-        return transactionId
+            }
+        }
     }
 }
