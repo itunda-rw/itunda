@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate Bash syntax
-        run: bash -n scripts/gcp-production-audit.sh scripts/test-gcp-production-audit.sh
+        run: bash -n scripts/gcp-production-audit.sh && bash -n scripts/test-gcp-production-audit.sh
       - name: Install ShellCheck
         run: |
           sudo apt-get update
