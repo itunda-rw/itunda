@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import rw.itunda.core.network.PartnerMiniAppDto
@@ -76,6 +77,10 @@ object PartnerMiniAppLoader {
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
+
+    // Keep an untrusted partner response from exhausting the app's cache storage.
+    // This is a runtime boundary even if the backend has already validated a submission.
+    private const val MAX_BUNDLE_BYTES = 100L * 1024L * 1024L
 
     // Process-lifetime scope for the one restore call that must outlive the Activity
     // that triggers it (PartnerMiniAppActivity.onDestroy) -- see that call site's own
@@ -157,17 +162,55 @@ object PartnerMiniAppLoader {
     }
 
     private suspend fun downloadBundle(context: Context, app: PartnerMiniAppDto): File = withContext(Dispatchers.IO) {
-        val request = Request.Builder().url(app.bundleUrl).build()
+        val bundleUrl = app.bundleUrl.toHttpUrlOrNull()
+            ?: throw IOException("Partner bundle URL is invalid")
+        if (!bundleUrl.isHttps) {
+            throw IOException("Partner bundle URL must use HTTPS")
+        }
+
+        val request = Request.Builder().url(bundleUrl).build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                throw IOException("Bundle download failed: HTTP ${response.code} for ${app.bundleUrl}")
+                throw IOException("Bundle download failed: HTTP ${response.code}")
             }
-            val body = response.body ?: throw IOException("Empty bundle response from ${app.bundleUrl}")
-            // Keyed by mini-app id so two different partner apps don't clobber each
-            // other's cached file if a user backs out and taps a different one before
-            // this one's file would otherwise be evicted.
+            // A redirect must not downgrade a previously validated HTTPS URL.
+            if (!response.request.url.isHttps) {
+                throw IOException("Partner bundle redirects must remain HTTPS")
+            }
+            val body = response.body ?: throw IOException("Empty partner bundle response")
+            val declaredLength = body.contentLength()
+            if (declaredLength > MAX_BUNDLE_BYTES) {
+                throw IOException("Partner bundle exceeds the 100 MiB size limit")
+            }
+
+            // Download to a temporary file and publish only after the full body is
+            // written. A network interruption must never leave a partial bundle at the
+            // canonical cache path where a later launch could mistake it for complete.
             val file = File(context.cacheDir, "partner-mini-app-${app.id}.bundle.js")
-            file.outputStream().use { out -> body.byteStream().copyTo(out) }
+            val temporary = File(context.cacheDir, "partner-mini-app-${app.id}.bundle.js.part")
+            try {
+                temporary.outputStream().use { out ->
+                    body.byteStream().use { input ->
+                        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                        var totalBytes = 0L
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read < 0) break
+                            totalBytes += read
+                            if (totalBytes > MAX_BUNDLE_BYTES) {
+                                throw IOException("Partner bundle exceeds the 100 MiB size limit")
+                            }
+                            out.write(buffer, 0, read)
+                        }
+                    }
+                }
+                if (!temporary.renameTo(file)) {
+                    throw IOException("Could not finalize partner bundle download")
+                }
+            } catch (e: Exception) {
+                temporary.delete()
+                throw e
+            }
             file
         }
     }
