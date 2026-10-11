@@ -3365,3 +3365,63 @@ input, textarea, select {
   .itunda-app-content .itunda-flat-section { padding-block: 22px; }
 }
 /* IDS glass primitives already handle reduced-transparency and forced-colors fallbacks. */
+
+
+/* Itunda glass + flat composition — 2026-10-10
+   Keep primary content flat. Apply translucent glass only to the persistent
+   navigation surfaces that float above the page; no gradients or card-stack UI. */
+.itunda-app-header.ids-glass-strong {
+  background: color-mix(in srgb, var(--itunda-surface-default) 84%, transparent);
+  border: 0;
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--itunda-text-primary) 5%, transparent);
+  -webkit-backdrop-filter: blur(22px) saturate(145%);
+  backdrop-filter: blur(22px) saturate(145%);
+}
+
+.itunda-bottom-nav.ids-glass-strong {
+  background: color-mix(in srgb, var(--itunda-surface-default) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--itunda-border-default) 42%, transparent);
+  box-shadow: 0 12px 36px color-mix(in srgb, var(--itunda-text-primary) 10%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(24px) saturate(150%);
+}
+
+.itunda-bottom-nav__item.is-active {
+  color: var(--itunda-brand-strong);
+}
+
+.itunda-bottom-nav__item.is-active .itunda-bottom-nav__icon {
+  background: color-mix(in srgb, var(--itunda-brand) 12%, transparent);
+  color: var(--itunda-brand);
+}
+
+@media (prefers-color-scheme: dark) {
+  .itunda-app-header.ids-glass-strong {
+    background: color-mix(in srgb, var(--itunda-surface-default) 80%, transparent);
+    box-shadow: 0 8px 28px color-mix(in srgb, #000 18%, transparent);
+  }
+
+  .itunda-bottom-nav.ids-glass-strong {
+    background: color-mix(in srgb, var(--itunda-surface-default) 80%, transparent);
+    border-color: color-mix(in srgb, var(--itunda-border-default) 56%, transparent);
+    box-shadow: 0 12px 36px color-mix(in srgb, #000 24%, transparent);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+  .itunda-app-header.ids-glass-strong,
+  .itunda-bottom-nav.ids-glass-strong {
+    background: var(--itunda-surface-default);
+    border-color: transparent;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itunda-app-header.ids-glass-strong,
+  .itunda-bottom-nav.ids-glass-strong {
+    transition: none;
+  }
+}
