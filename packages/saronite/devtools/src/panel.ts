@@ -118,7 +118,7 @@ export function renderSaroniteDevPanel(host: SaroniteMockHost, mount: HTMLElemen
     lifecycleButton.textContent = host.state.lifecycle === 'visible' ? 'Visible' : 'Set visible';
     lifecycleButton.setAttribute('aria-pressed', String(host.state.lifecycle === 'visible'));
     lifecycleButton.onclick = () => {
-      host.setLifecycle(host.state.lifecycle === 'visible' ? 'hidden' : 'visible');
+      host.setLifecycle('visible');
       render();
     };
     lifecycleControls.append(lifecycleButton);
