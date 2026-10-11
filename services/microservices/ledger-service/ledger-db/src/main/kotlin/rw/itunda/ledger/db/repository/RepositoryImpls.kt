@@ -28,7 +28,7 @@ class LedgerAccountRepositoryImpl(
     }
 
     override fun saveAll(accounts: List<LedgerAccount>): List<LedgerAccount> {
-        jpaRepository.saveAll(accounts.map(LedgerAccount::toEntity))
+        jpaRepository.saveAll(accounts.map { it.toEntity() })
         return accounts
     }
 
