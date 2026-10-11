@@ -13,8 +13,9 @@ case "$joined" in
   "sql instances describe "*)
     backup="${MOCK_BACKUP_ENABLED:-true}"
     pitr="${MOCK_PITR_ENABLED:-true}"
+    pitr_field="${MOCK_PITR_FIELD:-pointInTimeRecoveryEnabled}"
     cat <<JSON
-{"state":"RUNNABLE","settings":{"tier":"db-f1-micro","availabilityType":"REGIONAL","backupConfiguration":{"enabled":$backup,"binaryLogEnabled":$pitr},"ipConfiguration":{"requireSsl":true,"sslMode":"ENCRYPTED_ONLY"}},"ipAddresses":[{"type":"PRIVATE","ipAddress":"10.0.0.2"}]}
+{"state":"RUNNABLE","settings":{"tier":"db-f1-micro","availabilityType":"REGIONAL","backupConfiguration":{"enabled":$backup,"$pitr_field":$pitr},"ipConfiguration":{"requireSsl":true,"sslMode":"ENCRYPTED_ONLY"}},"ipAddresses":[{"type":"PRIVATE","ipAddress":"10.0.0.2"}]}
 JSON
     ;;
   "redis instances describe "*)
@@ -57,5 +58,23 @@ if [[ "$bad_status" -eq 0 ]] || ! grep -q 'Cloud SQL automated backups DISABLED'
   exit 1
 fi
 
+
+legacy_pitr_output="$(MOCK_PITR_FIELD=binaryLogEnabled bash "$ROOT/scripts/gcp-production-audit.sh")"
+grep -q 'PASS  Cloud SQL point-in-time recovery enabled' <<<"$legacy_pitr_output" || {
+  printf 'Expected legacy binaryLogEnabled PITR field to be recognized. Output:\n%s\n' "$legacy_pitr_output" >&2
+  exit 1
+}
+
+set +e
+no_pitr_output="$(MOCK_PITR_ENABLED=false bash "$ROOT/scripts/gcp-production-audit.sh" 2>&1)"
+no_pitr_status=$?
+set -e
+if [[ "$no_pitr_status" -eq 0 ]] || ! grep -q 'Cloud SQL PITR not enabled' <<<"$no_pitr_output"; then
+  printf 'Expected disabled PITR to fail the audit. Exit=%s output:\n%s\n' "$no_pitr_status" "$no_pitr_output" >&2
+  exit 1
+fi
+
 echo "PASS: healthy mocked resources produce REVIEW with explicit warnings"
+echo "PASS: current pointInTimeRecoveryEnabled and legacy binaryLogEnabled fields are recognized"
+echo "PASS: disabled Cloud SQL PITR produces a failing exit code"
 echo "PASS: disabled Cloud SQL backups produce a failing exit code"
