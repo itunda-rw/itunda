@@ -31,12 +31,17 @@ class LedgerIdempotencyClaimStore(
     fun claim(recordKey: String, requestJson: String): LedgerIdempotencyClaim {
         val existing = repository.findByKey(recordKey)
         if (existing != null) {
+            // Never expire an in-progress claim automatically. A prior commit may
+            // have succeeded even if the caller lost the response; deleting this
+            // marker could permit a duplicate debit. Reconcile stale claims manually.
+            if (existing.requestJson != requestJson) {
+                return LedgerIdempotencyClaim.Conflict
+            }
+            if (existing.statusCode == PROCESSING_STATUS) {
+                return LedgerIdempotencyClaim.InProgress
+            }
             if (Duration.between(existing.createdAt, Instant.now()) > IDEMPOTENCY_RETENTION) {
                 repository.deleteByKey(recordKey)
-            } else if (existing.statusCode == PROCESSING_STATUS) {
-                return LedgerIdempotencyClaim.InProgress
-            } else if (existing.requestJson != requestJson) {
-                return LedgerIdempotencyClaim.Conflict
             } else {
                 return existing.transactionId
                     ?.let(LedgerIdempotencyClaim::Replay)
