@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.Color
 object IDSColors {
     val indigo500 = Color(0xFF8F89FF)
     val indigo600 = Color(0xFF7D77F7)
+    val onBrand = Color(0xFF121216)
     val ink900 = Color(0xFF191F28)
     val ink500 = Color(0xFF6B7684)
     val surface = Color(0xFFFFFFFF)
