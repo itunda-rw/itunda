@@ -18,26 +18,40 @@ class LedgerApplicationService(
 
     @Transactional
     fun executeTransfer(request: TransferRequest): String {
-        // Toss Pattern: Fetch Domain Models
-        val source = ledgerAccountRepository.findById(request.sourceAccountId)
-            ?: throw IllegalArgumentException("Source account not found")
-        val destination = ledgerAccountRepository.findById(request.destinationAccountId)
-            ?: throw IllegalArgumentException("Destination account not found")
+        require(request.sourceAccountId != request.destinationAccountId) {
+            "Source and destination accounts must be different"
+        }
 
-        // Toss Pattern: Execute Pure Business Logic in Domain Layer
+        // Lock both rows in deterministic order. Every competing transfer touching
+        // either account therefore serializes against the same database rows, while
+        // deterministic ordering reduces opposite-direction transfer deadlocks.
+        val lockedAccounts = listOf(
+            request.sourceAccountId,
+            request.destinationAccountId
+        ).sorted().associateWith { accountId ->
+            ledgerAccountRepository.findByIdForUpdate(accountId)
+                ?: throw IllegalArgumentException(
+                    if (accountId == request.sourceAccountId) {
+                        "Source account not found"
+                    } else {
+                        "Destination account not found"
+                    }
+                )
+        }
+        val source = lockedAccounts.getValue(request.sourceAccountId)
+        val destination = lockedAccounts.getValue(request.destinationAccountId)
+
+        // Execute pure business logic only after the latest balances are locked/read.
         val (updatedSource, updatedDestination) = transferService.executeTransfer(
             source = source,
             destination = destination,
             amount = request.amount
         )
 
-        // Toss Pattern: Save State
         ledgerAccountRepository.saveAll(listOf(updatedSource, updatedDestination))
 
-        // Toss Pattern: Transactional Outbox for Kafka
+        // Persist the event in the same transaction as the balance changes.
         val transactionId = "TXN_RW_${UUID.randomUUID().toString().take(8)}"
-        
-        // This event will be swept up by a background Kafka Connect/Debezium worker or Spring Scheduler
         val outboxEvent = OutboxEvent(
             eventId = UUID.randomUUID().toString(),
             aggregateType = "LEDGER_TRANSFER",
