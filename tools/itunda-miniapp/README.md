@@ -14,7 +14,7 @@ Dependency-free local entry point for Apps in Itunda projects. The CLI creates a
 node tools/itunda-miniapp/bin/itunda-miniapp.mjs new my-shop --id rw.example.my-shop --category SHOPPING --bundle https://example.com/my-shop.bundle.js
 ```
 
-The generated `manifest.json` uses Itunda Indigo (`#7472F4`) and includes light and dark semantic theme roles. Request only the permissions the feature actually needs. Do not put credentials, private keys, identity documents, or other secrets in the manifest or bundle.
+The generated `manifest.json` copies the semantic Brand v3 theme from the checked-in partner template (primary `#8F89FF`, pressed `#7D77F7`, dark brand surface `#25252D`) and includes light and dark theme roles. The template is the source of truth; the CLI does not recreate canonical logo assets. Request only the permissions the feature actually needs. Do not put credentials, private keys, identity documents, or other secrets in the manifest or bundle.
 
 ## Validate
 
