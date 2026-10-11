@@ -1,4 +1,4 @@
-import { SARONITE_CAPABILITIES, type SaroniteCapabilityName } from './capabilities';
+import { SARONITE_CAPABILITIES, permissionFor, type SaroniteCapabilityName } from './capabilities';
 
 export type MockStatus = 'ok' | 'denied' | 'unsupported' | 'error';
 
@@ -29,6 +29,16 @@ export type SaroniteMockHost = {
   clearCalls: () => void;
 };
 
+const SUPPORTED_METHODS: Record<SaroniteCapabilityName, readonly string[]> = {
+  identity: ['getCurrentIdentity'],
+  location: ['getCurrentLocation'],
+  navigation: ['open', 'close'],
+};
+
+function isCapabilityName(value: string): value is SaroniteCapabilityName {
+  return Object.prototype.hasOwnProperty.call(SARONITE_CAPABILITIES, value);
+}
+
 export function createSaroniteMockHost(
   initial: Partial<MockHostState> = {},
 ): SaroniteMockHost {
@@ -51,17 +61,33 @@ export function createSaroniteMockHost(
   return {
     state,
     request(capability, method, handler, options = {}) {
+      if (!isCapabilityName(capability)) {
+        throw new Error(`Unknown Saronite capability: ${capability}`);
+      }
+      if (!SUPPORTED_METHODS[capability].includes(method)) {
+        throw new Error(`Unknown Saronite method: ${capability}.${method}`);
+      }
       if (options.supported === false) {
         record(capability, method, 'unsupported');
         return undefined;
       }
-      if (!(capability in SARONITE_CAPABILITIES)) {
-        throw new Error(`Unknown Saronite capability: ${capability}`);
-      }
-      if (options.permission && state.permissions[options.permission] !== true) {
-        record(capability, method, 'denied', options.permission);
+
+      // The mock must enforce the same manifest permission even when callers omit
+      // options.permission; an explicit option can only select a stricter scope.
+      const capabilityPermission = permissionFor(capability);
+      const requiredPermission = options.permission ?? capabilityPermission;
+      if (
+        capabilityPermission &&
+        requiredPermission !== capabilityPermission
+      ) {
+        record(capability, method, 'denied', capabilityPermission);
         return undefined;
       }
+      if (requiredPermission && state.permissions[requiredPermission] !== true) {
+        record(capability, method, 'denied', requiredPermission);
+        return undefined;
+      }
+
       try {
         const result = handler();
         record(capability, method, 'ok');
