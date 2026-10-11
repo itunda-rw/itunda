@@ -35,4 +35,12 @@ Toss's public Granite framework is useful as an architectural reference for a mi
 
 ## Current CI state
 
-CI run status is tracked on PR #38. At commit 4d64c969f34a736abb037ca117d720f1c3d25b7f, Android PR Validation and related checks were queued and iOS CI was pending. Earlier checks for the previous commit were cancelled during subsequent updates. A successful dependency review, manifest contract, completeness inventory, or audit-script job does not substitute for completed Android/iOS release and bundle gates. Update this section after the current run finishes.
+Snapshot checked against commit `11e78597c59b10195d5cc372466384b972f26b36` on 2026-10-11. This is a point-in-time CI snapshot, not a release certification.
+
+- **Passed:** Cloudflare Pages Developers preview deployment; Cloudflare Pages Tech preview deployment; production-boundary check; dependency review; product-completeness inventory; mini-app manifest validation; shell validation; Actions analysis; Python analysis.
+- **In progress:** Android PR validation; iOS CI; JavaScript/TypeScript analysis.
+- **CodeQL:** neutral result (`1 configuration not found`), not a passing security scan.
+- **Deployment scope:** Developers and Tech preview deployments succeeded for this branch. This does not prove production custom domains or GCP services are updated.
+- **Still blocking mini-app release readiness:** downloader integration/recovery tests, deterministic bundle hash comparison, host startup tests for valid remote bundles and fallback paths, signed release metadata/key-rotation decision, and exercised staged rollout/revocation/rollback.
+
+Check the live run results before making a release decision: [PR #38](https://github.com/itunda-rw/itunda/pull/38). A successful manifest check or bundle-presence check is not proof of end-to-end runtime readiness.
