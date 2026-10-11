@@ -8,7 +8,8 @@ steps:
     image: bash:5
     commands:
       - bash -n scripts/gcp-production-audit.sh
-      - apk add --no-cache shellcheck
-      - shellcheck --severity=warning scripts/gcp-production-audit.sh
+      - apk add --no-cache shellcheck jq
+      - shellcheck --severity=warning scripts/gcp-production-audit.sh scripts/test-gcp-production-audit.sh
+      - bash scripts/test-gcp-production-audit.sh
     when:
       - event: [push, pull_request]
