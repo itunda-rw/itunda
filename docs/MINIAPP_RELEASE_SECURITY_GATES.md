@@ -39,7 +39,7 @@ Snapshot checked against commit `11e78597c59b10195d5cc372466384b972f26b36` on 20
 
 - **Passed:** Cloudflare Pages Developers preview deployment; Cloudflare Pages Tech preview deployment; production-boundary check; dependency review; product-completeness inventory; mini-app manifest validation; shell validation; Actions analysis; Python analysis.
 - **In progress:** Android PR validation; iOS CI; JavaScript/TypeScript analysis.
-- **CodeQL:** neutral result (`1 configuration not found`), not a passing security scan.
+- **CodeQL:** completed successfully in the latest check snapshot.
 - **Deployment scope:** Developers and Tech preview deployments succeeded for this branch. This does not prove production custom domains or GCP services are updated.
 - **Still blocking mini-app release readiness:** downloader integration/recovery tests, deterministic bundle hash comparison, host startup tests for valid remote bundles and fallback paths, signed release metadata/key-rotation decision, and exercised staged rollout/revocation/rollback.
 
