@@ -8,6 +8,16 @@ on:
       - "client/design-system/**"
       - "scripts/design-system-parity.mjs"
       - ".github/workflows/ids-parity.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "client/design-system/**"
+      - "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/theme/IdsSemanticColors.kt"
+      - "ios/Core/DesignSystem/Sources/IDS.swift"
+      - "scripts/design-system-parity.mjs"
+      - "package.json"
+      - ".github/workflows/ids-parity.yml"
   workflow_dispatch:
 
 permissions:
