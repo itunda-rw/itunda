@@ -13,7 +13,6 @@ import rw.itunda.ledger.domain.LedgerIdempotencyRecord
 import rw.itunda.ledger.domain.LedgerIdempotencyRepository
 import rw.itunda.ledger.domain.OutboxEvent
 import rw.itunda.ledger.domain.OutboxEventRepository
-import java.time.Instant
 
 @Repository
 class LedgerAccountRepositoryImpl(
@@ -95,6 +94,9 @@ class LedgerIdempotencyRepositoryImpl(
 
     override fun deleteByKey(recordKey: String) {
         jpaRepository.deleteById(recordKey)
+        // Ensure an expired key is physically removed before INSERT IGNORE tries to
+        // reclaim the same primary key in this transaction.
+        jpaRepository.flush()
     }
 
     private fun LedgerIdempotencyEntity.toDomain() = LedgerIdempotencyRecord(
