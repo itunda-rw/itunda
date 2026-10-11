@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "../../..");
@@ -39,15 +40,20 @@ test("CLI accepts the checked-in partner template", () => {
   assert.match(result.stdout, /valid Itunda mini-app manifest/);
 });
 
-test("CLI scaffolds a valid mini-app using Itunda Indigo", () => {
+test("CLI scaffolds a valid mini-app from the canonical Brand v3 partner manifest", () => {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "itunda-scaffold-test-"));
   try {
     const created = spawnSync(process.execPath, [cli, "new", "Demo App"], { cwd, encoding: "utf8" });
     assert.equal(created.status, 0, created.stderr || created.stdout);
     const manifestPath = path.join(cwd, "demo-app", "manifest.json");
     const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-    assert.equal(manifest.brandTheme.light.brand, "#7472F4");
-    assert.equal(manifest.brandTheme.dark.brand, "#A7A5FF");
+    const canonical = JSON.parse(fs.readFileSync(templatePath, "utf8"));
+    assert.equal(manifest.$schema, canonical.$schema);
+    assert.equal(manifest.manifestVersion, canonical.manifestVersion);
+    assert.deepEqual(manifest.brandTheme, {...structuredClone(canonical.brandTheme), themeId: "demo-app"});
+    assert.equal(manifest.brandTheme.light.brand, "#8F89FF");
+    assert.equal(manifest.brandTheme.light.pressed, "#7D77F7");
+    assert.equal(manifest.brandTheme.dark.brandSurface, "#25252D");
     const checked = spawnSync(process.execPath, [cli, "validate", manifestPath], { encoding: "utf8" });
     assert.equal(checked.status, 0, checked.stderr || checked.stdout);
   } finally {
