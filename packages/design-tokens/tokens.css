@@ -140,6 +140,7 @@
      instead of primitive color values. The legacy --itunda-indigo names remain as
      compatibility aliases for existing consumers; the canonical public role is --itunda-brand. */
   --itunda-brand: var(--itunda-indigo);
+  --itunda-on-brand: #121216;
   --itunda-brand-strong: var(--itunda-indigo-active);
   --itunda-surface-default: var(--itunda-white);
   --itunda-surface-subtle: #f7f8fa;
@@ -197,6 +198,7 @@
   --itunda-touch-target-minimum: 44px;
   --itunda-touch-target-recommended: 48px;
   --itunda-button-primary-fill: var(--itunda-brand);
+  --itunda-button-primary-text: var(--itunda-on-brand);
   --itunda-button-primary-fill-pressed: var(--itunda-brand-strong);
   --itunda-button-secondary-fill: var(--itunda-surface-brand);
   --itunda-button-secondary-text: var(--itunda-brand-strong);
