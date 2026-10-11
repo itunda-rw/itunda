@@ -4,7 +4,7 @@ import SwiftUI
 public struct IDSPrimaryButton: View {
     let title: String; let loading: Bool; let action: () -> Void
     public init(_ title: String, loading: Bool = false, action: @escaping () -> Void) { self.title=title; self.loading=loading; self.action=action }
-    public var body: some View { Button(action: action) { if loading { ProgressView() } else { Text(title).fontWeight(.semibold) } }.frame(minHeight: 48).frame(maxWidth: .infinity).buttonStyle(.borderedProminent).tint(IDSColor.indigo500).clipShape(RoundedRectangle(cornerRadius: IDSRadii.md)) }
+    public var body: some View { Button(action: action) { if loading { ProgressView() } else { Text(title).fontWeight(.semibold) } }.frame(minHeight: 48).frame(maxWidth: .infinity).buttonStyle(.borderedProminent).tint(IDSColor.indigo500).foregroundStyle(IDSColor.onBrand).clipShape(RoundedRectangle(cornerRadius: IDSRadii.md)) }
 }
 
 public struct IDSField: View {
