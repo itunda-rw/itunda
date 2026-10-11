@@ -14,8 +14,9 @@ case "$joined" in
     backup="${MOCK_BACKUP_ENABLED:-true}"
     pitr="${MOCK_PITR_ENABLED:-true}"
     pitr_field="${MOCK_PITR_FIELD:-pointInTimeRecoveryEnabled}"
+    legacy_pitr="${MOCK_PITR_LEGACY:-$pitr}"
     cat <<JSON
-{"state":"RUNNABLE","settings":{"tier":"db-f1-micro","availabilityType":"REGIONAL","backupConfiguration":{"enabled":$backup,"$pitr_field":$pitr},"ipConfiguration":{"requireSsl":true,"sslMode":"ENCRYPTED_ONLY"}},"ipAddresses":[{"type":"PRIVATE","ipAddress":"10.0.0.2"}]}
+{"state":"RUNNABLE","settings":{"tier":"db-f1-micro","availabilityType":"REGIONAL","backupConfiguration":{"enabled":$backup,"$pitr_field":$pitr,"binaryLogEnabled":$legacy_pitr},"ipConfiguration":{"requireSsl":true,"sslMode":"ENCRYPTED_ONLY"}},"ipAddresses":[{"type":"PRIVATE","ipAddress":"10.0.0.2"}]}
 JSON
     ;;
   "redis instances describe "*)
@@ -74,7 +75,18 @@ if [[ "$no_pitr_status" -eq 0 ]] || ! grep -q 'Cloud SQL PITR not enabled' <<<"$
   exit 1
 fi
 
+
+set +e
+conflicting_pitr_output="$(MOCK_PITR_ENABLED=false MOCK_PITR_LEGACY=true bash "$ROOT/scripts/gcp-production-audit.sh" 2>&1)"
+conflicting_pitr_status=$?
+set -e
+if [[ "$conflicting_pitr_status" -eq 0 ]] || ! grep -q 'Cloud SQL PITR not enabled' <<<"$conflicting_pitr_output"; then
+  printf 'Expected explicit current PITR=false to override legacy binaryLogEnabled=true. Exit=%s output:\n%s\n' "$conflicting_pitr_status" "$conflicting_pitr_output" >&2
+  exit 1
+fi
+
 echo "PASS: healthy mocked resources produce REVIEW with explicit warnings"
 echo "PASS: current pointInTimeRecoveryEnabled and legacy binaryLogEnabled fields are recognized"
+echo "PASS: explicit PITR=false takes precedence over legacy binaryLogEnabled=true"
 echo "PASS: disabled Cloud SQL PITR produces a failing exit code"
 echo "PASS: disabled Cloud SQL backups produce a failing exit code"
