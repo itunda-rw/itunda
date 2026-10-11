@@ -72,7 +72,8 @@ jobs:
           mise install tuist@4.205.0
           mise exec tuist@4.205.0 -- tuist version
 
-      # Brand assets are consumed from the canonical package.
+      # Brand v3 semantic colors are checked by the cross-platform IDS parity contract.
+      # Brand assets are consumed from the canonical package; do not regenerate their geometry.
       # Do not rasterize, regenerate, recolor, or rewrite the supplied SVGs in CI.
       - name: Verify canonical iOS brand source
         run: |
