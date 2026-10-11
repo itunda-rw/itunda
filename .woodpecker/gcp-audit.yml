@@ -1,0 +1,14 @@
+# Parallel Woodpecker validation for scripts/gcp-production-audit.sh.
+# This runs syntax/lint only; it never connects to GCP or changes cloud resources.
+labels:
+  backend: docker
+
+steps:
+  - name: gcp-audit-script-shell-validation
+    image: bash:5
+    commands:
+      - bash -n scripts/gcp-production-audit.sh
+      - apk add --no-cache shellcheck
+      - shellcheck --severity=warning scripts/gcp-production-audit.sh
+    when:
+      - event: [push, pull_request]
