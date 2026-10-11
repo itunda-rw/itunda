@@ -147,12 +147,12 @@ private object MiniAppBundleDownloader {
         .build()
 
     fun warmCacheAsync(context: Application, url: String, expectedSha256: String) {
-        if (!expectedSha256.matches(Regex("(?i)[0-9a-f]{64}"))) return
+        if (!MiniAppBundleSecurityPolicy.isValidSha256Pin(expectedSha256)) return
         executor.execute { downloadAndCache(context, url, expectedSha256) }
     }
 
     fun verifiedCachedBundlePath(context: Application, expectedSha256: String): String? {
-        if (!expectedSha256.matches(Regex("(?i)[0-9a-f]{64}"))) return null
+        if (!MiniAppBundleSecurityPolicy.isValidSha256Pin(expectedSha256)) return null
         val cacheFile = File(context.cacheDir, "miniapp-bundle.js")
         return try {
             if (!cacheFile.isFile || cacheFile.length() <= 0L ||
@@ -174,14 +174,14 @@ private object MiniAppBundleDownloader {
     }
 
     fun downloadAndCache(context: Application, url: String, expectedSha256: String): String? {
-        if (!expectedSha256.matches(Regex("(?i)[0-9a-f]{64}"))) return null
+        if (!MiniAppBundleSecurityPolicy.isValidSha256Pin(expectedSha256)) return null
         return try {
             val request = Request.Builder().url(url).build()
-            if (!request.url.isHttps || request.url.username.isNotEmpty() || request.url.password.isNotEmpty()) {
-                return null
-            }
+            if (!MiniAppBundleSecurityPolicy.isSafeHttpsUrl(request.url)) return null
             client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful || !response.request.url.isHttps) return null
+                if (!response.isSuccessful ||
+                    !MiniAppBundleSecurityPolicy.isSafeHttpsUrl(response.request.url)
+                ) return null
                 val body = response.body ?: return null
                 if (body.contentLength() > MAX_BUNDLE_BYTES) return null
 
