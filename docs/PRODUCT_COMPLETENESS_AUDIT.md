@@ -4,6 +4,9 @@
 
 ## Audit rule: implementation is not completeness
 
+> Native mini-app release follow-up: [Saronite Mini-app Release Security Gates](MINIAPP_RELEASE_SECURITY_GATES.md) records the source-level Android CDN integrity, main-thread startup, cache-promotion, and CI evidence gaps. These remain blockers until their acceptance tests are verified; bundle presence alone is not release-integrity proof.
+
+
 The current [Toss/Rwanda parity matrix](TOSS_PARITY_MATRIX.md) contains a broad set of product areas and implementation notes. Its status labels describe implementation evidence at the time recorded; they do **not** automatically certify end-to-end product readiness. A row marked `real` may still have a demo provider, missing legal permission, incomplete native UI, untested failure states, or no operational runbook. Preserve those distinctions.
 
 A product is only marked **complete** when the relevant evidence is linked and verified across all applicable layers:
