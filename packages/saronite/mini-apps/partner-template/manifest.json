@@ -17,20 +17,20 @@
   "brandTheme": {
     "themeId": "partner-example",
     "light": {
-      "brand": "#4F46E5",
-      "brandStrong": "#4338CA",
-      "brandSurface": "#EEF2FF",
+      "brand": "#8F89FF",
+      "brandStrong": "#6F67E8",
+      "brandSurface": "#F1EFFF",
       "onBrand": "#FFFFFF",
-      "focus": "#4F46E5",
-      "pressed": "#4338CA"
+      "focus": "#6F67E8",
+      "pressed": "#7D77F7"
     },
     "dark": {
-      "brand": "#A5B4FC",
-      "brandStrong": "#C7D2FE",
-      "brandSurface": "#312E81",
-      "onBrand": "#111827",
-      "focus": "#C7D2FE",
-      "pressed": "#A5B4FC"
+      "brand": "#A6A2FF",
+      "brandStrong": "#B0AEFF",
+      "brandSurface": "#25252D",
+      "onBrand": "#191F28",
+      "focus": "#B0AEFF",
+      "pressed": "#A6A2FF"
     }
   }
 }
