@@ -146,7 +146,7 @@ public struct IDS {
         // same pass.
         public static let backgroundPrimary = Color(light: 0xFFFFFF, dark: 0x121216)
         public static let backgroundSecondary = Color(light: 0xFFFFFF, dark: 0x1C1C22)
-        public static let backgroundTertiary = Color(light: 0xEDF2F7, dark: 0x2C2C35)
+        public static let backgroundTertiary = Color(light: 0xF4F5F8, dark: 0x25252D)
         public static let card = Color(light: 0xFFFFFF, dark: 0x202027)
         public static let raisedCard = Color(light: 0xFFFFFF, dark: 0x202027)
         public static let pressed = Color(light: 0xF1F0FF, dark: 0x25234A)
