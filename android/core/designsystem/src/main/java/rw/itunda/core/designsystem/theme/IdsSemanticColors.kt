@@ -71,7 +71,7 @@ val IdsLightSemanticColors = IdsSemanticColors(
     // (see this file's own header comment), not the same bug.
     background = Color(0xFFFFFFFF),
     surface = Color(0xFFFFFFFF),
-    surfaceSoft = Color(0xFFF2F4F6),
+    surfaceSoft = Color(0xFFF4F5F8),
     textPrimary = Color(0xFF191F28),
     textSecondary = Color(0xFF4E5968),
     // Real WCAG AA contrast fix (item 241, docs/ACCESSIBILITY.md finding #1) -- the
@@ -91,11 +91,11 @@ val IdsLightSemanticColors = IdsSemanticColors(
     // hold L/C of the old 0xFF3182F6, rotate hue to 280deg, clamp chroma to gamut.
     // WCAG-verified: white-on-brand 3.85:1 (was 3.71:1, both clear the real 3:1
     // AA-large/UI-component bar this role is held to).
-    brand = Color(0xFF7472F4),
-    textBrand = Color(0xFF7472F4),
+    brand = Color(0xFF8F89FF),
+    textBrand = Color(0xFF6960F9),
     divider = Color(0xFFE5E8EB),
     chip = Color(0xFFF2F4F6),
-    pressed = Color(0xFFEEF0FF),
+    pressed = Color(0xFFF1F0FF),
     // Real WCAG AA contrast fix (item 240, docs/ACCESSIBILITY.md finding #2) -- the
     // original 0xFF04C065 measured 2.40:1 against white, failing even the lenient
     // 3.0:1 AA-large/UI threshold, let alone 4.5:1 AA-normal-text -- any light-mode
@@ -117,9 +117,9 @@ val IdsLightSemanticColors = IdsSemanticColors(
 )
 
 val IdsDarkSemanticColors = IdsSemanticColors(
-    background = Color(0xFF17171C),
-    surface = Color(0xFF202027),
-    surfaceSoft = Color(0xFF2C2C35),
+    background = Color(0xFF121216),
+    surface = Color(0xFF1C1C22),
+    surfaceSoft = Color(0xFF25252D),
     textPrimary = Color(0xFFFFFFFF),
     textSecondary = Color(0xFF989EAA),
     // Real WCAG AA contrast fix (item 241, docs/ACCESSIBILITY.md finding #1), computed
@@ -130,11 +130,11 @@ val IdsDarkSemanticColors = IdsSemanticColors(
     // fix on web/iOS.
     textTertiary = Color(0xFF848A96),
     // Dark-mode semantic brand token: the accessible blue counterpart used by the cross-platform contract.
-    brand = Color(0xFF9B98FF),
-    textBrand = Color(0xFF9B98FF),
+    brand = Color(0xFF8F89FF),
+    textBrand = Color(0xFF8F89FF),
     divider = Color(0xFF3C3C47),
-    chip = Color(0xFF2C2C35),
-    pressed = Color(0xFF2B2C52),
+    chip = Color(0xFF25234A),
+    pressed = Color(0xFF25234A),
     success = Color(0xFF20D394),
     successTint = Color(0xFF10321F),
     warning = Color(0xFFFFC24C),

@@ -128,7 +128,7 @@ public struct IDS {
         // are left untouched since the real package doesn't expose which numbered
         // step its own semantic roles point to.
         // IDS 3.0 canonical semantic brand: Itunda Indigo across Web, Android and iOS.
-        public static let brand = Color(light: 0x7472F4, dark: 0x9B98FF)
+        public static let brand = Color(light: 0x8F89FF, dark: 0x8F89FF)
         // Real fix (2026-08-24, direct user directive, same pass as web's index.css
         // and Android's IdsSemanticColors.kt): was 0xF2F4F6 (the classic "grey canvas
         // + white cards" dashboard look). Real Toss screenshots (Finance catalog menu,
@@ -144,12 +144,12 @@ public struct IDS {
         // like web's .itunda-card or Android's IdsCard, so this shipped as an
         // extension call sites opt into, applied across ~180 real call sites this
         // same pass.
-        public static let backgroundPrimary = Color(light: 0xFFFFFF, dark: 0x17171C)
-        public static let backgroundSecondary = Color(light: 0xFFFFFF, dark: 0x202027)
-        public static let backgroundTertiary = Color(light: 0xEDF2F7, dark: 0x2C2C35)
+        public static let backgroundPrimary = Color(light: 0xFFFFFF, dark: 0x121216)
+        public static let backgroundSecondary = Color(light: 0xFFFFFF, dark: 0x1C1C22)
+        public static let backgroundTertiary = Color(light: 0xF4F5F8, dark: 0x25252D)
         public static let card = Color(light: 0xFFFFFF, dark: 0x202027)
         public static let raisedCard = Color(light: 0xFFFFFF, dark: 0x202027)
-        public static let pressed = Color(light: 0xEEF0FF, dark: 0x2B2C52)
+        public static let pressed = Color(light: 0xF1F0FF, dark: 0x25234A)
         public static let divider = Color(light: 0xE5E8EB, dark: 0x3C3C47)
         public static let textPrimary = Color(light: 0x191F28, dark: 0xFFFFFF)
         public static let textSecondary = Color(light: 0x4E5968, dark: 0x989EAA)
@@ -169,7 +169,7 @@ public struct IDS {
         // real, separate bug of using that primitive directly instead of this
         // theme-reactive semantic token, fixed alongside this.
         public static let textTertiary = Color(light: 0x636E7C, dark: 0x848A96)
-        public static let textBrand = brand
+        public static let textBrand = Color(light: 0x6960F9, dark: 0x8F89FF)
         // Real WCAG AA contrast fix (item 240, docs/ACCESSIBILITY.md finding #2) --
         // iOS had no shared success/green token at all (only successTint, the pale
         // background wash below); real screens used SwiftUI's system `Color.green`
@@ -202,7 +202,7 @@ public struct IDS {
         // 2026-07-11 for the Benefits/Shop/All tab rebuild -- IDS.Colors had no
         // chip/soft-surface role before this. Dark value corrected 2026-07-21 along
         // with backgroundTertiary/surfaceSoft (see IDS.Colors' own header comment).
-        public static let chipBackground = Color(light: 0xF2F4F6, dark: 0x2C2C35)
+        public static let chipBackground = Color(light: 0xF4F5F8, dark: 0x25252D)
         // Android's dark shadow is ~25% opacity black (0x40000000) vs. light's 8%.
         public static let shadow = Color(uiColor: UIColor { traitCollection in
             traitCollection.userInterfaceStyle == .dark

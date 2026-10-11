@@ -2,7 +2,7 @@
   "$schema":"https://json-schema.org/draft/2020-12/schema",
   "name":"Itunda Design System source map",
   "version":"2.0.0",
-  "identity":{"brand":"#7472F4","principle":"Itunda identity; shared system rigor across platforms"},
+  "identity":{"brand":"#8F89FF","principle":"Itunda identity; shared system rigor across platforms"},
   "foundations":{
     "color":{"web":"client/design-system/tokens.css","android":"android/core/designsystem/src/main/java/rw/itunda/core/designsystem/theme/IdsSemanticColors.kt","ios":"ios/Core/DesignSystem/Sources/IDS.swift"},
     "primitiveColor":{"web":"packages/design-tokens/tokens.json","android":"android/core/designsystem/src/main/java/rw/itunda/core/designsystem/theme/IdsColors.kt","ios":"ios/Core/DesignSystem/Sources/Theme/IdsTheme.swift"},
