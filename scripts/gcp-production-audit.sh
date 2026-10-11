@@ -52,6 +52,8 @@ if sql="$(fetch_json "Cloud SQL $SQL_INSTANCE" gcloud sql instances describe "$S
   if [[ "$pitr_enabled" == "true" ]]; then pass "Cloud SQL point-in-time recovery binary logging enabled"; else fail "Cloud SQL PITR/binary logging not enabled"; errors=$((errors + 1)); fi
   if [[ "$require_ssl" == "true" || "$ssl_mode" == "ENCRYPTED_ONLY" ]]; then pass "Cloud SQL enforces encrypted connections"; else warn "Cloud SQL does not enforce encrypted connections (requireSsl=$require_ssl, sslMode=$ssl_mode)"; warnings=$((warnings + 1)); fi
   echo "INFO  Cloud SQL tier=$tier availability=$availability (capacity/HA suitability requires workload review)"
+else
+  errors=$((errors + 1))
 fi
 
 if redis="$(fetch_json "Memorystore $REDIS_INSTANCE" gcloud redis instances describe "$REDIS_INSTANCE" --region="$REGION" --project="$PROJECT" --format=json)"; then
@@ -61,6 +63,8 @@ if redis="$(fetch_json "Memorystore $REDIS_INSTANCE" gcloud redis instances desc
   if [[ "$state" == "READY" ]]; then pass "Memorystore state READY"; else fail "Memorystore state is $state"; errors=$((errors + 1)); fi
   if [[ "$transit" == "SERVER_AUTHENTICATION" ]]; then pass "Memorystore TLS in-transit encryption enabled"; else warn "Memorystore in-transit encryption is $transit"; warnings=$((warnings + 1)); fi
   if [[ "$auth" == "true" ]]; then pass "Memorystore AUTH enabled"; else warn "Memorystore AUTH is disabled"; warnings=$((warnings + 1)); fi
+else
+  errors=$((errors + 1))
 fi
 
 if kafka="$(fetch_json "Managed Kafka $KAFKA_CLUSTER" gcloud managed-kafka clusters describe "$KAFKA_CLUSTER" --location="$REGION" --project="$PROJECT" --format=json)"; then
@@ -68,6 +72,8 @@ if kafka="$(fetch_json "Managed Kafka $KAFKA_CLUSTER" gcloud managed-kafka clust
   if [[ "$state" == "ACTIVE" ]]; then pass "Managed Kafka state ACTIVE"; else fail "Managed Kafka state is $state"; errors=$((errors + 1)); fi
   warn "Kafka replication factor, ACL/TLS/SASL, topic retention, consumer lag, and produce/consume tests require separate verification"
   warnings=$((warnings + 1))
+else
+  errors=$((errors + 1))
 fi
 
 if api="$(fetch_json "Cloud Run $API_SERVICE" gcloud run services describe "$API_SERVICE" --region="$REGION" --project="$PROJECT" --format=json)"; then
@@ -82,6 +88,8 @@ if api="$(fetch_json "Cloud Run $API_SERVICE" gcloud run services describe "$API
   done
   warn "Environment entries prove configuration only, not successful dependency connectivity or protected-route authorization"
   warnings=$((warnings + 1))
+else
+  errors=$((errors + 1))
 fi
 
 echo
