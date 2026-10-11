@@ -4,6 +4,7 @@ import SwiftUI
 public enum IDSColor {
     public static let indigo500 = Color(red: 0x8F/255.0, green: 0x89/255.0, blue: 0xFF/255.0)
     public static let indigo600 = Color(red: 0x7D/255.0, green: 0x77/255.0, blue: 0xF7/255.0)
+    public static let onBrand = Color(red: 0x12/255.0, green: 0x12/255.0, blue: 0x16/255.0)
     public static let ink900 = Color(red: 0x19/255.0, green: 0x1F/255.0, blue: 0x28/255.0)
     public static let ink500 = Color(red: 0x6B/255.0, green: 0x76/255.0, blue: 0x84/255.0)
     public static let surface = Color.white
