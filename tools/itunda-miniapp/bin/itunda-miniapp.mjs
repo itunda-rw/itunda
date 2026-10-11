@@ -2,10 +2,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 
 const [, , command, ...args] = process.argv;
 const categories = new Set(["FINANCE","SHOPPING","PRODUCTIVITY","LIFESTYLE","OTHER"]);
 const permissions = new Set(["identity","navigation","share","storage","notifications","payments","location","camera","contacts"]);
+const here = path.dirname(fileURLToPath(import.meta.url));
+const templatePath = path.resolve(here, "../../../packages/saronite/mini-apps/partner-template/manifest.json");
 const rootKeys = new Set(["$schema","manifestVersion","id","name","version","category","description","entry","icon","permissions","brandTheme"]);
 const paletteRoles = ["brand","brandStrong","brandSurface","onBrand","focus","pressed"];
 
@@ -42,18 +45,18 @@ function scaffold(name) {
   if (!categories.has(category)) return fail("invalid category: " + category);
   if (!isHttpsUrl(bundle)) return fail("bundle URL must be a valid HTTPS URL without embedded credentials; local HTTP bundles are not accepted by the manifest contract");
   fs.mkdirSync(path.join(directory, "src"), {recursive:true});
+  const canonicalTemplate = JSON.parse(fs.readFileSync(templatePath, "utf8"));
   const manifest = {
-    $schema: "https://raw.githubusercontent.com/itunda-rw/itunda/main/packages/saronite/mini-apps/partner-template/manifest.schema.json",
-    manifestVersion: 1, id, name: displayName, version: "0.1.0", category,
+    ...canonicalTemplate,
+    id,
+    name: displayName,
+    version: "0.1.0",
+    category,
     description: "Itunda mini-app: " + displayName,
-    entry: {type:"saronite", bundleUrl:bundle},
-    icon: {url:"https://example.com/icon.png"},
+    entry: {...canonicalTemplate.entry, bundleUrl:bundle},
+    icon: {...canonicalTemplate.icon},
     permissions: [],
-    brandTheme: {
-      themeId: slugify(displayName),
-      light: {brand:"#7472F4",brandStrong:"#5D5BD6",brandSurface:"#F0EFFF",onBrand:"#FFFFFF",focus:"#5D5BD6",pressed:"#4B49B8"},
-      dark: {brand:"#A7A5FF",brandStrong:"#C2C0FF",brandSurface:"#292750",onBrand:"#17162B",focus:"#C2C0FF",pressed:"#A7A5FF"}
-    }
+    brandTheme: {...structuredClone(canonicalTemplate.brandTheme), themeId:slugify(displayName)}
   };
   fs.writeFileSync(path.join(directory,"manifest.json"), JSON.stringify(manifest,null,2)+"\n");
   fs.writeFileSync(path.join(directory,"src","README.md"), "# " + displayName + "\n\nBuild feature UI here and keep host capabilities behind explicit Saronite permissions.\n");
