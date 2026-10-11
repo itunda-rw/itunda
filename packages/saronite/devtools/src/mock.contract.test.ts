@@ -46,3 +46,46 @@ if (host.state.calls[0]?.status !== 'denied') throw new Error('permission denial
 if (host.state.calls[1]?.status !== 'ok') throw new Error('successful capability was not recorded');
 if (host.state.calls[2]?.status !== 'unsupported') throw new Error('unsupported capability was not recorded');
 if (host.state.lifecycle !== 'hidden') throw new Error('lifecycle transition was not recorded');
+
+// A caller-provided permission must never weaken the SDK's canonical requirement.
+let downgradeHandlerExecuted = false;
+const downgradeResult = host.request(
+  'location',
+  'getCurrentLocation',
+  () => {
+    downgradeHandlerExecuted = true;
+    return { latitude: 0, longitude: 0 };
+  },
+  { permission: 'identity:read' },
+);
+if (downgradeResult !== undefined || downgradeHandlerExecuted) {
+  throw new Error('a caller must not replace the canonical location permission');
+}
+const downgradeCall = host.state.calls.at(-1);
+if (downgradeCall?.status !== 'denied' || downgradeCall.detail !== 'location:read') {
+  throw new Error('permission downgrade attempt must be logged against the canonical permission');
+}
+
+// Revoking a previously granted permission must affect the very next call.
+host.setPermission('location:read', false);
+let revokedHandlerExecuted = false;
+const revokedResult = host.request('location', 'getCurrentLocation', () => {
+  revokedHandlerExecuted = true;
+  return { latitude: -1.94, longitude: 30.06 };
+});
+if (revokedResult !== undefined || revokedHandlerExecuted) {
+  throw new Error('revoked permission must block subsequent handler execution');
+}
+
+// Exceptions in mocked native handlers are recorded and fail closed.
+const failedResult = host.request('identity', 'getCurrentIdentity', () => {
+  throw new Error('simulated native bridge failure');
+});
+if (failedResult !== undefined) throw new Error('failed mock calls must not return a value');
+const failedCall = host.state.calls.at(-1);
+if (failedCall?.status !== 'error' || failedCall.detail !== 'simulated native bridge failure') {
+  throw new Error('mock handler exceptions must be recorded with a useful error detail');
+}
+
+host.clearCalls();
+if (host.state.calls.length !== 0) throw new Error('clearCalls must empty the call log');
