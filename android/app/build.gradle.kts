@@ -145,7 +145,7 @@ android {
         buildConfigField(
             "String",
             "MINIAPP_BUNDLE_CDN_SHA256",
-            "\"\u0024{project.findProperty("miniAppBundleSha256") ?: ""}\""
+        // -PminiAppBundleSha256=..., so existing debug (Metro) and release (packaged
         )
 
         // Real login/session flow needs a real base URL -- NetworkClient.kt previously
