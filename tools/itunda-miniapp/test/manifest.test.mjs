@@ -39,15 +39,19 @@ test("CLI accepts the checked-in partner template", () => {
   assert.match(result.stdout, /valid Itunda mini-app manifest/);
 });
 
-test("CLI scaffolds a valid mini-app using Itunda Indigo", () => {
+test("CLI scaffolds a mini-app using the canonical partner template and theme", () => {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "itunda-scaffold-test-"));
   try {
     const created = spawnSync(process.execPath, [cli, "new", "Demo App"], { cwd, encoding: "utf8" });
     assert.equal(created.status, 0, created.stderr || created.stdout);
     const manifestPath = path.join(cwd, "demo-app", "manifest.json");
     const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-    assert.equal(manifest.brandTheme.light.brand, "#7472F4");
-    assert.equal(manifest.brandTheme.dark.brand, "#A7A5FF");
+    const template = JSON.parse(fs.readFileSync(templatePath, "utf8"));
+    const expectedTheme = structuredClone(template.brandTheme);
+    expectedTheme.themeId = "demo-app";
+    assert.deepEqual(manifest.brandTheme, expectedTheme);
+    assert.equal(manifest.$schema, template.$schema);
+    assert.equal(manifest.manifestVersion, template.manifestVersion);
     const checked = spawnSync(process.execPath, [cli, "validate", manifestPath], { encoding: "utf8" });
     assert.equal(checked.status, 0, checked.stderr || checked.stdout);
   } finally {
