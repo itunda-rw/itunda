@@ -133,38 +133,65 @@ class ItundaApplication : Application(), ReactApplication, ImageLoaderFactory {
  * elsewhere in this session's backend work.
  */
 private object MiniAppBundleDownloader {
+    private const val MAX_BUNDLE_BYTES = 50L * 1024L * 1024L
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
+        .callTimeout(45, TimeUnit.SECONDS)
         .build()
 
     fun downloadAndCache(context: Application, url: String, expectedSha256: String): String? {
         if (!expectedSha256.matches(Regex("(?i)[0-9a-f]{64}"))) return null
         return try {
             val request = Request.Builder().url(url).build()
+            if (!request.url.isHttps || request.url.username.isNotEmpty() || request.url.password.isNotEmpty()) {
+                return null
+            }
             client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return null
+                if (!response.isSuccessful || !response.request.url.isHttps) return null
                 val body = response.body ?: return null
-                if (!response.request.url.isHttps || body.contentLength() > 50L * 1024L * 1024L) return null
+                if (body.contentLength() > MAX_BUNDLE_BYTES) return null
+
                 val cacheFile = File(context.cacheDir, "miniapp-bundle.js")
                 val tempFile = File(context.cacheDir, "miniapp-bundle.js.tmp")
-                tempFile.outputStream().use { out -> body.byteStream().copyTo(out) }
                 val digest = java.security.MessageDigest.getInstance("SHA-256")
-                    .digest(tempFile.readBytes())
-                    .joinToString("") { "%02x".format(it) }
-                if (!digest.equals(expectedSha256, ignoreCase = true) || tempFile.length() == 0L) {
+                var total = 0L
+                try {
+                    body.byteStream().use { input ->
+                        tempFile.outputStream().buffered().use { output ->
+                            val buffer = ByteArray(16 * 1024)
+                            while (true) {
+                                val count = input.read(buffer)
+                                if (count < 0) break
+                                total += count
+                                if (total > MAX_BUNDLE_BYTES) throw IllegalStateException("Mini-app bundle exceeds size limit")
+                                digest.update(buffer, 0, count)
+                                output.write(buffer, 0, count)
+                            }
+                        }
+                    }
+                    val actualSha256 = digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
+                    if (total == 0L || !actualSha256.equals(expectedSha256, ignoreCase = true)) {
+                        tempFile.delete()
+                        return null
+                    }
+                    // Do not delete the last-known-good file until the replacement is verified.
+                    val backupFile = File(context.cacheDir, "miniapp-bundle.previous.js")
+                    if (cacheFile.exists() && !cacheFile.renameTo(backupFile)) {
+                        tempFile.delete()
+                        return null
+                    }
+                    if (!tempFile.renameTo(cacheFile)) {
+                        if (backupFile.exists()) backupFile.renameTo(cacheFile)
+                        tempFile.delete()
+                        return null
+                    }
+                    backupFile.delete()
+                    cacheFile.absolutePath
+                } catch (e: Exception) {
                     tempFile.delete()
-                    return null
+                    null
                 }
-                if (cacheFile.exists() && !cacheFile.delete()) {
-                    tempFile.delete()
-                    return null
-                }
-                if (!tempFile.renameTo(cacheFile)) {
-                    tempFile.delete()
-                    return null
-                }
-                cacheFile.absolutePath
             }
         } catch (e: Exception) {
             null
