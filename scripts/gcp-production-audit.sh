@@ -26,7 +26,7 @@ fetch_json() {
   local label="$1"; shift
   local output
   if ! output="$("$@" 2>&1)"; then
-    fail "$label could not be read: $output"
+    fail "$label could not be read: $output" >&2
     errors=$((errors + 1))
     return 1
   fi
