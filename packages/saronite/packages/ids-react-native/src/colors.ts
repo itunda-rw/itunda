@@ -2,10 +2,10 @@
 // Keep these roles aligned with packages/design-tokens/tokens.json.
 export const colors = {
   primaryIndigo: '#8F89FF',
-  primaryIndigoPressed: '#625FE6',
-  background: '#F2F4F6',
+  primaryIndigoPressed: '#7D77F7',
+  background: '#F4F5F8',
   surface: '#FFFFFF',
-  surfaceBrand: '#F0EFFF',
+  surfaceBrand: '#F1F0FF',
   textPrimary: '#191F28',
   textSecondary: '#4E5968',
   textTertiary: '#6B7684',
