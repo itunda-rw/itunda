@@ -54,6 +54,20 @@ expect("ios pressed surface dark", ios, /public static let pressed = Color\(ligh
 
 
 const generatedTokens = JSON.parse(fs.readFileSync(path.join(root, "client/design-system/tokens.json"), "utf8"));
+const canonicalCss = fs.readFileSync(path.join(root, "client/design-system/tokens.css"), "utf8");
+for (const [group, steps] of Object.entries(generatedTokens.color.primitive)) {
+  for (const [step, expected] of Object.entries(steps)) {
+    const tokenName = `--itunda-${group}-${step}`;
+    const escapedName = tokenName.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\const generatedTokens = JSON.parse(fs.readFileSync(path.join(root, "client/design-system/tokens.json"), "utf8"));
+");
+    const match = canonicalCss.match(new RegExp(escapedName + "\\\\s*:\\\\s*(#[0-9A-Fa-f]{6})", "i"));
+    if (!match) {
+      failures.push(`primitive CSS source: missing ${tokenName}`);
+    } else if (match[1].toUpperCase() !== expected.toUpperCase()) {
+      failures.push(`primitive parity ${tokenName}: expected ${match[1]} from tokens.css, found ${expected} in tokens.json`);
+    }
+  }
+}
 const generatedOutputs = {
   android: {
     file: "client/design-system/android/IDSTheme.kt",
