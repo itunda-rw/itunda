@@ -23,7 +23,7 @@ let unknownCapabilityRejected = false;
 try {
   host.request('camera', 'openCamera', () => undefined);
 } catch (error) {
-  unknownCapabilityRejected = error instanceof Error && error.message.includes('Unknown Saronite capability method');
+  unknownCapabilityRejected = error instanceof Error && error.message.includes('Unknown Saronite capability');
 }
 if (!unknownCapabilityRejected) throw new Error('unknown capabilities must not execute as if supported');
 
