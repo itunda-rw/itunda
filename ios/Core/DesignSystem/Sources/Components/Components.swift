@@ -163,7 +163,7 @@ public struct IdsButton: View {
             Group {
                 if isLoading {
                     ProgressView()
-                        .tint(variant == .filled ? IDS.Colors.textBrand : IDS.Colors.brand)
+                        .tint(variant == .filled ? IDS.Colors.onBrand : IDS.Colors.brand)
                 } else {
                     Text(text)
                         .font(IdsTypeScale.button)
@@ -174,7 +174,7 @@ public struct IdsButton: View {
         }
         .foregroundColor(
             !isEnabled ? IDS.Colors.textTertiary :
-            variant == .filled ? IDS.Colors.textBrand :
+            variant == .filled ? IDS.Colors.onBrand :
             variant == .destructive ? IDS.Colors.danger :
             IDS.Colors.brand
         )
