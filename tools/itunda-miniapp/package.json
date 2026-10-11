@@ -4,5 +4,6 @@
   "private": true,
   "type": "module",
   "bin": { "itunda-miniapp": "./bin/itunda-miniapp.mjs" },
+  "scripts": { "test": "node --test test/*.test.mjs" },
   "engines": { "node": ">=20" }
 }
