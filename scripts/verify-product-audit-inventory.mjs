@@ -4,7 +4,7 @@ import fs from 'node:fs';
 const matrixPath = 'docs/TOSS_PARITY_MATRIX.md';
 const auditPath = 'docs/PRODUCT_COMPLETENESS_AUDIT.md';
 
-function tableRows(source, startMarker, endMarker) {
+function tableRows(source, startMarker, endMarker, columnCount) {
   const start = source.indexOf(startMarker);
   if (start < 0) throw new Error(`Missing section: ${startMarker}`);
   const end = endMarker ? source.indexOf(endMarker, start) : source.length;
@@ -15,7 +15,7 @@ function tableRows(source, startMarker, endMarker) {
     .map(line => {
       const cells = [];
       let cellStart = 2;
-      for (let i = 2; i < line.length && cells.length < 3; i++) {
+      for (let i = 2; i < line.length && cells.length < columnCount; i++) {
         if (line[i] === '|') {
           cells.push(line.slice(cellStart, i).trim());
           cellStart = i + 1;
@@ -30,9 +30,9 @@ function normalize(value) {
   return value.replace(/\s+/g, ' ').trim();
 }
 
-const matrix = tableRows(fs.readFileSync(matrixPath, 'utf8'), '## Product Area Matrix', '## Non-Negotiable Gates Before Real Money')
+const matrix = tableRows(fs.readFileSync(matrixPath, 'utf8'), '## Product Area Matrix', '## Non-Negotiable Gates Before Real Money', 3)
   .map(c => ({ area: normalize(c[0]), capability: normalize(c[1]), adaptation: normalize(c[2]) }));
-const audit = tableRows(fs.readFileSync(auditPath, 'utf8'), '## Full product inventory', '## Platform surfaces')
+const audit = tableRows(fs.readFileSync(auditPath, 'utf8'), '## Full product inventory', '## Platform surfaces', 4)
   .map(c => ({ area: normalize(c[0]).replace(/ \(\d+\)$/, ''), capability: normalize(c[1]), adaptation: normalize(c[3]) }));
 
 const errors = [];
