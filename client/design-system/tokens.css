@@ -4,12 +4,12 @@
 */
 :root{
   --itunda-indigo-50:#F7F6FF;
-  --itunda-indigo-100:#F0EFFF;
+  --itunda-indigo-100:#F1F0FF;
   --itunda-indigo-200:#E2E0FF;
   --itunda-indigo-300:#C9C6FF;
   --itunda-indigo-400:#A7A4FF;
-  --itunda-indigo-500:#7472F4;
-  --itunda-indigo-600:#625FE0;
+  --itunda-indigo-500:#8F89FF;
+  --itunda-indigo-600:#7D77F7;
   --itunda-indigo-700:#514FC4;
   --itunda-ink-950:#101318;
   --itunda-ink-900:#191F28;
@@ -29,8 +29,8 @@
   --itunda-warning-100:#FFF7D9;
   --itunda-error-500:#C53D3D;
   --itunda-error-100:#FFF0EF;
-  --itunda-info-500:#7472F4;
-  --itunda-info-100:#F0EFFF;
+  --itunda-info-500:#8F89FF;
+  --itunda-info-100:#F1F0FF;
 
   --itunda-space-1:4px; --itunda-space-2:8px; --itunda-space-3:12px;
   --itunda-space-4:16px; --itunda-space-5:20px; --itunda-space-6:24px;
@@ -88,9 +88,9 @@
   --itunda-color-warning-soft:#FFF4D6;
   --itunda-color-error:#F04452;
   --itunda-color-error-soft:#FFECEB;
-  --itunda-color-info:#7472F4;
-  --itunda-color-info-soft:#F0EFFF;
-  --itunda-focus:#A7A4FF;
+  --itunda-color-info:#8F89FF;
+  --itunda-color-info-soft:#F1F0FF;
+  --itunda-focus:#6960F9;
   --itunda-color-icon-primary:#2C3643;
   --itunda-color-icon-secondary:#6B7684;
   --itunda-color-pressed:#7D77F7;
