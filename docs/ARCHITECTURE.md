@@ -10,6 +10,8 @@ Status labels below follow the repo convention: `real` (exists and runs), `demo`
 mocked/local data), `target` (designed, not built), `stub` (scaffold with little/no logic),
 `superseded` (duplicate, not canonical).
 
+**Infrastructure source of truth:** Itunda's active target is GCP. The current live resource inventory and verified production hardening gaps are recorded in [docs/GCP_PRODUCTION_BASELINE.md](GCP_PRODUCTION_BASELINE.md). [docs/PRIVATE_CLOUD_BLUEPRINT.md](PRIVATE_CLOUD_BLUEPRINT.md) is historical migration evidence, not the current production topology.
+
 ## 0. The one architectural idea to copy first
 
 Toss is not one backend wearing one app's face. "Toss," Toss Bank, Toss Securities, and Toss
