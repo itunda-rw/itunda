@@ -1,88 +1,66 @@
-# ADR-0001: Saronite and Granite interoperability strategy
+# ADR-0001: Govern the existing Granite-based mini-app runtime
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-11
 - **Owners:** Itunda platform
-- **Context:** Toss's public Granite framework is the reference for Itunda's mini-app platform. Itunda already has a Saronite SDK, native Android/iOS host integration, and real mini-apps. The decision must be based on repository evidence rather than the assumption that adopting an upstream framework automatically produces parity.
 
-## Context and evidence
+## Context
 
-Public upstream reference: [toss/granite](https://github.com/toss/granite). Its README describes a React Native framework designed for microservice mini-apps and brownfield integration, small bundles through bundle splitting/ESBuild, routing/build tooling, end-to-end testing, and AWS/Pulumi bundle deployment. Granite is Apache-2.0 licensed according to its public repository at the time of this review.
+Toss's public [Granite framework](https://github.com/toss/granite) is a reference for React Native mini-app runtime, brownfield native integration, bundle splitting, end-to-end tests, and artifact deployment. It is Apache-2.0 licensed in the public repository at the time of this review.
 
-Itunda repository evidence:
+**Important repository correction:** Itunda has already moved beyond a purely hand-rolled Saronite approximation. The current repository's `docs/ARCHITECTURE.md` describes Granite adoption for all four first-party mini-apps, Android and iOS host integration, and the generated `BrickModule` / `GraniteBrownfield` dependencies. The root README and `packages/saronite/README.md` still contain older descriptions that can make the current implementation status appear contradictory. Do not start a second adoption project or replace working integration based on those stale statements.
 
-- `packages/saronite/README.md` documents Saronite as an Itunda-owned implementation of the brownfield host/mini-app pattern.
-- Saronite has a `SaroniteHostBridge` boundary intended to keep SDK code independent of app internals.
-- The documented native bridge includes shell operations plus Itunda-specific backend operations. The README/changelog describe real backend-connected mini-apps for wallet balance, bills, rewards, and insurance.
-- Android and iOS have native shells. React Native mini-app runtime integration has surfaced meaningful host/build integration risks, including React Native Gradle plugin/Kotlin compatibility and iOS Fabric/codegen setup.
-- The documented remaining platform gaps include production remote bundle/CDN hosting and a fully automated artifact deployment/rollback workflow.
-- The root README calls Saronite a hand-rolled approximation rather than a framework built on Granite itself. That wording is not enough to decide adoption: the live integration surface and migration cost must be evaluated.
+Other evidence in the repository:
+- `packages/saronite/mini-apps/partner-template/manifest.schema.json` defines manifest v1.
+- `packages/saronite/mini-apps/partner-template/manifest.json` is the partner template.
+- `tools/itunda-miniapp/bin/itunda-miniapp.mjs` provides scaffolding and manifest validation.
+- `android/` and `ios/` contain the native hosts and Granite integration.
+- The architecture documentation describes real first-party mini-apps for bills, wallet balance, rewards, and insurance.
 
-These statements summarize repository documentation. They do not assert that every item has been freshly re-run on a device in this ADR.
+These are repository/documentation findings. This ADR does not claim that a full clean build, live deployment, or all device tests were rerun as part of this review.
 
-## Decision proposed
+## Decision
 
-**Keep Saronite as Itunda's canonical SDK and native bridge for now; adopt Granite's compatible architectural patterns selectively. Do not replace Saronite wholesale or import Granite runtime packages into production until a measured proof-of-concept passes the gates below.**
+**Keep the existing Granite-based runtime and Itunda-owned Saronite APIs/manifest/partner tooling. Do not introduce a competing mini-app runtime. The next priority is to verify runtime/package/documentation consistency, harden manifest validation, and close secure artifact delivery and rollout gaps.**
 
-This is not a permanent rejection of Granite. It is a staged adoption decision that protects the existing Android/iOS host integration while making the next decision evidence-based.
+Granite is the runtime/framework; Saronite is Itunda's SDK and platform contract. They are not necessarily mutually exclusive alternatives.
 
-## What to adopt now
+## Immediate verified issue
 
-1. **Mini-app isolation:** enforce a stable manifest and SDK contract per mini-app instead of relying on directory naming conventions.
-2. **Bundle discipline:** measure each mini-app's production bundle size and startup latency; split shared/runtime code from feature code where it measurably improves startup or update cost.
-3. **Routing contract:** define typed deep-link routes, validated parameters, and explicit back-navigation behavior.
-4. **Host lifecycle:** model launch, visible, backgrounded, closing, failed, and incompatible states explicitly; handle cancellation and timeouts.
-5. **Artifact lifecycle:** add immutable versioned artifacts, checksums, compatibility metadata, staged rollout, and rollback records before remote bundles become a production dependency.
-6. **Testing:** run the same mini-app contract tests against native-host and browser-mock adapters.
-7. **Deployment:** build a provider-neutral artifact/deployment interface. Granite's Pulumi/AWS infrastructure is a useful reference, but Itunda should not couple itself to AWS when its chosen production environment may differ.
+The manifest schema uses `"additionalProperties": false` at the root but does not list the `$schema` property, while the actual partner template and CLI-generated manifests include `$schema`. A conforming JSON Schema validator would therefore reject the template's own `$schema` property.
 
-## What not to adopt blindly
+This ADR accompanies a fix adding `$schema` as a URI string property in the schema. Follow-up validation should prove the checked-in template passes the schema and that invalid manifests fail CI.
 
-- Do not copy Toss's private bridge APIs or imply that public Granite includes Toss's private payment/identity features.
-- Do not add a second mini-app runtime just to claim Granite adoption.
-- Do not replace Itunda's canonical native shells with a React Native whole-app rewrite.
-- Do not make production mini-app execution depend on unsigned or unverified remote JavaScript.
-- Do not copy Toss/TDS branding or proprietary UI assets into Itunda Design System.
+## Required work
 
-## Proof-of-concept gates
+1. **Single source of truth:** reconcile `README.md`, `packages/saronite/README.md`, `docs/ARCHITECTURE.md`, and `docs/TOSS_PARITY_MATRIX.md`. Mark historical incidents and superseded architecture statements as historical; don't leave contradictory present-tense status claims.
+2. **Manifest validation:** make the CLI validate all schema constraints, including extra properties, lengths, URL format, permissions, semantic version, and complete light/dark theme palettes. Prefer a standards-compliant JSON Schema validator over a second hand-maintained validator.
+3. **Contract tests:** add automated tests for the valid template, missing required properties, unknown permission scopes, duplicate permissions, invalid HTTPS URLs, malformed versions, extra properties, and invalid brand tokens. Run them in CI.
+4. **Secure artifact delivery:** require immutable versioned artifacts, checksums, supported shell/SDK compatibility metadata, signed release provenance, staged rollout, and rollback before treating remote bundle delivery as production-ready.
+5. **Runtime compatibility:** pin and record the Granite/React/React Native/BrickModule versions together. Verify Android and iOS builds use supported codegen/autolinking paths, and report any manually maintained bridge glue explicitly.
+6. **Lifecycle and isolation:** test launch parameters, deep links, foreground/background visibility, close/back behavior, cancellation, offline failure, incompatible bundles, and mini-app crash isolation.
+7. **Performance evidence:** benchmark bundle size, cold start, memory, and host build impact. Treat upstream Granite's advertised bundle sizes as a goal/reference, not as a measured Itunda result.
+8. **Provider-neutral delivery:** use Granite's public Pulumi/AWS infrastructure as a reference, but keep Itunda's artifact/deployment interface compatible with its actual hosting decision. Do not claim production CDN or rollback until live smoke tests prove it.
 
-Before changing the decision to direct Granite adoption, build one isolated, non-production vertical slice and record:
+## Security boundaries
 
-- [ ] Exact Granite version, license, dependency/license scan, supported React Native version, and security posture.
-- [ ] A minimal mini-app running inside Itunda's existing Android host without replacing the native shell.
-- [ ] Equivalent iOS integration with Fabric/codegen configured through supported integration paths.
-- [ ] Typed host bridge for launch parameters, visibility, close/back behavior, and one harmless read-only Itunda API.
-- [ ] Feature crash/failure does not crash the host or leak credentials/data.
-- [ ] Reproducible build from a clean checkout with lockfiles and documented commands.
-- [ ] Measured cold-start time, JS bundle size, memory impact, and native build impact against current Saronite.
-- [ ] A written rollback path to the current Saronite implementation.
-- [ ] No unsupported claim that a passing local build proves production CDN, signature verification, staged rollout, or rollback.
+- Do not copy Toss trademarks, proprietary UI assets, private bridge APIs, or undocumented internal architecture.
+- Public Granite does not imply that Toss's private payment/identity bridge APIs are included.
+- Partner mini-apps must receive only explicitly granted capabilities; do not expose host credentials or unrestricted native APIs.
+- Production bundle loading must fail closed on invalid signatures/checksums, incompatible versions, or revoked artifacts.
+- Payment/identity APIs remain subject to Itunda's own authorization, audit, and Rwanda regulatory/provider requirements.
 
-A comparison should include both a Granite-based spike and the current Saronite baseline. If the Granite spike wins on maintainability and operational reliability without destabilizing native integration, revisit the decision with measurements.
+## Acceptance criteria
 
-## Consequences
-
-**Positive**
-- Protects the working Itunda-specific mini-app integration while reducing architecture-by-imitation risk.
-- Turns Granite adoption into a reversible, testable engineering decision.
-- Prioritizes production gaps that matter regardless of runtime: artifact integrity, compatibility, observability, and rollback.
-
-**Trade-offs**
-- Saronite continues to carry some custom maintenance burden in the short term.
-- Granite-specific tooling benefits are delayed until the proof-of-concept justifies adoption.
-- The platform still needs a separate implementation plan for production bundle hosting and secure remote delivery.
-
-## Follow-up implementation
-
-1. Inventory current Saronite bridge methods, manifest format, navigation contract, and package boundaries.
-2. Add a versioned mini-app manifest and compatibility validator.
-3. Create the Granite proof-of-concept in an isolated branch/workspace; do not alter the production runtime during comparison.
-4. Implement artifact checksum/metadata verification and deployment smoke tests independently of runtime choice.
-5. Publish benchmark results and decide whether to adopt Granite, reuse selected packages/patterns, or retain Saronite.
+- The canonical docs agree on whether Granite is integrated and which runtime/version is used.
+- The partner template validates against the canonical manifest schema.
+- Automated tests cover both valid and invalid manifests and run in CI.
+- Android and iOS host builds are reproducible from clean checkouts, with unsupported runner limitations reported honestly.
+- Remote artifact rollout, integrity verification, staged release, and rollback are independently tested before production enablement.
 
 ## Sources
 
 - [Granite public repository and license](https://github.com/toss/granite)
-- [Itunda Saronite documentation](https://github.com/itunda-rw/itunda/blob/main/packages/saronite/README.md)
 - [Itunda architecture](https://github.com/itunda-rw/itunda/blob/main/docs/ARCHITECTURE.md)
-- [Itunda Toss parity matrix](https://github.com/itunda-rw/itunda/blob/main/docs/TOSS_PARITY_MATRIX.md)
+- [Itunda mini-app manifest schema](https://github.com/itunda-rw/itunda/blob/main/packages/saronite/mini-apps/partner-template/manifest.schema.json)
+- [Itunda mini-app developer CLI](https://github.com/itunda-rw/itunda/blob/main/tools/itunda-miniapp/bin/itunda-miniapp.mjs)
