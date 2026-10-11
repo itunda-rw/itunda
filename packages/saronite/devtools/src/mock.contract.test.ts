@@ -6,7 +6,7 @@ if (host.request('location', 'getCurrentLocation', () => ({ latitude: -1.94, lon
   throw new Error('denied permissions must not execute a capability');
 }
 
-host.setPermission('location', true);
+host.setPermission('location:read', true);
 
 const location = host.request(
   'location',
