@@ -8,7 +8,7 @@ data class LedgerIdempotencyRecord(
     val statusCode: Int,
     val transactionId: String?,
     val createdAt: Instant
-}
+)
 
 /**
  * Durable idempotency state for money-moving API requests.
