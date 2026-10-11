@@ -6,6 +6,8 @@ import process from "node:process";
 const [, , command, ...args] = process.argv;
 const categories = new Set(["FINANCE","SHOPPING","PRODUCTIVITY","LIFESTYLE","OTHER"]);
 const permissions = new Set(["identity","navigation","share","storage","notifications","payments","location","camera","contacts"]);
+const rootKeys = new Set(["$schema","manifestVersion","id","name","version","category","description","entry","icon","permissions","brandTheme"]);
+const paletteRoles = ["brand","brandStrong","brandSurface","onBrand","focus","pressed"];
 
 function usage() {
   console.log("Itunda mini-app developer tool\n\n  new <name>       Scaffold a mini-app\n  validate [path]  Validate a manifest");
@@ -21,6 +23,10 @@ function flag(name, fallback) {
 function slugify(value) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "mini-app";
 }
+function isHttpsUrl(value) {
+  if (typeof value !== "string") return false;
+  try { return new URL(value).protocol === "https:"; } catch { return false; }
+}
 function scaffold(name) {
   const directory = path.resolve(slugify(name));
   if (fs.existsSync(directory) && fs.readdirSync(directory).length) return fail("directory already exists and is not empty: " + directory);
@@ -29,7 +35,7 @@ function scaffold(name) {
   const bundle = flag("--bundle", "https://example.com/itunda-mini-app.bundle.js");
   if (!/^rw\.[a-z0-9]+(?:[._-][a-z0-9]+)+$/.test(id)) return fail("invalid mini-app id");
   if (!categories.has(category)) return fail("invalid category: " + category);
-  if (!bundle.startsWith("https://") && !args.includes("--local")) return fail("bundle URL must use HTTPS, or pass --local");
+  if (!isHttpsUrl(bundle) && !args.includes("--local")) return fail("bundle URL must use HTTPS, or pass --local");
   fs.mkdirSync(path.join(directory, "src"), {recursive:true});
   const manifest = {
     $schema: "https://raw.githubusercontent.com/itunda-rw/itunda/main/packages/saronite/mini-apps/partner-template/manifest.schema.json",
@@ -40,13 +46,13 @@ function scaffold(name) {
     permissions: [],
     brandTheme: {
       themeId: slugify(name),
-      light: {brand:"#4F46E5",brandStrong:"#4338CA",brandSurface:"#EEF2FF",onBrand:"#FFFFFF",focus:"#4F46E5",pressed:"#4338CA"},
-      dark: {brand:"#A5B4FC",brandStrong:"#C7D2FE",brandSurface:"#312E81",onBrand:"#111827",focus:"#C7D2FE",pressed:"#A5B4FC"}
+      light: {brand:"#7472F4",brandStrong:"#5D5BD6",brandSurface:"#F0EFFF",onBrand:"#FFFFFF",focus:"#5D5BD6",pressed:"#4B49B8"},
+      dark: {brand:"#A7A5FF",brandStrong:"#C2C0FF",brandSurface:"#292750",onBrand:"#17162B",focus:"#C2C0FF",pressed:"#A7A5FF"}
     }
   };
-  fs.writeFileSync(path.join(directory,"manifest.json"), JSON.stringify(manifest,null,2)+"\\n");
-  fs.writeFileSync(path.join(directory,"src","README.md"), "# " + name.trim() + "\\n\\nBuild feature UI here and keep host capabilities behind explicit Saronite permissions.\\n");
-  fs.writeFileSync(path.join(directory,"AGENTS.md"), "# Itunda mini-app rules\\n\\n- Use IDS component anatomy and accessibility states.\\n- Keep partner branding inside semantic brand-theme roles.\\n- Request only permissions actually needed.\\n- Do not embed host credentials or unrestricted native APIs.\\n- Provide loading, empty, error, unsupported and reduced-motion states.\\n");
+  fs.writeFileSync(path.join(directory,"manifest.json"), JSON.stringify(manifest,null,2)+"\n");
+  fs.writeFileSync(path.join(directory,"src","README.md"), "# " + name.trim() + "\n\nBuild feature UI here and keep host capabilities behind explicit Saronite permissions.\n");
+  fs.writeFileSync(path.join(directory,"AGENTS.md"), "# Itunda mini-app rules\n\n- Use IDS component anatomy and accessibility states.\n- Keep partner branding inside semantic brand-theme roles.\n- Request only permissions actually needed.\n- Do not embed host credentials or unrestricted native APIs.\n- Provide loading, empty, error, unsupported and reduced-motion states.\n");
   console.log("created " + directory);
 }
 function validate(file) {
@@ -55,17 +61,35 @@ function validate(file) {
   let m;
   try { m = JSON.parse(fs.readFileSync(target,"utf8")); } catch { return fail("manifest is not valid JSON"); }
   const e = [];
+  if (!m || typeof m !== "object" || Array.isArray(m)) return fail("manifest root must be an object");
+  for (const key of Object.keys(m)) if (!rootKeys.has(key)) e.push("unknown manifest property: " + key);
+  if (m.$schema !== undefined && !isHttpsUrl(m.$schema)) e.push("$schema must be a valid HTTPS URL");
   if (m.manifestVersion !== 1) e.push("manifestVersion must be 1");
   if (typeof m.id !== "string" || !/^rw\.[a-z0-9]+(?:[._-][a-z0-9]+)+$/.test(m.id)) e.push("id is invalid");
-  if (typeof m.name !== "string" || !m.name.trim()) e.push("name is required");
+  if (typeof m.name !== "string" || !m.name.trim() || m.name.length > 80) e.push("name must contain 1-80 characters");
   if (typeof m.version !== "string" || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(m.version)) e.push("version must be semantic");
   if (!categories.has(m.category)) e.push("category is invalid");
+  if (typeof m.description !== "string" || !m.description.trim() || m.description.length > 240) e.push("description must contain 1-240 characters");
   if (m.entry?.type !== "saronite") e.push("entry.type must be saronite");
-  if (typeof m.entry?.bundleUrl !== "string" || !m.entry.bundleUrl.startsWith("https://")) e.push("entry.bundleUrl must be HTTPS");
-  if (typeof m.icon?.url !== "string" || !m.icon.url.startsWith("https://")) e.push("icon.url must be HTTPS");
+  if (!isHttpsUrl(m.entry?.bundleUrl)) e.push("entry.bundleUrl must be a valid HTTPS URL");
+  if (m.entry && Object.keys(m.entry).some(k => !["type","bundleUrl"].includes(k))) e.push("entry contains an unknown property");
+  if (!isHttpsUrl(m.icon?.url)) e.push("icon.url must be a valid HTTPS URL");
+  if (m.icon && Object.keys(m.icon).some(k => k !== "url")) e.push("icon contains an unknown property");
   if (!Array.isArray(m.permissions) || m.permissions.some(p => !permissions.has(p))) e.push("permissions contains an unsupported scope");
-  if (new Set(m.permissions || []).size !== (m.permissions || []).length) e.push("permissions must not contain duplicates");
-  if (m.brandTheme) for (const mode of ["light","dark"]) for (const role of ["brand","brandStrong","brandSurface","onBrand","focus","pressed"]) if (!/^#[0-9A-Fa-f]{6}$/.test(m.brandTheme?.[mode]?.[role] || "")) e.push("brandTheme."+mode+"."+role+" must be six-digit hex");
+  if (Array.isArray(m.permissions) && new Set(m.permissions).size !== m.permissions.length) e.push("permissions must not contain duplicates");
+  if (m.brandTheme !== undefined) {
+    if (!m.brandTheme || typeof m.brandTheme !== "object" || Array.isArray(m.brandTheme)) e.push("brandTheme must be an object");
+    else {
+      if (typeof m.brandTheme.themeId !== "string" || !m.brandTheme.themeId.trim() || m.brandTheme.themeId.length > 64) e.push("brandTheme.themeId must contain 1-64 characters");
+      for (const key of Object.keys(m.brandTheme)) if (!["themeId","light","dark"].includes(key)) e.push("brandTheme contains an unknown property: " + key);
+      for (const mode of ["light","dark"]) {
+        const palette = m.brandTheme[mode];
+        if (!palette || typeof palette !== "object" || Array.isArray(palette)) { e.push("brandTheme."+mode+" is required"); continue; }
+        for (const role of Object.keys(palette)) if (!paletteRoles.includes(role)) e.push("brandTheme."+mode+" contains an unknown role: " + role);
+        for (const role of paletteRoles) if (!/^#[0-9A-Fa-f]{6}$/.test(palette[role] || "")) e.push("brandTheme."+mode+"."+role+" must be six-digit hex");
+      }
+    }
+  }
   if (e.length) { e.forEach(x => console.error("x "+x)); process.exitCode=1; return; }
   console.log("valid Itunda mini-app manifest: " + target);
 }
