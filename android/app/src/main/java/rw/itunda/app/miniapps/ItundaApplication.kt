@@ -71,10 +71,12 @@ class ItundaApplication : Application(), ReactApplication, ImageLoaderFactory {
         // this makes a synchronous network call, not yet confirmed live off the
         // main thread under the new ReactHost startup sequence.
         val cdnUrl = BuildConfig.MINIAPP_BUNDLE_CDN_URL
-        val cdnBundleFilePath = if (BuildConfig.DEBUG || cdnUrl.isBlank()) {
+        val cdnSha256 = BuildConfig.MINIAPP_BUNDLE_CDN_SHA256
+        val cdnBundleFilePath = if (BuildConfig.DEBUG || cdnUrl.isBlank() || cdnSha256.isBlank()) {
+            // Remote executable code is disabled unless the release pins its digest.
             null
         } else {
-            MiniAppBundleDownloader.downloadAndCache(this, cdnUrl)
+            MiniAppBundleDownloader.downloadAndCache(this, cdnUrl, cdnSha256)
         }
         getDefaultReactHost(
             context = applicationContext,
@@ -136,14 +138,32 @@ private object MiniAppBundleDownloader {
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    fun downloadAndCache(context: Application, url: String): String? {
+    fun downloadAndCache(context: Application, url: String, expectedSha256: String): String? {
+        if (!expectedSha256.matches(Regex("(?i)[0-9a-f]{64}"))) return null
         return try {
             val request = Request.Builder().url(url).build()
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return null
                 val body = response.body ?: return null
+                if (!response.request.url.isHttps || body.contentLength() > 50L * 1024L * 1024L) return null
                 val cacheFile = File(context.cacheDir, "miniapp-bundle.js")
-                cacheFile.outputStream().use { out -> body.byteStream().copyTo(out) }
+                val tempFile = File(context.cacheDir, "miniapp-bundle.js.tmp")
+                tempFile.outputStream().use { out -> body.byteStream().copyTo(out) }
+                val digest = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(tempFile.readBytes())
+                    .joinToString("") { "%02x".format(it) }
+                if (!digest.equals(expectedSha256, ignoreCase = true) || tempFile.length() == 0L) {
+                    tempFile.delete()
+                    return null
+                }
+                if (cacheFile.exists() && !cacheFile.delete()) {
+                    tempFile.delete()
+                    return null
+                }
+                if (!tempFile.renameTo(cacheFile)) {
+                    tempFile.delete()
+                    return null
+                }
                 cacheFile.absolutePath
             }
         } catch (e: Exception) {
