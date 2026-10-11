@@ -1,47 +1,37 @@
-# Itunda Brand v3 assets
+# itunda logo assets (trefoil symbol)
 
-This directory is the canonical home for Itunda brand assets. Brand v3 uses one flat brand color in light and dark modes: `#8F89FF`. Keep the Itunda identity and use these source assets unchanged; do not redraw or substitute the symbol.
-
-## Color tokens
-
-| Token | Value | Use |
-|---|---|---|
-| Brand | `#8F89FF` | Logo, brand surfaces and primary actions |
-| Brand pressed | `#7D77F7` | Pressed UI state |
-| On-brand text | `#121216` | Text on brand fills; avoid white text on this color |
-| Brand text on light | `#6960F9` | Links and text on light surfaces |
-| Brand text on dark | `#8F89FF` | Links and text on dark surfaces |
-| Light tint | `#F1F0FF` | Selected controls and subtle brand surfaces |
-| Dark tint | `#25234A` | Selected controls and subtle brand surfaces |
-| Dark background / surface / elevated | `#121216` / `#1C1C22` / `#25252D` | Neutral dark theme |
-
-Use neutral text and surface tokens for readability; do not apply the brand color to every element. Primary and pressed brand fills remain the same across light and dark modes.
+Symbol only, unless the file is in `lockups/`. Brand colors: indigo `#7472F4`, deeper `#4B47C9`, light `#B0AEFF`, dark-mode `#9B98FF`.
 
 ## symbol/
-
-- `itunda-symbol.svg`: main flat-color symbol for light or dark backgrounds.
-- `itunda-symbol-white.svg`: white symbol for brand or dark surfaces.
-- `itunda-symbol-mono.svg`: monochrome usage where the color can be controlled.
-- `itunda-symbol-small-mono.svg`: small symbol for compact navigation and icons.
-- `itunda-symbol-animated.svg`: web-only animation; respect reduced-motion preferences.
-- Older `*-dark.svg` variants are retained for compatibility during migration; new integrations should use the Brand v3 symbol unless a specific platform appearance requires otherwise.
+| file | use |
+|---|---|
+| itunda-symbol.svg | main color symbol, light backgrounds, 32px and up |
+| itunda-symbol-white.svg | on indigo or photo backgrounds |
+| itunda-symbol-dark.svg | dark mode |
+| itunda-symbol-mono.svg | one color (set the `color` property), stamps, receipts, emboss |
+| itunda-symbol-small-mono.svg | thinner strands for 16-32px (favicon, tab bars, list icons) |
+| itunda-symbol-animated.svg | web only: the knot draws itself in, honors reduced-motion |
 
 ## app-icons/
-
-Includes the store/app icon, favicon, iOS dark/tinted variants, Android adaptive background and foreground, Android monochrome icon, and notification symbol. Keep platform-safe zones and platform-specific icon requirements in mind.
+| file | use |
+|---|---|
+| itunda-app-icon.svg | iOS and store icon, 1024 square, no rounded corners (the OS rounds it) |
+| itunda-ios-dark.svg / itunda-ios-tinted.svg | iOS 18 dark and tinted appearances |
+| itunda-android-adaptive-background.svg + ...-foreground.svg | Android adaptive icon layers (108dp, foreground sits inside the 66dp safe zone) |
+| itunda-android-monochrome.svg | Android themed-icon layer |
+| itunda-android-notification.svg | white-only status bar icon (24dp) |
+| itunda-favicon.svg | browser tab icon |
 
 ## splash/
-
-Includes light and dark splash screens and Android 12 splash-icon variants. Pair the transparent splash icon with the correct background color.
+itunda-splash-light.svg / itunda-splash-dark.svg: 1080x1920 logo-only screens.
+itunda-splash-icon.svg / itunda-splash-icon-dark.svg: Android 12 splash icon (288dp, transparent background; set the splash background color to white / #090B0F).
 
 ## lockups/
+`itunda-<product>-<light|dark>.svg` for bank, pay, eats, shopping, loans, insurance, transit, invest.
 
-Product lockups are available for bank, pay, eats, shopping, loans, insurance, transit, and invest in light and dark variants. In application UI, prefer the symbol plus native text where it improves accessibility and localization.
-
-## Rendering and release checks
-
-- Symbol crossings use SVG masks. Browsers and react-native-svg support masks, but Android VectorDrawable and Xcode asset catalogs may not; export raster assets through a deterministic build step for native app icons rather than assuming SVG is supported.
-- Lockups contain live text. For native UI, render the symbol plus native localized text rather than relying on embedded SVG text.
-- Use the small symbol below 24px where appropriate.
-- Before release, verify the exact source asset, rendered appearance, safe zone, and light/dark behavior on real Android and iOS builds. Canonical SVG presence alone does not mean platform icons have been regenerated.
-- Trademark search remains a separate release task.
+## Read before shipping
+- Files marked "gaps" use an SVG `<mask>` to cut transparent gaps at the crossings. Renderers that skip masks will show solid blobs. react-native-svg and browsers support masks. Android VectorDrawable and Xcode asset catalogs may not, so export PNGs (or run the SVGs through your build tool) for those.
+- Lockups use live `<text>` in a font stack starting with Pretendard. Outline the text in a design tool for print or marketing, and in the app render the symbol SVG plus native text instead.
+- Below 24px use the small version, not the main symbol.
+- Dark-mode halos are tuned for `#090B0F`.
+- Not yet tested in Xcode or Android Studio, and not yet trademark-searched.
