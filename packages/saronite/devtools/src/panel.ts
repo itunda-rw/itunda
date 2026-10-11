@@ -13,8 +13,8 @@ const PANEL_STYLES = `
   right: 16px;
   bottom: 16px;
   z-index: 2147483647;
-  width: min(320px, calc(100vw - 32px));
-  max-height: min(420px, calc(100vh - 32px));
+  width: min(340px, calc(100vw - 32px));
+  max-height: min(520px, calc(100vh - 32px));
   overflow: auto;
   padding: 16px;
   border: 1px solid var(--saronite-panel-border);
@@ -38,9 +38,23 @@ const PANEL_STYLES = `
   font-weight: 650;
   cursor: pointer;
 }
+[data-saronite-devtools] button[aria-pressed="true"] {
+  background: var(--saronite-panel-brand);
+  color: #fff;
+}
 [data-saronite-devtools] button:focus-visible {
   outline: 2px solid var(--saronite-panel-brand);
   outline-offset: 3px;
+}
+[data-saronite-devtools] .saronite-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+[data-saronite-devtools] .saronite-section {
+  margin: 12px 0 4px;
+  font-weight: 700;
 }
 [data-saronite-devtools] ol { color: var(--saronite-panel-muted); }
 [data-saronite-devtools] strong { color: var(--saronite-panel-text); }
@@ -70,25 +84,86 @@ const PANEL_STYLES = `
 export function renderSaroniteDevPanel(host: SaroniteMockHost, mount: HTMLElement): () => void {
   const root = document.createElement('aside');
   root.setAttribute('data-saronite-devtools', '');
+  root.setAttribute('aria-label', 'Saronite developer tools');
   const styles = document.createElement('style');
   styles.setAttribute('data-saronite-devtools-styles', '');
   styles.textContent = PANEL_STYLES;
   document.head.append(styles);
 
+  let lastSnapshot = '';
   const render = () => {
     const calls: MockCall[] = host.state.calls.slice(-20).reverse();
+    const snapshot = JSON.stringify({
+      calls,
+      permissions: host.state.permissions,
+      lifecycle: host.state.lifecycle,
+    });
+    // Poll for SDK calls without replacing focused controls every 500ms.
+    if (snapshot === lastSnapshot) return;
+    lastSnapshot = snapshot;
+
     root.replaceChildren();
     const title = document.createElement('strong');
     title.textContent = 'Saronite DevTools';
     root.append(title);
-    const lifecycle = document.createElement('div');
-    lifecycle.textContent = 'Lifecycle: ' + host.state.lifecycle;
-    lifecycle.style.margin = '6px 0 10px';
-    root.append(lifecycle);
+
+    const lifecycleLabel = document.createElement('div');
+    lifecycleLabel.className = 'saronite-section';
+    lifecycleLabel.textContent = 'Lifecycle';
+    root.append(lifecycleLabel);
+    const lifecycleControls = document.createElement('div');
+    lifecycleControls.className = 'saronite-controls';
+    const lifecycleButton = document.createElement('button');
+    lifecycleButton.type = 'button';
+    lifecycleButton.textContent = host.state.lifecycle === 'visible' ? 'Visible' : 'Set visible';
+    lifecycleButton.setAttribute('aria-pressed', String(host.state.lifecycle === 'visible'));
+    lifecycleButton.onclick = () => {
+      host.setLifecycle('visible');
+      render();
+    };
+    lifecycleControls.append(lifecycleButton);
+    const hiddenButton = document.createElement('button');
+    hiddenButton.type = 'button';
+    hiddenButton.textContent = 'Hidden';
+    hiddenButton.setAttribute('aria-pressed', String(host.state.lifecycle === 'hidden'));
+    hiddenButton.onclick = () => {
+      host.setLifecycle('hidden');
+      render();
+    };
+    lifecycleControls.append(hiddenButton);
+    root.append(lifecycleControls);
+
+    const permissionsLabel = document.createElement('div');
+    permissionsLabel.className = 'saronite-section';
+    permissionsLabel.textContent = 'Mock permissions';
+    root.append(permissionsLabel);
+    const permissionControls = document.createElement('div');
+    permissionControls.className = 'saronite-controls';
+    for (const permission of ['identity:read', 'location:read']) {
+      const granted = host.state.permissions[permission] === true;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = permission + (granted ? ' · granted' : ' · denied');
+      button.setAttribute('aria-pressed', String(granted));
+      button.setAttribute('aria-label', permission + (granted ? ', granted. Click to revoke.' : ', denied. Click to grant.'));
+      button.onclick = () => {
+        host.setPermission(permission, !granted);
+        render();
+      };
+      permissionControls.append(button);
+    }
+    root.append(permissionControls);
+
     const clear = document.createElement('button');
-    clear.textContent = 'Clear';
+    clear.type = 'button';
+    clear.textContent = 'Clear call log';
     clear.onclick = () => { host.clearCalls(); render(); };
     root.append(clear);
+
+    const listLabel = document.createElement('div');
+    listLabel.className = 'saronite-section';
+    listLabel.textContent = 'Recent SDK calls';
+    root.append(listLabel);
     const list = document.createElement('ol');
     list.style.paddingLeft = '20px';
     for (const call of calls) {
@@ -96,6 +171,11 @@ export function renderSaroniteDevPanel(host: SaroniteMockHost, mount: HTMLElemen
       item.textContent = call.capability + '.' + call.method + ' — ' + call.status;
       if (call.detail) item.title = call.detail;
       list.append(item);
+    }
+    if (calls.length === 0) {
+      const empty = document.createElement('li');
+      empty.textContent = 'No calls yet';
+      list.append(empty);
     }
     root.append(list);
   };
