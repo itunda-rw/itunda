@@ -5,8 +5,8 @@ Itunda is a Rwanda-first financial super-app prototype modeled on the Toss produ
 The goal is not to copy Toss visually only. The product target is Toss-like simplicity on top of Rwanda-native rails: MTN Mobile Money, Airtel Money, bank transfers, eKash-style interoperability, Irembo/RRA bill flows, RWF-first money formatting, National ID KYC, merchant QR, Face Pay concepts, settlement monitoring, fraud review, and reconciliation.
 
 The canonical product, architecture, and UI/UX map is [docs/TOSS_RWANDA_ALIGNMENT.md](docs/TOSS_RWANDA_ALIGNMENT.md). The implementation checklist is [docs/TOSS_PARITY_MATRIX.md](docs/TOSS_PARITY_MATRIX.md). The source-backed product map is [docs/FACT_CHECKED_TOSS_RWANDA_MAP.md](docs/FACT_CHECKED_TOSS_RWANDA_MAP.md). The end-to-end readiness standard and full 61-row product inventory is [docs/PRODUCT_COMPLETENESS_AUDIT.md](docs/PRODUCT_COMPLETENESS_AUDIT.md).
-The current private-cloud gap analysis and Toss comparison is [docs/PRIVATE_CLOUD_BLUEPRINT.md](docs/PRIVATE_CLOUD_BLUEPRINT.md).
-The operational private-cloud workflow is [docs/PRIVATE_CLOUD_OPERATIONS.md](docs/PRIVATE_CLOUD_OPERATIONS.md).
+The active infrastructure source of truth is GCP: [docs/GCP_PRODUCTION_BASELINE.md](docs/GCP_PRODUCTION_BASELINE.md). The private-cloud blueprint and operations documents are historical reference material, not the active deployment target.
+The evidence-backed review of Toss public repositories and the prioritized Itunda improvement backlog is [docs/TOSS_PUBLIC_SOURCE_REVIEW_2026-10.md](docs/TOSS_PUBLIC_SOURCE_REVIEW_2026-10.md).
 
 ## Current Surfaces
 

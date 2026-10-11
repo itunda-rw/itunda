@@ -97,7 +97,7 @@ IDS is the equivalent architectural layer for Itunda.
 - pressed
 - partner identity assets
 
-The default Itunda theme remains #7472F4.
+The default Itunda Brand v3 theme uses #8F89FF as the primary brand color and #7D77F7 for pressed/strong brand interaction. Legacy #7472F4 references are historical and must not be used for new UI.
 Partner apps can express their own identity without replacing the host's interaction language.
 
 ## Product experience rules
