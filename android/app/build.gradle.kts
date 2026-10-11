@@ -345,6 +345,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.okhttp)
     implementation(libs.gson)
+    testImplementation("junit:junit:4.13.2")
     // Real instrumented UI tests (2026-07-11) -- androidx.compose.ui.test reads the
     // same semantics tree TalkBack does, so this is a real live accessibility check
     // against a real emulator, not a static-analysis proxy for one. See
