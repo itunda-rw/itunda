@@ -1,5 +1,5 @@
 {
-  "version": "1.5.0",
+  "version": "1.5.1",
   "purpose": "IDS component API and state parity contract. Platform implementations may use native APIs, but public behavior must satisfy the same contract.",
   "components": {
     "button": {
@@ -199,7 +199,7 @@
       "sources": {
         "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt",
         "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
-        "web": "client/design-system/components.css"
+        "web": "services/micro-frontends/bank-mfe/src/EmptyState.tsx"
       },
       "platformVariants": {
         "android": [
@@ -213,10 +213,9 @@
           "accessibilityElement(children: .contain)"
         ],
         "web": [
-          ".tds-state{",
-          ".tds-state-icon{",
-          ".tds-state-title{",
-          ".tds-state-copy{"
+          "export function EmptyState({ message",
+          "icon: Icon = Inbox",
+          "textAlign: 'center'"
         ]
       },
       "knownImplementationGaps": [
@@ -237,13 +236,13 @@
         "preserve-context"
       ],
       "sources": {
-        "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt",
+        "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/HoodShared.kt",
         "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
-        "web": "client/design-system/components.css"
+        "web": "services/micro-frontends/bank-mfe/src/EmptyState.tsx"
       },
       "platformVariants": {
         "android": [
-          "ErrorCard",
+          "fun ErrorCard(",
           "IdsButtonVariant.Destructive",
           "Ids.colors.danger"
         ],
@@ -253,9 +252,9 @@
           "IDS.Colors.dangerTint"
         ],
         "web": [
-          ".tds-state",
-          "onRetry",
-          "aria-live"
+          "export function ErrorCard({ message, onRetry",
+          "onClick={onRetry}",
+          "Retry"
         ]
       },
       "knownImplementationGaps": [
