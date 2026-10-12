@@ -83,6 +83,7 @@
   --itunda-color-brand-strong:#7D77F7;
   --itunda-color-brand-soft:#F1F0FF;
   --itunda-color-success:#05804A;
+  --itunda-color-on-success:#FFFFFF;
   --itunda-color-success-soft:#F5FAFF;
   --itunda-color-warning:#FFA000;
   --itunda-color-warning-soft:#FFF4D6;
@@ -115,7 +116,7 @@
   --itunda-color-surface-brand:#2B2C52; --itunda-color-text:#FFFFFF; --itunda-color-text-strong:#FFFFFF;
   --itunda-color-text-muted:#989EAA; --itunda-color-text-subtle:#848A96; --itunda-color-border:#3C3C47;
   --itunda-color-border-strong:#3C3C47; --itunda-color-brand:#8F89FF; --itunda-color-brand-strong:#8F89FF;
-  --itunda-color-brand-soft:#25234A; --itunda-color-success:#20D394; --itunda-color-success-soft:#10321F;
+  --itunda-color-brand-soft:#25234A; --itunda-color-success:#20D394; --itunda-color-on-success:#121216; --itunda-color-success-soft:#10321F;
   --itunda-color-warning:#FFC24C; --itunda-color-warning-soft:#3A2E10;
   --itunda-color-error:#FF6B7A; --itunda-color-error-soft:#3A1418;
   --itunda-color-info:#8F89FF; --itunda-color-info-soft:#25234A; --itunda-color-pressed:#2B2C52;
