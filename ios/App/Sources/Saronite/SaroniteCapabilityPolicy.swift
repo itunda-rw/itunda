@@ -42,7 +42,7 @@ enum SaroniteCapabilityPolicy {
     ) -> Set<String>? {
         guard manifestVersion == Self.manifestVersion else { return nil }
         guard Set(scopes).count == scopes.count else { return nil }
-        let known = Set(SaroniteCapability.allCases.map(\\.rawValue))
+        let known = Set(SaroniteCapability.allCases.map(\.rawValue))
         guard scopes.allSatisfy({ known.contains($0) }) else { return nil }
         return Set(scopes)
     }
