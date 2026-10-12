@@ -95,5 +95,18 @@
   "legacyCompatibility": {
     "source": "packages/design-tokens/tokens.json",
     "rule": "Legacy primitive scales remain compatibility inputs; product-facing code consumes semantic roles."
+  },
+  "textContrast": {
+    "roles": [
+      "textPrimary",
+      "textSecondary",
+      "textTertiary",
+      "textBrand"
+    ],
+    "backgroundRoles": [
+      "background",
+      "surface"
+    ],
+    "minimum": 4.5
   }
 }
