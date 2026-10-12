@@ -8,6 +8,7 @@ const check = (condition, message) => { if (!condition) errors.push(message); };
 
 const webTokens = read("client/design-system/tokens.css");
 const webComponents = read("client/design-system/components.css");
+const publicSiteTokens = read("sites/public/ids.css");
 const androidColors = read("android/core/designsystem/src/main/java/rw/itunda/core/designsystem/theme/IdsSemanticColors.kt");
 const androidButton = read("android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt");
 const iosColors = read("ios/Core/DesignSystem/Sources/IDS.swift");
@@ -40,6 +41,9 @@ check(canonical.includes("--itunda-on-brand:#121216"), "canonical on-brand foreg
 check(webTokens.includes("--itunda-color-brand:#8F89FF"), "web semantic brand token is not v3");
 check(webTokens.includes("--itunda-color-on-brand:#121216"), "web on-brand foreground token is missing");
 check(webComponents.includes(".tds-button-primary{background:var(--itunda-color-brand);color:var(--itunda-color-on-brand,#121216)"), "web primary button does not use semantic on-brand foreground");
+check(publicSiteTokens.includes("--brand:#8F89FF"), "deployed public-site brand token is not v3");
+check(publicSiteTokens.includes("--on-brand:#121216"), "deployed public-site on-brand foreground is missing");
+check(publicSiteTokens.includes(".btn.primary{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}"), "deployed public-site primary button does not use on-brand foreground");
 check(androidColors.includes("brand = Color(0xFF8F89FF)"), "Android brand color is not v3");
 check(androidColors.includes("onBrand = Color(0xFF121216)"), "Android on-brand foreground is missing");
 check(androidButton.includes("Ids.colors.brand to Ids.colors.onBrand"), "Android filled button does not use on-brand foreground");
@@ -58,5 +62,5 @@ if (errors.length) {
   for (const error of errors) console.error(`- ${error}`);
   process.exitCode = 1;
 } else {
-  console.log("Itunda brand v3 surface audit passed: canonical, web, Android, iOS, primary buttons, and consumer homepage are aligned.");
+  console.log("Itunda brand v3 surface audit passed: canonical, web, Android, iOS, primary buttons, and active product sites are aligned.");
 }
