@@ -27,8 +27,9 @@ export interface WalletSummary {
   connected: boolean;
 }
 
-/** Shape returned by itunda's real `GET /wallet/balance` (see
- * backend/src/controllers/wallet.controller.ts:getAggregatedBalance). */
+/** Mini-app-facing wallet summary projected by the native bridge from the
+ * verified backend `GET /api/v1/account` response (`{ success, accounts }`).
+ * This is an SDK result contract, not a separate backend `/wallet/balance` route. */
 export interface WalletBalanceResult {
   totalBalance: number;
   currency: string;
