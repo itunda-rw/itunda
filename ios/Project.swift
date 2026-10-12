@@ -341,6 +341,40 @@ allTargets.append(
         entitlements: .dictionary([
             "com.apple.developer.nfc.readersession.formats": ["TAG"],
         ]),
+        // React Native 0.84's official Xcode bundling phase is not injected by Tuist's
+        // generated target. Without an explicit phase, Debug works through Metro but
+        // Release has no main.jsbundle and the app's bundleURL() returns nil. Bundle
+        // from the real Saronite host-app entry point during non-Debug builds and put
+        // the JS bundle/assets directly into the app resources before code signing.
+        scripts: [
+            .post(
+                script: """
+                set -euo pipefail
+                if [ "$CONFIGURATION" = "Debug" ]; then
+                    echo "Skipping packaged Saronite bundle for Debug; Metro provides the JS."
+                    exit 0
+                fi
+
+                export REACT_NATIVE_DIR="$SRCROOT/../packages/saronite/node_modules/react-native"
+                export PROJECT_ROOT="$SRCROOT/../packages/saronite/host-app"
+                export ENTRY_FILE="index.js"
+                export NODE_BINARY="$(command -v node)"
+
+                test -x "$NODE_BINARY"
+                test -f "$PROJECT_ROOT/$ENTRY_FILE"
+                test -f "$REACT_NATIVE_DIR/scripts/xcode/with-environment.sh"
+                test -f "$REACT_NATIVE_DIR/scripts/react-native-xcode.sh"
+
+                WITH_ENVIRONMENT="$REACT_NATIVE_DIR/scripts/xcode/with-environment.sh"
+                REACT_NATIVE_XCODE="$REACT_NATIVE_DIR/scripts/react-native-xcode.sh"
+                /bin/sh "$WITH_ENVIRONMENT" "$REACT_NATIVE_XCODE"
+
+                test -s "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/main.jsbundle"
+                """,
+                name: "Bundle React Native code and images",
+                basedOnDependencyAnalysis: false
+            )
+        ],
         dependencies: appDependencies,
         // Real granite mini-app host (2026-07-16, see App/Sources/Saronite/) needs one
         // small ObjC helper (SaroniteBrickBridge.m) for two RN-internal APIs Swift's
