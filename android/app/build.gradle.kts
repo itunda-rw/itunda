@@ -356,4 +356,7 @@ dependencies {
     // newer platforms correctly.
     androidTestImplementation(libs.espresso.core)
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+
+    // JVM unit tests for native mini-app security policy.
+    testImplementation("junit:junit:4.13.2")
 }
