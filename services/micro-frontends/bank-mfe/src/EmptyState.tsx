@@ -44,6 +44,7 @@ export function ErrorCard({ message, onRetry }: { message: string; onRetry: () =
   return (
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '24px 20px', margin: '8px 0', textAlign: 'center' }}>
       <div
+        aria-hidden="true"
         style={{
           width: '56px',
           height: '56px',
