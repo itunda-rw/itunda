@@ -12,9 +12,9 @@ Granite's public README and CLI source make several concrete choices:
 - **Release/deploy automation:** Granite publishes a dedicated deployment CLI and infrastructure tooling.
 - **Tests are part of the framework:** its README explicitly calls out end-to-end tests.
 
-Sources: [toss/granite README](https://github.com/toss/granite/blob/main/README.md), [Granite dev command](https://github.com/toss/granite/blob/main/packages/cli/src/commands/DevCommand/DevCommand.ts), [Granite build command](https://github.com/toss/granite/blob/main/packages/cli/src/commands/BuildCommand/BuildCommand.ts), [Granite Nx configuration](https://github.com/toss/granite/blob/main/nx.json).
+Sources: [toss/granite README](https://github.com/toss/granite/blob/main/README.md), [Granite dev command](https://github.com/toss/granite/blob/main/packages/cli/src/commands/DevCommand/DevCommand.ts), [Granite build command](https://github.com/toss/granite/blob/main/packages/cli/src/commands/BuildCommand/BuildCommand.ts), [Granite Nx configuration](https://github.com/toss/granite/blob/main/nx.json), and the [official Apps in Toss open-source tools overview](https://toss.im/apps-in-toss/blog/opensource-3-tools).
 
-These are public implementation details—not a claim about Toss's private internal systems.
+Another relevant public reference is [apps-in-toss-community/devtools](https://github.com/apps-in-toss-community/devtools): its source demonstrates browser-based SDK mocks, a floating inspection panel, device presets, and bundler integration. **Its README says the project is no longer maintained and the repository is archived**, so Itunda should learn from its architecture and keep maintaining Saronite DevTools rather than introducing it as a new dependency. The companion [SDK example catalog](https://github.com/apps-in-toss-community/sdk-example) and [console CLI](https://github.com/apps-in-toss-community/console-cli) illustrate interactive API exploration and repeatable developer operations. These are public implementation details—not a claim about Toss's private internal systems.
 
 ## Start only the thing you are changing
 
