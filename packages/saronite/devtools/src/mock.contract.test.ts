@@ -1,4 +1,4 @@
-import { createSaroniteMockHost } from './mock';
+import { createSaroniteMockHost } from './mock.ts';
 
 const host = createSaroniteMockHost();
 
