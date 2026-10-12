@@ -130,7 +130,7 @@ val IdsDarkSemanticColors = IdsSemanticColors(
     // fix on web/iOS.
     textTertiary = Color(0xFF848A96),
     // Dark-mode semantic brand token: the accessible blue counterpart used by the cross-platform contract.
-    brand = Color(0xFF9B98FF),
+    brand = Color(0xFF7675F8),
     textBrand = Color(0xFF9B98FF),
     divider = Color(0xFF3C3C47),
     chip = Color(0xFF2C2C35),
