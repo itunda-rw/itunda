@@ -1,5 +1,10 @@
 name: Deploy Itunda Public Sites to Google Cloud
 
+# Serialize matrix deployments so concurrent runs cannot race Cloud Run's service etags.
+concurrency:
+  group: deploy-public-sites-gcp-${{ github.ref }}
+  cancel-in-progress: false
+
 on:
   push:
     branches: [main]
