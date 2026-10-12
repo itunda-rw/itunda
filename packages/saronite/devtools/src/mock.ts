@@ -1,4 +1,4 @@
-import { SARONITE_CAPABILITIES } from './capabilities';
+import { SARONITE_CAPABILITIES } from './capabilities.ts';
 
 export type MockStatus = 'ok' | 'denied' | 'unsupported' | 'error';
 
