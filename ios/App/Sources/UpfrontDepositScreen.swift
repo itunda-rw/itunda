@@ -106,7 +106,7 @@ private struct UpfrontDepositRow: View {
     }
     private var statusColor: Color {
         if deposit.status == "MATURED" && deposit.withdrawnAt != nil { return IDS.Colors.textSecondary }
-        if deposit.status == "MATURED" { return .green }
+        if deposit.status == "MATURED" { return IDS.Colors.success }
         return IDS.Colors.brand
     }
 
@@ -118,7 +118,7 @@ private struct UpfrontDepositRow: View {
                 Text(statusLabel).font(.caption).bold().foregroundColor(statusColor)
             }
             Text("Interest paid upfront: \(formatMoney(deposit.interestPaid)) RWF at \(deposit.interestRate, specifier: "%.2f")%/yr")
-                .font(.subheadline).foregroundColor(.green)
+                .font(.subheadline).foregroundColor(IDS.Colors.success)
             Text(deposit.status == "ACTIVE" ? "Locked until \(formatDate(deposit.maturesAt))" : "Matured \(formatDate(deposit.maturesAt))")
                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
             if let error { Text(error).font(.caption).foregroundColor(.red) }
@@ -191,7 +191,7 @@ private struct UpfrontDepositCreateView: View {
                 .keyboardType(.decimalPad)
                 .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
             if let previewInterest {
-                Text("You'll receive \(formatMoney(previewInterest)) RWF immediately").font(.subheadline).bold().foregroundColor(.green)
+                Text("You'll receive \(formatMoney(previewInterest)) RWF immediately").font(.subheadline).bold().foregroundColor(IDS.Colors.success)
             }
             Spacer()
             if let error { Text(error).font(.subheadline).foregroundColor(.red) }
