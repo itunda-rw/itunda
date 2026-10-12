@@ -1,5 +1,5 @@
 {
-  "version": "1.7.1",
+  "version": "1.7.2",
   "purpose": "IDS component API and state parity contract. Platform implementations may use native APIs, but public behavior must satisfy the same contract.",
   "components": {
     "button": {
@@ -262,6 +262,7 @@
         "Group announcement and poll initial loading now fails into a shared retry state instead of silently presenting failed requests as no announcement/no polls; posting, poll creation, and vote failures remain inline action feedback.",
         "Agent cash-out authorization history on iOS and bank web now distinguishes load failure from an empty history and offers Retry; create/cancel action errors remain separate from history-load recovery.",
         "Bank web Talk call history and AI chat history now show retryable load errors instead of converting failed requests into empty histories; actual empty results still use the empty state.",
+        "Call-history Retry uses an explicit loading guard so clearing the prior error cannot trigger a duplicate request through the tab effect.",
         "Native Android/iOS announcement behavior, localized recovery wording, retry loading/failure states, contrast, preservation of user-entered context, and full device/simulator behavior still require runtime validation."
       ],
       "completionGate": "Verify recoverable and terminal errors, retry loading/failure states, preserved form context, accessible error announcement, keyboard/screen-reader order, and light/dark contrast on each platform before marking parity complete."
