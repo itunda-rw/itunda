@@ -1,0 +1,58 @@
+name: Itunda brand v3 archive audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'itunda-brand-v3.zip'
+      - '.github/workflows/itunda-brand-v3-audit.yml'
+  pull_request:
+    paths:
+      - 'itunda-brand-v3.zip'
+      - '.github/workflows/itunda-brand-v3-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Inspect v3 archive before canonical adoption
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify archive integrity and report inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s itunda-brand-v3.zip
+          echo '## Itunda brand v3 archive audit' >> "$GITHUB_STEP_SUMMARY"
+          echo >> "$GITHUB_STEP_SUMMARY"
+          echo '### Archive identity' >> "$GITHUB_STEP_SUMMARY"
+          echo "- Git blob: $(git rev-parse HEAD:itunda-brand-v3.zip)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Bytes: $(stat -c '%s' itunda-brand-v3.zip)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- SHA-256: $(sha256sum itunda-brand-v3.zip | cut -d' ' -f1)" >> "$GITHUB_STEP_SUMMARY"
+          unzip -t itunda-brand-v3.zip
+          echo >> "$GITHUB_STEP_SUMMARY"
+          echo '### Archive entries' >> "$GITHUB_STEP_SUMMARY"
+          echo 'File inventory is read-only; no canonical assets are overwritten by this workflow.' >> "$GITHUB_STEP_SUMMARY"
+          echo '```text' >> "$GITHUB_STEP_SUMMARY"
+          unzip -Z1 itunda-brand-v3.zip | sort >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          mkdir -p /tmp/itunda-brand-v3
+          unzip -q itunda-brand-v3.zip -d /tmp/itunda-brand-v3
+          echo >> "$GITHUB_STEP_SUMMARY"
+          echo '### File counts' >> "$GITHUB_STEP_SUMMARY"
+          echo "- Total files: $(find /tmp/itunda-brand-v3 -type f | wc -l | tr -d ' ')" >> "$GITHUB_STEP_SUMMARY"
+          echo "- SVG files: $(find /tmp/itunda-brand-v3 -type f -iname '*.svg' | wc -l | tr -d ' ')" >> "$GITHUB_STEP_SUMMARY"
+          echo "- PNG files: $(find /tmp/itunda-brand-v3 -type f -iname '*.png' | wc -l | tr -d ' ')" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Other files: $(find /tmp/itunda-brand-v3 -type f ! -iname '*.svg' ! -iname '*.png' | wc -l | tr -d ' ')" >> "$GITHUB_STEP_SUMMARY"
+          find /tmp/itunda-brand-v3 -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/itunda-brand-v3-SHA256SUMS
+      - name: Upload v3 audit inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: itunda-brand-v3-audit
+          path: /tmp/itunda-brand-v3-SHA256SUMS
+          if-no-files-found: error
