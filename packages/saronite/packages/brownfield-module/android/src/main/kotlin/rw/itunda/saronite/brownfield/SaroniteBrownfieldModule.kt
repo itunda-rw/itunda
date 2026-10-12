@@ -71,9 +71,14 @@ class SaroniteBrownfieldModule(
      * live session token and projects its `accounts` payload into the SDK's
      * `WalletBalanceResult` contract. There is no `/api/v1/wallet/balance`
      * backend route; this is a native SDK projection, not a separate API.
+     * Fail closed unless the native host explicitly trusts this as first-party.
      */
     @ReactMethod
     fun getWalletBalance(promise: Promise) {
+        if (!hostBridge.isFirstParty()) {
+            promise.reject("SARONITE_SCOPE_DENIED", "Wallet balance is available only to first-party mini-apps")
+            return
+        }
         authorizedCall(get("api/v1/account"), promise, ::parseWalletBalance)
     }
 
@@ -167,7 +172,7 @@ class SaroniteBrownfieldModule(
     private fun parseWalletBalance(json: String): WritableMap {
         val root = JsonParser.parseString(json).asJsonObject
         val accounts = root.getAsJsonArray("accounts")
-        var currency = accounts?.firstOrNull()?.asJsonObject?.get("currency")?.asString ?: "RWF"
+        val currency = accounts?.firstOrNull()?.asJsonObject?.get("currency")?.asString ?: "RWF"
         var totalBalance = 0.0
         val wallets = Arguments.createArray()
         accounts?.forEach { element ->
