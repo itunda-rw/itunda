@@ -46,3 +46,24 @@ if (host.state.calls[5]?.status !== 'error' || !host.state.calls[5]?.detail?.inc
   throw new Error('unknown capability must be recorded as an explicit error');
 }
 if (host.state.lifecycle !== 'hidden') throw new Error('lifecycle transition was not recorded');
+
+host.setPermission('location:read', false);
+let revokedPermissionExecuted = false;
+host.request('location', 'getCurrentLocation', () => {
+  revokedPermissionExecuted = true;
+  return null;
+});
+if (revokedPermissionExecuted) throw new Error('revoked permissions must block subsequent capability calls');
+if (host.state.calls[6]?.status !== 'denied') throw new Error('revoked permission denial must be logged');
+
+host.setPermission('location:read', true);
+host.request('location', 'getCurrentLocation', () => {
+  throw new Error('simulated host failure');
+});
+if (host.state.calls[7]?.status !== 'error' || host.state.calls[7]?.detail !== 'simulated host failure') {
+  throw new Error('thrown handler errors must be logged without escaping the mock host');
+}
+
+host.clearCalls();
+if (host.state.calls.length !== 0) throw new Error('clearCalls must empty the call log');
+
