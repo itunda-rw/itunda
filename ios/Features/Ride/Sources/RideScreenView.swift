@@ -351,7 +351,7 @@ private struct RidePassengerContent: View {
             if trip.status == "REQUESTED" {
                 pin = nil
             } else {
-                pin = try await NetworkClient.shared.getRideTripPin(trip.id).pin
+                pin = try await NetworkClient.shared.getRideTripPin(id: trip.id).pin
             }
             activeTripStops = stops
             activeTripPin = pin
