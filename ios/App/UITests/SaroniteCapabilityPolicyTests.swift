@@ -52,4 +52,33 @@ final class SaroniteCapabilityPolicyTests: XCTestCase {
             scopes: ["account:read"]
         ))
     }
+
+    func testRuntimeContextFailsClosedAfterInvalidPartnerActivation() {
+        SaroniteRuntimeContext.activateFirstParty()
+        XCTAssertTrue(SaroniteRuntimeContext.allows(nil))
+
+        XCTAssertFalse(SaroniteRuntimeContext.activatePartner(
+            manifestVersion: 1,
+            scopes: ["account:read", "account:read"]
+        ))
+        XCTAssertFalse(SaroniteRuntimeContext.allows(.accountRead))
+        XCTAssertFalse(SaroniteRuntimeContext.allowsExternalNavigation)
+    }
+
+    func testPartnerContextAllowsOnlyItsApprovedReadCapability() {
+        XCTAssertTrue(SaroniteRuntimeContext.activatePartner(
+            manifestVersion: 1,
+            scopes: ["account:read"]
+        ))
+        XCTAssertTrue(SaroniteRuntimeContext.allows(.accountRead))
+        XCTAssertFalse(SaroniteRuntimeContext.allows(nil))
+        XCTAssertFalse(SaroniteRuntimeContext.allowsExternalNavigation)
+        SaroniteRuntimeContext.deactivate()
+        XCTAssertFalse(SaroniteRuntimeContext.allows(.accountRead))
+    }
+
+    override func tearDown() {
+        SaroniteRuntimeContext.deactivate()
+        super.tearDown()
+    }
 }
