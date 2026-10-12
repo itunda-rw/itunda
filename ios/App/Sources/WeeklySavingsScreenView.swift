@@ -86,7 +86,7 @@ private struct WeeklySavingsListContent: View {
     var body: some View {
         VStack(spacing: 10) {
             if let error {
-                WeeklySavingsErrorCard(message: error, onRetry: onRetry)
+                ErrorCardView(error, onRetry: onRetry)
             } else if !loaded {
                 ProgressView().frame(maxWidth: .infinity).padding(40)
             } else if plans.isEmpty {
@@ -170,21 +170,6 @@ private struct WeeklySavingsProgressBar: View {
     }
 }
 
-private struct WeeklySavingsErrorCard: View {
-    let message: String
-    let onRetry: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(message).font(.caption).foregroundColor(.red)
-            Button("Retry", action: onRetry).font(.caption).bold().foregroundColor(IDS.Colors.brand)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(IDS.Colors.card)
-        .cornerRadius(14).idsCardBorder(cornerRadius: 14)
-    }
-}
 
 // MARK: - Detail
 
