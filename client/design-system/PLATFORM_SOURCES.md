@@ -97,6 +97,29 @@ IDS v2 also incorporates the actual product screens that established the current
 6. Promote repeated product patterns into shared components instead of duplicating screen-local implementations.
 7. Add visual regression fixtures before declaring Web/Android/iOS parity complete.
 
+## Quality gates and next parity work
+
+### Verified automated checks
+
+- [x] Semantic token parity for Web, Android and iOS, including light/dark mappings and contrast checks
+- [x] Component source coverage and required accessibility/state contract fields
+- [x] Static regression guards for the Android and iOS loading-button contracts
+- [ ] Runtime component behavior tests on each platform
+- [ ] Cross-platform screenshot baselines and visual-diff review
+- [ ] Public package release/version compatibility policy
+
+A source-symbol check is a guard against accidental removal; it is not proof of runtime behavior. Keep that distinction explicit in PRs and release notes.
+
+### TDS-inspired developer experience (Itunda-native)
+
+Public Toss tooling combines project scaffolding, local mock SDK behavior, devtools, debugging and a separate real-device verification path. Itunda should implement equivalent capabilities against its own IDS and Saronite contracts, without depending on Toss packages or proprietary services:
+
+1. **IDS catalog** — executable examples for every component variant/state, theme and localization.
+2. **Local mini-app host** — mock phone/session/permission/navigation APIs with deterministic fixtures and inspectable events.
+3. **Diagnostics panel** — component/token inspection, accessibility warnings, API errors and event traces.
+4. **Test-on-device bridge** — a clearly separated build/install/debug workflow that never silently publishes or releases.
+5. **Release gate** — token parity, unit/behavior tests, visual diffs, API compatibility and migration notes before publishing packages.
+
 ## Extraction status
 
 - [x] Android foundation inventory
@@ -109,5 +132,5 @@ IDS v2 also incorporates the actual product screens that established the current
 - [x] IDS v2 web component catalog
 - [x] IDS v2 product-pattern catalog
 - [ ] Standalone open-source platform packages
-- [ ] Automated token parity check
+- [x] Automated token parity check
 - [ ] Cross-platform visual regression suite
