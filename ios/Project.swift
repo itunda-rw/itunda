@@ -333,6 +333,14 @@ allTargets.append(
         // App/Resources/Assets.xcassets/AppIcon.appiconset and
         // project_itunda_brand_identity.md for the full derivation.
         resources: ["App/Resources/Fonts/**", "App/Resources/Assets.xcassets/**"],
+        // Real code-signing entitlement NFCTagReaderSession requires (2026-08-27) --
+        // see the infoPlist select-identifiers comment above for the full account.
+        // Without this, an NFCTagReaderSession fails to start on a real device even
+        // with NFCReaderUsageDescription present; that key alone covers the older
+        // NDEF-reading API, not ISO 7816 tag polling.
+        entitlements: .dictionary([
+            "com.apple.developer.nfc.readersession.formats": ["TAG"],
+        ]),
         // React Native 0.84's official Xcode bundling phase is not injected by Tuist's
         // generated target. Without an explicit phase, Debug works through Metro but
         // Release has no main.jsbundle and the app's bundleURL() returns nil. Bundle
@@ -367,14 +375,6 @@ allTargets.append(
                 basedOnDependencyAnalysis: false
             )
         ],
-        // Real code-signing entitlement NFCTagReaderSession requires (2026-08-27) --
-        // see the infoPlist select-identifiers comment above for the full account.
-        // Without this, an NFCTagReaderSession fails to start on a real device even
-        // with NFCReaderUsageDescription present; that key alone covers the older
-        // NDEF-reading API, not ISO 7816 tag polling.
-        entitlements: .dictionary([
-            "com.apple.developer.nfc.readersession.formats": ["TAG"],
-        ]),
         dependencies: appDependencies,
         // Real granite mini-app host (2026-07-16, see App/Sources/Saronite/) needs one
         // small ObjC helper (SaroniteBrickBridge.m) for two RN-internal APIs Swift's
