@@ -44,17 +44,10 @@ final class SaroniteBrownfieldModule: NSObject {
         }
     }
 
-    // Real gap found 2026-08-08 (super-app mini-program research pass, comparing this
-    // bridge against WeChat's own documented Mini Program model, which restricts
-    // outbound navigation to a pre-declared domain allowlist): this took any URL string
-    // and opened it with zero scheme/domain restriction -- an https link to anywhere,
-    // or another installed app's custom scheme. Mirrors the identical fix on Android's
-    // `SaroniteBridge.kt`'s own `openURL` -- same allowlist, same rationale (today's
-    // real callers are itunda's own first-party mini-apps). The iOS bridge now also
-    // requires an explicitly activated runtime context: first-party screens activate
-    // trusted access in SaroniteMiniAppViewController, while uninitialized contexts fail
-    // closed and partner contexts are limited to the versioned capability registry in
-    // SaroniteCapabilityPolicy.swift. Partner bundle loading remains disabled on iOS.
+    // External navigation is first-party-only, matching Android's Saronite bridge.
+    // The runtime context must be explicitly activated; uninitialized access fails closed.
+    // Partner contexts use the versioned registry in SaroniteCapabilityPolicy.swift.
+    // iOS partner bundle loading remains disabled.
     @objc func openURL(_ url: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
         guard SaroniteRuntimeContext.allowsExternalNavigation else {
             reject("SARONITE_SCOPE_DENIED", "External navigation is not approved for this mini-app runtime", nil)
@@ -148,15 +141,9 @@ final class SaroniteBrownfieldModule: NSObject {
     // (2026-08-17, docs Section 163); this iOS bridge had getPendingBills/payBill since
     // 2026-07-13 but never these four, even though the shared pay-bills mini-app UI
     // (packages/saronite/mini-apps/pay-bills/pages/index.tsx) already calls all four --
-    // meaning the auto-pay section of that screen has been silently broken on iOS
-    // (every call rejecting with SARONITE_HTTP_ERROR/method-not-found) since Section 163
-    // shipped it, on this platform alone. `getBillProviders` is included alongside
-    // auto-pay for the same reason Android's own bridge added it in the same pass:
-    // `setAutoPay`/`clearAutoPay` take a real providerId (e.g. "b1"), distinct from
-    // `PendingBill.provider` (only ever a display name) -- without it the mini-app has
-    // no honest way to resolve which provider a user is registering. The central
-    // authorizedCall policy denies these endpoints to partner runtimes; only the
-    // explicitly approved read-only account endpoint has a partner capability in v1.
+    // `getBillProviders` is required by auto-pay: it returns real provider IDs rather
+    // than display names. Central authorization denies it to partner runtimes; v1 grants
+    // partners only the explicitly approved read-only account capability.
     @objc func getBillProviders(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
         authorizedCall(path: "api/v1/bills/providers", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
             let providers = ((root["providers"] as? [[String: Any]]) ?? []).map(Self.mapBillProvider)
@@ -630,12 +617,11 @@ final class SaroniteBrownfieldModule: NSObject {
         reject: @escaping RCTPromiseRejectBlock,
         parse: @escaping ([String: Any]) -> [String: Any]
     ) {
-        // The only partner capability currently supported by the reviewed manifest
-        // contract is read-only account access. Every other API path (especially all
-        // POST/PUT operations) is denied for partner runtimes by default.
-        let capability: SaroniteCapability? =
-            method.uppercased() == "GET" && path == "api/v1/account" ? .accountRead : nil
-        guard SaroniteRuntimeContext.allows(capability) else {
+        guard SaroniteRuntimeContext.allows(
+            path: path,
+            method: method,
+            runtime: SaroniteRuntimeContext.currentTrust
+        ) else {
             reject("SARONITE_SCOPE_DENIED", "This mini-app's approved permissions do not include this call", nil)
             return
         }
