@@ -1,0 +1,26 @@
+{
+  "brand": {
+    "500": "#8F89FF",
+    "pressed": "#7D77F7",
+    "on-brand-text": "#121216",
+    "text-on-light": "#6960F9",
+    "text-on-dark": "#8F89FF",
+    "tint-light": "#F1F0FF",
+    "tint-dark": "#25234A"
+  },
+  "light": {
+    "bg": "#FFFFFF",
+    "surface": "#F4F5F8",
+    "line": "#E5E8EB",
+    "text": "#191F28",
+    "text-muted": "#6B7684"
+  },
+  "dark": {
+    "bg": "#121216",
+    "surface": "#1C1C22",
+    "elevated": "#25252D",
+    "line": "#2E2E37",
+    "text": "#F4F5F7",
+    "text-muted": "#9AA1AD"
+  }
+}

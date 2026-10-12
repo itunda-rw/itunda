@@ -1,37 +1,31 @@
-# itunda logo assets (trefoil symbol)
+# itunda brand assets v3 (one color, #8F89FF)
 
-Symbol only, unless the file is in `lockups/`. Brand colors: indigo `#7472F4`, deeper `#4B47C9`, light `#B0AEFF`, dark-mode `#9B98FF`.
+This updates the earlier itunda-brand package. The logo is now a single flat color, `#8F89FF`, in light mode, dark mode, app icon and splash. There are no deep shades and no dark halos. The crossings are transparent gaps, so one file works on any background.
 
-## symbol/
-| file | use |
-|---|---|
-| itunda-symbol.svg | main color symbol, light backgrounds, 32px and up |
-| itunda-symbol-white.svg | on indigo or photo backgrounds |
-| itunda-symbol-dark.svg | dark mode |
-| itunda-symbol-mono.svg | one color (set the `color` property), stamps, receipts, emboss |
-| itunda-symbol-small-mono.svg | thinner strands for 16-32px (favicon, tab bars, list icons) |
-| itunda-symbol-animated.svg | web only: the knot draws itself in, honors reduced-motion |
+## Colors (tokens/)
+| token | value | notes |
+|---|---|---|
+| brand | #8F89FF | logo, buttons, icon background. Same in both modes |
+| on-brand text | #121216 | text on brand fills: 6.4:1. White on brand is only 2.9:1, avoid it |
+| brand-pressed | #7D77F7 | pressed state, UI only |
+| brand-text | #6960F9 on light, #8F89FF on dark | link text that passes 4.5:1 |
+| tint | #F1F0FF light, #25234A dark | selected rows, chips |
+| dark bg / surface / elevated | #121216 / #1C1C22 / #25252D | neutral surfaces |
 
-## app-icons/
-| file | use |
-|---|---|
-| itunda-app-icon.svg | iOS and store icon, 1024 square, no rounded corners (the OS rounds it) |
-| itunda-ios-dark.svg / itunda-ios-tinted.svg | iOS 18 dark and tinted appearances |
-| itunda-android-adaptive-background.svg + ...-foreground.svg | Android adaptive icon layers (108dp, foreground sits inside the 66dp safe zone) |
-| itunda-android-monochrome.svg | Android themed-icon layer |
-| itunda-android-notification.svg | white-only status bar icon (24dp) |
-| itunda-favicon.svg | browser tab icon |
+Contrast to know: brand on dark 6.4:1 (good), brand on white 2.9:1 (just under the 3:1 guideline for graphics). If you need to pass 3:1 on white, replace #8F89FF with #8D86FC (3.0:1, visually almost identical): search and replace in the SVGs and tokens.
 
-## splash/
-itunda-splash-light.svg / itunda-splash-dark.svg: 1080x1920 logo-only screens.
-itunda-splash-icon.svg / itunda-splash-icon-dark.svg: Android 12 splash icon (288dp, transparent background; set the splash background color to white / #090B0F).
+## Files
+- symbol/: itunda-symbol (one file for light and dark), -white, -mono (set `color`), -small-mono (use below 32px), -animated (web)
+- app-icons/: app-icon (iOS/store, square), ios-dark, ios-tinted, android adaptive background + foreground, android monochrome, android notification, favicon
+- splash/: splash-light, splash-dark (1080x1920), splash-icon (Android 12, transparent; set splash background to #FFFFFF or #121216)
+- lockups/: bank, pay, eats, shopping, loans, insurance, transit, invest, each light and dark
+- tokens/: itunda-colors.css and .json
 
-## lockups/
-`itunda-<product>-<light|dark>.svg` for bank, pay, eats, shopping, loans, insurance, transit, invest.
+## Changes from the earlier package
+- Removed: itunda-symbol-dark.svg and itunda-splash-icon-dark.svg (the symbol is now the same in both modes).
+- All colors changed to #8F89FF; gradients and shadows removed.
 
 ## Read before shipping
-- Files marked "gaps" use an SVG `<mask>` to cut transparent gaps at the crossings. Renderers that skip masks will show solid blobs. react-native-svg and browsers support masks. Android VectorDrawable and Xcode asset catalogs may not, so export PNGs (or run the SVGs through your build tool) for those.
-- Lockups use live `<text>` in a font stack starting with Pretendard. Outline the text in a design tool for print or marketing, and in the app render the symbol SVG plus native text instead.
-- Below 24px use the small version, not the main symbol.
-- Dark-mode halos are tuned for `#090B0F`.
-- Not yet tested in Xcode or Android Studio, and not yet trademark-searched.
+- Gaps use an SVG `<mask>`. Browsers and react-native-svg support it; Android VectorDrawable and Xcode asset catalogs may not, so export PNGs for those.
+- Lockups use live text in a Pretendard font stack; outline for print.
+- Not yet checked in Xcode or Android Studio. Trademark search still pending.
