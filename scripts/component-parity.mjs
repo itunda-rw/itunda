@@ -15,10 +15,10 @@ const checks = [];
 
 function checkFile(platform, relativePath) {
   const absolute = path.join(platformRoots[platform], relativePath);
-  const exists = fs.existsSync(absolute);
-  checks.push({ platform, relativePath, exists });
-  if (!exists) failures.push(`${platform}: missing source ${relativePath}`);
-  return exists;
+  const isFile = fs.existsSync(absolute) && fs.statSync(absolute).isFile();
+  checks.push({ platform, relativePath, exists: isFile });
+  if (!isFile) failures.push(`${platform}: source must be an existing file (directories are not valid component sources): ${relativePath}`);
+  return isFile;
 }
 
 function checkSymbol(platform, relativePath, symbols) {
