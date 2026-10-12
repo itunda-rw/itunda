@@ -99,6 +99,34 @@ final class SaroniteBrownfieldModule: NSObject {
         }
     }
 
+    // Wallet balance is a distinct API contract from account summary: the wallet
+    // mini-app expects { totalBalance, currency, wallets } from GET /api/v1/wallet/balance.
+    // Runtime capability policy is checked inside authorizedCall; partner runtimes fail closed
+    // unless this exact endpoint is explicitly approved by the policy registry.
+    @objc func getWalletBalance(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/wallet/balance", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+            let data = root["data"] as? [String: Any]
+            let currency = data?["currency"] as? String ?? "RWF"
+            let wallets = ((root["wallets"] as? [[String: Any]]) ?? []).map { wallet -> [String: Any] in
+                [
+                    "id": wallet["id"] as? String ?? "",
+                    "type": wallet["type"] as? String ?? "",
+                    "name": wallet["name"] as? String ?? "",
+                    "number": wallet["number"] as? String ?? "",
+                    "balance": (wallet["balance"] as? NSNumber)?.doubleValue ?? 0,
+                    "currency": wallet["currency"] as? String ?? currency,
+                    "icon": wallet["icon"] as? String ?? "",
+                    "connected": wallet["connected"] as? Bool ?? false,
+                ]
+            }
+            return [
+                "totalBalance": (root["totalBalance"] as? NSNumber)?.doubleValue ?? 0,
+                "currency": currency,
+                "wallets": wallets,
+            ]
+        }
+    }
+
     @objc func getPendingBills(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
         authorizedCall(path: "api/v1/bills/pending", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
             let bills = ((root["bills"] as? [[String: Any]]) ?? []).map { b -> [String: Any] in
