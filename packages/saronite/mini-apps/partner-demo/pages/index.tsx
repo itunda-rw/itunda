@@ -25,7 +25,7 @@ export default function PartnerDemoPage() {
 
   const runWalletCall = useCallback(() => {
     getWalletBalance()
-      .then((result) => setWalletResult(`wallet access unexpectedly SUCCEEDED (first-party-only boundary is broken)`))
+      .then(() => setWalletResult(`wallet access unexpectedly SUCCEEDED (first-party-only boundary is broken)`))
       .catch((err: Error) => setWalletResult(`wallet access denied as expected -- ${err.message}`));
   }, []);
 
