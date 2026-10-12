@@ -83,7 +83,7 @@ struct SaccoScreenView: View {
                                     HStack {
                                         Text(String(d.createdAt.prefix(10))).font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                         Spacer()
-                                        Text("+\(formatMoney(d.amount)) RWF").font(.footnote).bold().foregroundColor(.green)
+                                        Text("+\(formatMoney(d.amount)) RWF").font(.footnote).bold().foregroundColor(IDS.Colors.success)
                                     }
                                 }
                             }
