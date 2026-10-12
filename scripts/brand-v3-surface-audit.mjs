@@ -13,6 +13,12 @@ const androidColors = read("android/core/designsystem/src/main/java/rw/itunda/co
 const androidButton = read("android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt");
 const iosColors = read("ios/Core/DesignSystem/Sources/IDS.swift");
 const iosButton = read("ios/Core/DesignSystem/Sources/Components/Components.swift");
+const transitCollect = read("ios/App/Sources/TransitCollectScreenView.swift");
+const motoFareCollect = read("ios/App/Sources/MotoFareCollectScreenView.swift");
+const requestMoney = read("ios/App/Sources/RequestMoneyScreen.swift");
+const foreignCurrency = read("ios/App/Sources/ForeignCurrencyScreen.swift");
+const saccoScreen = read("ios/App/Sources/SaccoScreenView.swift");
+const upfrontDeposit = read("ios/App/Sources/UpfrontDepositScreen.swift");
 const homepage = read("client/index.html");
 const techBlogStyles = read("services/blog/src/styles.css");
 const techBlogHtml = read("services/blog/index.html");
@@ -61,6 +67,12 @@ check(iosColors.includes("public static let brand = Color(light: 0x8F89FF, dark:
 check(iosColors.includes("public static let onBrand = Color(light: 0x121216, dark: 0x121216)"), "iOS on-brand foreground is missing");
 check(iosColors.includes("public static let success = Color(light: 0x8F89FF, dark: 0x8F89FF)"), "iOS success semantic must use Itunda brand violet");
 check(iosButton.includes("IDS.Colors.onBrand"), "iOS filled button does not use on-brand foreground");
+check(transitCollect.includes("foregroundColor(IDS.Colors.success)"), "transit collection success must use semantic brand success");
+check(motoFareCollect.includes("foregroundColor(IDS.Colors.success)"), "moto fare collection success must use semantic brand success");
+check(requestMoney.includes("? IDS.Colors.success : req.status"), "completed money requests must use semantic brand success");
+check(foreignCurrency.includes("foregroundColor(IDS.Colors.success)"), "foreign currency success/preview must use semantic brand success");
+check(saccoScreen.includes("foregroundColor(IDS.Colors.success)"), "SACCO positive amount must use semantic brand success");
+check(upfrontDeposit.includes("return IDS.Colors.success") && upfrontDeposit.includes("foregroundColor(IDS.Colors.success)"), "upfront deposit success must use semantic brand success");
 
 const staleBrandAnchor = /#(?:7472F4|7675F8|9B98FF|625FE0|625FE6|F0EFFF)\b/i;
 for (const surface of activeBrandSurfaces) {
