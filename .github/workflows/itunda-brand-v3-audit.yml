@@ -50,6 +50,35 @@ jobs:
           echo "- PNG files: $(find /tmp/itunda-brand-v3 -type f -iname '*.png' | wc -l | tr -d ' ')" >> "$GITHUB_STEP_SUMMARY"
           echo "- Other files: $(find /tmp/itunda-brand-v3 -type f ! -iname '*.svg' ! -iname '*.png' | wc -l | tr -d ' ')" >> "$GITHUB_STEP_SUMMARY"
           find /tmp/itunda-brand-v3 -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/itunda-brand-v3-SHA256SUMS
+          echo >> "$GITHUB_STEP_SUMMARY"
+          echo '### Comparison with currently pinned canonical files' >> "$GITHUB_STEP_SUMMARY"
+          canonical='packages/brand-assets/canonical/itunda-brand'
+          if [ -d "$canonical" ]; then
+            : > /tmp/itunda-brand-v3-diff.txt
+            while IFS= read -r -d '' src; do
+              rel="${src#/tmp/itunda-brand-v3/itunda-brand-v3/}"
+              dst="$canonical/$rel"
+              if [ ! -f "$dst" ]; then
+                printf 'NEW  %s\n' "$rel" >> /tmp/itunda-brand-v3-diff.txt
+              elif ! cmp -s "$src" "$dst"; then
+                printf 'DIFF %s\n' "$rel" >> /tmp/itunda-brand-v3-diff.txt
+              fi
+            done < <(find /tmp/itunda-brand-v3/itunda-brand-v3 -type f -print0 | sort -z)
+            while IFS= read -r -d '' dst; do
+              rel="${dst#$canonical/}"
+              src="/tmp/itunda-brand-v3/itunda-brand-v3/$rel"
+              if [ ! -f "$src" ]; then printf 'OLD-ONLY %s\n' "$rel" >> /tmp/itunda-brand-v3-diff.txt; fi
+            done < <(find "$canonical" -type f -print0 | sort -z)
+            if [ -s /tmp/itunda-brand-v3-diff.txt ]; then cat /tmp/itunda-brand-v3-diff.txt >> "$GITHUB_STEP_SUMMARY"; else echo 'All matching relative paths are byte-identical.' >> "$GITHUB_STEP_SUMMARY"; fi
+          else
+            echo 'Existing canonical extraction not found; comparison skipped.' >> "$GITHUB_STEP_SUMMARY"
+            : > /tmp/itunda-brand-v3-diff.txt
+          fi
+          echo >> "$GITHUB_STEP_SUMMARY"
+          echo '### Color-token source files' >> "$GITHUB_STEP_SUMMARY"
+          for f in /tmp/itunda-brand-v3/itunda-brand-v3/tokens/itunda-colors.css /tmp/itunda-brand-v3/itunda-brand-v3/tokens/itunda-colors.json; do
+            if [ -f "$f" ]; then echo "Found: ${f##*/}" >> "$GITHUB_STEP_SUMMARY"; fi
+          done
       - name: Upload v3 audit inventory
         uses: actions/upload-artifact@v4
         with:
