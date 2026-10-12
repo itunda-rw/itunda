@@ -163,7 +163,7 @@ public struct IdsButton: View {
             Group {
                 if isLoading {
                     ProgressView()
-                        .tint(variant == .filled ? IDS.Colors.textBrand : IDS.Colors.brand)
+                        .tint(variant == .filled ? IDS.Colors.onBrand : IDS.Colors.brand)
                 } else {
                     Text(text)
                         .font(IdsTypeScale.button)
