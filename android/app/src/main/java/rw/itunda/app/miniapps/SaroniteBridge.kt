@@ -568,23 +568,29 @@ class SaroniteBrownfieldModule(
     private fun parseWalletBalance(json: String): WritableMap {
         val root = JsonParser.parseString(json).asJsonObject
         val result = Arguments.createMap()
-        val data = root.getAsJsonObject("data")
-        result.putDouble("totalBalance", root.get("totalBalance")?.asDouble ?: 0.0)
-        result.putString("currency", data?.get("currency")?.asString ?: "RWF")
+        val accounts = root.getAsJsonArray("accounts")
+        var currency = accounts?.firstOrNull()?.asJsonObject?.get("currency")?.asString ?: "RWF"
+        var totalBalance = 0.0
         val wallets = Arguments.createArray()
-        root.getAsJsonArray("wallets")?.forEach { element ->
-            val wallet = element.asJsonObject
+        accounts?.forEach { element ->
+            val account = element.asJsonObject
+            val balance = account.get("balance")?.asDouble ?: 0.0
+            val accountCurrency = account.get("currency")?.asString ?: currency
+            totalBalance += balance
+            currency = accountCurrency
             val walletMap = Arguments.createMap()
-            walletMap.putString("id", wallet.get("id")?.asString ?: "")
-            walletMap.putString("type", wallet.get("type")?.asString ?: "")
-            walletMap.putString("name", wallet.get("name")?.asString ?: "")
-            walletMap.putString("number", wallet.get("number")?.asString ?: "")
-            walletMap.putDouble("balance", wallet.get("balance")?.asDouble ?: 0.0)
-            walletMap.putString("currency", wallet.get("currency")?.asString ?: "RWF")
-            walletMap.putString("icon", wallet.get("icon")?.asString ?: "")
-            walletMap.putBoolean("connected", wallet.get("connected")?.asBoolean ?: false)
+            walletMap.putString("id", account.get("id")?.asString ?: "")
+            walletMap.putString("type", account.get("type")?.asString ?: "")
+            walletMap.putString("name", account.get("nickname")?.takeUnless { it.isJsonNull }?.asString?.takeIf { it.isNotBlank() } ?: account.get("accountName")?.asString ?: "")
+            walletMap.putString("number", account.get("accountNumber")?.asString ?: "")
+            walletMap.putDouble("balance", balance)
+            walletMap.putString("currency", accountCurrency)
+            walletMap.putString("icon", "")
+            walletMap.putBoolean("connected", true)
             wallets.pushMap(walletMap)
         }
+        result.putDouble("totalBalance", totalBalance)
+        result.putString("currency", currency)
         result.putArray("wallets", wallets)
         return result
     }
