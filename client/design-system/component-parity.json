@@ -1,5 +1,5 @@
 {
-  "version": "1.6.7",
+  "version": "1.6.8",
   "purpose": "IDS component API and state parity contract. Platform implementations may use native APIs, but public behavior must satisfy the same contract.",
   "components": {
     "button": {
@@ -257,7 +257,7 @@
       "knownImplementationGaps": [
         "Bank and merchant web ErrorCard components share the centered error icon, message, primary Retry treatment and decorative-icon accessibility behavior, but remain separately implemented; a package-level shared component is not yet established.",
         "Web ErrorCard messages use role=\"alert\". Redundant role=\"alert\" plus aria-live=\"polite\" was removed from merchant registration and ops login errors. Real screen-reader behavior still needs runtime verification for useful, non-duplicated announcements.",
-        "iOS weekly savings, 31-day savings, wealth portfolio/market, vehicle valuation, delayed transfers, auto-transfers, merchant updates, bucket transaction history, asset overview initial-load failures, call history, direct-message list load failures, job sub-screen failures, resume-builder initial-load failures, friends-list and group-list load/action failures, service-channel thread load failures, merchant-order and return/exchange load failures, job feed, marketplace listings/reviews, property listings, community feed, merchant discovery, and restaurant discovery failures, shop-order/favorites/subscription/inquiry failures, and Eats order/favorites failures use shared ErrorCardView with retry actions where appropriate. Asset-link/mutation errors stay inline to preserve the form and its context.",
+        "iOS weekly savings, 31-day savings, wealth portfolio/market, vehicle valuation, delayed transfers, auto-transfers, merchant updates, bucket transaction history, asset overview initial-load failures, call history, direct-message list load failures, job sub-screen failures, resume-builder initial-load failures, friends-list and group-list load/action failures, service-channel thread load failures, merchant-order and return-queue load failures (return-decision failures remain inline action feedback), job feed, marketplace listings/reviews, property listings, community feed, merchant discovery, and restaurant discovery failures, shop-order/favorites/subscription/inquiry failures, and Eats order/favorites failures use shared ErrorCardView with retry actions where appropriate. Asset-link/mutation errors stay inline to preserve the form and its context.",
         "Android Talk call history and service-channel thread now launch their existing reload functions from Retry instead of using no-op callbacks.",
         "Native Android/iOS announcement behavior, localized recovery wording, retry loading/failure states, contrast, preservation of user-entered context, and full device/simulator behavior still require runtime validation."
       ],
