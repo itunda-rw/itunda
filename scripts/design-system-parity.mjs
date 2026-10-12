@@ -259,6 +259,62 @@ for (const role of contract.semanticRoles ?? []) {
   }
 }
 
+
+const textContrast = contract.textContrast ?? {
+  roles: ["textPrimary", "textSecondary", "textTertiary", "textBrand"],
+  backgroundRoles: ["background", "surface"],
+  minimum: 4.5,
+};
+if (!Array.isArray(textContrast.roles) || textContrast.roles.length === 0) {
+  failures.push("contract: textContrast.roles must be a non-empty array");
+}
+if (!Array.isArray(textContrast.backgroundRoles) || textContrast.backgroundRoles.length === 0) {
+  failures.push("contract: textContrast.backgroundRoles must be a non-empty array");
+}
+const textContrastMinimum = Number(textContrast.minimum ?? 4.5);
+if (!Number.isFinite(textContrastMinimum) || textContrastMinimum < 4.5) {
+  failures.push(`contract: textContrast.minimum must be a finite number >= 4.5, got ${textContrast.minimum}`);
+}
+
+function semanticValue(platform, role, theme) {
+  if (platform === "web") {
+    const token = contract.web?.tokens?.[role];
+    return token?.startsWith("--") ? resolveCssColor(token, cssRoleMaps[theme]) : undefined;
+  }
+  if (platform === "android") {
+    const token = contract.android?.tokens?.[role];
+    return token ? kotlinRoleValues(source.android, token)[theme] : undefined;
+  }
+  const token = contract.ios?.tokens?.[role];
+  return token ? swiftRoleValues(source.ios, token)[theme] : undefined;
+}
+
+// Enforce normal-text WCAG AA against every declared text surface on every platform,
+// not only the special brand-text token. This catches accessible-looking values that
+// drift or become unreadable when a background/surface token changes.
+for (const platform of ["web", "android", "ios"]) {
+  for (const theme of ["light", "dark"]) {
+    for (const textRole of textContrast.roles ?? []) {
+      const foreground = semanticValue(platform, textRole, theme);
+      if (!foreground) {
+        failures.push(`${platform}: ${theme} contrast foreground ${textRole} could not be resolved`);
+        continue;
+      }
+      for (const backgroundRole of textContrast.backgroundRoles ?? []) {
+        const background = semanticValue(platform, backgroundRole, theme);
+        if (!background) {
+          failures.push(`${platform}: ${theme} contrast background ${backgroundRole} could not be resolved`);
+          continue;
+        }
+        const ratio = contrastRatio(foreground, background);
+        if (!Number.isFinite(ratio) || ratio < textContrastMinimum) {
+          failures.push(`contrast failure: ${platform} ${theme} ${textRole} on ${backgroundRole} is ${ratio.toFixed(2)}:1; minimum ${textContrastMinimum}:1 (${foreground} on ${background})`);
+        }
+      }
+    }
+  }
+}
+
 if (failures.length) {
   console.error("IDS semantic parity: FAIL");
   failures.forEach((failure) => console.error(" - " + failure));
@@ -269,3 +325,4 @@ console.log("IDS semantic parity: PASS");
 console.log(`Checked ${contract.semanticRoles.length} semantic roles across Web, Android and iOS.`);
 console.log(`Verified exact light/dark brand anchors (${lightBrand} / ${darkBrand}) across all three platforms.`);
 console.log(`Verified textBrand contrast (${contrastRatio(lightTextBrand, lightTextBackground).toFixed(2)}:1 light; ${contrastRatio(darkTextBrand, darkTextBackground).toFixed(2)}:1 dark; minimum ${minimumTextContrast}:1).`);
+console.log(`Verified ${textContrast.roles.length} text roles against ${textContrast.backgroundRoles.length} surfaces in both themes on all three platforms.`);
