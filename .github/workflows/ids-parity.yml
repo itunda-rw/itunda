@@ -24,6 +24,7 @@ on:
       - "business/index.html"
       - "business/developers/index.html"
       - "sites/**/index.html"
+      - "sites/public/ids.css"
       - "packages/brand-assets/canonical/itunda-brand/tokens/itunda-colors.css"
       - ".github/workflows/ids-parity.yml"
   workflow_dispatch:
