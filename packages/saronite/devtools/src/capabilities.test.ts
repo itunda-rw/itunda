@@ -1,4 +1,4 @@
-import { permissionFor, SARONITE_CAPABILITIES } from './capabilities';
+import { permissionFor, SARONITE_CAPABILITIES } from './capabilities.ts';
 
 function assertEqual(actual: unknown, expected: unknown, message: string): void {
   if (actual !== expected) throw new Error(`${message}: expected ${String(expected)}, got ${String(actual)}`);
