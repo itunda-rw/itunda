@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { ApiError } from './lib/api';
 import { IconBack } from './icons/ItundaIcons';
+import { ErrorCard } from './EmptyState';
 import { useI18n } from './i18n/I18nContext';
 import {
   fetchAgentWithdrawalAuthorizations, createAgentWithdrawalAuthorization, cancelAgentWithdrawalAuthorization,
@@ -83,9 +84,17 @@ export function AgentCashOutView({ onBack, onFindNearbyAgent }: { onBack: () => 
   const [idempotencyKey, setIdempotencyKey] = useState(randomUUID());
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const load = () => {
-    fetchAgentWithdrawalAuthorizations().then(setAuthorizations).catch(() => setAuthorizations([]));
+  const load = async () => {
+    try {
+      const result = await fetchAgentWithdrawalAuthorizations();
+      setAuthorizations(result);
+      setLoadError(null);
+    } catch {
+      // Keep the failed state distinct from a successful empty history.
+      setLoadError('Could not load withdrawal codes. Check your connection and try again.');
+    }
   };
   useEffect(load, []);
 
@@ -165,11 +174,12 @@ export function AgentCashOutView({ onBack, onFindNearbyAgent }: { onBack: () => 
           <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>
             Your codes ({activeCount} active)
           </h3>
-          {authorizations === null && <div className="itunda-flat-section skeleton" style={{ height: '120px' }} />}
-          {authorizations !== null && authorizations.length === 0 && (
+          {loadError && <ErrorCard message={loadError} onRetry={() => { void load(); }} />}
+          {!loadError && authorizations === null && <div className="itunda-flat-section skeleton" style={{ height: '120px' }} />}
+          {!loadError && authorizations !== null && authorizations.length === 0 && (
             <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-500)' }}>No withdrawal codes yet.</p>
           )}
-          {authorizations !== null && authorizations.length > 0 && authorizations.map((a) => (
+          {!loadError && authorizations !== null && authorizations.length > 0 && authorizations.map((a) => (
             <AuthorizationCard key={a.id} authorization={a} onCancelled={load} />
           ))}
         </div>
