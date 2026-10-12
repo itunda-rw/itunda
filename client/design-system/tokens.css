@@ -135,13 +135,39 @@
 }
 
 
-/* Component contract tokens */
+/* Component contract tokens.
+   Legacy TDS-prefixed component styles are aliases of canonical IDS tokens.
+   Keep aliases semantic so light/dark theme changes stay synchronized. */
 :root{
   --tds-target-min:44px;
   --tds-overlay:rgb(8 10 16 / .48);
-  --tds-motion-fast:140ms;
-  --tds-motion-standard:220ms;
-  --tds-motion-emphasis:420ms;
+  --tds-motion-fast:var(--itunda-motion-fast);
+  --tds-motion-standard:var(--itunda-motion-normal);
+  --tds-motion-emphasis:var(--itunda-motion-slow);
+  --tds-space-2:var(--itunda-space-2);
+  --tds-space-3:var(--itunda-space-3);
+  --tds-space-4:var(--itunda-space-4);
+  --tds-space-6:var(--itunda-space-6);
+  --tds-radius-12:var(--itunda-radius-sm);
+  --tds-radius-16:var(--itunda-radius-md);
+  --tds-radius-20:var(--itunda-radius-lg);
+  --tds-control-md:var(--itunda-control-height-md);
+  --tds-shadow-lg:var(--itunda-shadow-lg);
+  --tds-surface:var(--itunda-color-surface);
+  --tds-surface-sunken:var(--itunda-color-surface-sunken);
+  --tds-text:var(--itunda-color-text);
+  --tds-text-strong:var(--itunda-color-text-strong);
+  --tds-text-muted:var(--itunda-color-text-muted);
+  --tds-border:var(--itunda-color-border);
+  --tds-brand-soft:var(--itunda-color-brand-soft);
+  --tds-focus:var(--itunda-focus);
+  --tds-z-toast:var(--itunda-z-toast);
+  --tds-ease-out:var(--itunda-ease);
+  --tds-leading-relaxed:var(--itunda-leading-relaxed);
+  --tds-text-sm:var(--itunda-text-sm);
+}
+@media (pointer:coarse){
+  :root{--tds-target-min:48px}
 }
 @media (pointer:coarse){
   :root{--tds-target-min:48px}
