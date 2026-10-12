@@ -109,19 +109,20 @@ fun SkeletonBlock(height: Dp = 120.dp, modifier: Modifier = Modifier) {
     // Android's system animator scale is disabled by the system "Remove animations"
     // accessibility setting. Keep the placeholder visible but static in that mode.
     val animationsEnabled = Build.VERSION.SDK_INT < Build.VERSION_CODES.O || ValueAnimator.areAnimatorsEnabled()
-    val transition = rememberInfiniteTransition(label = "skeleton")
-    val offset by transition.animateFloat(
-        initialValue = if (animationsEnabled) -1f else 0f,
-        targetValue = if (animationsEnabled) 2f else 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = if (animationsEnabled) 1000 else 0,
-                easing = LinearEasing,
+    val offset by if (animationsEnabled) {
+        rememberInfiniteTransition(label = "skeleton").animateFloat(
+            initialValue = -1f,
+            targetValue = 2f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
             ),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "skeletonOffset",
-    )
+            label = "skeletonOffset",
+        )
+    } else {
+        // Do not create a zero-duration infinite animation; use a genuinely static value.
+        remember { mutableStateOf(0f) }
+    }
     Card(
         shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
         modifier = modifier.fillMaxWidth().height(height).clearAndSetSemantics { },
