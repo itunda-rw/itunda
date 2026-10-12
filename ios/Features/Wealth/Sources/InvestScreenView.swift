@@ -178,7 +178,7 @@ struct StockRow: View {
                         Image(systemName: positive ? "arrow.up.right" : "arrow.down.right").font(.caption2)
                         Text("\(positive ? "+" : "")\(String(format: "%.2f", stock.changePercent))%").font(.caption).bold()
                     }
-                    .foregroundColor(positive ? .green : .red)
+                    .foregroundColor(positive ? IDS.Colors.success : .red)
                 }
             }
             .padding()
