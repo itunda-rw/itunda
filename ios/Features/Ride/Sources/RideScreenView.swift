@@ -149,6 +149,8 @@ private struct RidePassengerContent: View {
     @State private var pastTripsPage = 0
     @State private var pastTripsHasMore = false
     @State private var loadingMorePastTrips = false
+    @State private var tripsLoadError: String?
+    @State private var pastTripsPaginationError: String?
     @State private var activeTripStops: [RideTripStopDto] = []
     @State private var requesting = false
     @State private var busyTripId: String?
@@ -192,6 +194,12 @@ private struct RidePassengerContent: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
+                if let tripsLoadError {
+                    ErrorCardView(tripsLoadError, onRetry: { Task { await loadTrips() } })
+                }
+                if let pastTripsPaginationError {
+                    ErrorCardView(pastTripsPaginationError, onRetry: { Task { await loadMorePastTrips() } })
+                }
                 if let error {
                     Text(error).font(.footnote).foregroundColor(.red)
                 }
@@ -361,19 +369,32 @@ private struct RidePassengerContent: View {
     }
 
     private func loadTrips() async {
-        guard let r = try? await NetworkClient.shared.getMyRideTrips(page: 0) else { return }
-        myTrips = r.trips
-        pastTripsHasMore = r.page + 1 < r.totalPages
+        do {
+            let r = try await NetworkClient.shared.getMyRideTrips(page: 0)
+            myTrips = r.trips
+            pastTripsHasMore = r.page + 1 < r.totalPages
+            tripsLoadError = nil
+        } catch {
+            // Polling must not turn an unavailable trips feed into a convincing empty state.
+            if myTrips.isEmpty {
+                tripsLoadError = "Couldn't load your rides. Check your connection and try again."
+            }
+        }
     }
 
     private func loadMorePastTrips() async {
         let nextPage = pastTripsPage + 1
         loadingMorePastTrips = true
         defer { loadingMorePastTrips = false }
-        guard let r = try? await NetworkClient.shared.getMyRideTrips(page: nextPage) else { return }
-        olderPastTrips += r.trips.filter { $0.status == "COMPLETED" || $0.status == "CANCELLED" }
-        pastTripsPage = nextPage
-        pastTripsHasMore = r.page + 1 < r.totalPages
+        do {
+            let r = try await NetworkClient.shared.getMyRideTrips(page: nextPage)
+            olderPastTrips += r.trips.filter { $0.status == "COMPLETED" || $0.status == "CANCELLED" }
+            pastTripsPage = r.page
+            pastTripsHasMore = r.page + 1 < r.totalPages
+            pastTripsPaginationError = nil
+        } catch {
+            pastTripsPaginationError = "Couldn't load more past rides. Please try again."
+        }
     }
 
     private func loadActiveTripStops() async {
