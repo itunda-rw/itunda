@@ -17,7 +17,7 @@ struct PortfolioContent: View {
                     Text("Total value").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
                     Text("\(formatMoney(portfolio.totalValue)) RWF").font(.title2).bold().foregroundColor(IDS.Colors.textPrimary)
                     Text("\(positive ? "+" : "")\(formatMoney(portfolio.totalReturn)) RWF (\(positive ? "+" : "")\(String(format: "%.2f", portfolio.totalReturnPercent))%)")
-                        .font(.subheadline).bold().foregroundColor(positive ? .green : .red)
+                        .font(.subheadline).bold().foregroundColor(positive ? IDS.Colors.success : .red)
                     if let history, !history.isEmpty {
                         Sparkline(values: history.map { $0.value }, positive: positive).frame(height: 48).padding(.top, 6)
                         Text("Last 30 days -- based on your current holdings applied to real historical prices, not a full historical reconstruction")
@@ -74,7 +74,7 @@ struct HoldingRow: View {
             HStack {
                 Text("\(formatMoney(holding.shares)) shares @ \(formatMoney(holding.avgPrice)) avg").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                 Spacer()
-                Text("\(positive ? "+" : "")\(String(format: "%.2f", holding.returnPercent))%").font(.caption).bold().foregroundColor(positive ? .green : .red)
+                Text("\(positive ? "+" : "")\(String(format: "%.2f", holding.returnPercent))%").font(.caption).bold().foregroundColor(positive ? IDS.Colors.success : .red)
             }
         }
         .padding(.vertical, 10)
