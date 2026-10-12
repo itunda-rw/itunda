@@ -58,6 +58,10 @@ final class SaroniteBrownfieldModule: NSObject {
     // whole partner-scoping system is a real, separate, larger gap, not something to
     // build inside this one fix.
     @objc func openURL(_ url: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        guard SaroniteRuntimeContext.allowsExternalNavigation else {
+            reject("SARONITE_SCOPE_DENIED", "External navigation is not approved for this mini-app runtime", nil)
+            return
+        }
         guard let parsed = URL(string: url) else {
             reject("SARONITE_OPEN_URL_FAILED", "Invalid URL", nil)
             return
@@ -628,6 +632,15 @@ final class SaroniteBrownfieldModule: NSObject {
         reject: @escaping RCTPromiseRejectBlock,
         parse: @escaping ([String: Any]) -> [String: Any]
     ) {
+        // The only partner capability currently supported by the reviewed manifest
+        // contract is read-only account access. Every other API path (especially all
+        // POST/PUT operations) is denied for partner runtimes by default.
+        let capability: SaroniteCapability? =
+            method.uppercased() == "GET" && path == "api/v1/account" ? .accountRead : nil
+        guard SaroniteRuntimeContext.allows(capability) else {
+            reject("SARONITE_SCOPE_DENIED", "This mini-app's approved permissions do not include this call", nil)
+            return
+        }
         guard let token = KeychainTokenStore.shared.getAccessToken() else {
             reject("SARONITE_NOT_AUTHENTICATED", "No active itunda session", nil)
             return
