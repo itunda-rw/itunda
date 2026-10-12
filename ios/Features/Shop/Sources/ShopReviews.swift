@@ -23,6 +23,7 @@ struct ProductInquirySection: View {
     @State private var inquiriesPage = 0
     @State private var inquiriesHasMore = false
     @State private var loadingMoreInquiries = false
+    @State private var inquiriesPaginationError: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -72,6 +73,9 @@ struct ProductInquirySection: View {
                             .font(.caption)
                             .disabled(loadingMoreInquiries)
                         }
+                        if let inquiriesPaginationError {
+                            ErrorCardView(inquiriesPaginationError, onRetry: { Task { await loadMoreInquiries() } })
+                        }
                     }
                 }
             } else {
@@ -98,10 +102,15 @@ struct ProductInquirySection: View {
         let nextPage = inquiriesPage + 1
         loadingMoreInquiries = true
         defer { loadingMoreInquiries = false }
-        guard let res = try? await NetworkClient.shared.getProductInquiries(productId, page: nextPage) else { return }
-        inquiries = (inquiries ?? []) + res.inquiries
-        inquiriesPage = nextPage
-        inquiriesHasMore = res.page + 1 < res.totalPages
+        do {
+            let res = try await NetworkClient.shared.getProductInquiries(productId, page: nextPage)
+            inquiries = (inquiries ?? []) + res.inquiries
+            inquiriesPage = res.page
+            inquiriesHasMore = res.page + 1 < res.totalPages
+            inquiriesPaginationError = nil
+        } catch {
+            inquiriesPaginationError = "Couldn't load more questions. Please try again."
+        }
     }
 
     private func ask() async {
@@ -138,6 +147,7 @@ struct ProductRatingBadge: View {
     @State private var reviewsPage = 0
     @State private var reviewsHasMore = false
     @State private var loadingMoreReviews = false
+    @State private var reviewsPaginationError: String?
 
     private func displayedHelpfulCount(_ r: ProductReviewDto) -> Int {
         max(0, (r.helpfulCount ?? 0) + (helpfulCountDeltas[r.id] ?? 0))
@@ -194,6 +204,9 @@ struct ProductRatingBadge: View {
                                     .font(.caption2)
                                     .disabled(loadingMoreReviews)
                                 }
+                                if let reviewsPaginationError {
+                                    ErrorCardView(reviewsPaginationError, onRetry: { Task { await loadMoreReviews() } })
+                                }
                             }
                         } else {
                             Text("Loading reviews…").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
@@ -234,10 +247,15 @@ struct ProductRatingBadge: View {
         let nextPage = reviewsPage + 1
         loadingMoreReviews = true
         defer { loadingMoreReviews = false }
-        guard let res = try? await NetworkClient.shared.getProductReviews(productId, page: nextPage) else { return }
-        reviews = (reviews ?? []) + res.reviews
-        reviewsPage = nextPage
-        reviewsHasMore = res.page + 1 < res.totalPages
+        do {
+            let res = try await NetworkClient.shared.getProductReviews(productId, page: nextPage)
+            reviews = (reviews ?? []) + res.reviews
+            reviewsPage = res.page
+            reviewsHasMore = res.page + 1 < res.totalPages
+            reviewsPaginationError = nil
+        } catch {
+            reviewsPaginationError = "Couldn't load more reviews. Please try again."
+        }
     }
 }
 
