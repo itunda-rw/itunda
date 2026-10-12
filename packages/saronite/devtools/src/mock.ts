@@ -53,9 +53,8 @@ export function createSaroniteMockHost(
   return {
     state,
     request(capability, method, handler, options = {}) {
-      const methods = SARONITE_CAPABILITIES[capability as keyof typeof SARONITE_CAPABILITIES] as Record<string, string> | undefined;
-      if (!methods || !Object.values(methods).includes(method)) {
-        record(capability, method, 'error', `Unknown Saronite capability or method: ${capability}.${method}`);
+      if (!Object.hasOwn(SARONITE_CAPABILITIES, capability)) {
+        record(capability, method, 'error', `Unknown Saronite capability: ${capability}`);
         return undefined;
       }
       if (options.supported === false) {
