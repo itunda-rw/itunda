@@ -93,6 +93,12 @@ enum SaroniteRuntimeContext {
         return SaroniteCapabilityPolicy.allows(runtime: trust, capability: capability)
     }
 
+    static func allows(path: String, method: String) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return SaroniteCapabilityPolicy.allows(path: path, method: method, runtime: trust)
+    }
+
     /// External navigation is intentionally first-party-only in v1.
     static var allowsExternalNavigation: Bool {
         lock.lock()
