@@ -99,6 +99,13 @@ enum SaroniteRuntimeContext {
         return SaroniteCapabilityPolicy.allows(path: path, method: method, runtime: trust)
     }
 
+    /// True only for the trusted first-party host; unknown and partner runtimes fail closed.
+    static var isFirstParty: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return trust == .firstParty
+    }
+
     /// External navigation is intentionally first-party-only in v1.
     static var allowsExternalNavigation: Bool {
         lock.lock()
