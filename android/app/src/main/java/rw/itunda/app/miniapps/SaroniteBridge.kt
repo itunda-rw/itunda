@@ -564,7 +564,7 @@ class SaroniteBrownfieldModule(
     }
 
     // Keep the wallet response separate from account summaries: the JS contract expects
-    // a wallets array from GET /api/v1/wallet/balance.
+    // { totalBalance, currency, wallets }, projected from the real GET /api/v1/account response.
     private fun parseWalletBalance(json: String): WritableMap {
         val root = JsonParser.parseString(json).asJsonObject
         val result = Arguments.createMap()
