@@ -12,11 +12,11 @@ enum SaroniteCapability: String, CaseIterable {
 enum SaroniteRuntimeTrust: Equatable {
     case uninitialized
     case firstParty
-    case partner(manifestVersion: Int, scopes: Set<String>)
+    case partner(policyVersion: Int, scopes: Set<String>)
 }
 
 enum SaroniteCapabilityPolicy {
-    static let manifestVersion = 1
+    static let policyVersion = 1
 
     /// Pure decision function so the same rules can be tested without networking or UI.
     static func allows(
@@ -29,7 +29,7 @@ enum SaroniteCapabilityPolicy {
         case .firstParty:
             return true
         case let .partner(version, scopes):
-            guard version == manifestVersion, let capability else { return false }
+            guard version == policyVersion, let capability else { return false }
             return scopes.contains(capability.rawValue)
         }
     }
@@ -37,10 +37,10 @@ enum SaroniteCapabilityPolicy {
     /// Reject unknown versions, unknown capabilities, and duplicate scope declarations.
     /// The returned Set is safe to install as an approved runtime context.
     static func validatedPartnerScopes(
-        manifestVersion: Int,
+        policyVersion: Int,
         scopes: [String]
     ) -> Set<String>? {
-        guard manifestVersion == Self.manifestVersion else { return nil }
+        guard policyVersion == Self.policyVersion else { return nil }
         guard Set(scopes).count == scopes.count else { return nil }
         let known = Set(SaroniteCapability.allCases.map(\.rawValue))
         guard scopes.allSatisfy({ known.contains($0) }) else { return nil }
@@ -61,9 +61,9 @@ enum SaroniteRuntimeContext {
     }
 
     @discardableResult
-    static func activatePartner(manifestVersion: Int, scopes: [String]) -> Bool {
+    static func activatePartner(policyVersion: Int, scopes: [String]) -> Bool {
         guard let approved = SaroniteCapabilityPolicy.validatedPartnerScopes(
-            manifestVersion: manifestVersion,
+            policyVersion: policyVersion,
             scopes: scopes
         ) else {
             deactivate()
@@ -71,7 +71,7 @@ enum SaroniteRuntimeContext {
         }
         lock.lock()
         defer { lock.unlock() }
-        trust = .partner(manifestVersion: manifestVersion, scopes: approved)
+        trust = .partner(policyVersion: policyVersion, scopes: approved)
         return true
     }
 
