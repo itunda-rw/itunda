@@ -45,6 +45,31 @@ const source = Object.fromEntries(
   ]),
 );
 
+// Legacy component-token aliases must resolve to declared IDS tokens.
+// This catches silent CSS fallbacks caused by misspelled or removed foundations.
+const webVariableDeclarations = new Map();
+for (const match of source.web.matchAll(/(--[\\w-]+)\\s*:\\s*([^;]+);/g)) {
+  webVariableDeclarations.set(match[1], match[2].trim());
+}
+const tdsAliases = [...webVariableDeclarations.keys()].filter((name) => name.startsWith("--tds-"));
+function inspectAlias(name, trail = []) {
+  if (trail.includes(name)) {
+    failures.push(`web: cyclic component-token alias ${[...trail, name].join(" -> ")}`);
+    return;
+  }
+  const value = webVariableDeclarations.get(name);
+  if (typeof value !== "string") return;
+  for (const match of value.matchAll(/var\\((--[\\w-]+)/g)) {
+    const target = match[1];
+    if (!webVariableDeclarations.has(target)) {
+      failures.push(`web: component token ${name} references undefined token ${target}`);
+      continue;
+    }
+    if (target.startsWith("--tds-")) inspectAlias(target, [...trail, name]);
+  }
+}
+for (const alias of tdsAliases) inspectAlias(alias);
+
 for (const role of contract.semanticRoles) {
   for (const [platform, file] of Object.entries(files)) {
     const token = contract[platform]?.tokens?.[role];
