@@ -10,8 +10,7 @@ const files = {
   ios: "ios/Core/DesignSystem/Sources/IDS.swift",
 };
 const failures = [];
-const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\const failures = [];
-");
+const escapeRegex = (value) => [...value].map((char) => "\\.^$*+?()[]{}|".includes(char) ? "\\" + char : char).join("");
 
 const source = Object.fromEntries(
   Object.entries(files).map(([platform, file]) => [
