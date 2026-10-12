@@ -98,7 +98,7 @@ checkSymbol("ios", "ios/Core/DesignSystem/Sources/Components/Components.swift", 
 checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsListRow.kt", ["fun IdsListRow(", "selected", "loading"]);
 checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/HoodShared.kt", ["fun EmptyState(", "fun ErrorCard(", "fun SkeletonBlock("]);
 checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsKeyboardDockedButton.kt", ["fun FixedBottomCta(", "verticalScroll(rememberScrollState())", "cta()"]);
-checkSymbol("ios", "ios/Core/DesignSystem/Sources/Components/Components.swift", ["struct IdsButton", "struct EmptyStateView", "struct ErrorCardView", "public struct FixedBottomCTA", "public struct IdsSkeletonBlock"]);
+checkSymbol("ios", "ios/Core/DesignSystem/Sources/Components/Components.swift", ["struct IdsButton", "IdsButtonVariant", "IdsButtonSize", "struct IdsTextField", "struct IdsListRow", "struct EmptyStateView", "struct ErrorCardView", "public struct FixedBottomCTA", "public struct IdsSkeletonBlock"]);
 checkSymbol("web", "client/design-system/components.css", [".tds-button", ".tds-field", ".tds-list-row", ".tds-state", ".tds-skeleton", ".tds-action-group", ".tds-bottom-cta"]);
 
 console.log(`IDS component parity: ${Object.keys(contract.components ?? {}).length} component contracts, ${checks.length} source checks, ${failures.length} failures`);
