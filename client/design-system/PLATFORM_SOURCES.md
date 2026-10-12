@@ -99,20 +99,28 @@ IDS v2 also incorporates the actual product screens that established the current
 
 ## Quality gates and next parity work
 
-### Verified automated checks
+### Automated checks and evidence status
 
 - [x] Semantic token parity for Web, Android and iOS, including light/dark mappings and contrast checks
 - [x] Component source coverage and required accessibility/state contract fields
 - [x] Static regression guards for the Android and iOS loading-button contracts
+- [x] Component CSS token references must resolve to declared `--tds-*` tokens
+- [x] Component-token aliases must resolve to declared IDS tokens without cycles
+- [ ] Fresh CI run confirming the latest token-integrity guards
 - [ ] Runtime component behavior tests on each platform
 - [ ] Cross-platform screenshot baselines and visual-diff review
 - [ ] Public package release/version compatibility policy
 
-A source-symbol check is a guard against accidental removal; it is not proof of runtime behavior. Keep that distinction explicit in PRs and release notes.
+A source-symbol or CSS-token check is a regression guard, not proof of runtime behavior. Do not mark the new token-integrity checks as CI-verified until a fresh workflow run passes. Keep this distinction explicit in PRs and release notes.
 
 ### TDS-inspired developer experience (Itunda-native)
 
-Public Toss tooling combines project scaffolding, local mock SDK behavior, devtools, debugging and a separate real-device verification path. Itunda should implement equivalent capabilities against its own IDS and Saronite contracts, without depending on Toss packages or proprietary services:
+Public references reviewed:
+- Official Toss `apps-in-toss-harness` documents project scaffolding, browser-based mock SDK/devtools, opt-in debugging, device testing and console/release workflows.
+- Official Toss `create-ait-app` demonstrates a reusable project generator and repeatable build/deploy commands.
+- The separate `apps-in-toss-community/devtools` repository identifies itself as archived/unmaintained; use it as historical implementation research only, not as a production dependency.
+
+These public repositories describe public tooling, not Toss's complete private production architecture. Itunda should implement equivalent capabilities against its own IDS and Saronite contracts, without depending on Toss packages, branding, or proprietary services:
 
 1. **IDS catalog** — executable examples for every component variant/state, theme and localization.
 2. **Local mini-app host** — mock phone/session/permission/navigation APIs with deterministic fixtures and inspectable events.
