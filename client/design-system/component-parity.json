@@ -1,5 +1,5 @@
 {
-  "version": "1.7.5",
+  "version": "1.7.7",
   "purpose": "IDS component API and state parity contract. Platform implementations may use native APIs, but public behavior must satisfy the same contract.",
   "components": {
     "button": {
@@ -266,6 +266,8 @@
         "iOS Talk AI history distinguishes a failed fetch from an empty conversation and exposes the shared ErrorCardView retry action.",
         "iOS Talk message forwarding now surfaces failed conversation/group destination loads through ErrorCardView Retry instead of showing empty destination sections.",
         "iOS product Q&A separates failed initial loads from a genuine no-questions state and provides shared ErrorCardView Retry.",
+        "iOS legal-document loading now distinguishes network failure and unavailable document from loaded content, with a shared ErrorCardView Retry.",
+        "iOS product written-review loading distinguishes failed fetches from a genuine empty review list and exposes shared ErrorCardView Retry.",
         "Native Android/iOS announcement behavior, localized recovery wording, retry loading/failure states, contrast, preservation of user-entered context, and full device/simulator behavior still require runtime validation."
       ],
       "completionGate": "Verify recoverable and terminal errors, retry loading/failure states, preserved form context, accessible error announcement, keyboard/screen-reader order, and light/dark contrast on each platform before marking parity complete."
