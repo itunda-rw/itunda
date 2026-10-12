@@ -17,7 +17,7 @@ const location = host.request(
 
 if (!location || location.latitude !== -1.94) throw new Error('granted mock capability did not return its value');
 
-host.request('camera', 'openCamera', () => undefined, { supported: false });
+host.request('location', 'getCurrentLocation', () => undefined, { supported: false });
 
 let unknownCapabilityExecuted = false;
 host.request('telepathy', 'readMind', () => {
