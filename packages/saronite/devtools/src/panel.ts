@@ -9,7 +9,11 @@ export function renderSaroniteDevPanel(host: SaroniteMockHost, mount: HTMLElemen
   root.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:2147483647;width:min(360px,calc(100vw - 32px));max-height:min(560px,calc(100vh - 32px));overflow:auto;padding:16px;border:1px solid rgba(116,114,244,.22);border-radius:20px;background:rgba(255,255,255,.96);backdrop-filter:blur(18px);box-shadow:0 16px 48px rgba(25,31,40,.16);font:13px/1.45 system-ui,sans-serif;color:#191F28';
   const buttonStyle = 'border:1px solid rgba(116,114,244,.28);border-radius:10px;padding:6px 9px;background:#fff;color:#191F28;cursor:pointer;font:inherit';
 
+  let lastSnapshot = '';
   const render = () => {
+    const snapshot = JSON.stringify(host.state);
+    if (snapshot === lastSnapshot) return;
+    lastSnapshot = snapshot;
     const calls: MockCall[] = host.state.calls.slice(-20).reverse();
     root.replaceChildren();
 
