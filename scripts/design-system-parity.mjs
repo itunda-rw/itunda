@@ -186,10 +186,10 @@ for (const [theme, foreground, background] of [
 function cssVariableMap(css, theme) {
   const map = new Map();
   const blocks = theme === "dark"
-    ? [css.match(/\\[data-theme=["']dark["']\\]\\s*\\{([^}]*)\\}/i)?.[1] ?? ""]
-    : [...css.matchAll(/:root\\s*\\{([^}]*)\\}/gi)].map((match) => match[1]);
+    ? [css.match(/\[data-theme=["']dark["']\]\s*\{([^}]*)\}/i)?.[1] ?? ""]
+    : [...css.matchAll(/:root\s*\{([^}]*)\}/gi)].map((match) => match[1]);
   for (const block of blocks) {
-    for (const match of block.matchAll(/(--[\\w-]+)\\s*:\\s*([^;]+);/g)) {
+    for (const match of block.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
       map.set(match[1], match[2].trim());
     }
   }
@@ -200,17 +200,17 @@ function resolveCssColor(name, map, seen = new Set()) {
   if (seen.has(name) || !map.has(name)) return undefined;
   seen.add(name);
   const value = map.get(name);
-  const alias = value.match(/^var\\((--[\\w-]+)\\)$/i);
+  const alias = value.match(/^var\((--[\w-]+)\)$/i);
   if (alias) return resolveCssColor(alias[1], map, seen);
   return /^#[0-9a-f]{6}$/i.test(value) ? value.toUpperCase() : undefined;
 }
 
 function kotlinRoleValues(kotlin, role) {
-  const lightBlock = kotlin.match(/val IdsLightSemanticColors\\s*=\\s*IdsSemanticColors\\(([\\s\\S]*?)\\n\\)/)?.[1] ?? "";
-  const darkBlock = kotlin.match(/val IdsDarkSemanticColors\\s*=\\s*IdsSemanticColors\\(([\\s\\S]*?)\\n\\)/)?.[1] ?? "";
+  const lightBlock = kotlin.match(/val IdsLightSemanticColors\s*=\s*IdsSemanticColors\(([\s\S]*?)\n\)/)?.[1] ?? "";
+  const darkBlock = kotlin.match(/val IdsDarkSemanticColors\s*=\s*IdsSemanticColors\(([\s\S]*?)\n\)/)?.[1] ?? "";
   const extract = (block) => {
     const escaped = escapeRegex(role);
-    const match = block.match(new RegExp("\\\\b" + escaped + "\\\\s*=\\\\s*Color\\\\(0xFF([0-9a-f]{6})\\\\)", "i"));
+    const match = block.match(new RegExp("\\b" + escaped + "\\s*=\\s*Color\\(0xFF([0-9a-f]{6})\\)", "i"));
     return match ? "#" + match[1].toUpperCase() : undefined;
   };
   return { light: extract(lightBlock), dark: extract(darkBlock) };
@@ -218,7 +218,7 @@ function kotlinRoleValues(kotlin, role) {
 
 function swiftRoleValues(swift, role) {
   const escaped = escapeRegex(role);
-  const match = swift.match(new RegExp("public\\\\s+static\\\\s+let\\\\s+" + escaped + "\\\\s*=\\\\s*Color\\\\(\\\\s*light:\\\\s*0x([0-9a-f]{6})\\\\s*,\\\\s*dark:\\\\s*0x([0-9a-f]{6})\\\\s*\\\\)", "i"));
+  const match = swift.match(new RegExp("public\\s+static\\s+let\\s+" + escaped + "\\s*=\\s*Color\\(\\s*light:\\s*0x([0-9a-f]{6})\\s*,\\s*dark:\\s*0x([0-9a-f]{6})\\s*\\)", "i"));
   return match
     ? { light: "#" + match[1].toUpperCase(), dark: "#" + match[2].toUpperCase() }
     : {};
