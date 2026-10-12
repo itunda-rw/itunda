@@ -1,5 +1,5 @@
 {
-  "version": "1.6.1",
+  "version": "1.6.2",
   "purpose": "IDS component API and state parity contract. Platform implementations may use native APIs, but public behavior must satisfy the same contract.",
   "components": {
     "button": {
@@ -278,6 +278,7 @@
       "platformVariants": {
         "android": [
           "fun SkeletonBlock(",
+          "ValueAnimator.areAnimatorsEnabled()",
           "delay(200)",
           "rememberInfiniteTransition"
         ],
@@ -295,11 +296,12 @@
       },
       "knownImplementationGaps": [
         "Android and iOS delay showing the placeholder by about 200 ms, while web CSS animates whenever the .tds-skeleton class is present; consuming views decide when to mount it.",
-        "Android uses a gradient brush and iOS uses a clipped LinearGradient; web uses a pseudo-element shimmer. Similar motion does not establish equivalent contrast or layout.",
-        "The inspected Android SkeletonBlock still lacks a reduced-motion branch. iOS now checks accessibilityReduceMotion before starting its repeating shimmer, and web disables the shimmer under prefers-reduced-motion.",
-        "SkeletonBlock exposes a height and fills available width on native platforms; web sizing is supplied by markup. Verify placeholder geometry matches the content it replaces."
+        "Android uses a gradient brush, iOS uses a clipped LinearGradient, and web uses a pseudo-element shimmer. Similar motion does not establish equivalent contrast or layout.",
+        "Android now checks the system animator scale and keeps the placeholder static when system animations are disabled; iOS checks accessibilityReduceMotion and web honors prefers-reduced-motion. Re-check whether the native system setting change is reflected immediately while the screen remains mounted.",
+        "SkeletonBlock exposes a height and fills available width on native platforms; web sizing is supplied by markup. Verify placeholder geometry matches the content it replaces.",
+        "The inspected source contract does not yet establish that skeletons are hidden from assistive technology or that loading announcements are announced exactly once."
       ],
-      "completionGate": "Verify layout stability before/after load, short loads that should not flash, Android reduced-motion behavior, iOS accessibilityReduceMotion, web prefers-reduced-motion, light/dark contrast, screen-reader hiding/semantics, and real content geometry. Add Android reduced-motion behavior before marking this component complete."
+      "completionGate": "Verify layout stability before/after load, short loads that should not flash, live changes to reduced-motion settings, light/dark contrast, screen-reader hiding/semantics, and real content geometry. Keep this component marked in-progress until runtime checks pass."
     },
     "bottomCta": {
       "states": [
