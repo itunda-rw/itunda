@@ -1,5 +1,5 @@
 {
-  "version": "1.7.9",
+  "version": "1.8.0",
   "purpose": "IDS component API and state parity contract. Platform implementations may use native APIs, but public behavior must satisfy the same contract.",
   "components": {
     "button": {
@@ -270,6 +270,7 @@
         "iOS product written-review loading distinguishes failed fetches from a genuine empty review list and exposes shared ErrorCardView Retry.",
         "iOS Shop product Q&A and written-review pagination failures preserve loaded rows and expose shared ErrorCardView Retry for the next page.",
         "iOS ride-history initial fetch and past-trip pagination failures expose shared ErrorCardView Retry without discarding previously loaded trips.",
+        "iOS active-ride stops and verification-PIN loading failures expose a shared ErrorCardView Retry instead of silently presenting incomplete ride details.",
         "Native Android/iOS announcement behavior, localized recovery wording, retry loading/failure states, contrast, preservation of user-entered context, and full device/simulator behavior still require runtime validation."
       ],
       "completionGate": "Verify recoverable and terminal errors, retry loading/failure states, preserved form context, accessible error announcement, keyboard/screen-reader order, and light/dark contrast on each platform before marking parity complete."
