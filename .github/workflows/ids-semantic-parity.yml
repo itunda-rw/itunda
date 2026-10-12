@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - "client/design-system/**"
+      - "scripts/component-parity.mjs"
+      - "client/design-system/component-parity.json"
+      - "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/**"
+      - "ios/Core/DesignSystem/Sources/Components/**"
       - "android/core/designsystem/**"
       - "ios/Core/DesignSystem/**"
       - "scripts/design-system-parity.mjs"
@@ -31,5 +35,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Validate semantic roles and brand anchors
+      - name: Validate semantic roles, color parity and text contrast
         run: node scripts/design-system-parity.mjs
+      - name: Validate shared component source coverage
+        run: node scripts/component-parity.mjs
