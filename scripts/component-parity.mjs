@@ -88,7 +88,9 @@ for (const [name, component] of Object.entries(contract.components ?? {})) {
     // checker while trying to resolve an unknown platform or unsafe path.
     if (!supportedPlatforms.has(platform)) continue;
     if (typeof source !== "string" || !source.trim() || path.isAbsolute(source) || source.split(/[\\\\/]/).includes("..")) continue;
-    if (source.includes("/")) checkFile(platform, source);
+    // Root-level files are valid component sources too, so validate every safe path.
+    // Do not let a path without a slash bypass the existence/file-type check.
+    checkFile(platform, source);
   }
 }
 
