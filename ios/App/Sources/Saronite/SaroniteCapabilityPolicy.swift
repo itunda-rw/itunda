@@ -19,6 +19,12 @@ enum SaroniteCapabilityPolicy {
     static let policyVersion = 1
 
     /// Pure decision function so the same rules can be tested without networking or UI.
+    static func allows(path: String, method: String, runtime: SaroniteRuntimeTrust) -> Bool {
+        let capability: SaroniteCapability? =
+            method.uppercased() == "GET" && path == "api/v1/account" ? .accountRead : nil
+        return allows(runtime: runtime, capability: capability)
+    }
+
     static func allows(
         runtime: SaroniteRuntimeTrust,
         capability: SaroniteCapability?
