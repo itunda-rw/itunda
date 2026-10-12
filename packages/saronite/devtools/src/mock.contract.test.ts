@@ -65,5 +65,5 @@ if (host.state.calls[7]?.status !== 'error' || host.state.calls[7]?.detail !== '
 }
 
 host.clearCalls();
-if (host.state.calls.length !== 0) throw new Error('clearCalls must empty the call log');
+if (Number(host.state.calls.length) !== 0) throw new Error('clearCalls must empty the call log');
 
