@@ -50,13 +50,11 @@ final class SaroniteBrownfieldModule: NSObject {
     // and opened it with zero scheme/domain restriction -- an https link to anywhere,
     // or another installed app's custom scheme. Mirrors the identical fix on Android's
     // `SaroniteBridge.kt`'s own `openURL` -- same allowlist, same rationale (today's
-    // real callers are itunda's own first-party mini-apps, but the bridge itself had no
-    // structural defense if a lower-trust mini-app is ever loaded through Saronite
-    // later). Note, honestly scoped smaller than the Android fix: Android's bridge also
-    // gates every method behind a `requireScope`/`MiniAppSecurityContext` partner-scope
-    // check that this iOS bridge has no equivalent of at all yet, on any method -- that
-    // whole partner-scoping system is a real, separate, larger gap, not something to
-    // build inside this one fix.
+    // real callers are itunda's own first-party mini-apps). The iOS bridge now also
+    // requires an explicitly activated runtime context: first-party screens activate
+    // trusted access in SaroniteMiniAppViewController, while uninitialized contexts fail
+    // closed and partner contexts are limited to the versioned capability registry in
+    // SaroniteCapabilityPolicy.swift. Partner bundle loading remains disabled on iOS.
     @objc func openURL(_ url: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
         guard SaroniteRuntimeContext.allowsExternalNavigation else {
             reject("SARONITE_SCOPE_DENIED", "External navigation is not approved for this mini-app runtime", nil)
@@ -156,9 +154,9 @@ final class SaroniteBrownfieldModule: NSObject {
     // auto-pay for the same reason Android's own bridge added it in the same pass:
     // `setAutoPay`/`clearAutoPay` take a real providerId (e.g. "b1"), distinct from
     // `PendingBill.provider` (only ever a display name) -- without it the mini-app has
-    // no honest way to resolve which provider a user is registering. No scope check
-    // here (unlike Android's `requireScope`): this iOS bridge has no equivalent
-    // partner-scoping system on any method yet, matching getPendingBills/payBill above.
+    // no honest way to resolve which provider a user is registering. The central
+    // authorizedCall policy denies these endpoints to partner runtimes; only the
+    // explicitly approved read-only account endpoint has a partner capability in v1.
     @objc func getBillProviders(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
         authorizedCall(path: "api/v1/bills/providers", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
             let providers = ((root["providers"] as? [[String: Any]]) ?? []).map(Self.mapBillProvider)
