@@ -113,11 +113,13 @@ fun SkeletonBlock(height: Dp = 120.dp, modifier: Modifier = Modifier) {
     val offset by transition.animateFloat(
         initialValue = if (animationsEnabled) -1f else 0f,
         targetValue = if (animationsEnabled) 2f else 0f,
-        animationSpec = if (animationsEnabled) {
-            infiniteRepeatable(animation = tween(1000, easing = LinearEasing), repeatMode = RepeatMode.Restart)
-        } else {
-            tween(durationMillis = 0)
-        },
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = if (animationsEnabled) 1000 else 0,
+                easing = LinearEasing,
+            ),
+            repeatMode = RepeatMode.Restart,
+        ),
         label = "skeletonOffset",
     )
     Card(
