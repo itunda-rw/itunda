@@ -359,7 +359,7 @@ allTargets.append(
 
                 WITH_ENVIRONMENT="$REACT_NATIVE_DIR/scripts/xcode/with-environment.sh"
                 REACT_NATIVE_XCODE="$REACT_NATIVE_DIR/scripts/react-native-xcode.sh"
-                /bin/sh -c "\\"$WITH_ENVIRONMENT\\" \\"$REACT_NATIVE_XCODE\\""
+                /bin/sh "$WITH_ENVIRONMENT" "$REACT_NATIVE_XCODE"
 
                 test -s "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/main.jsbundle"
                 """,
