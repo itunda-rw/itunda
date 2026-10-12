@@ -14,7 +14,6 @@ const androidButton = read("android/core/designsystem/src/main/java/rw/itunda/co
 const iosColors = read("ios/Core/DesignSystem/Sources/IDS.swift");
 const iosButton = read("ios/Core/DesignSystem/Sources/Components/Components.swift");
 const homepage = read("client/index.html");
-const androidNotificationColor = read("android/app/src/main/res/values/colors.xml");
 const activeBrandSurfaces = [
   "client/index.html",
   "client/data/index.html",
@@ -63,5 +62,5 @@ if (errors.length) {
   for (const error of errors) console.error(`- ${error}`);
   process.exitCode = 1;
 } else {
-  console.log("Itunda brand v3 surface audit passed: canonical tokens, web, Android/iOS semantic colors, Android role-app backgrounds, primary buttons, and active product sites are aligned.");
+  console.log("Itunda brand v3 surface audit passed: canonical tokens, web, Android/iOS semantic colors, primary buttons, and active product sites are aligned.");
 }
