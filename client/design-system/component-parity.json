@@ -1,5 +1,5 @@
 {
-  "version": "1.2.0",
+  "version": "1.3.0",
   "purpose": "IDS component API and state parity contract. Platform implementations may use native APIs, but public behavior must satisfy the same contract.",
   "components": {
     "button": {
@@ -111,7 +111,13 @@
         "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsTextField.kt",
         "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
         "web": "client/design-system/components.css"
-      }
+      },
+      "knownImplementationGaps": [
+        "Android exposes explicit loading stateDescription and disables editing while loading; iOS initializer does not currently expose disabled or loading parameters; web styling supports disabled and aria-invalid selectors but runtime markup must provide those attributes.",
+        "Android and iOS expose error and success supporting text through component APIs; the shared web CSS only styles .tds-error and does not itself bind validation messages or accessible descriptions.",
+        "CSS styling alone does not establish screen-reader announcement, focus order, keyboard type, or successful runtime behavior."
+      ],
+      "completionGate": "Before declaring text-field parity, verify disabled/loading API behavior on all platforms, ensure invalid state is programmatically exposed, connect visible error text through accessible descriptions, and run keyboard plus screen-reader checks in light and dark themes."
     },
     "listRow": {
       "states": [
