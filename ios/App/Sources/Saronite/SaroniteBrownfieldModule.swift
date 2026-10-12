@@ -617,11 +617,7 @@ final class SaroniteBrownfieldModule: NSObject {
         reject: @escaping RCTPromiseRejectBlock,
         parse: @escaping ([String: Any]) -> [String: Any]
     ) {
-        guard SaroniteRuntimeContext.allows(
-            path: path,
-            method: method,
-            runtime: SaroniteRuntimeContext.currentTrust
-        ) else {
+        guard SaroniteRuntimeContext.allows(path: path, method: method) else {
             reject("SARONITE_SCOPE_DENIED", "This mini-app's approved permissions do not include this call", nil)
             return
         }
