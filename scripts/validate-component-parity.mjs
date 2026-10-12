@@ -43,6 +43,7 @@ if (!contract.components || typeof contract.components !== "object" || Array.isA
       continue;
     }
 
+    const loadedSources = {};
     for (const [platform, relativePath] of Object.entries(spec.sources)) {
       if (!["android", "ios", "web"].includes(platform)) {
         failures.push(`${name}: unsupported source platform "${platform}"`);
@@ -57,6 +58,34 @@ if (!contract.components || typeof contract.components !== "object" || Array.isA
         failures.push(`${name}: ${platform} source path escapes repository root`);
       } else if (!fs.existsSync(absolutePath)) {
         failures.push(`${name}: ${platform} source does not exist: ${relativePath}`);
+      } else if (fs.statSync(absolutePath).isFile()) {
+        loadedSources[platform] = fs.readFileSync(absolutePath, "utf8");
+      } else {
+        // Directory entries are allowed for platform implementations whose
+        // shared primitive is split across multiple files. Their existence is
+        // checked here; use a file path when asserting concrete API symbols.
+        loadedSources[platform] = null;
+      }
+    }
+
+    if (spec.platformVariants && typeof spec.platformVariants === "object") {
+      for (const [platform, variants] of Object.entries(spec.platformVariants)) {
+        if (!Array.isArray(variants) || variants.length === 0) {
+          failures.push(`${name}: ${platform} platformVariants must be a non-empty array`);
+          continue;
+        }
+        const source = loadedSources[platform];
+        if (typeof source !== "string") {
+          failures.push(`${name}: cannot validate ${platform} variants without a readable source file`);
+          continue;
+        }
+        for (const variant of variants) {
+          if (typeof variant !== "string" || !variant.trim()) {
+            failures.push(`${name}: ${platform} variant names must be non-empty strings`);
+          } else if (!source.includes(variant)) {
+            failures.push(`${name}: documented ${platform} variant "${variant}" was not found in ${spec.sources[platform]}`);
+          }
+        }
       }
     }
   }
@@ -73,4 +102,4 @@ if (failures.length) {
 }
 
 console.log("IDS component parity: PASS");
-console.log(`Validated ${Object.keys(contract.components).length} component contracts and all declared platform source paths.`);
+console.log(`Validated ${Object.keys(contract.components).length} component contracts, declared platform source paths, and explicit platform variant names.`);
