@@ -136,10 +136,12 @@ class SaroniteBrownfieldModule(
 
     @ReactMethod
     fun getWalletBalance(promise: Promise) {
-        // Wallet balance is a first-party mini-app operation for now. Deny partner
-        // runtimes unless a future policy explicitly grants this endpoint.
+        // The real backend has no /api/v1/wallet/balance route. Read the verified
+        // GET /api/v1/account response and project accounts into WalletBalanceResult.
+        // This selector remains first-party-only; account:read partners use the separate
+        // getAccountBalance selector and do not receive this wallet projection.
         if (!requireScope(null, promise)) return
-        authorizedCall(get("api/v1/wallet/balance"), promise, ::parseWalletBalance)
+        authorizedCall(get("api/v1/account"), promise, ::parseWalletBalance)
     }
 
     @ReactMethod
