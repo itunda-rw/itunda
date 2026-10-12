@@ -49,6 +49,8 @@ for (const [name, component] of Object.entries(contract.components)) {
 }
 
 checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt", ["fun IdsButton(", "IdsButtonVariant", "IdsButtonSize"]);
+checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt", ["IdsButtonVariant.Destructive -> Ids.colors.danger to Ids.colors.onBrand", "IdsButtonVariant.Destructive -> Ids.colors.danger.copy(alpha = 0.35f) to Ids.colors.onBrand"]);
+checkSymbol("web", "client/design-system/components.css", [".tds-button-error{background:var(--itunda-color-error);color:var(--itunda-color-on-brand,#121216)}"]);
 checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsTextField.kt", ["fun IdsTextField(", "isError", "isSuccess", "loading"]);
 checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsListRow.kt", ["fun IdsListRow(", "selected", "loading"]);
 checkSymbol("ios", "ios/Core/DesignSystem/Sources/Components/Components.swift", ["struct IdsButton", "struct EmptyStateView", "struct ErrorCardView"]);
