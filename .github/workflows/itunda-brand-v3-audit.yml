@@ -69,7 +69,7 @@ jobs:
               src="/tmp/itunda-brand-v3/itunda-brand-v3/$rel"
               if [ ! -f "$src" ]; then printf 'OLD-ONLY %s\n' "$rel" >> /tmp/itunda-brand-v3-diff.txt; fi
             done < <(find "$canonical" -type f -print0 | sort -z)
-            if [ -s /tmp/itunda-brand-v3-diff.txt ]; then cat /tmp/itunda-brand-v3-diff.txt >> "$GITHUB_STEP_SUMMARY"; else echo 'All matching relative paths are byte-identical.' >> "$GITHUB_STEP_SUMMARY"; fi
+            if [ -s /tmp/itunda-brand-v3-diff.txt ]; then cat /tmp/itunda-brand-v3-diff.txt >> "$GITHUB_STEP_SUMMARY"; echo '--- v3 versus canonical file diff ---'; cat /tmp/itunda-brand-v3-diff.txt; else echo 'All matching relative paths are byte-identical.' >> "$GITHUB_STEP_SUMMARY"; echo 'All matching relative paths are byte-identical.'; fi
           else
             echo 'Existing canonical extraction not found; comparison skipped.' >> "$GITHUB_STEP_SUMMARY"
             : > /tmp/itunda-brand-v3-diff.txt
@@ -83,5 +83,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: itunda-brand-v3-audit
-          path: /tmp/itunda-brand-v3-SHA256SUMS
+          path: |
+            /tmp/itunda-brand-v3-SHA256SUMS
+            /tmp/itunda-brand-v3-diff.txt
+            /tmp/itunda-brand-v3/itunda-brand-v3/tokens/itunda-colors.css
+            /tmp/itunda-brand-v3/itunda-brand-v3/tokens/itunda-colors.json
           if-no-files-found: error
