@@ -1,5 +1,5 @@
 {
-  "version": "1.4.4",
+  "version": "1.5.0",
   "purpose": "IDS component API and state parity contract. Platform implementations may use native APIs, but public behavior must satisfy the same contract.",
   "components": {
     "button": {
@@ -197,10 +197,34 @@
         "localized-content"
       ],
       "sources": {
-        "android": "android/core/designsystem",
+        "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt",
         "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
         "web": "client/design-system/components.css"
-      }
+      },
+      "platformVariants": {
+        "android": [
+          "fun IdsEmptyState(",
+          "actionText: String? = null",
+          "if (actionText != null && onAction != null)"
+        ],
+        "ios": [
+          "public struct IdsEmptyState: View",
+          "actionTitle: String? = nil",
+          "accessibilityElement(children: .contain)"
+        ],
+        "web": [
+          ".tds-state{",
+          ".tds-state-icon{",
+          ".tds-state-title{",
+          ".tds-state-copy{"
+        ]
+      },
+      "knownImplementationGaps": [
+        "Android renders a text-first empty state and uses IdsButton for its optional action; iOS adds a decorative SF Symbol and uses a tinted button; web CSS supports icon/title/copy slots but CSS alone does not prove semantic heading or action markup.",
+        "Android message text fills the available width; iOS explicitly wraps multiline copy; web constrains copy to max-width 360px. Long localized strings need rendered checks at narrow widths.",
+        "The three APIs differ in icon support and action naming, so source-level presence is not pixel or behavior parity."
+      ],
+      "completionGate": "Render empty states with no action and with an action, long localized text, narrow screens, light/dark themes, and screen readers. Verify the action is a real accessible button and that heading/message reading order is meaningful before marking parity complete."
     },
     "errorState": {
       "states": [
@@ -213,10 +237,33 @@
         "preserve-context"
       ],
       "sources": {
-        "android": "android/core/designsystem",
+        "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt",
         "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
         "web": "client/design-system/components.css"
-      }
+      },
+      "platformVariants": {
+        "android": [
+          "ErrorCard",
+          "IdsButtonVariant.Destructive",
+          "Ids.colors.danger"
+        ],
+        "ios": [
+          "public struct ErrorCardView: View",
+          "IdsButton(text: \"Retry\", action: onRetry)",
+          "IDS.Colors.dangerTint"
+        ],
+        "web": [
+          ".tds-state",
+          "onRetry",
+          "aria-live"
+        ]
+      },
+      "knownImplementationGaps": [
+        "iOS ErrorCardView exposes a fixed Retry action; web bank-mfe ErrorCard accepts onRetry, while merchant-mfe has a separate implementation, so recovery affordances are not a single shared web contract.",
+        "A visible error container does not itself guarantee an announced error; live-region or native accessibility announcement behavior must be verified at consuming call sites.",
+        "Error styling and button treatment differ by platform; review contrast, recovery wording, retry state and preservation of user-entered context in real flows."
+      ],
+      "completionGate": "Verify recoverable and terminal errors, retry loading/failure states, preserved form context, accessible error announcement, keyboard/screen-reader order, and light/dark contrast on each platform before marking parity complete."
     },
     "skeleton": {
       "states": [
