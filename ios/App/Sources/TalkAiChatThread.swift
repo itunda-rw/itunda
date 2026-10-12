@@ -53,6 +53,7 @@ struct TalkAiChatThread: View {
     @State private var sending = false
     @State private var busy = false
     @State private var error: String?
+    @State private var historyLoadError: String?
     // Real pagination-discard fix (2026-09-11, ported from bank-mfe's own fix
     // -- see project_itunda_pagination_discard_sweep memory): older pages get
     // reversed the same way as page 0 and PREPENDED once loaded.
@@ -76,7 +77,11 @@ struct TalkAiChatThread: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 10) {
-                        if messages.isEmpty {
+                        if let historyLoadError {
+                            ErrorCardView(historyLoadError, onRetry: { Task { await loadHistory() } })
+                                .padding(.horizontal, IDS.Layout.screenHorizontal)
+                                .padding(.top, 16)
+                        } else if messages.isEmpty {
                             EmptyStateView("Ask itunda AI anything -- it's a small, self-hosted assistant, so answers may be brief or imperfect.")
                                 .padding(.horizontal, IDS.Layout.screenHorizontal)
                                 .padding(.top, 40)
@@ -135,13 +140,16 @@ struct TalkAiChatThread: View {
     }
 
     private func loadHistory() async {
-        guard let res = try? await NetworkClient.shared.getAiChatHistory(page: 0) else {
-            messages = []
-            return
+        do {
+            let res = try await NetworkClient.shared.getAiChatHistory(page: 0)
+            messages = res.messages.reversed()
+            historyPage = 0
+            olderMessagesHasMore = res.page + 1 < res.totalPages
+            historyLoadError = nil
+        } catch {
+            // A failed history request is not a successful empty conversation.
+            historyLoadError = "Couldn't load itunda AI history. Check your connection and try again."
         }
-        messages = res.messages.reversed()
-        historyPage = 0
-        olderMessagesHasMore = res.page + 1 < res.totalPages
     }
 
     private func loadOlderMessages() async {
