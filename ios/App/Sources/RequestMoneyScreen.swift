@@ -76,7 +76,7 @@ struct RequestMoneyScreenView: View {
                                     Spacer()
                                     Text(statusLabel(req.status))
                                         .font(.caption).bold()
-                                        .foregroundColor(req.status == "COMPLETED" ? .green : req.status == "EXPIRED" ? IDS.Colors.textSecondary : IDS.Colors.brand)
+                                        .foregroundColor(req.status == "COMPLETED" ? IDS.Colors.success : req.status == "EXPIRED" ? IDS.Colors.textSecondary : IDS.Colors.brand)
                                 }
                                 .padding(.vertical, 10)
                                 Divider().overlay(IDS.Colors.divider)
