@@ -1,5 +1,5 @@
 {
-  "version": "1.4.0",
+  "version": "1.4.1",
   "purpose": "IDS component API and state parity contract. Platform implementations may use native APIs, but public behavior must satisfy the same contract.",
   "components": {
     "button": {
@@ -166,8 +166,11 @@
         ],
         "ios": [
           "struct IdsListRow: View",
-          "PressScaleButtonStyle()",
-          "accessibilityValue"
+          "isEnabled: Bool = true",
+          "isLoading: Bool = false",
+          "isSelected: Bool = false",
+          "PressScaleButtonStyle(enabled: isEnabled && !isLoading)",
+          "accessibilityAddTraits"
         ],
         "web": [
           ".tds-list-row:active",
@@ -177,11 +180,11 @@
         ]
       },
       "knownImplementationGaps": [
-        "Android exposes enabled, selected and loading parameters and announces loading in its row content description; the current iOS IdsListRow initializer has no matching enabled, selected or loading parameters.",
-        "The web CSS now styles active, focus-visible, aria-selected and aria-disabled states, but the consuming markup must supply the correct semantics and disable interaction; CSS alone does not make a row keyboard-operable.",
-        "Native iOS list rows currently expose title and combined subtitle/value accessibility text but do not expose a selected or disabled state API."
+        "iOS now exposes enabled, loading, and selected API states, with loading feedback and accessibility selected traits; visual parity still requires runtime review against Android and web.",
+        "Android announces loading in its row content description, while iOS exposes Loading through a progress indicator and accessibility value; announcement timing may differ by platform.",
+        "The web CSS styles active, focus-visible, aria-selected and aria-disabled states, but consuming markup must supply correct semantics and disable interaction; CSS alone does not make a row keyboard-operable."
       ],
-      "completionGate": "Verify pointer and keyboard activation, disabled interaction, selected state announcements, loading behavior, focus visibility and 44pt/48dp touch targets on Android, iOS and web, in light and dark themes."
+      "completionGate": "Verify pointer and keyboard activation, disabled interaction, selected-state announcements, loading behavior, focus visibility, and 44pt/48dp touch targets on Android, iOS and web in light and dark themes. Confirm rendered visual and screen-reader behavior before marking parity complete."
     },
     "emptyState": {
       "states": [
