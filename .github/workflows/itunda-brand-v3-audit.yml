@@ -79,6 +79,10 @@ jobs:
           for f in /tmp/itunda-brand-v3/itunda-brand-v3/tokens/itunda-colors.css /tmp/itunda-brand-v3/itunda-brand-v3/tokens/itunda-colors.json; do
             if [ -f "$f" ]; then echo "Found: ${f##*/}" >> "$GITHUB_STEP_SUMMARY"; fi
           done
+          echo '--- v3 color tokens (CSS) ---'
+          cat /tmp/itunda-brand-v3/itunda-brand-v3/tokens/itunda-colors.css
+          echo '--- v3 color tokens (JSON) ---'
+          cat /tmp/itunda-brand-v3/itunda-brand-v3/tokens/itunda-colors.json
       - name: Upload v3 audit inventory
         uses: actions/upload-artifact@v4
         with:
