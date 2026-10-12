@@ -61,7 +61,12 @@ for (const [componentId, component] of Object.entries(contract.components ?? {})
       }
     }
   }
+  const requiredFields = new Set(["states", "accessibility", "requirements"]);
   for (const field of ["states", "variants", "sizes", "accessibility", "requirements"]) {
+    if (requiredFields.has(field) && component[field] === undefined) {
+      failures.push(`contract: ${componentId}.${field} is required`);
+      continue;
+    }
     if (component[field] !== undefined) {
       const values = component[field];
       if (!Array.isArray(values) || values.length === 0 || values.some(value => typeof value !== "string" || !value.trim())) {
