@@ -48,7 +48,7 @@ const source = Object.fromEntries(
 // Legacy component-token aliases must resolve to declared IDS tokens.
 // This catches silent CSS fallbacks caused by misspelled or removed foundations.
 const webVariableDeclarations = new Map();
-for (const match of source.web.matchAll(/(--[\\w-]+)\\s*:\\s*([^;]+);/g)) {
+for (const match of source.web.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
   webVariableDeclarations.set(match[1], match[2].trim());
 }
 const tdsAliases = [...webVariableDeclarations.keys()].filter((name) => name.startsWith("--tds-"));
