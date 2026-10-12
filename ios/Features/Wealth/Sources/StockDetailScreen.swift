@@ -59,7 +59,7 @@ struct StockDetailContent: View {
                     Image(systemName: positive ? "arrow.up.right" : "arrow.down.right")
                     Text("\(positive ? "+" : "")\(formatMoney(stock.change)) (\(positive ? "+" : "")\(String(format: "%.2f", stock.changePercent))%) today")
                 }
-                .font(.subheadline).bold().foregroundColor(positive ? .green : .red)
+                .font(.subheadline).bold().foregroundColor(positive ? IDS.Colors.success : .red)
 
                 if let history, !history.isEmpty {
                     Sparkline(values: history.map { $0.price }, positive: positive).frame(height: 48).padding(.top, 6)
