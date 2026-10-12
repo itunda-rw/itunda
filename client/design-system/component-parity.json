@@ -56,10 +56,9 @@
           }
         },
         "knownDifferences": [
-          "Android filled-disabled uses a translucent brand tint; iOS currently uses a neutral divider background for every disabled variant.",
-          "Android destructive uses a solid danger container with white content; iOS destructive uses a danger-tint container and danger-colored content.",
           "Web exposes additional secondary and success styling classes without an exact one-to-one native variant in the current contract.",
-          "Class or enum presence does not establish contrast, touch-target, focus, screen-reader, loading, or runtime visual equivalence."
+          "Class or enum presence does not establish contrast, touch-target, focus, screen-reader, loading, or runtime visual equivalence.",
+          "Runtime contrast, touch-target, focus, screen-reader, loading, and rendered light/dark visual equivalence remain unverified by source-marker checks."
         ],
         "completionGate": "Do not mark cross-platform variant parity complete until each proposed mapping is reviewed against rendered light/dark screenshots, interaction-state tests, accessibility checks, and product-owner approval."
       },
