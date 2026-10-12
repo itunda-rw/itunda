@@ -27,6 +27,12 @@
         "state-not-color-only",
         "minimum-touch-target"
       ],
+      "requirements": [
+        "keyboard-focus-visible",
+        "loading-state-announced",
+        "disabled-state-prevents-activation",
+        "preserve-label-during-loading"
+      ],
       "sources": {
         "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt",
         "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
@@ -52,8 +58,15 @@
       ],
       "sources": {
         "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsTextField.kt",
-        "web": "client/design-system/components.css"
-      }
+        "web": "client/design-system/components.css",
+        "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift"
+      },
+      "accessibility": [
+        "programmatic-label",
+        "screen-reader-state",
+        "error-associated-with-field",
+        "visible-focus"
+      ]
     },
     "listRow": {
       "states": [
@@ -73,7 +86,12 @@
         "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsListRow.kt",
         "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
         "web": "client/design-system/components.css"
-      }
+      },
+      "accessibility": [
+        "semantic-row-or-button-role",
+        "minimum-touch-target",
+        "selected-state-announced"
+      ]
     },
     "emptyState": {
       "states": [
@@ -86,10 +104,15 @@
         "localized-content"
       ],
       "sources": {
-        "android": "android/core/designsystem",
-        "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
+        "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/HoodShared.kt",
+        "ios": "ios/Core/DesignSystem/Sources/Components/IdsStateComponents.swift",
         "web": "client/design-system/components.css"
-      }
+      },
+      "accessibility": [
+        "meaningful-heading",
+        "decorative-art-hidden",
+        "action-has-visible-label"
+      ]
     },
     "errorState": {
       "states": [
@@ -102,10 +125,15 @@
         "preserve-context"
       ],
       "sources": {
-        "android": "android/core/designsystem",
+        "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/HoodShared.kt",
         "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
         "web": "client/design-system/components.css"
-      }
+      },
+      "accessibility": [
+        "error-announced",
+        "recovery-action-has-visible-label",
+        "not-color-only"
+      ]
     },
     "skeleton": {
       "states": [
@@ -117,9 +145,14 @@
         "no-essential-information-only-in-animation"
       ],
       "sources": {
-        "android": "android/core/designsystem",
-        "web": "client/design-system/components.css"
-      }
+        "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/HoodShared.kt",
+        "web": "client/design-system/components.css",
+        "ios": "ios/Core/DesignSystem/Sources/Components/IdsStateComponents.swift"
+      },
+      "accessibility": [
+        "hidden-from-accessibility-tree",
+        "no-essential-information-only-in-animation"
+      ]
     },
     "bottomCta": {
       "states": [
@@ -134,10 +167,15 @@
         "accessible-label"
       ],
       "sources": {
-        "android": "android/core/designsystem",
+        "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsKeyboardDockedButton.kt",
         "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
         "web": "client/design-system/components.css"
-      }
+      },
+      "accessibility": [
+        "accessible-action-label",
+        "keyboard-safe-content",
+        "focus-order-preserved"
+      ]
     }
   },
   "completionRule": "A component is IDS-complete only when anatomy, variants, states, accessibility, localization, dark mode, responsive/platform behavior and recovery behavior are documented and tested."

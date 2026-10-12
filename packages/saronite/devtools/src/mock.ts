@@ -1,3 +1,5 @@
+import { SARONITE_CAPABILITIES, permissionFor, type SaroniteCapabilityName } from './capabilities.ts';
+
 export type MockStatus = 'ok' | 'denied' | 'unsupported' | 'error';
 
 export type MockCall = {
@@ -31,12 +33,10 @@ export function createSaroniteMockHost(
   initial: Partial<MockHostState> = {},
 ): SaroniteMockHost {
   const state: MockHostState = {
-    calls: [],
-    permissions: {},
-    lifecycle: 'visible',
     ...initial,
     calls: [...(initial.calls ?? [])],
     permissions: { ...(initial.permissions ?? {}) },
+    lifecycle: initial.lifecycle ?? 'visible',
   };
 
   const record = (
@@ -51,12 +51,21 @@ export function createSaroniteMockHost(
   return {
     state,
     request(capability, method, handler, options = {}) {
+      if (!Object.hasOwn(SARONITE_CAPABILITIES, capability)) {
+        record(capability, method, 'error', `Unknown Saronite capability: ${capability}`);
+        return undefined;
+      }
       if (options.supported === false) {
         record(capability, method, 'unsupported');
         return undefined;
       }
-      if (options.permission && state.permissions[options.permission] !== true) {
-        record(capability, method, 'denied', options.permission);
+      const requiredPermission = permissionFor(capability as SaroniteCapabilityName);
+      if (options.permission && options.permission !== requiredPermission) {
+        record(capability, method, 'error', `Permission contract mismatch: ${options.permission}`);
+        return undefined;
+      }
+      if (requiredPermission && state.permissions[requiredPermission] !== true) {
+        record(capability, method, 'denied', requiredPermission);
         return undefined;
       }
       try {

@@ -1,0 +1,56 @@
+name: IDS semantic parity
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "client/design-system/**"
+      - "scripts/component-parity.mjs"
+      - "client/design-system/component-parity.json"
+      - "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/**"
+      - "ios/Core/DesignSystem/Sources/Components/**"
+      - "android/core/designsystem/**"
+      - "ios/Core/DesignSystem/**"
+      - "scripts/design-system-parity.mjs"
+      - ".github/workflows/ids-semantic-parity.yml"
+  push:
+    branches: [main]
+    paths:
+      - "client/design-system/**"
+      - "scripts/component-parity.mjs"
+      - "client/design-system/component-parity.json"
+      - "android/core/designsystem/**"
+      - "ios/Core/DesignSystem/**"
+      - "scripts/design-system-parity.mjs"
+      - ".github/workflows/ids-semantic-parity.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  semantic-parity:
+    name: Check Web / Android / iOS semantic token contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate semantic roles, color parity and text contrast
+        id: semantic-parity
+        run: node scripts/design-system-parity.mjs
+      - name: Validate shared component source coverage
+        run: node scripts/component-parity.mjs
+      - name: Summarize validation scope
+        if: always()
+        run: |
+          {
+            echo "## IDS semantic parity"
+            echo ""
+            echo "- Semantic token parity step: ${{ steps.semantic-parity.outcome || 'see job step above' }}"
+            echo "- This workflow checks declared Web/Android/iOS semantic color parity, light/dark brand anchors, declared text contrast, component source coverage, and static component/token contracts."
+            echo "- This workflow does **not** prove runtime interaction behavior, screenshot parity, native builds, or device behavior."
+            echo "- Runtime, visual-regression, native-build, and device checks must be tracked as separate release gates."
+          } >> "$GITHUB_STEP_SUMMARY"

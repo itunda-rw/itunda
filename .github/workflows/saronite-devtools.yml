@@ -1,0 +1,37 @@
+name: Saronite DevTools contract
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "packages/saronite/devtools/**"
+      - ".github/workflows/saronite-devtools.yml"
+  push:
+    branches: [main]
+    paths:
+      - "packages/saronite/devtools/**"
+      - ".github/workflows/saronite-devtools.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  devtools-contract:
+    name: Typecheck and exercise mock-host contracts
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/saronite/devtools
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install isolated DevTools dependencies
+        run: npm install --ignore-scripts --no-package-lock --workspaces=false
+      - name: Typecheck DevTools
+        run: npm run typecheck
+      - name: Test mock host and capability contracts
+        run: npm run contract-test

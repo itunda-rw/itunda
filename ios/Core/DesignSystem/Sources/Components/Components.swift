@@ -160,14 +160,16 @@ public struct IdsButton: View {
 
     public var body: some View {
         Button(action: action) {
-            Group {
+            HStack(spacing: 8) {
                 if isLoading {
                     ProgressView()
+                        .controlSize(.small)
                         .tint(variant == .filled ? IDS.Colors.textBrand : IDS.Colors.brand)
-                } else {
-                    Text(text)
-                        .font(IdsTypeScale.button)
+                        .accessibilityHidden(true)
                 }
+                // Keep the action label visible while loading so users retain context.
+                Text(text)
+                    .font(IdsTypeScale.button)
             }
             .frame(maxWidth: fullWidth ? .infinity : nil)
             .frame(minWidth: fullWidth ? nil : 44, minHeight: size.height)
@@ -731,57 +733,5 @@ public struct IdsTabs: View {
         .pickerStyle(.segmented)
         .frame(minHeight: 44)
         .accessibilityLabel(Text("Tabs"))
-    }
-}
-
-public struct IdsEmptyState: View {
-    let title: String
-    let message: String?
-    let systemImage: String
-    let actionTitle: String?
-    let action: (() -> Void)?
-
-    public init(
-        title: String,
-        message: String? = nil,
-        systemImage: String = "tray",
-        actionTitle: String? = nil,
-        action: (() -> Void)? = nil
-    ) {
-        self.title = title
-        self.message = message
-        self.systemImage = systemImage
-        self.actionTitle = actionTitle
-        self.action = action
-    }
-
-    public var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.system(size: 28, weight: .medium))
-                .foregroundColor(IDS.Colors.textSecondary)
-                .accessibilityHidden(true)
-
-            Text(title)
-                .font(IdsTypeScale.subtitle1)
-                .foregroundColor(IDS.Colors.textPrimary)
-                .multilineTextAlignment(.center)
-
-            if let message {
-                Text(message)
-                    .font(IdsTypeScale.body2)
-                    .foregroundColor(IDS.Colors.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            if let actionTitle, let action {
-                IdsButton(text: actionTitle, variant: .tinted, size: .medium, fullWidth: false, action: action)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 24)
-        .padding(.vertical, 32)
-        .accessibilityElement(children: .contain)
     }
 }

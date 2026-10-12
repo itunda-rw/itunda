@@ -33,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -133,7 +134,10 @@ fun IdsButton(
         enabled = enabled && !loading,
         interactionSource = interactionSource,
         modifier = modifier
-            .semantics { role = Role.Button }
+            .semantics {
+                role = Role.Button
+                stateDescription = if (loading) "Loading" else ""
+            }
             .then(widthModifier)
              .scale(pressScale)
             .height(heightDp),
@@ -146,17 +150,20 @@ fun IdsButton(
             disabledContentColor = disabledContentColor
         )
     ) {
-        if (loading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(if (size == IdsButtonSize.Small) IdsComponentTokens.Button.smallIconSize else IdsComponentTokens.Button.iconSize),
-                color = contentColor,
-                strokeWidth = 2.dp,
-            )
-        } else {
-            if (icon != null) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(IdsComponentTokens.Button.iconGap),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(if (size == IdsButtonSize.Small) IdsComponentTokens.Button.smallIconSize else IdsComponentTokens.Button.iconSize),
+                    color = contentColor,
+                    strokeWidth = 2.dp,
+                )
+            } else if (icon != null) {
                 Icon(icon, contentDescription = null, modifier = Modifier.size(if (size == IdsButtonSize.Small) IdsComponentTokens.Button.smallIconSize else IdsComponentTokens.Button.iconSize))
-                androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(IdsComponentTokens.Button.iconGap))
             }
+            // Keep the action label visible during loading to preserve context.
             Text(
                 text = text,
                 style = if (size == IdsButtonSize.Small) IdsTypography.Body2 else IdsTypography.Button
