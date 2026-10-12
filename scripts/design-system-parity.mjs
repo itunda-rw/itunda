@@ -18,10 +18,6 @@ const source = Object.fromEntries(
   ]),
 );
 
-function escapeRegex(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 for (const role of contract.semanticRoles) {
   for (const [platform, file] of Object.entries(files)) {
     const token = contract[platform]?.tokens?.[role];
@@ -30,8 +26,8 @@ for (const role of contract.semanticRoles) {
       continue;
     }
     const pattern = platform === "web"
-      ? new RegExp(escapeRegex(token) + "\\s*:")
-      : new RegExp("\\b" + escapeRegex(token) + "\\b");
+      ? new RegExp(token + "\\s*:")
+      : new RegExp("\\b" + token + "\\b");
     if (!pattern.test(source[platform])) failures.push(`${platform}: missing ${role} -> ${token} (${file})`);
   }
 }
