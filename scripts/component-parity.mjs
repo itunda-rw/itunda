@@ -36,6 +36,18 @@ for (const [name, component] of Object.entries(contract.components)) {
   }
 }
 
+/* Validate source-backed platform markers, not just the existence of broad source folders. */
+for (const [name, component] of Object.entries(contract.components)) {
+  for (const [platform, markers] of Object.entries(component.platformVariants ?? {})) {
+    const source = component.sources?.[platform];
+    if (source && source.endsWith(".swift") || source && source.endsWith(".kt") || source && source.endsWith(".css") || source && source.endsWith(".tsx") || source && source.endsWith(".ts")) {
+      checkSymbol(platform, source, markers);
+    } else if (source) {
+      failures.push(`${platform}: ${name} platform markers need a concrete source file, got ${source}`);
+    }
+  }
+}
+
 checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt", ["fun IdsButton(", "IdsButtonVariant", "IdsButtonSize"]);
 checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsTextField.kt", ["fun IdsTextField(", "isError", "isSuccess", "loading"]);
 checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsListRow.kt", ["fun IdsListRow(", "selected", "loading"]);
