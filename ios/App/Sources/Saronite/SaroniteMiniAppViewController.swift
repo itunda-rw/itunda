@@ -60,14 +60,17 @@ class SaroniteMiniAppViewController: UIViewController, BrickModuleRegistrableVie
     // here, guarded against re-running on a later re-appearance.
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        guard !didAttachRootView else { return }
-        didAttachRootView = true
 
         // Trust must be explicit before React Native can create/dispatch native bridge calls.
         // These concrete controllers are the four built-in first-party mini-apps; there is
         // no iOS partner-bundle loader enabled. A future partner loader must activate a
-        // validated partner context instead of calling this first-party path.
+        // validated partner context instead of calling this first-party path. Reactivate
+        // on every appearance, including when an already-mounted screen returns from a
+        // presentation, because viewWillDisappear deliberately cleared the context.
         SaroniteRuntimeContext.activateFirstParty()
+
+        guard !didAttachRootView else { return }
+        didAttachRootView = true
 
         // Ordering matters, confirmed via real diagnostics: `RCTRootViewFactory` creates its
         // `RCTHost` lazily, the *first* time a view/start call touches it.
