@@ -127,6 +127,7 @@ export function DirectMessagesList({ initialConversationId, onConsumedInitial }:
   const [filterTab, setFilterTab] = useState<'all' | 'unread' | 'calls'>('all');
   const [callHistory, setCallHistory] = useState<CallSession[] | null>(null);
   const [callHistoryError, setCallHistoryError] = useState<string | null>(null);
+  const [callHistoryLoading, setCallHistoryLoading] = useState(false);
   const [callHistoryPage, setCallHistoryPage] = useState(0);
   const [callHistoryHasMore, setCallHistoryHasMore] = useState(false);
   const [loadingMoreCallHistory, setLoadingMoreCallHistory] = useState(false);
@@ -189,16 +190,17 @@ export function DirectMessagesList({ initialConversationId, onConsumedInitial }:
   useEffect(load, []);
 
   const loadCallHistory = () => {
+    setCallHistoryLoading(true);
     setCallHistoryError(null);
-    setCallHistory(null);
     fetchCallHistory(0)
       .then((r) => { setCallHistory(r.calls); setCallHistoryPage(0); setCallHistoryHasMore(r.page + 1 < r.totalPages); })
-      .catch((err) => setCallHistoryError(err instanceof ApiError ? err.message : t('common.loadError')));
+      .catch((err) => setCallHistoryError(err instanceof ApiError ? err.message : t('common.loadError')))
+      .finally(() => setCallHistoryLoading(false));
   };
 
   useEffect(() => {
-    if (filterTab === 'calls' && callHistory === null && !callHistoryError) loadCallHistory();
-  }, [filterTab, callHistory, callHistoryError]);
+    if (filterTab === 'calls' && callHistory === null && !callHistoryError && !callHistoryLoading) loadCallHistory();
+  }, [filterTab, callHistory, callHistoryError, callHistoryLoading]);
 
   const loadMoreCallHistory = () => {
     const nextPage = callHistoryPage + 1;
