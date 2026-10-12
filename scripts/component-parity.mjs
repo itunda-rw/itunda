@@ -102,7 +102,8 @@ checkSymbol("ios", "ios/Core/DesignSystem/Sources/Components/Components.swift", 
 checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsListRow.kt", ["fun IdsListRow(", "selected", "loading"]);
 checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/HoodShared.kt", ["fun EmptyState(", "fun ErrorCard(", "fun SkeletonBlock("]);
 checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsKeyboardDockedButton.kt", ["fun FixedBottomCta(", "verticalScroll(rememberScrollState())", "cta()"]);
-checkSymbol("ios", "ios/Core/DesignSystem/Sources/Components/Components.swift", ["struct IdsButton", "IdsButtonVariant", "IdsButtonSize", "struct IdsTextField", "struct IdsListRow", "struct EmptyStateView", "struct ErrorCardView", "public struct FixedBottomCTA", "public struct IdsSkeletonBlock"]);
+checkSymbol("ios", "ios/Core/DesignSystem/Sources/Components/Components.swift", ["struct IdsButton", "IdsButtonVariant", "IdsButtonSize", "struct IdsTextField", "struct IdsListRow", "struct EmptyStateView", "struct ErrorCardView", "public struct FixedBottomCTA"]);
+checkSymbol("ios", "ios/Core/DesignSystem/Sources/Components/IdsStateComponents.swift", ["public struct IdsEmptyState", "public struct IdsSkeletonBlock"]);
 // Keep the iOS button loading contract behavioral: the action label remains visible,
 // the state is exposed to assistive technology, and the decorative spinner is hidden.
 checkSymbol("ios", "ios/Core/DesignSystem/Sources/Components/Components.swift", ['Text(text)', '.accessibilityValue(isLoading ? "Loading" : "")', ".accessibilityHidden(true)"]);
