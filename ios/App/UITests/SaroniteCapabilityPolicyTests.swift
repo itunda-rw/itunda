@@ -13,28 +13,28 @@ final class SaroniteCapabilityPolicyTests: XCTestCase {
     }
 
     func testPartnerWithAccountReadCanReadAccountOnly() {
-        let runtime = SaroniteRuntimeTrust.partner(manifestVersion: 1, scopes: ["account:read"])
+        let runtime = SaroniteRuntimeTrust.partner(policyVersion: 1, scopes: ["account:read"])
         XCTAssertTrue(SaroniteCapabilityPolicy.allows(runtime: runtime, capability: .accountRead))
         XCTAssertFalse(SaroniteCapabilityPolicy.allows(runtime: runtime, capability: nil))
     }
 
     func testMissingPartnerScopeDeniesAccountRead() {
-        let runtime = SaroniteRuntimeTrust.partner(manifestVersion: 1, scopes: [])
+        let runtime = SaroniteRuntimeTrust.partner(policyVersion: 1, scopes: [])
         XCTAssertFalse(SaroniteCapabilityPolicy.allows(runtime: runtime, capability: .accountRead))
     }
 
-    func testUnknownManifestVersionDeniesAllPartnerCapabilities() {
-        let runtime = SaroniteRuntimeTrust.partner(manifestVersion: 99, scopes: ["account:read"])
+    func testUnknownPolicyVersionDeniesAllPartnerCapabilities() {
+        let runtime = SaroniteRuntimeTrust.partner(policyVersion: 99, scopes: ["account:read"])
         XCTAssertFalse(SaroniteCapabilityPolicy.allows(runtime: runtime, capability: .accountRead))
     }
 
     func testUnknownAndDuplicateScopesAreRejected() {
         XCTAssertNil(SaroniteCapabilityPolicy.validatedPartnerScopes(
-            manifestVersion: 1,
+            policyVersion: 1,
             scopes: ["account:read", "payments:write"]
         ))
         XCTAssertNil(SaroniteCapabilityPolicy.validatedPartnerScopes(
-            manifestVersion: 1,
+            policyVersion: 1,
             scopes: ["account:read", "account:read"]
         ))
     }
@@ -42,13 +42,13 @@ final class SaroniteCapabilityPolicyTests: XCTestCase {
     func testOnlyKnownVersionAndScopeAreAccepted() {
         XCTAssertEqual(
             SaroniteCapabilityPolicy.validatedPartnerScopes(
-                manifestVersion: 1,
+                policyVersion: 1,
                 scopes: ["account:read"]
             ),
             Set(["account:read"])
         )
         XCTAssertNil(SaroniteCapabilityPolicy.validatedPartnerScopes(
-            manifestVersion: 2,
+            policyVersion: 2,
             scopes: ["account:read"]
         ))
     }
@@ -58,7 +58,7 @@ final class SaroniteCapabilityPolicyTests: XCTestCase {
         XCTAssertTrue(SaroniteRuntimeContext.allows(nil))
 
         XCTAssertFalse(SaroniteRuntimeContext.activatePartner(
-            manifestVersion: 1,
+            policyVersion: 1,
             scopes: ["account:read", "account:read"]
         ))
         XCTAssertFalse(SaroniteRuntimeContext.allows(.accountRead))
@@ -67,7 +67,7 @@ final class SaroniteCapabilityPolicyTests: XCTestCase {
 
     func testPartnerContextAllowsOnlyItsApprovedReadCapability() {
         XCTAssertTrue(SaroniteRuntimeContext.activatePartner(
-            manifestVersion: 1,
+            policyVersion: 1,
             scopes: ["account:read"]
         ))
         XCTAssertTrue(SaroniteRuntimeContext.allows(.accountRead))
