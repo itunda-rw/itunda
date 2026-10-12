@@ -1,4 +1,4 @@
-import { SARONITE_CAPABILITIES } from './capabilities';
+import { SARONITE_CAPABILITIES, permissionFor, type SaroniteCapabilityName } from './capabilities';
 
 export type MockStatus = 'ok' | 'denied' | 'unsupported' | 'error';
 
@@ -59,8 +59,13 @@ export function createSaroniteMockHost(
         record(capability, method, 'unsupported');
         return undefined;
       }
-      if (options.permission && state.permissions[options.permission] !== true) {
-        record(capability, method, 'denied', options.permission);
+      const requiredPermission = permissionFor(capability as SaroniteCapabilityName);
+      if (options.permission && options.permission !== requiredPermission) {
+        record(capability, method, 'error', `Permission contract mismatch: ${options.permission}`);
+        return undefined;
+      }
+      if (requiredPermission && state.permissions[requiredPermission] !== true) {
+        record(capability, method, 'denied', requiredPermission);
         return undefined;
       }
       try {
