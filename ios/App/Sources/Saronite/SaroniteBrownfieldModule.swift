@@ -116,8 +116,8 @@ final class SaroniteBrownfieldModule: NSObject {
             let wallets = accounts.map { account -> [String: Any] in
                 let balance = (account["balance"] as? NSNumber)?.doubleValue ?? 0
                 let accountCurrency = account["currency"] as? String ?? currency
-                totalBalance += balance
-                currency = accountCurrency
+                // Never add balances in different currencies without a real FX conversion.
+                if accountCurrency == currency { totalBalance += balance }
                 return [
                     "id": account["id"] as? String ?? "",
                     "type": account["type"] as? String ?? "",
