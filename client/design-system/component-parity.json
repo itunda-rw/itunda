@@ -1,5 +1,5 @@
 {
-  "version": "1.5.3",
+  "version": "1.6.0",
   "purpose": "IDS component API and state parity contract. Platform implementations may use native APIs, but public behavior must satisfy the same contract.",
   "components": {
     "button": {
@@ -271,9 +271,34 @@
         "no-essential-information-only-in-animation"
       ],
       "sources": {
-        "android": "android/core/designsystem",
+        "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/HoodShared.kt",
+        "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
         "web": "client/design-system/components.css"
-      }
+      },
+      "platformVariants": {
+        "android": [
+          "fun SkeletonBlock(",
+          "delay(200)",
+          "rememberInfiniteTransition"
+        ],
+        "ios": [
+          "struct SkeletonBlock: View",
+          "try? await Task.sleep",
+          "repeatForever"
+        ],
+        "web": [
+          ".tds-skeleton{",
+          "animation:tds-shimmer 1.3s infinite",
+          "@media (prefers-reduced-motion:reduce)"
+        ]
+      },
+      "knownImplementationGaps": [
+        "Android and iOS delay showing the placeholder by about 200 ms, while web CSS animates whenever the .tds-skeleton class is present; consuming views decide when to mount it.",
+        "Android uses a gradient brush and iOS uses a clipped LinearGradient; web uses a pseudo-element shimmer. Similar motion does not establish equivalent contrast or layout.",
+        "The shared Android and iOS skeleton animations do not yet declare a reduced-motion branch in the inspected implementations. Web's reduced-motion rule currently disables dialog animation but not the skeleton shimmer.",
+        "SkeletonBlock exposes a height and fills available width on native platforms; web sizing is supplied by markup. Verify placeholder geometry matches the content it replaces."
+      ],
+      "completionGate": "Verify layout stability before/after load, short loads that should not flash, reduced-motion settings on all platforms, light/dark contrast, screen-reader hiding/semantics, and real content geometry. Add native reduced-motion behavior before marking this component complete."
     },
     "bottomCta": {
       "states": [
