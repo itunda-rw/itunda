@@ -44,6 +44,9 @@ check(canonical.includes("--itunda-brand:#8F89FF"), "canonical brand v3 token mu
 check(canonical.includes("--itunda-on-brand:#121216"), "canonical on-brand foreground must be #121216");
 check(webTokens.includes("--itunda-color-brand:#8F89FF"), "web semantic brand token is not v3");
 check(webTokens.includes("--itunda-color-on-brand:#121216"), "web on-brand foreground token is missing");
+check(webTokens.includes("--itunda-color-on-success:#FFFFFF"), "web light-theme on-success foreground token is missing");
+check(webTokens.includes("--itunda-color-on-success:#121216"), "web dark-theme on-success foreground token is missing");
+check(webComponents.includes(".tds-button-success{background:var(--itunda-color-success);color:var(--itunda-color-on-success,#FFFFFF)}"), "web success button does not use semantic on-success foreground");
 check(webComponents.includes(".tds-button-primary{background:var(--itunda-color-brand);color:var(--itunda-color-on-brand,#121216)"), "web primary button does not use semantic on-brand foreground");
 check(publicSiteTokens.includes("--brand:#8F89FF"), "deployed public-site brand token is not v3");
 check(publicSiteTokens.includes("--on-brand:#121216"), "deployed public-site on-brand foreground is missing");
