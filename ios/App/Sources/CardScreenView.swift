@@ -152,7 +152,7 @@ struct CardScreenView: View {
                             }
                             .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(16)
                             if pinSuccess {
-                                Text("Card PIN saved.").font(.caption).foregroundColor(.green)
+                                Text("Card PIN saved.").font(.caption).foregroundColor(IDS.Colors.success)
                             }
                             Button(action: reportLost) {
                                 HStack {
@@ -188,7 +188,7 @@ struct CardScreenView: View {
                                 Text("itunda has no real card-network partnership yet, so this simulates a real card-present purchase -- real money moves, real limits apply.")
                                     .font(.caption2).foregroundColor(IDS.Colors.textTertiary)
                                 if let chargeMessage {
-                                    Text(chargeMessage).font(.caption).foregroundColor(chargeSucceeded ? .green : .red)
+                                    Text(chargeMessage).font(.caption).foregroundColor(chargeSucceeded ? IDS.Colors.success : .red)
                                 }
                                 IdsTextField("Merchant name", text: $merchantName)
                                 IdsTextField("Amount (RWF)", text: $chargeAmount, keyboardType: .numberPad)
@@ -227,7 +227,7 @@ struct CardScreenView: View {
                                         HStack {
                                             Text(factor.description).font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                             Spacer()
-                                            Text("+\(factor.points) credit score").font(.caption).bold().foregroundColor(.green)
+                                            Text("+\(factor.points) credit score").font(.caption).bold().foregroundColor(IDS.Colors.success)
                                         }
                                     }
                                     if let suggestion = cardSuggestion {
