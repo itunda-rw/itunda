@@ -49,7 +49,7 @@ struct UpdatesTab: View {
                 .disabled(posting || title.trimmingCharacters(in: .whitespaces).isEmpty || body_.trimmingCharacters(in: .whitespaces).isEmpty)
 
                 if let loadError {
-                    Text(loadError).font(.caption).foregroundColor(.red)
+                    ErrorCardView(loadError, onRetry: { Task { await load() } })
                 } else if let updates {
                     if updates.isEmpty {
                         Text("No updates yet — post one and it shows up on your Maps page right away.")
