@@ -1,5 +1,5 @@
 {
-  "version": "1.4.1",
+  "version": "1.4.2",
   "purpose": "IDS component API and state parity contract. Platform implementations may use native APIs, but public behavior must satisfy the same contract.",
   "components": {
     "button": {
@@ -248,7 +248,35 @@
         "android": "android/core/designsystem",
         "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
         "web": "client/design-system/components.css"
-      }
+      },
+      "platformVariants": {
+        "android": [
+          "fun FixedBottomCta(content: @Composable ColumnScope.() -> Unit, cta: @Composable () -> Unit)",
+          "content weight(1f) + verticalScroll(rememberScrollState())",
+          "Ids.colors.divider",
+          "Ids.colors.background"
+        ],
+        "ios": [
+          "public struct FixedBottomCTA<Content: View, CTA: View>",
+          "ScrollView { content }",
+          "cta.padding(.horizontal, 20)",
+          "IDS.Colors.backgroundPrimary"
+        ],
+        "web": [
+          ".tds-bottom-cta",
+          "position: sticky",
+          "env(safe-area-inset-bottom)",
+          "border-top",
+          "backdrop-filter"
+        ]
+      },
+      "knownImplementationGaps": [
+        "Android's FixedBottomCta pins the action below a weighted scrolling column but does not itself apply explicit navigation-bar or IME insets; the app window configuration and real keyboard/device behavior must be tested.",
+        "iOS FixedBottomCTA uses a ScrollView above the CTA and relies on SwiftUI safe-area and keyboard behavior; it does not explicitly document or configure keyboard dismissal, focus scrolling, or CTA behavior when the keyboard is open.",
+        "Web .tds-bottom-cta is sticky and includes safe-area padding, but it depends on the correct scroll container and a consumer-provided accessible button/action state; CSS alone cannot guarantee keyboard viewport behavior.",
+        "Platform layout mechanics differ (weighted column, SwiftUI VStack, CSS sticky), so equivalent behavior must be verified on long and short content, keyboard-open forms, small screens, and screen readers."
+      ],
+      "completionGate": "Test one- and two-action CTAs, long and short content, scroll independence, virtual keyboard and system-bar insets, focus scrolling, disabled/loading states, accessible labels, and viewport changes on Android, iOS and web. Compare light/dark rendering and confirm no content or action is obscured before marking parity complete."
     }
   },
   "completionRule": "A component is IDS-complete only when anatomy, variants, states, accessibility, localization, dark mode, responsive/platform behavior and recovery behavior are documented and tested."
