@@ -13,6 +13,7 @@ export function EmptyState({ message, icon: Icon = Inbox }: { message: string; i
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '32px 0', textAlign: 'center' }}>
       <div
+        aria-hidden="true"
         style={{
           width: '56px',
           height: '56px',
