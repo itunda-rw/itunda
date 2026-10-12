@@ -332,9 +332,9 @@ struct ListingCard: View {
                     } else if escrow.status == "DISPUTED" {
                         Text("⚠️ Reported -- itunda is reviewing this trade").font(.footnote).foregroundColor(.red)
                     } else if escrow.status == "RELEASED" {
-                        Text("✅ Payment released to the seller").font(.footnote).foregroundColor(.green)
+                        Text("✅ Payment released to the seller").font(.footnote).foregroundColor(IDS.Colors.success)
                     } else if escrow.status == "REFUNDED" {
-                        Text(isEscrowBuyer ? "↩️ Refunded to you" : "↩️ Refunded to the buyer").font(.footnote).foregroundColor(.green)
+                        Text(isEscrowBuyer ? "↩️ Refunded to you" : "↩️ Refunded to the buyer").font(.footnote).foregroundColor(IDS.Colors.success)
                     }
                 }
             }
