@@ -14,6 +14,12 @@ const androidButton = read("android/core/designsystem/src/main/java/rw/itunda/co
 const iosColors = read("ios/Core/DesignSystem/Sources/IDS.swift");
 const iosButton = read("ios/Core/DesignSystem/Sources/Components/Components.swift");
 const homepage = read("client/index.html");
+const androidNotificationColor = read("android/app/src/main/res/values/colors.xml");
+const agentLauncherBackground = read("android/agentapp/src/main/res/drawable/ic_launcher_background.xml");
+const merchantLauncherBackground = read("android/merchantapp/src/main/res/drawable/ic_launcher_background.xml");
+const riderLauncherBackground = read("android/riderapp/src/main/res/drawable/ic_launcher_background.xml");
+const agentLauncherForeground = read("android/agentapp/src/main/res/drawable/ic_launcher_foreground.xml");
+const merchantLauncherForeground = read("android/merchantapp/src/main/res/drawable/ic_launcher_foreground.xml");
 const activeBrandSurfaces = [
   "client/index.html",
   "client/data/index.html",
@@ -47,6 +53,12 @@ check(publicSiteTokens.includes(".btn.primary{background:var(--brand);border-col
 check(androidColors.includes("brand = Color(0xFF8F89FF)"), "Android brand color is not v3");
 check(androidColors.includes("onBrand = Color(0xFF121216)"), "Android on-brand foreground is missing");
 check(androidButton.includes("Ids.colors.brand to Ids.colors.onBrand"), "Android filled button does not use on-brand foreground");
+check(androidNotificationColor.includes("<color name=" + "\"itunda_notification_brand\">#8F89FF</color>"), "Android notification tint is not v3");
+for (const [name, xml] of [["agent", agentLauncherBackground], ["merchant", merchantLauncherBackground], ["rider", riderLauncherBackground]]) {
+  check(xml.includes('android:color="#8F89FF"'), `Android ${name} launcher background is not v3`);
+}
+check(agentLauncherForeground.includes("#8F89FF"), "Android agent role glyph does not use v3 brand");
+check(merchantLauncherForeground.includes("#8F89FF"), "Android merchant role glyph does not use v3 brand");
 check(iosColors.includes("public static let brand = Color(light: 0x8F89FF, dark: 0x8F89FF)"), "iOS brand color is not v3");
 check(iosColors.includes("public static let onBrand = Color(light: 0x121216, dark: 0x121216)"), "iOS on-brand foreground is missing");
 check(iosButton.includes("IDS.Colors.onBrand"), "iOS filled button does not use on-brand foreground");
@@ -62,5 +74,5 @@ if (errors.length) {
   for (const error of errors) console.error(`- ${error}`);
   process.exitCode = 1;
 } else {
-  console.log("Itunda brand v3 surface audit passed: canonical, web, Android, iOS, primary buttons, and active product sites are aligned.");
+  console.log("Itunda brand v3 surface audit passed: canonical tokens, web, Android/iOS semantic colors, Android role-app backgrounds, primary buttons, and active product sites are aligned.");
 }
