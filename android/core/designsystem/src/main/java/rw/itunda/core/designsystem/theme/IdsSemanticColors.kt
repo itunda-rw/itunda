@@ -90,8 +90,8 @@ val IdsLightSemanticColors = IdsSemanticColors(
     // Not invented: same OKLCH hue-rotation technique Toss's own eng blog documents
     // (toss.tech/article/tds-color-system-update) applied to this exact real anchor --
     // hold L/C of the old 0xFF3182F6, rotate hue to 280deg, clamp chroma to gamut.
-    // WCAG-verified: white-on-brand 3.85:1 (was 3.71:1, both clear the real 3:1
-    // AA-large/UI-component bar this role is held to).
+    // V3 brand foregrounds are defined separately: onBrand (#121216) is for
+    // filled brand surfaces; textBrand (#6960F9) is for small text on light surfaces.
     brand = Color(0xFF8F89FF),
     onBrand = Color(0xFF121216),
     textBrand = Color(0xFF6960F9),
