@@ -185,9 +185,10 @@ for (const [theme, foreground, background] of [
 // Compare every semantic role's resolved color values, not just whether its token name exists.
 function cssVariableMap(css, theme) {
   const map = new Map();
-  const blocks = theme === "dark"
-    ? [css.match(/\[data-theme=["']dark["']\]\s*\{([^}]*)\}/i)?.[1] ?? ""]
-    : [...css.matchAll(/:root\s*\{([^}]*)\}/gi)].map((match) => match[1]);
+  const blocks = [...css.matchAll(/:root\s*\{([^}]*)\}/gi)].map((match) => match[1]);
+  if (theme === "dark") {
+    blocks.push(css.match(/\[data-theme=["']dark["']\]\s*\{([^}]*)\}/i)?.[1] ?? "");
+  }
   for (const block of blocks) {
     for (const match of block.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
       map.set(match[1], match[2].trim());
