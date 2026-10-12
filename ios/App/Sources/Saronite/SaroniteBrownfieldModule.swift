@@ -99,31 +99,37 @@ final class SaroniteBrownfieldModule: NSObject {
         }
     }
 
-    // Wallet balance is a distinct API contract from account summary: the wallet
-    // mini-app expects { totalBalance, currency, wallets } from GET /api/v1/wallet/balance.
-    // Runtime capability policy is checked inside authorizedCall; partner runtimes fail closed
-    // unless this exact endpoint is explicitly approved by the policy registry.
+    // The real backend has no /api/v1/wallet/balance route: AccountController
+    // serves GET /api/v1/account as { success, accounts }. Project that verified
+    // response into the separate WalletBalanceResult expected by this mini-app.
+    // Keep this selector first-party-only even though account:read partners may call
+    // getAccountBalance; a future wallet-specific capability needs separate review.
     @objc func getWalletBalance(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-        authorizedCall(path: "api/v1/wallet/balance", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
-            let data = root["data"] as? [String: Any]
-            let currency = data?["currency"] as? String ?? "RWF"
-            let wallets = ((root["wallets"] as? [[String: Any]]) ?? []).map { wallet -> [String: Any] in
-                [
-                    "id": wallet["id"] as? String ?? "",
-                    "type": wallet["type"] as? String ?? "",
-                    "name": wallet["name"] as? String ?? "",
-                    "number": wallet["number"] as? String ?? "",
-                    "balance": (wallet["balance"] as? NSNumber)?.doubleValue ?? 0,
-                    "currency": wallet["currency"] as? String ?? currency,
-                    "icon": wallet["icon"] as? String ?? "",
-                    "connected": wallet["connected"] as? Bool ?? false,
+        guard SaroniteRuntimeContext.isFirstParty else {
+            reject("SARONITE_SCOPE_DENIED", "Wallet balance is available only to first-party mini-apps", nil)
+            return
+        }
+        authorizedCall(path: "api/v1/account", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+            let accounts = (root["accounts"] as? [[String: Any]]) ?? []
+            var currency = accounts.first?["currency"] as? String ?? "RWF"
+            var totalBalance = 0.0
+            let wallets = accounts.map { account -> [String: Any] in
+                let balance = (account["balance"] as? NSNumber)?.doubleValue ?? 0
+                let accountCurrency = account["currency"] as? String ?? currency
+                totalBalance += balance
+                currency = accountCurrency
+                return [
+                    "id": account["id"] as? String ?? "",
+                    "type": account["type"] as? String ?? "",
+                    "name": account["nickname"] as? String ?? account["accountName"] as? String ?? "",
+                    "number": account["accountNumber"] as? String ?? "",
+                    "balance": balance,
+                    "currency": accountCurrency,
+                    "icon": "",
+                    "connected": true,
                 ]
             }
-            return [
-                "totalBalance": (root["totalBalance"] as? NSNumber)?.doubleValue ?? 0,
-                "currency": currency,
-                "wallets": wallets,
-            ]
+            return ["totalBalance": totalBalance, "currency": currency, "wallets": wallets]
         }
     }
 
