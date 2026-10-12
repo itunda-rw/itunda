@@ -10,7 +10,7 @@ struct PortfolioContent: View {
     var body: some View {
         VStack(spacing: 10) {
             if let error {
-                InvestErrorCard(message: error, onRetry: load)
+                ErrorCardView(error, onRetry: load)
             } else if let portfolio {
                 let positive = portfolio.totalReturn >= 0
                 VStack(alignment: .leading, spacing: 6) {
@@ -181,16 +181,3 @@ struct Sparkline: View {
     }
 }
 
-struct InvestErrorCard: View {
-    let message: String
-    let onRetry: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(message).font(.caption).foregroundColor(.red)
-            Button("Retry", action: onRetry).font(.caption).bold().foregroundColor(IDS.Colors.brand)
-        }
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
