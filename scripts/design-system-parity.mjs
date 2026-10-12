@@ -59,7 +59,7 @@ function inspectAlias(name, trail = []) {
   }
   const value = webVariableDeclarations.get(name);
   if (typeof value !== "string") return;
-  for (const match of value.matchAll(/var\\((--[\\w-]+)/g)) {
+  for (const match of value.matchAll(/var\((--[\w-]+)/g)) {
     const target = match[1];
     if (!webVariableDeclarations.has(target)) {
       failures.push(`web: component token ${name} references undefined token ${target}`);
