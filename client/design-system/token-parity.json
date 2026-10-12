@@ -6,6 +6,15 @@
     "light": "#7472F4",
     "dark": "#7675F8"
   },
+  "brandText": {
+    "light": "#625FE0",
+    "dark": "#9B98FF",
+    "minimumContrast": 4.5,
+    "background": {
+      "light": "#FFFFFF",
+      "dark": "#202027"
+    }
+  },
   "semanticRoles": [
     "background",
     "surface",
