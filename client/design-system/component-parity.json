@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "purpose": "IDS component API and state parity contract. Platform implementations may use native APIs, but public behavior must satisfy the same contract.",
   "components": {
     "button": {
@@ -10,9 +10,58 @@
         "destructive"
       ],
       "platformVariants": {
-        "android": ["Filled", "Tinted", "Tertiary", "Destructive"],
-        "ios": ["filled", "tinted", "tertiary", "destructive"],
-        "web": ["tds-button-primary", "tds-button-secondary", "tds-button-weak", "tds-button-success", "tds-button-error", "tds-text-button"]
+        "android": [
+          "Filled",
+          "Tinted",
+          "Tertiary",
+          "Destructive"
+        ],
+        "ios": [
+          "filled",
+          "tinted",
+          "tertiary",
+          "destructive"
+        ],
+        "web": [
+          "tds-button-primary",
+          "tds-button-secondary",
+          "tds-button-weak",
+          "tds-button-success",
+          "tds-button-error",
+          "tds-text-button"
+        ]
+      },
+      "semanticMappingAudit": {
+        "status": "mapping_proposed_not_verified",
+        "mappings": {
+          "filled": {
+            "android": "Filled",
+            "ios": "filled",
+            "web": "tds-button-primary"
+          },
+          "tinted": {
+            "android": "Tinted",
+            "ios": "tinted",
+            "web": "tds-button-weak"
+          },
+          "tertiary": {
+            "android": "Tertiary",
+            "ios": "tertiary",
+            "web": "tds-text-button"
+          },
+          "destructive": {
+            "android": "Destructive",
+            "ios": "destructive",
+            "web": "tds-button-error"
+          }
+        },
+        "knownDifferences": [
+          "Android filled-disabled uses a translucent brand tint; iOS currently uses a neutral divider background for every disabled variant.",
+          "Android destructive uses a solid danger container with white content; iOS destructive uses a danger-tint container and danger-colored content.",
+          "Web exposes additional secondary and success styling classes without an exact one-to-one native variant in the current contract.",
+          "Class or enum presence does not establish contrast, touch-target, focus, screen-reader, loading, or runtime visual equivalence."
+        ],
+        "completionGate": "Do not mark cross-platform variant parity complete until each proposed mapping is reviewed against rendered light/dark screenshots, interaction-state tests, accessibility checks, and product-owner approval."
       },
       "sizes": [
         "large",
@@ -34,7 +83,7 @@
         "state-not-color-only",
         "minimum-touch-target"
       ],
-      "parityNote": "The variant names and styling primitives differ by platform. The listed platform APIs are evidence of implementation, not proof that every variant is visually or behaviorally equivalent. Review semantic mapping before declaring full parity.",
+      "parityNote": "Variant names and styling primitives differ by platform. The semantic mapping above is a review hypothesis based on source implementation, not proof of equivalence.",
       "sources": {
         "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt",
         "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
