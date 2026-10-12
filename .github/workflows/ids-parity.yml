@@ -3,9 +3,12 @@ name: IDS semantic parity
 on:
   push:
     branches:
-      - agent/itunda-agent-network
+      - main
     paths:
       - "client/design-system/**"
+      - "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/theme/IdsSemanticColors.kt"
+      - "ios/Core/DesignSystem/Sources/IDS.swift"
+      - "packages/design-tokens/brand-themes.json"
       - "scripts/design-system-parity.mjs"
       - ".github/workflows/ids-parity.yml"
   workflow_dispatch:
