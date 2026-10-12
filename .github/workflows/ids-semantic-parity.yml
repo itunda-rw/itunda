@@ -16,6 +16,8 @@ on:
     branches: [main]
     paths:
       - "client/design-system/**"
+      - "scripts/component-parity.mjs"
+      - "client/design-system/component-parity.json"
       - "android/core/designsystem/**"
       - "ios/Core/DesignSystem/**"
       - "scripts/design-system-parity.mjs"
