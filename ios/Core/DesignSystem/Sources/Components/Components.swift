@@ -480,11 +480,25 @@ public struct IdsListRow: View {
     let subtitle: String?
     let rightText: String?
     let action: () -> Void
+    var isEnabled: Bool = true
+    var isLoading: Bool = false
+    var isSelected: Bool = false
 
-    public init(title: String, subtitle: String? = nil, rightText: String? = nil, action: @escaping () -> Void) {
+    public init(
+        title: String,
+        subtitle: String? = nil,
+        rightText: String? = nil,
+        isEnabled: Bool = true,
+        isLoading: Bool = false,
+        isSelected: Bool = false,
+        action: @escaping () -> Void
+    ) {
         self.title = title
         self.subtitle = subtitle
         self.rightText = rightText
+        self.isEnabled = isEnabled
+        self.isLoading = isLoading
+        self.isSelected = isSelected
         self.action = action
     }
 
@@ -494,7 +508,7 @@ public struct IdsListRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
                         .font(IdsTypeScale.subtitle1)
-                        .foregroundColor(IDS.Colors.textPrimary)
+                        .foregroundColor(isEnabled ? IDS.Colors.textPrimary : IDS.Colors.textSecondary)
 
                     if let subtitle = subtitle {
                         Text(subtitle)
@@ -503,27 +517,31 @@ public struct IdsListRow: View {
                     }
                 }
                 Spacer()
-                if let rightText = rightText {
+                if isLoading {
+                    ProgressView()
+                        .tint(IDS.Colors.brand)
+                        .accessibilityLabel("Loading")
+                } else if let rightText = rightText {
                     Text(rightText)
                         .font(IdsTypeScale.subtitle1)
-                        .foregroundColor(IDS.Colors.textPrimary)
+                        .foregroundColor(isEnabled ? IDS.Colors.textPrimary : IDS.Colors.textSecondary)
                 }
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
-            // Real fix (2026-07-13): same static-vs-reactive bug as IdsButton above --
-            // this row's background stayed light-mode white in dark mode.
+            // Keep the flat row treatment and light/dark-aware IDS card surface.
             .background(IDS.Colors.card)
-            // Real fix (2026-08-24): a flat full-width row, not a rounded card (no
-            // cornerRadius anywhere on this component) -- IDS.Colors.backgroundPrimary
-            // is now white in light mode too, so this needed a hairline bottom divider,
-            // not idsCardBorder's rounded-rect stroke, matching web's identical
-            // .itunda-flat-section row-divider treatment for the same flat-row shape.
             .overlay(Rectangle().fill(IDS.Colors.divider).frame(height: 1), alignment: .bottom)
+            .contentShape(Rectangle())
         }
-        .buttonStyle(PressScaleButtonStyle())
+        .buttonStyle(PressScaleButtonStyle(enabled: isEnabled && !isLoading))
+        .disabled(!isEnabled || isLoading)
+        .opacity(isEnabled ? 1 : 0.55)
         .accessibilityLabel(Text(title))
-        .accessibilityValue(Text([subtitle, rightText].compactMap { $0 }.joined(separator: ". ")))
+        .accessibilityValue(Text(
+            isLoading ? "Loading" : [subtitle, rightText].compactMap { $0 }.joined(separator: ". ")
+        ))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
