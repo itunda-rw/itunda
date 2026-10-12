@@ -10,6 +10,8 @@ const files = {
   ios: "ios/Core/DesignSystem/Sources/IDS.swift",
 };
 const failures = [];
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\const failures = [];
+");
 
 const source = Object.fromEntries(
   Object.entries(files).map(([platform, file]) => [
@@ -25,9 +27,10 @@ for (const role of contract.semanticRoles) {
       failures.push(`contract: missing ${platform}.tokens.${role}`);
       continue;
     }
+    const escapedToken = escapeRegex(token);
     const pattern = platform === "web"
-      ? new RegExp(token + "\\s*:")
-      : new RegExp("\\b" + token + "\\b");
+      ? new RegExp(escapedToken + "\\s*:")
+      : new RegExp("\\b" + escapedToken + "\\b");
     if (!pattern.test(source[platform])) failures.push(`${platform}: missing ${role} -> ${token} (${file})`);
   }
 }
@@ -39,8 +42,23 @@ const darkBrand = String(contract.brand.dark).toUpperCase();
 const lightTextBrand = String(contract.brandText?.light ?? "").toUpperCase();
 const darkTextBrand = String(contract.brandText?.dark ?? "").toUpperCase();
 const minimumTextContrast = Number(contract.brandText?.minimumContrast ?? 4.5);
+const hexColor = /^#[0-9A-F]{6}$/;
+for (const [label, color] of Object.entries({
+  "brand.light": lightBrand,
+  "brand.dark": darkBrand,
+  "brandText.light": lightTextBrand,
+  "brandText.dark": darkTextBrand,
+})) {
+  if (!hexColor.test(color)) failures.push(`contract: ${label} must be a six-digit hex color, got ${color || "(empty)"}`);
+}
 const lightTextBackground = String(contract.brandText?.background?.light ?? "#FFFFFF").toUpperCase();
 const darkTextBackground = String(contract.brandText?.background?.dark ?? "#202027").toUpperCase();
+for (const [label, color] of Object.entries({
+  "brandText.background.light": lightTextBackground,
+  "brandText.background.dark": darkTextBackground,
+})) {
+  if (!hexColor.test(color)) failures.push(`contract: ${label} must be a six-digit hex color, got ${color || "(empty)"}`);
+}
 
 function cssBrandValues(css) {
   const lightMatch = css.match(/:root\s*\{[^}]*--itunda-color-brand\s*:\s*(#[0-9a-f]{6})/i);
