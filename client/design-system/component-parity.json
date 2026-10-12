@@ -1,5 +1,5 @@
 {
-  "version": "1.5.1",
+  "version": "1.5.2",
   "purpose": "IDS component API and state parity contract. Platform implementations may use native APIs, but public behavior must satisfy the same contract.",
   "components": {
     "button": {
@@ -242,8 +242,8 @@
       },
       "platformVariants": {
         "android": [
-          "fun ErrorCard(",
-          "IdsButtonVariant.Destructive",
+          "fun ErrorCard(message: String, onRetry: () -> Unit)",
+          "IdsButton(text = \"Retry\"",
           "Ids.colors.danger"
         ],
         "ios": [
