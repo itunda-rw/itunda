@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -121,7 +122,7 @@ fun SkeletonBlock(height: Dp = 120.dp, modifier: Modifier = Modifier) {
     )
     Card(
         shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-        modifier = modifier.fillMaxWidth().height(height),
+        modifier = modifier.fillMaxWidth().height(height).clearAndSetSemantics { },
         colors = CardDefaults.cardColors(containerColor = Ids.colors.surfaceSoft),
     ) {
         Box(
