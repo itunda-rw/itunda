@@ -26,6 +26,14 @@ const cardScreen = read("ios/App/Sources/CardScreenView.swift");
 const grow31Screen = read("ios/App/Sources/Grow31SavingsScreenView.swift");
 const shopProductDetail = read("ios/Features/Shop/Sources/ShopProductDetail.swift");
 const transitScreen = read("ios/App/Sources/TransitScreenView.swift");
+const transactionHistory = read("ios/Features/Payments/Sources/TransactionHistoryScreen.swift");
+const eatsCheckout = read("ios/Features/Eats/Sources/EatsCheckout.swift");
+const investPortfolio = read("ios/Features/Wealth/Sources/InvestPortfolio.swift");
+const spendingScreen = read("ios/App/Sources/SpendingScreenView.swift");
+const talkChatThread = read("ios/App/Sources/TalkChatThread.swift");
+const hoodMarketplaceCard = read("ios/App/Sources/HoodMarketplaceCard.swift");
+const investScreen = read("ios/Features/Wealth/Sources/InvestScreenView.swift");
+const stockDetail = read("ios/Features/Wealth/Sources/StockDetailScreen.swift");
 const homepage = read("client/index.html");
 const techBlogStyles = read("services/blog/src/styles.css");
 const techBlogHtml = read("services/blog/index.html");
@@ -87,6 +95,14 @@ check(cardScreen.includes("IDS.Colors.success"), "card success and positive cred
 check(grow31Screen.includes("IDS.Colors.success"), "Grow31 savings success/bonus states must use semantic brand success");
 check(shopProductDetail.includes("foregroundColor(IDS.Colors.success)"), "shop order-placed confirmation must use semantic brand success");
 check(transitScreen.includes("foregroundColor(IDS.Colors.success)"), "transit tap confirmation must use semantic brand success");
+check(transactionHistory.includes("tx.isOutgoing ? .red : IDS.Colors.success"), "incoming transaction amount must use semantic brand success");
+check(eatsCheckout.includes("foregroundColor(IDS.Colors.success)"), "Eats checkout positive states must use semantic brand success");
+check(investPortfolio.includes("positive ? IDS.Colors.success : .red"), "investment portfolio positive returns must use semantic brand success");
+check(spendingScreen.includes("change > 0 ? .red : IDS.Colors.success"), "spending comparison positive decrease must use semantic brand success");
+check(talkChatThread.includes("otherOnline ? IDS.Colors.success"), "online presence must use semantic brand success");
+check(hoodMarketplaceCard.includes("foregroundColor(IDS.Colors.success)"), "marketplace escrow terminal states must use semantic brand success");
+check(investScreen.includes("positive ? IDS.Colors.success : .red"), "investment list positive movement must use semantic brand success");
+check(stockDetail.includes("positive ? IDS.Colors.success : .red"), "stock detail positive movement must use semantic brand success");
 
 const staleBrandAnchor = /#(?:7472F4|7675F8|9B98FF|625FE0|625FE6|F0EFFF)\b/i;
 for (const surface of activeBrandSurfaces) {
