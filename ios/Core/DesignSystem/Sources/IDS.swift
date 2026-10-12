@@ -169,7 +169,7 @@ public struct IDS {
         // real, separate bug of using that primitive directly instead of this
         // theme-reactive semantic token, fixed alongside this.
         public static let textTertiary = Color(light: 0x636E7C, dark: 0x848A96)
-        public static let textBrand = brand
+        public static let textBrand = Color(light: 0x625FE0, dark: 0x9B98FF)
         // Real WCAG AA contrast fix (item 240, docs/ACCESSIBILITY.md finding #2) --
         // iOS had no shared success/green token at all (only successTint, the pale
         // background wash below); real screens used SwiftUI's system `Color.green`
