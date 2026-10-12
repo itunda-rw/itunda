@@ -96,7 +96,7 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
         </label>
 
         {error && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: 0 }} role="alert" aria-live="polite">
+          <p style={{ fontSize: '13px', color: 'var(--itunda-field-border-error)', margin: 0 }} role="alert">
             {error}
           </p>
         )}
