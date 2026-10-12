@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreDesignSystem
+import CoreNetwork
 
 /// Keeps the past-trip presentation and per-trip actions separate from ride booking
 /// and live-trip state, keeping RideScreenView focused and under the file-size guardrail.
