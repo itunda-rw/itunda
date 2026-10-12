@@ -160,14 +160,16 @@ public struct IdsButton: View {
 
     public var body: some View {
         Button(action: action) {
-            Group {
+            HStack(spacing: 8) {
                 if isLoading {
                     ProgressView()
+                        .controlSize(.small)
                         .tint(variant == .filled ? IDS.Colors.textBrand : IDS.Colors.brand)
-                } else {
-                    Text(text)
-                        .font(IdsTypeScale.button)
+                        .accessibilityHidden(true)
                 }
+                // Keep the action label visible while loading so users retain context.
+                Text(text)
+                    .font(IdsTypeScale.button)
             }
             .frame(maxWidth: fullWidth ? .infinity : nil)
             .frame(minWidth: fullWidth ? nil : 44, minHeight: size.height)
