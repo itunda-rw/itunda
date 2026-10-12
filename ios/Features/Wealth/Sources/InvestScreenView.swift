@@ -93,7 +93,7 @@ struct MarketContent: View {
     var body: some View {
         VStack(spacing: 10) {
             if let error {
-                InvestErrorCard(message: error, onRetry: load)
+                ErrorCardView(error, onRetry: load)
             } else if let stocks {
                 HStack(spacing: 8) {
                     ForEach([("ALL", "All"), ("RSE", "Rwanda (RSE)"), ("NASDAQ", "Overseas")], id: \.0) { id, label in
