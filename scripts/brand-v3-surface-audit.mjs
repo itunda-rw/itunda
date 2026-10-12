@@ -14,6 +14,8 @@ const androidButton = read("android/core/designsystem/src/main/java/rw/itunda/co
 const iosColors = read("ios/Core/DesignSystem/Sources/IDS.swift");
 const iosButton = read("ios/Core/DesignSystem/Sources/Components/Components.swift");
 const homepage = read("client/index.html");
+const techBlogStyles = read("services/blog/src/styles.css");
+const techBlogHtml = read("services/blog/index.html");
 const activeBrandSurfaces = [
   "client/index.html",
   "client/data/index.html",
@@ -56,6 +58,9 @@ for (const surface of activeBrandSurfaces) {
   check(!staleBrandAnchor.test(read(surface)), `${surface} still contains a legacy brand anchor`);
 }
 check(!homepage.includes("--indigo:#7472F4"), "consumer homepage still declares the legacy brand variable");
+check(techBlogStyles.includes("--itunda-brand:#8F89FF"), "Tech blog brand token is not v3");
+check(techBlogStyles.includes("--itunda-brand-strong:#7D77F7"), "Tech blog pressed brand token is not aligned with v3");
+check(techBlogHtml.includes('name="theme-color" content="#8F89FF"'), "Tech blog browser theme color is not v3");
 
 if (errors.length) {
   console.error("Itunda brand v3 surface audit failed:");
