@@ -117,7 +117,26 @@
         "Android and iOS expose error and success supporting text through component APIs; the shared web CSS only styles .tds-error and does not itself bind validation messages or accessible descriptions.",
         "CSS styling alone does not establish screen-reader announcement, focus order, keyboard type, or successful runtime behavior."
       ],
-      "completionGate": "Before declaring text-field parity, verify disabled/loading API behavior on all platforms, ensure invalid state is programmatically exposed, connect visible error text through accessible descriptions, and run keyboard plus screen-reader checks in light and dark themes."
+      "completionGate": "Before declaring text-field parity, verify disabled/loading API behavior on all platforms, ensure invalid state is programmatically exposed, connect visible error text through accessible descriptions, and run keyboard plus screen-reader checks in light and dark themes.",
+      "platformVariants": {
+        "android": [
+          "isError",
+          "isSuccess",
+          "loading",
+          "enabled"
+        ],
+        "ios": [
+          "errorText",
+          "successText",
+          "autoFocus",
+          "isSecure"
+        ],
+        "web": [
+          ".tds-input",
+          ".tds-input:disabled",
+          ".tds-input[aria-invalid"
+        ]
+      }
     },
     "listRow": {
       "states": [
