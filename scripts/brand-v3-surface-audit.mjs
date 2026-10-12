@@ -16,6 +16,8 @@ const iosButton = read("ios/Core/DesignSystem/Sources/Components/Components.swif
 const homepage = read("client/index.html");
 const techBlogStyles = read("services/blog/src/styles.css");
 const techBlogHtml = read("services/blog/index.html");
+const techBlogPosts = read("services/blog/src/posts/index.ts");
+const techBlogCoverPolicy = read("services/blog/public/images/posts/EDITORIAL_COVERS.md");
 const activeBrandSurfaces = [
   "client/index.html",
   "client/data/index.html",
@@ -61,6 +63,9 @@ check(!homepage.includes("--indigo:#7472F4"), "consumer homepage still declares 
 check(techBlogStyles.includes("--itunda-brand:#8F89FF"), "Tech blog brand token is not v3");
 check(techBlogStyles.includes("--itunda-brand-strong:#7D77F7"), "Tech blog pressed brand token is not aligned with v3");
 check(techBlogHtml.includes('name="theme-color" content="#8F89FF"'), "Tech blog browser theme color is not v3");
+check(techBlogPosts.includes("payments: ['#8F89FF', '#F1F0FF']"), "Tech blog payment cover palette is not v3");
+check(techBlogPosts.includes("platform: ['#8F89FF', '#F1F0FF']"), "Tech blog platform cover palette is not v3");
+check(techBlogCoverPolicy.includes("Brand v3 violet `#8F89FF`"), "Tech blog cover policy still documents the legacy brand");
 
 if (errors.length) {
   console.error("Itunda brand v3 surface audit failed:");
