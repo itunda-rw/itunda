@@ -317,38 +317,19 @@ private struct RidePassengerContent: View {
                     error: contactError
                 )
 
-                PastRideTripsSection(
+                RidePastTripsContent(
                     trips: pastTrips,
-                    title: "Past rides",
                     hasMore: pastTripsHasMore,
                     loadingMore: loadingMorePastTrips,
+                    reviewedTripIds: reviewedTripIds,
+                    tippedTripIds: tippedTripIds,
+                    busyTripId: busyTripId,
                     onLoadMore: { Task { await loadMorePastTrips() } },
-                    itemContent: { trip in
-                        AnyView(
-                            Group {
-                                if trip.status == "COMPLETED", trip.driverId != nil, !reviewedTripIds.contains(trip.id) {
-                                    RideReviewRow(busy: busyTripId == trip.id) { rating, comment in
-                                        await submitReview(trip.id, rating, comment)
-                                    }
-                                }
-                                if trip.status == "COMPLETED", trip.driverId != nil, trip.tipAmount == nil, !tippedTripIds.contains(trip.id) {
-                                    TipDriverPrompt(tripId: trip.id, onTipped: { tippedTripIds.insert(trip.id) })
-                                }
-                                // Real "report an issue" hand-off (Support product-
-                                // completeness pass, 2026-09-08) -- mirrors bank-mfe's
-                                // RidePassengerView's own identical button, see
-                                // SupportScreenView.swift's own doc comment.
-                                if trip.status == "COMPLETED" {
-                                    Button(action: { onReportIssue(trip.transactionId) }) {
-                                        Text("Report an issue")
-                                            .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
-                                            .padding(.horizontal, 12).padding(.vertical, 8)
-                                            .background(IDS.Colors.chipBackground).cornerRadius(8)
-                                    }
-                                }
-                            }
-                        )
-                    }
+                    onSubmitReview: { tripId, rating, comment in
+                        await submitReview(tripId, rating, comment)
+                    },
+                    onTipped: { tippedTripIds.insert($0) },
+                    onReportIssue: onReportIssue
                 )
             }
             .padding(.horizontal)
