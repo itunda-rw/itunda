@@ -163,6 +163,7 @@ private struct RidePassengerContent: View {
     // Real Uber "Verify Your Ride" PIN -- fetched once a driver is assigned so the
     // passenger can read it aloud before pickup.
     @State private var activeTripPin: String?
+    @State private var activeTripDetailsError: String?
     // Real Uber Safety "Trusted Contacts" (help.uber.com) -- last remaining client
     // platform for this feature (item 161; bank-mfe/Android already have it). Mirrors
     // bank-mfe's TrustedContactsSection/Android's TrustedContactsSection exactly,
@@ -196,6 +197,9 @@ private struct RidePassengerContent: View {
             VStack(alignment: .leading, spacing: 12) {
                 if let tripsLoadError {
                     ErrorCardView(tripsLoadError, onRetry: { Task { await loadTrips() } })
+                }
+                if let activeTripDetailsError {
+                    ErrorCardView(activeTripDetailsError, onRetry: { Task { await loadActiveTripDetails() } })
                 }
                 if let pastTripsPaginationError {
                     ErrorCardView(pastTripsPaginationError, onRetry: { Task { await loadMorePastTrips() } })
@@ -361,10 +365,10 @@ private struct RidePassengerContent: View {
         .task { await loadBookmarks() }
         .onDisappear { pollTask?.cancel() }
         .onChange(of: activeTrip?.id) { _ in
-            Task { await loadActiveTripStops(); await loadActiveTripPin() }
+            Task { await loadActiveTripDetails() }
         }
         .onChange(of: activeTrip?.status) { _ in
-            Task { await loadActiveTripPin() }
+            Task { await loadActiveTripDetails() }
         }
     }
 
@@ -397,14 +401,27 @@ private struct RidePassengerContent: View {
         }
     }
 
-    private func loadActiveTripStops() async {
-        guard let id = activeTrip?.id else { activeTripStops = []; return }
-        activeTripStops = (try? await NetworkClient.shared.getRideTripStops(tripId: id).stops) ?? []
-    }
-
-    private func loadActiveTripPin() async {
-        guard let id = activeTrip?.id, activeTrip?.status != "REQUESTED" else { activeTripPin = nil; return }
-        activeTripPin = (try? await NetworkClient.shared.getRideTripPin(id: id).pin) ?? nil
+    private func loadActiveTripDetails() async {
+        guard let trip = activeTrip else {
+            activeTripStops = []
+            activeTripPin = nil
+            activeTripDetailsError = nil
+            return
+        }
+        do {
+            let stops = try await NetworkClient.shared.getRideTripStops(tripId: trip.id).stops
+            let pin: String?
+            if trip.status == "REQUESTED" {
+                pin = nil
+            } else {
+                pin = try await NetworkClient.shared.getRideTripPin(trip.id).pin
+            }
+            activeTripStops = stops
+            activeTripPin = pin
+            activeTripDetailsError = nil
+        } catch {
+            activeTripDetailsError = "Couldn't load your ride details. Check your connection and try again."
+        }
     }
 
     private func requestRide() async {
