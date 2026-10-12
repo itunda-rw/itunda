@@ -237,7 +237,12 @@ public struct OverviewScreenView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    if let error { Text(error).font(.caption).foregroundColor(.red) }
+                    if let error, overview == nil {
+                        ErrorCardView(error, onRetry: { Task { await refresh() } })
+                    } else if let error {
+                        // Keep mutation/account-link errors inline so the form and its context remain available.
+                        Text(error).font(.caption).foregroundColor(.red)
+                    }
                     if let overview {
                         // Real "My assets" tab-by-tab redesign (2026-08-27, direct user
                         // reference: 3 real Toss "총자산" screenshots) -- deliberately
