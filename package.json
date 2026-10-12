@@ -91,7 +91,15 @@
     "audit:ids": "node ./scripts/audit-ids.mjs",
     "audit:monorepo": "node ./scripts/audit-monorepo.mjs",
     "miniapp:new": "node ./tools/itunda-miniapp/bin/itunda-miniapp.mjs new",
-    "miniapp:validate": "node ./tools/itunda-miniapp/bin/itunda-miniapp.mjs validate"
+    "miniapp:validate": "node ./tools/itunda-miniapp/bin/itunda-miniapp.mjs validate",
+    "dev:bank": "yarn workspace bank-mfe dev",
+    "dev:kyc": "yarn workspace kyc-mfe dev",
+    "dev:ops": "yarn workspace ops-mfe dev",
+    "dev:host": "yarn workspace host-app dev",
+    "dev:saronite:web": "npm --prefix packages/saronite/mini-apps/web-demo run dev",
+    "dev:saronite:native": "npm --prefix packages/saronite/host-app run start",
+    "typecheck:saronite": "npm --prefix packages/saronite run typecheck",
+    "test:saronite:contract": "npm --prefix packages/saronite/devtools run contract-test"
   },
   "devDependencies": {
     "dependency-cruiser": "catalog:",
