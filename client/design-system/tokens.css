@@ -101,7 +101,7 @@
   --itunda-color-text-primary:var(--itunda-color-text);
   --itunda-color-text-secondary:var(--itunda-color-text-muted);
   --itunda-color-text-tertiary:var(--itunda-color-text-subtle);
-  --itunda-color-text-brand:var(--itunda-color-brand);
+  --itunda-color-text-brand:#625FE0;
   --itunda-color-divider:var(--itunda-color-border);
   --itunda-color-brand-pressed:var(--itunda-color-pressed);
   --itunda-color-icon-primary:var(--itunda-color-icon-primary);
@@ -128,7 +128,7 @@
   --itunda-color-text-primary:var(--itunda-color-text);
   --itunda-color-text-secondary:var(--itunda-color-text-muted);
   --itunda-color-text-tertiary:var(--itunda-color-text-subtle);
-  --itunda-color-text-brand:var(--itunda-color-brand);
+  --itunda-color-text-brand:#9B98FF;
   --itunda-color-divider:var(--itunda-color-border);
   --itunda-color-brand-pressed:var(--itunda-color-pressed);
   --itunda-color-icon-primary:var(--itunda-color-icon-primary);
