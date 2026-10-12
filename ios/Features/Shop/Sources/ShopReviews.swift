@@ -16,6 +16,7 @@ struct ProductInquirySection: View {
     @State private var question = ""
     @State private var asking = false
     @State private var error: String?
+    @State private var loadError: String?
     // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
     // project_itunda_pagination_discard_sweep memory) -- getProductInquiries
     // silently capped this list at the first 20 questions.
@@ -39,7 +40,9 @@ struct ProductInquirySection: View {
             if let error {
                 Text(error).font(.caption2).foregroundColor(.red)
             }
-            if let inquiries {
+            if let loadError {
+                ErrorCardView(loadError, onRetry: { Task { await load() } })
+            } else if let inquiries {
                 if inquiries.isEmpty {
                     EmptyStateView("No questions yet — be the first to ask.")
                 } else {
@@ -79,13 +82,16 @@ struct ProductInquirySection: View {
     }
 
     private func load() async {
-        guard let res = try? await NetworkClient.shared.getProductInquiries(productId) else {
-            inquiries = []
-            return
+        do {
+            let res = try await NetworkClient.shared.getProductInquiries(productId)
+            inquiries = res.inquiries
+            inquiriesPage = res.page
+            inquiriesHasMore = res.page + 1 < res.totalPages
+            loadError = nil
+        } catch {
+            // A failed request must not masquerade as a product with no questions.
+            loadError = "Couldn't load product questions. Check your connection and try again."
         }
-        inquiries = res.inquiries
-        inquiriesPage = res.page
-        inquiriesHasMore = res.page + 1 < res.totalPages
     }
 
     private func loadMoreInquiries() async {
