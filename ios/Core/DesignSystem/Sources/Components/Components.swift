@@ -163,7 +163,7 @@ public struct IdsButton: View {
             Group {
                 if isLoading {
                     ProgressView()
-                        .tint(variant == .filled ? IDS.Colors.onBrand : IDS.Colors.brand)
+                        .tint(variant == .filled ? IDS.Colors.onBrand : variant == .destructive ? Color.white : IDS.Colors.textBrand)
                 } else {
                     Text(text)
                         .font(IdsTypeScale.button)
@@ -173,15 +173,15 @@ public struct IdsButton: View {
             .frame(minWidth: fullWidth ? nil : 44, minHeight: size.height)
         }
         .foregroundColor(
-            !isEnabled ? IDS.Colors.textTertiary :
-            variant == .filled ? IDS.Colors.textBrand :
-            variant == .destructive ? IDS.Colors.danger :
-            IDS.Colors.brand
+            !isEnabled ? (variant == .destructive ? Color.white : variant == .filled ? IDS.Colors.onBrand : IDS.Colors.textTertiary) :
+            variant == .filled ? IDS.Colors.onBrand :
+            variant == .destructive ? Color.white :
+            IDS.Colors.textBrand
         )
         .background(
-            !isEnabled ? IDS.Colors.divider :
+            !isEnabled ? (variant == .filled ? IDS.Colors.brand.opacity(0.35) : variant == .destructive ? IDS.Colors.danger.opacity(0.35) : variant == .tinted ? IDS.Colors.divider : Color.clear) :
             variant == .filled ? IDS.Colors.brand :
-            variant == .destructive ? IDS.Colors.dangerTint :
+            variant == .destructive ? IDS.Colors.danger :
             variant == .tinted ? IDS.Colors.chipBackground :
             Color.clear
         )
