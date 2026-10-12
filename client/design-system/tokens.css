@@ -169,6 +169,3 @@
 @media (pointer:coarse){
   :root{--tds-target-min:48px}
 }
-@media (pointer:coarse){
-  :root{--tds-target-min:48px}
-}
