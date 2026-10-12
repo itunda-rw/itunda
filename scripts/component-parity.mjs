@@ -30,6 +30,47 @@ function checkSymbol(platform, relativePath, symbols) {
   }
 }
 
+
+if (!contract || typeof contract !== "object" || !contract.components || typeof contract.components !== "object" || Array.isArray(contract.components)) {
+  failures.push("contract: components must be a non-empty object");
+} else if (Object.keys(contract.components).length === 0) {
+  failures.push("contract: components must not be empty");
+}
+if (typeof contract.completionRule !== "string" || contract.completionRule.trim().length === 0) {
+  failures.push("contract: completionRule must explain the component completion criteria");
+}
+const supportedPlatforms = new Set(["web", "android", "ios"]);
+for (const [componentId, component] of Object.entries(contract.components ?? {})) {
+  if (!componentId.trim()) failures.push("contract: component IDs must not be empty");
+  if (!component || typeof component !== "object" || Array.isArray(component)) {
+    failures.push(`contract: ${componentId} must be an object`);
+    continue;
+  }
+  if (!component.sources || typeof component.sources !== "object" || Array.isArray(component.sources) || Object.keys(component.sources).length === 0) {
+    failures.push(`contract: ${componentId}.sources must be a non-empty object`);
+  } else {
+    for (const [platform, relativePath] of Object.entries(component.sources)) {
+      if (!supportedPlatforms.has(platform)) failures.push(`contract: ${componentId}.sources has unsupported platform ${platform}`);
+      if (typeof relativePath !== "string" || !relativePath.trim() || path.isAbsolute(relativePath) || relativePath.split(/[\\\\/]/).includes("..")) {
+        failures.push(`contract: ${componentId}.sources.${platform} must be a safe repository-relative path`);
+      }
+    }
+  }
+  for (const field of ["states", "variants", "sizes", "accessibility", "requirements"]) {
+    if (component[field] !== undefined) {
+      const values = component[field];
+      if (!Array.isArray(values) || values.length === 0 || values.some(value => typeof value !== "string" || !value.trim())) {
+        failures.push(`contract: ${componentId}.${field} must be a non-empty array of non-empty strings`);
+      } else if (new Set(values).size !== values.length) {
+        failures.push(`contract: ${componentId}.${field} contains duplicates`);
+      }
+    }
+  }
+  if (Array.isArray(component.states) && component.states.length === 0) {
+    failures.push(`contract: ${componentId}.states must define at least one state`);
+  }
+}
+
 for (const [name, component] of Object.entries(contract.components)) {
   for (const [platform, source] of Object.entries(component.sources)) {
     if (source.includes("/")) checkFile(platform, source);
@@ -40,9 +81,9 @@ checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/d
 checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsTextField.kt", ["fun IdsTextField(", "isError", "isSuccess", "loading"]);
 checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsListRow.kt", ["fun IdsListRow(", "selected", "loading"]);
 checkSymbol("ios", "ios/Core/DesignSystem/Sources/Components/Components.swift", ["struct IdsButton", "struct EmptyStateView", "struct ErrorCardView"]);
-checkSymbol("web", "client/design-system/components.css", [".tds-button", ".tds-field", ".tds-list-row", ".tds-state", ".tds-state", ".tds-skeleton", ".tds-action-group"]);
+checkSymbol("web", "client/design-system/components.css", [".tds-button", ".tds-field", ".tds-list-row", ".tds-state", ".tds-skeleton", ".tds-action-group"]);
 
-console.log(`IDS component parity: ${checks.length} source checks, ${failures.length} failures`);
+console.log(`IDS component parity: ${Object.keys(contract.components ?? {}).length} component contracts, ${checks.length} source checks, ${failures.length} failures`);
 if (failures.length) {
   for (const failure of failures) console.error("FAIL:", failure);
   process.exit(1);
