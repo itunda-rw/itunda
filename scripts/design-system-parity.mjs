@@ -10,6 +10,32 @@ const files = {
   ios: "ios/Core/DesignSystem/Sources/IDS.swift",
 };
 const failures = [];
+if (!Array.isArray(contract.semanticRoles) || contract.semanticRoles.length === 0) {
+  failures.push("contract: semanticRoles must be a non-empty array");
+}
+if (Array.isArray(contract.semanticRoles) && new Set(contract.semanticRoles).size !== contract.semanticRoles.length) {
+  failures.push("contract: semanticRoles contains duplicate role names");
+}
+for (const [platform, expectedSource] of Object.entries(files)) {
+  if (contract[platform]?.source !== expectedSource) {
+    failures.push(`contract: ${platform}.source must be ${expectedSource}`);
+  }
+  const tokens = contract[platform]?.tokens;
+  if (!tokens || typeof tokens !== "object" || Array.isArray(tokens)) {
+    failures.push(`contract: ${platform}.tokens must be an object`);
+    continue;
+  }
+  for (const role of contract.semanticRoles ?? []) {
+    if (typeof tokens[role] !== "string" || tokens[role].length === 0) {
+      failures.push(`contract: missing ${platform}.tokens.${role}`);
+    }
+  }
+  for (const role of Object.keys(tokens)) {
+    if (!(contract.semanticRoles ?? []).includes(role)) {
+      failures.push(`contract: unexpected ${platform}.tokens.${role}; add it to semanticRoles or remove it`);
+    }
+  }
+}
 const escapeRegex = (value) => [...value].map((char) => "\\.^$*+?()[]{}|".includes(char) ? "\\" + char : char).join("");
 
 const source = Object.fromEntries(
@@ -41,6 +67,9 @@ const darkBrand = String(contract.brand.dark).toUpperCase();
 const lightTextBrand = String(contract.brandText?.light ?? "").toUpperCase();
 const darkTextBrand = String(contract.brandText?.dark ?? "").toUpperCase();
 const minimumTextContrast = Number(contract.brandText?.minimumContrast ?? 4.5);
+if (!Number.isFinite(minimumTextContrast) || minimumTextContrast < 4.5) {
+  failures.push(`contract: brandText.minimumContrast must be a finite number >= 4.5, got ${contract.brandText?.minimumContrast}`);
+}
 const hexColor = /^#[0-9A-F]{6}$/;
 for (const [label, color] of Object.entries({
   "brand.light": lightBrand,
