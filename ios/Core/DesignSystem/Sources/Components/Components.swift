@@ -785,3 +785,26 @@ public struct IdsEmptyState: View {
         .accessibilityElement(children: .contain)
     }
 }
+
+
+// Shared skeleton primitive for loading layouts. Intentionally static: it preserves
+// geometry without making essential information depend on animation, and respects
+// Reduce Motion by default. Callers compose several blocks to match the final layout.
+public struct IdsSkeletonBlock: View {
+    private let width: CGFloat?
+    private let height: CGFloat
+    private let cornerRadius: CGFloat
+
+    public init(width: CGFloat? = nil, height: CGFloat = 16, cornerRadius: CGFloat = 8) {
+        self.width = width
+        self.height = height
+        self.cornerRadius = cornerRadius
+    }
+
+    public var body: some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(IDS.Colors.backgroundTertiary)
+            .frame(width: width, height: height)
+            .accessibilityHidden(true)
+    }
+}
