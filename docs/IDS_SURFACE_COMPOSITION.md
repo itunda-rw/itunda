@@ -20,7 +20,7 @@ Use this order whenever a screen asks the user to make a decision:
 - Prefer whitespace and section rhythm over decorative cards.
 - Use containers to communicate grouping, not as default wrappers.
 - Preserve 44px minimum and 48px recommended touch targets.
-- Keep Itunda Indigo (#7472F4) for identity and primary interaction; do not turn every element into a branded element.
+- Use the v3 Itunda brand (#8F89FF) for identity and primary interaction with the defined on-brand foreground (#121216); do not turn every element into a branded element.
 
 ## Financial surfaces
 
