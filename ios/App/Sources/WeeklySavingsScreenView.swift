@@ -132,7 +132,7 @@ private struct WeeklySavingsPlanRow: View {
                     Spacer()
                     Text(plan.status == "ACTIVE" ? (plan.streakBroken ? "Streak broken -- bonus forfeited" : "On streak -- bonus on track") : statusLabel(plan))
                         .font(.caption2).bold()
-                        .foregroundColor(plan.status == "ACTIVE" && plan.streakBroken ? .red : (plan.status == "ACTIVE" ? .green : IDS.Colors.textTertiary))
+                        .foregroundColor(plan.status == "ACTIVE" && plan.streakBroken ? .red : (plan.status == "ACTIVE" ? IDS.Colors.success : IDS.Colors.textTertiary))
                 }
             }
             .padding(.vertical, 10)
@@ -220,7 +220,7 @@ private struct WeeklySavingsDetailContent: View {
                             Spacer()
                             Text(plan.streakBroken ? "Streak broken -- bonus forfeited" : "On streak -- bonus on track")
                                 .font(.caption).bold()
-                                .foregroundColor(plan.streakBroken ? .red : .green)
+                                .foregroundColor(plan.streakBroken ? .red : IDS.Colors.success)
                         }
                         HStack {
                             Text("Base rate").font(.caption).foregroundColor(IDS.Colors.textSecondary)
