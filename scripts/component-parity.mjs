@@ -86,6 +86,7 @@ checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/d
 checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsTextField.kt", ["fun IdsTextField(", "isError", "isSuccess", "loading"]);
 checkSymbol("ios", "ios/Core/DesignSystem/Sources/Components/Components.swift", ["public struct IdsTextField", "errorText", "successText", "autoFocus"]);
 checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsListRow.kt", ["fun IdsListRow(", "selected", "loading"]);
+checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/HoodShared.kt", ["fun EmptyState(", "fun ErrorCard(", "fun SkeletonBlock("]);
 checkSymbol("ios", "ios/Core/DesignSystem/Sources/Components/Components.swift", ["struct IdsButton", "struct EmptyStateView", "struct ErrorCardView"]);
 checkSymbol("web", "client/design-system/components.css", [".tds-button", ".tds-field", ".tds-list-row", ".tds-state", ".tds-skeleton", ".tds-action-group"]);
 
