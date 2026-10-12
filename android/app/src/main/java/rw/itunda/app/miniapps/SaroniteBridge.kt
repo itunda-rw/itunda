@@ -135,6 +135,14 @@ class SaroniteBrownfieldModule(
     }
 
     @ReactMethod
+    fun getWalletBalance(promise: Promise) {
+        // Wallet balance is a first-party mini-app operation for now. Deny partner
+        // runtimes unless a future policy explicitly grants this endpoint.
+        if (!requireScope(null, promise)) return
+        authorizedCall(get("api/v1/wallet/balance"), promise, ::parseWalletBalance)
+    }
+
+    @ReactMethod
     fun getPendingBills(promise: Promise) {
         // No real backend scope covers bill data at all (PartnerMiniAppPermissions.ALLOWED
         // is account:read/transactions:read/profile:read only) -- always denied for a
@@ -550,6 +558,32 @@ class SaroniteBrownfieldModule(
         result.putDouble("totalBalance", totalBalance)
         result.putString("currency", currency)
         result.putArray("accounts", accounts)
+        return result
+    }
+
+    // Keep the wallet response separate from account summaries: the JS contract expects
+    // a wallets array from GET /api/v1/wallet/balance.
+    private fun parseWalletBalance(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val result = Arguments.createMap()
+        val data = root.getAsJsonObject("data")
+        result.putDouble("totalBalance", root.get("totalBalance")?.asDouble ?: 0.0)
+        result.putString("currency", data?.get("currency")?.asString ?: "RWF")
+        val wallets = Arguments.createArray()
+        root.getAsJsonArray("wallets")?.forEach { element ->
+            val wallet = element.asJsonObject
+            val walletMap = Arguments.createMap()
+            walletMap.putString("id", wallet.get("id")?.asString ?: "")
+            walletMap.putString("type", wallet.get("type")?.asString ?: "")
+            walletMap.putString("name", wallet.get("name")?.asString ?: "")
+            walletMap.putString("number", wallet.get("number")?.asString ?: "")
+            walletMap.putDouble("balance", wallet.get("balance")?.asDouble ?: 0.0)
+            walletMap.putString("currency", wallet.get("currency")?.asString ?: "RWF")
+            walletMap.putString("icon", wallet.get("icon")?.asString ?: "")
+            walletMap.putBoolean("connected", wallet.get("connected")?.asBoolean ?: false)
+            wallets.pushMap(walletMap)
+        }
+        result.putArray("wallets", wallets)
         return result
     }
 
