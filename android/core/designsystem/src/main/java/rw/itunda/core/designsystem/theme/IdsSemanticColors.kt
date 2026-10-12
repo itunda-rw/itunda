@@ -92,7 +92,7 @@ val IdsLightSemanticColors = IdsSemanticColors(
     // WCAG-verified: white-on-brand 3.85:1 (was 3.71:1, both clear the real 3:1
     // AA-large/UI-component bar this role is held to).
     brand = Color(0xFF7472F4),
-    textBrand = Color(0xFF7472F4),
+    textBrand = Color(0xFF625FE0),
     divider = Color(0xFFE5E8EB),
     chip = Color(0xFFF2F4F6),
     pressed = Color(0xFFEEF0FF),
