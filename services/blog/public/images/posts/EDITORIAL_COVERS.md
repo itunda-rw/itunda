@@ -6,7 +6,7 @@ Every Itunda Tech article is guaranteed to have a visual cover through `getEdito
 
 - Prefer a real editorial asset in the article's `image` field.
 - Use 16:9 composition for article covers.
-- Keep the visual language distinctly Itunda: indigo `#7472F4`, soft lavender surfaces, clean geometric depth, generous negative space.
+- Keep the visual language distinctly Itunda: Brand v3 violet `#8F89FF`, soft lavender surfaces, clean geometric depth, generous negative space.
 - Generated fallback covers are deterministic SVG artwork, so discovery cards and article pages never render without an image.
 - When a generated raster asset is available, store it under `public/images/posts/<slug>/hero.webp` or `hero.avif` and keep `imageAlt` descriptive.
 
