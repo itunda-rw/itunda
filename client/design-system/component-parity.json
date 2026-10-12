@@ -255,8 +255,9 @@
         ]
       },
       "knownImplementationGaps": [
-        "iOS ErrorCardView exposes a fixed Retry action; bank-mfe and merchant-mfe shared ErrorCard messages now use role=\"alert\", but the two web components remain separately implemented and recovery behavior is not yet a single shared web contract.",
-        "Adding role=\"alert\" covers the shared web error message semantics but does not prove announcements occur exactly once in every consuming flow; native Android and iOS announcement behavior and real screen-reader outcomes still require runtime verification.",
+        "iOS ErrorCardView exposes a fixed Retry action; bank-mfe and merchant-mfe shared ErrorCard messages use role=\"alert\", but the two web components remain separately implemented and recovery behavior is not yet a single shared web contract.",
+        "Adding role=\"alert\" covers shared web error-message semantics but does not prove announcements occur exactly once in every consuming flow; native Android and iOS announcement behavior and real screen-reader outcomes still require runtime verification.",
+        "Call-site audit found additional screen-specific iOS errors bypassing ErrorCardView, including WeeklySavingsErrorCard and Grow31SavingsErrorCard in ios/App/Sources and InvestErrorCard in ios/Features/Wealth. These need review before claiming app-wide error-state parity.",
         "Error styling and button treatment differ by platform; review contrast, recovery wording, retry loading/failure states and preservation of user-entered context in real flows."
       ],
       "completionGate": "Verify recoverable and terminal errors, retry loading/failure states, preserved form context, accessible error announcement, keyboard/screen-reader order, and light/dark contrast on each platform before marking parity complete."
