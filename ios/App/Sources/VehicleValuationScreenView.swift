@@ -83,12 +83,7 @@ struct VehicleValuationScreenView: View {
                     }
 
                     if let loadError {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text(loadError).font(.caption).foregroundColor(.red)
-                            Button("Retry", action: { Task { await load() } }).font(.caption).bold().foregroundColor(IDS.Colors.brand)
-                        }
-                        .padding().frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color(.secondarySystemBackground)).cornerRadius(12)
+                        ErrorCardView(loadError, onRetry: { Task { await load() } })
                     } else if vehicles == nil {
                         ProgressView().frame(maxWidth: .infinity).padding()
                     } else if vehicles?.isEmpty == true {
