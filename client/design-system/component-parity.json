@@ -1,5 +1,5 @@
 {
-  "version": "1.4.2",
+  "version": "1.4.3",
   "purpose": "IDS component API and state parity contract. Platform implementations may use native APIs, but public behavior must satisfy the same contract.",
   "components": {
     "button": {
@@ -251,15 +251,15 @@
       },
       "platformVariants": {
         "android": [
-          "fun FixedBottomCta(content: @Composable ColumnScope.() -> Unit, cta: @Composable () -> Unit)",
-          "content weight(1f) + verticalScroll(rememberScrollState())",
+          "fun FixedBottomCta(",
+          "verticalScroll(rememberScrollState())",
           "Ids.colors.divider",
           "Ids.colors.background"
         ],
         "ios": [
           "public struct FixedBottomCTA<Content: View, CTA: View>",
-          "ScrollView { content }",
-          "cta.padding(.horizontal, 20)",
+          "ScrollView",
+          "padding(.horizontal, 20)",
           "IDS.Colors.backgroundPrimary"
         ],
         "web": [
