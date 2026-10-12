@@ -182,6 +182,82 @@ for (const [theme, foreground, background] of [
   }
 }
 
+// Compare every semantic role's resolved color values, not just whether its token name exists.
+function cssVariableMap(css, theme) {
+  const map = new Map();
+  const blocks = theme === "dark"
+    ? [css.match(/\\[data-theme=["']dark["']\\]\\s*\\{([^}]*)\\}/i)?.[1] ?? ""]
+    : [...css.matchAll(/:root\\s*\\{([^}]*)\\}/gi)].map((match) => match[1]);
+  for (const block of blocks) {
+    for (const match of block.matchAll(/(--[\\w-]+)\\s*:\\s*([^;]+);/g)) {
+      map.set(match[1], match[2].trim());
+    }
+  }
+  return map;
+}
+
+function resolveCssColor(name, map, seen = new Set()) {
+  if (seen.has(name) || !map.has(name)) return undefined;
+  seen.add(name);
+  const value = map.get(name);
+  const alias = value.match(/^var\\((--[\\w-]+)\\)$/i);
+  if (alias) return resolveCssColor(alias[1], map, seen);
+  return /^#[0-9a-f]{6}$/i.test(value) ? value.toUpperCase() : undefined;
+}
+
+function kotlinRoleValues(kotlin, role) {
+  const lightBlock = kotlin.match(/val IdsLightSemanticColors\\s*=\\s*IdsSemanticColors\\(([\\s\\S]*?)\\n\\)/)?.[1] ?? "";
+  const darkBlock = kotlin.match(/val IdsDarkSemanticColors\\s*=\\s*IdsSemanticColors\\(([\\s\\S]*?)\\n\\)/)?.[1] ?? "";
+  const extract = (block) => {
+    const escaped = escapeRegex(role);
+    const match = block.match(new RegExp("\\\\b" + escaped + "\\\\s*=\\\\s*Color\\\\(0xFF([0-9a-f]{6})\\\\)", "i"));
+    return match ? "#" + match[1].toUpperCase() : undefined;
+  };
+  return { light: extract(lightBlock), dark: extract(darkBlock) };
+}
+
+function swiftRoleValues(swift, role) {
+  const escaped = escapeRegex(role);
+  const match = swift.match(new RegExp("public\\\\s+static\\\\s+let\\\\s+" + escaped + "\\\\s*=\\\\s*Color\\\\(\\\\s*light:\\\\s*0x([0-9a-f]{6})\\\\s*,\\\\s*dark:\\\\s*0x([0-9a-f]{6})\\\\s*\\\\)", "i"));
+  return match
+    ? { light: "#" + match[1].toUpperCase(), dark: "#" + match[2].toUpperCase() }
+    : {};
+}
+
+const cssRoleMaps = {
+  light: cssVariableMap(source.web, "light"),
+  dark: cssVariableMap(source.web, "dark"),
+};
+for (const role of contract.semanticRoles ?? []) {
+  const expectedWebName = contract.web?.tokens?.[role];
+  const webName = expectedWebName?.startsWith("--") ? expectedWebName : undefined;
+  const androidName = contract.android?.tokens?.[role];
+  const iosName = contract.ios?.tokens?.[role];
+  const actual = {
+    web: {
+      light: webName ? resolveCssColor(webName, cssRoleMaps.light) : undefined,
+      dark: webName ? resolveCssColor(webName, cssRoleMaps.dark) : undefined,
+    },
+    android: androidName ? kotlinRoleValues(source.android, androidName) : {},
+    ios: iosName ? swiftRoleValues(source.ios, iosName) : {},
+  };
+  for (const theme of ["light", "dark"]) {
+    const expected = actual.web[theme];
+    if (!expected) {
+      failures.push(`web: ${theme} semantic color for ${role} could not be resolved from ${webName ?? "missing token mapping"}`);
+      continue;
+    }
+    for (const platform of ["android", "ios"]) {
+      const value = actual[platform][theme];
+      if (!value) {
+        failures.push(`${platform}: ${theme} semantic color for ${role} could not be extracted from ${platform === "android" ? androidName : iosName}`);
+      } else if (value !== expected) {
+        failures.push(`semantic drift: ${role} ${theme} web=${expected}, ${platform}=${value}`);
+      }
+    }
+  }
+}
+
 if (failures.length) {
   console.error("IDS semantic parity: FAIL");
   failures.forEach((failure) => console.error(" - " + failure));
