@@ -119,7 +119,8 @@
       ],
       "sources": {
         "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/HoodShared.kt",
-        "web": "client/design-system/components.css"
+        "web": "client/design-system/components.css",
+        "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift"
       }
     },
     "bottomCta": {
