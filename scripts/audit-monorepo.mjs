@@ -18,6 +18,9 @@ for (const [name, version] of Object.entries(required)) {
   const line = name.startsWith("@") ? `  "${name}": ${version}` : `  ${name}: ${version}`;
   if (!catalog.includes(line)) errors.push(`catalog: ${name} must be ${version}`);
 }
+const productionConfig = fs.readFileSync(path.join(root, "services/backend/app/src/main/resources/application.yml"), "utf8");
+if (/allowed-origins:[^\\n]*pages\\.dev/i.test(productionConfig))
+  errors.push("production CORS: retired pages.dev preview origins must not be allowlisted");
 const rootPackage = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 const workspacePatterns = rootPackage.workspaces ?? [];
 const dirs = workspacePatterns.flatMap((pattern) => {
