@@ -205,12 +205,8 @@ struct GroupsList: View {
                 OpenChatCard(onCreated: onCreated, onJoined: onCreated)
 
                 if let error {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(error).foregroundColor(.red).font(.subheadline)
-                        Button("Retry", action: onRetry)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20)
+                    ErrorCardView(error, onRetry: onRetry)
+                        .padding(20)
                 } else if groups == nil {
                     SkeletonBlock(height: 120)
                 } else if groups!.isEmpty {
