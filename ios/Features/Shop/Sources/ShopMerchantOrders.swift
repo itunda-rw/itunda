@@ -136,12 +136,15 @@ struct MerchantOrdersView: View {
 
 struct MerchantReturnQueueView: View {
     @State private var requests: [OrderReturnRequestDto]?
+    @State private var loadError: String?
     @State private var error: String?
     @State private var busyId: String?
 
     var body: some View {
         Group {
-            if let error {
+            if let loadError {
+                ErrorCardView(loadError, onRetry: { Task { await load() } })
+            } else if let error {
                 Text(error).foregroundColor(.red).font(.footnote)
             } else if let requests {
                 let open = requests.filter { $0.status == "REQUESTED" }
@@ -192,11 +195,13 @@ struct MerchantReturnQueueView: View {
     private func load() async {
         do {
             requests = try await NetworkClient.shared.getMerchantReturnQueue().returnRequests
+            loadError = nil
             error = nil
         } catch NetworkError.httpError(let statusCode) where statusCode == 404 {
             requests = []
+            loadError = nil
         } catch {
-            self.error = "Could not load return requests."
+            loadError = "Could not load return requests."
         }
     }
 
