@@ -78,7 +78,7 @@ private struct TransactionRowView: View {
                 .overlay(
                     Image(systemName: tx.isOutgoing ? "arrow.up" : "arrow.down")
                         .font(IDS.scaledFont(size: 16, weight: .regular, relativeTo: .callout))
-                        .foregroundColor(tx.isOutgoing ? .red : .green)
+                        .foregroundColor(tx.isOutgoing ? .red : IDS.Colors.success)
                 )
             VStack(alignment: .leading, spacing: 2) {
                 Text(tx.description).font(IDS.scaledFont(size: 16, weight: .semibold, relativeTo: .callout)).foregroundColor(IDS.Colors.textPrimary)
@@ -87,7 +87,7 @@ private struct TransactionRowView: View {
             Spacer()
             Text("\(tx.isOutgoing ? "-" : "+")\(formatAmount(Int(tx.amount))) \(tx.currency)")
                 .font(IDS.scaledFont(size: 15, weight: .semibold, relativeTo: .subheadline))
-                .foregroundColor(tx.isOutgoing ? IDS.Colors.textPrimary : .green)
+                .foregroundColor(tx.isOutgoing ? IDS.Colors.textPrimary : IDS.Colors.success)
         }
         .padding(.vertical, 6)
     }
