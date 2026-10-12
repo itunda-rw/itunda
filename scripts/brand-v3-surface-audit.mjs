@@ -13,6 +13,26 @@ const androidButton = read("android/core/designsystem/src/main/java/rw/itunda/co
 const iosColors = read("ios/Core/DesignSystem/Sources/IDS.swift");
 const iosButton = read("ios/Core/DesignSystem/Sources/Components/Components.swift");
 const homepage = read("client/index.html");
+const activeBrandSurfaces = [
+  "client/index.html",
+  "client/data/index.html",
+  "client/identity/index.html",
+  "client/services/index.html",
+  "client/everyday/index.html",
+  "client/platform/index.html",
+  "data/index.html",
+  "identity/index.html",
+  "services/index.html",
+  "everyday/index.html",
+  "platform/index.html",
+  "site/index.html",
+  "business/index.html",
+  "business/developers/index.html",
+  "sites/itunda/index.html",
+  "sites/business/index.html",
+  "sites/developers/index.html",
+  "sites/tech/index.html",
+];
 const canonical = read("packages/brand-assets/canonical/itunda-brand/tokens/itunda-colors.css");
 
 check(canonical.includes("--itunda-brand:#8F89FF"), "canonical brand v3 token must be #8F89FF");
@@ -27,8 +47,10 @@ check(iosColors.includes("public static let brand = Color(light: 0x8F89FF, dark:
 check(iosColors.includes("public static let onBrand = Color(light: 0x121216, dark: 0x121216)"), "iOS on-brand foreground is missing");
 check(iosButton.includes("IDS.Colors.onBrand"), "iOS filled button does not use on-brand foreground");
 
-const staleBrandAnchor = /#(?:7472F4|7675F8|9B98FF)\b/i;
-check(!staleBrandAnchor.test(homepage), "consumer homepage still contains a legacy brand anchor");
+const staleBrandAnchor = /#(?:7472F4|7675F8|9B98FF|625FE0|625FE6|F0EFFF)\b/i;
+for (const surface of activeBrandSurfaces) {
+  check(!staleBrandAnchor.test(read(surface)), `${surface} still contains a legacy brand anchor`);
+}
 check(!homepage.includes("--indigo:#7472F4"), "consumer homepage still declares the legacy brand variable");
 
 if (errors.length) {
