@@ -431,6 +431,7 @@ public struct SkeletonBlock: View {
             try? await Task.sleep(nanoseconds: 200_000_000)
             showSkeleton = true
         }
+        .accessibilityHidden(true)
     }
 }
 
