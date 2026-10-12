@@ -2,6 +2,8 @@ package rw.itunda.core.designsystem.components
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.animation.ValueAnimator
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.LinearEasing
@@ -103,11 +105,18 @@ fun SkeletonBlock(height: Dp = 120.dp, modifier: Modifier = Modifier) {
     }
     if (!showSkeleton) return
 
+    // Android's system animator scale is disabled by the system "Remove animations"
+    // accessibility setting. Keep the placeholder visible but static in that mode.
+    val animationsEnabled = Build.VERSION.SDK_INT < Build.VERSION_CODES.O || ValueAnimator.areAnimatorsEnabled()
     val transition = rememberInfiniteTransition(label = "skeleton")
     val offset by transition.animateFloat(
-        initialValue = -1f,
-        targetValue = 2f,
-        animationSpec = infiniteRepeatable(animation = tween(1000, easing = LinearEasing), repeatMode = RepeatMode.Restart),
+        initialValue = if (animationsEnabled) -1f else 0f,
+        targetValue = if (animationsEnabled) 2f else 0f,
+        animationSpec = if (animationsEnabled) {
+            infiniteRepeatable(animation = tween(1000, easing = LinearEasing), repeatMode = RepeatMode.Restart)
+        } else {
+            tween(durationMillis = 0)
+        },
         label = "skeletonOffset",
     )
     Card(
