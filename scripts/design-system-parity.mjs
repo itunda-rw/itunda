@@ -52,6 +52,15 @@ for (const match of source.web.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
   webVariableDeclarations.set(match[1], match[2].trim());
 }
 const tdsAliases = [...webVariableDeclarations.keys()].filter((name) => name.startsWith("--tds-"));
+const componentCss = fs.readFileSync(path.join(root, "client/design-system/components.css"), "utf8");
+const referencedTdsTokens = new Set(
+  [...componentCss.matchAll(/var\((--tds-[\w-]+)/g)].map((match) => match[1]),
+);
+for (const token of referencedTdsTokens) {
+  if (!webVariableDeclarations.has(token)) {
+    failures.push(`web: component CSS references undefined token ${token}`);
+  }
+}
 function inspectAlias(name, trail = []) {
   if (trail.includes(name)) {
     failures.push(`web: cyclic component-token alias ${[...trail, name].join(" -> ")}`);
