@@ -333,6 +333,40 @@ allTargets.append(
         // App/Resources/Assets.xcassets/AppIcon.appiconset and
         // project_itunda_brand_identity.md for the full derivation.
         resources: ["App/Resources/Fonts/**", "App/Resources/Assets.xcassets/**"],
+        // React Native 0.84's official Xcode bundling phase is not injected by Tuist's
+        // generated target. Without an explicit phase, Debug works through Metro but
+        // Release has no main.jsbundle and the app's bundleURL() returns nil. Bundle
+        // from the real Saronite host-app entry point during non-Debug builds and put
+        // the JS bundle/assets directly into the app resources before code signing.
+        scripts: [
+            .post(
+                script: """
+                set -euo pipefail
+                if [ "$CONFIGURATION" = "Debug" ]; then
+                    echo "Skipping packaged Saronite bundle for Debug; Metro provides the JS."
+                    exit 0
+                fi
+
+                export REACT_NATIVE_DIR="$SRCROOT/../packages/saronite/node_modules/react-native"
+                export PROJECT_ROOT="$SRCROOT/../packages/saronite/host-app"
+                export ENTRY_FILE="index.js"
+                export NODE_BINARY="$(command -v node)"
+
+                test -x "$NODE_BINARY"
+                test -f "$PROJECT_ROOT/$ENTRY_FILE"
+                test -f "$REACT_NATIVE_DIR/scripts/xcode/with-environment.sh"
+                test -f "$REACT_NATIVE_DIR/scripts/react-native-xcode.sh"
+
+                WITH_ENVIRONMENT="$REACT_NATIVE_DIR/scripts/xcode/with-environment.sh"
+                REACT_NATIVE_XCODE="$REACT_NATIVE_DIR/scripts/react-native-xcode.sh"
+                /bin/sh -c "\\"$WITH_ENVIRONMENT\\" \\"$REACT_NATIVE_XCODE\\""
+
+                test -s "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/main.jsbundle"
+                """,
+                name: "Bundle React Native code and images",
+                basedOnDependencyAnalysis: false
+            )
+        ],
         // Real code-signing entitlement NFCTagReaderSession requires (2026-08-27) --
         // see the infoPlist select-identifiers comment above for the full account.
         // Without this, an NFCTagReaderSession fails to start on a real device even
