@@ -99,7 +99,11 @@
     "dev:saronite:web": "npm --prefix packages/saronite/mini-apps/web-demo run dev",
     "dev:saronite:native": "npm --prefix packages/saronite/host-app run start",
     "typecheck:saronite": "npm --prefix packages/saronite run typecheck",
-    "test:saronite:contract": "npm --prefix packages/saronite/devtools run contract-test"
+    "test:saronite:contract": "npm --prefix packages/saronite/devtools run contract-test",
+    "check:bank": "yarn workspace bank-mfe typecheck && yarn workspace bank-mfe lint",
+    "check:kyc": "yarn workspace kyc-mfe typecheck && yarn workspace kyc-mfe lint",
+    "check:ops": "yarn workspace ops-mfe build && yarn workspace ops-mfe lint",
+    "check:host": "yarn workspace host-app typecheck && yarn workspace host-app lint"
   },
   "devDependencies": {
     "dependency-cruiser": "catalog:",
