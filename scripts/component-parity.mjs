@@ -55,6 +55,11 @@ for (const [componentId, component] of Object.entries(contract.components ?? {})
         failures.push(`contract: ${componentId}.sources.${platform} must be a safe repository-relative path`);
       }
     }
+    for (const platform of supportedPlatforms) {
+      if (!Object.hasOwn(component.sources, platform)) {
+        failures.push(`contract: ${componentId}.sources is missing required platform ${platform}`);
+      }
+    }
   }
   for (const field of ["states", "variants", "sizes", "accessibility", "requirements"]) {
     if (component[field] !== undefined) {
