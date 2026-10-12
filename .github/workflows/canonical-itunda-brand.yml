@@ -7,6 +7,7 @@ on:
       - 'itunda-brand-v3.zip'
       - 'packages/brand-assets/**'
       - 'scripts/sync-native-brand-assets.sh'
+      - 'scripts/verify-native-brand-assets.py'
       - '.github/workflows/canonical-itunda-brand.yml'
   pull_request:
     paths:
@@ -120,7 +121,8 @@ jobs:
             cmp -s "$root/splash/itunda-splash-light.svg" "$base/itunda-splash-light.svg"
             cmp -s "$root/splash/itunda-splash-dark.svg" "$base/itunda-splash-dark.svg"
           done
-          echo 'Canonical v3 archive, manifest, symbol, favicon, app icon, and light/dark web launch assets verified byte-for-byte.'
+          python3 scripts/verify-native-brand-assets.py
+          echo 'Canonical v3 archive, manifest, symbol, favicon, web launch assets, and native launcher raster dimensions verified.'
 
       - name: Commit canonical v3 sync
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
