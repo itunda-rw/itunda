@@ -257,7 +257,7 @@
       "knownImplementationGaps": [
         "Bank and merchant web ErrorCard components now share the same centered error icon, message, primary Retry treatment and decorative-icon accessibility behavior, but remain separately implemented; a package-level shared component is not yet established.",
         "Web ErrorCard messages use role=\"alert\". Redundant role=\"alert\" plus aria-live=\"polite\" was removed from merchant registration and ops login errors to avoid conflicting live-region semantics. Real screen-reader behavior still needs runtime verification to confirm announcements are useful and not duplicated.",
-        "iOS weekly savings, 31-day savings and wealth portfolio/market error branches, plus vehicle valuation and delayed-transfer loading failures, now use the shared ErrorCardView. Continue auditing other feature modules for bespoke error presentations.",
+        "iOS weekly savings, 31-day savings, wealth portfolio/market, vehicle valuation, delayed transfers, auto-transfers, merchant updates, and bucket transaction history now use shared ErrorCardView with retry actions where applicable. Continue auditing other feature modules for bespoke error presentations.",
         "Native Android/iOS announcement behavior, localized recovery wording, retry loading/failure states, contrast and preservation of user-entered context require runtime verification across platforms."
       ],
       "completionGate": "Verify recoverable and terminal errors, retry loading/failure states, preserved form context, accessible error announcement, keyboard/screen-reader order, and light/dark contrast on each platform before marking parity complete."
