@@ -576,8 +576,8 @@ class SaroniteBrownfieldModule(
             val account = element.asJsonObject
             val balance = account.get("balance")?.asDouble ?: 0.0
             val accountCurrency = account.get("currency")?.asString ?: currency
-            totalBalance += balance
-            currency = accountCurrency
+            // Never add balances in different currencies without a real FX conversion.
+            if (accountCurrency == currency) totalBalance += balance
             val walletMap = Arguments.createMap()
             walletMap.putString("id", account.get("id")?.asString ?: "")
             walletMap.putString("type", account.get("type")?.asString ?: "")
