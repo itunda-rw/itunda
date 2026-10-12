@@ -64,13 +64,13 @@ export function getAuthorProfile(name: string): AuthorProfile {
 }
 
 const coverPalette: Record<string, [string, string]> = {
-  payments: ['#7472F4', '#E9E8FF'],
-  security: ['#625FE0', '#ECEBFF'],
-  identity: ['#6E6BEA', '#F0EFFF'],
+  payments: ['#8F89FF', '#F1F0FF'],
+  security: ['#7D77F7', '#ECEBFF'],
+  identity: ['#8F89FF', '#F1F0FF'],
   infrastructure: ['#5654C9', '#E7E6FF'],
   mobile: ['#817FF7', '#F2F1FF'],
-  platform: ['#7472F4', '#E9E8FF'],
-  api: ['#625FE0', '#ECEBFF'],
+  platform: ['#8F89FF', '#F1F0FF'],
+  api: ['#7D77F7', '#ECEBFF'],
 };
 
 const escapeXml = (value: string) =>
