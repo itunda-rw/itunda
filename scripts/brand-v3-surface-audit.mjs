@@ -44,18 +44,20 @@ check(canonical.includes("--itunda-brand:#8F89FF"), "canonical brand v3 token mu
 check(canonical.includes("--itunda-on-brand:#121216"), "canonical on-brand foreground must be #121216");
 check(webTokens.includes("--itunda-color-brand:#8F89FF"), "web semantic brand token is not v3");
 check(webTokens.includes("--itunda-color-on-brand:#121216"), "web on-brand foreground token is missing");
-check(webTokens.includes("--itunda-color-on-success:#FFFFFF"), "web light-theme on-success foreground token is missing");
-check(webTokens.includes("--itunda-color-on-success:#121216"), "web dark-theme on-success foreground token is missing");
-check(webComponents.includes(".tds-button-success{background:var(--itunda-color-success);color:var(--itunda-color-on-success,#FFFFFF)}"), "web success button does not use semantic on-success foreground");
+check(webTokens.includes("--itunda-color-on-success:#121216"), "web light-theme on-success foreground token must use accessible brand foreground");
+check((webTokens.match(/--itunda-color-on-success:#121216/g) || []).length >= 2, "web dark-theme on-success foreground token is missing");
+check(webComponents.includes(".tds-button-success{background:var(--itunda-color-success);color:var(--itunda-color-on-success,#121216)}"), "web success button does not use semantic on-success foreground");
 check(webComponents.includes(".tds-button-primary{background:var(--itunda-color-brand);color:var(--itunda-color-on-brand,#121216)"), "web primary button does not use semantic on-brand foreground");
 check(publicSiteTokens.includes("--brand:#8F89FF"), "deployed public-site brand token is not v3");
 check(publicSiteTokens.includes("--on-brand:#121216"), "deployed public-site on-brand foreground is missing");
 check(publicSiteTokens.includes(".btn.primary{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}"), "deployed public-site primary button does not use on-brand foreground");
 check(androidColors.includes("brand = Color(0xFF8F89FF)"), "Android brand color is not v3");
+check((androidColors.match(/success = Color\(0xFF8F89FF\)/g) || []).length >= 2, "Android light/dark success must use Itunda brand violet");
 check(androidColors.includes("onBrand = Color(0xFF121216)"), "Android on-brand foreground is missing");
 check(androidButton.includes("Ids.colors.brand to Ids.colors.onBrand"), "Android filled button does not use on-brand foreground");
 check(iosColors.includes("public static let brand = Color(light: 0x8F89FF, dark: 0x8F89FF)"), "iOS brand color is not v3");
 check(iosColors.includes("public static let onBrand = Color(light: 0x121216, dark: 0x121216)"), "iOS on-brand foreground is missing");
+check(iosColors.includes("public static let success = Color(light: 0x8F89FF, dark: 0x8F89FF)"), "iOS success semantic must use Itunda brand violet");
 check(iosButton.includes("IDS.Colors.onBrand"), "iOS filled button does not use on-brand foreground");
 
 const staleBrandAnchor = /#(?:7472F4|7675F8|9B98FF|625FE0|625FE6|F0EFFF)\b/i;
