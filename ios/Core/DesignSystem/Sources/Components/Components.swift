@@ -396,6 +396,7 @@ public struct IdsBadge: View {
 // delay elapses, so a response that lands first never shows a skeleton at all.
 public struct SkeletonBlock: View {
     let height: CGFloat
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var animating = false
     @State private var showSkeleton = false
 
@@ -419,6 +420,7 @@ public struct SkeletonBlock: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: height)
                     .onAppear {
+                        guard !reduceMotion else { return }
                         withAnimation(.linear(duration: 1).repeatForever(autoreverses: false)) {
                             animating = true
                         }
