@@ -52,11 +52,7 @@ struct MerchantOrdersView: View {
     var body: some View {
         Group {
             if let error {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(error).foregroundColor(.red).font(.subheadline)
-                    Button("Retry") { Task { await load() } }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                ErrorCardView(error, onRetry: { Task { await load() } })
                 // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
                 // a lone error state.
                 .padding(20)
@@ -238,11 +234,7 @@ struct MyCommerceOrdersView: View {
             MyReturnRequestsView()
             Group {
                 if let error {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(error).foregroundColor(.red).font(.subheadline)
-                        Button("Retry") { Task { await load() } }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    ErrorCardView(error, onRetry: { Task { await load() } })
                     // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
                     // a lone error state.
                     .padding(20)
