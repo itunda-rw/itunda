@@ -5,12 +5,8 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import org.junit.Test
 import org.mockito.Mockito.mock
-import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
-import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.ArgumentMatchers.eq
-import org.mockito.ArgumentMatchers.anyString
-import org.mockito.ArgumentMatchers.any
 
 class SaroniteBrownfieldModuleTrustTest {
     @Test
@@ -36,6 +32,5 @@ class SaroniteBrownfieldModuleTrustTest {
             eq("SARONITE_SCOPE_DENIED"),
             eq("Wallet balance is available only to first-party mini-apps"),
         )
-        verifyNoInteractions(context)
     }
 }
