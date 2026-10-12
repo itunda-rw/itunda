@@ -105,6 +105,17 @@ checkSymbol("ios", "ios/Core/DesignSystem/Sources/Components/Components.swift", 
 // the state is exposed to assistive technology, and the decorative spinner is hidden.
 checkSymbol("ios", "ios/Core/DesignSystem/Sources/Components/Components.swift", ['Text(text)', '.accessibilityValue(isLoading ? "Loading" : "")', ".accessibilityHidden(true)"]);
 checkSymbol("web", "client/design-system/components.css", [".tds-button", ".tds-field", ".tds-list-row", ".tds-state", ".tds-skeleton", ".tds-action-group", ".tds-bottom-cta"]);
+// Guard high-impact web interaction contracts, not just component class existence.
+checkSymbol("web", "client/design-system/components.css", [
+  ".tds-button[aria-busy=true]{pointer-events:none}",
+  ".tds-button[aria-busy=true] .tds-spinner",
+  ".tds-button:focus-visible",
+  ".tds-input:focus",
+  "@media(prefers-reduced-motion:reduce)",
+  ".tds-menu-item{min-width:44px;min-height:44px}",
+  "env(safe-area-inset-bottom)",
+  ".tds-toast-region>*{pointer-events:auto}",
+]);
 
 console.log(`IDS component parity: ${Object.keys(contract.components ?? {}).length} component contracts, ${checks.length} source checks, ${failures.length} failures`);
 if (failures.length) {
