@@ -125,6 +125,7 @@ struct ProductRatingBadge: View {
     @State private var rating: ProductRatingResponse?
     @State private var open = false
     @State private var reviews: [ProductReviewDto]?
+    @State private var reviewsLoadError: String?
     // Real "도움돼요" (helpful) toggle (2026-08-25) -- see
     // ProductReviewService.toggleHelpful's own doc comment on the backend. Tracked as a
     // delta dictionary rather than rewriting ProductReviewDto (a Decodable-only struct
@@ -166,7 +167,9 @@ struct ProductRatingBadge: View {
                         }
                     }
                     if open {
-                        if let reviews {
+                        if let reviewsLoadError {
+                            ErrorCardView(reviewsLoadError, onRetry: { Task { await loadReviews() } })
+                        } else if let reviews {
                             if reviews.isEmpty {
                                 Text("No written reviews yet — be the first to share how it went.").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                             } else {
@@ -210,16 +213,20 @@ struct ProductRatingBadge: View {
 
     private func toggle() {
         open.toggle()
-        guard open, reviews == nil else { return }
-        Task {
-            do {
-                let res = try await NetworkClient.shared.getProductReviews(productId)
-                reviews = res.reviews
-                reviewsPage = res.page
-                reviewsHasMore = res.page + 1 < res.totalPages
-            } catch {
-                reviews = []
-            }
+        guard open, reviews == nil, reviewsLoadError == nil else { return }
+        Task { await loadReviews() }
+    }
+
+    private func loadReviews() async {
+        do {
+            let res = try await NetworkClient.shared.getProductReviews(productId)
+            reviews = res.reviews
+            reviewsPage = res.page
+            reviewsHasMore = res.page + 1 < res.totalPages
+            reviewsLoadError = nil
+        } catch {
+            // A failed fetch must not appear as a genuine no-written-reviews result.
+            reviewsLoadError = "Couldn't load product reviews. Check your connection and try again."
         }
     }
 
