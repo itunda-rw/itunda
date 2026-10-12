@@ -19,6 +19,13 @@ const requestMoney = read("ios/App/Sources/RequestMoneyScreen.swift");
 const foreignCurrency = read("ios/App/Sources/ForeignCurrencyScreen.swift");
 const saccoScreen = read("ios/App/Sources/SaccoScreenView.swift");
 const upfrontDeposit = read("ios/App/Sources/UpfrontDepositScreen.swift");
+const ikiminaScreen = read("ios/App/Sources/IkiminaScreenView.swift");
+const groupAccountScreen = read("ios/App/Sources/GroupAccountScreenView.swift");
+const weeklySavingsScreen = read("ios/App/Sources/WeeklySavingsScreenView.swift");
+const cardScreen = read("ios/App/Sources/CardScreenView.swift");
+const grow31Screen = read("ios/App/Sources/Grow31SavingsScreenView.swift");
+const shopProductDetail = read("ios/Features/Shop/Sources/ShopProductDetail.swift");
+const transitScreen = read("ios/App/Sources/TransitScreenView.swift");
 const homepage = read("client/index.html");
 const techBlogStyles = read("services/blog/src/styles.css");
 const techBlogHtml = read("services/blog/index.html");
@@ -73,6 +80,13 @@ check(requestMoney.includes("? IDS.Colors.success : req.status"), "completed mon
 check(foreignCurrency.includes("foregroundColor(IDS.Colors.success)"), "foreign currency success/preview must use semantic brand success");
 check(saccoScreen.includes("foregroundColor(IDS.Colors.success)"), "SACCO positive amount must use semantic brand success");
 check(upfrontDeposit.includes("return IDS.Colors.success") && upfrontDeposit.includes("foregroundColor(IDS.Colors.success)"), "upfront deposit success must use semantic brand success");
+check(ikiminaScreen.includes("IDS.Colors.success"), "Ikimina contribution/payout success must use semantic brand success");
+check(groupAccountScreen.includes("m.paid ? IDS.Colors.success"), "group-account paid status must use semantic brand success");
+check(weeklySavingsScreen.includes("plan.status == \"ACTIVE\" ? IDS.Colors.success") && weeklySavingsScreen.includes("plan.streakBroken ? .red : IDS.Colors.success"), "weekly-savings success/streak must use semantic brand success");
+check(cardScreen.includes("IDS.Colors.success"), "card success and positive credit-score states must use semantic brand success");
+check(grow31Screen.includes("IDS.Colors.success"), "Grow31 savings success/bonus states must use semantic brand success");
+check(shopProductDetail.includes("foregroundColor(IDS.Colors.success)"), "shop order-placed confirmation must use semantic brand success");
+check(transitScreen.includes("foregroundColor(IDS.Colors.success)"), "transit tap confirmation must use semantic brand success");
 
 const staleBrandAnchor = /#(?:7472F4|7675F8|9B98FF|625FE0|625FE6|F0EFFF)\b/i;
 for (const surface of activeBrandSurfaces) {
