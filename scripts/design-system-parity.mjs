@@ -65,7 +65,7 @@ function inspectAlias(name, trail = []) {
       failures.push(`web: component token ${name} references undefined token ${target}`);
       continue;
     }
-    if (target.startsWith("--tds-")) inspectAlias(target, [...trail, name]);
+    inspectAlias(target, [...trail, name]);
   }
 }
 for (const alias of tdsAliases) inspectAlias(alias);
