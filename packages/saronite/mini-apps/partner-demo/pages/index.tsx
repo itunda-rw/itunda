@@ -11,17 +11,13 @@ import { closeView, getWalletBalance, getPendingBills } from '@itunda/saronite-r
  * granite's real runtime, on the exact same native bridge every first-party mini-app
  * uses) rather than anything visually elaborate.
  *
- * Deliberately calls TWO real bridge methods to exercise both real behaviors this
- * pass built:
- *  - getWalletBalance(): the one call `PartnerMiniAppPermissions.ALLOWED`'s
- *    "wallet:read" scope actually covers -- this partner's real submitted manifest
- *    requests exactly that scope, so this should genuinely succeed against the real
- *    backend, proving the reused bridge/host-bridge/network stack.
- *  - getPendingBills(): covered by no scope at all (no "bills:read" exists in the
- *    allow-list) -- this should always fail with the real SARONITE_SCOPE_DENIED
- *    rejection SaroniteBridge.kt's `requireScope(null, promise)` produces, proving
- *    runtime scope enforcement is real, not just review-time visibility of the
- *    requested scopes.
+ * Deliberately calls TWO real bridge methods to exercise the current trust boundary:
+ *  - getWalletBalance(): first-party-only. PartnerMiniAppPermissions.ALLOWED does not
+ *    grant wallet:read, so a partner bundle must receive SARONITE_SCOPE_DENIED before
+ *    the native bridge reads credentials or calls the account endpoint.
+ *  - getPendingBills(): no approved partner scope covers bill data, so it must also
+ *    receive SARONITE_SCOPE_DENIED. These calls verify runtime enforcement rather than
+ *    relying on the partner manifest or UI to hide sensitive bridge methods.
  */
 export default function PartnerDemoPage() {
   const [walletResult, setWalletResult] = useState<string | null>(null);
@@ -29,8 +25,8 @@ export default function PartnerDemoPage() {
 
   const runWalletCall = useCallback(() => {
     getWalletBalance()
-      .then((result) => setWalletResult(`wallet:read OK -- total balance ${result.totalBalance} ${result.currency}`))
-      .catch((err: Error) => setWalletResult(`wallet:read FAILED -- ${err.message}`));
+      .then(() => setWalletResult(`wallet access unexpectedly SUCCEEDED (first-party-only boundary is broken)`))
+      .catch((err: Error) => setWalletResult(`wallet access denied as expected -- ${err.message}`));
   }, []);
 
   const runBillsCall = useCallback(() => {
@@ -49,7 +45,7 @@ export default function PartnerDemoPage() {
 
       <View style={styles.spacer} />
       <TouchableOpacity style={styles.actionButton} onPress={runWalletCall}>
-        <Text style={styles.actionButtonText}>Call getWalletBalance() -- approved scope</Text>
+        <Text style={styles.actionButtonText}>Call getWalletBalance() -- first-party only</Text>
       </TouchableOpacity>
       {walletResult && <Text style={styles.result}>{walletResult}</Text>}
 

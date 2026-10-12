@@ -31,8 +31,6 @@ export function createSaroniteMockHost(
   initial: Partial<MockHostState> = {},
 ): SaroniteMockHost {
   const state: MockHostState = {
-    calls: [],
-    permissions: {},
     lifecycle: 'visible',
     ...initial,
     calls: [...(initial.calls ?? [])],

@@ -22,6 +22,13 @@ interface SaroniteHostBridge {
     /** Bearer token for the signed-in user, or null if not authenticated. */
     fun getAuthToken(): String?
 
+    /**
+     * Whether the current native host explicitly trusts this as an Itunda
+     * first-party mini-app. Default to false so an embedding app must opt in
+     * deliberately; never infer trust from a JS-provided app name or URL.
+     */
+    fun isFirstParty(): Boolean = false
+
     /** The scheme URI mini-apps use to return control to the host app. */
     fun getSchemeUri(): String
 

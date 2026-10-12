@@ -99,6 +99,40 @@ final class SaroniteBrownfieldModule: NSObject {
         }
     }
 
+    // The real backend has no /api/v1/wallet/balance route: AccountController
+    // serves GET /api/v1/account as { success, accounts }. Project that verified
+    // response into the separate WalletBalanceResult expected by this mini-app.
+    // Keep this selector first-party-only even though account:read partners may call
+    // getAccountBalance; a future wallet-specific capability needs separate review.
+    @objc func getWalletBalance(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        guard SaroniteRuntimeContext.isFirstParty else {
+            reject("SARONITE_SCOPE_DENIED", "Wallet balance is available only to first-party mini-apps", nil)
+            return
+        }
+        authorizedCall(path: "api/v1/account", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+            let accounts = (root["accounts"] as? [[String: Any]]) ?? []
+            var currency = accounts.first?["currency"] as? String ?? "RWF"
+            var totalBalance = 0.0
+            let wallets = accounts.map { account -> [String: Any] in
+                let balance = (account["balance"] as? NSNumber)?.doubleValue ?? 0
+                let accountCurrency = account["currency"] as? String ?? currency
+                // Never add balances in different currencies without a real FX conversion.
+                if accountCurrency == currency { totalBalance += balance }
+                return [
+                    "id": account["id"] as? String ?? "",
+                    "type": account["type"] as? String ?? "",
+                    "name": account["nickname"] as? String ?? account["accountName"] as? String ?? "",
+                    "number": account["accountNumber"] as? String ?? "",
+                    "balance": balance,
+                    "currency": accountCurrency,
+                    "icon": "",
+                    "connected": true,
+                ]
+            }
+            return ["totalBalance": totalBalance, "currency": currency, "wallets": wallets]
+        }
+    }
+
     @objc func getPendingBills(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
         authorizedCall(path: "api/v1/bills/pending", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
             let bills = ((root["bills"] as? [[String: Any]]) ?? []).map { b -> [String: Any] in

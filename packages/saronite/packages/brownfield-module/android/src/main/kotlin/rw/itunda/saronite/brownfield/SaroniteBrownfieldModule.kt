@@ -67,15 +67,19 @@ class SaroniteBrownfieldModule(
     }
 
     /**
-     * Calls itunda's real `GET /wallet/balance` (see
-     * backend/src/controllers/wallet.controller.ts:getAggregatedBalance) using
-     * the host app's live session token, and hands the result back to JS.
-     * This is the proof-of-concept that the bridge reaches real backend data,
-     * not a mocked response.
+     * Reads the verified `GET /api/v1/account` endpoint with the host app's
+     * live session token and projects its `accounts` payload into the SDK's
+     * `WalletBalanceResult` contract. There is no `/api/v1/wallet/balance`
+     * backend route; this is a native SDK projection, not a separate API.
+     * Fail closed unless the native host explicitly trusts this as first-party.
      */
     @ReactMethod
     fun getWalletBalance(promise: Promise) {
-        authorizedCall(get("wallet/balance"), promise, ::parseWalletBalance)
+        if (!hostBridge.isFirstParty()) {
+            promise.reject("SARONITE_SCOPE_DENIED", "Wallet balance is available only to first-party mini-apps")
+            return
+        }
+        authorizedCall(get("api/v1/account"), promise, ::parseWalletBalance)
     }
 
     /** Backed by real `GET /bills/pending` (backend/src/controllers/bills.controller.ts). */
@@ -167,26 +171,30 @@ class SaroniteBrownfieldModule(
 
     private fun parseWalletBalance(json: String): WritableMap {
         val root = JsonParser.parseString(json).asJsonObject
-        val data = root.getAsJsonObject("data")
-
-        val result = Arguments.createMap()
-        result.putDouble("totalBalance", root.get("totalBalance").asDouble)
-        result.putString("currency", data?.get("currency")?.asString ?: "RWF")
-
+        val accounts = root.getAsJsonArray("accounts")
+        val currency = accounts?.firstOrNull()?.asJsonObject?.get("currency")?.asString ?: "RWF"
+        var totalBalance = 0.0
         val wallets = Arguments.createArray()
-        root.getAsJsonArray("wallets")?.forEach { element ->
-            val w = element.asJsonObject
+        accounts?.forEach { element ->
+            val account = element.asJsonObject
+            val balance = account.get("balance")?.asDouble ?: 0.0
+            val accountCurrency = account.get("currency")?.asString ?: currency
+            // Do not sum balances across currencies without a real FX conversion.
+            if (accountCurrency == currency) totalBalance += balance
             val walletMap = Arguments.createMap()
-            walletMap.putString("id", w.get("id").asString)
-            walletMap.putString("type", w.get("type").asString)
-            walletMap.putString("name", w.get("name").asString)
-            walletMap.putString("number", w.get("number").asString)
-            walletMap.putDouble("balance", w.get("balance").asDouble)
-            walletMap.putString("currency", w.get("currency").asString)
-            walletMap.putString("icon", w.get("icon").asString)
-            walletMap.putBoolean("connected", w.get("connected").asBoolean)
+            walletMap.putString("id", account.get("id")?.asString ?: "")
+            walletMap.putString("type", account.get("type")?.asString ?: "")
+            walletMap.putString("name", account.get("nickname")?.takeUnless { it.isJsonNull }?.asString?.takeIf { it.isNotBlank() } ?: account.get("accountName")?.asString ?: "")
+            walletMap.putString("number", account.get("accountNumber")?.asString ?: "")
+            walletMap.putDouble("balance", balance)
+            walletMap.putString("currency", accountCurrency)
+            walletMap.putString("icon", "")
+            walletMap.putBoolean("connected", true)
             wallets.pushMap(walletMap)
         }
+        val result = Arguments.createMap()
+        result.putDouble("totalBalance", totalBalance)
+        result.putString("currency", currency)
         result.putArray("wallets", wallets)
         return result
     }

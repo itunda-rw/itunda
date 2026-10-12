@@ -18,6 +18,19 @@ final class SaroniteCapabilityPolicyTests: XCTestCase {
         XCTAssertFalse(SaroniteCapabilityPolicy.allows(runtime: runtime, capability: nil))
     }
 
+    func testWalletBalanceRemainsFirstPartyOnlyForPartnerRuntimes() {
+        SaroniteRuntimeContext.activateFirstParty()
+        XCTAssertTrue(SaroniteRuntimeContext.isFirstParty)
+
+        XCTAssertTrue(SaroniteRuntimeContext.activatePartner(
+            policyVersion: 1,
+            scopes: ["account:read"]
+        ))
+        XCTAssertFalse(SaroniteRuntimeContext.isFirstParty)
+        XCTAssertTrue(SaroniteRuntimeContext.allows(path: "api/v1/account", method: "GET"))
+        XCTAssertFalse(SaroniteRuntimeContext.allows(nil))
+    }
+
     func testMissingPartnerScopeDeniesAccountRead() {
         let runtime = SaroniteRuntimeTrust.partner(policyVersion: 1, scopes: [])
         XCTAssertFalse(SaroniteCapabilityPolicy.allows(runtime: runtime, capability: .accountRead))

@@ -135,6 +135,16 @@ class SaroniteBrownfieldModule(
     }
 
     @ReactMethod
+    fun getWalletBalance(promise: Promise) {
+        // The real backend has no /api/v1/wallet/balance route. Read the verified
+        // GET /api/v1/account response and project accounts into WalletBalanceResult.
+        // This selector remains first-party-only; account:read partners use the separate
+        // getAccountBalance selector and do not receive this wallet projection.
+        if (!requireScope(null, promise)) return
+        authorizedCall(get("api/v1/account"), promise, ::parseWalletBalance)
+    }
+
+    @ReactMethod
     fun getPendingBills(promise: Promise) {
         // No real backend scope covers bill data at all (PartnerMiniAppPermissions.ALLOWED
         // is account:read/transactions:read/profile:read only) -- always denied for a
@@ -550,6 +560,38 @@ class SaroniteBrownfieldModule(
         result.putDouble("totalBalance", totalBalance)
         result.putString("currency", currency)
         result.putArray("accounts", accounts)
+        return result
+    }
+
+    // Keep the wallet response separate from account summaries: the JS contract expects
+    // { totalBalance, currency, wallets }, projected from the real GET /api/v1/account response.
+    private fun parseWalletBalance(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val result = Arguments.createMap()
+        val accounts = root.getAsJsonArray("accounts")
+        var currency = accounts?.firstOrNull()?.asJsonObject?.get("currency")?.asString ?: "RWF"
+        var totalBalance = 0.0
+        val wallets = Arguments.createArray()
+        accounts?.forEach { element ->
+            val account = element.asJsonObject
+            val balance = account.get("balance")?.asDouble ?: 0.0
+            val accountCurrency = account.get("currency")?.asString ?: currency
+            // Never add balances in different currencies without a real FX conversion.
+            if (accountCurrency == currency) totalBalance += balance
+            val walletMap = Arguments.createMap()
+            walletMap.putString("id", account.get("id")?.asString ?: "")
+            walletMap.putString("type", account.get("type")?.asString ?: "")
+            walletMap.putString("name", account.get("nickname")?.takeUnless { it.isJsonNull }?.asString?.takeIf { it.isNotBlank() } ?: account.get("accountName")?.asString ?: "")
+            walletMap.putString("number", account.get("accountNumber")?.asString ?: "")
+            walletMap.putDouble("balance", balance)
+            walletMap.putString("currency", accountCurrency)
+            walletMap.putString("icon", "")
+            walletMap.putBoolean("connected", true)
+            wallets.pushMap(walletMap)
+        }
+        result.putDouble("totalBalance", totalBalance)
+        result.putString("currency", currency)
+        result.putArray("wallets", wallets)
         return result
     }
 

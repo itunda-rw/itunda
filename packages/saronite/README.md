@@ -88,7 +88,7 @@ itunda backend feature and to a real Apps in Toss mini-app category:
 
 | Mini-app | Category (real Apps in Toss equivalent) | Backed by |
 |---|---|---|
-| `mini-apps/wallet-balance` | account/finance dashboard | `GET /wallet/balance` |
+| `mini-apps/wallet-balance` | account/finance dashboard | Native projection of `GET /api/v1/account` |
 | `mini-apps/pay-bills` | life services (bill/utility payment) | `GET /bills/pending`, `POST /bills/pay` |
 | `mini-apps/reward-tasks` | rewards/points earning | `GET /rewards/tasks`, `POST /rewards/claim` |
 
@@ -190,8 +190,7 @@ during the same pass.
   `com.facebook.react:react-android:0.75.4` from Maven Central and runs
   `./gradlew compileDebugKotlin` to a genuine `BUILD SUCCESSFUL` — re-verified
   after adding the bills/rewards methods below.
-- Seven real bridge methods total, each backed by a real itunda endpoint, not
-  mock data: `getWalletBalance()` (`GET /wallet/balance`), `getPendingBills()`
+- Seven bridge methods are intended to use real itunda endpoints, not mock data. `getWalletBalance()` projects the verified `GET /api/v1/account` response into the SDK's wallet-summary contract; it does not call a separate `/wallet/balance` route. `getPendingBills()`
   (`GET /bills/pending`), `payBill()` (`POST /bills/pay`), `getRewardTasks()`
   (`GET /rewards/tasks`), `claimRewardTask()` (`POST /rewards/claim`), plus
   `closeView()`/`openURL()`. The two POST methods generate a fresh

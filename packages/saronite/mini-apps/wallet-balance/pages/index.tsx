@@ -10,10 +10,11 @@ import type { WalletBalanceResult } from '@itunda/saronite-react-native';
  * convention is file-based (`pages/index.tsx` = the root route); Saronite
  * follows the same convention rather than inventing its own.
  *
- * This screen proves the bridge end-to-end: it calls the real
- * `getWalletBalance()` native method (backed by itunda's actual
- * `GET /wallet/balance`, not a mock) and renders whatever comes back,
- * including the real error path when there's no signed-in session.
+ * This screen calls the native `getWalletBalance()` selector. The native
+ * bridge reads the verified `GET /api/v1/account` endpoint and projects its
+ * `accounts` payload into the mini-app's `WalletBalanceResult` shape. That
+ * projection is an SDK contract, not a claim that `/wallet/balance` exists.
+ * The error path is preserved when there's no signed-in session.
  *
  * Migrated onto real granite (2026-07-13), same pattern pay-bills proved
  * out first: `createRoute` registration added below, `app.tsx`/
