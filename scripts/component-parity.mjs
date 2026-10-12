@@ -71,8 +71,13 @@ for (const [componentId, component] of Object.entries(contract.components ?? {})
   }
 }
 
-for (const [name, component] of Object.entries(contract.components)) {
-  for (const [platform, source] of Object.entries(component.sources)) {
+for (const [name, component] of Object.entries(contract.components ?? {})) {
+  if (!component || typeof component !== "object" || Array.isArray(component)) continue;
+  for (const [platform, source] of Object.entries(component.sources ?? {})) {
+    // Invalid contract entries should produce actionable failures above, not crash the
+    // checker while trying to resolve an unknown platform or unsafe path.
+    if (!supportedPlatforms.has(platform)) continue;
+    if (typeof source !== "string" || !source.trim() || path.isAbsolute(source) || source.split(/[\\\\/]/).includes("..")) continue;
     if (source.includes("/")) checkFile(platform, source);
   }
 }
