@@ -38,7 +38,7 @@ struct SpendingScreenView: View {
                                 Text("\(formatMoney(monthlyReport.currentTotal)) RWF").font(.title2).bold().foregroundColor(IDS.Colors.textPrimary)
                                 if let change = monthlyReport.percentChange {
                                     Text("\(change > 0 ? "▲" : "▼") \(abs(change))% vs last month")
-                                        .font(.caption).bold().foregroundColor(change > 0 ? .red : .green)
+                                        .font(.caption).bold().foregroundColor(change > 0 ? .red : IDS.Colors.success)
                                 }
                             }
                             let changed = monthlyReport.categories.filter { $0.percentChange != nil }
