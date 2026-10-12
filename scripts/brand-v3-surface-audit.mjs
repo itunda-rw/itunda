@@ -62,6 +62,8 @@ for (const surface of activeBrandSurfaces) {
 check(!homepage.includes("--indigo:#7472F4"), "consumer homepage still declares the legacy brand variable");
 check(techBlogStyles.includes("--itunda-brand:#8F89FF"), "Tech blog brand token is not v3");
 check(techBlogStyles.includes("--itunda-brand-strong:#7D77F7"), "Tech blog pressed brand token is not aligned with v3");
+check(techBlogStyles.includes("--itunda-on-brand:#121216"), "Tech blog semantic on-brand foreground is missing");
+check(techBlogStyles.includes(".header-cta{padding:10px 16px;border-radius:var(--itunda-control-radius);background:var(--itunda-brand);color:var(--itunda-on-brand)"), "Tech blog primary CTA does not use the semantic on-brand foreground");
 check(techBlogHtml.includes('name="theme-color" content="#8F89FF"'), "Tech blog browser theme color is not v3");
 check(techBlogPosts.includes("payments: ['#8F89FF', '#F1F0FF']"), "Tech blog payment cover palette is not v3");
 check(techBlogPosts.includes("platform: ['#8F89FF', '#F1F0FF']"), "Tech blog platform cover palette is not v3");
