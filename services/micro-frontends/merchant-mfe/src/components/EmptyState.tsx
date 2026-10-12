@@ -31,7 +31,7 @@ export function EmptyState({ message, icon: Icon = Inbox }: { message: string; i
 export function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div className="itunda-card" style={{ padding: '20px', margin: '8px 0' }}>
-      <p style={{ fontSize: '14px', color: 'var(--itunda-red)', margin: 0 }}>{message}</p>
+      <p role="alert" style={{ fontSize: '14px', color: 'var(--itunda-red)', margin: 0 }}>{message}</p>
       <button
         type="button"
         onClick={onRetry}
