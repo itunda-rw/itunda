@@ -1,5 +1,5 @@
 {
-  "version": "1.6.2",
+  "version": "1.6.3",
   "purpose": "IDS component API and state parity contract. Platform implementations may use native APIs, but public behavior must satisfy the same contract.",
   "components": {
     "button": {
@@ -280,13 +280,15 @@
           "fun SkeletonBlock(",
           "ValueAnimator.areAnimatorsEnabled()",
           "delay(200)",
-          "rememberInfiniteTransition"
+          "rememberInfiniteTransition",
+          "clearAndSetSemantics { }"
         ],
         "ios": [
           "struct SkeletonBlock: View",
           "@Environment(\\.accessibilityReduceMotion)",
           "try? await Task.sleep",
-          "repeatForever"
+          "repeatForever",
+          ".accessibilityHidden(true)"
         ],
         "web": [
           ".tds-skeleton{",
@@ -297,11 +299,12 @@
       "knownImplementationGaps": [
         "Android and iOS delay showing the placeholder by about 200 ms, while web CSS animates whenever the .tds-skeleton class is present; consuming views decide when to mount it.",
         "Android uses a gradient brush, iOS uses a clipped LinearGradient, and web uses a pseudo-element shimmer. Similar motion does not establish equivalent contrast or layout.",
-        "Android now checks the system animator scale and keeps the placeholder static when system animations are disabled; iOS checks accessibilityReduceMotion and web honors prefers-reduced-motion. Re-check whether the native system setting change is reflected immediately while the screen remains mounted.",
+        "Android checks the system animator scale and keeps the placeholder static when system animations are disabled; iOS checks accessibilityReduceMotion and web honors prefers-reduced-motion. Re-check whether native system-setting changes are reflected immediately while a screen remains mounted.",
         "SkeletonBlock exposes a height and fills available width on native platforms; web sizing is supplied by markup. Verify placeholder geometry matches the content it replaces.",
-        "The inspected source contract does not yet establish that skeletons are hidden from assistive technology or that loading announcements are announced exactly once."
+        "Android and iOS decorative skeleton shapes are hidden from the accessibility tree. Web markup must set aria-hidden=true on decorative skeletons; the CSS class alone cannot provide ARIA semantics.",
+        "The inspected source contract does not establish that loading announcements are announced exactly once; that responsibility belongs to the loading container or screen."
       ],
-      "completionGate": "Verify layout stability before/after load, short loads that should not flash, live changes to reduced-motion settings, light/dark contrast, screen-reader hiding/semantics, and real content geometry. Keep this component marked in-progress until runtime checks pass."
+      "completionGate": "Verify layout stability before/after load, short loads that should not flash, live changes to reduced-motion settings, light/dark contrast, decorative skeleton accessibility hiding, exactly-once loading announcements at the containing screen, web aria-hidden markup, and real content geometry. Keep this component marked in-progress until runtime checks pass."
     },
     "bottomCta": {
       "states": [
