@@ -27,6 +27,10 @@ Run from the repository root after installing the root Yarn workspace dependenci
 | KYC MFE only | `yarn dev:kyc` |
 | Operations MFE only | `yarn dev:ops` |
 | Web host only | `yarn dev:host` |
+| Check bank MFE only | `yarn check:bank` |
+| Check KYC MFE only | `yarn check:kyc` |
+| Check operations MFE only | `yarn check:ops` |
+| Check web host only | `yarn check:host` |
 | Saronite browser demo | `yarn dev:saronite:web` |
 | Saronite native Metro server | `yarn dev:saronite:native` |
 | Saronite workspace typecheck | `yarn typecheck:saronite` |
@@ -36,7 +40,7 @@ The Saronite workspaces are independently managed under `packages/saronite`; ins
 
 ## Rules for keeping feedback fast
 
-1. **Run the narrowest useful check first.** While editing a single MFE, start its own Vite server and run its own typecheck/lint; use `yarn dev:web` when validating host-to-MFE integration.
+1. **Run the narrowest useful check first.** While editing a single MFE, start its own Vite server and run the matching `yarn check:<app>` command; use `yarn dev:web` when validating host-to-MFE integration.
 2. **Do not clear caches by default.** Reset a bundler cache only when there is evidence of stale or corrupted state. Cache deletion should be an explicit recovery step, not the normal dev loop.
 3. **Keep JavaScript iteration separate from native rebuilds.** Use Vite HMR for browser mini-app work and Metro Fast Refresh for native-host/React Native work. Rebuild the native app only when native code, native dependencies, generated project configuration, or the embedded JS bundle/release artifact requires it.
 4. **Mock safely.** Use Saronite DevTools for permission-aware capability mocks, call logs, and lifecycle simulation. Unknown capabilities and denied permissions must remain visible failures, never silent successes.
