@@ -41,12 +41,9 @@ export function createSaroniteMockHost(
   initial: Partial<MockHostState> = {},
 ): SaroniteMockHost {
   const state: MockHostState = {
-    calls: [],
-    permissions: {},
-    lifecycle: 'visible',
-    ...initial,
     calls: [...(initial.calls ?? [])],
     permissions: { ...(initial.permissions ?? {}) },
+    lifecycle: initial.lifecycle ?? 'visible',
   };
   const listeners = new Set<() => void>();
   let requestSequence = state.calls.length;
