@@ -121,6 +121,28 @@ class StocksControllerTest : BehaviorSpec({
         }
     }
 
+    Given("a read-only practice order preview") {
+        val stocksService = mockk<StocksService>()
+        val ctl = controller(stocksService = stocksService)
+        val request = StockOrderPreviewRequest("s1", "BUY", BigDecimal("2.5"))
+        every { stocksService.previewOrder("user_1", "s1", "BUY", BigDecimal("2.5")) } returns mapOf(
+            "mode" to "SIMULATED",
+            "estimatedNotional" to BigDecimal("125.00"),
+            "reservesFunds" to false,
+        )
+
+        When("previewing it") {
+            val response = ctl.previewOrder(request, currentUser)
+            Then("it returns the preview scoped to the authenticated user without invoking a trade") {
+                response.statusCode shouldBe HttpStatus.OK
+                (response.body?.get("preview") as Map<*, *>)["reservesFunds"] shouldBe false
+                verify(exactly = 1) { stocksService.previewOrder("user_1", "s1", "BUY", BigDecimal("2.5")) }
+                verify(exactly = 0) { stocksService.buyStock(any(), any(), any()) }
+                verify(exactly = 0) { stocksService.sellStock(any(), any(), any()) }
+            }
+        }
+    }
+
     Given("a real stock buy") {
         val stocksService = mockk<StocksService>()
         val idempotencyService = mockk<IdempotencyService>()
