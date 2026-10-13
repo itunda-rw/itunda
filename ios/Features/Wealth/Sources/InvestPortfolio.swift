@@ -27,7 +27,13 @@ struct PortfolioContent: View {
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                Text("Virtual practice cash: \(formatMoney(portfolio.virtualCashBalance)) RWF. No real money moves.")
+                Group {
+                    if let cash = portfolio.virtualCashBalance {
+                        Text("Virtual practice cash: \(formatMoney(cash)) RWF. No real money moves.")
+                    } else {
+                        Text("Practice cash is unavailable from this server version.")
+                    }
+                }
                     .font(.caption).foregroundColor(IDS.Colors.textSecondary).padding(.vertical, 8)
                 Divider().overlay(IDS.Colors.divider)
 
