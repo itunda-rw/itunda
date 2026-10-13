@@ -25,6 +25,7 @@ import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
 
 data class TradeStockRequest(val stockId: String, val shares: BigDecimal)
+data class StockOrderPreviewRequest(val stockId: String, val side: String, val shares: BigDecimal)
 data class FundInvestmentRequest(val amount: BigDecimal)
 // Real Toss Securities 목표가 알림 (target price alert) -- see
 // StocksService.setPriceAlert's own doc comment.
@@ -94,6 +95,23 @@ class StocksController(private val stocksService: StocksService, private val ide
         }
         return ResponseEntity.status(status).body(body)
     }
+
+
+    /**
+     * Read-only server-authoritative preview for the deterministic practice market.
+     * Does not require an idempotency key because it cannot mutate balances or holdings.
+     */
+    @PostMapping("/order-preview")
+    fun previewOrder(
+        @RequestBody request: StockOrderPreviewRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "preview" to stocksService.previewOrder(currentUser.userId, request.stockId, request.side, request.shares),
+            ),
+        )
 
     @PostMapping("/buy")
     fun buy(
@@ -221,4 +239,7 @@ class StocksController(private val stocksService: StocksService, private val ide
 
     @ExceptionHandler(InvalidPriceAlertException::class)
     fun handleInvalidPriceAlert(ex: InvalidPriceAlertException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PRICE_ALERT", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidOrderPreviewException::class)
+    fun handleInvalidOrderPreview(ex: InvalidOrderPreviewException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_ORDER_PREVIEW", ex.message ?: "Bad order preview"))
 }
