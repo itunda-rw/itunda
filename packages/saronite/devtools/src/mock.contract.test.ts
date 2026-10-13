@@ -49,3 +49,17 @@ unsubscribe();
 const notificationsBeforeChange = notifications;
 host.setLifecycle('visible');
 if (notifications !== notificationsBeforeChange) throw new Error('unsubscribe did not remove listener');
+
+const seeded = createSaroniteMockHost({
+  calls: [{
+    requestId: 'mock-8',
+    capability: 'seed',
+    method: 'existing',
+    status: 'ok',
+    timestamp: 1,
+  }],
+});
+seeded.request('test', 'next', () => true);
+if (seeded.state.calls[1]?.requestId !== 'mock-9') {
+  throw new Error('request IDs must remain unique when the host starts with existing history');
+}
