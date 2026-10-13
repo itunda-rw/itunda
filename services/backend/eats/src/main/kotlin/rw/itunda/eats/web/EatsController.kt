@@ -52,7 +52,6 @@ import rw.itunda.eats.EatsOrderTipWindowExpiredException
 import rw.itunda.eats.InvalidEatsTipAmountException
 import rw.itunda.eats.EatsOrderNotYetDeliveredException
 import rw.itunda.eats.EatsOrderService
-import rw.itunda.eats.EatsStampService
 import rw.itunda.eats.EatsReviewAlreadyReportedException
 import rw.itunda.eats.EatsReviewNotFoundException
 import rw.itunda.eats.EatsReviewService
@@ -157,7 +156,7 @@ class EatsOrderOwnRestaurantException(message: String) : RuntimeException(messag
 class EatsController(
     private val riderService: RiderService,
     private val eatsOrderService: EatsOrderService,
-    private val eatsStampService: EatsStampService,
+    private val eatsStampService: rw.itunda.eats.EatsStampService,
     private val eatsReviewService: EatsReviewService,
     private val eatsFavoriteService: EatsFavoriteService,
     private val eatsMembershipService: EatsMembershipService,
@@ -463,8 +462,7 @@ class EatsController(
         @PathVariable orderId: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val order = eatsOrderService.completePickup(currentUser.userId, orderId)
-        eatsStampService.awardForCompletedOrder(order.id)
+        val order = eatsOrderService.completePickup(currentUser.userId, orderId); eatsStampService.awardForCompletedOrder(order.id)
         return ResponseEntity.ok(mapOf("success" to true, "order" to order))
     }
 
@@ -517,12 +515,9 @@ class EatsController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val order = eatsOrderService.updateRiderStatus(currentUser.userId, orderId, request.status, request.deliveryPhotoUrl)
-        if (order.status == rw.itunda.core.domain.EatsOrderStatus.DELIVERED) {
-            eatsStampService.awardForCompletedOrder(order.id)
-        }
+        if (order.status == rw.itunda.core.domain.EatsOrderStatus.DELIVERED) eatsStampService.awardForCompletedOrder(order.id)
         return ResponseEntity.ok(mapOf("success" to true, "order" to order))
     }
-
 
     // Real manual trigger for EatsOrderAbandonedDeliveryScheduler's own real 60-second
     // cron -- same "let a coordinator/admin fire the real due sweep on demand rather
