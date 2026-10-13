@@ -22,7 +22,7 @@
 
 - [ ] **Market home:** indexes, market status, search, popular/most-active/risers/fallers, sectors, and recently viewed instruments; empty and error states explain what is missing.
 - [ ] **Instrument detail:** price and percentage move with period selector (1D/1W/1M/1Y/ALL), accessible chart, sourced open/high/low/volume, company profile, exchange, market status, and last-updated timestamp.
-- [x] **Web order ticket (first stage):** buy/sell review step with side, instrument, shares, estimated value, edit/cancel, and final practice-trade confirmation. It clearly says the estimate uses a simulated price and excludes fees/price changes. Still needed: server-authoritative quote/fee/balance preview, order type/time-in-force, and a dedicated practice ledger.
+- [x] **Cross-platform order review (first stage):** web, Android, and iOS now add a confirmation step with side, instrument, quantity, estimated value, and a simulated-market / no-real-order disclaimer before calling the existing practice-trade endpoint. Web and Android copy is localized EN/RW/FR; iOS copy is currently English. Still needed: server-authoritative quote/fee/balance preview, order type/time-in-force, a dedicated practice ledger, and client/build validation.
 - [ ] **Order lifecycle:** submitted/accepted/partially-filled/filled/cancelled/rejected states, order history, trade confirmations, idempotency, and reconciliation.
 - [ ] **Portfolio:** holdings, quantity, average cost, market value, realized/unrealized P&L, day change, allocation, cash, dividends, and explainable time-range performance.
 - [ ] **Watchlist and alerts:** persist per user, edit/remove, deduplicate alert events, track delivery, and disclose whether alerts use simulated or stale prices.
