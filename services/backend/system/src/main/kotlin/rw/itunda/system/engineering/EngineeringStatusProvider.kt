@@ -21,6 +21,7 @@ class EngineeringStatusProvider(
     @Value("\${itunda.engineering.branch:main}") private val branch: String,
     @Value("\${itunda.engineering.required-check-ids:}") requiredCheckIds: String,
     @Value("\${itunda.engineering.github-token:}") private val githubToken: String,
+    @Value("\\${itunda.engineering.environment:local}") private val environment: String,
 ) {
     private val requiredIds = requiredCheckIds.split(',')
         .map(String::trim)
