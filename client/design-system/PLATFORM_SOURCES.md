@@ -31,7 +31,7 @@ The mobile implementations now use the same semantic intent as IDS v2:
 - icon roles
 - pressed/disabled states
 
-The current Itunda brand semantic anchor is **#7472F4** in light mode and **#7675F8** in dark mode. The older numbered blue primitive scale remains in the repository for compatibility and code generation; it is not the current product brand.
+The canonical Itunda brand v3 semantic anchor is **#8F89FF** in both light and dark themes. Use the semantic on-brand foreground **#121216** for brand-filled controls; do not infer foreground from the theme. The older numbered blue primitive scale remains in the repository for compatibility and code generation; it is not the current product brand.
 
 ## Typography
 
