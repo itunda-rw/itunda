@@ -14,6 +14,7 @@ struct StockDetailContent: View {
     @State private var error: String?
     @State private var submitting = false
     @State private var reviewingTrade = false
+    @State private var orderPreview: StockOrderPreviewDto?
     @State private var watching: Bool
     // Real device binding step-up (2026-07-21) -- Stocks buy/sell was a real gap:
     // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but a
@@ -172,11 +173,20 @@ struct StockDetailContent: View {
             .padding()
         }
         .alert("Review practice order", isPresented: $reviewingTrade) {
-            Button("Edit order", role: .cancel) {}
+            Button("Edit order", role: .cancel) { orderPreview = nil }
             Button("Confirm practice trade", action: executeTrade)
         } message: {
-            let shareCount = Double(shares) ?? 0
-            Text("\(buyMode ? "Buy" : "Sell") · \(stock.symbol)\n\(shares) shares\nEstimated value: \(formatMoney(shareCount * stock.price)) RWF\n\nEstimate uses the simulated displayed price and excludes fees or price changes. Confirmation updates only Itunda's internal investment ledger; no real market order is placed.")
+            if let preview = orderPreview {
+                let quantity = String(format: "%.6f", preview.shares).replacingOccurrences(of: #"\.?0+$"#, with: "", options: .regularExpression)
+                let coverageWarning = preview.side == "BUY" && preview.estimatedNotionalCovered == false
+                    ? "\nWarning: available investment balance may be insufficient."
+                    : (preview.side == "SELL" && preview.estimatedSharesCovered == false
+                        ? "\nWarning: available holding may be insufficient."
+                        : "")
+                Text("\(preview.side) · \(preview.symbol)\n\(quantity) shares\nEstimated value: \(formatMoney(preview.estimatedNotional)) \(preview.currency)\n\n\(preview.disclaimer)\nFees modeled: \(preview.feesModeled ? "Yes" : "No")\(coverageWarning)")
+            } else {
+                Text("The server preview is unavailable. Please review the order again.")
+            }
         }
         .task {
             await loadHistory()
@@ -264,7 +274,30 @@ struct StockDetailContent: View {
             return
         }
         error = nil
-        reviewingTrade = true
+        orderPreview = nil
+        submitting = true
+        Task {
+            do {
+                let response = try await NetworkClient.shared.previewStockOrder(
+                    stockId: stock.id,
+                    side: buyMode ? "BUY" : "SELL",
+                    shares: shareCount
+                )
+                guard response.success,
+                      response.preview.mode == "SIMULATED",
+                      !response.preview.reservesFunds,
+                      !response.preview.realOrderExecutionAvailable else {
+                    self.error = "Could not verify this practice-order preview."
+                    submitting = false
+                    return
+                }
+                orderPreview = response.preview
+                reviewingTrade = true
+            } catch {
+                self.error = "Could not prepare this practice order. Try again."
+            }
+            submitting = false
+        }
     }
 
     private func executeTrade() {
