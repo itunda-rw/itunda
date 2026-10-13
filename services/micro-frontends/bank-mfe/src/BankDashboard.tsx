@@ -33,7 +33,7 @@ import { EmptyState, ErrorCard } from './EmptyState';
 import { useDeferredLoading } from './useDeferredLoading';
 import { ShopView } from './ShopView';
 import { MessagesView } from './TalkGroupsAndFriends';
-import { fetchAccountTransactions, fetchAccounts, type Account } from './lib/account';
+import { fetchAccountTransactions, fetchAccounts, fetchSpendingInsight, type Account, type SpendingCategory } from './lib/account';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, type TrustedDevice } from './lib/device';
 import { fetchNotifications } from './lib/notifications';
 import { fetchDiscoverItems, type DiscoverItem } from './lib/discover';
@@ -895,23 +895,41 @@ export function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode,
 // linking into SavingsView's own already-complete SaccoSection/IkiminaSection, so
 // it's removed outright rather than moved -- nothing it showed was unique.
 function HomeView({ userName, onNavigateToTab }: { userName?: string; onNavigateToTab: (tab: Tab) => void }) {
-  // Real, minimal usage signal (2026-08-10) -- see lib/analytics.ts's own doc comment.
-  // Fired once per real mount of Home, the baseline every retention question in the
-  // "itunda: the wedge, not the mirror" memo is measured against.
   useEffect(() => { recordEvent('home_view'); }, []);
 
+  // Home shows only the signed-in user's real account and spending data. A failed
+  // request leaves the section in a calm empty state; never substitute sample money.
+  const [accounts, setAccounts] = useState<Account[] | null>(null);
+  const [spending, setSpending] = useState<{ totalSpent: number; categories: SpendingCategory[] } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetchAccounts()
+      .then((result) => { if (active) setAccounts(result.filter((account) => account.isActive)); })
+      .catch(() => { if (active) setAccounts([]); });
+    fetchSpendingInsight()
+      .then((result) => { if (active) setSpending(result); })
+      .catch(() => { if (active) setSpending(null); });
+    return () => { active = false; };
+  }, []);
+
+  const mainAccount = accounts?.find((account) => account.type === 'MAIN');
+  const payAccount = accounts?.find((account) => account.type === 'PAY');
+  const money = (amount: number, currency: string) =>
+    `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(amount)} ${currency || 'RWF'}`;
+
   const quickActions: { id: Tab; label: string; icon: ComponentType<{ size?: number }> }[] = [
+    { id: 'PAY', label: 'Send', icon: IconPay },
     { id: 'PAY', label: 'Pay', icon: IconPay },
-    { id: 'EXPLORE', label: 'Explore', icon: IconExplore },
-    { id: 'MESSAGES', label: 'Messages', icon: IconMessages },
-    { id: 'YOU', label: 'You', icon: IconYou },
+    { id: 'BILLS', label: 'Bills', icon: IconExplore },
+    { id: 'EXPLORE', label: 'Explore', icon: IconYou },
   ];
 
   return (
     <div className="itunda-home-page">
       <section className="itunda-home-welcome" aria-labelledby="itunda-home-title">
         <span className="itunda-home-welcome__mark" aria-hidden="true">
-          <IconItundaLogo size={38} color="var(--itunda-logo-color)" />
+          <IconItundaLogo size={34} color="var(--itunda-logo-color)" />
         </span>
         <div className="itunda-home-welcome__copy">
           <p className="itunda-home-welcome__eyebrow">ITUNDA</p>
@@ -920,16 +938,60 @@ function HomeView({ userName, onNavigateToTab }: { userName?: string; onNavigate
         </div>
       </section>
 
-      <section className="itunda-home-actions" aria-label="Quick actions">
-        {quickActions.map(({ id, label, icon: Icon }) => (
-          <button key={id} type="button" onClick={() => onNavigateToTab(id)}>
-            <span className="itunda-home-actions__icon" aria-hidden="true">
-              <Icon size={20} />
-            </span>
-            <span>{label}</span>
-          </button>
-        ))}
+      <section className="itunda-home-money" aria-label="Your money">
+        <div className="itunda-home-money__heading">
+          <h2>Your money</h2>
+          <button type="button" onClick={() => onNavigateToTab('SAVINGS')}>itunda Bank <IconChevronRight size={16} /></button>
+        </div>
+        {accounts === null ? (
+          <p className="itunda-home-muted" role="status">Loading your accounts…</p>
+        ) : (
+          <div className="itunda-home-accounts">
+            <button type="button" className="itunda-home-account" onClick={() => onNavigateToTab('SAVINGS')}>
+              <span className="itunda-home-account__label">itunda Bank</span>
+              <strong>{mainAccount ? money(mainAccount.availableBalance, mainAccount.currency) : 'Set up an account'}</strong>
+              <span className="itunda-home-account__hint">{mainAccount ? 'Available balance' : 'Explore account options'}</span>
+            </button>
+            <button type="button" className="itunda-home-account" onClick={() => onNavigateToTab('PAY')}>
+              <span className="itunda-home-account__label">itunda Pay</span>
+              <strong>{payAccount ? money(payAccount.availableBalance, payAccount.currency) : 'Open itunda Pay'}</strong>
+              <span className="itunda-home-account__hint">{payAccount ? 'Available to pay' : 'Pay and send money'}</span>
+            </button>
+          </div>
+        )}
+        <div className="itunda-home-primary-actions">
+          <button type="button" className="itunda-home-send" onClick={() => onNavigateToTab('PAY')}>Send money <IconChevronRight size={18} /></button>
+          <button type="button" className="itunda-home-topup" onClick={() => onNavigateToTab('PAY')}>Top up</button>
+        </div>
       </section>
+
+      <section className="itunda-home-actions-section" aria-label="Quick actions">
+        <h2>Quick actions</h2>
+        <div className="itunda-home-actions">
+          {quickActions.map(({ id, label, icon: Icon }, index) => (
+            <button key={`${id}-${label}`} type="button" onClick={() => onNavigateToTab(id)} aria-label={label}>
+              <span className="itunda-home-actions__icon" aria-hidden="true"><Icon size={20} /></span>
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {spending && spending.totalSpent > 0 && (
+        <section className="itunda-home-spending" aria-label="Spending summary">
+          <div className="itunda-home-section-heading">
+            <h2>Spending</h2>
+            <button type="button" onClick={() => onNavigateToTab('SPENDING')}>Details <IconChevronRight size={16} /></button>
+          </div>
+          <p className="itunda-home-spending__amount">{money(spending.totalSpent, mainAccount?.currency || payAccount?.currency || 'RWF')}</p>
+          <p className="itunda-home-muted">Based on your recorded transactions</p>
+          {spending.categories.slice().sort((a, b) => b.amount - a.amount).slice(0, 2).map((category) => (
+            <div className="itunda-home-spending__row" key={category.name}>
+              <span>{category.name}</span><strong>{money(category.amount, mainAccount?.currency || payAccount?.currency || 'RWF')}</strong>
+            </div>
+          ))}
+        </section>
+      )}
 
       <section className="itunda-home-discover" aria-label="Discover">
         <DiscoverSection />
@@ -937,7 +999,6 @@ function HomeView({ userName, onNavigateToTab }: { userName?: string; onNavigate
     </div>
   );
 }
-
 export function ProductPageHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div style={{ margin: '4px 0 16px' }}>
