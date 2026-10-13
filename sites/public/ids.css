@@ -36,3 +36,60 @@ button,.btn,.cta,.theme-toggle,.nav a{touch-action:manipulation}
 .section-head{gap:40px}
 .section h2{letter-spacing:-.04em}
 @media(max-width:800px){.nav{gap:8px}.hero h1{letter-spacing:-.05em}.hero p{font-size:18px}.actions{margin-top:28px}}
+
+
+/* Itunda design quality pass — mobile navigation, focus and touch ergonomics.
+   Preserve the v3.1 Indigo brand and flat surface language. */
+@media(max-width:800px){
+  .top{
+    gap:12px;
+    min-width:0;
+  }
+  .brand{
+    flex:0 0 auto;
+    white-space:nowrap;
+  }
+  .nav{
+    flex:1 1 auto;
+    min-width:0;
+    max-width:calc(100vw - 150px);
+    overflow-x:auto;
+    overflow-y:hidden;
+    overscroll-behavior-x:contain;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+    justify-content:flex-start;
+    white-space:nowrap;
+  }
+  .nav::-webkit-scrollbar{display:none}
+  .nav a:not(.cta){
+    display:inline-flex;
+    flex:0 0 auto;
+    min-height:44px;
+    padding-inline:6px;
+  }
+  .nav a.cta{flex:0 0 auto}
+}
+@media(max-width:520px){
+  .shell{padding-inline:16px}
+  .top{gap:8px}
+  .brand{gap:6px;font-size:14px}
+  .brand-logo{width:28px;height:28px}
+  .nav{max-width:calc(100vw - 124px);gap:10px;font-size:12px}
+  .nav a.cta{padding-inline:10px;font-size:12px}
+  .hero h1{overflow-wrap:anywhere}
+  .actions .btn,.actions .cta{width:100%;justify-content:center}
+}
+@media(min-width:801px){
+  .nav a{border-radius:10px;padding-inline:4px}
+  .nav a:not(.cta):hover{background:var(--surface)}
+}
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{
+  outline:3px solid var(--brand-strong);
+  outline-offset:3px;
+}
+@media(forced-colors:active){
+  :where(a,button,input,select,textarea,[tabindex]):focus-visible{
+    outline:2px solid Highlight;
+  }
+}
