@@ -83,19 +83,23 @@ class StocksController(private val stocksService: StocksService, private val ide
     // Real bug fix (2026-07-27) -- see StocksService.fundInvestmentAccount's own doc
     // comment. Real money-moving internal transfer, so Idempotency-Key required, same
     // convention as every other money-moving POST in this codebase.
+    /**
+     * Funding a real investment account is disabled while the only market is simulated.
+     * This prevents customers from moving real wallet funds into an account that cannot
+     * place real exchange orders. Paper trading uses its own virtual cash ledger.
+     */
     @PostMapping("/fund")
     fun fund(
         @RequestBody request: FundInvestmentRequest,
         @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
-    ): ResponseEntity<Map<String, Any?>> {
-        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/stocks/fund", idempotencyKey, request) {
-            val transaction = stocksService.fundInvestmentAccount(currentUser.userId, request.amount)
-            200 to mapOf("success" to true, "transaction" to transaction)
-        }
-        return ResponseEntity.status(status).body(body)
-    }
-
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(
+            mapOf(
+                "success" to false,
+                "error" to ApiError("LIVE_BROKER_UNAVAILABLE", "Real investment funding is disabled because live broker execution is unavailable. Practice trading uses virtual cash."),
+            ),
+        )
 
     /**
      * Read-only server-authoritative preview for the deterministic practice market.
