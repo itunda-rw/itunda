@@ -4,8 +4,7 @@ import java.time.OffsetDateTime
 
 /**
  * Payment Aggregate Root.
- * Mapped 100% 1:1 to Toss Payments' official API spec (https://docs.tosspayments.com/reference),
- * but adapted for Rwanda's context (MTN MoMo, Airtel Money, RWF).
+ * Adapted for Rwanda's context (MTN MoMo, Airtel Money, RWF).
  */
 data class Payment(
     val mId: String,
@@ -18,17 +17,16 @@ data class Payment(
     val totalAmount: Long,
     val balanceAmount: Long,
     val currency: String = "RWF",
-    
-    // Adapted from Toss 'easyPay' or 'card' to Rwanda's Mobile Money reality
     val mobileMoney: MobileMoneyDetails?,
-    
     val country: String = "RW",
-    val method: String // e.g., "MOMO", "AIRTEL", "CARD"
+    val method: String
 )
 
 enum class PaymentStatus {
     READY,
     IN_PROGRESS,
+    /** Durable claim acquired before an external provider operation begins. */
+    CONFIRMING,
     WAITING_FOR_DEPOSIT,
     DONE,
     CANCELED,
@@ -38,7 +36,7 @@ enum class PaymentStatus {
 }
 
 data class MobileMoneyDetails(
-    val provider: String, // "MTN" or "AIRTEL"
-    val phoneNumber: String, // Masked, e.g. "078****123"
+    val provider: String,
+    val phoneNumber: String,
     val receiptUrl: String
 )
