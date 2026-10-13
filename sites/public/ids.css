@@ -124,3 +124,50 @@ button,.btn,.cta,.theme-toggle,.nav a{touch-action:manipulation}
 
 /* Canonical brand asset used by all public-site headers. */
 .brand-logo{display:block;width:32px;height:32px;object-fit:contain;flex:none}.brand{display:inline-flex;align-items:center}
+
+
+/* IDS responsive polish: keep navigation discoverable on small touch screens. */
+@media(max-width:800px){
+  .top{min-width:0;gap:10px}
+  .brand{flex:0 0 auto;white-space:nowrap}
+  .nav{
+    flex:1 1 auto;
+    min-width:0;
+    max-width:calc(100vw - 150px);
+    overflow-x:auto;
+    overflow-y:hidden;
+    overscroll-behavior-x:contain;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+    justify-content:flex-start;
+    white-space:nowrap;
+  }
+  .nav::-webkit-scrollbar{display:none}
+  .nav a:not(.cta){
+    display:inline-flex;
+    flex:0 0 auto;
+    min-height:44px;
+    align-items:center;
+    padding-inline:6px;
+  }
+  .nav a.cta{flex:0 0 auto}
+}
+@media(max-width:520px){
+  .shell{padding-inline:16px}
+  .top{gap:8px}
+  .brand{gap:6px;font-size:14px}
+  .brand-logo{width:28px;height:28px}
+  .nav{max-width:calc(100vw - 124px);gap:10px;font-size:12px}
+  .nav a.cta{padding-inline:10px;font-size:12px}
+  .hero h1{overflow-wrap:anywhere}
+  .actions .btn,.actions .cta{width:100%;justify-content:center}
+}
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{
+  outline:3px solid var(--brand-strong);
+  outline-offset:3px;
+}
+@media(forced-colors:active){
+  :where(a,button,input,select,textarea,[tabindex]):focus-visible{
+    outline:2px solid Highlight;
+  }
+}
