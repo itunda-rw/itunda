@@ -22,7 +22,7 @@ class PracticeStockTrade(
     val stockId: String,
     @Column(nullable = false, length = 8)
     val type: String,
-    @Column(nullable = false, precision = 18, scale = 4)
+    @Column(nullable = false, precision = 18, scale = 6)
     val shares: BigDecimal,
     @Column(nullable = false, precision = 18, scale = 2)
     val price: BigDecimal,
