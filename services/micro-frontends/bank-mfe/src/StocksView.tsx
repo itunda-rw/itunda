@@ -205,7 +205,7 @@ export function StocksView() {
       </div>
       {marketStatus && (
         <p aria-live="polite" style={{ margin: '-4px 0 14px', fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
-          Market status: {marketStatus.mode} · {marketStatus.source} · simulated for {marketStatus.asOfDate ?? 'unknown date'} ({marketStatus.timezone}) · {marketStatus.currency} · live quotes and real order execution unavailable
+          {t('stocks.marketStatusLabel')}: {marketStatus.mode} · {marketStatus.source} · {marketStatus.asOfDate ?? '—'} ({marketStatus.timezone}) · {marketStatus.currency}. {t('stocks.liveUnavailable')}
         </p>
       )}
 
