@@ -27,6 +27,8 @@ export const DEFAULT_LOCALE: Locale = 'en';
 export type TranslationKey =
   | 'maps.searchPlaceholder'
   | 'maps.searchError'
+  | 'maps.searching'
+  | 'maps.searchEmpty'
   | 'maps.exploreDefault'
   | 'maps.folderNamePlaceholder'
   | 'maps.saving'
@@ -46,6 +48,8 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
     'maps.searchPlaceholder': 'Search a real place in Rwanda',
     'maps.searchError': 'Could not search for that place.',
+    'maps.searching': 'Searching real places…',
+    'maps.searchEmpty': 'No indexed places matched. Try a nearby town or a shorter place name.',
     'maps.exploreDefault': 'Search a real place or pick a category above to explore Rwanda.',
     'maps.folderNamePlaceholder': 'Folder name (e.g. Favorites)',
     'maps.saving': 'Saving…',
@@ -63,7 +67,9 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
   },
   rw: {
     'maps.searchPlaceholder': 'Shakisha ahantu nyaho mu Rwanda',
-    'maps.searchError': 'Ntibishoboka gushakisha ahantu bavuze.',
+    'maps.searchError': 'Ntibishoboka gushakisha ahantu wavuze.',
+    'maps.searching': 'Turashakisha ahantu nyaho…',
+    'maps.searchEmpty': 'Nta hantu habonetse. Gerageza izina ry’umujyi uri hafi cyangwa izina rigufi.',
     'maps.exploreDefault': 'Shakisha ahantu cyangwa uhitemo icyiciro hejuru kugira ngo urebe u Rwanda.',
     'maps.folderNamePlaceholder': "Izina ry'idosiye (urugero: Ibyo nkunda)",
     'maps.saving': 'Kubika…',
@@ -82,6 +88,8 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
   fr: {
     'maps.searchPlaceholder': 'Recherchez un lieu réel au Rwanda',
     'maps.searchError': "Impossible de rechercher ce lieu.",
+    'maps.searching': 'Recherche de lieux réels…',
+    'maps.searchEmpty': 'Aucun lieu répertorié ne correspond. Essayez une ville voisine ou un nom plus court.',
     'maps.exploreDefault': "Recherchez un lieu réel ou choisissez une catégorie ci-dessus pour explorer le Rwanda.",
     'maps.folderNamePlaceholder': 'Nom du dossier (ex. Favoris)',
     'maps.saving': 'Enregistrement…',
