@@ -137,3 +137,36 @@ For every row, record:
 - known gaps, severity, next action, and rollback plan
 
 This matrix is a working acceptance contract. It must be updated from repository and production evidence; it is not a statement that every listed capability currently exists.
+
+
+## Public-reference findings and Itunda implementation mapping (2026-10-13)
+
+This section records observed facts from public upstream README files, not assumptions about Toss's private production systems.
+
+| Public reference | Verified public pattern | Itunda adaptation | Evidence required before calling complete |
+|---|---|---|---|
+| [toss/granite](https://github.com/toss/granite) | Brownfield React Native integration; small micro-app bundles and bundle splitting; fast ESBuild-based builds; infrastructure/deployment tooling; end-to-end testing is part of the framework's stated goals. Its README describes AWS examples. | Keep Itunda's existing native Android/iOS shell and Saronite runtime. Measure mini-app bundle size, startup time, native bridge overhead, and rollback behavior. Translate infrastructure examples to Itunda's current GCP environment only where the operational design fits; do not transplant AWS configuration blindly. | Native integration tests on Android and iOS; reproducible bundle-size report; cold-start benchmark; signed bundle verification; staged rollout and rollback test. |
+| [toss/create-ait-app](https://github.com/toss/create-ait-app) | CLI scaffolds a runnable mini-app, detects/preserves the selected package manager, supports framework presets, wires devtools/bundler configuration, and exposes dev/build/deploy workflows. The README states Node.js 24+ and documents supported client-rendered presets. | Make the Itunda/Saronite quick start produce a working example with a pinned, compatible toolchain; expose local dev, typecheck, test, build, manifest validation, bundle audit, and publish-preview commands. Preserve existing user files and fail clearly on unsupported templates. | Fresh-directory smoke test for each supported template; package-manager matrix; no-overwrite test; examples compile against the current SDK; generated app passes release audit. |
+| [toss/apps-in-toss-harness](https://github.com/toss/apps-in-toss-harness) | The public README describes an agent-oriented workflow that connects scaffolding, local mock SDK/devtools, debugging, device testing, console registration, review, release, promotion, and post-release status checks. Some developer/debugger integrations are opt-in rather than always wired. | Extend Itunda's developer workflow into one traceable lifecycle: create → local mock → inspect permissions/events → validate manifest/bundle → device test → review → staged release → health check/rollback. Keep privileged tools opt-in, role-protected, and auditable. | End-to-end lifecycle test using a non-production app; permission-denial scenario; role/tenant isolation; artifact provenance; release-status reconciliation; tested rollback. |
+
+### Engineering decisions derived from the references
+
+1. **Optimize for a runnable path, not just documentation.** A new developer should be able to scaffold an example and reach a passing local test/build with documented prerequisites.
+2. **Treat mini-apps as bounded, versioned artifacts.** Validate manifest/schema, declared capabilities, bundle bytes, supported SDK range, signature/provenance, and target runtime before publishing.
+3. **Keep developer tools out of production bundles.** CI must inspect the built artifact, not just source imports. The Saronite web-demo boundary test and bundle audit are initial guardrails; native packaging and all release artifacts still need equivalent checks.
+4. **Make device testing and release status first-class.** A green browser mock test is not evidence of native permission enforcement, device compatibility, or a successful production rollout.
+5. **Make the platform-provider boundary explicit.** Itunda's current GCP deployment remains the baseline. Public examples using AWS are reference patterns only, not a reason to migrate infrastructure.
+6. **Do not copy branding or proprietary implementation.** Reuse publicly licensed code only after checking the specific license and compatibility; prefer implementing the underlying pattern with Itunda-owned APIs, tokens, and security rules.
+
+### Immediate acceptance criteria for the Saronite developer-tooling work
+
+- [x] Deterministic mock/scenario contract tests exist in the current PR.
+- [x] Generated web JavaScript chunks are measured against a provisional per-chunk size budget in CI.
+- [x] CI checks that Saronite DevTools markers do not leak into the web demo's production output.
+- [ ] Latest production-boundary workflow is green on the current PR head.
+- [ ] Android and iOS native CI are green on the same candidate SHA.
+- [ ] A device-level test proves permission denial is enforced by the native host/backend, not only the browser mock.
+- [ ] Publish/review/rollout/rollback is tested end-to-end with a non-production mini-app.
+- [ ] Bundle-size budget is replaced or supplemented with measured startup, memory, bridge latency, and total artifact budgets.
+
+The checked boxes above refer only to implementation or test existence in this PR. They do not assert production deployment or full product completion.
