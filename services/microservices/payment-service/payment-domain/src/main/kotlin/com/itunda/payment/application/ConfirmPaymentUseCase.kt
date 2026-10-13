@@ -1,12 +1,9 @@
 package com.itunda.payment.application
 
 import com.itunda.payment.domain.Payment
-import com.itunda.payment.domain.PaymentStatus
-import java.time.OffsetDateTime
 
 /**
- * Command for confirming a payment, exactly mirroring Toss Payments' Confirm API parameters:
- * https://docs.tosspayments.com/reference#%EA%B2%B0%EC%A0%9C-%EC%8A%B9%EC%9D%B8
+ * Command for confirming a payment, shaped after the Toss Payments confirm API.
  */
 data class ConfirmPaymentCommand(
     val paymentKey: String,
@@ -21,6 +18,9 @@ interface ConfirmPaymentUseCase {
 
 /**
  * Port for retrieving/saving Payment aggregate.
+ *
+ * Current payment-db implementation is in-memory. Production use requires durable,
+ * atomic state transitions and idempotency persistence.
  */
 interface PaymentRepositoryPort {
     fun findByOrderId(orderId: String): Payment?
@@ -28,8 +28,13 @@ interface PaymentRepositoryPort {
 }
 
 /**
- * Port for talking to Itunda Bank (Ledger) or Mobile Money Provider
+ * Provider adapter must pass this key through to the provider's idempotency mechanism.
+ * A stable key alone does not guarantee deduplication unless the provider honors it.
  */
 interface PaymentGatewayPort {
-    fun processMobileMoneyTransfer(paymentKey: String, amount: Long): Boolean
+    fun processMobileMoneyTransfer(
+        paymentKey: String,
+        amount: Long,
+        idempotencyKey: String
+    ): Boolean
 }
