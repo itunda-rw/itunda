@@ -994,6 +994,24 @@ function HomeView({ userName, onNavigateToTab }: { userName?: string; onNavigate
         </section>
       )}
 
+      <section className="itunda-home-for-you" aria-label="For you">
+        <h2>For you</h2>
+        <button type="button" className="itunda-home-for-you__item" onClick={() => onNavigateToTab('SAVINGS')}>
+          <span className="itunda-home-for-you__copy">
+            <strong>Start a savings goal</strong>
+            <span>Choose a target and a date to make saving easier</span>
+          </span>
+          <IconChevronRight size={18} />
+        </button>
+        <button type="button" className="itunda-home-for-you__item" onClick={() => onNavigateToTab('CREDIT_SCORE')}>
+          <span className="itunda-home-for-you__copy">
+            <strong>Check your credit score</strong>
+            <span>Review your score and available suggestions</span>
+          </span>
+          <IconChevronRight size={18} />
+        </button>
+      </section>
+
       <section className="itunda-home-discover" aria-label="Discover">
         <DiscoverSection />
       </section>
