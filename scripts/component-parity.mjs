@@ -42,7 +42,7 @@ checkSymbol("android", "android/core/designsystem/src/main/java/rw/itunda/core/d
 checkSymbol("ios", "ios/Core/DesignSystem/Sources/Components/Components.swift", ["struct IdsButton", "struct EmptyStateView", "struct ErrorCardView"]);
 checkSymbol("web", "client/design-system/components.css", [".ids-button", ".ids-field", ".ids-list-row", ".ids-state", ".ids-state", ".ids-skeleton", ".ids-action-group"]);
 const webComponents = fs.readFileSync(path.join(root, "client/design-system/components.css"), "utf8");
-if (/\\btds-/.test(webComponents)) failures.push("web: legacy tds- namespace found in the IDS component stylesheet");
+if (/tds-/.test(webComponents)) failures.push("web: legacy tds- namespace found in the IDS component stylesheet");
 
 console.log(`IDS component parity: ${checks.length} source checks, ${failures.length} failures`);
 if (failures.length) {
