@@ -17,19 +17,19 @@ interface ConfirmPaymentUseCase {
 }
 
 /**
- * Port for retrieving/saving Payment aggregate.
- *
- * Current payment-db implementation is in-memory. Production use requires durable,
- * atomic state transitions and idempotency persistence.
+ * Durable payment repository contract. claimForConfirmation must atomically move
+ * exactly one eligible payment into CONFIRMING using a database-level conditional
+ * update; process-local locks are not sufficient when the service has replicas.
  */
 interface PaymentRepositoryPort {
     fun findByOrderId(orderId: String): Payment?
+    fun claimForConfirmation(orderId: String): Payment?
     fun save(payment: Payment): Payment
 }
 
 /**
- * Provider adapter must pass this key through to the provider's idempotency mechanism.
- * A stable key alone does not guarantee deduplication unless the provider honors it.
+ * The adapter must send this stable key to a provider that actually honors
+ * idempotency. The key alone does not create provider-side deduplication.
  */
 interface PaymentGatewayPort {
     fun processMobileMoneyTransfer(
