@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - main
       - "fix/android-map-preview-fallback"
     paths:
       - "android/**"
