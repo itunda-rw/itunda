@@ -26,7 +26,7 @@ class EngineeringStatusProviderTest : BehaviorSpec({
             server.expect(requestTo("https://api.github.com/repos/itunda-rw/itunda/commits/$headSha/check-runs?per_page=100&page=1"))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess(
-                    """{"check_runs":[{"name":"CI","status":"completed","conclusion":"success","details_url":"https://github.com/itunda-rw/itunda/actions/runs/1"}]}""",
+                    """{"check_runs":[{"name":"CI","head_sha":"$headSha","status":"completed","conclusion":"success","details_url":"https://github.com/itunda-rw/itunda/actions/runs/1"}]}""",
                     MediaType.APPLICATION_JSON,
                 ))
             val provider = EngineeringStatusProvider(
@@ -48,6 +48,33 @@ class EngineeringStatusProviderTest : BehaviorSpec({
                 check["detailsUrl"] shouldBe "https://github.com/itunda-rw/itunda/actions/runs/1"
             }
             server.verify()
+        }
+
+        When("GitHub returns a successful check for a different commit") {
+            val builder = RestClient.builder()
+            val server = MockRestServiceServer.bindTo(builder).build()
+            val otherSha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            server.expect(requestTo("https://api.github.com/repos/itunda-rw/itunda/commits/main"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""{"sha":"$headSha"}""", MediaType.APPLICATION_JSON))
+            server.expect(requestTo("https://api.github.com/repos/itunda-rw/itunda/commits/$headSha/check-runs?per_page=100&page=1"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(
+                    """{"check_runs":[{"name":"CI","head_sha":"$otherSha","status":"completed","conclusion":"success"}]}""",
+                    MediaType.APPLICATION_JSON,
+                ))
+            val provider = EngineeringStatusProvider(
+                ObjectMapper(), "itunda-rw/itunda", "main", "CI", "", "test", builder,
+            )
+
+            val snapshot = provider.readStatus()
+            val check = (snapshot["checks"] as List<*>).single() as Map<*, *>
+
+            Then("it marks the check unknown and preserves the reported SHA") {
+                check["result"] shouldBe "unknown"
+                check["commitSha"] shouldBe otherSha
+                server.verify()
+            }
         }
 
         When("required checks are not configured") {
