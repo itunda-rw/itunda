@@ -61,12 +61,13 @@ host.request('wallet', 'getBalance', () => 1200, {
 });
 ```
 
+- Scenario IDs must be 2–63 characters, start with a lowercase letter, and contain only lowercase letters, digits, or hyphens. Invalid IDs are rejected so correlation IDs remain predictable.
 - Scenario IDs produce deterministic default correlation IDs (for example, `wallet-offline-check-1`).
 - `unsupported` accepts a capability name or a `capability.method` key.
 - `failures` maps a `capability.method` key to the error detail recorded in the request log.
 - Permissions not explicitly granted remain denied; scenario state is isolated per host.
 - The scenario runner is a development/test utility, not a network emulator and not evidence of native Android/iOS parity. Production builds must not depend on this package.
-- Contract tests cover injected failures, unsupported methods, denied permissions, successful calls, and correlation IDs. The tests must pass in CI before this change is considered verified.
+- Contract tests cover injected failures, unsupported methods, denied permissions, successful calls, correlation IDs, and invalid scenario IDs. The tests must pass in CI before this change is considered verified.
 
 
 ## Manifest and release-readiness checks
