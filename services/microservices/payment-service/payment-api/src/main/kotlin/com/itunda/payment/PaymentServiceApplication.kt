@@ -5,6 +5,12 @@ import org.springframework.boot.runApplication
 
 @SpringBootApplication
 @org.springframework.context.annotation.ComponentScan(basePackages = ["com.itunda", "rw.itunda"])
+@org.springframework.data.jpa.repository.config.EnableJpaRepositories(
+    basePackages = ["rw.itunda.payment.db.repository"]
+)
+@org.springframework.boot.autoconfigure.domain.EntityScan(
+    basePackages = ["rw.itunda.payment.db.entity"]
+)
 class PaymentServiceApplication
 
 fun main(args: Array<String>) {
