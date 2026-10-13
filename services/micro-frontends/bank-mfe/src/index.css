@@ -3520,3 +3520,52 @@ input, textarea, select {
   .itunda-home-account,
   .itunda-home-primary-actions > button { transition: none; }
 }
+
+
+/* Helpful next steps use existing Itunda destinations, without fabricated offers or balances. */
+.itunda-home-for-you {
+  margin-top: 26px;
+}
+.itunda-home-for-you > h2 {
+  margin: 0 0 10px;
+  color: var(--itunda-text-primary);
+  font-size: var(--itunda-type-scale-18-size);
+  line-height: 1.3;
+  font-weight: 750;
+  letter-spacing: -.025em;
+}
+.itunda-home-for-you__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--itunda-text-primary);
+  text-align: left;
+}
+.itunda-home-for-you__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.itunda-home-for-you__copy strong {
+  font-size: var(--itunda-type-scale-14-size);
+  font-weight: 700;
+}
+.itunda-home-for-you__copy span {
+  color: var(--itunda-text-secondary);
+  font-size: var(--itunda-type-scale-12-size);
+  line-height: 1.5;
+}
+.itunda-home-for-you__item > svg {
+  flex: 0 0 auto;
+  color: var(--itunda-text-tertiary);
+}
+.itunda-home-for-you__item:focus-visible {
+  outline: 2px solid var(--itunda-brand);
+  outline-offset: 3px;
+}
