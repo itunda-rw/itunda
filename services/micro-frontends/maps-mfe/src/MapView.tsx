@@ -52,6 +52,7 @@ import { PlaceGlyph } from './icons/ItundaFacePlaces';
 import { MerchantBookableServicesSection, MyBookingReviewsCard, MyBookingsCard } from './MapsBooking';
 import { MapPlaceDetailPanel } from './MapPlaceDetailPanel';
 import { MapDirectionsPanel } from './MapDirectionsPanel';
+import { renderValidatedRoute } from './lib/route-rendering';
 
 // A real, minimal MapLibre style over itunda's own self-hosted vector tiles -- basic
 // OpenMapTiles-schema layers (water/landcover/roads/buildings) plus, 2026-07-19, real
@@ -121,7 +122,7 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
     {
       id: 'route-line', type: 'line', source: 'route',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#7472F4', 'line-width': 5, 'line-opacity': 0.9 },
+      paint: { 'line-color': '#8F89FF', 'line-width': 5, 'line-opacity': 0.9 },
     },
     // Real distance-measurement (ruler) tool line (2026-07-22) -- dashed, and a
     // deliberately different color from the real drawn route above, so the two are never
@@ -130,12 +131,12 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
     {
       id: 'measure-line', type: 'line', source: 'measure',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': 'var(--itunda-red)', 'line-width': 3, 'line-dasharray': [2, 1.5] },
+      paint: { 'line-color': '#E5484D', 'line-width': 3, 'line-dasharray': [2, 1.5] },
     },
     {
       id: 'measure-points', type: 'circle', source: 'measure',
       filter: ['==', ['geometry-type'], 'Point'],
-      paint: { 'circle-radius': 5, 'circle-color': 'var(--itunda-red)', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' },
+      paint: { 'circle-radius': 5, 'circle-color': '#E5484D', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' },
     },
     // Real text labels (2026-07-19) -- item 5, the last item on the Maps "100%"
     // roadmap. Real OSM name data already baked into the tile archive (see the
@@ -1078,7 +1079,7 @@ export default function MapView() {
         el.style.width = '16px';
         el.style.height = '16px';
         el.style.borderRadius = '50%';
-        el.style.backgroundColor = '#7472F4';
+        el.style.backgroundColor = '#8F89FF';
         el.style.border = '3px solid white';
         el.style.boxShadow = '0 0 0 2px rgba(49,130,246,0.4)';
         myLocationMarkerRef.current = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
@@ -1138,28 +1139,18 @@ export default function MapView() {
   // stats -- shared by the initial "Directions" fetch and by tapping a real alternative
   // route chip below it (2026-07-22, see lib/maps.ts's getDirectionsAlternatives doc
   // comment), so switching which route is selected never re-fetches from OSRM.
-  const applyRoute = (result: RouteResult) => {
+  const applyRoute = (result: RouteResult): boolean => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map) return false;
+    const rendered = renderValidatedRoute(map, result);
+    if (!rendered.ok) {
+      setError(rendered.error);
+      return false;
+    }
     setRoute({ distanceKm: result.distanceKm, durationMinutes: result.durationMinutes, steps: result.steps });
     setShowSteps(false);
-    const source = map.getSource('route') as maplibregl.GeoJSONSource | undefined;
-    source?.setData({
-      type: 'FeatureCollection',
-      features: [{
-        type: 'Feature',
-        properties: {},
-        geometry: { type: 'LineString', coordinates: result.geometry.map(([lat, lng]) => [lng, lat]) },
-      }],
-    });
-    const bounds = result.geometry.reduce(
-      (b, [lat, lng]) => b.extend([lng, lat]),
-      new maplibregl.LngLatBounds(
-        [result.geometry[0][1], result.geometry[0][0]],
-        [result.geometry[0][1], result.geometry[0][0]],
-      ),
-    );
-    map.fitBounds(bounds, { padding: 60 });
+    setError(null);
+    return true;
   };
 
   // Real fallback for the two local-only pseudo-modes ('BUS'/'TRANSIT' aren't real
@@ -1176,11 +1167,15 @@ export default function MapView() {
     setError(null);
     try {
       const results = await getDirectionsAlternatives(origin[0], origin[1], place.latitude, place.longitude, mode);
+      if (!results.length) {
+        setError('No valid route was returned. Please try again.');
+        return;
+      }
+      if (!applyRoute(results[0])) return;
       setTravelMode(mode);
       setItineraryStops(null);
       setRouteAlternatives(results);
       setSelectedRouteIndex(0);
-      applyRoute(results[0]);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not find directions to this place.');
     } finally {
@@ -1234,11 +1229,11 @@ export default function MapView() {
         measurePoints.map(([latitude, longitude]) => ({ latitude, longitude })),
         mode,
       );
+      if (!applyRoute(result)) return;
       setTravelMode(mode);
       setRouteAlternatives(null);
       setSelectedRouteIndex(0);
       setItineraryStops(measurePoints);
-      applyRoute(result);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not find a route through these stops.');
     } finally {
@@ -1248,8 +1243,7 @@ export default function MapView() {
 
   const selectRouteAlternative = (index: number) => {
     if (!routeAlternatives || index === selectedRouteIndex) return;
-    setSelectedRouteIndex(index);
-    applyRoute(routeAlternatives[index]);
+    if (applyRoute(routeAlternatives[index])) setSelectedRouteIndex(index);
   };
 
   // Real merchant-pin enrichment lookup (2026-07-22) -- see the `merchants` state's own
@@ -1432,7 +1426,7 @@ export default function MapView() {
                   fontWeight: 600,
                   border: 'none',
                   boxShadow: active ? '0 2px 6px rgba(116,114,244,0.4)' : '0 1px 4px rgba(0,0,0,0.1)',
-                  backgroundColor: active ? '#7472F4' : '#fff',
+                  backgroundColor: active ? '#8F89FF' : '#fff',
                   color: active ? '#fff' : MAP_CARD_TEXT_SECONDARY,
                 }}
               >
@@ -1740,7 +1734,7 @@ export default function MapView() {
                     style={{ padding: '8px 10px', borderRadius: 'var(--itunda-radius-xs)', border: `1px solid ${MAP_CARD_DIVIDER}`, fontSize: '13px' }}
                   />
                   <div style={{ display: 'flex', gap: '6px' }}>
-                    {['Home', 'Work'].map((preset) => <button key={preset} type="button" onClick={() => setFolderNameInput(preset)} style={{ borderRadius: 'var(--itunda-radius-pill)', padding: '6px 10px', fontSize: '12px', fontWeight: 700, background: folderNameInput.toLowerCase() === preset.toLowerCase() ? '#7472F4' : '#F2F4F6', color: folderNameInput.toLowerCase() === preset.toLowerCase() ? '#fff' : MAP_CARD_TEXT }}>{preset}</button>)}
+                    {['Home', 'Work'].map((preset) => <button key={preset} type="button" onClick={() => setFolderNameInput(preset)} style={{ borderRadius: 'var(--itunda-radius-pill)', padding: '6px 10px', fontSize: '12px', fontWeight: 700, background: folderNameInput.toLowerCase() === preset.toLowerCase() ? '#8F89FF' : '#F2F4F6', color: folderNameInput.toLowerCase() === preset.toLowerCase() ? '#fff' : MAP_CARD_TEXT }}>{preset}</button>)}
                   </div>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                     {BOOKMARK_COLOR_PALETTE.map((c) => (
@@ -1920,7 +1914,7 @@ export default function MapView() {
                           style={{
                             marginLeft: bookmarksByFolder.length > 1 ? 0 : 'auto',
                             fontSize: '11px', fontWeight: 700,
-                            color: folderBookmarks.some((b) => b.isPublic) ? '#7472F4' : MAP_CARD_TEXT_SECONDARY,
+                            color: folderBookmarks.some((b) => b.isPublic) ? '#8F89FF' : MAP_CARD_TEXT_SECONDARY,
                             background: 'none', border: 'none',
                           }}
                         >

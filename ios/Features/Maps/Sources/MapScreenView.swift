@@ -404,7 +404,7 @@ public struct MapScreenView: View {
                                         .font(.caption).bold()
                                         .foregroundColor(active ? .white : IdsPalette.gray700)
                                         .padding(.horizontal, 12).padding(.vertical, 8)
-                                        .background(active ? Color(hex: 0x7472F4) : IdsPalette.white)
+                                        .background(active ? Color(hex: 0x8F89FF) : IdsPalette.white)
                                         .clipShape(Capsule())
                                         .shadow(color: .black.opacity(active ? 0.28 : 0.1), radius: active ? 4 : 3, y: 1)
                                     }
@@ -1499,7 +1499,7 @@ private struct MapLibreMapRepresentable: UIViewRepresentable {
             let source = MLNShapeSource(identifier: routeSourceIdentifier, shape: nil, options: nil)
             style.addSource(source)
             let layer = MLNLineStyleLayer(identifier: routeLayerIdentifier, source: source)
-            layer.lineColor = NSExpression(forConstantValue: UIColor(red: 0.19, green: 0.51, blue: 0.96, alpha: 0.9))
+            layer.lineColor = NSExpression(forConstantValue: UIColor(red: 0.561, green: 0.537, blue: 1.0, alpha: 0.9))
             layer.lineWidth = NSExpression(forConstantValue: 5)
             layer.lineCap = NSExpression(forConstantValue: "round")
             layer.lineJoin = NSExpression(forConstantValue: "round")
