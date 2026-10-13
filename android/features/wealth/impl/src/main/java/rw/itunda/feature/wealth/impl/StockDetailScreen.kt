@@ -20,9 +20,11 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.TrendingDown
 import androidx.compose.material.icons.outlined.TrendingUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -62,6 +64,7 @@ internal fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: (
     var buyMode by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var submitting by remember { mutableStateOf(false) }
+    var reviewingTrade by remember { mutableStateOf(false) }
     var watching by remember { mutableStateOf(isWatched) }
     // Real device binding step-up (2026-07-21) -- Stocks buy/sell was a real gap:
     // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but
@@ -154,10 +157,22 @@ internal fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: (
 
     fun trade() {
         val shareCount = shares.toDoubleOrNull()
-        if (shareCount == null || shareCount <= 0) {
+        if (shareCount == null || !shareCount.isFinite() || shareCount <= 0) {
             error = "Enter a real number of shares."
             return
         }
+        error = null
+        reviewingTrade = true
+    }
+
+    fun executeTrade() {
+        val shareCount = shares.toDoubleOrNull()
+        if (shareCount == null || !shareCount.isFinite() || shareCount <= 0) {
+            error = "Enter a real number of shares."
+            reviewingTrade = false
+            return
+        }
+        reviewingTrade = false
         submitting = true
         needsDeviceVerification = false
         coroutineScope.launch {
@@ -266,21 +281,7 @@ internal fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: (
             onDismiss = { needsDeviceVerification = false },
             onVerified = {
                 needsDeviceVerification = false
-                submitting = true
-                try {
-                    val request = TradeStockRequest(stock.id, shares.toDoubleOrNull() ?: 0.0)
-                    val key = UUID.randomUUID().toString()
-                    if (buyMode) NetworkClient.apiService.buyStock(key, request) else NetworkClient.apiService.sellStock(key, request)
-                    shares = ""
-                    error = null
-                    onTraded()
-                } catch (e: HttpException) {
-                    error = superAppErrorMessage(e)
-                } catch (e: IOException) {
-                    error = "Couldn't reach itunda. Check your connection and try again."
-                } finally {
-                    submitting = false
-                }
+                executeTrade()
             },
         )
 
@@ -345,4 +346,30 @@ internal fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: (
             }
         }
     }
+    if (reviewingTrade) {
+        val shareCount = shares.toDoubleOrNull() ?: 0.0
+        AlertDialog(
+            onDismissRequest = { reviewingTrade = false },
+            title = { Text(stringResource(R.string.invest_review_order)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("${if (buyMode) stringResource(R.string.invest_buy) else stringResource(R.string.invest_sell)} · ${stock.symbol}")
+                    Text("${String.format(Locale.US, "%,.6f", shareCount).trimEnd('0').trimEnd('.')} ${stringResource(R.string.invest_shares)}")
+                    Text("${stringResource(R.string.invest_estimated_value)}: ${formatMoney(shareCount * stock.price)} RWF", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.invest_order_preview_disclaimer), fontSize = 12.sp, color = Ids.colors.textSecondary)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { executeTrade() }, enabled = !submitting) {
+                    Text(stringResource(R.string.invest_confirm_practice_trade))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { reviewingTrade = false }) {
+                    Text(stringResource(R.string.invest_edit_order))
+                }
+            },
+        )
+    }
+
 }
