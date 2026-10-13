@@ -33,7 +33,8 @@ class StocksControllerTest : BehaviorSpec({
     fun controller(
         stocksService: StocksService = mockk(),
         idempotencyService: IdempotencyService = mockk(),
-    ) = StocksController(stocksService, idempotencyService)
+        practiceStockService: PracticeStockService = mockk(),
+    ) = StocksController(stocksService, idempotencyService, practiceStockService)
 
     Given("a real stock-catalog request") {
         val stocksService = mockk<StocksService>()
@@ -76,14 +77,14 @@ class StocksControllerTest : BehaviorSpec({
     }
 
     Given("a real portfolio request") {
-        val stocksService = mockk<StocksService>()
-        val ctl = controller(stocksService = stocksService)
-        every { stocksService.getPortfolio("user_1") } returns mapOf("totalValue" to BigDecimal("1000"))
+        val practiceStockService = mockk<PracticeStockService>()
+        val ctl = controller(practiceStockService = practiceStockService)
+        every { practiceStockService.getPortfolio("user_1") } returns mapOf("totalValue" to BigDecimal("1000"))
 
         When("fetching it") {
             ctl.getPortfolio(currentUser)
             Then("it queries scoped to the caller's own userId, never a client-supplied one") {
-                verify(exactly = 1) { stocksService.getPortfolio("user_1") }
+                verify(exactly = 1) { practiceStockService.getPortfolio("user_1") }
             }
         }
     }
@@ -122,10 +123,10 @@ class StocksControllerTest : BehaviorSpec({
     }
 
     Given("a read-only practice order preview") {
-        val stocksService = mockk<StocksService>()
-        val ctl = controller(stocksService = stocksService)
+        val practiceStockService = mockk<PracticeStockService>()
+        val ctl = controller(practiceStockService = practiceStockService)
         val request = StockOrderPreviewRequest("s1", "BUY", BigDecimal("2.5"))
-        every { stocksService.previewOrder("user_1", "s1", "BUY", BigDecimal("2.5")) } returns mapOf(
+        every { practiceStockService.preview("user_1", "s1", "BUY", BigDecimal("2.5")) } returns mapOf(
             "mode" to "SIMULATED",
             "estimatedNotional" to BigDecimal("125.00"),
             "reservesFunds" to false,
@@ -136,7 +137,7 @@ class StocksControllerTest : BehaviorSpec({
             Then("it returns the preview scoped to the authenticated user without invoking a trade") {
                 response.statusCode shouldBe HttpStatus.OK
                 (response.body?.get("preview") as Map<*, *>)["reservesFunds"] shouldBe false
-                verify(exactly = 1) { stocksService.previewOrder("user_1", "s1", "BUY", BigDecimal("2.5")) }
+                verify(exactly = 1) { practiceStockService.preview("user_1", "s1", "BUY", BigDecimal("2.5")) }
                 verify(exactly = 0) { stocksService.buyStock(any(), any(), any()) }
                 verify(exactly = 0) { stocksService.sellStock(any(), any(), any()) }
             }
@@ -145,11 +146,12 @@ class StocksControllerTest : BehaviorSpec({
 
     Given("a real stock buy") {
         val stocksService = mockk<StocksService>()
+        val practiceStockService = mockk<PracticeStockService>()
         val idempotencyService = mockk<IdempotencyService>()
-        val ctl = controller(stocksService = stocksService, idempotencyService = idempotencyService)
+        val ctl = controller(stocksService = stocksService, idempotencyService = idempotencyService, practiceStockService = practiceStockService)
         val request = TradeStockRequest("s1", BigDecimal("10"))
         val actionSlot = slot<() -> Pair<Int, Map<String, Any?>>>()
-        every { stocksService.buyStock("user_1", "s1", BigDecimal("10")) } returns mapOf("id" to "txn_2")
+        every { practiceStockService.execute("user_1", "s1", "BUY", BigDecimal("10")) } returns mapOf("id" to "practice_2")
         every {
             idempotencyService.replayOrExecute("POST /api/v1/stocks/buy", "key-1", request, capture(actionSlot))
         } answers { actionSlot.captured.invoke() }
@@ -158,18 +160,19 @@ class StocksControllerTest : BehaviorSpec({
             ctl.buy(request, "key-1", currentUser)
             Then("it routes through the real idempotency service scoped to the caller's own userId, never a client-supplied one") {
                 verify(exactly = 1) { idempotencyService.replayOrExecute("POST /api/v1/stocks/buy", "key-1", request, any()) }
-                verify(exactly = 1) { stocksService.buyStock("user_1", "s1", BigDecimal("10")) }
+                verify(exactly = 1) { practiceStockService.execute("user_1", "s1", "BUY", BigDecimal("10")) }
             }
         }
     }
 
     Given("a real stock sell") {
         val stocksService = mockk<StocksService>()
+        val practiceStockService = mockk<PracticeStockService>()
         val idempotencyService = mockk<IdempotencyService>()
-        val ctl = controller(stocksService = stocksService, idempotencyService = idempotencyService)
+        val ctl = controller(stocksService = stocksService, idempotencyService = idempotencyService, practiceStockService = practiceStockService)
         val request = TradeStockRequest("s1", BigDecimal("5"))
         val actionSlot = slot<() -> Pair<Int, Map<String, Any?>>>()
-        every { stocksService.sellStock("user_1", "s1", BigDecimal("5")) } returns mapOf("id" to "txn_3")
+        every { practiceStockService.execute("user_1", "s1", "SELL", BigDecimal("5")) } returns mapOf("id" to "practice_3")
         every {
             idempotencyService.replayOrExecute("POST /api/v1/stocks/sell", "key-1", request, capture(actionSlot))
         } answers { actionSlot.captured.invoke() }
@@ -178,7 +181,7 @@ class StocksControllerTest : BehaviorSpec({
             ctl.sell(request, "key-1", currentUser)
             Then("it routes through the real idempotency service scoped to the caller's own userId, never a client-supplied one") {
                 verify(exactly = 1) { idempotencyService.replayOrExecute("POST /api/v1/stocks/sell", "key-1", request, any()) }
-                verify(exactly = 1) { stocksService.sellStock("user_1", "s1", BigDecimal("5")) }
+                verify(exactly = 1) { practiceStockService.execute("user_1", "s1", "SELL", BigDecimal("5")) }
             }
         }
     }
