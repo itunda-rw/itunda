@@ -4,9 +4,11 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import rw.itunda.core.domain.EatsOrder
 import rw.itunda.core.domain.EatsOrderStatus
 import rw.itunda.core.domain.EatsStampCampaign
+import rw.itunda.core.domain.EatsStampEarning
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.repository.EatsOrderRepository
 import rw.itunda.core.repository.EatsStampCampaignRepository
@@ -52,6 +54,7 @@ class EatsStampServiceTest : FunSpec({
         campaigns: List<EatsStampCampaign>,
         earnedForOrder: Boolean = false,
         earnedToday: Boolean = false,
+        priorCampaignStamps: Int = 0,
     ): EatsStampService {
         val campaignRepo = mockk<EatsStampCampaignRepository>()
         val earningRepo = mockk<EatsStampEarningRepository>()
@@ -69,7 +72,8 @@ class EatsStampServiceTest : FunSpec({
         every { earningRepo.existsByCampaignIdAndOrderId(any(), any()) } returns earnedForOrder
         every { earningRepo.existsByRestaurantIdAndBuyerIdAndEarningDay(any(), any(), todayKigali) } returns earnedToday
         every { earningRepo.save(any()) } answers { firstArg() }
-        every { earningRepo.findByCampaignIdAndBuyerIdAndReversedAtIsNull(any(), any()) } returns emptyList()
+        every { earningRepo.findByCampaignIdAndBuyerIdAndReversedAtIsNull(any(), any()) } returns
+            List(priorCampaignStamps) { mockk<EatsStampEarning>(relaxed = true) }
         every { eventRepo.save(any()) } answers { firstArg() }
         every { rewardRepo.save(any()) } answers { firstArg() }
 
@@ -99,6 +103,12 @@ class EatsStampServiceTest : FunSpec({
 
     test("awards one stamp for a completed order when the buyer has no stamp that day") {
         val stampService = service(order(), listOf(campaign()))
+
+        stampService.awardForCompletedOrder("order-1") shouldBe 1
+    }
+
+    test("issues a reward exactly when the completed order reaches the campaign milestone") {
+        val stampService = service(order(), listOf(campaign()), priorCampaignStamps = 4)
 
         stampService.awardForCompletedOrder("order-1") shouldBe 1
     }
