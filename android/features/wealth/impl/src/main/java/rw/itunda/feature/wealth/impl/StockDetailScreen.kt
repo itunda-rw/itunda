@@ -51,6 +51,8 @@ import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SetPriceAlertRequest
 import rw.itunda.core.network.StockDto
 import rw.itunda.core.network.StockPricePointDto
+import rw.itunda.core.network.StockOrderPreviewDto
+import rw.itunda.core.network.StockOrderPreviewRequest
 import rw.itunda.core.network.TradeStockRequest
 import rw.itunda.core.network.isDeviceNotVerifiedError
 import rw.itunda.core.network.superAppErrorMessage
@@ -65,6 +67,8 @@ internal fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: (
     var error by remember { mutableStateOf<String?>(null) }
     var submitting by remember { mutableStateOf(false) }
     var reviewingTrade by remember { mutableStateOf(false) }
+    var orderPreview by remember { mutableStateOf<StockOrderPreviewDto?>(null) }
+    var previewLoading by remember { mutableStateOf(false) }
     var watching by remember { mutableStateOf(isWatched) }
     // Real device binding step-up (2026-07-21) -- Stocks buy/sell was a real gap:
     // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but
@@ -161,8 +165,23 @@ internal fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: (
             error = "Enter a real number of shares."
             return
         }
+        previewLoading = true
+        orderPreview = null
         error = null
-        reviewingTrade = true
+        coroutineScope.launch {
+            try {
+                orderPreview = NetworkClient.apiService.previewStockOrder(
+                    StockOrderPreviewRequest(stock.id, if (buyMode) "BUY" else "SELL", shareCount),
+                ).preview
+                reviewingTrade = true
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                previewLoading = false
+            }
+        }
     }
 
     fun executeTrade() {
@@ -252,7 +271,7 @@ internal fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: (
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
                         .background(if (selected) (if (isBuy) Ids.colors.brand else Ids.colors.danger) else Color.Transparent)
-                        .pressScaleClickable { buyMode = isBuy }.padding(vertical = 8.dp),
+                        .pressScaleClickable { buyMode = isBuy; reviewingTrade = false; orderPreview = null }.padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -261,16 +280,16 @@ internal fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: (
         }
         Spacer(modifier = Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IdsTextField(value = shares, onValueChange = { shares = it }, label = "Shares", modifier = Modifier.weight(1f))
+            IdsTextField(value = shares, onValueChange = { shares = it; reviewingTrade = false; orderPreview = null }, label = "Shares", modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
             Box(
                 modifier = Modifier.clip(RoundedCornerShape(10.dp))
                     .background(if (buyMode) Ids.colors.brand else Ids.colors.danger)
-                    .pressScaleClickable(enabled = !submitting) { trade() }
+                    .pressScaleClickable(enabled = !submitting && !previewLoading) { trade() }
                     .padding(horizontal = 20.dp, vertical = 14.dp),
             ) {
                 Text(
-                    if (submitting) stringResource(R.string.invest_working) else if (buyMode) stringResource(R.string.invest_buy) else stringResource(R.string.invest_sell),
+                    if (submitting || previewLoading) stringResource(R.string.invest_working) else stringResource(R.string.invest_review_order),
                     color = Color.White, fontWeight = FontWeight.Bold,
                 )
             }
@@ -346,16 +365,23 @@ internal fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: (
             }
         }
     }
-    if (reviewingTrade) {
-        val shareCount = shares.toDoubleOrNull() ?: 0.0
+    orderPreview?.takeIf { reviewingTrade }?.let { preview ->
         AlertDialog(
             onDismissRequest = { reviewingTrade = false },
             title = { Text(stringResource(R.string.invest_review_order)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("${if (buyMode) stringResource(R.string.invest_buy) else stringResource(R.string.invest_sell)} · ${stock.symbol}")
-                    Text("${String.format(Locale.US, "%,.6f", shareCount).trimEnd('0').trimEnd('.')} ${stringResource(R.string.invest_shares)}")
-                    Text("${stringResource(R.string.invest_estimated_value)}: ${formatMoney(shareCount * stock.price)} RWF", fontWeight = FontWeight.Bold)
+                    Text("${if (preview.side == "BUY") stringResource(R.string.invest_buy) else stringResource(R.string.invest_sell)} · ${preview.symbol}")
+                    Text("${String.format(Locale.US, "%,.6f", preview.shares).trimEnd('0').trimEnd('.')} ${stringResource(R.string.invest_shares)}")
+                    Text("${stringResource(R.string.invest_estimated_value)}: ${formatMoney(preview.estimatedNotional)} ${preview.currency}", fontWeight = FontWeight.Bold)
+                    if (preview.estimatedNotionalCovered == false || preview.estimatedSharesCovered == false) {
+                        Text(
+                            if (preview.side == "BUY") stringResource(R.string.invest_insufficient_practice_balance) else stringResource(R.string.invest_insufficient_practice_shares),
+                            color = Ids.colors.danger,
+                            fontSize = 12.sp,
+                        )
+                    }
+                    Text(preview.disclaimer, fontSize = 12.sp, color = Ids.colors.textSecondary)
                     Text(stringResource(R.string.invest_order_preview_disclaimer), fontSize = 12.sp, color = Ids.colors.textSecondary)
                 }
             },
