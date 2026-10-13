@@ -20,18 +20,19 @@ struct PortfolioContent: View {
                         .font(.subheadline).bold().foregroundColor(positive ? .green : .red)
                     if let history, !history.isEmpty {
                         Sparkline(values: history.map { $0.value }, positive: positive).frame(height: 48).padding(.top, 6)
-                        Text("Last 30 days -- based on your current holdings applied to real historical prices, not a full historical reconstruction")
+                        Text("Last 30 days of simulated practice-portfolio value")
                             .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                     }
                 }
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                AddFundsCard(onFunded: load)
+                Text("Practice account starts with RWF 1,000,000 virtual cash. No real money moves.")
+                    .font(.caption).foregroundColor(IDS.Colors.textSecondary).padding(.vertical, 8)
                 Divider().overlay(IDS.Colors.divider)
 
                 if portfolio.holdings.isEmpty {
-                    Text("You don't hold any real shares yet. Browse the Market tab to buy some.")
+                    Text("No practice shares yet. Browse the Market tab to place a practice order.")
                         .font(.caption).foregroundColor(IDS.Colors.textSecondary).padding()
                 } else {
                     ForEach(portfolio.holdings) { holding in HoldingRow(holding: holding) }
@@ -84,79 +85,6 @@ struct HoldingRow: View {
 // Real Investment-account top-up (2026-08-04) -- see NetworkClient.swift's own
 // FundInvestmentRequest doc comment. Without this, a user with no pre-seeded
 // investment balance had no in-app way to ever actually buy a stock.
-struct AddFundsCard: View {
-    let onFunded: () -> Void
-
-    @State private var expanded = false
-    @State private var amount = ""
-    @State private var busy = false
-    @State private var error: String?
-    @State private var needsDeviceVerification = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text("Investment cash").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-                Spacer()
-                Button(expanded ? "Cancel" : "Add funds") { expanded.toggle(); error = nil }
-                    .font(.caption).bold().foregroundColor(IDS.Colors.brand)
-            }
-            Text("Move money from your main account into your investment account.")
-                .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
-            if expanded {
-                HStack {
-                    TextField("Amount (RWF)", text: $amount)
-                        .keyboardType(.decimalPad)
-                        .padding(10)
-                        .background(IDS.Colors.chipBackground)
-                        .cornerRadius(10)
-                    Button(action: fund) {
-                        Text(busy ? "Working…" : "Add")
-                            .foregroundColor(.white).bold()
-                            .padding(.horizontal, 20).padding(.vertical, 12)
-                            .background(IDS.Colors.brand)
-                            .cornerRadius(10)
-                    }
-                    .disabled(busy)
-                }
-                if let error {
-                    Text(error).font(.caption).foregroundColor(.red)
-                }
-            }
-        }
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        DeviceStepUpHost(
-            visible: needsDeviceVerification,
-            onDismiss: { needsDeviceVerification = false },
-            onVerified: { needsDeviceVerification = false; fund() }
-        )
-    }
-
-    private func fund() {
-        guard let value = Double(amount), value > 0 else {
-            error = "Enter a real amount."
-            return
-        }
-        busy = true
-        needsDeviceVerification = false
-        Task {
-            do {
-                _ = try await NetworkClient.shared.fundInvestmentAccount(amount: value)
-                amount = ""
-                expanded = false
-                error = nil
-                onFunded()
-            } catch NetworkError.deviceNotVerified {
-                needsDeviceVerification = true
-            } catch {
-                self.error = "Could not add funds."
-            }
-            busy = false
-        }
-    }
-}
-
 // Lightweight dependency-free bar sparkline -- no charting library exists anywhere in
 // this app, matching the exact same "not disproportionate to a real MVP chart" call
 // bank-mfe's own Sparkline component made the same session.
