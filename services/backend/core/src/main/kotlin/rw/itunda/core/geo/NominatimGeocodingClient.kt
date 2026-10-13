@@ -85,8 +85,16 @@ class NominatimGeocodingClient(
                 val lon = (row["lon"] as? String)?.toDoubleOrNull()
                 val displayName = row["display_name"] as? String
                 val nameDetails = row["namedetails"] as? Map<*, *>
-                val alternativeNames = nameDetails.orEmpty().values
-                    .filterIsInstance<String>()
+                // Nominatim namedetails also contains references, brands, and operators.
+                // Keep only name-like tags so the API never presents metadata as an alias.
+                val alternativeNames = nameDetails.orEmpty().entries
+                    .filter { (key, _) ->
+                        val tag = key as? String ?: return@filter false
+                        tag == "name" ||
+                            tag.startsWith("name:") ||
+                            tag in setOf("alt_name", "official_name", "short_name", "loc_name", "old_name", "int_name", "nat_name", "reg_name")
+                    }
+                    .mapNotNull { it.value as? String }
                     .map(String::trim)
                     .filter { it.isNotEmpty() && it != displayName }
                     .distinct()
