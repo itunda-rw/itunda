@@ -121,3 +121,17 @@ This is a **code-review finding and release gate**, not a claim that the bug has
 ### Interim code change — not a production safety sign-off
 
 The standalone service now serializes confirmations inside one application instance and passes a stable idempotency key into the provider port. The current provider adapter still fails closed. This is only an interim defense: the payment repository is still in-memory, the lock is not shared across replicas, provider idempotency is not yet implemented against a real rail, and the Kafka event path is not yet backed by a verified transactional outbox. Do not deploy this path for real-money confirmation until those durable controls and concurrency/crash tests are implemented and pass.
+
+
+### Durable confirmation claim implemented — verification still required
+
+The standalone payment-service branch now includes a JPA-backed `payment_records` table keyed uniquely by `order_id`, plus a conditional database update that changes only `READY`/`IN_PROGRESS` rows to `CONFIRMING`. Confirmation must acquire this database claim before calling the provider; competing requests that lose the claim do not start another provider call. The service also validates both amount and the payment key against the stored order, and the gateway port accepts a stable order-derived idempotency key.
+
+Important remaining limits:
+- This does **not** yet persist the caller's idempotency key, request fingerprint, HTTP status, or response body for exact replay.
+- If the process crashes or the provider times out after the durable claim, the order can remain `CONFIRMING`. A reconciliation/recovery workflow must query the provider and resolve this state without issuing a new payment operation.
+- The gateway is still a fail-closed stub, not a certified MTN MoMo/Airtel Money/RNP integration.
+- The controller's Kafka event path still needs durable outbox delivery semantics.
+- Build, database integration tests, cross-replica concurrency tests, and crash-recovery tests have not yet been verified in CI.
+
+Do not treat this change as production authorization to process real money. The release gate remains open until the above recovery, idempotency, event delivery, and verification work is complete.
