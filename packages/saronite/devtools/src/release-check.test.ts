@@ -29,7 +29,7 @@ assert.ok(invalid.some((finding) => finding.code === 'manifest.invalid-id'));
 assert.ok(invalid.some((finding) => finding.code === 'manifest.invalid-version'));
 assert.ok(invalid.some((finding) => finding.code === 'manifest.invalid-entrypoint'));
 for (const entrypoint of [
-  String.raw\`pages\\index.tsx\`,
+  'pages\\index.tsx',
   'https://example.invalid/app.js',
   'pages//index.tsx',
   './pages/index.tsx',
@@ -38,7 +38,7 @@ for (const entrypoint of [
   const findings = validateMiniAppManifest({ ...valid, entrypoint });
   assert.ok(
     findings.some((finding) => finding.code === 'manifest.invalid-entrypoint'),
-    \`Expected unsafe entrypoint to be rejected: \${JSON.stringify(entrypoint)}\`,
+    'Expected unsafe entrypoint to be rejected: ' + JSON.stringify(entrypoint),
   );
 }
 assert.ok(invalid.some((finding) => finding.code === 'manifest.duplicate-platform'));
