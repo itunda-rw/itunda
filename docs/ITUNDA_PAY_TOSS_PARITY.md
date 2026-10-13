@@ -116,3 +116,8 @@ A source review of `services/microservices/payment-service` found a separate con
 5. Add integration tests with genuinely concurrent requests and injected timeouts/restarts. Assert exactly one provider operation, one terminal transition, correct ledger/provider reconciliation, and replay of the original response.
 
 This is a **code-review finding and release gate**, not a claim that the bug has already been reproduced against a live provider. The external gateway's current configuration must be verified separately; do not turn on live rails until these controls and provider certification are complete.
+
+
+### Interim code change — not a production safety sign-off
+
+The standalone service now serializes confirmations inside one application instance and passes a stable idempotency key into the provider port. The current provider adapter still fails closed. This is only an interim defense: the payment repository is still in-memory, the lock is not shared across replicas, provider idempotency is not yet implemented against a real rail, and the Kafka event path is not yet backed by a verified transactional outbox. Do not deploy this path for real-money confirmation until those durable controls and concurrency/crash tests are implemented and pass.
