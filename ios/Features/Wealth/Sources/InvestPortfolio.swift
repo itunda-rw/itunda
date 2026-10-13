@@ -27,7 +27,7 @@ struct PortfolioContent: View {
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                Text("Practice account starts with RWF 1,000,000 virtual cash. No real money moves.")
+                Text("Virtual practice cash: \(formatMoney(portfolio.virtualCashBalance)) RWF. No real money moves.")
                     .font(.caption).foregroundColor(IDS.Colors.textSecondary).padding(.vertical, 8)
                 Divider().overlay(IDS.Colors.divider)
 
