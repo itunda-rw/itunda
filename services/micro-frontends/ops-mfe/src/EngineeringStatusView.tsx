@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Activity, AlertTriangle, CheckCircle2, Clock3, RefreshCw, XCircle } from 'lucide-react';
-import { apiFetch } from '../lib/api';
+import { apiFetch } from './lib/api';
 
 type CheckResult = 'success' | 'failure' | 'pending' | 'cancelled' | 'unknown';
 type EngineeringEnvironment = 'local' | 'sandbox' | 'staging' | 'production';
