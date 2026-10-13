@@ -14,7 +14,7 @@
 | Fulfillment | services/backend/eats/src/main/kotlin/rw/itunda/eats/web/EatsController.kt | Delivery and pickup; scheduled orders are represented in the request contract. |
 | Delivery tracking | android/features/eats/impl/src/main/java/rw/itunda/feature/eats/impl/EatsOrders.kt; iOS Eats order screens | Live rider-location UI paths exist; production freshness and end-to-end runtime behavior still require device verification. |
 | Restaurant operations | services/micro-frontends/merchant-mfe/src/lib/eats.ts | Restaurant order queue, status changes, pickup completion, order detail, and unavailable-item flow are exposed to the merchant web app. |
-| Loyalty-like value | services/backend/core/src/main/kotlin/rw/itunda/core/geo/EatsPromotionCalculator.kt and Eats membership services | Order promotions and membership benefits exist; these are not proof of a restaurant-specific stamp/reward ledger. |
+| Loyalty-like value | services/backend/merchant/src/main/kotlin/rw/itunda/merchant/MerchantLoyaltyPointsService.kt; services/backend/core/src/main/kotlin/rw/itunda/core/geo/EatsPromotionCalculator.kt | Generic per-merchant loyalty points already exist, but accrual is currently called from MerchantService.collect (merchant payment collection), not from completed Eats orders. Eats promotions/memberships are separate. Reuse merchant identity and customer-facing balance patterns, but do not treat these points as Eats stamps or award them from the wrong payment flow. |
 | Trust | services/backend/eats/src/main/kotlin/rw/itunda/eats/EatsReviewService.kt and associated UI | Post-order reviews exist; reporting/reply and rider rating flows are part of the broader Eats implementation. |
 
 ## Highest-priority parity gap: restaurant stamp rewards
@@ -23,11 +23,11 @@ Coupang announced restaurant stamp events on 2026-09-03: customers earn stamps o
 
 Official evidence: https://news.coupang.com/archives/66229/
 
-A repository-tree audit of the baseline found no dedicated Eats stamp-event domain/service/migration or stamp client module. Treat this as **not found in the audited source**, not proof that no prototype exists elsewhere.
+A repository-tree audit of the baseline found no dedicated Eats stamp-event domain/service/migration or stamp client module. It also found that generic MerchantLoyaltyAccount is a mutable points balance with inactivity expiry, not an immutable per-order stamp ledger. Treat the Eats stamp capability as **not found in the audited source**, not proof that no prototype exists elsewhere. The new feature should be order-scoped and auditable rather than bolting stamp counts onto that balance.
 
 ### Implementation contract
 
-1. **Restaurant-managed campaign** — owner can create, pause, and end a campaign; define eligible order conditions, stamp threshold, reward type, start/end time, and per-customer limits. Validate owner permissions server-side.
+1. **Restaurant-managed campaign** — owner can create, pause, and end a campaign; define eligible order conditions, stamp threshold, reward type, start/end time, and per-customer limits. Validate owner permissions server-side. Keep this campaign config separate from generic merchant payment points.
 2. **Earn only on qualifying completed orders** — award after delivery/pickup completion and confirmed settlement, never on order placement. Exclude cancelled, refunded, self-orders, and ineligible items according to explicit campaign rules.
 3. **Exactly-once accounting** — database uniqueness for (campaign_id, order_id) and for reward redemption identifiers. Repeated completion events must not double-award stamps.
 4. **Immutable event ledger** — record earned/reversed/redeemed events with timestamps and reason. Refund or chargeback handling must reverse eligibility idempotently; never silently rewrite history.
