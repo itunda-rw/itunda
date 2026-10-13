@@ -199,6 +199,9 @@ export function MultiCartView({
   // checkout behaves (each seller is charged/fulfilled independently in real life).
   const handlePlaceOrders = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    // A swipe/submit can race with a second gesture before React paints the busy
+    // state. Keep one money-moving checkout loop active per cart view.
+    if (placing) return;
     setPlacing(true);
     setError(null);
     setNeedsDeviceVerification(false);
@@ -225,7 +228,7 @@ export function MultiCartView({
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to shop">
+        <button onClick={onBack} disabled={placing} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to shop">
           <IconBack size={20} />
         </button>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>Your cart</h3>
