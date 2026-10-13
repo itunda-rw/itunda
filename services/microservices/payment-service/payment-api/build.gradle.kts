@@ -14,6 +14,9 @@ dependencies {
     runtimeOnly(project(":payment-service:payment-db"))
     
     implementation("org.springframework.boot:spring-boot-starter-web")
+    // Needed at compile time for explicit @EnableJpaRepositories/@EntityScan on the app entry point.
+    // Repository implementation remains in payment-db; this does not move DB logic into the API.
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-api:2.6.0")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.kafka:spring-kafka") // For Outbox CDC or direct API event emission
