@@ -19,6 +19,7 @@ import java.util.UUID
 
 class InvalidMapsCoordinateException(message: String) : RuntimeException(message)
 class InvalidMapsSearchQueryException(message: String) : RuntimeException(message)
+class MapsGeocodingUnavailableException(message: String) : RuntimeException(message)
 class InvalidMapsItineraryException(message: String) : RuntimeException(message)
 class RouteNotFoundException(message: String) : RuntimeException(message)
 class InvalidMapsCategoryException(message: String) : RuntimeException(message)
@@ -73,6 +74,9 @@ class MapsService(
             throw InvalidMapsSearchQueryException("Search query must be $MAX_SEARCH_QUERY_LENGTH characters or fewer")
         }
         rateLimiter.checkLimit("maps:search:$userId", limit = 60, window = Duration.ofMinutes(1))
+        if (!nominatimGeocodingClient.isConfigured) {
+            throw MapsGeocodingUnavailableException("Map search is temporarily unavailable")
+        }
         return nominatimGeocodingClient.search(normalizedQuery, limit = 8)
     }
 
