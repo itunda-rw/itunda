@@ -48,6 +48,19 @@ class StocksControllerTest : BehaviorSpec({
         }
     }
 
+    Given("the market data provenance endpoint") {
+        val response = controller().getMarketStatus()
+        Then("it explicitly identifies simulation and disables live execution claims") {
+            response.statusCode shouldBe HttpStatus.OK
+            response.body?.get("mode") shouldBe "SIMULATED"
+            response.body?.get("source") shouldBe "ITUNDA_DETERMINISTIC_SIMULATOR"
+            response.body?.get("liveQuotesAvailable") shouldBe false
+            response.body?.get("realOrderExecutionAvailable") shouldBe false
+            response.body?.get("currency") shouldBe "RWF"
+            response.body?.get("timezone") shouldBe "Africa/Kigali"
+        }
+    }
+
     Given("a real price-history request") {
         val stocksService = mockk<StocksService>()
         val ctl = controller(stocksService = stocksService)
