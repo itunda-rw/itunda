@@ -6,19 +6,14 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
 /**
- * Port for talking to RNP 2.0 (Rwanda National Digital Payment System) / MTN MoMo /
- * Airtel Money. No real integration exists yet -- that needs real provider
- * credentials and certification, which is outside what a code change alone can
- * deliver (see docs/TOSS_PARITY_MATRIX.md's "Non-Negotiable Gates Before Real Money").
+ * RNP 2.0 / MTN MoMo / Airtel Money adapter boundary.
  *
- * Fixed (2026-07-11): this previously always returned `true` after a fake 200ms
- * sleep, unconditionally claiming every transfer succeeded -- the same fake-success
- * pattern already found and fixed in services/backend's wallet/insurance modules
- * this session. Now fails loudly instead of lying: with no real endpoint configured
- * (the default in every environment today), it throws rather than claiming success.
- * ConfirmPaymentService's domain logic already correctly handles a real `false`
- * return (marks the payment ABORTED) -- that path simply was never reachable
- * because this adapter never returned it.
+ * No real provider integration exists yet. Credentials, contract-specific request
+ * signing, provider idempotency support, callback verification and certification are
+ * required before this adapter can move money.
+ *
+ * This implementation intentionally fails closed even when a base URL is supplied:
+ * a configured URL is not proof that a working provider integration exists.
  */
 @Component
 class RnpPaymentGateway(
@@ -26,25 +21,19 @@ class RnpPaymentGateway(
 ) : PaymentGatewayPort {
     private val log = LoggerFactory.getLogger(RnpPaymentGateway::class.java)
 
-    override fun processMobileMoneyTransfer(paymentKey: String, amount: Long): Boolean {
-        if (baseUrl.isBlank()) {
-            log.warn(
-                "No real MTN MoMo/Airtel Money/RNP integration configured " +
-                    "(rnp.gateway.base-url unset) -- refusing to fake a successful " +
-                    "transfer of {} RWF for paymentKey={}.", amount, paymentKey,
-            )
-            throw RnpGatewayNotConfiguredException(
-                "No real mobile-money provider is configured for this environment. " +
-                    "This transfer was not attempted, not silently approved.",
-            )
-        }
-
-        // A real endpoint is configured but no actual HTTP client call is implemented
-        // here yet -- that requires real provider credentials and API contracts this
-        // repo does not have. Fail rather than silently proceeding as if it worked.
+    override fun processMobileMoneyTransfer(
+        paymentKey: String,
+        amount: Long,
+        idempotencyKey: String
+    ): Boolean {
+        log.warn(
+            "Mobile-money provider integration is unavailable; refusing payment. " +
+                "configuredBaseUrl={}, amount={}, paymentKey={}, idempotencyKey={}",
+            baseUrl.isNotBlank(), amount, paymentKey, idempotencyKey,
+        )
         throw RnpGatewayNotConfiguredException(
-            "rnp.gateway.base-url is set to '$baseUrl' but no real HTTP integration " +
-                "is implemented yet.",
+            "No certified mobile-money provider integration is implemented. " +
+                "This transfer was not attempted or approved."
         )
     }
 }
