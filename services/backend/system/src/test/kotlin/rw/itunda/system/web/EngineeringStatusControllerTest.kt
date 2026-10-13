@@ -36,7 +36,10 @@ class EngineeringStatusControllerTest : BehaviorSpec({
             Then("it returns unavailable rather than fabricated healthy data") {
                 response.statusCode.value() shouldBe 503
                 response.body?.get("code") shouldBe "ENGINEERING_STATUS_UNAVAILABLE"
+                response.body?.get("message") shouldBe "Engineering status is unavailable or not configured."
                 response.body?.containsKey("checks") shouldBe false
+                response.body.toString().contains("not configured") shouldBe true
+                response.body.toString().contains("IllegalStateException") shouldBe false
             }
         }
     }
