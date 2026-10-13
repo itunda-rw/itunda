@@ -37,6 +37,25 @@ class StocksController(private val stocksService: StocksService, private val ide
     @GetMapping
     fun getStocks() = ResponseEntity.ok(mapOf("success" to true, "stocks" to stocksService.getStocks()))
 
+    /**
+     * Machine-readable market provenance. This catalog is a deterministic practice
+     * simulation, not a live exchange feed. Keep this separate from quote timestamps:
+     * the date identifies the simulation input date, not a market-data provider update.
+     */
+    @GetMapping("/market-status")
+    fun getMarketStatus(): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
+        mapOf(
+            "success" to true,
+            "mode" to "SIMULATED",
+            "source" to "ITUNDA_DETERMINISTIC_SIMULATOR",
+            "asOfDate" to java.time.LocalDate.now().toString(),
+            "timezone" to "Africa/Kigali",
+            "currency" to "RWF",
+            "liveQuotesAvailable" to false,
+            "realOrderExecutionAvailable" to false,
+        ),
+    )
+
     // Real price history (2026-07-19) -- see StocksService.getPriceHistory's own doc
     // comment. Defaults to 30 days, matching a real securities app's default chart range.
     @GetMapping("/{stockId}/history")
