@@ -4,11 +4,11 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.verify
 import rw.itunda.core.domain.EatsOrder
 import rw.itunda.core.domain.EatsOrderStatus
 import rw.itunda.core.domain.EatsStampCampaign
 import rw.itunda.core.domain.EatsStampEarning
+import rw.itunda.core.domain.EatsStampReward
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.repository.EatsOrderRepository
 import rw.itunda.core.repository.EatsStampCampaignRepository
@@ -55,6 +55,7 @@ class EatsStampServiceTest : FunSpec({
         earnedForOrder: Boolean = false,
         earnedToday: Boolean = false,
         priorCampaignStamps: Int = 0,
+        rewardSaves: MutableList<EatsStampReward> = mutableListOf(),
     ): EatsStampService {
         val campaignRepo = mockk<EatsStampCampaignRepository>()
         val earningRepo = mockk<EatsStampEarningRepository>()
@@ -75,7 +76,10 @@ class EatsStampServiceTest : FunSpec({
         every { earningRepo.findByCampaignIdAndBuyerIdAndReversedAtIsNull(any(), any()) } returns
             List(priorCampaignStamps) { mockk<EatsStampEarning>(relaxed = true) }
         every { eventRepo.save(any()) } answers { firstArg() }
-        every { rewardRepo.save(any()) } answers { firstArg() }
+        every { rewardRepo.save(any()) } answers {
+            rewardSaves += firstArg()
+            firstArg()
+        }
 
         return EatsStampService(
             campaignRepo, earningRepo, eventRepo, rewardRepo, orderRepo, merchantRepo,
@@ -108,8 +112,17 @@ class EatsStampServiceTest : FunSpec({
     }
 
     test("issues a reward exactly when the completed order reaches the campaign milestone") {
-        val stampService = service(order(), listOf(campaign()), priorCampaignStamps = 4)
+        val rewards = mutableListOf<EatsStampReward>()
+        val stampService = service(
+            order(),
+            listOf(campaign()),
+            priorCampaignStamps = 4,
+            rewardSaves = rewards,
+        )
 
         stampService.awardForCompletedOrder("order-1") shouldBe 1
+        rewards.size shouldBe 1
+        rewards.single().stampThreshold shouldBe 5
+        rewards.single().status shouldBe "AVAILABLE"
     }
 })
