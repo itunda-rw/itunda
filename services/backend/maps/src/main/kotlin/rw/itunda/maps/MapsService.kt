@@ -54,10 +54,6 @@ class MapsService(
     /** An ordered stop in an itinerary, using itunda's `[lat, lng]` convention. */
     data class ItineraryWaypoint(val latitude: Double, val longitude: Double)
 
-    companion object {
-        const val MAX_SEARCH_QUERY_LENGTH = 120
-    }
-
     // Real Kigali weather chip -- see KigaliWeatherClient's own doc comment. Null if
     // the real upstream is unreachable and there's no still-fresh cache -- never a
     // fabricated reading.
@@ -443,6 +439,7 @@ class MapsService(
     fun getMyBookmarks(userId: String): List<MapBookmark> = mapBookmarkRepository.findByUserIdOrderByCreatedAtDesc(userId)
 
     companion object {
+        const val MAX_SEARCH_QUERY_LENGTH = 120
         const val MIN_ITINERARY_WAYPOINTS = 2
         // Match NAVER Maps' documented five intermediate waypoints while retaining a
         // bounded request: origin + five waypoints + destination = seven total stops.
