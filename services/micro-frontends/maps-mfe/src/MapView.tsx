@@ -52,6 +52,7 @@ import { PlaceGlyph } from './icons/ItundaFacePlaces';
 import { MerchantBookableServicesSection, MyBookingReviewsCard, MyBookingsCard } from './MapsBooking';
 import { MapPlaceDetailPanel } from './MapPlaceDetailPanel';
 import { MapDirectionsPanel } from './MapDirectionsPanel';
+import { renderValidatedRoute } from './lib/route-rendering';
 
 // A real, minimal MapLibre style over itunda's own self-hosted vector tiles -- basic
 // OpenMapTiles-schema layers (water/landcover/roads/buildings) plus, 2026-07-19, real
@@ -1141,58 +1142,14 @@ export default function MapView() {
   const applyRoute = (result: RouteResult): boolean => {
     const map = mapRef.current;
     if (!map) return false;
-
-    // Treat routing responses as untrusted input. An empty/invalid geometry previously
-    // crashed while indexing geometry[0], and out-of-range coordinates could poison
-    // the map bounds. Do not publish route metrics or replace a valid route until the
-    // complete response passes validation.
-    const geometry = result?.geometry;
-    const validGeometry = Array.isArray(geometry)
-      && geometry.length >= 2
-      && geometry.every((point) =>
-        Array.isArray(point)
-        && point.length >= 2
-        && Number.isFinite(point[0])
-        && Number.isFinite(point[1])
-        && point[0] >= -90
-        && point[0] <= 90
-        && point[1] >= -180
-        && point[1] <= 180,
-      );
-    const validMetrics = Number.isFinite(result?.distanceKm)
-      && result.distanceKm >= 0
-      && Number.isFinite(result?.durationMinutes)
-      && result.durationMinutes >= 0
-      && Array.isArray(result?.steps);
-
-    if (!validGeometry || !validMetrics) {
-      setError('The routing service returned an invalid route. Please try again.');
+    const rendered = renderValidatedRoute(map, result);
+    if (!rendered.ok) {
+      setError(rendered.error);
       return false;
     }
-
-    const coordinates = geometry.map(([lat, lng]) => [lng, lat] as [number, number]);
-    const bounds = coordinates.reduce(
-      (b, coordinate) => b.extend(coordinate),
-      new maplibregl.LngLatBounds(coordinates[0], coordinates[0]),
-    );
-    const source = map.getSource('route') as maplibregl.GeoJSONSource | undefined;
-    if (!source) {
-      setError('The map is still loading. Please try again.');
-      return false;
-    }
-
-    source.setData({
-      type: 'FeatureCollection',
-      features: [{
-        type: 'Feature',
-        properties: {},
-        geometry: { type: 'LineString', coordinates },
-      }],
-    });
     setRoute({ distanceKm: result.distanceKm, durationMinutes: result.durationMinutes, steps: result.steps });
     setShowSteps(false);
     setError(null);
-    map.fitBounds(bounds, { padding: 60 });
     return true;
   };
 
