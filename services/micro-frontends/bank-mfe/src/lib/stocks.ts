@@ -102,6 +102,34 @@ export const sellStock = (stockId: string, shares: number) =>
     body: JSON.stringify({ stockId, shares }),
   });
 
+export interface StockOrderPreview {
+  mode: 'SIMULATED';
+  source: 'ITUNDA_DETERMINISTIC_SIMULATOR';
+  side: 'BUY' | 'SELL';
+  stockId: string;
+  symbol: string;
+  shares: number;
+  estimatedUnitPrice: number;
+  estimatedNotional: number;
+  currency: 'RWF';
+  feesModeled: false;
+  feeEstimate: null;
+  realOrderExecutionAvailable: false;
+  reservesFunds: false;
+  availableBalance?: number;
+  estimatedNotionalCovered?: boolean;
+  availableShares?: number;
+  estimatedSharesCovered?: boolean;
+  asOf: string;
+  disclaimer: string;
+}
+
+export const previewStockOrder = (stockId: string, side: 'BUY' | 'SELL', shares: number) =>
+  apiFetch<{ success: boolean; preview: StockOrderPreview }>('/api/v1/stocks/order-preview', {
+    method: 'POST',
+    body: JSON.stringify({ stockId, side, shares }),
+  }).then((r) => r.preview);
+
 export const fetchWatchlist = () => apiFetch<{ success: boolean; watchlist: Stock[] }>('/api/v1/stocks/watchlist').then((r) => r.watchlist);
 
 export const watchStock = (stockId: string) => apiFetch<{ success: boolean }>(`/api/v1/stocks/${stockId}/watch`, { method: 'POST' });
