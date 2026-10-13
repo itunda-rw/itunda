@@ -30,7 +30,7 @@
 .tds-button-success{background:var(--itunda-color-success);color:#fff}.tds-button-error{background:var(--itunda-color-error);color:#fff}
 .tds-text-button{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:var(--itunda-color-brand-strong);font:inherit;font-weight:var(--itunda-weight-bold);cursor:pointer;padding:8px 2px}.tds-text-button::after{content:"→"}
 .tds-action-group{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.tds-action-group--center{justify-content:center}
-.tds-icon-button{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border:0;border-radius:var(--itunda-radius-pill);background:transparent;color:var(--itunda-color-text);cursor:pointer}@media(hover:hover) and (pointer:fine){.tds-icon-button:hover{background:var(--itunda-color-surface-sunken)}}.tds-icon-button:active{background:var(--itunda-color-pressed);transform:scale(.96)}
+.tds-icon-button{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border:0;border-radius:var(--itunda-radius-pill);background:transparent;color:var(--itunda-color-text);cursor:pointer;transition:transform var(--itunda-motion-fast) var(--itunda-ease),background var(--itunda-motion-fast) var(--itunda-ease)}@media(hover:hover) and (pointer:fine){.tds-icon-button:hover{background:var(--itunda-color-surface-sunken)}}.tds-icon-button:active{background:var(--itunda-color-pressed);transform:scale(.96)}
 
 /* Form */
 .tds-field{display:grid;gap:8px}.tds-label{font-size:13px;font-weight:var(--itunda-weight-bold);color:var(--itunda-color-text-strong)}
