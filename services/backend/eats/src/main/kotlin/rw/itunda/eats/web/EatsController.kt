@@ -53,8 +53,6 @@ import rw.itunda.eats.InvalidEatsTipAmountException
 import rw.itunda.eats.EatsOrderNotYetDeliveredException
 import rw.itunda.eats.EatsOrderService
 import rw.itunda.eats.EatsStampService
-import java.math.BigDecimal
-import java.time.Instant
 import rw.itunda.eats.EatsReviewAlreadyReportedException
 import rw.itunda.eats.EatsReviewNotFoundException
 import rw.itunda.eats.EatsReviewService
@@ -526,38 +524,6 @@ class EatsController(
     }
 
 
-    // Restaurant-owned stamp campaigns and buyer progress. Reward entries remain
-    // entitlements only until checkout redemption is implemented and tested.
-    @PostMapping("/restaurants/{restaurantId}/stamp-campaigns")
-    fun createStampCampaign(
-        @PathVariable restaurantId: String,
-        @RequestBody request: CreateEatsStampCampaignRequest,
-        @AuthenticationPrincipal currentUser: CurrentUser,
-    ): ResponseEntity<Map<String, Any?>> {
-        val campaign = eatsStampService.createCampaign(
-            ownerUserId = currentUser.userId,
-            restaurantId = restaurantId,
-            name = request.name,
-            stampsRequired = request.stampsRequired,
-            rewardDescription = request.rewardDescription,
-            discountAmount = request.discountAmount,
-            startsAt = request.startsAt,
-            endsAt = request.endsAt,
-        )
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "campaign" to campaign))
-    }
-
-    @GetMapping("/restaurants/{restaurantId}/stamp-campaigns")
-    fun getStampCampaigns(@PathVariable restaurantId: String): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "campaigns" to eatsStampService.activeCampaigns(restaurantId)))
-
-    @GetMapping("/stamp-campaigns/{campaignId}/progress")
-    fun getStampProgress(
-        @PathVariable campaignId: String,
-        @AuthenticationPrincipal currentUser: CurrentUser,
-    ): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "progress" to eatsStampService.getBuyerProgress(currentUser.userId, campaignId)))
-
     // Real manual trigger for EatsOrderAbandonedDeliveryScheduler's own real 60-second
     // cron -- same "let a coordinator/admin fire the real due sweep on demand rather
     // than waiting on wall-clock time" precedent BikeRentalController.processAbandonedRentals/
@@ -946,13 +912,3 @@ class EatsController(
     fun handleRateLimit(ex: RateLimitExceededException) =
         ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
 }
-
-
-data class CreateEatsStampCampaignRequest(
-    val name: String,
-    val stampsRequired: Int,
-    val rewardDescription: String,
-    val discountAmount: BigDecimal? = null,
-    val startsAt: Instant,
-    val endsAt: Instant? = null,
-)
