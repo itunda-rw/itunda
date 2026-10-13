@@ -206,6 +206,19 @@ internal fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: (
                 color = if (positive) Ids.colors.success else Ids.colors.danger, fontSize = 14.sp, fontWeight = FontWeight.Bold,
             )
         }
+        Spacer(modifier = Modifier.height(10.dp))
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                stringResource(R.string.invest_simulation_disclosure),
+                color = Ids.colors.textSecondary,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                modifier = Modifier.padding(12.dp),
+            )
+        }
         Spacer(modifier = Modifier.height(12.dp))
 
         if (history == null) {
