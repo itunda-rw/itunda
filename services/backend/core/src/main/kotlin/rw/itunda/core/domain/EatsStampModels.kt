@@ -141,3 +141,43 @@ class EatsStampReward(
     @Column(nullable = false)
     var version: Long = 0,
 )
+
+
+/**
+ * Append-only audit event for stamp issuance/reversal and reward lifecycle changes.
+ * State/projection rows may be updated for efficient reads; this event is the audit trail.
+ */
+@Entity
+@Table(name = "eats_stamp_events")
+class EatsStampEvent(
+    @Id
+    @Column(length = 64)
+    val id: String,
+
+    @Column(name = "earning_id", nullable = false, length = 64)
+    val earningId: String,
+
+    @Column(name = "campaign_id", nullable = false, length = 64)
+    val campaignId: String,
+
+    @Column(name = "restaurant_id", nullable = false, length = 64)
+    val restaurantId: String,
+
+    @Column(name = "buyer_id", nullable = false, length = 64)
+    val buyerId: String,
+
+    @Column(name = "order_id", nullable = false, length = 64)
+    val orderId: String,
+
+    @Column(name = "event_type", nullable = false, length = 16)
+    val eventType: String,
+
+    @Column(name = "idempotency_key", nullable = false, length = 160, unique = true)
+    val idempotencyKey: String,
+
+    @Column(length = 240)
+    val reason: String? = null,
+
+    @Column(name = "created_at", nullable = false)
+    val createdAt: Instant = Instant.now(),
+)

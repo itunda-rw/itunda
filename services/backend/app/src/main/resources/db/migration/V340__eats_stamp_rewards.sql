@@ -67,3 +67,25 @@ CREATE TABLE eats_stamp_rewards (
 
 CREATE INDEX idx_eats_stamp_rewards_buyer_status
     ON eats_stamp_rewards (buyer_id, status, issued_at DESC);
+
+
+-- Append-only audit trail. Never update/delete these rows to represent reversals;
+-- add a new event with a distinct idempotency key instead.
+CREATE TABLE eats_stamp_events (
+    id VARCHAR(64) PRIMARY KEY,
+    earning_id VARCHAR(64) NOT NULL REFERENCES eats_stamp_earnings(id),
+    campaign_id VARCHAR(64) NOT NULL REFERENCES eats_stamp_campaigns(id),
+    restaurant_id VARCHAR(64) NOT NULL REFERENCES merchants(id),
+    buyer_id VARCHAR(64) NOT NULL,
+    order_id VARCHAR(64) NOT NULL REFERENCES eats_orders(id),
+    event_type VARCHAR(16) NOT NULL
+        CHECK (event_type IN ('EARNED', 'REVERSED', 'REWARD_ISSUED', 'REWARD_REDEEMED', 'REWARD_EXPIRED', 'REWARD_REVOKED')),
+    idempotency_key VARCHAR(160) NOT NULL UNIQUE,
+    reason VARCHAR(240),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+CREATE INDEX idx_eats_stamp_events_earning
+    ON eats_stamp_events (earning_id, created_at);
+CREATE INDEX idx_eats_stamp_events_buyer
+    ON eats_stamp_events (buyer_id, created_at DESC);

@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.EatsStampCampaign
 import rw.itunda.core.domain.EatsStampEarning
 import rw.itunda.core.domain.EatsStampReward
+import rw.itunda.core.domain.EatsStampEvent
 import java.util.Optional
 
 interface EatsStampCampaignRepository : JpaRepository<EatsStampCampaign, String> {
@@ -23,6 +24,11 @@ interface EatsStampEarningRepository : JpaRepository<EatsStampEarning, String> {
     fun existsByRestaurantIdAndBuyerIdAndEarningDay(restaurantId: String, buyerId: String, earningDay: java.time.LocalDate): Boolean
     fun findByCampaignIdAndBuyerIdAndReversedAtIsNull(campaignId: String, buyerId: String): List<EatsStampEarning>
     fun findByOrderIdAndReversedAtIsNull(orderId: String): List<EatsStampEarning>
+}
+
+interface EatsStampEventRepository : JpaRepository<EatsStampEvent, String> {
+    fun findByEarningIdOrderByCreatedAtAsc(earningId: String): List<EatsStampEvent>
+    fun existsByIdempotencyKey(idempotencyKey: String): Boolean
 }
 
 interface EatsStampRewardRepository : JpaRepository<EatsStampReward, String> {
