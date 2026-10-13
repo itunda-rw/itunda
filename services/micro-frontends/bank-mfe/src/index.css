@@ -3365,3 +3365,158 @@ input, textarea, select {
   .itunda-app-content .itunda-flat-section { padding-block: 22px; }
 }
 /* IDS glass primitives already handle reduced-transparency and forced-colors fallbacks. */
+
+
+/* Prototype-aligned consumer Home: real balances first, then the next useful action.
+   Keep the page flat and spacious; the Itunda brand token remains the only accent. */
+.itunda-home-money,
+.itunda-home-actions-section,
+.itunda-home-spending {
+  margin-top: 26px;
+}
+
+.itunda-home-money__heading,
+.itunda-home-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.itunda-home-money__heading h2,
+.itunda-home-actions-section > h2,
+.itunda-home-section-heading h2 {
+  margin: 0;
+  color: var(--itunda-text-primary);
+  font-size: var(--itunda-type-scale-18-size);
+  line-height: 1.3;
+  font-weight: 750;
+  letter-spacing: -.025em;
+}
+
+.itunda-home-money__heading > button,
+.itunda-home-section-heading > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 0;
+  padding: 6px 0 6px 8px;
+  background: transparent;
+  color: var(--itunda-brand);
+  font-size: var(--itunda-type-scale-13-size);
+  font-weight: 700;
+}
+
+.itunda-home-accounts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.itunda-home-account {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 16px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--itunda-surface-subtle);
+  color: var(--itunda-text-primary);
+  text-align: left;
+  transition: background-color var(--itunda-motion-fast) var(--itunda-ease-out), transform var(--itunda-motion-fast) var(--itunda-ease-out);
+}
+
+.itunda-home-account:hover { background: var(--itunda-surface-brand); }
+.itunda-home-account:active { transform: scale(.985); }
+.itunda-home-account__label {
+  color: var(--itunda-text-secondary);
+  font-size: var(--itunda-type-scale-12-size);
+  font-weight: 650;
+}
+.itunda-home-account strong {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: clamp(17px, 4.4vw, 22px);
+  line-height: 1.25;
+  letter-spacing: -.04em;
+  font-weight: 800;
+}
+.itunda-home-account__hint,
+.itunda-home-muted {
+  color: var(--itunda-text-tertiary);
+  font-size: var(--itunda-type-scale-12-size);
+  line-height: 1.5;
+}
+.itunda-home-muted { margin: 0; }
+
+.itunda-home-primary-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, .7fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+.itunda-home-primary-actions > button {
+  min-height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 16px;
+  font: inherit;
+  font-size: var(--itunda-type-scale-14-size);
+  font-weight: 750;
+  transition: transform var(--itunda-motion-fast) var(--itunda-ease-out), background-color var(--itunda-motion-fast) var(--itunda-ease-out);
+}
+.itunda-home-primary-actions > button:active { transform: scale(.985); }
+.itunda-home-send { background: var(--itunda-brand); color: var(--itunda-text-on-brand, #17151F); }
+.itunda-home-topup { background: var(--itunda-surface-brand); color: var(--itunda-text-primary); }
+
+.itunda-home-actions-section > h2 { margin-bottom: 10px; }
+.itunda-home-actions { margin-top: 0; }
+.itunda-home-actions > button {
+  min-height: 78px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--itunda-surface-subtle);
+}
+.itunda-home-actions > button:hover { background: var(--itunda-surface-brand); }
+.itunda-home-actions__icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 15px;
+  background: var(--itunda-surface-brand);
+}
+
+.itunda-home-spending__amount {
+  margin: 2px 0 4px;
+  color: var(--itunda-text-primary);
+  font-size: clamp(26px, 6vw, 32px);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -.045em;
+}
+.itunda-home-spending__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  color: var(--itunda-text-secondary);
+  font-size: var(--itunda-type-scale-13-size);
+}
+.itunda-home-spending__row strong { color: var(--itunda-text-primary); font-weight: 700; }
+
+@media (max-width: 380px) {
+  .itunda-home-accounts { grid-template-columns: minmax(0, 1fr); }
+  .itunda-home-account { padding: 14px; }
+  .itunda-home-primary-actions { grid-template-columns: minmax(0, 1fr) minmax(0, .8fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .itunda-home-account,
+  .itunda-home-primary-actions > button { transition: none; }
+}
