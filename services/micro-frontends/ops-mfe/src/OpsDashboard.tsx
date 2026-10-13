@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, Banknote, BarChart3, Building2, CircleDollarSign, Flag, Gauge, HeartPulse, Home, Landmark, LifeBuoy, LogOut, Megaphone, MessageCircleWarning, Percent, Puzzle, Scale, ShieldCheck, Siren, Store, Users, Wrench, Webhook } from 'lucide-react';
+import { Activity, AlertTriangle, Banknote, BarChart3, Building2, CircleDollarSign, Flag, Gauge, HeartPulse, Home, Landmark, LifeBuoy, LogOut, Megaphone, MessageCircleWarning, Percent, Puzzle, Scale, ShieldCheck, Siren, Store, Users, Wrench, Webhook } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
 import OverviewView from './queues/OverviewView';
 import FraudQueue from './queues/FraudQueue';
@@ -24,15 +24,17 @@ import ChatReportsQueue from './queues/ChatReportsQueue';
 import NotificationBroadcastView from './queues/NotificationBroadcastView';
 import AnalyticsView from './queues/AnalyticsView';
 import SaccoOversightView from './queues/SaccoOversightView';
+import EngineeringStatusView from './EngineeringStatusView';
 
 type Tab =
   | 'overview' | 'fraud' | 'compliance' | 'incidents' | 'reconciliation' | 'support' | 'insurance' | 'partners'
   | 'escrow' | 'agents' | 'hood-reports' | 'property-verification' | 'agents-management' | 'merchants' | 'loan-default'
   | 'fee-waiver' | 'webhook-failures' | 'chat-reports' | 'vehicle-inspection-mechanics' | 'partner-accounts'
-  | 'notification-broadcast' | 'analytics' | 'sacco-oversight';
+  | 'notification-broadcast' | 'analytics' | 'sacco-oversight' | 'engineering-status';
 
 const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'overview', label: 'Overview', icon: Gauge },
+  { id: 'engineering-status', label: 'Engineering status', icon: Activity },
   { id: 'fraud', label: 'Fraud', icon: AlertTriangle },
   { id: 'compliance', label: 'Compliance', icon: ShieldCheck },
   { id: 'incidents', label: 'Incidents', icon: Siren },
@@ -122,6 +124,7 @@ export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
 
       <main style={{ flex: 1, padding: '32px 40px', maxWidth: '960px' }}>
         {tab === 'overview' && <OverviewView />}
+        {tab === 'engineering-status' && <EngineeringStatusView />}
         {tab === 'fraud' && <FraudQueue />}
         {tab === 'compliance' && <ComplianceQueue />}
         {tab === 'incidents' && <IncidentsQueue />}
