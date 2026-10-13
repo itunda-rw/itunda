@@ -20,4 +20,10 @@
     <string name="invest_working">Working…</string>
     <string name="invest_simulation_disclosure">Practice market only. Prices are simulated. Buy/sell actions can change your Itunda investment-account balance, but do not place orders on a real exchange or give you ownership of real securities. This is not a real brokerage account.</string>
     <string name="invest_add_funds">Add funds</string>
+    <string name="invest_review_order">Review practice order</string>
+    <string name="invest_shares">shares</string>
+    <string name="invest_estimated_value">Estimated value</string>
+    <string name="invest_order_preview_disclaimer">Estimate uses the simulated displayed price and excludes fees or price changes. Confirming changes only the Itunda internal investment ledger; it does not place a real market order.</string>
+    <string name="invest_edit_order">Edit order</string>
+    <string name="invest_confirm_practice_trade">Confirm practice trade</string>
 </resources>
