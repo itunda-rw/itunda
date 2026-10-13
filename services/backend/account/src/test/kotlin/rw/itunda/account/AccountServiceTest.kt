@@ -8,8 +8,6 @@ import io.mockk.mockk
 import io.mockk.verify
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
-import rw.itunda.core.domain.TransferQuoteRecord
-import rw.itunda.core.domain.TransferQuoteRecordStatus
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
@@ -23,12 +21,9 @@ import rw.itunda.core.provider.ProviderConnector
 import rw.itunda.core.provider.ProviderDeclinedException
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.AccountRepository
-import rw.itunda.core.repository.TransferQuoteRecordRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
-import java.util.Optional
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * First test coverage for the highest-stakes module in this backend -- real P2P
@@ -39,49 +34,6 @@ import java.util.concurrent.ConcurrentHashMap
  * covered here -- there's no injected clock in QuoteStore to fake it without sleeping
  * a real 60+ seconds in a test, which isn't worth doing.
  */
-
-/** Stateful repository fake for service-level tests; production concurrency is verified by MySQL integration tests. */
-private fun mockTransferQuoteRepository(): TransferQuoteRecordRepository {
-    val repository = mockk<TransferQuoteRecordRepository>()
-    val records = ConcurrentHashMap<String, TransferQuoteRecord>()
-    every { repository.save(any()) } answers {
-        firstArg<TransferQuoteRecord>().also { records[it.id] = it }
-    }
-    every { repository.findById(any()) } answers {
-        Optional.ofNullable(records[firstArg<String>()])
-    }
-    every { repository.claimPending(any(), any(), any(), any(), any(), any()) } answers {
-        val id = firstArg<String>()
-        val owner = secondArg<String>()
-        val pending = thirdArg<TransferQuoteRecordStatus>()
-        val claimed = fourthArg<TransferQuoteRecordStatus>()
-        val now = fifthArg<Instant>()
-        val claimedAt = sixthArg<Instant>()
-        val quote = records[id]
-        if (quote != null && quote.userId == owner && quote.status == pending && quote.expiresAt.isAfter(now)) {
-            quote.status = claimed
-            quote.claimedAt = claimedAt
-            1
-        } else 0
-    }
-    every { repository.releaseClaim(any(), any(), any()) } answers {
-        val quote = records[firstArg<String>()]
-        if (quote != null && quote.status == secondArg<TransferQuoteRecordStatus>()) {
-            quote.status = thirdArg<TransferQuoteRecordStatus>()
-            quote.claimedAt = null
-            1
-        } else 0
-    }
-    every { repository.markConfirmed(any(), any(), any(), any()) } answers {
-        val quote = records[firstArg<String>()]
-        if (quote != null && quote.status == secondArg<TransferQuoteRecordStatus>()) {
-            quote.status = thirdArg<TransferQuoteRecordStatus>()
-            quote.confirmedAt = fourthArg<Instant>()
-            1
-        } else 0
-    }
-    return repository
-}
 
 class AccountServiceTest : BehaviorSpec({
 
