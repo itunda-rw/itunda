@@ -23,7 +23,7 @@ These observations should be rechecked against the current branch and runtime be
 - [ ] Eliminate duplicated maps API clients by extracting a shared typed client or generating clients from the canonical contract. If runtime boundaries prevent sharing, enforce parity with generated fixtures and contract tests.
 - [x] Maps text search now distinguishes an unconfigured/unreachable Nominatim service from a genuine zero-result response and returns a typed `503 MAP_SEARCH_UNAVAILABLE`; legacy geocoding consumers retain their existing fallback behavior. Malformed-response policy, retry states, request IDs, and telemetry remain open.
 - [ ] Verify production configuration for tile, geocoding, and routing endpoints in GCP; add health/readiness checks and alerts for missing configuration.
-- [ ] Add contract tests for Android, iOS, and web clients against the same fixtures. Android and iOS DTOs now expose optional `alternativeNames`; iOS decoding defaults the field to `[]` when older API responses or locally persisted searches omit it.
+- [ ] Add contract tests for Android, iOS, and web clients against the same fixtures. Android and iOS DTOs now expose optional `alternativeNames`; iOS decoding defaults the field to `[]` when older API responses omit it. iOS contract tests cover legacy payloads and alternate-name decoding; runtime execution remains pending.
 
 Acceptance: all clients use the same documented contract; upstream failures remain distinguishable from genuine zero-result searches; CI tests the contract and configuration checks.
 
