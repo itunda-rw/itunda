@@ -36,7 +36,6 @@ assert.equal(isReleaseReady(invalid), false);
 const nearBudget = validateMiniAppManifest({ ...valid, bundle: { maxBytes: 1000, entryBytes: 950 } });
 assert.ok(nearBudget.some((finding) => finding.code === 'bundle.near-budget'));
 assert.equal(validateMiniAppManifest(null)[0]?.code, 'manifest.invalid-shape');
-console.log('Saronite release-check contract tests passed');
 
 const malformedBundle = validateMiniAppManifest({ ...valid, bundle: 'not-an-object' });
 assert.ok(malformedBundle.some((finding) => finding.code === 'bundle.invalid-shape'));
@@ -44,3 +43,5 @@ assert.equal(isReleaseReady(malformedBundle), false);
 
 const arrayBundle = validateMiniAppManifest({ ...valid, bundle: [] });
 assert.ok(arrayBundle.some((finding) => finding.code === 'bundle.invalid-shape'));
+
+console.log('Saronite release-check contract tests passed');
