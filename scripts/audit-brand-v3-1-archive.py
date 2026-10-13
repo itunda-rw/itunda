@@ -100,7 +100,7 @@ def main() -> None:
     for heading, items in (("Archive-only paths", added), ("Canonical-only paths", missing), ("Content mismatches", changed)):
         lines.extend(["", f"## {heading}", ""])
         lines.extend(f"- `{k}`" for k in items) if items else lines.append("- None")
-    REPORT.write_text("\\n".join(lines) + "\\n", encoding="utf-8")
+    REPORT.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(json.dumps({
         "archive_sha256": sha256(ARCHIVE.read_bytes()),
         "archive_files": len(archive_files),
