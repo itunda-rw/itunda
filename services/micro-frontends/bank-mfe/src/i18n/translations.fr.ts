@@ -399,7 +399,7 @@ export const fr: Record<TranslationKey, string> = {
     'stocks.sell': 'Vendre',
     'stocks.working': 'Traitement…',
     'stocks.addFunds': 'Ajouter des fonds',
-    'stocks.simulationDisclosure': 'Marché de simulation uniquement. Les prix sont simulés. Acheter ou vendre met à jour le registre de démonstration interne d’Itunda ; aucun ordre n’est envoyé à une vraie bourse et aucun titre coté ne vous appartient.',
+    'stocks.simulationDisclosure': 'Marché de simulation uniquement. Les prix sont simulés. Acheter ou vendre peut modifier le solde de votre compte d’investissement Itunda, mais ne passe aucun ordre sur une vraie bourse et ne vous donne aucun titre réel. Il ne s’agit pas d’un véritable compte de courtage.',
   'stocks.marketStatusLabel': 'Statut des données du marché',
   'stocks.liveUnavailable': 'Les cours en direct et les transactions réelles ne sont pas disponibles sur ce marché de simulation.',
     'support.reportIssueCta': 'Signaler un problème avec une transaction',
