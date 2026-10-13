@@ -6,6 +6,7 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.MapBookmark
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.GeocodeSuggestion
+import rw.itunda.core.geo.GeocodingUnavailableException
 import rw.itunda.core.geo.NearbyPlace
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
@@ -73,7 +74,11 @@ class MapsService(
         if (!nominatimGeocodingClient.isConfigured) {
             throw MapsGeocodingUnavailableException("Map search is temporarily unavailable")
         }
-        return nominatimGeocodingClient.search(normalizedQuery, limit = 8)
+        return try {
+            nominatimGeocodingClient.searchForMaps(normalizedQuery, limit = 8)
+        } catch (ex: GeocodingUnavailableException) {
+            throw MapsGeocodingUnavailableException("Map search is temporarily unavailable")
+        }
     }
 
     /**
