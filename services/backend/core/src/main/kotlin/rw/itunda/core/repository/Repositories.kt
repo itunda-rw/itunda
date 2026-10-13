@@ -36,6 +36,7 @@ import rw.itunda.core.domain.Emoticon
 import rw.itunda.core.domain.EmoticonPack
 import rw.itunda.core.domain.SavingsGoal
 import rw.itunda.core.domain.StockTrade
+import rw.itunda.core.domain.PracticeStockTrade
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
@@ -80,6 +81,11 @@ interface HoldingRepository : JpaRepository<Holding, String> {
 // ascending so StocksService.getPortfolioHistory can replay it chronologically.
 interface StockTradeRepository : JpaRepository<StockTrade, String> {
     fun findByUserIdOrderByExecutedAtAsc(userId: String): List<StockTrade>
+}
+
+/** Isolated paper-trading records; never used by real-money stock endpoints. */
+interface PracticeStockTradeRepository : JpaRepository<PracticeStockTrade, String> {
+    fun findByUserIdOrderByExecutedAtAsc(userId: String): List<PracticeStockTrade>
 }
 
 interface SavingsGoalRepository : JpaRepository<SavingsGoal, String> {
