@@ -24,7 +24,6 @@ import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
-import java.util.Optional
 
 /**
  * First test coverage for the highest-stakes module in this backend -- real P2P
@@ -35,6 +34,7 @@ import java.util.Optional
  * covered here -- there's no injected clock in QuoteStore to fake it without sleeping
  * a real 60+ seconds in a test, which isn't worth doing.
  */
+
 class AccountServiceTest : BehaviorSpec({
 
     fun account(id: String, userId: String, balance: String) = Account(
@@ -54,7 +54,8 @@ class AccountServiceTest : BehaviorSpec({
         val providerConnector = mockk<ProviderConnector>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = AccountService(accountRepository, transactionRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, rateLimiter)
+        val transferQuoteRepository = mockTransferQuoteRepository()
+        val service = AccountService(accountRepository, transactionRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, rateLimiter, transferQuoteRepository)
 
         val senderAccount = account("account_1", "user_1", "10000")
 
@@ -359,7 +360,8 @@ class AccountServiceTest : BehaviorSpec({
         val providerConnector = mockk<ProviderConnector>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = AccountService(accountRepository, transactionRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, rateLimiter)
+        val transferQuoteRepository = mockTransferQuoteRepository()
+        val service = AccountService(accountRepository, transactionRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, rateLimiter, transferQuoteRepository)
 
         When("a user requests their own real account's transaction history") {
             val payAccount = account("account_pay", "user_1", "5000")
@@ -404,7 +406,8 @@ class AccountServiceTest : BehaviorSpec({
         val providerConnector = mockk<ProviderConnector>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = AccountService(accountRepository, transactionRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, rateLimiter)
+        val transferQuoteRepository = mockTransferQuoteRepository()
+        val service = AccountService(accountRepository, transactionRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, rateLimiter, transferQuoteRepository)
 
         fun debitTxn(id: String, amount: String, createdAt: java.time.Instant, status: rw.itunda.core.domain.TransactionStatus = rw.itunda.core.domain.TransactionStatus.COMPLETED) = rw.itunda.core.domain.Transaction(
             id = id, referenceNumber = "REF-$id", senderId = "user_1", recipientId = "merchant_1",
