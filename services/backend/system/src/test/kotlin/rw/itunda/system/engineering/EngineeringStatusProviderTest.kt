@@ -76,6 +76,25 @@ class EngineeringStatusProviderTest : BehaviorSpec({
             server.verify()
         }
 
+        When("GitHub returns a malformed check-runs payload") {
+            val builder = RestClient.builder()
+            val server = MockRestServiceServer.bindTo(builder).build()
+            server.expect(requestTo("https://api.github.com/repos/itunda-rw/itunda/commits/main"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""{"sha":"$headSha"}""", MediaType.APPLICATION_JSON))
+            server.expect(requestTo("https://api.github.com/repos/itunda-rw/itunda/commits/$headSha/check-runs?per_page=100&page=1"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""{"check_runs":{"unexpected":"object"}}""", MediaType.APPLICATION_JSON))
+            val provider = EngineeringStatusProvider(
+                ObjectMapper(), "itunda-rw/itunda", "main", "CI", "", "test", builder,
+            )
+
+            Then("it rejects the malformed snapshot instead of returning partial readiness") {
+                shouldThrow<IllegalArgumentException> { provider.readStatus() }
+                server.verify()
+            }
+        }
+
         When("the first page is full") {
             val builder = RestClient.builder()
             val server = MockRestServiceServer.bindTo(builder).build()
