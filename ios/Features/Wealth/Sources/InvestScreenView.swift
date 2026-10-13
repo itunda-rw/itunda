@@ -41,7 +41,7 @@ public struct InvestScreenView: View {
             }
             .padding()
 
-            Text("Practice market only. Prices are simulated. Buy and sell actions update Itunda’s internal demo ledger; they do not place orders on a real exchange or give you ownership of listed securities.")
+            Text("Practice market only. Prices are simulated. Buy/sell actions can change your Itunda investment-account balance, but do not place orders on a real exchange or give you ownership of real securities. This is not a real brokerage account.")
                 .font(.footnote)
                 .foregroundColor(IDS.Colors.textSecondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
