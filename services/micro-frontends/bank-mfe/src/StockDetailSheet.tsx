@@ -12,8 +12,8 @@ import { ApiError } from './lib/api';
 import { DeviceStepUpPrompt } from './DeviceStepUpPrompt';
 import { Sparkline } from './Sparkline';
 import {
-  buyStock, clearPriceAlert, fetchPriceAlert, fetchStockHistory, sellStock, setPriceAlert, unwatchStock, watchStock,
-  type PriceAlert, type PricePoint, type Stock,
+  buyStock, clearPriceAlert, fetchPriceAlert, fetchStockHistory, previewStockOrder, sellStock, setPriceAlert, unwatchStock, watchStock,
+  type PriceAlert, type PricePoint, type Stock, type StockOrderPreview,
 } from './lib/stocks';
 import { useDeferredLoading } from './useDeferredLoading';
 
@@ -32,6 +32,8 @@ export function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchT
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [orderPreview, setOrderPreview] = useState<StockOrderPreview | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [watching, setWatching] = useState(isWatched);
   const [watchBusy, setWatchBusy] = useState(false);
   // Real device binding step-up (2026-07-21) -- Stocks buy/sell was a real gap:
@@ -88,7 +90,7 @@ export function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchT
     }
   };
 
-  const handleTrade = (e?: React.FormEvent) => {
+  const handleTrade = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setError(null);
     setNeedsDeviceVerification(false);
@@ -97,7 +99,17 @@ export function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchT
       setError('Enter a real number of shares.');
       return;
     }
-    setReviewing(true);
+    setPreviewLoading(true);
+    setOrderPreview(null);
+    try {
+      const preview = await previewStockOrder(stock.id, mode, shareCount);
+      setOrderPreview(preview);
+      setReviewing(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not prepare this practice order. Try again.');
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   const executeTrade = async () => {
@@ -184,7 +196,7 @@ export function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchT
         {(['BUY', 'SELL'] as const).map((m) => (
           <button
             key={m}
-            onClick={() => setMode(m)}
+            onClick={() => { setMode(m); setReviewing(false); setOrderPreview(null); }}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700,
               color: mode === m ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
@@ -197,26 +209,31 @@ export function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchT
       </div>
       <form onSubmit={handleTrade} style={{ display: 'flex', gap: '10px' }}>
         <input
-          type="number" min="0.0001" step="any" value={shares} onChange={(e) => { setShares(e.target.value); setReviewing(false); }}
+          type="number" min="0.0001" step="any" value={shares} onChange={(e) => { setShares(e.target.value); setReviewing(false); setOrderPreview(null); }}
           placeholder="Shares" required
           style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
         />
-        <button type="submit" className={mode === 'BUY' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn'} style={mode === 'SELL' ? { backgroundColor: 'var(--itunda-red)', color: 'white' } : undefined} disabled={submitting}>
-          {t('stocks.reviewOrder')}
+        <button type="submit" className={mode === 'BUY' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn'} style={mode === 'SELL' ? { backgroundColor: 'var(--itunda-red)', color: 'white' } : undefined} disabled={submitting || previewLoading}>
+          {previewLoading ? t('stocks.working') : t('stocks.reviewOrder')}
         </button>
       </form>
-      {reviewing && (
+      {reviewing && orderPreview && (
         <div role="group" aria-label={t('stocks.reviewOrder')} style={{ marginTop: '12px', padding: '14px', borderRadius: '12px', background: 'var(--itunda-grey-100)' }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, marginBottom: '8px' }}>{t('stocks.orderPreview')}</p>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: 'var(--itunda-type-scale-13-size)' }}>
-            <span>{mode === 'BUY' ? t('stocks.buy') : t('stocks.sell')} · {stock.symbol}</span>
-            <strong>{Number(shares).toLocaleString('en-US', { maximumFractionDigits: 6 })} {t('stocks.shares')}</strong>
+            <span>{orderPreview.side === 'BUY' ? t('stocks.buy') : t('stocks.sell')} · {orderPreview.symbol}</span>
+            <strong>{orderPreview.shares.toLocaleString('en-US', { maximumFractionDigits: 6 })} {t('stocks.shares')}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: 'var(--itunda-type-scale-13-size)', marginTop: '6px' }}>
             <span>{t('stocks.estimatedValue')}</span>
-            <strong>{(Number(shares) * stock.price).toLocaleString('en-US', { maximumFractionDigits: 2 })} RWF</strong>
+            <strong>{orderPreview.estimatedNotional.toLocaleString('en-US', { maximumFractionDigits: 2 })} {orderPreview.currency}</strong>
           </div>
-          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', lineHeight: 1.5, color: 'var(--itunda-grey-600)', marginTop: '8px' }}>{t('stocks.previewDisclaimer')}</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', lineHeight: 1.5, color: 'var(--itunda-grey-600)', marginTop: '8px' }}>{t('stocks.previewDisclaimer')} {orderPreview.disclaimer}</p>
+          {((mode === 'BUY' && orderPreview.estimatedNotionalCovered === false) || (mode === 'SELL' && orderPreview.estimatedSharesCovered === false)) && (
+            <p role="alert" style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', marginTop: '8px' }}>
+              {mode === 'BUY' ? 'Your available investment balance may be insufficient for this estimate.' : 'Your available holding may be insufficient for this quantity.'}
+            </p>
+          )}
           <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
             <button type="button" className="itunda-btn" onClick={() => setReviewing(false)} disabled={submitting}>{t('stocks.editOrder')}</button>
             <button type="button" className={mode === 'BUY' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn'} onClick={executeTrade} disabled={submitting} style={mode === 'SELL' ? { backgroundColor: 'var(--itunda-red)', color: 'white' } : undefined}>
