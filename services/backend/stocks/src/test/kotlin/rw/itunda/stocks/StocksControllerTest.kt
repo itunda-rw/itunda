@@ -89,15 +89,15 @@ class StocksControllerTest : BehaviorSpec({
         }
     }
 
-    Given("a real portfolio-history request") {
-        val stocksService = mockk<StocksService>()
-        val ctl = controller(stocksService = stocksService)
-        every { stocksService.getPortfolioHistory("user_1", 30) } returns listOf(PortfolioValuePoint(LocalDate.now(), BigDecimal("1000")))
+    Given("a practice portfolio-history request") {
+        val practiceStockService = mockk<PracticeStockService>()
+        val ctl = controller(practiceStockService = practiceStockService)
+        every { practiceStockService.getPortfolioHistory("user_1", 30) } returns listOf(PortfolioValuePoint(LocalDate.now(), BigDecimal("1000")))
 
         When("fetching it") {
             ctl.getPortfolioHistory(30, currentUser)
-            Then("it queries scoped to the caller's own userId") {
-                verify(exactly = 1) { stocksService.getPortfolioHistory("user_1", 30) }
+            Then("it queries the practice ledger scoped to the caller's own userId") {
+                verify(exactly = 1) { practiceStockService.getPortfolioHistory("user_1", 30) }
             }
         }
     }
