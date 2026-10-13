@@ -44,6 +44,14 @@ const callsBeforeClear = host.state.calls.length;
 host.clearCalls();
 if (callsBeforeClear !== 4 || host.state.calls.length !== 0) throw new Error('clearCalls did not clear request history');
 if (notifications < 7) throw new Error('clearing calls did not notify subscribers');
+seededNever();
+
+function seededNever() {
+  host.request('test', 'after-clear', () => true);
+  if (host.state.calls[0]?.requestId !== 'mock-5') {
+    throw new Error('request IDs must remain monotonic after request history is cleared');
+  }
+}
 
 unsubscribe();
 const notificationsBeforeChange = notifications;
