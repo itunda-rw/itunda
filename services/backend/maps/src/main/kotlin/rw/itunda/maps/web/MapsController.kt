@@ -40,6 +40,7 @@ import rw.itunda.maps.LiveLocationShareService
 import rw.itunda.maps.LiveLocationTooManyActiveSharesException
 import rw.itunda.maps.MapPlaceCategory
 import rw.itunda.maps.MapsService
+import rw.itunda.maps.MapsGeocodingUnavailableException
 import rw.itunda.maps.RouteNotFoundException
 
 // Real self-hosted "search this map" + "directions" -- see MapsService's own doc
@@ -366,6 +367,10 @@ class MapsController(
     @ExceptionHandler(InvalidMapsSearchQueryException::class)
     fun handleInvalidSearchQuery(ex: InvalidMapsSearchQueryException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_SEARCH_QUERY", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(MapsGeocodingUnavailableException::class)
+    fun handleMapsGeocodingUnavailable(ex: MapsGeocodingUnavailableException) =
+        ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(ApiError("MAP_SEARCH_UNAVAILABLE", ex.message ?: "Map search is temporarily unavailable"))
 
     @ExceptionHandler(rw.itunda.merchant.MerchantNotFoundException::class)
     fun handleMerchantNotFound(ex: rw.itunda.merchant.MerchantNotFoundException) =
