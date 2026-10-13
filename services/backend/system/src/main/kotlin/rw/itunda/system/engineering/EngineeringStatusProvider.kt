@@ -22,13 +22,14 @@ class EngineeringStatusProvider(
     @Value("\${itunda.engineering.required-check-ids:}") requiredCheckIds: String,
     @Value("\${itunda.engineering.github-token:}") private val githubToken: String,
     @Value("\${itunda.engineering.environment:local}") private val environment: String,
+    restClientBuilder: RestClient.Builder,
 ) {
     private val requiredIds = requiredCheckIds.split(',')
         .map(String::trim)
         .filter(String::isNotEmpty)
         .distinct()
 
-    private val client = RestClient.builder()
+    private val client = restClientBuilder.clone()
         .baseUrl("https://api.github.com")
         .defaultHeader(HttpHeaders.ACCEPT, "application/vnd.github+json")
         .defaultHeader("X-GitHub-Api-Version", "2022-11-28")
