@@ -3662,3 +3662,65 @@ input, textarea, select {
 @media (prefers-reduced-motion: reduce) {
   .itunda-home-money-loading__line { animation: none; }
 }
+
+
+/* Quick actions follow the prototype's lightweight icon-grid rhythm.
+   Keep destinations real and labels easy to scan; avoid four competing cards. */
+.itunda-home-page .itunda-home-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  align-items: start;
+}
+.itunda-home-page .itunda-home-actions > button {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px;
+  padding: 0 2px 8px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--itunda-text-primary);
+  font-size: var(--itunda-type-scale-12-size);
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.itunda-home-page .itunda-home-actions > button:hover,
+.itunda-home-page .itunda-home-actions > button:focus-visible {
+  background: transparent;
+}
+.itunda-home-page .itunda-home-actions__icon {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20px;
+  background: var(--itunda-surface-subtle);
+  color: var(--itunda-text-primary);
+  transition: background-color var(--itunda-motion-fast) var(--itunda-ease-out),
+    transform var(--itunda-motion-fast) var(--itunda-ease-out);
+}
+.itunda-home-page .itunda-home-actions > button:hover .itunda-home-actions__icon,
+.itunda-home-page .itunda-home-actions > button:focus-visible .itunda-home-actions__icon {
+  background: var(--itunda-surface-brand);
+}
+.itunda-home-page .itunda-home-actions > button:active .itunda-home-actions__icon {
+  transform: scale(.96);
+}
+@media (max-width: 350px) {
+  .itunda-home-page .itunda-home-actions__icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 17px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .itunda-home-page .itunda-home-actions__icon { transition: none; }
+}
