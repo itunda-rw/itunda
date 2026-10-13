@@ -3,50 +3,6 @@ import CoreLocation
 import CoreDesignSystem
 import CoreNetwork
 
-/// Real "my location" via Apple's own CLLocationManager, runtime-permission-gated --
-/// same real technique HoodScreen.swift/MapScreenView.swift each already establish
-/// their own copy of, reused here for the passenger's one-tap pickup location.
-/// Internal (not private/fileprivate), not just file-scoped, since RideDriverContent
-/// (moved to its own RideDriverContent.swift file, 2026-09-06 Rideshare
-/// product-completeness pass) reuses this same copy for the driver's own
-/// go-online location update.
-final class RideLocationFetcher: NSObject, ObservableObject, CLLocationManagerDelegate {
-    @Published var coordinate: CLLocationCoordinate2D?
-    @Published var errorMessage: String?
-    private let manager = CLLocationManager()
-
-    override init() {
-        super.init()
-        manager.delegate = self
-    }
-
-    func requestLocation() {
-        errorMessage = nil
-        let status = manager.authorizationStatus
-        if status == .notDetermined {
-            manager.requestWhenInUseAuthorization()
-        } else if status == .denied || status == .restricted {
-            errorMessage = "Location permission was denied."
-        } else {
-            manager.requestLocation()
-        }
-    }
-
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {
-            manager.requestLocation()
-        }
-    }
-
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        coordinate = locations.last?.coordinate
-    }
-
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        errorMessage = "Could not access your real location right now."
-    }
-}
-
 // Real Kakao T-style ride-hailing (rw.itunda.rideshare, real since 2026-07-26) -- last
 // remaining client platform for this feature (item 110; bank-mfe always had it,
 // Android ported it the same day as item 109). Honest v1 scoping: manual dropoff
@@ -149,6 +105,8 @@ private struct RidePassengerContent: View {
     @State private var pastTripsPage = 0
     @State private var pastTripsHasMore = false
     @State private var loadingMorePastTrips = false
+    @State private var tripsLoadError: String?
+    @State private var pastTripsPaginationError: String?
     @State private var activeTripStops: [RideTripStopDto] = []
     @State private var requesting = false
     @State private var busyTripId: String?
@@ -161,6 +119,7 @@ private struct RidePassengerContent: View {
     // Real Uber "Verify Your Ride" PIN -- fetched once a driver is assigned so the
     // passenger can read it aloud before pickup.
     @State private var activeTripPin: String?
+    @State private var activeTripDetailsError: String?
     // Real Uber Safety "Trusted Contacts" (help.uber.com) -- last remaining client
     // platform for this feature (item 161; bank-mfe/Android already have it). Mirrors
     // bank-mfe's TrustedContactsSection/Android's TrustedContactsSection exactly,
@@ -192,6 +151,15 @@ private struct RidePassengerContent: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
+                if let tripsLoadError {
+                    ErrorCardView(tripsLoadError, onRetry: { Task { await loadTrips() } })
+                }
+                if let activeTripDetailsError {
+                    ErrorCardView(activeTripDetailsError, onRetry: { Task { await loadActiveTripDetails() } })
+                }
+                if let pastTripsPaginationError {
+                    ErrorCardView(pastTripsPaginationError, onRetry: { Task { await loadMorePastTrips() } })
+                }
                 if let error {
                     Text(error).font(.footnote).foregroundColor(.red)
                 }
@@ -305,38 +273,19 @@ private struct RidePassengerContent: View {
                     error: contactError
                 )
 
-                PastRideTripsSection(
+                RidePastTripsContent(
                     trips: pastTrips,
-                    title: "Past rides",
                     hasMore: pastTripsHasMore,
                     loadingMore: loadingMorePastTrips,
+                    reviewedTripIds: reviewedTripIds,
+                    tippedTripIds: tippedTripIds,
+                    busyTripId: busyTripId,
                     onLoadMore: { Task { await loadMorePastTrips() } },
-                    itemContent: { trip in
-                        AnyView(
-                            Group {
-                                if trip.status == "COMPLETED", trip.driverId != nil, !reviewedTripIds.contains(trip.id) {
-                                    RideReviewRow(busy: busyTripId == trip.id) { rating, comment in
-                                        await submitReview(trip.id, rating, comment)
-                                    }
-                                }
-                                if trip.status == "COMPLETED", trip.driverId != nil, trip.tipAmount == nil, !tippedTripIds.contains(trip.id) {
-                                    TipDriverPrompt(tripId: trip.id, onTipped: { tippedTripIds.insert(trip.id) })
-                                }
-                                // Real "report an issue" hand-off (Support product-
-                                // completeness pass, 2026-09-08) -- mirrors bank-mfe's
-                                // RidePassengerView's own identical button, see
-                                // SupportScreenView.swift's own doc comment.
-                                if trip.status == "COMPLETED" {
-                                    Button(action: { onReportIssue(trip.transactionId) }) {
-                                        Text("Report an issue")
-                                            .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
-                                            .padding(.horizontal, 12).padding(.vertical, 8)
-                                            .background(IDS.Colors.chipBackground).cornerRadius(8)
-                                    }
-                                }
-                            }
-                        )
-                    }
+                    onSubmitReview: { tripId, rating, comment in
+                        await submitReview(tripId, rating, comment)
+                    },
+                    onTipped: { tippedTripIds.insert($0) },
+                    onReportIssue: onReportIssue
                 )
             }
             .padding(.horizontal)
@@ -353,37 +302,63 @@ private struct RidePassengerContent: View {
         .task { await loadBookmarks() }
         .onDisappear { pollTask?.cancel() }
         .onChange(of: activeTrip?.id) { _ in
-            Task { await loadActiveTripStops(); await loadActiveTripPin() }
+            Task { await loadActiveTripDetails() }
         }
         .onChange(of: activeTrip?.status) { _ in
-            Task { await loadActiveTripPin() }
+            Task { await loadActiveTripDetails() }
         }
     }
 
     private func loadTrips() async {
-        guard let r = try? await NetworkClient.shared.getMyRideTrips(page: 0) else { return }
-        myTrips = r.trips
-        pastTripsHasMore = r.page + 1 < r.totalPages
+        do {
+            let r = try await NetworkClient.shared.getMyRideTrips(page: 0)
+            myTrips = r.trips
+            pastTripsHasMore = r.page + 1 < r.totalPages
+            tripsLoadError = nil
+        } catch {
+            // Polling must not turn an unavailable trips feed into a convincing empty state.
+            if myTrips.isEmpty {
+                tripsLoadError = "Couldn't load your rides. Check your connection and try again."
+            }
+        }
     }
 
     private func loadMorePastTrips() async {
         let nextPage = pastTripsPage + 1
         loadingMorePastTrips = true
         defer { loadingMorePastTrips = false }
-        guard let r = try? await NetworkClient.shared.getMyRideTrips(page: nextPage) else { return }
-        olderPastTrips += r.trips.filter { $0.status == "COMPLETED" || $0.status == "CANCELLED" }
-        pastTripsPage = nextPage
-        pastTripsHasMore = r.page + 1 < r.totalPages
+        do {
+            let r = try await NetworkClient.shared.getMyRideTrips(page: nextPage)
+            olderPastTrips += r.trips.filter { $0.status == "COMPLETED" || $0.status == "CANCELLED" }
+            pastTripsPage = r.page
+            pastTripsHasMore = r.page + 1 < r.totalPages
+            pastTripsPaginationError = nil
+        } catch {
+            pastTripsPaginationError = "Couldn't load more past rides. Please try again."
+        }
     }
 
-    private func loadActiveTripStops() async {
-        guard let id = activeTrip?.id else { activeTripStops = []; return }
-        activeTripStops = (try? await NetworkClient.shared.getRideTripStops(tripId: id).stops) ?? []
-    }
-
-    private func loadActiveTripPin() async {
-        guard let id = activeTrip?.id, activeTrip?.status != "REQUESTED" else { activeTripPin = nil; return }
-        activeTripPin = (try? await NetworkClient.shared.getRideTripPin(id: id).pin) ?? nil
+    private func loadActiveTripDetails() async {
+        guard let trip = activeTrip else {
+            activeTripStops = []
+            activeTripPin = nil
+            activeTripDetailsError = nil
+            return
+        }
+        do {
+            let stops = try await NetworkClient.shared.getRideTripStops(tripId: trip.id).stops
+            let pin: String?
+            if trip.status == "REQUESTED" {
+                pin = nil
+            } else {
+                pin = try await NetworkClient.shared.getRideTripPin(id: trip.id).pin
+            }
+            activeTripStops = stops
+            activeTripPin = pin
+            activeTripDetailsError = nil
+        } catch {
+            activeTripDetailsError = "Couldn't load your ride details. Check your connection and try again."
+        }
     }
 
     private func requestRide() async {

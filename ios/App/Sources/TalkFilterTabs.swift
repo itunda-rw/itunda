@@ -59,12 +59,9 @@ struct CallHistoryList: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 if let error {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(error).foregroundColor(.red).font(.subheadline)
-                        Button("Retry", action: onRetry)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20)
+                    ErrorCardView(error, onRetry: onRetry)
+                        .padding(.horizontal, IDS.Layout.screenHorizontal)
+                        .padding(.top, 12)
                 } else if calls == nil {
                     SkeletonBlock(height: 80).padding(.horizontal, IDS.Layout.screenHorizontal).padding(.top, 12)
                 } else if calls!.isEmpty {

@@ -92,9 +92,7 @@ struct BucketDetailScreen: View {
 
                 Group {
                     if loadError {
-                        Text("Could not load this account's history.")
-                            .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
-                            .foregroundColor(.red)
+                        ErrorCardView("Could not load this account's history.", onRetry: { Task { await loadTransactions() } })
                     } else if transactions == nil {
                         Text("Loading…")
                             .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
@@ -120,12 +118,15 @@ struct BucketDetailScreen: View {
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .navigationBarHidden(true)
-        .task {
-            do {
-                transactions = try await fetchTransactions()
-            } catch {
-                loadError = true
-            }
+        .task { await loadTransactions() }
+    }
+
+    private func loadTransactions() async {
+        loadError = false
+        do {
+            transactions = try await fetchTransactions()
+        } catch {
+            loadError = true
         }
     }
 }

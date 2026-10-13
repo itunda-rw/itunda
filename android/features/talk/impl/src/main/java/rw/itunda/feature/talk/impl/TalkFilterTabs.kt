@@ -111,7 +111,7 @@ internal fun CallHistoryList(conversations: List<ConversationSummaryDto>?) {
 
     val coroutineScope = rememberCoroutineScope()
     when {
-        error != null -> ErrorCard(error!!, onRetry = {})
+        error != null -> ErrorCard(error!!, onRetry = { coroutineScope.launch { load() } })
         calls == null -> SkeletonBlock()
         calls!!.isEmpty() -> EmptyState("No calls yet.", icon = Icons.Outlined.Call)
         else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {

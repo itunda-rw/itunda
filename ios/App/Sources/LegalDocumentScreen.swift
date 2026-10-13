@@ -13,7 +13,7 @@ struct LegalDocumentScreen: View {
     let onBack: () -> Void
 
     @State private var document: LegalDocument?
-    @State private var loadFailed = false
+    @State private var loadError: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -36,23 +36,30 @@ struct LegalDocumentScreen: View {
                         .padding(.horizontal, 20)
                         .padding(.vertical, 8)
                 }
-            } else if loadFailed {
-                Spacer()
-                Text("Couldn't load this document. Check your connection and try again.")
-                    .font(IDS.scaledFont(size: 14, weight: .regular, relativeTo: .body))
-                    .foregroundColor(.secondary)
+            } else if let loadError {
+                ErrorCardView(loadError, onRetry: { Task { await loadDocument() } })
                     .padding(.horizontal, 20)
-                Spacer()
             } else {
                 Spacer()
                 ProgressView().tint(IDS.Colors.brand)
                 Spacer()
             }
         }
-        .task {
-            let documents = (try? await NetworkClient.shared.getLegalDocuments()) ?? []
-            document = documents.first { $0.id == documentId }
-            loadFailed = document == nil
+        .task { await loadDocument() }
+    }
+
+    private func loadDocument() async {
+        do {
+            let documents = try await NetworkClient.shared.getLegalDocuments()
+            guard let matchingDocument = documents.first(where: { $0.id == documentId }) else {
+                document = nil
+                loadError = "This legal document is currently unavailable."
+                return
+            }
+            document = matchingDocument
+            loadError = nil
+        } catch {
+            loadError = "Couldn't load this document. Check your connection and try again."
         }
     }
 }

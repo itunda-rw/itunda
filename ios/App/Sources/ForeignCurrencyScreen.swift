@@ -195,9 +195,9 @@ private struct ConvertPanel: View {
                 .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
 
             if let rate { Text("Live rate: 1 \(fromCurrency) = \(String(format: "%.4f", rate)) \(toCurrency)").font(.caption).foregroundColor(IDS.Colors.textSecondary) }
-            if let previewAmount { Text("You'll receive ~\(formatFx(previewAmount)) \(toCurrency) (after itunda's 1.5% fee)").font(.subheadline).bold().foregroundColor(.green) }
+            if let previewAmount { Text("You'll receive ~\(formatFx(previewAmount)) \(toCurrency) (after itunda's 1.5% fee)").font(.subheadline).bold().foregroundColor(IDS.Colors.success) }
             if let error { Text(error).font(.caption).foregroundColor(.red) }
-            if let success { Text(success).font(.caption).foregroundColor(.green) }
+            if let success { Text(success).font(.caption).foregroundColor(IDS.Colors.success) }
 
             Button(action: { Task { await convert() } }) {
                 Text(submitting ? "Converting…" : "Convert").bold().foregroundColor(.white)

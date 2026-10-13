@@ -87,7 +87,7 @@ struct TransitScreenView: View {
                                 Text("Pick your real operator and fare -- Kigali's real fares run 200-500 RWF depending on distance; itunda has no GPS-derived distance to calculate one automatically.")
                                     .font(.caption2).foregroundColor(IDS.Colors.textTertiary)
                                 if let tapMessage {
-                                    Text(tapMessage).font(.caption).foregroundColor(.green)
+                                    Text(tapMessage).font(.caption).foregroundColor(IDS.Colors.success)
                                 }
                                 HStack(spacing: 8) {
                                     ForEach(transitOperators, id: \.self) { op in

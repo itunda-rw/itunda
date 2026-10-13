@@ -26,12 +26,8 @@ struct JobPostWishlistView: View {
     var body: some View {
         Group {
             if let error {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(error).foregroundColor(.red).font(.subheadline)
-                    Button("Retry") { Task { await load() } }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 10)
+                ErrorCardView(error, onRetry: { Task { await load() } })
+                    .padding(.vertical, 10)
             } else if favorites == nil {
                 HoodFeedSkeleton()
             } else if favorites!.isEmpty {
@@ -121,12 +117,8 @@ struct MyJobApplicationsView: View {
     var body: some View {
         Group {
             if let error {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(error).foregroundColor(.red).font(.subheadline)
-                    Button("Retry") { Task { await load() } }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 10)
+                ErrorCardView(error, onRetry: { Task { await load() } })
+                    .padding(.vertical, 10)
             } else if applications == nil {
                 HoodFeedSkeleton()
             } else if applications!.isEmpty {

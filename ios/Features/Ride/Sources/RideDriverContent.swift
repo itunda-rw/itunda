@@ -147,7 +147,7 @@ struct RideDriverContent: View {
                                 Spacer()
                                 VStack(alignment: .leading) {
                                     Text("Net earnings").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
-                                    Text("\(Int(weekEarnings.reduce(0) { $0 + $1.netEarnings })) RWF").bold().font(.title3).foregroundColor(.green)
+                                    Text("\(Int(weekEarnings.reduce(0) { $0 + $1.netEarnings })) RWF").bold().font(.title3).foregroundColor(IDS.Colors.success)
                                 }
                             }
                         }

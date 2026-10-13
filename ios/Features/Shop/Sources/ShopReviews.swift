@@ -16,12 +16,14 @@ struct ProductInquirySection: View {
     @State private var question = ""
     @State private var asking = false
     @State private var error: String?
+    @State private var loadError: String?
     // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
     // project_itunda_pagination_discard_sweep memory) -- getProductInquiries
     // silently capped this list at the first 20 questions.
     @State private var inquiriesPage = 0
     @State private var inquiriesHasMore = false
     @State private var loadingMoreInquiries = false
+    @State private var inquiriesPaginationError: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -39,7 +41,9 @@ struct ProductInquirySection: View {
             if let error {
                 Text(error).font(.caption2).foregroundColor(.red)
             }
-            if let inquiries {
+            if let loadError {
+                ErrorCardView(loadError, onRetry: { Task { await load() } })
+            } else if let inquiries {
                 if inquiries.isEmpty {
                     EmptyStateView("No questions yet — be the first to ask.")
                 } else {
@@ -69,6 +73,9 @@ struct ProductInquirySection: View {
                             .font(.caption)
                             .disabled(loadingMoreInquiries)
                         }
+                        if let inquiriesPaginationError {
+                            ErrorCardView(inquiriesPaginationError, onRetry: { Task { await loadMoreInquiries() } })
+                        }
                     }
                 }
             } else {
@@ -79,23 +86,31 @@ struct ProductInquirySection: View {
     }
 
     private func load() async {
-        guard let res = try? await NetworkClient.shared.getProductInquiries(productId) else {
-            inquiries = []
-            return
+        do {
+            let res = try await NetworkClient.shared.getProductInquiries(productId)
+            inquiries = res.inquiries
+            inquiriesPage = res.page
+            inquiriesHasMore = res.page + 1 < res.totalPages
+            loadError = nil
+        } catch {
+            // A failed request must not masquerade as a product with no questions.
+            loadError = "Couldn't load product questions. Check your connection and try again."
         }
-        inquiries = res.inquiries
-        inquiriesPage = res.page
-        inquiriesHasMore = res.page + 1 < res.totalPages
     }
 
     private func loadMoreInquiries() async {
         let nextPage = inquiriesPage + 1
         loadingMoreInquiries = true
         defer { loadingMoreInquiries = false }
-        guard let res = try? await NetworkClient.shared.getProductInquiries(productId, page: nextPage) else { return }
-        inquiries = (inquiries ?? []) + res.inquiries
-        inquiriesPage = nextPage
-        inquiriesHasMore = res.page + 1 < res.totalPages
+        do {
+            let res = try await NetworkClient.shared.getProductInquiries(productId, page: nextPage)
+            inquiries = (inquiries ?? []) + res.inquiries
+            inquiriesPage = res.page
+            inquiriesHasMore = res.page + 1 < res.totalPages
+            inquiriesPaginationError = nil
+        } catch {
+            inquiriesPaginationError = "Couldn't load more questions. Please try again."
+        }
     }
 
     private func ask() async {
@@ -119,6 +134,7 @@ struct ProductRatingBadge: View {
     @State private var rating: ProductRatingResponse?
     @State private var open = false
     @State private var reviews: [ProductReviewDto]?
+    @State private var reviewsLoadError: String?
     // Real "도움돼요" (helpful) toggle (2026-08-25) -- see
     // ProductReviewService.toggleHelpful's own doc comment on the backend. Tracked as a
     // delta dictionary rather than rewriting ProductReviewDto (a Decodable-only struct
@@ -131,6 +147,7 @@ struct ProductRatingBadge: View {
     @State private var reviewsPage = 0
     @State private var reviewsHasMore = false
     @State private var loadingMoreReviews = false
+    @State private var reviewsPaginationError: String?
 
     private func displayedHelpfulCount(_ r: ProductReviewDto) -> Int {
         max(0, (r.helpfulCount ?? 0) + (helpfulCountDeltas[r.id] ?? 0))
@@ -160,7 +177,9 @@ struct ProductRatingBadge: View {
                         }
                     }
                     if open {
-                        if let reviews {
+                        if let reviewsLoadError {
+                            ErrorCardView(reviewsLoadError, onRetry: { Task { await loadReviews() } })
+                        } else if let reviews {
                             if reviews.isEmpty {
                                 Text("No written reviews yet — be the first to share how it went.").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                             } else {
@@ -185,6 +204,9 @@ struct ProductRatingBadge: View {
                                     .font(.caption2)
                                     .disabled(loadingMoreReviews)
                                 }
+                                if let reviewsPaginationError {
+                                    ErrorCardView(reviewsPaginationError, onRetry: { Task { await loadMoreReviews() } })
+                                }
                             }
                         } else {
                             Text("Loading reviews…").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
@@ -204,16 +226,20 @@ struct ProductRatingBadge: View {
 
     private func toggle() {
         open.toggle()
-        guard open, reviews == nil else { return }
-        Task {
-            do {
-                let res = try await NetworkClient.shared.getProductReviews(productId)
-                reviews = res.reviews
-                reviewsPage = res.page
-                reviewsHasMore = res.page + 1 < res.totalPages
-            } catch {
-                reviews = []
-            }
+        guard open, reviews == nil, reviewsLoadError == nil else { return }
+        Task { await loadReviews() }
+    }
+
+    private func loadReviews() async {
+        do {
+            let res = try await NetworkClient.shared.getProductReviews(productId)
+            reviews = res.reviews
+            reviewsPage = res.page
+            reviewsHasMore = res.page + 1 < res.totalPages
+            reviewsLoadError = nil
+        } catch {
+            // A failed fetch must not appear as a genuine no-written-reviews result.
+            reviewsLoadError = "Couldn't load product reviews. Check your connection and try again."
         }
     }
 
@@ -221,10 +247,15 @@ struct ProductRatingBadge: View {
         let nextPage = reviewsPage + 1
         loadingMoreReviews = true
         defer { loadingMoreReviews = false }
-        guard let res = try? await NetworkClient.shared.getProductReviews(productId, page: nextPage) else { return }
-        reviews = (reviews ?? []) + res.reviews
-        reviewsPage = nextPage
-        reviewsHasMore = res.page + 1 < res.totalPages
+        do {
+            let res = try await NetworkClient.shared.getProductReviews(productId, page: nextPage)
+            reviews = (reviews ?? []) + res.reviews
+            reviewsPage = res.page
+            reviewsHasMore = res.page + 1 < res.totalPages
+            reviewsPaginationError = nil
+        } catch {
+            reviewsPaginationError = "Couldn't load more reviews. Please try again."
+        }
     }
 }
 

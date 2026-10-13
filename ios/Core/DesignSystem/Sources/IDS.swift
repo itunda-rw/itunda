@@ -181,8 +181,8 @@ public struct IDS {
         // (5.01:1 against white), dark 0x20D394 (already passes at 9+:1, matching
         // dark mode's own existing pattern of choosing a brighter shade for exactly
         // this reason).
-        public static let success = Color(light: 0x05804A, dark: 0x20D394)
-        public static let successTint = Color(light: 0xF5FAFF, dark: 0x10321F)
+        public static let success = Color(light: 0x8F89FF, dark: 0x8F89FF)
+        public static let successTint = Color(light: 0xF1F0FF, dark: 0x25234A)
         // Shared semantic warning role; warningTint remains the supporting background wash.
         public static let warning = Color(light: 0xFFA000, dark: 0xFFC24C)
         public static let warningTint = Color(light: 0xFFF4D6, dark: 0x3A2E10)

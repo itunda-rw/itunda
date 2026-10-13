@@ -331,7 +331,7 @@ struct MultiCartResultsView: View {
                         Text(r.businessName).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                         Spacer()
                         if let order = r.order {
-                            Text("\(formatAmount(Int(order.totalAmount))) RWF — placed").font(.subheadline).foregroundColor(.green)
+                            Text("\(formatAmount(Int(order.totalAmount))) RWF — placed").font(.subheadline).foregroundColor(IDS.Colors.success)
                         } else {
                             Text(r.error ?? "Failed").font(.subheadline).foregroundColor(.red)
                         }

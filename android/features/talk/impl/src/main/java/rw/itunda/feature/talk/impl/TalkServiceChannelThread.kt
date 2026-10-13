@@ -103,7 +103,7 @@ internal fun ServiceChannelThreadView(onBack: () -> Unit, onNavigate: (String) -
     Column(modifier = Modifier.fillMaxSize()) {
         BackTopBar("itunda", onBack)
         when {
-            error != null -> ErrorCard(error!!, onRetry = {})
+            error != null -> ErrorCard(error!!, onRetry = { coroutineScope.launch { load() } })
             bubbles == null -> SkeletonBlock()
             bubbles!!.isEmpty() -> EmptyState("No itunda notifications yet.", icon = Icons.Outlined.NotificationsNone)
             else -> LazyColumn(

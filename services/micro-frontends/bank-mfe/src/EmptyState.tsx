@@ -13,6 +13,7 @@ export function EmptyState({ message, icon: Icon = Inbox }: { message: string; i
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '32px 0', textAlign: 'center' }}>
       <div
+        aria-hidden="true"
         style={{
           width: '56px',
           height: '56px',
@@ -43,6 +44,7 @@ export function ErrorCard({ message, onRetry }: { message: string; onRetry: () =
   return (
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '24px 20px', margin: '8px 0', textAlign: 'center' }}>
       <div
+        aria-hidden="true"
         style={{
           width: '56px',
           height: '56px',
@@ -55,7 +57,7 @@ export function ErrorCard({ message, onRetry }: { message: string; onRetry: () =
       >
         <AlertCircle size={24} color="var(--itunda-red)" />
       </div>
-      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', margin: 0, maxWidth: '260px' }}>{message}</p>
+      <p role="alert" style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', margin: 0, maxWidth: '260px' }}>{message}</p>
       <button type="button" onClick={onRetry} className="itunda-btn itunda-btn-primary" style={{ padding: '10px 24px' }}>
         Retry
       </button>

@@ -276,7 +276,7 @@ private func rideTripStatusLabel(_ trip: RideTripDto) -> String {
 
 private func rideTripStatusColor(_ status: String) -> Color {
     switch status {
-    case "COMPLETED": return .green
+    case "COMPLETED": return IDS.Colors.success
     case "CANCELLED": return .red
     default: return IDS.Colors.brand
     }

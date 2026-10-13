@@ -1,5 +1,5 @@
  :root {
-  --itunda-brand:#7472F4; --itunda-brand-strong:#625FE0;
+  --itunda-brand:#8F89FF; --itunda-brand-strong:#7D77F7; --itunda-on-brand:#121216;
   --itunda-bg:#ffffff; --itunda-surface:#f7f8fa; --itunda-surface-strong:#f0efff;
   --itunda-border:#e8e9ed; --itunda-text:#191f28; --itunda-muted:#6b7684; --itunda-subtle:#8b95a1;
   --itunda-control-radius:12px; --itunda-surface-radius:16px;
@@ -36,7 +36,7 @@ button,input{font:inherit}
 .theme-toggle{border:1px solid var(--itunda-border);background:var(--itunda-bg);color:var(--itunda-text);padding:9px 12px;border-radius:var(--itunda-control-radius);font-size:12px;font-weight:800;cursor:pointer}
 .theme-toggle:hover{background:var(--itunda-surface)}
 .theme-toggle:focus-visible,.header-cta:focus-visible,.site-nav a:focus-visible,.brand:focus-visible{outline:3px solid #d8d6ff;outline-offset:3px}
-.header-cta{padding:10px 16px;border-radius:var(--itunda-control-radius);background:var(--itunda-brand);color:#fff;font-size:13px;font-weight:800}
+.header-cta{padding:10px 16px;border-radius:var(--itunda-control-radius);background:var(--itunda-brand);color:var(--itunda-on-brand);font-size:13px;font-weight:800}
 .wide-container{max-width:1120px;margin:auto;padding:0 28px}
 .tech-hero{padding:118px 0 104px;background:var(--itunda-bg)}
 .eyebrow,.section-label{font-size:11px;font-weight:900;letter-spacing:.14em;color:var(--itunda-brand-strong);margin:0 0 16px}

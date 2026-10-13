@@ -107,8 +107,8 @@ val IdsLightSemanticColors = IdsSemanticColors(
     // clearing AA-normal-text. Dark mode's own success (below) already solved this
     // the same way -- chosen brighter specifically for contrast -- this just applies
     // the identical reasoning to light mode.
-    success = Color(0xFF05804A),
-    successTint = Color(0xFFF5FAFF),
+    success = Color(0xFF8F89FF),
+    successTint = Color(0xFFF1F0FF),
     warning = Color(0xFFFFA000),
     warningTint = Color(0xFFFFF4D6),
     danger = Color(0xFFF04452),
@@ -138,8 +138,8 @@ val IdsDarkSemanticColors = IdsSemanticColors(
     divider = Color(0xFF3C3C47),
     chip = Color(0xFF2C2C35),
     pressed = Color(0xFF2B2C52),
-    success = Color(0xFF20D394),
-    successTint = Color(0xFF10321F),
+    success = Color(0xFF8F89FF),
+    successTint = Color(0xFF25234A),
     warning = Color(0xFFFFC24C),
     warningTint = Color(0xFF3A2E10),
     danger = Color(0xFFFF6B7A),

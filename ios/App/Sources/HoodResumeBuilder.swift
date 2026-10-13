@@ -15,12 +15,7 @@ struct ResumeBuilderView: View {
     var body: some View {
         Group {
             if let error, detail == nil {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(error).foregroundColor(.red).font(.subheadline)
-                    Button("Retry") { Task { await reload() } }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 10)
+                ErrorCardView(error, onRetry: { Task { await reload() } })
             } else if let detail {
                 VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 6) {

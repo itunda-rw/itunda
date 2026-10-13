@@ -123,7 +123,7 @@ struct TransitCollectScreenView: View {
 
     private func collectedView(_ result: TransitCollectResultDto) -> some View {
         VStack(spacing: 8) {
-            Text("Collected").font(.system(size: 28, weight: .heavy)).foregroundColor(.green)
+            Text("Collected").font(.system(size: 28, weight: .heavy)).foregroundColor(IDS.Colors.success)
             Text("\(formatMoney(result.fare)) RWF · \(result.operatorName)").font(.headline)
             CardActionButton(title: "Collect next fare", disabled: false, action: reset)
         }

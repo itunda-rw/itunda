@@ -23,8 +23,8 @@
   --itunda-ink-100:#F7F8FA;
   --itunda-white:#FFFFFF;
 
-  --itunda-success-500:#16845F;
-  --itunda-success-100:#EAF9F1;
+  --itunda-success-500:#8F89FF;
+  --itunda-success-100:#F1F0FF;
   --itunda-warning-500:#9A6B00;
   --itunda-warning-100:#FFF7D9;
   --itunda-error-500:#C53D3D;
@@ -82,8 +82,9 @@
   --itunda-color-brand:#8F89FF; --itunda-color-on-brand:#121216;
   --itunda-color-brand-strong:#7D77F7;
   --itunda-color-brand-soft:#F1F0FF;
-  --itunda-color-success:#05804A;
-  --itunda-color-success-soft:#F5FAFF;
+  --itunda-color-success:#8F89FF;
+  --itunda-color-on-success:#121216;
+  --itunda-color-success-soft:#F1F0FF;
   --itunda-color-warning:#FFA000;
   --itunda-color-warning-soft:#FFF4D6;
   --itunda-color-error:#F04452;
@@ -115,7 +116,7 @@
   --itunda-color-surface-brand:#2B2C52; --itunda-color-text:#FFFFFF; --itunda-color-text-strong:#FFFFFF;
   --itunda-color-text-muted:#989EAA; --itunda-color-text-subtle:#848A96; --itunda-color-border:#3C3C47;
   --itunda-color-border-strong:#3C3C47; --itunda-color-brand:#8F89FF; --itunda-color-brand-strong:#8F89FF;
-  --itunda-color-brand-soft:#25234A; --itunda-color-success:#20D394; --itunda-color-success-soft:#10321F;
+  --itunda-color-brand-soft:#25234A; --itunda-color-success:#8F89FF; --itunda-color-on-success:#121216; --itunda-color-success-soft:#25234A;
   --itunda-color-warning:#FFC24C; --itunda-color-warning-soft:#3A2E10;
   --itunda-color-error:#FF6B7A; --itunda-color-error-soft:#3A1418;
   --itunda-color-info:#8F89FF; --itunda-color-info-soft:#25234A; --itunda-color-pressed:#2B2C52;

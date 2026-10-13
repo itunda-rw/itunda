@@ -251,12 +251,12 @@ private struct IkiminaDetailContent: View {
                                     if current.ikimina.status == "ACTIVE" {
                                         let contributed = current.currentRoundContributions.first(where: { $0.userId == m.userId })?.contributed ?? false
                                         Text(contributed ? "✓ Contributed this round" : "Not yet contributed")
-                                            .font(.caption2).foregroundColor(contributed ? .green : IDS.Colors.textSecondary)
+                                            .font(.caption2).foregroundColor(contributed ? IDS.Colors.success : IDS.Colors.textSecondary)
                                     }
                                 }
                                 Spacer()
                                 if m.hasReceivedPayout {
-                                    Text("✓ Paid").font(.caption).bold().foregroundColor(.green)
+                                    Text("✓ Paid").font(.caption).bold().foregroundColor(IDS.Colors.success)
                                 } else if m.isOrganizer {
                                     Text("Organizer").font(.caption).bold().foregroundColor(IDS.Colors.brand)
                                 }
@@ -312,7 +312,7 @@ private struct IkiminaDetailContent: View {
                                 .disabled(busy)
                             }
                             if let payoutMessage {
-                                Text(payoutMessage).font(.footnote).foregroundColor(.green)
+                                Text(payoutMessage).font(.footnote).foregroundColor(IDS.Colors.success)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
