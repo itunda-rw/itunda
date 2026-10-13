@@ -1,5 +1,6 @@
 package rw.itunda.system.web
 
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -21,6 +22,8 @@ class EngineeringStatusController(
         try {
             ResponseEntity.ok(engineeringStatusProvider.readStatus())
         } catch (ex: Exception) {
+            // Log only the exception type: provider messages may contain operational details.
+            logger.warn("Engineering status unavailable ({})", ex.javaClass.simpleName)
             // Never return a healthy-looking empty payload when GitHub/configuration fails.
             ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(
                 mapOf(
@@ -29,4 +32,8 @@ class EngineeringStatusController(
                 ),
             )
         }
+    
+    private companion object {
+        val logger = LoggerFactory.getLogger(EngineeringStatusController::class.java)
+    }
 }
