@@ -101,6 +101,6 @@ itunda:
   providers:
     simulation-enabled: false
   cors:
-    allowed-origins: "https://itunda.im,https://www.itunda.im,https://app.itunda.im,https://business.itunda.im,https://business-app.itunda.im,https://developers.itunda.im,https://tech-blog.itunda.im,https://itunda-app.pages.dev,https://itunda-business-app.pages.dev"
+    allowed-origins: "https://itunda.im,https://www.itunda.im,https://app.itunda.im,https://business.itunda.im,https://business-app.itunda.im,https://developers.itunda.im,https://tech-blog.itunda.im,"
   jwt:
     secret: ${JWT_SECRET}
