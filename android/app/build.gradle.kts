@@ -150,7 +150,7 @@ android {
         buildConfigField(
             "String",
             "API_BASE_URL",
-            "\"${project.findProperty("apiBaseUrl") ?: "http://10.0.2.2:4001/"}\""
+            "\"${project.findProperty("apiBaseUrl") ?: "https://itunda-api-hptgu43hsa-du.a.run.app/"}\""
         )
 
         // Same real gap as API_BASE_URL above, just discovered later (2026-07-21):
