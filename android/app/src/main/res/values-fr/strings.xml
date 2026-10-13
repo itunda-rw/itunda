@@ -355,4 +355,5 @@
     <string name="family_sent">Envoyé.</string>
     <string name="family_your_guardians">Vos tuteurs</string>
     <string name="family_empty_state">Aucun membre de la famille associé pour le moment -- invitez-en un ci-dessus.</string>
+    <string name="login_pin_mismatch">Les codes ne correspondent pas. Réessayez.</string>
 </resources>
