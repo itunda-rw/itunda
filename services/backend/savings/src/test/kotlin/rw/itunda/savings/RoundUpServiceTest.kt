@@ -86,11 +86,14 @@ class RoundUpServiceTest : BehaviorSpec({
             val savedSlot = mutableListOf<RoundUpSettings>()
             every { roundUpSettingsRepository.save(capture(savedSlot)) } answers { firstArg() }
 
-            service.setSettings("user_1", true, BigDecimal("500"), null, "s1")
-
-            Then("it persists a real enabled setting targeting that stock, not a goal") {
-                savedSlot.first().targetStockId shouldBe "s1"
-                savedSlot.first().targetGoalId shouldBe null
+            Then("it refuses stock round-ups until a real broker integration exists") {
+                try {
+                    service.setSettings("user_1", true, BigDecimal("500"), null, "s1")
+                    error("expected stock round-up to be disabled")
+                } catch (e: InvalidRoundUpIncrementException) {
+                    e.message shouldBe "Stock round-ups are disabled until a real broker integration is available. Choose a savings goal instead."
+                    verify(exactly = 0) { roundUpSettingsRepository.save(any()) }
+                }
             }
         }
 
@@ -144,22 +147,17 @@ class RoundUpServiceTest : BehaviorSpec({
         val settings = RoundUpSettings(id = "ru_2", userId = "user_2", enabled = true, roundToNearest = BigDecimal("1000"), targetStockId = "s1")
         every { roundUpSettingsRepository.findByUserId("user_2") } returns settings
 
-        When("a real transfer leaves real change under the increment") {
-            every { stocksService.fundInvestmentAccount("user_2", BigDecimal("800")) } returns mapOf("id" to "ledgertxn_1")
-            val sharesSlot = mutableListOf<BigDecimal>()
-            every { stocksService.buyStock("user_2", "s1", capture(sharesSlot)) } returns mapOf("id" to "trade_1")
-
+        When("a real transfer leaves change but the target is a simulated stock") {
             service.processRoundUp("user_2", BigDecimal("12200"))
 
-            Then("it funds the investment account with exactly the real change, then buys a real fractional share at that stock's live price") {
-                verify(exactly = 1) { stocksService.fundInvestmentAccount("user_2", BigDecimal("800")) }
-                val bokPrice = StockCatalog.find("s1")!!.price
-                sharesSlot.first() shouldBe BigDecimal("800").divide(bokPrice, 6, java.math.RoundingMode.DOWN)
+            Then("it never moves real money into a simulated investment") {
+                verify(exactly = 0) { stocksService.fundInvestmentAccount(any(), any()) }
+                verify(exactly = 0) { stocksService.buyStock(any(), any(), any()) }
             }
         }
     }
 
-    Given("a real user with round-up enabled but insufficient real balance to fund the round-up") {
+    Given("a user with a legacy stock round-up setting and no broker integration") {
         val roundUpSettingsRepository = mockk<RoundUpSettingsRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
         val savingsService = mockk<SavingsService>()
@@ -169,11 +167,11 @@ class RoundUpServiceTest : BehaviorSpec({
         val settings = RoundUpSettings(id = "ru_3", userId = "user_3", enabled = true, roundToNearest = BigDecimal("1000"), targetStockId = "s1")
         every { roundUpSettingsRepository.findByUserId("user_3") } returns settings
 
-        When("funding the investment account real-fails") {
-            every { stocksService.fundInvestmentAccount("user_3", any()) } throws rw.itunda.core.ledger.InsufficientFundsException("Insufficient funds")
+        When("the transfer round-up runs") {
+            service.processRoundUp("user_3", BigDecimal("12200"))
 
-            Then("processRoundUp swallows it rather than breaking the triggering transfer") {
-                service.processRoundUp("user_3", BigDecimal("12200"))
+            Then("it safely skips the legacy stock target without moving real money") {
+                verify(exactly = 0) { stocksService.fundInvestmentAccount(any(), any()) }
                 verify(exactly = 0) { stocksService.buyStock(any(), any(), any()) }
             }
         }
