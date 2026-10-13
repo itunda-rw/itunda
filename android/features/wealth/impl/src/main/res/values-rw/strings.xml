@@ -14,4 +14,6 @@
     <string name="invest_order_preview_disclaimer">Igereranya rikoresha igiciro cy’igerageza kandi ntiribariramo amafaranga y’inyongera cyangwa ihinduka ry’igiciro. Kwemeza bihindura gusa ibaruramari ry’ishoramari rya Itunda; ntibishyira komande ku isoko nyakuri.</string>
     <string name="invest_edit_order">Hindura komande</string>
     <string name="invest_confirm_practice_trade">Emeza igikorwa cy’igerageza</string>
+    <string name="invest_insufficient_practice_balance">Amafaranga yo kwitoza ushobora kuba udahagije.</string>
+    <string name="invest_insufficient_practice_shares">Ushobora kuba udafite imigabane ihagije yo kugurisha.</string>
 </resources>
