@@ -96,3 +96,23 @@ For each feature, record evidence separately for web, Android, iOS, backend, and
 ## Definition of “Toss Pay-level quality”
 
 It means equally disciplined simplicity, clear payment confirmation, fast repeat use, transparent status, robust recovery, security, accessibility, observability, and developer ergonomics. It does **not** mean copying Toss's identity or claiming parity with rails Itunda has not integrated. Each item should be closed with a linked commit, test evidence, and deployment verification rather than a checklist edit alone.
+
+
+## Newly identified release blocker — standalone payment-service confirmation
+
+A source review of `services/microservices/payment-service` found a separate confirmation path that must not be assumed to inherit the protections in `services/backend/core/idempotency`:
+
+- `payment-api/.../PaymentController.kt` accepts `Idempotency-Key` as an optional header and passes it into `ConfirmPaymentCommand`.
+- `payment-domain/.../ConfirmPaymentUseCase.kt` defines the key field, but the `PaymentRepositoryPort` only exposes `findByOrderId` and `save`; the controller/service path shown does not demonstrate a durable idempotency replay store.
+- `ConfirmPaymentService.confirm` reads the payment, checks its status, calls the external gateway, then saves the new status. Two requests can both observe a confirmable status before either saves. Returning the saved payment for a later sequential retry does not by itself close this concurrent race.
+- The controller also publishes a Kafka event after confirmation without visibly awaiting the send result. Event delivery should be durable/outbox-backed or failure/retry semantics must be explicit; an HTTP success must not silently lose a downstream payment event.
+
+**Required remediation before this standalone service handles real money:**
+
+1. Use a database-backed atomic claim/conditional state transition per payment/order, with a uniqueness constraint. A process-local mutex is not sufficient across replicas.
+2. Persist idempotency key, request fingerprint, processing/completed state, HTTP status and response body transactionally. Same key/body replays; changed body conflicts; concurrent in-progress use returns a documented conflict/retryable status.
+3. Do not hold a database transaction open across a slow external provider call unless the provider protocol explicitly requires it. Prefer a durable payment state machine/outbox and provider idempotency/reference keys so recovery after timeout is deterministic.
+4. Use a transactional outbox for payment events (or document and test a proven equivalent), and test crash points between provider acceptance, database commit, event publication and HTTP response.
+5. Add integration tests with genuinely concurrent requests and injected timeouts/restarts. Assert exactly one provider operation, one terminal transition, correct ledger/provider reconciliation, and replay of the original response.
+
+This is a **code-review finding and release gate**, not a claim that the bug has already been reproduced against a live provider. The external gateway's current configuration must be verified separately; do not turn on live rails until these controls and provider certification are complete.
