@@ -6,11 +6,11 @@ CREATE TABLE eats_stamp_campaigns (
     stamps_required INTEGER NOT NULL CHECK (stamps_required BETWEEN 2 AND 50),
     reward_description VARCHAR(240) NOT NULL,
     reward_discount_amount NUMERIC(18, 2),
-    starts_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    ends_at TIMESTAMP WITH TIME ZONE,
+    starts_at TIMESTAMP(6) NOT NULL,
+    ends_at TIMESTAMP(6),
     active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP(6) NOT NULL,
+    updated_at TIMESTAMP(6) NOT NULL,
     version BIGINT NOT NULL DEFAULT 0,
     CONSTRAINT fk_eats_stamp_campaign_restaurant
         FOREIGN KEY (restaurant_id) REFERENCES merchants(id),
@@ -30,8 +30,8 @@ CREATE TABLE eats_stamp_earnings (
     buyer_id VARCHAR(64) NOT NULL,
     order_id VARCHAR(64) NOT NULL REFERENCES eats_orders(id),
     earning_day DATE NOT NULL,
-    earned_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    reversed_at TIMESTAMP WITH TIME ZONE,
+    earned_at TIMESTAMP(6) NOT NULL,
+    reversed_at TIMESTAMP(6),
     reversal_reason VARCHAR(240),
     CONSTRAINT uq_eats_stamp_campaign_order UNIQUE (campaign_id, order_id),
     CONSTRAINT uq_eats_stamp_restaurant_buyer_day UNIQUE (restaurant_id, buyer_id, earning_day)
@@ -53,9 +53,9 @@ CREATE TABLE eats_stamp_rewards (
     discount_amount NUMERIC(18, 2),
     status VARCHAR(16) NOT NULL DEFAULT 'AVAILABLE'
         CHECK (status IN ('AVAILABLE', 'REDEEMED', 'EXPIRED', 'REVOKED')),
-    issued_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    expires_at TIMESTAMP WITH TIME ZONE,
-    redeemed_at TIMESTAMP WITH TIME ZONE,
+    issued_at TIMESTAMP(6) NOT NULL,
+    expires_at TIMESTAMP(6),
+    redeemed_at TIMESTAMP(6),
     redeemed_order_id VARCHAR(64) REFERENCES eats_orders(id),
     version BIGINT NOT NULL DEFAULT 0,
     CONSTRAINT uq_eats_stamp_reward_milestone UNIQUE (campaign_id, buyer_id, stamp_threshold),
@@ -82,7 +82,7 @@ CREATE TABLE eats_stamp_events (
         CHECK (event_type IN ('EARNED', 'REVERSED', 'REWARD_ISSUED', 'REWARD_REDEEMED', 'REWARD_EXPIRED', 'REWARD_REVOKED')),
     idempotency_key VARCHAR(160) NOT NULL UNIQUE,
     reason VARCHAR(240),
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL
+    created_at TIMESTAMP(6) NOT NULL
 );
 
 CREATE INDEX idx_eats_stamp_events_earning
