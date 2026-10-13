@@ -35,3 +35,45 @@ Quote creation checks `availableBalance`, while confirmation ultimately posts le
 ## Release gate
 
 Do not call external money movement production-ready until persistent quote claiming, provider/ledger recovery, actual rail integration, operational reconciliation, monitoring, and end-to-end tests are verified. A passing build or in-memory concurrency test alone is insufficient.
+
+
+## Implementation sequence (do not skip phases)
+
+### Phase A — durable quote and single-winner claim
+
+Add a Flyway migration under `services/backend/app/src/main/resources/db/migration/` (never edit an applied migration) and a JPA entity/repository discoverable by the canonical `:app` application. The persisted quote must include:
+
+- opaque quote ID (primary key), authenticated owner ID, source account ID;
+- recipient, amount, fee, total debit, currency;
+- status, creation time, expiry time, and timestamps for claim/confirmation;
+- an index for expiry cleanup and a checkable owner/status/expiry predicate.
+
+Use the database clock or a single explicitly injected clock policy consistently. Claim with one conditional database update, not a read-then-write:
+
+```sql
+UPDATE transfer_quotes
+SET status = 'CLAIMED', claimed_at = CURRENT_TIMESTAMP(6)
+WHERE id = :id
+  AND user_id = :authenticated_user_id
+  AND status = 'PENDING'
+  AND expires_at > CURRENT_TIMESTAMP(6);
+```
+
+Only an affected-row count of exactly one grants permission to proceed. Zero rows means missing, wrong-owner, expired, or already claimed; map responses without leaking whether another user's quote exists. The primary guarantee is MySQL/InnoDB state shared across Cloud Run replicas, not JVM locks. Do not introduce Redis as the correctness lock.
+
+### Phase B — provider/ledger recovery (required before any real rail)
+
+A durable quote alone does not close the provider/ledger gap. Introduce a durable transfer-attempt record with a unique internal transfer ID, unique idempotency key at the provider boundary where supported, provider reference, state, retry metadata, and reconciliation timestamps. Persist the transition to `SUBMITTED` before making the provider call. On provider timeout/unknown outcome, mark `RECONCILIATION_REQUIRED`; do not release the quote to `PENDING` and blindly resubmit. On confirmed provider acceptance, post ledger entries exactly once under a database transaction and persist the final state atomically with the ledger result where the schema permits. If provider and ledger cannot share a transaction, use an explicit saga/reconciliation worker; never imply a normal SQL rollback undoes a provider operation.
+
+The current `SimulatedProviderConnector` is not a live bank/mobile-money integration. A production connector needs documented provider idempotency, status-query, timeout, settlement, and reversal semantics before this phase can be considered complete.
+
+### Phase C — verification gates
+
+1. Unit: quote owner, expiry, immutable amount/fee/currency, valid state transitions.
+2. MySQL integration: concurrent conditional claims from independent transactions/connections; exactly one row update wins.
+3. Multi-instance: quote created on instance A and confirmed on instance B; restart between quote and confirm.
+4. Money safety: same quote with different idempotency keys still posts at most one ledger transaction; repeated same key replays the original response.
+5. Failure injection: provider decline, timeout before acceptance, timeout after acceptance, ledger commit failure, process crash after provider acceptance, and reconciliation retry.
+6. Operational: dashboards/alerts for stuck submitted transfers, age of reconciliation queue, provider-vs-ledger mismatch, and an auditable operator workflow.
+
+Do not ship Phase A alone as proof that external transfers are production-safe. It fixes quote durability and distributed claiming, but Phase B remains a separate P0 release gate.
