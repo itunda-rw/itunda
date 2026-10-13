@@ -36,8 +36,12 @@
 .tds-field{display:grid;gap:8px}.tds-label{font-size:13px;font-weight:var(--itunda-weight-bold);color:var(--itunda-color-text-strong)}
 .tds-input,.tds-select,.tds-textarea{width:100%;min-height:52px;padding:0 16px;border:1px solid var(--itunda-color-border-strong);border-radius:var(--itunda-radius-md);background:var(--itunda-color-surface);color:var(--itunda-color-text);font:inherit;outline:0;transition:border var(--itunda-motion-fast) var(--itunda-ease),box-shadow var(--itunda-motion-fast) var(--itunda-ease)}
 .tds-textarea{padding:14px 16px;min-height:120px;resize:vertical}.tds-input::placeholder,.tds-textarea::placeholder{color:var(--itunda-color-text-subtle)}
-.tds-input:focus,.tds-select:focus,.tds-textarea:focus{border-color:var(--itunda-color-brand);box-shadow:0 0 0 4px color-mix(in srgb,var(--itunda-color-brand) 18%,transparent)}
+.tds-input:focus,.tds-select:focus,.tds-textarea:focus{border-color:var(--itunda-color-brand)}
+.tds-input:focus-visible,.tds-select:focus-visible,.tds-textarea:focus-visible{outline:3px solid var(--itunda-focus,var(--itunda-color-brand));outline-offset:2px;box-shadow:0 0 0 4px color-mix(in srgb,var(--itunda-color-brand) 18%,transparent)}
+.tds-input[aria-invalid=true],.tds-select[aria-invalid=true],.tds-textarea[aria-invalid=true]{border-color:var(--itunda-color-error)}
+.tds-input[aria-invalid=true]:focus-visible,.tds-select[aria-invalid=true]:focus-visible,.tds-textarea[aria-invalid=true]:focus-visible{outline-color:var(--itunda-color-error);box-shadow:0 0 0 4px color-mix(in srgb,var(--itunda-color-error) 18%,transparent)}
 .tds-help{font-size:12px;color:var(--itunda-color-text-muted)}.tds-error{font-size:12px;color:var(--itunda-color-error)}
+@media(forced-colors:active){.tds-input:focus-visible,.tds-select:focus-visible,.tds-textarea:focus-visible{outline:2px solid Highlight;outline-offset:3px;box-shadow:none}.tds-input[aria-invalid=true],.tds-select[aria-invalid=true],.tds-textarea[aria-invalid=true]{border-color:Mark}}
 .tds-checkbox,.tds-radio{accent-color:var(--itunda-color-brand)}
 
 /* Lists / navigation */
