@@ -107,6 +107,25 @@ class PracticeStockService(private val practiceTrades: PracticeStockTradeReposit
         )
     }
 
+    fun getPortfolioHistory(userId: String, days: Int): List<PortfolioValuePoint> {
+        if (days < 1 || days > 365) throw InvalidPriceHistoryRangeException("days must be between 1 and 365")
+        val trades = practiceTrades.findByUserIdOrderByExecutedAtAsc(userId)
+        val today = java.time.LocalDate.now(java.time.ZoneId.of("Africa/Kigali"))
+        return (days - 1 downTo 0).map { offset ->
+            val date = today.minusDays(offset.toLong())
+            val cutoff = date.plusDays(1).atStartOfDay(java.time.ZoneId.of("Africa/Kigali")).toInstant()
+            val sharesByStock = trades.filter { it.executedAt.isBefore(cutoff) }.groupBy { it.stockId }
+            val value = sharesByStock.entries.fold(BigDecimal.ZERO) { acc, (stockId, rows) ->
+                val shares = rows.fold(BigDecimal.ZERO) { quantity, trade ->
+                    when (trade.type) { "BUY" -> quantity.add(trade.shares); "SELL" -> quantity.subtract(trade.shares); else -> quantity }
+                }
+                if (shares <= BigDecimal.ZERO) acc
+                else acc.add(shares.multiply(StockCatalog.priceOn(stockId, date) ?: BigDecimal.ZERO))
+            }
+            PortfolioValuePoint(date, value)
+        }
+    }
+
     @Transactional
     fun execute(userId: String, stockId: String, side: String, shares: BigDecimal): Map<String, Any?> {
         val normalized = side.uppercase()
