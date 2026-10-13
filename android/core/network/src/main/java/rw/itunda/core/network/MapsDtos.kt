@@ -9,7 +9,13 @@ package rw.itunda.core.network
 // Real "search this map" + "directions" (2026-07-19) -- see rw.itunda.maps.MapsService's
 // own doc comment on the backend for why these are a new, general-purpose front door
 // onto itunda's already-deployed self-hosted Nominatim/OSRM.
-data class PlaceSearchResultDto(val displayName: String, val latitude: Double, val longitude: Double)
+data class PlaceSearchResultDto(
+    val displayName: String,
+    val latitude: Double,
+    val longitude: Double,
+    /** Optional OSM alternate/localized names; default preserves older API payload compatibility. */
+    val alternativeNames: List<String> = emptyList(),
+)
 data class MapsSearchResponse(val success: Boolean, val results: List<PlaceSearchResultDto>)
 data class MapsReverseGeocodeResponse(val success: Boolean, val placeName: String?)
 data class RouteStepDto(val instruction: String, val distanceMeters: Double, val streetName: String?)
