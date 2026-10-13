@@ -27,8 +27,10 @@ interface EngineeringStatusResponse {
 const FRESHNESS_LIMIT_MS = 15 * 60 * 1000;
 
 function getDisplayResult(check: EngineeringCheck, now: number): CheckResult {
-  if (!check.commitSha || !check.source || !Number.isFinite(Date.parse(check.observedAt))) return 'unknown';
-  if (now - Date.parse(check.observedAt) > FRESHNESS_LIMIT_MS || Date.parse(check.observedAt) > now + 60_000) return 'unknown';
+  const allowed: CheckResult[] = ['success', 'failure', 'pending', 'cancelled', 'unknown'];
+  const observedAt = Date.parse(check.observedAt);
+  if (!check.commitSha || !check.source || !Number.isFinite(observedAt) || !allowed.includes(check.result)) return 'unknown';
+  if (now - observedAt > FRESHNESS_LIMIT_MS || observedAt > now + 60_000) return 'unknown';
   return check.result;
 }
 
@@ -58,8 +60,9 @@ export default function EngineeringStatusView() {
     setError(null);
     try {
       const response = await apiFetch<EngineeringStatusResponse>('/api/v1/internal/engineering/status');
-      if (!response || !response.headSha || !Array.isArray(response.checks) || response.checks.length === 0) {
-        throw new Error('The status source returned incomplete data. Readiness cannot be confirmed.');
+      const generatedAt = Date.parse(response?.generatedAt ?? '');
+      if (!response || !response.headSha || !response.repository || !response.branch || !Number.isFinite(generatedAt) || Date.now() - generatedAt > FRESHNESS_LIMIT_MS || generatedAt > Date.now() + 60_000 || !Array.isArray(response.checks) || response.checks.length === 0) {
+        throw new Error('The status source returned missing, stale, or incomplete data. Readiness cannot be confirmed.');
       }
       setStatus(response);
     } catch (cause) {
