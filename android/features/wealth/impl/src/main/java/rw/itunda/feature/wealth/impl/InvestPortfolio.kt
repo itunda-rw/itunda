@@ -39,7 +39,6 @@ import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
-import rw.itunda.core.network.FundInvestmentRequest
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.PortfolioValuePointDto
 import rw.itunda.core.network.StockHoldingDto
@@ -97,91 +96,21 @@ internal fun PortfolioContent() {
                         Sparkline(history!!.map { it.value }, positive = positive)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            "Last 30 days -- based on your current holdings applied to real historical prices, not a full historical reconstruction",
+                            "Last 30 days of simulated practice-portfolio value",
                             color = Ids.colors.textSecondary, fontSize = 11.sp,
                         )
                     }
                 }
-                AddFundsCard(onFunded = ::load)
+                Text("Practice account: RWF 1,000,000 virtual starting cash. No real money moves.", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(vertical = 8.dp))
                 Divider(color = Ids.colors.divider, thickness = 0.5.dp)
                 if (p.holdings.isEmpty()) {
-                    Text("You don't hold any real shares yet. Browse the Market tab to buy some.", color = Ids.colors.textSecondary, fontSize = 14.sp)
+                    Text("No practice shares yet. Browse the Market tab to place a practice order.", color = Ids.colors.textSecondary, fontSize = 14.sp)
                 } else {
                     p.holdings.forEach { HoldingRow(it) }
                 }
             }
         }
     }
-}
-
-// Real Investment-account top-up (2026-08-04) -- see ApiService.kt's own
-// FundInvestmentRequest doc comment: StocksService.fundInvestmentAccount (a real MAIN
-// -> INVESTMENT internal transfer) had zero client anywhere, so a user with no
-// pre-seeded investment balance had no in-app way to ever actually buy a stock.
-@Composable
-private fun AddFundsCard(onFunded: () -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    var amount by remember { mutableStateOf("") }
-    var busy by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var needsDeviceVerification by remember { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
-
-    suspend fun doFund() {
-        val value = amount.toDoubleOrNull()
-        if (value == null || value <= 0) {
-            error = "Enter a real amount."
-            return
-        }
-        busy = true
-        needsDeviceVerification = false
-        try {
-            NetworkClient.apiService.fundInvestmentAccount(UUID.randomUUID().toString(), FundInvestmentRequest(value))
-            amount = ""
-            expanded = false
-            error = null
-            onFunded()
-        } catch (e: HttpException) {
-            if (isDeviceNotVerifiedError(e)) needsDeviceVerification = true else error = superAppErrorMessage(e)
-        } catch (e: IOException) {
-            error = "Couldn't reach itunda. Check your connection and try again."
-        } finally {
-            busy = false
-        }
-    }
-
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Investment cash", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Text(
-                if (expanded) "Cancel" else stringResource(R.string.invest_add_funds),
-                color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                modifier = Modifier.pressScaleClickable { expanded = !expanded; error = null },
-            )
-        }
-        Text("Move money from your main account into your investment account.", color = Ids.colors.textSecondary, fontSize = 12.sp)
-        if (expanded) {
-            Spacer(modifier = Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", isAmount = true, modifier = Modifier.weight(1f))
-                Spacer(modifier = Modifier.width(10.dp))
-                Box(
-                    modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                        .background(Ids.colors.brand)
-                        .pressScaleClickable(enabled = !busy) { coroutineScope.launch { doFund() } }
-                        .padding(horizontal = 20.dp, vertical = 14.dp),
-                ) {
-                    Text(if (busy) "Working…" else "Add", color = Color.White, fontWeight = FontWeight.Bold)
-                }
-            }
-            error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp)) }
-        }
-    }
-    DeviceStepUpHost(
-        visible = needsDeviceVerification,
-        onDismiss = { needsDeviceVerification = false },
-        onVerified = { doFund() },
-    )
 }
 
 @Composable
