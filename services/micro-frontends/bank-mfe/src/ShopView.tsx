@@ -8,7 +8,7 @@ import {
   fetchMerchantCategories, fetchShoppingCatalog, searchProducts,
   type ShoppingMerchant, type ProductSearchResult,
 } from './lib/shopping';
-import { fetchMerchantProducts, fetchOrderDetail, type CommerceProduct, type CommerceOrder } from './lib/commerce';
+import { fetchMerchantProducts, fetchProduct, fetchOrderDetail, type CommerceProduct, type CommerceOrder } from './lib/commerce';
 import { type CommerceCartGroup, type CommerceCart, cartTotalItems } from './CommerceOrders';
 import { ShopSellerContactPicker } from './ShopSellerContactPicker';
 import { ProductDetailView } from './ProductDisplay';
@@ -131,8 +131,27 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
       setSearching(false);
     }
   };
-  const openSearchResult = (r: ProductSearchResult) => {
-    setSelected({ merchantId: r.merchantId, businessName: r.merchantName, category: null, cashbackRate: '1%' });
+  const openSearchResult = async (r: ProductSearchResult) => {
+    const merchant: ShoppingMerchant = {
+      merchantId: r.merchantId,
+      businessName: r.merchantName,
+      category: null,
+      cashbackRate: '1%',
+    };
+    // Product search is a product-level intent: open the exact matching product
+    // instead of making the shopper search for it again inside the seller catalog.
+    // Fetch the authoritative product detail rather than manufacturing a partial
+    // CommerceProduct from the narrower search-result DTO.
+    setSelectedProduct(null);
+    setSelected(merchant);
+    try {
+      const product = await fetchProduct(r.id);
+      if (product.active && product.merchantId === r.merchantId) {
+        setSelectedProduct(product);
+      }
+    } catch {
+      // Keep the seller catalog as a safe fallback if the detail endpoint fails.
+    }
   };
 
   const setQtyByMerchant = (merchant: ShoppingMerchant, product: CommerceProduct, quantity: number) => {
