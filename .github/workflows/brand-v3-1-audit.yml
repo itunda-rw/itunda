@@ -6,6 +6,7 @@ on:
       - "itunda-brand-v3.1.zip"
       - "packages/brand-assets/canonical/itunda-brand/**"
       - "scripts/audit-brand-v3-1-archive.py"
+      - "tests/test_brand_archive_audit.py"
       - ".github/workflows/brand-v3-1-audit.yml"
   workflow_dispatch:
 
@@ -19,6 +20,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+      - name: Test archive path validation
+        run: python3 -m unittest discover -s tests -p 'test_brand_archive_audit.py'
       - name: Audit ZIP integrity, paths, and bytes
         run: python3 scripts/audit-brand-v3-1-archive.py
       - name: Publish audit report
