@@ -104,3 +104,10 @@ npm run release-audit -- ./path/to/manifest.json ./path/to/index.bundle 250000
 ```
 
 The command reads the JSON manifest, measures the bundle file with the filesystem, applies the explicit byte budget, prints machine-readable finding codes, and exits non-zero if validation has errors or the measured file exceeds its budget. Use the actual bundle path produced by the current build; do not put a guessed `entryBytes` value in the manifest. This first gate measures one specified artifact only—it does not calculate a complete compressed distribution size, inspect dependencies, sign the artifact, or attest its provenance. CI should call it after the relevant mini-app bundle step and archive the output with the build.
+
+
+### CI release gate for the Saronite web demo
+
+The `Saronite Web Production Boundary` workflow now audits each generated `dist/assets/*.js` chunk after Vite builds the web demo. CI creates a temporary release-check manifest from the demo package version and applies a provisional **250,000-byte per-JavaScript-chunk** budget. The temporary manifest is written outside `dist/` so it is not shipped with the demo.
+
+This is a per-chunk guardrail, not a complete transfer-size budget: CSS, images, fonts, compression, source maps, and total page weight need separate accounting before using it as a user-facing performance SLO. Revisit the threshold against measured production baselines before treating it as a universal mini-app limit.
