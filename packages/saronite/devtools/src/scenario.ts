@@ -16,12 +16,16 @@ export type SaroniteScenarioHost = SaroniteMockHost & {
   scenario: Readonly<SaroniteScenario>;
 };
 
+const SCENARIO_ID_PATTERN = /^[a-z][a-z0-9-]{1,62}$/;
+
 /**
  * Create a deterministic mock host for SDK demos and contract tests.
  * This only simulates the JS contract; it does not validate native platform behavior.
  */
 export function createSaroniteScenarioHost(scenario: SaroniteScenario): SaroniteScenarioHost {
-  if (!scenario.id.trim()) throw new Error('Scenario id must not be empty');
+  if (!SCENARIO_ID_PATTERN.test(scenario.id)) {
+    throw new Error('Scenario id must be 2–63 lowercase letters, digits, or hyphens and start with a letter');
+  }
 
   const definition: SaroniteScenario = {
     ...scenario,
