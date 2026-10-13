@@ -1,6 +1,6 @@
 # Itunda Web Deployment Boundaries
 
-**Production hosting policy: Google Cloud Platform only.** GitHub Actions is the CI/CD runner; it must deploy production workloads to GCP. GitHub Pages and Cloudflare Pages are not production targets.
+**Production hosting policy: Google Cloud Platform (GCP) only.** GitHub Actions is the CI/CD runner; all production web workloads must deploy to GCP Cloud Run and the existing GCP HTTPS load balancer.
 
 ## Product boundaries
 
