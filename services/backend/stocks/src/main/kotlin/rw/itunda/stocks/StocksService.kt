@@ -33,6 +33,7 @@ class NotEnoughSharesException(message: String) : RuntimeException(message)
 class InvalidPriceHistoryRangeException(message: String) : RuntimeException(message)
 class InvalidFundingAmountException(message: String) : RuntimeException(message)
 class InvalidPriceAlertException(message: String) : RuntimeException(message)
+class InvalidOrderPreviewException(message: String) : RuntimeException(message)
 
 data class PortfolioValuePoint(val date: LocalDate, val value: BigDecimal)
 
@@ -50,6 +51,52 @@ class StocksService(
     private val fraudRuleEngine: FraudRuleEngine,
 ) {
     fun getStocks() = StockCatalog.stocks
+
+    /**
+     * Read-only practice-order preview. Uses the same server catalog price as the
+     * existing simulated trade path; it never reserves funds, creates a holding,
+     * posts a ledger transaction, or places a real exchange order.
+     */
+    fun previewOrder(userId: String, stockId: String, side: String, shares: BigDecimal): Map<String, Any?> {
+        val normalizedSide = side.uppercase()
+        if (normalizedSide != "BUY" && normalizedSide != "SELL") {
+            throw InvalidOrderPreviewException("side must be BUY or SELL")
+        }
+        if (shares <= BigDecimal.ZERO || shares.scale() > 6) {
+            throw InvalidOrderPreviewException("shares must be greater than zero with at most 6 decimal places")
+        }
+        val stock = StockCatalog.find(stockId) ?: throw StockNotFoundException("Stock not found")
+        val notional = shares.multiply(stock.price).setScale(2, RoundingMode.HALF_UP)
+        val response = linkedMapOf<String, Any?>(
+            "mode" to "SIMULATED",
+            "source" to "ITUNDA_DETERMINISTIC_SIMULATOR",
+            "side" to normalizedSide,
+            "stockId" to stock.id,
+            "symbol" to stock.symbol,
+            "shares" to shares,
+            "estimatedUnitPrice" to stock.price,
+            "estimatedNotional" to notional,
+            "currency" to "RWF",
+            "feesModeled" to false,
+            "feeEstimate" to null,
+            "realOrderExecutionAvailable" to false,
+            "reservesFunds" to false,
+            "asOf" to Instant.now().toString(),
+        )
+        if (normalizedSide == "BUY") {
+            val account = accountRepository.findByUserIdAndType(userId, AccountType.INVESTMENT)
+                ?: throw NoAccountException("No investment account found for this account")
+            response["availableBalance"] = account.availableBalance
+            response["estimatedNotionalCovered"] = account.availableBalance >= notional
+        } else {
+            val holding = holdingRepository.findByUserIdAndStockId(userId, stock.id)
+            val availableShares = holding?.shares ?: BigDecimal.ZERO
+            response["availableShares"] = availableShares
+            response["estimatedSharesCovered"] = availableShares >= shares
+        }
+        response["disclaimer"] = "Practice estimate only. Price may change; fees are not modeled. Preview does not reserve funds or submit an order."
+        return response
+    }
 
     // Real per-stock price history (2026-07-19), backing a real chart -- see
     // StockCatalog.priceHistory's own doc comment for why this needs no new storage.
