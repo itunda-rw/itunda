@@ -78,7 +78,7 @@ class StocksController(private val stocksService: StocksService, private val ide
         @RequestParam(defaultValue = "30") days: Int,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "history" to stocksService.getPortfolioHistory(currentUser.userId, days)))
+        ResponseEntity.ok(mapOf("success" to true, "history" to practiceStockService.getPortfolioHistory(currentUser.userId, days)))
 
     // Real bug fix (2026-07-27) -- see StocksService.fundInvestmentAccount's own doc
     // comment. Real money-moving internal transfer, so Idempotency-Key required, same
