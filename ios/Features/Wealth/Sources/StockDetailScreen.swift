@@ -13,6 +13,7 @@ struct StockDetailContent: View {
     @State private var buyMode = true
     @State private var error: String?
     @State private var submitting = false
+    @State private var reviewingTrade = false
     @State private var watching: Bool
     // Real device binding step-up (2026-07-21) -- Stocks buy/sell was a real gap:
     // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but a
@@ -90,7 +91,7 @@ struct StockDetailContent: View {
                         .background(IDS.Colors.chipBackground)
                         .cornerRadius(10)
                     Button(action: trade) {
-                        Text(submitting ? "Working…" : (buyMode ? "Buy" : "Sell"))
+                        Text(submitting ? "Working…" : "Review order")
                             .foregroundColor(.white).bold()
                             .padding(.horizontal, 20).padding(.vertical, 12)
                             .background(buyMode ? IDS.Colors.brand : Color.red)
@@ -104,7 +105,7 @@ struct StockDetailContent: View {
                     onDismiss: { needsDeviceVerification = false },
                     onVerified: {
                         needsDeviceVerification = false
-                        trade()
+                        executeTrade()
                     }
                 )
 
@@ -169,6 +170,13 @@ struct StockDetailContent: View {
                 }
             }
             .padding()
+        }
+        .alert("Review practice order", isPresented: $reviewingTrade) {
+            Button("Edit order", role: .cancel) {}
+            Button("Confirm practice trade", action: executeTrade)
+        } message: {
+            let shareCount = Double(shares) ?? 0
+            Text("\(buyMode ? "Buy" : "Sell") · \(stock.symbol)\n\(shares) shares\nEstimated value: \(formatMoney(shareCount * stock.price)) RWF\n\nEstimate uses the simulated displayed price and excludes fees or price changes. Confirmation updates only Itunda's internal investment ledger; no real market order is placed.")
         }
         .task {
             await loadHistory()
@@ -251,10 +259,21 @@ struct StockDetailContent: View {
     }
 
     private func trade() {
-        guard let shareCount = Double(shares), shareCount > 0 else {
+        guard let shareCount = Double(shares), shareCount.isFinite, shareCount > 0 else {
             error = "Enter a real number of shares."
             return
         }
+        error = nil
+        reviewingTrade = true
+    }
+
+    private func executeTrade() {
+        guard let shareCount = Double(shares), shareCount.isFinite, shareCount > 0 else {
+            error = "Enter a real number of shares."
+            reviewingTrade = false
+            return
+        }
+        reviewingTrade = false
         submitting = true
         needsDeviceVerification = false
         Task {
