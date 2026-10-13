@@ -29,7 +29,9 @@ Acceptance: all clients use the same documented contract; upstream failures rema
 
 ## Priority 1 — search and place discovery
 
-- [ ] Support debounced autocomplete, recent searches, typo tolerance, transliteration and alternate names.
+- [x] Expose Nominatim alternate/localized names in the Maps search response when the source provides them (`namedetails=1`, optional `alternativeNames` field); clients remain backward-compatible.
+- [ ] Use alternate names for query matching/ranking; support debounced autocomplete, recent searches, typo tolerance, and transliteration.
+- [x] Add a reproducible Rwanda search-quality seed benchmark covering Kigali, secondary cities, Kinyarwanda/English terms, variants, typo cases, and expected no-result checks. Runtime baseline and local review are still required.
 - [ ] Rank results using text relevance, distance, category, popularity signals where lawful, and data confidence; expose deterministic tie-breakers.
 - [ ] Make nearby search viewport-aware and category-driven, with loading, no-results, offline, permission-denied, and retry states.
 - [ ] Build stable place identity and deduplication across OSM identifiers, local business records, and verified community submissions.
