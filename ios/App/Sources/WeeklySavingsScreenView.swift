@@ -192,7 +192,7 @@ private struct WeeklySavingsDetailContent: View {
     var body: some View {
         ScrollView {
             if let loadError {
-                WeeklySavingsErrorCard(message: loadError, onRetry: load)
+                ErrorCardView(loadError, onRetry: load)
                     .padding(.horizontal)
             } else if let plan {
                 // Real fix (2026-08-24, flat-design sweep): dropped every Card wrapper in
