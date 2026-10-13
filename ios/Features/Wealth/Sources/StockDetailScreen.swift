@@ -179,9 +179,9 @@ struct StockDetailContent: View {
             if let preview = orderPreview {
                 let quantity = String(format: "%.6f", preview.shares).replacingOccurrences(of: #"\.?0+$"#, with: "", options: .regularExpression)
                 let coverageWarning = preview.side == "BUY" && preview.estimatedNotionalCovered == false
-                    ? "\nWarning: available investment balance may be insufficient."
+                    ? "\nWarning: virtual practice cash may be insufficient."
                     : (preview.side == "SELL" && preview.estimatedSharesCovered == false
-                        ? "\nWarning: available holding may be insufficient."
+                        ? "\nWarning: practice holding may be insufficient."
                         : "")
                 Text("\(preview.side) · \(preview.symbol)\n\(quantity) shares\nEstimated value: \(formatMoney(preview.estimatedNotional)) \(preview.currency)\n\n\(preview.disclaimer)\nFees modeled: \(preview.feesModeled ? "Yes" : "No")\(coverageWarning)")
             } else {
