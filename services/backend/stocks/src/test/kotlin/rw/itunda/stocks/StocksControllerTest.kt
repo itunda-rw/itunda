@@ -138,8 +138,7 @@ class StocksControllerTest : BehaviorSpec({
                 response.statusCode shouldBe HttpStatus.OK
                 (response.body?.get("preview") as Map<*, *>)["reservesFunds"] shouldBe false
                 verify(exactly = 1) { practiceStockService.preview("user_1", "s1", "BUY", BigDecimal("2.5")) }
-                verify(exactly = 0) { stocksService.buyStock(any(), any(), any()) }
-                verify(exactly = 0) { stocksService.sellStock(any(), any(), any()) }
+                verify(exactly = 0) { practiceStockService.execute(any(), any(), any(), any()) }
             }
         }
     }
