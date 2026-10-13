@@ -23,9 +23,9 @@ env:
   REDIS_HOST: "10.103.51.123"
   KAFKA_BOOTSTRAP: "bootstrap-h5k05cv2cxjf.07b7efb6.asia-northeast3.managedkafka.s.cloud.goog:9092"
   CORS_ALLOWED_ORIGINS: "https://itunda.im,https://www.itunda.im,https://app.itunda.im,https://business.itunda.im,https://business-app.itunda.im,https://developers.itunda.im,https://tech-blog.itunda.im,https://itunda-web-hptgu43hsa-du.a.run.app"
-  # Configure these repository/organization Actions variables only with the actual
-  # GCP-reachable Itunda-owned services. Do not point production at a guessed/public API.
-  NOMINATIM_BASE_URL: ${{ vars.NOMINATIM_BASE_URL }}
+  # The Nominatim VM and reserved internal IP were verified in project itunda-org.
+  # Override only when the actual service endpoint changes. OSRM is optional until deployed.
+  NOMINATIM_BASE_URL: ${{ vars.NOMINATIM_BASE_URL || 'http://10.178.0.6:8080' }}
   OSRM_BASE_URL: ${{ vars.OSRM_BASE_URL }}
   OSRM_FOOT_BASE_URL: ${{ vars.OSRM_FOOT_BASE_URL }}
 
@@ -39,11 +39,13 @@ jobs:
         shell: bash
         run: |
           missing=()
+          if [[ -z "${NOMINATIM_BASE_URL}" ]]; then
+            echo "::error title=Missing production Maps configuration::NOMINATIM_BASE_URL is required for real place search"
+            exit 1
+          fi
           for name in NOMINATIM_BASE_URL OSRM_BASE_URL OSRM_FOOT_BASE_URL; do
-            if [[ -z "${!name}" ]]; then
-              missing+=("$name")
-            elif [[ "${!name}" != https://* && "${!name}" != http://* ]]; then
-              echo "::error title=Invalid Maps endpoint::$name must be an absolute HTTP(S) URL"
+            if [[ -n "${!name}" && "${!name}" != https://* && "${!name}" != http://* ]]; then
+              echo "::error title=Invalid Maps endpoint::$name must be an absolute HTTP(S) URL when configured"
               exit 1
             fi
           done
