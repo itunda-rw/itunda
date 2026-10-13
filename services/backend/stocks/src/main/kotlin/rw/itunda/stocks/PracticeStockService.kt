@@ -50,8 +50,8 @@ class PracticeStockService(private val practiceTrades: PracticeStockTradeReposit
                 "value" to value, "return" to if (shares.multiply(avgPrice) > BigDecimal.ZERO) value.subtract(shares.multiply(avgPrice)).divide(shares.multiply(avgPrice), 4, RoundingMode.HALF_UP).multiply(BigDecimal(100)) else BigDecimal.ZERO,
             )
         }
-        val totalValue = holdings.sumOf { it["value"] as BigDecimal }
-        val realizedBalance = trades.fold(STARTING_VIRTUAL_CASH) { balance, trade ->
+        val holdingsValue = holdings.sumOf { it["value"] as BigDecimal }
+        val virtualCashBalance = trades.fold(STARTING_VIRTUAL_CASH) { balance, trade ->
             val amount = trade.shares.multiply(trade.price).setScale(2, RoundingMode.HALF_UP)
             when (trade.type) {
                 "BUY" -> balance.subtract(amount)
@@ -59,12 +59,13 @@ class PracticeStockService(private val practiceTrades: PracticeStockTradeReposit
                 else -> balance
             }
         }
-        val totalCost = holdings.sumOf { (it["shares"] as BigDecimal).multiply(it["avgPrice"] as BigDecimal) }
+        val totalValue = holdingsValue.add(virtualCashBalance)
+        val totalReturn = totalValue.subtract(STARTING_VIRTUAL_CASH)
         return mapOf(
             "totalValue" to totalValue,
-            "totalReturn" to totalValue.add(realizedBalance).subtract(STARTING_VIRTUAL_CASH),
-            "totalReturnPercent" to if (STARTING_VIRTUAL_CASH > BigDecimal.ZERO) totalValue.add(realizedBalance).subtract(STARTING_VIRTUAL_CASH).divide(STARTING_VIRTUAL_CASH, 4, RoundingMode.HALF_UP).multiply(BigDecimal(100)) else BigDecimal.ZERO,
-            "virtualCashBalance" to realizedBalance,
+            "totalReturn" to totalReturn,
+            "totalReturnPercent" to if (STARTING_VIRTUAL_CASH > BigDecimal.ZERO) totalReturn.divide(STARTING_VIRTUAL_CASH, 4, RoundingMode.HALF_UP).multiply(BigDecimal(100)) else BigDecimal.ZERO,
+            "virtualCashBalance" to virtualCashBalance,
             "startingVirtualCash" to STARTING_VIRTUAL_CASH,
             "holdings" to holdings,
         )
