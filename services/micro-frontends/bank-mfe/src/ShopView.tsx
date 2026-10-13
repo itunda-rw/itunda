@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { HeartOutline } from './icons/ItundaFaceHearts';
 import { useI18n } from './i18n/I18nContext';
 import { ApiError } from './lib/api';
@@ -39,6 +39,10 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ProductSearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  // Ignore stale responses when a user edits or resubmits a search. Without this,
+  // a slower earlier request can overwrite newer results or clear its loading state.
+  const searchRequestId = useRef(0);
   const [reorderingId, setReorderingId] = useState<string | null>(null);
   const [reorderError, setReorderError] = useState<string | null>(null);
   // Computed before the early returns below narrow `selected` to `null` -- TS treats
@@ -122,13 +126,22 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
   // honest, not a shortcut that risks showing stale/wrong data.
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
+    const query = searchQuery.trim();
+    if (!query) return;
+    const requestId = ++searchRequestId.current;
+    setSearchError(null);
+    setSearchResults(null);
     setSearching(true);
     try {
-      setSearchResults(await searchProducts(searchQuery.trim()));
-    } catch {
-      setSearchResults([]);
+      const nextResults = await searchProducts(query);
+      if (requestId === searchRequestId.current) setSearchResults(nextResults);
+    } catch (err) {
+      if (requestId === searchRequestId.current) {
+        // Keep a failed search distinct from a successful search with zero matches.
+        setSearchError(err instanceof ApiError ? err.message : t('common.loadError'));
+      }
     } finally {
-      setSearching(false);
+      if (requestId === searchRequestId.current) setSearching(false);
     }
   };
   const openSearchResult = (r: ProductSearchResult) => {
@@ -263,7 +276,14 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              // Typing a new query invalidates any request still in flight.
+              searchRequestId.current += 1;
+              setSearching(false);
+              setSearchResults(null);
+              setSearchError(null);
+            }}
             placeholder="Search products across every merchant"
             style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
           />
@@ -271,13 +291,14 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
             {searching ? '…' : 'Search'}
           </button>
           {searchResults !== null && (
-            <button type="button" className="itunda-btn itunda-btn-secondary" onClick={() => { setSearchResults(null); setSearchQuery(''); }}>
+            <button type="button" className="itunda-btn itunda-btn-secondary" onClick={() => { searchRequestId.current += 1; setSearching(false); setSearchResults(null); setSearchError(null); setSearchQuery(''); }}>
               Clear
             </button>
           )}
         </form>
       )}
 
+      {view === 'BROWSE' && searchError && <p role="alert" style={{ color: 'var(--itunda-red)', fontSize: 'var(--itunda-type-scale-13-size)', marginBottom: '12px' }}>{searchError}</p>}
       {view === 'BROWSE' && searchResults === null && <MembershipDayBanner />}
       {view === 'BROWSE' && searchResults === null && <BannerCarousel />}
       {view === 'BROWSE' && searchResults === null && <MissionsRow />}
