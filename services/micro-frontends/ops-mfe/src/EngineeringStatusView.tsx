@@ -30,7 +30,7 @@ const FRESHNESS_LIMIT_MS = 15 * 60 * 1000;
 function getDisplayResult(check: EngineeringCheck, now: number): CheckResult {
   const allowed: CheckResult[] = ['success', 'failure', 'pending', 'cancelled', 'unknown'];
   const observedAt = Date.parse(check.observedAt);
-  if (!check.commitSha || !check.source || !Number.isFinite(observedAt) || !allowed.includes(check.result)) return 'unknown';
+  if (!/^[0-9a-f]{40}$/i.test(check.commitSha) || !check.source || !Number.isFinite(observedAt) || !allowed.includes(check.result)) return 'unknown';
   if (now - observedAt > FRESHNESS_LIMIT_MS || observedAt > now + 60_000) return 'unknown';
   return check.result;
 }
@@ -62,7 +62,12 @@ export default function EngineeringStatusView() {
     try {
       const response = await apiFetch<EngineeringStatusResponse>('/api/v1/system/engineering/status');
       const generatedAt = Date.parse(response?.generatedAt ?? '');
-      if (!response || !response.headSha || !response.repository || !response.branch || !Number.isFinite(generatedAt) || Date.now() - generatedAt > FRESHNESS_LIMIT_MS || generatedAt > Date.now() + 60_000 || !Array.isArray(response.requiredCheckIds) || response.requiredCheckIds.length === 0 || !Array.isArray(response.checks) || response.checks.length === 0) {
+      const requiredIds = response?.requiredCheckIds;
+      const hasUniqueRequiredIds = Array.isArray(requiredIds)
+        && requiredIds.length > 0
+        && requiredIds.every((id) => typeof id === 'string' && id.trim().length > 0)
+        && new Set(requiredIds).size === requiredIds.length;
+      if (!response || !/^[0-9a-f]{40}$/i.test(response.headSha) || !response.repository || !response.branch || !Number.isFinite(generatedAt) || Date.now() - generatedAt > FRESHNESS_LIMIT_MS || generatedAt > Date.now() + 60_000 || !hasUniqueRequiredIds || !Array.isArray(response.checks) || response.checks.length === 0) {
         throw new Error('The status source returned missing, stale, or incomplete data. Readiness cannot be confirmed.');
       }
       setStatus(response);
@@ -80,7 +85,7 @@ export default function EngineeringStatusView() {
   const checks = status?.checks.map((check) => ({ ...check, displayResult: getDisplayResult(check, now) }));
   const ready = Boolean(status && status.requiredCheckIds.length > 0 && status.requiredCheckIds.every((id) => {
     const matches = (checks ?? []).filter((check) => check.id === id);
-    return matches.length === 1 && matches[0].displayResult === 'success' && matches[0].commitSha === status.headSha;
+    return matches.length === 1 && matches[0].displayResult === 'success' && matches[0].commitSha.toLowerCase() === status.headSha.toLowerCase();
   }));
 
   return (
