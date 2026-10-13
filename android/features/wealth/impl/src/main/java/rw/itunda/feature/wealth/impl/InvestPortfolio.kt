@@ -101,7 +101,7 @@ internal fun PortfolioContent() {
                         )
                     }
                 }
-                Text("Virtual practice cash: ${formatMoney(p.virtualCashBalance)} RWF. No real money moves.", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(vertical = 8.dp))
+                Text(p.virtualCashBalance?.let { "Virtual practice cash: ${formatMoney(it)} RWF. No real money moves." } ?: "Practice cash is unavailable from this server version.", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(vertical = 8.dp))
                 Divider(color = Ids.colors.divider, thickness = 0.5.dp)
                 if (p.holdings.isEmpty()) {
                     Text("No practice shares yet. Browse the Market tab to place a practice order.", color = Ids.colors.textSecondary, fontSize = 14.sp)
