@@ -56,6 +56,7 @@ class RoundUpService(
                     .orElseThrow { GoalNotFoundException("Goal not found") }
             } else if (targetStockId != null) {
                 StockCatalog.find(targetStockId) ?: throw StockNotFoundException("Stock not found: $targetStockId")
+                throw InvalidRoundUpIncrementException("Stock round-ups are disabled until a real broker integration is available. Choose a savings goal instead.")
             } else {
                 throw RoundUpTargetRequiredException("Choose a real savings goal or a real stock to round up into first")
             }
@@ -102,12 +103,12 @@ class RoundUpService(
             if (goalId != null) {
                 savingsService.depositToGoal(userId, goalId, roundUpAmount, null)
             } else if (stockId != null) {
-                val stock = StockCatalog.find(stockId) ?: return
-                stocksService.fundInvestmentAccount(userId, roundUpAmount)
-                val shares = roundUpAmount.divide(stock.price, 6, RoundingMode.DOWN)
-                if (shares.compareTo(BigDecimal.ZERO) > 0) {
-                    stocksService.buyStock(userId, stockId, shares)
-                }
+                // The stock catalog is simulated and no broker executes real orders.
+                // Never move real wallet money into the investment account for a paper
+                // trade. Existing stock-target settings are safely skipped until a
+                // verified broker integration is available.
+                log.warn("Stock round-up skipped for user {}: live broker execution unavailable", userId)
+                return
             }
         } catch (e: Exception) {
             log.warn("Round-up skipped for user {}: {}", userId, e.message)
