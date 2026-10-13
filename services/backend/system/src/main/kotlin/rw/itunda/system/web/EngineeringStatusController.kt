@@ -17,6 +17,8 @@ import rw.itunda.system.engineering.EngineeringStatusProvider
 class EngineeringStatusController(
     private val engineeringStatusProvider: EngineeringStatusProvider,
 ) {
+    private val logger = LoggerFactory.getLogger(EngineeringStatusController::class.java)
+
     @GetMapping("/status")
     fun status(): ResponseEntity<Map<String, Any>> =
         try {
@@ -32,8 +34,4 @@ class EngineeringStatusController(
                 ),
             )
         }
-    
-    private companion object {
-        val logger = LoggerFactory.getLogger(EngineeringStatusController::class.java)
-    }
 }
