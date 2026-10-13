@@ -19,6 +19,36 @@ data class NearbyPlace(val displayName: String, val latitude: Double, val longit
 class GeocodingUnavailableException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
 
 /**
+ * Extract only user-facing place-name variants from Nominatim's namedetails.
+ * Its payload may also contain brand/operator/reference metadata, which must not be
+ * presented as alternate names. The display label's leading place name is omitted too.
+ */
+internal fun extractAlternativeNames(nameDetails: Map<*, *>?, displayName: String): List<String> {
+    val allowedExactTags = setOf(
+        "name", "alt_name", "official_name", "short_name", "loc_name",
+        "old_name", "int_name", "nat_name", "reg_name",
+    )
+    val displayLabels = setOf(displayName.trim(), displayName.substringBefore(",").trim())
+        .filter(String::isNotEmpty)
+        .map { it.lowercase() }
+        .toSet()
+    val seen = mutableSetOf<String>()
+
+    return nameDetails.orEmpty().entries.mapNotNull { (key, value) ->
+        val tag = key as? String ?: return@mapNotNull null
+        val isNameTag = tag in allowedExactTags ||
+            tag.startsWith("name:") ||
+            allowedExactTags.drop(1).any { tag.startsWith("$it:") }
+        if (!isNameTag) return@mapNotNull null
+
+        val name = (value as? String)?.trim()?.takeIf(String::isNotEmpty) ?: return@mapNotNull null
+        val normalized = name.lowercase()
+        if (normalized in displayLabels || !seen.add(normalized)) return@mapNotNull null
+        name
+    }
+}
+
+/**
  * A real client for itunda's own self-hosted Nominatim geocoder (see
  * docs/TOSS_PARITY_MATRIX.md's Maps row) -- a real Rwanda-only address index, built from
  * the same Geofabrik OSM extract OsrmRoutingClient's road network uses, served by the
@@ -85,19 +115,7 @@ class NominatimGeocodingClient(
                 val lon = (row["lon"] as? String)?.toDoubleOrNull()
                 val displayName = row["display_name"] as? String
                 val nameDetails = row["namedetails"] as? Map<*, *>
-                // Nominatim namedetails also contains references, brands, and operators.
-                // Keep only name-like tags so the API never presents metadata as an alias.
-                val alternativeNames = nameDetails.orEmpty().entries
-                    .filter { (key, _) ->
-                        val tag = key as? String ?: return@filter false
-                        tag == "name" ||
-                            tag.startsWith("name:") ||
-                            tag in setOf("alt_name", "official_name", "short_name", "loc_name", "old_name", "int_name", "nat_name", "reg_name")
-                    }
-                    .mapNotNull { it.value as? String }
-                    .map(String::trim)
-                    .filter { it.isNotEmpty() && it != displayName }
-                    .distinct()
+                val alternativeNames = extractAlternativeNames(nameDetails, displayName.orEmpty())
                 if (lat == null || lon == null || displayName == null) null else {
                     GeocodeSuggestion(displayName, lat, lon, alternativeNames)
                 }
