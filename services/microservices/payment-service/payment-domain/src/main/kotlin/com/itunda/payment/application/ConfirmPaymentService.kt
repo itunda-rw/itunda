@@ -18,6 +18,9 @@ class ConfirmPaymentService(
                 "Amount mismatch. Expected: ${existing.totalAmount}, but got: ${command.amount}"
             )
         }
+        if (existing.paymentKey != command.paymentKey) {
+            throw IllegalArgumentException("Payment key does not match the payment for this order.")
+        }
 
         if (existing.status == PaymentStatus.DONE) return existing
 
