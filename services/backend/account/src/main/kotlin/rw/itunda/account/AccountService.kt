@@ -10,6 +10,8 @@ import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.domain.TransferQuoteRecord
+import rw.itunda.core.domain.TransferQuoteRecordStatus
 import rw.itunda.core.events.EventPublisher
 import rw.itunda.core.events.PaymentProviderFailedEvent
 import rw.itunda.core.events.TOPIC_PAYMENT_PROVIDER_FAILED
@@ -24,6 +26,7 @@ import rw.itunda.core.provider.ProviderDeclinedException
 import rw.itunda.core.provider.RailCatalog
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.repository.TransferQuoteRecordRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -58,8 +61,8 @@ class AccountService(
     private val providerConnector: ProviderConnector,
     private val fraudRuleEngine: FraudRuleEngine,
     private val rateLimiter: RateLimiter,
+    private val transferQuoteRepository: TransferQuoteRecordRepository,
 ) {
-    private val quoteStore = QuoteStore()
 
     // Real Toss Timeline-style unusual-spend heuristic constants -- see
     // getTransactionTimeline's own doc comment for the full account.
@@ -211,7 +214,23 @@ class AccountService(
             throw InsufficientFundsException("Insufficient available balance for this transfer")
         }
 
-        return quoteStore.create(userId, account.id, recipient, amount, fee, account.currency)
+        val now = Instant.now()
+        val record = transferQuoteRepository.save(
+            TransferQuoteRecord(
+                id = "quote_${UUID.randomUUID()}",
+                userId = userId,
+                fromAccountId = account.id,
+                recipient = recipient,
+                amount = amount,
+                fee = fee,
+                totalDebit = amount.add(fee),
+                currency = account.currency,
+                status = TransferQuoteRecordStatus.PENDING,
+                expiresAt = now.plusSeconds(60),
+                createdAt = now,
+            ),
+        )
+        return record.toTransferQuote()
     }
 
     @Transactional
@@ -221,26 +240,36 @@ class AccountService(
         // postLedgerTransaction below, same as P2pService.pay/send, but had no
         // rateLimiter.checkLimit at all. Same 30/hour baseline those already use.
         rateLimiter.checkLimit("account:confirm-transfer:$userId", limit = 30, window = Duration.ofHours(1))
-        val quote = quoteStore.get(quoteId) ?: throw QuoteNotFoundException("Transfer quote not found")
-        // Real IDOR fix (2026-08-02): a quoteId belonging to a DIFFERENT user used to
-        // 403 ("that quote does not belong to you") rather than 404, the same
-        // real-existence-confirming probe [getAccountById]'s own doc comment already
-        // documents fixing for the direct account-lookup endpoint -- same fix here.
-        if (quote.userId != userId) throw QuoteNotFoundException("Transfer quote not found")
+        val quoteRecord = transferQuoteRepository.findById(quoteId).orElse(null)
+            ?: throw QuoteNotFoundException("Transfer quote not found")
+        // A quote owned by someone else is indistinguishable from a missing quote.
+        if (quoteRecord.userId != userId) throw QuoteNotFoundException("Transfer quote not found")
 
-        // Real double-spend fix (2026-08-02): claim() atomically transitions PENDING ->
-        // CLAIMED (see QuoteStore.claim's own doc comment) so at most one concurrent
-        // confirmTransfer call for this exact quoteId can ever pass this point -- the
-        // previous shape (a plain `quote.status == PENDING` read here, followed by a
-        // plain `quote.status = CONFIRMED` write only after the provider call and
-        // ledger post below) had no such atomicity: two concurrent calls could both
-        // observe PENDING before either wrote CONFIRMED, and both go on to post the
-        // real ledger legs below, a genuine double-spend of one quote.
-        val claimed = quoteStore.claim(quoteId, Instant.now()) ?: when (quote.status) {
-            QuoteStatus.CONFIRMED -> throw QuoteAlreadyUsedException("Transfer quote was already confirmed")
-            QuoteStatus.CLAIMED -> throw QuoteAlreadyUsedException("Transfer quote is already being confirmed")
-            else -> throw QuoteExpiredException("Transfer quote is ${quote.status.name.lowercase()}, request a new quote")
+        // Conditional UPDATE is the distributed single-winner gate. MySQL/InnoDB
+        // serializes this transition across Cloud Run instances and process restarts.
+        val now = Instant.now()
+        val wonClaim = transferQuoteRepository.claimPending(
+            id = quoteId,
+            userId = userId,
+            pending = TransferQuoteRecordStatus.PENDING,
+            claimed = TransferQuoteRecordStatus.CLAIMED,
+            now = now,
+            claimedAt = now,
+        )
+        if (wonClaim != 1) {
+            val current = transferQuoteRepository.findById(quoteId).orElse(null)
+                ?: throw QuoteNotFoundException("Transfer quote not found")
+            if (current.userId != userId) throw QuoteNotFoundException("Transfer quote not found")
+            when (current.status) {
+                TransferQuoteRecordStatus.CONFIRMED -> throw QuoteAlreadyUsedException("Transfer quote was already confirmed")
+                TransferQuoteRecordStatus.CLAIMED -> throw QuoteAlreadyUsedException("Transfer quote is already being confirmed")
+                else -> throw QuoteExpiredException("Transfer quote is ${current.status.name.lowercase()}, request a new quote")
+            }
         }
+        val claimedRecord = transferQuoteRepository.findById(quoteId).orElseThrow {
+            QuoteNotFoundException("Transfer quote not found")
+        }
+        val claimed = claimedRecord.toTransferQuote()
 
         // Real per-rail routing (2026-07-13) -- resolve() (used by bills/airtime,
         // which get a real provider name) always fell through to generic here since
@@ -254,7 +283,7 @@ class AccountService(
             // Releases the claim back to PENDING so the same quote can still be
             // retried, matching the pre-existing behavior (a decline never used to
             // touch quote.status at all, leaving it PENDING for a retry).
-            quoteStore.releaseClaim(quoteId)
+            // The @Transactional method rolls the claim back with the provider-decline exception.
             // Published via publishImmediately, not publishAfterCommit -- this
             // @Transactional method is about to roll back once the exception below
             // propagates (nothing has been written yet), so an afterCommit hook would
@@ -283,9 +312,17 @@ class AccountService(
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, claimed.fee, "Transfer fee"),
             ),
         )
-        claimed.status = QuoteStatus.CONFIRMED
+        check(
+            transferQuoteRepository.markConfirmed(
+                id = quoteId,
+                claimed = TransferQuoteRecordStatus.CLAIMED,
+                confirmed = TransferQuoteRecordStatus.CONFIRMED,
+                confirmedAt = Instant.now(),
+            ) == 1,
+        ) { "Transfer quote state changed before confirmation could be recorded" }
 
         val account = accountRepository.findById(claimed.fromAccountId).orElseThrow { AccountNotFoundException("Account not found") }
+        val quote = claimed
         val transaction = Transaction(
             id = result.transactionId,
             referenceNumber = "TXN${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
@@ -328,4 +365,18 @@ class AccountService(
 
         return transaction to account.balance
     }
+
+    private fun TransferQuoteRecord.toTransferQuote(): TransferQuote = TransferQuote(
+        id = id,
+        userId = userId,
+        fromAccountId = fromAccountId,
+        recipient = recipient,
+        amount = amount,
+        fee = fee,
+        totalDebit = totalDebit,
+        currency = currency,
+        status = QuoteStatus.valueOf(status.name),
+        expiresAt = expiresAt,
+        createdAt = createdAt,
+    )
 }
