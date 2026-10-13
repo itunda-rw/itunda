@@ -7,3 +7,6 @@ The existing Ops MFE is an operations dashboard, not yet a complete engineering 
 Each check must include its name, explicit result, immutable commit SHA, source, observation timestamp, environment, and details URL where available. Only explicit, fresh success for the same required commit may count as green. Pending, failed, stale, unknown, missing, mismatched-commit, provider-error, and empty results must never be rendered as success. A hidden UI tab is not authorization; enforce staff permissions server-side.
 
 Acceptance tests should cover success, failure, pending, unknown, stale results, missing or mixed commit SHAs, provider timeout, empty results, unauthorized access, and secret leakage. The UI should reuse Itunda design tokens and clearly show source and freshness.
+
+
+The response must include a non-empty `requiredCheckIds` array maintained by server-side configuration or repository policy. The UI may declare readiness only when every required ID has exactly one current check with explicit `success` for `headSha`; extra successful checks must not compensate for a missing required check. If the required list is absent or empty, readiness is unknown/false.
