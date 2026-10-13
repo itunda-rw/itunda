@@ -61,6 +61,14 @@ struct StockDetailContent: View {
                 }
                 .font(.subheadline).bold().foregroundColor(positive ? .green : .red)
 
+                Text("Practice market only. Prices are simulated. Orders update Itunda’s internal demo ledger only; no real exchange order is placed and no listed securities are owned.")
+                    .font(.footnote)
+                    .foregroundColor(IDS.Colors.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(IDS.Colors.backgroundSecondary)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
                 if let history, !history.isEmpty {
                     Sparkline(values: history.map { $0.price }, positive: positive).frame(height: 48).padding(.top, 6)
                     Text("Last 14 days -- real deterministic simulation, not live RSE data").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
