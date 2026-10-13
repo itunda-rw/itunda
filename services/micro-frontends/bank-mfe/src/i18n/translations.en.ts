@@ -413,6 +413,7 @@ export const en: Record<TranslationKey, string> = {
     'stocks.sell': 'Sell',
     'stocks.working': 'Working…',
     'stocks.addFunds': 'Add funds',
+    'stocks.simulationDisclosure': 'Practice market only. Prices are simulated. Buy and sell actions update Itunda’s internal demo ledger; they do not place orders on a real exchange or give you ownership of listed securities.',
     'support.reportIssueCta': 'Report an issue with a transaction',
     'support.whichTransaction': 'Which transaction?',
     'support.category': 'Category',
