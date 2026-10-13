@@ -71,9 +71,9 @@ class EngineeringStatusProvider(
                 "name" to run.path("name").asText("Unnamed check"),
                 "result" to result,
                 "commitSha" to headSha,
-                "environment" to "staging",
+                "environment" to environment,
                 "source" to "GitHub Actions check runs",
-                "observedAt" to (run.path("completed_at").asText("").ifBlank { run.path("started_at").asText("").ifBlank { now } }),
+                "observedAt" to now,
                 "detailsUrl" to run.path("details_url").asText("").takeIf { it.startsWith("https://") },
             )
         }.toList()
