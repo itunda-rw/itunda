@@ -27,10 +27,10 @@ interface EngineeringStatusResponse {
 
 const FRESHNESS_LIMIT_MS = 15 * 60 * 1000;
 
-function getDisplayResult(check: EngineeringCheck, now: number): CheckResult {
+function getDisplayResult(check: EngineeringCheck, now: number, expectedHeadSha: string): CheckResult {
   const allowed: CheckResult[] = ['success', 'failure', 'pending', 'cancelled', 'unknown'];
   const observedAt = Date.parse(check.observedAt);
-  if (!/^[0-9a-f]{40}$/i.test(check.commitSha) || !check.source || !Number.isFinite(observedAt) || !allowed.includes(check.result)) return 'unknown';
+  if (!/^[0-9a-f]{40}$/i.test(check.commitSha) || check.commitSha.toLowerCase() !== expectedHeadSha.toLowerCase() || !check.source || !Number.isFinite(observedAt) || !allowed.includes(check.result)) return 'unknown';
   if (now - observedAt > FRESHNESS_LIMIT_MS || observedAt > now + 60_000) return 'unknown';
   return check.result;
 }
@@ -82,7 +82,7 @@ export default function EngineeringStatusView() {
   useEffect(() => { void loadStatus(); }, [loadStatus]);
 
   const now = Date.now();
-  const checks = status?.checks.map((check) => ({ ...check, displayResult: getDisplayResult(check, now) }));
+  const checks = status?.checks.map((check) => ({ ...check, displayResult: getDisplayResult(check, now, status.headSha) }));
   const ready = Boolean(status && status.requiredCheckIds.length > 0 && status.requiredCheckIds.every((id) => {
     const matches = (checks ?? []).filter((check) => check.id === id);
     return matches.length === 1 && matches[0].displayResult === 'success' && matches[0].commitSha.toLowerCase() === status.headSha.toLowerCase();
