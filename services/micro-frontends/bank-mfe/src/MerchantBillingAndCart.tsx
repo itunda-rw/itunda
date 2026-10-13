@@ -257,9 +257,12 @@ export function MultiCartView({
           ))}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>
-              <span>Total ({groups.length} order{groups.length === 1 ? '' : 's'})</span>
+              <span>Estimated total ({groups.length} order{groups.length === 1 ? '' : 's'})</span>
               <span>{grandTotal.toLocaleString('en-US')} RWF</span>
             </div>
+            <p role="note" style={{ fontSize: 'var(--itunda-type-scale-12-size)', lineHeight: 1.45, color: 'var(--itunda-grey-600)', margin: 0 }}>
+              Final prices are confirmed by each seller at checkout. Quantity discounts, active deals, or availability may change the amount charged.
+            </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <input
                 type="text"
