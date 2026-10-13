@@ -34,6 +34,25 @@ class MapsSearchValidationTest : FunSpec({
         exception.message shouldBe "Search query must be ${MapsService.MAX_SEARCH_QUERY_LENGTH} characters or fewer"
     }
 
+    test("reports unavailable when geocoding is not configured") {
+        val geocoder = mockk<NominatimGeocodingClient>()
+        io.mockk.every { geocoder.isConfigured } returns false
+        val mapsService = MapsService(
+            nominatimGeocodingClient = geocoder,
+            osrmRoutingClient = mockk(relaxed = true),
+            rateLimiter = mockk(relaxed = true),
+            mapBookmarkRepository = mockk(relaxed = true),
+            kigaliWeatherClient = mockk<KigaliWeatherClient>(relaxed = true),
+            transitRoutingService = mockk<TransitRoutingService>(relaxed = true),
+        )
+
+        val exception = shouldThrow<MapsGeocodingUnavailableException> {
+            mapsService.searchPlaces("user_1", "Kigali")
+        }
+        exception.message shouldBe "Map search is temporarily unavailable"
+        io.mockk.verify(exactly = 0) { geocoder.search(any(), any()) }
+    }
+
     test("trims a valid query before sending it to geocoding") {
         val geocoder = mockk<NominatimGeocodingClient>()
         val mapsService = MapsService(
@@ -44,6 +63,7 @@ class MapsSearchValidationTest : FunSpec({
             kigaliWeatherClient = mockk<KigaliWeatherClient>(relaxed = true),
             transitRoutingService = mockk<TransitRoutingService>(relaxed = true),
         )
+        io.mockk.every { geocoder.isConfigured } returns true
         io.mockk.every { geocoder.search("Kigali", limit = 8) } returns emptyList()
 
         mapsService.searchPlaces("user_1", "  Kigali  ") shouldBe emptyList()
