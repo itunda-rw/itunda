@@ -46,7 +46,7 @@ public struct InvestScreenView: View {
                 .foregroundColor(IDS.Colors.textSecondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(12)
-                .background(IDS.Colors.backgroundSecondary)
+                .background(IDS.Colors.chipBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .padding(.horizontal)
 
