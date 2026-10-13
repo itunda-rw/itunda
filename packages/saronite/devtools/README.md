@@ -93,3 +93,14 @@ if (!isReleaseReady(findings)) {
 ```
 
 Findings are machine-readable `severity` + `code` + `message`. Errors block readiness; warnings and informational findings require review but do not automatically block. Bundle size is only checked when actual `entryBytes` and an explicit `maxBytes` budget are supplied. The helper does not inspect a generated bundle, verify signatures, attest provenance, or replace Android/iOS build and security checks. A release pipeline must feed it measured build outputs and enforce the result.
+
+
+### Audit a real bundle artifact
+
+After your mini-app build has produced a bundle file, run the measured audit from this package directory:
+
+```sh
+npm run release-audit -- ./path/to/manifest.json ./path/to/index.bundle 250000
+```
+
+The command reads the JSON manifest, measures the bundle file with the filesystem, applies the explicit byte budget, prints machine-readable finding codes, and exits non-zero if validation has errors or the measured file exceeds its budget. Use the actual bundle path produced by the current build; do not put a guessed `entryBytes` value in the manifest. This first gate measures one specified artifact only—it does not calculate a complete compressed distribution size, inspect dependencies, sign the artifact, or attest its provenance. CI should call it after the relevant mini-app bundle step and archive the output with the build.
