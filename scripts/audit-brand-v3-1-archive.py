@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import pathlib
+import stat
 import zipfile
 
 ARCHIVE = pathlib.Path("itunda-brand-v3.1.zip")
@@ -14,6 +15,43 @@ REPORT = pathlib.Path("brand-v3.1-archive-audit.md")
 
 def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def normalized_archive_paths(zf: zipfile.ZipFile) -> list[tuple[zipfile.ZipInfo, str]]:
+    """Normalize paths, stripping a wrapper directory only when it is unambiguous."""
+    files = [info for info in zf.infolist() if not info.is_dir()]
+    parsed: list[tuple[zipfile.ZipInfo, pathlib.PurePosixPath]] = []
+    for info in files:
+        # ZIP paths use POSIX separators. Reject Windows separators instead of
+        # allowing platform-dependent interpretation of a path.
+        if "\\" in info.filename:
+            raise SystemExit(f"Unsafe archive path separator: {info.filename}")
+        path = pathlib.PurePosixPath(info.filename)
+        mode = info.external_attr >> 16
+        if stat.S_ISLNK(mode):
+            raise SystemExit(f"Symlink archive member is not allowed: {info.filename}")
+        if path.is_absolute() or not path.parts or any(part in ("", ".", "..") for part in path.parts):
+            raise SystemExit(f"Unsafe archive path: {info.filename}")
+        parsed.append((info, path))
+
+    # Only remove a shared enclosing directory when every file is nested below
+    # the same root. Do not silently strip the first component from mixed roots.
+    roots = {path.parts[0] for _, path in parsed}
+    has_root_level_file = any(len(path.parts) == 1 for _, path in parsed)
+    strip_root = len(roots) == 1 and not has_root_level_file and bool(parsed)
+
+    normalized: list[tuple[zipfile.ZipInfo, str]] = []
+    seen: set[str] = set()
+    for info, path in parsed:
+        parts = path.parts[1:] if strip_root else path.parts
+        if not parts:
+            raise SystemExit(f"Archive entry resolves to an empty path: {info.filename}")
+        key = pathlib.PurePosixPath(*parts).as_posix()
+        if key in seen:
+            raise SystemExit(f"Duplicate normalized archive path: {key}")
+        seen.add(key)
+        normalized.append((info, key))
+    return normalized
 
 
 def main() -> None:
@@ -27,18 +65,8 @@ def main() -> None:
         bad = zf.testzip()
         if bad:
             raise SystemExit(f"Corrupt archive member: {bad}")
-        for info in zf.infolist():
-            if info.is_dir():
-                continue
-            parts = pathlib.PurePosixPath(info.filename).parts
-            # Strip the archive's single enclosing directory, if present.
-            rel = pathlib.PurePosixPath(*parts[1:]) if len(parts) > 1 else pathlib.PurePosixPath(parts[0])
-            if rel.is_absolute() or ".." in rel.parts:
-                raise SystemExit(f"Unsafe archive path: {info.filename}")
-            key = rel.as_posix()
-            if key in archive_files:
-                raise SystemExit(f"Duplicate normalized archive path: {key}")
-            archive_files[key] = sha256(zf.read(info.filename))
+        for info, key in normalized_archive_paths(zf):
+            archive_files[key] = sha256(zf.read(info))
 
     canonical_files = {
         p.relative_to(CANONICAL).as_posix(): sha256(p.read_bytes())
@@ -72,7 +100,7 @@ def main() -> None:
     for heading, items in (("Archive-only paths", added), ("Canonical-only paths", missing), ("Content mismatches", changed)):
         lines.extend(["", f"## {heading}", ""])
         lines.extend(f"- `{k}`" for k in items) if items else lines.append("- None")
-    REPORT.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    REPORT.write_text("\\n".join(lines) + "\\n", encoding="utf-8")
     print(json.dumps({
         "archive_sha256": sha256(ARCHIVE.read_bytes()),
         "archive_files": len(archive_files),
