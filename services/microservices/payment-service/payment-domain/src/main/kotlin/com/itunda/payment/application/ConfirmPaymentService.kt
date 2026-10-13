@@ -9,34 +9,39 @@ class ConfirmPaymentService(
     private val paymentGateway: PaymentGatewayPort
 ) : ConfirmPaymentUseCase {
 
-    /**
-     * Process-local guard only. It reduces duplicate gateway calls when this singleton
-     * handles concurrent requests, but is NOT a distributed lock and does not survive
-     * restarts. Production confirmation remains blocked until the repository provides
-     * an atomic durable claim/idempotency record and the provider supports idempotency.
-     */
-    @Synchronized
     override fun confirm(command: ConfirmPaymentCommand): Payment {
-        val payment = paymentRepository.findByOrderId(command.orderId)
+        val existing = paymentRepository.findByOrderId(command.orderId)
             ?: throw IllegalArgumentException("Payment not found for orderId: ${command.orderId}")
 
-        if (payment.totalAmount != command.amount) {
-            throw IllegalArgumentException("Amount mismatch. Expected: ${payment.totalAmount}, but got: ${command.amount}")
+        if (existing.totalAmount != command.amount) {
+            throw IllegalArgumentException(
+                "Amount mismatch. Expected: ${existing.totalAmount}, but got: ${command.amount}"
+            )
         }
 
-        if (payment.status == PaymentStatus.DONE) return payment
+        if (existing.status == PaymentStatus.DONE) return existing
 
-        if (payment.status != PaymentStatus.IN_PROGRESS && payment.status != PaymentStatus.READY) {
-            throw IllegalStateException("Payment is in invalid state for confirmation: ${payment.status}")
+        if (existing.status != PaymentStatus.IN_PROGRESS && existing.status != PaymentStatus.READY) {
+            throw IllegalStateException(
+                "Payment is in invalid state for confirmation: ${existing.status}"
+            )
         }
 
-        // A stable fallback lets a future provider adapter deduplicate retries for this
-        // order even when a caller omits Idempotency-Key. It is not a substitute for a
-        // durable request fingerprint/response store in this service.
-        val providerIdempotencyKey = command.idempotencyKey
-            ?.takeIf { it.isNotBlank() }
-            ?: "itunda-payment-confirm:${command.orderId}"
+        // The repository performs a single conditional database UPDATE. A competing
+        // request/replica cannot also claim this order once status becomes CONFIRMING.
+        val claimed = paymentRepository.claimForConfirmation(command.orderId)
+            ?: run {
+                val latest = paymentRepository.findByOrderId(command.orderId)
+                if (latest?.status == PaymentStatus.DONE) return latest
+                throw IllegalStateException(
+                    "Payment confirmation is already in progress or its state changed; check status before retrying."
+                )
+            }
 
+        // Always derive the provider key from the order, not a caller-supplied key,
+        // so retries for this order cannot accidentally create a new provider operation.
+        // The provider must still implement idempotency for this protection to work.
+        val providerIdempotencyKey = "itunda-payment-confirm:${claimed.orderId}"
         val success = paymentGateway.processMobileMoneyTransfer(
             command.paymentKey,
             command.amount,
@@ -44,9 +49,9 @@ class ConfirmPaymentService(
         )
 
         val confirmedPayment = if (success) {
-            payment.copy(status = PaymentStatus.DONE, approvedAt = OffsetDateTime.now())
+            claimed.copy(status = PaymentStatus.DONE, approvedAt = OffsetDateTime.now())
         } else {
-            payment.copy(status = PaymentStatus.ABORTED)
+            claimed.copy(status = PaymentStatus.ABORTED)
         }
 
         return paymentRepository.save(confirmedPayment)
