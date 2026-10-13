@@ -29,6 +29,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify GCP-only web deployment boundary
+        run: bash scripts/verify-no-cloudflare-deployment.sh
+
       # Real CI fix (2026-09-03), reverted same day: actions/setup-node's own
       # `cache: yarn` option shells out to `yarn cache dir` as PART of this step's
       # own execution, before the separate "Enable Corepack" step below ever runs --
