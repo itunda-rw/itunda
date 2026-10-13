@@ -1455,11 +1455,11 @@ export default function MapView() {
           <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px', maxHeight: '160px', overflowY: 'auto', boxShadow: 'var(--itunda-shadow-sm)' }}>
             {searching && query.trim().length >= 2 && (
               <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', padding: '8px' }} role="status" aria-live="polite">
-                Searching real places…
+                {t('maps.searching')}
               </p>
             )}
             {!searching && searchResults !== null && (searchResults.length === 0 ? (
-              <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', padding: '8px' }}>No indexed places matched that search. Try a nearby town or a shorter place name.</p>
+              <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', padding: '8px' }}>{t('maps.searchEmpty')}</p>
             ) : (
               searchResults.map((place, i) => (
                 <button
