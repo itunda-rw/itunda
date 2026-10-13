@@ -2,6 +2,14 @@ name: Itunda Android APK
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - "fix/android-map-preview-fallback"
+    paths:
+      - "android/**"
+      - "packages/saronite/**"
+      - ".github/workflows/android-apk.yml"
+      - ".github/workflows/android-pr.yml"
 
 permissions:
   contents: read
@@ -14,24 +22,26 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: 20.x
-          cache: npm
-          cache-dependency-path: packages/saronite/package-lock.json
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Install Saronite dependencies
         working-directory: packages/saronite
-        run: npm ci
+        run: yarn install --no-immutable
 
       - name: Setup JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
           cache: gradle
 
       - name: Configure CI Gradle memory
@@ -39,6 +49,10 @@ jobs:
           mkdir -p ~/.gradle
           echo "org.gradle.jvmargs=-Xmx3072m -Dfile.encoding=UTF-8" >> ~/.gradle/gradle.properties
           echo "kotlin.daemon.jvmargs=-Xmx2048m" >> ~/.gradle/gradle.properties
+
+      - name: Make Gradle wrapper executable
+        working-directory: android
+        run: chmod +x ./gradlew
 
       - name: Build debug APK
         working-directory: android

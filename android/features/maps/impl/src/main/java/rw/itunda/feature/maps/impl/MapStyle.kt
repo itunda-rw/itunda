@@ -195,54 +195,27 @@ internal fun mapStyleJson(dark: Boolean): String {
             placeMajor = "#1f1f1f", placeMajorHalo = "#ffffff",
         )
     }
+    // Production Android builds previously defaulted to private-LAN vector tile and glyph
+    // hosts (192.168.252.4), which are unreachable from a user's phone. Use public
+    // OpenStreetMap raster tiles for a reliable visible map preview until Itunda's own
+    // vector tile + glyph endpoints are deployed on GCP. Attribution is declared on-source.
+    // Dynamic route, destination, nearby-place and user-location overlays are added
+    // independently by MapsScreen and continue to work over this raster basemap.
     return """
 {
   "version": 8,
-  "glyphs": "$GLYPHS_URL",
   "sources": {
-    "rwanda": { "type": "vector", "tiles": ["$TILES_URL"], "minzoom": 0, "maxzoom": 14 }
+    "openstreetmap": {
+      "type": "raster",
+      "tiles": ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      "tileSize": 256,
+      "maxzoom": 19,
+      "attribution": "© OpenStreetMap contributors"
+    }
   },
   "layers": [
     { "id": "background", "type": "background", "paint": { "background-color": "${c.background}" } },
-    { "id": "landcover", "type": "fill", "source": "rwanda", "source-layer": "landcover",
-      "paint": { "fill-color": "${c.landcover}", "fill-opacity": ${c.landcoverOpacity} } },
-    { "id": "park", "type": "fill", "source": "rwanda", "source-layer": "park",
-      "paint": { "fill-color": "${c.park}", "fill-opacity": ${c.parkOpacity} } },
-    { "id": "water", "type": "fill", "source": "rwanda", "source-layer": "water",
-      "paint": { "fill-color": "${c.water}" } },
-    { "id": "landuse-residential", "type": "fill", "source": "rwanda", "source-layer": "landuse",
-      "filter": ["==", ["get", "class"], "residential"],
-      "paint": { "fill-color": "${c.residential}", "fill-opacity": ${c.residentialOpacity} } },
-    { "id": "building", "type": "fill", "source": "rwanda", "source-layer": "building", "minzoom": 13,
-      "paint": { "fill-color": "${c.building}", "fill-outline-color": "${c.buildingOutline}" } },
-    { "id": "transportation-minor", "type": "line", "source": "rwanda", "source-layer": "transportation",
-      "filter": ["!", ["match", ["get", "class"], ["motorway", "trunk", "primary", "secondary"], true, false]],
-      "paint": { "line-color": "${c.roadMinor}", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.5, 16, 3] } },
-    { "id": "transportation-major", "type": "line", "source": "rwanda", "source-layer": "transportation",
-      "filter": ["match", ["get", "class"], ["motorway", "trunk", "primary", "secondary"], true, false],
-      "paint": { "line-color": "${c.roadMajor}", "line-width": ["interpolate", ["linear"], ["zoom"], 6, 1, 16, 5] } },
-    { "id": "boundary", "type": "line", "source": "rwanda", "source-layer": "boundary",
-      "filter": ["<=", ["get", "admin_level"], 4],
-      "paint": { "line-color": "${c.boundary}", "line-width": 1, "line-dasharray": [2, 1] } },
-    { "id": "water-label", "type": "symbol", "source": "rwanda", "source-layer": "water_name", "minzoom": 7,
-      "layout": { "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"], "text-size": 12 },
-      "paint": { "text-color": "${c.waterLabel}", "text-halo-color": "${c.waterLabelHalo}", "text-halo-width": 1 } },
-    { "id": "road-label", "type": "symbol", "source": "rwanda", "source-layer": "transportation_name", "minzoom": 12,
-      "layout": { "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"], "text-size": 12,
-        "symbol-placement": "line", "text-letter-spacing": 0.05 },
-      "paint": { "text-color": "${c.roadLabel}", "text-halo-color": "${c.roadLabelHalo}", "text-halo-width": 1.2 } },
-    { "id": "poi-label", "type": "symbol", "source": "rwanda", "source-layer": "poi", "minzoom": 14,
-      "layout": { "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"], "text-size": 11 },
-      "paint": { "text-color": "${c.poiLabel}", "text-halo-color": "${c.poiLabelHalo}", "text-halo-width": 1 } },
-    { "id": "place-label-minor", "type": "symbol", "source": "rwanda", "source-layer": "place", "minzoom": 10,
-      "filter": ["!", ["match", ["get", "class"], ["city", "town"], true, false]],
-      "layout": { "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"], "text-size": 12 },
-      "paint": { "text-color": "${c.placeMinor}", "text-halo-color": "${c.placeMinorHalo}", "text-halo-width": 1.2 } },
-    { "id": "place-label-major", "type": "symbol", "source": "rwanda", "source-layer": "place",
-      "filter": ["match", ["get", "class"], ["city", "town"], true, false],
-      "layout": { "text-field": ["get", "name"], "text-font": ["Noto Sans Bold"],
-        "text-size": ["interpolate", ["linear"], ["zoom"], 4, 12, 10, 18] },
-      "paint": { "text-color": "${c.placeMajor}", "text-halo-color": "${c.placeMajorHalo}", "text-halo-width": 1.5 } }
+    { "id": "osm-raster", "type": "raster", "source": "openstreetmap" }
   ]
 }
 """.trimIndent()
