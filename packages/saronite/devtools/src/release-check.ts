@@ -42,14 +42,14 @@ export function validateMiniAppManifest(input: unknown): ReleaseFinding[] {
   const unsafeEntrypoint = typeof entrypoint !== 'string'
     || !entrypoint.trim()
     || entrypoint.startsWith('/')
-    || entrypoint.includes('\\\\')
-    || /[\\u0000-\\u001f\\u007f]/.test(entrypoint)
+    || entrypoint.includes('\\')
+    || /[\u0000-\u001f\u007f]/.test(entrypoint)
     || /^[a-z][a-z0-9+.-]*:/i.test(entrypoint)
     || entrypoint.split('/').some((segment) => segment === '' || segment === '.' || segment === '..');
   if (unsafeEntrypoint) {
     findings.push({ severity: 'error', code: 'manifest.invalid-entrypoint', message: 'entrypoint must be a clean POSIX relative path without empty, dot, parent, URL-scheme, backslash, or control-character segments.' });
   }
-  const platforms = manifest.platforms;
+    const platforms = manifest.platforms;
   if (!Array.isArray(platforms) || platforms.length === 0 || platforms.some((p) => p !== 'android' && p !== 'ios')) {
     findings.push({ severity: 'error', code: 'manifest.invalid-platforms', message: 'platforms must include android, ios, or both.' });
   } else if (new Set(platforms).size !== platforms.length) {
