@@ -14,4 +14,6 @@
     <string name="invest_order_preview_disclaimer">L’estimation utilise le prix simulé affiché et exclut les frais et les variations de prix. La confirmation modifie uniquement le registre interne d’investissement Itunda ; aucun ordre réel n’est envoyé au marché.</string>
     <string name="invest_edit_order">Modifier l’ordre</string>
     <string name="invest_confirm_practice_trade">Confirmer la simulation</string>
+    <string name="invest_insufficient_practice_balance">Votre solde de simulation pourrait être insuffisant.</string>
+    <string name="invest_insufficient_practice_shares">Vous n’avez peut-être pas assez de titres simulés pour cette vente.</string>
 </resources>
