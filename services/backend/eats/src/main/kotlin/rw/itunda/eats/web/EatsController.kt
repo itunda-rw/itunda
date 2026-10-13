@@ -518,7 +518,6 @@ class EatsController(
         if (order.status == rw.itunda.core.domain.EatsOrderStatus.DELIVERED) eatsStampService.awardForCompletedOrder(order.id)
         return ResponseEntity.ok(mapOf("success" to true, "order" to order))
     }
-
     // Real manual trigger for EatsOrderAbandonedDeliveryScheduler's own real 60-second
     // cron -- same "let a coordinator/admin fire the real due sweep on demand rather
     // than waiting on wall-clock time" precedent BikeRentalController.processAbandonedRentals/
