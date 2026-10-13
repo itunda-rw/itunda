@@ -299,6 +299,9 @@ public struct IdsTextField: View {
                     }
                 }
                 .focused($isFocused)
+                // Attach validation/help text to the actual VoiceOver field, not only its
+                // surrounding layout container, so users hear it when editing the value.
+                .accessibilityHint(errorText ?? successText ?? supportingText ?? "")
                 if isSecure {
                     // Real touch-target-size fix (WCAG 2.5.8, this session's own already-
                     // established convention): a bare Image(systemName:) inside a Button has
@@ -344,7 +347,6 @@ public struct IdsTextField: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .accessibilityHint(errorText ?? successText ?? supportingText ?? "")
         .onAppear {
             if autoFocus { isFocused = true }
         }
