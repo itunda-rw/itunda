@@ -48,7 +48,7 @@ class StocksController(private val stocksService: StocksService, private val ide
             "success" to true,
             "mode" to "SIMULATED",
             "source" to "ITUNDA_DETERMINISTIC_SIMULATOR",
-            "asOfDate" to java.time.LocalDate.now().toString(),
+            "asOfDate" to java.time.LocalDate.now(java.time.ZoneId.of("Africa/Kigali")).toString(),
             "timezone" to "Africa/Kigali",
             "currency" to "RWF",
             "liveQuotesAvailable" to false,
