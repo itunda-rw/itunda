@@ -135,3 +135,6 @@ Important remaining limits:
 - Build, database integration tests, cross-replica concurrency tests, and crash-recovery tests have not yet been verified in CI.
 
 Do not treat this change as production authorization to process real money. The release gate remains open until the above recovery, idempotency, event delivery, and verification work is complete.
+
+
+Additional follow-up: the application entry point now explicitly scans the payment JPA repository and entity packages, and the payment-domain module has a concurrent-confirmation unit test using a thread-safe fake repository. The test has been committed but has **not** been executed in this environment; it does not replace a real database integration test against the conditional SQL update.
