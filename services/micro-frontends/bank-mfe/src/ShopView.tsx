@@ -223,7 +223,16 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
     return (
       <MultiCartResultsView
         results={results}
-        onDone={() => { setResults(null); setSelected(null); setView('ORDERS'); }}
+        onDone={() => {
+          const hasFailures = results.some((result) => !result.success);
+          setResults(null);
+          setSelected(null);
+          // The results view labels this action "Back to cart" when any merchant
+          // failed. Return to the retained failed items instead of silently routing
+          // the shopper to Orders and making the retry path hard to discover.
+          if (hasFailures) setShowCart(true);
+          else setView('ORDERS');
+        }}
       />
     );
   }
