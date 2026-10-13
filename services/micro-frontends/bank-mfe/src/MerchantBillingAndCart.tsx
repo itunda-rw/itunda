@@ -321,13 +321,27 @@ export function MultiCartView({
 
 export function MultiCartResultsView({ results, onDone }: { results: CommerceCheckoutResult[]; onDone: () => void }) {
   const successCount = results.filter((r) => r.success).length;
+  const failedCount = results.length - successCount;
   return (
     <div style={{ padding: '10px 0' }}>
       <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-        <IconShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
+        {failedCount === 0 ? (
+          <IconShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
+        ) : (
+          <p role="alert" style={{ color: 'var(--itunda-orange)', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, marginBottom: '10px' }}>
+            Some orders need attention
+          </p>
+        )}
         <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700 }}>
-          {successCount} of {results.length} order{results.length === 1 ? '' : 's'} placed
+          {failedCount === 0
+            ? `${successCount} order${successCount === 1 ? '' : 's'} placed successfully`
+            : `${failedCount} order${failedCount === 1 ? '' : 's'} need${failedCount === 1 ? 's' : ''} attention`}
         </h3>
+        {failedCount > 0 && (
+          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-600)', marginTop: '6px' }}>
+            {successCount} successful order{successCount === 1 ? '' : 's'} will not be placed again.
+          </p>
+        )}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
         {results.map((r) => (
