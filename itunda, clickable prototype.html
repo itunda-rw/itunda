@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#fff;--tx:#121216;--mu:#6B7684;--tt:#8B95A1;--ln:#E5E8EB;--chip:#F4F5F8;--tint:#EEEDFF;--tintfg:#5B54D6;--lk:#6960F9;--ok:#0A8F5B;--er:#D92D20;--br:#8F89FF;--on:#121216;--page:#E9EBF0}
+:root{--bg:#fff;--tx:#121216;--mu:#6B7684;--tt:#8B95A1;--ln:#E5E8EB;--chip:#F4F5F8;--tint:#F1F0FF;--tintfg:#6960F9;--lk:#6960F9;--ok:#0A8F5B;--er:#D92D20;--br:#8F89FF;--on:#121216;--page:#E9EBF0}
 @media (prefers-color-scheme:dark){:root{--bg:#121216;--tx:#F4F5F7;--mu:#9AA1AD;--tt:#7A818C;--ln:#2E2E37;--chip:#25252D;--tint:#2A2850;--tintfg:#B3AEFF;--lk:#8F89FF;--page:#0A0A0D}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%}
@@ -91,8 +91,8 @@ button:disabled{cursor:not-allowed}
   .screen{padding-bottom:calc(104px + env(safe-area-inset-bottom))}
 }
 .btn{letter-spacing:-.2px;transition:transform .12s ease,filter .16s ease,opacity .2s ease}
-.btn:not(:disabled):hover{filter:brightness(.97)}
-.btn:not(:disabled):active{transform:scale(.985)}
+@media (hover:hover) and (pointer:fine){.btn:not(:disabled):hover{filter:brightness(.97)}}
+.btn:not(:disabled):active{transform:scale(.985);filter:brightness(.94)}
 .ico{transition:background-color .18s ease,color .18s ease}
 .gi:focus-visible,.row:focus-visible,.pc:focus-visible{outline:3px solid var(--br);outline-offset:4px;border-radius:16px}
 .tabs button{min-width:44px;min-height:44px}
