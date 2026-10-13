@@ -260,10 +260,21 @@ export function MultiCartView({
               <span>Total ({groups.length} order{groups.length === 1 ? '' : 's'})</span>
               <span>{grandTotal.toLocaleString('en-US')} RWF</span>
             </div>
-            <input
-              type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Delivery address" required
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
-            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value.slice(0, 500))}
+                placeholder="Delivery address"
+                maxLength={500}
+                required
+                aria-describedby="commerce-delivery-address-count"
+                style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
+              />
+              <p id="commerce-delivery-address-count" style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', textAlign: 'right', margin: 0 }}>
+                {address.length}/500
+              </p>
+            </div>
             {bookmarks.length > 0 && (
               <div style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
                 {bookmarks.map((b) => (
