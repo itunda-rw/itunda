@@ -68,7 +68,11 @@
 /* Interaction / accessibility */
 .tds-focus:focus-visible,.tds-button:focus-visible,.tds-tab:focus-visible,.tds-input:focus-visible,.tds-select:focus-visible,.tds-textarea:focus-visible,.tds-link:focus-visible,.tds-icon-button:focus-visible{outline:3px solid var(--itunda-focus);outline-offset:3px}
 .tds-link{color:var(--itunda-color-text-strong);font-weight:var(--itunda-weight-bold);text-decoration:none}.tds-link:focus-visible{text-decoration:underline;text-underline-offset:4px}@media(hover:hover) and (pointer:fine){.tds-link:hover{text-decoration:underline;text-underline-offset:4px}}
-.tds-hover-lift{transition:transform var(--itunda-motion-normal) var(--itunda-ease),box-shadow var(--itunda-motion-normal) var(--itunda-ease)}@media(hover:hover) and (pointer:fine){.tds-hover-lift:hover{transform:translateY(-3px);box-shadow:var(--itunda-shadow-md)}}.tds-pressable{transition:transform var(--itunda-motion-fast) var(--itunda-ease)}.tds-pressable:active{transform:scale(.985)}
+.tds-hover-lift{transition:transform var(--itunda-motion-normal) var(--itunda-ease),box-shadow var(--itunda-motion-normal) var(--itunda-ease)}@media(hover:hover) and (pointer:fine){.tds-hover-lift:hover{transform:translateY(-3px);box-shadow:var(--itunda-shadow-md)}}
+/* Reusable press contract for rows, links and controls outside the button primitives. */
+.tds-pressable{touch-action:manipulation;-webkit-tap-highlight-color:transparent;transform-origin:center;transition:transform var(--itunda-motion-fast) var(--itunda-ease),background-color var(--itunda-motion-fast) var(--itunda-ease)}
+.tds-pressable:active:not(:disabled):not([aria-disabled=true]){transform:scale(.985);background-color:var(--itunda-color-pressed,var(--itunda-color-surface-sunken))}
+.tds-pressable:disabled,.tds-pressable[aria-disabled=true]{transform:none;cursor:not-allowed}
 .tds-visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 .tds-bottom-cta{position:sticky;bottom:0;z-index:var(--itunda-z-nav);display:flex;gap:12px;padding:16px max(20px,env(safe-area-inset-left)) max(16px,env(safe-area-inset-bottom));background:color-mix(in srgb,var(--itunda-color-surface) 92%,transparent);border-top:1px solid var(--itunda-color-border);backdrop-filter:blur(16px)}
 @keyframes tds-spin{to{transform:rotate(360deg)}}@keyframes tds-shimmer{to{transform:translateX(100%)}}
