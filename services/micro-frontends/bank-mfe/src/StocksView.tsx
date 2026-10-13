@@ -181,7 +181,7 @@ export function StocksView() {
                 </div>
               )}
             </div>
-            <p style={{ color: 'var(--text-secondary, #777)', fontSize: 12, margin: '10px 0' }}>Practice account starts with RWF 1,000,000 virtual cash. No real money moves.</p>
+            <p style={{ color: 'var(--text-secondary, #777)', fontSize: 12, margin: '10px 0' }}>Virtual practice cash: {portfolio.virtualCashBalance.toLocaleString('en-US')} RWF. No real money moves.</p>
             {portfolio.holdings.length === 0 ? (
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', padding: '10px 0' }}>No practice shares yet. Browse the Market tab to place a practice order.</p>
             ) : (
