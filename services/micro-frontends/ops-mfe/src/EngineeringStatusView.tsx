@@ -21,6 +21,7 @@ interface EngineeringStatusResponse {
   repository: string;
   branch: string;
   headSha: string;
+  requiredCheckIds: string[];
   checks: EngineeringCheck[];
 }
 
@@ -61,7 +62,7 @@ export default function EngineeringStatusView() {
     try {
       const response = await apiFetch<EngineeringStatusResponse>('/api/v1/system/engineering/status');
       const generatedAt = Date.parse(response?.generatedAt ?? '');
-      if (!response || !response.headSha || !response.repository || !response.branch || !Number.isFinite(generatedAt) || Date.now() - generatedAt > FRESHNESS_LIMIT_MS || generatedAt > Date.now() + 60_000 || !Array.isArray(response.checks) || response.checks.length === 0) {
+      if (!response || !response.headSha || !response.repository || !response.branch || !Number.isFinite(generatedAt) || Date.now() - generatedAt > FRESHNESS_LIMIT_MS || generatedAt > Date.now() + 60_000 || !Array.isArray(response.requiredCheckIds) || response.requiredCheckIds.length === 0 || !Array.isArray(response.checks) || response.checks.length === 0) {
         throw new Error('The status source returned missing, stale, or incomplete data. Readiness cannot be confirmed.');
       }
       setStatus(response);
@@ -77,9 +78,11 @@ export default function EngineeringStatusView() {
 
   const now = Date.now();
   const checks = status?.checks.map((check) => ({ ...check, displayResult: getDisplayResult(check, now) }));
-  const ready = Boolean(status && checks?.length && checks.every((check) =>
-    check.displayResult === 'success' && check.commitSha === status.headSha
-  ));
+  const checksById = new Map((checks ?? []).map((check) => [check.id, check]));
+  const ready = Boolean(status && status.requiredCheckIds.length > 0 && status.requiredCheckIds.every((id) => {
+    const check = checksById.get(id);
+    return check?.displayResult === 'success' && check.commitSha === status.headSha;
+  }));
 
   return (
     <section style={{ display: 'grid', gap: '20px' }}>
@@ -113,7 +116,7 @@ export default function EngineeringStatusView() {
           <div style={{ padding: '20px', borderRadius: '16px', background: 'var(--itunda-surface-default)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: ready ? 'var(--itunda-brand)' : 'var(--itunda-text-primary)' }}>
               <Activity size={20} />
-              <strong>{ready ? 'All reported checks are fresh for this commit' : 'Not ready to declare healthy'}</strong>
+              <strong>{ready ? 'All required checks are fresh for this commit' : 'Not ready to declare healthy'}</strong>
             </div>
             <p style={{ margin: '10px 0 0', color: 'var(--itunda-text-secondary)', fontSize: '13px', overflowWrap: 'anywhere' }}>
               {status.repository} · {status.branch} · commit {status.headSha}
