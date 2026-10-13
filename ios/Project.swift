@@ -450,7 +450,8 @@ allTargets.append(
         infoPlist: .default,
         sources: ["App/UITests/**"],
         dependencies: [
-            .target(name: "ItundaApp")
+            .target(name: "ItundaApp"),
+            .target(name: "CoreNetwork")
         ]
     )
 )
