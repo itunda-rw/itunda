@@ -16,6 +16,15 @@ class PracticeStockServiceTest : BehaviorSpec({
     Given("an empty practice ledger") {
         every { repository.findByUserIdOrderByExecutedAtAsc("user_1") } returns emptyList()
 
+        When("loading the initial practice portfolio") {
+            val portfolio = service.getPortfolio("user_1")
+            Then("it shows virtual cash without a real account or ledger transaction") {
+                portfolio["totalValue"] shouldBe PracticeStockService.STARTING_VIRTUAL_CASH
+                portfolio["virtualCashBalance"] shouldBe PracticeStockService.STARTING_VIRTUAL_CASH
+                portfolio["startingVirtualCash"] shouldBe PracticeStockService.STARTING_VIRTUAL_CASH
+            }
+        }
+
         When("previewing a buy") {
             val preview = service.preview("user_1", "s1", "BUY", BigDecimal("2"))
             Then("it uses virtual cash and explicitly disables real execution") {
