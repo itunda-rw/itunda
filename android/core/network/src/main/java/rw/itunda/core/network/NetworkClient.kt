@@ -95,7 +95,7 @@ object NetworkClient {
     // needing to relocate the buildConfigField/`-PapiBaseUrl=` override plumbing too).
     // Overridable at build time for a physical device -- see app/build.gradle.kts's
     // apiBaseUrl comment (2026-07-11 fix, still the actual place that's set).
-    private var BASE_URL: String = "http://10.0.2.2:4001/"
+    private var BASE_URL: String = "https://itunda-api-hptgu43hsa-du.a.run.app/"
 
     // Must be initialized once, from ItundaApplication.onCreate(), before any request
     // fires -- see that file. Held nullable rather than lateinit so a request made
