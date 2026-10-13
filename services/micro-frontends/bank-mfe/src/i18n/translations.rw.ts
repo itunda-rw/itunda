@@ -407,6 +407,7 @@ export const rw: Record<TranslationKey, string> = {
     'stocks.sell': 'Gurisha',
     'stocks.working': 'Birakora…',
     'stocks.addFunds': 'Ongeramo amafaranga',
+    'stocks.simulationDisclosure': 'Isoko ryo kwitoza gusa. Ibiciro birigana isoko, si ibiciro nyakuri. Kugura no kugurisha bihindura gusa ibaruramari ry’igerageza rya Itunda; ntibishyira komande ku isoko nyakuri kandi ntibiguha imigabane nyakuri.',
     'support.reportIssueCta': 'Menyesha ikibazo ku ivunjisha',
     'support.whichTransaction': 'Ni irihe vunjisha?',
     'support.category': 'Icyiciro',
