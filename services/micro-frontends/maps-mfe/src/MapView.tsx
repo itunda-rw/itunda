@@ -1400,6 +1400,7 @@ export default function MapView() {
           <input
             type="text"
             value={query}
+            maxLength={120}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
