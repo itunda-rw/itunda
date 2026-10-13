@@ -153,6 +153,10 @@ export function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchT
         {positive ? '+' : ''}{stock.change.toLocaleString('en-US')} ({positive ? '+' : ''}{stock.changePercent.toFixed(2)}%) today
       </p>
 
+      <div role="note" aria-live="polite" style={{ marginBottom: '14px', padding: '12px 14px', borderRadius: '12px', background: 'var(--itunda-grey-100)', color: 'var(--itunda-grey-700)', fontSize: 'var(--itunda-type-scale-12-size)', lineHeight: 1.5 }}>
+        {t('stocks.simulationDisclosure')}
+      </div>
+
       {history === null ? (
         showSkeleton ? <div className="skeleton" style={{ height: '48px', borderRadius: '8px', marginBottom: '16px' }} /> : null
       ) : history.length > 0 ? (
