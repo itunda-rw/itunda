@@ -399,6 +399,7 @@ export const fr: Record<TranslationKey, string> = {
     'stocks.sell': 'Vendre',
     'stocks.working': 'Traitement…',
     'stocks.addFunds': 'Ajouter des fonds',
+    'stocks.simulationDisclosure': 'Marché de simulation uniquement. Les prix sont simulés. Acheter ou vendre met à jour le registre de démonstration interne d’Itunda ; aucun ordre n’est envoyé à une vraie bourse et aucun titre coté ne vous appartient.',
     'support.reportIssueCta': 'Signaler un problème avec une transaction',
     'support.whichTransaction': 'Quelle transaction ?',
     'support.category': 'Catégorie',
