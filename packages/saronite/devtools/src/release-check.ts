@@ -38,8 +38,16 @@ export function validateMiniAppManifest(input: unknown): ReleaseFinding[] {
   if (typeof manifest.id !== 'string' || !ID_PATTERN.test(manifest.id)) findings.push({ severity: 'error', code: 'manifest.invalid-id', message: 'id must be 2–63 lowercase letters, digits, or hyphens and start with a letter.' });
   if (typeof manifest.name !== 'string' || manifest.name.trim().length < 2) findings.push({ severity: 'error', code: 'manifest.invalid-name', message: 'name must contain at least 2 non-whitespace characters.' });
   if (typeof manifest.version !== 'string' || !SEMVER_PATTERN.test(manifest.version)) findings.push({ severity: 'error', code: 'manifest.invalid-version', message: 'version must use semantic versioning (for example, 1.2.3).' });
-  if (typeof manifest.entrypoint !== 'string' || !manifest.entrypoint.trim() || manifest.entrypoint.startsWith('/') || manifest.entrypoint.split('/').includes('..')) {
-    findings.push({ severity: 'error', code: 'manifest.invalid-entrypoint', message: 'entrypoint must be a non-empty relative path and must not traverse parent directories.' });
+  const entrypoint = manifest.entrypoint;
+  const unsafeEntrypoint = typeof entrypoint !== 'string'
+    || !entrypoint.trim()
+    || entrypoint.startsWith('/')
+    || entrypoint.includes('\\\\')
+    || /[\\u0000-\\u001f\\u007f]/.test(entrypoint)
+    || /^[a-z][a-z0-9+.-]*:/i.test(entrypoint)
+    || entrypoint.split('/').some((segment) => segment === '' || segment === '.' || segment === '..');
+  if (unsafeEntrypoint) {
+    findings.push({ severity: 'error', code: 'manifest.invalid-entrypoint', message: 'entrypoint must be a clean POSIX relative path without empty, dot, parent, URL-scheme, backslash, or control-character segments.' });
   }
   const platforms = manifest.platforms;
   if (!Array.isArray(platforms) || platforms.length === 0 || platforms.some((p) => p !== 'android' && p !== 'ios')) {
