@@ -22,17 +22,31 @@ try {
   process.exit(2);
 }
 
-let entryBytes;
+if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) {
+  console.error('Manifest must be a JSON object.');
+  process.exit(2);
+}
+if (manifest.bundle !== undefined && (!manifest.bundle || typeof manifest.bundle !== 'object' || Array.isArray(manifest.bundle))) {
+  console.error('Manifest bundle metadata must be an object when present.');
+  process.exit(2);
+}
+
+let bundleStat;
 try {
-  entryBytes = (await stat(resolve(bundleArg))).size;
+  bundleStat = await stat(resolve(bundleArg));
+  if (!bundleStat.isFile()) {
+    console.error('Bundle path must point to a regular file.');
+    process.exit(2);
+  }
 } catch (error) {
   console.error(`Unable to stat bundle: ${error instanceof Error ? error.message : String(error)}`);
   process.exit(2);
 }
+const entryBytes = bundleStat.size;
 
 const findings = validateMiniAppManifest({
   ...manifest,
-  bundle: { ...(manifest?.bundle ?? {}), maxBytes, entryBytes },
+  bundle: { ...(manifest.bundle ?? {}), maxBytes, entryBytes },
 });
 for (const finding of findings) {
   const line = `[${finding.severity.toUpperCase()}] ${finding.code}: ${finding.message}`;
