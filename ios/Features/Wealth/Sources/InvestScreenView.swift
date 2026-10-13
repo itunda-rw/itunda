@@ -41,6 +41,15 @@ public struct InvestScreenView: View {
             }
             .padding()
 
+            Text("Practice market only. Prices are simulated. Buy and sell actions update Itunda’s internal demo ledger; they do not place orders on a real exchange or give you ownership of listed securities.")
+                .font(.footnote)
+                .foregroundColor(IDS.Colors.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(IDS.Colors.backgroundSecondary)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal)
+
             if let stock = selectedStock {
                 StockDetailContent(
                     stock: stock,
