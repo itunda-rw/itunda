@@ -70,6 +70,43 @@ class PracticeStockService(private val practiceTrades: PracticeStockTradeReposit
         )
     }
 
+    fun preview(userId: String, stockId: String, side: String, shares: BigDecimal): Map<String, Any?> {
+        val normalized = side.uppercase()
+        if (normalized != "BUY" && normalized != "SELL") throw InvalidOrderPreviewException("side must be BUY or SELL")
+        if (shares <= BigDecimal.ZERO || shares.scale() > 6) throw InvalidOrderPreviewException("shares must be greater than zero with at most 6 decimal places")
+        val stock = StockCatalog.find(stockId) ?: throw StockNotFoundException("Stock not found")
+        val trades = practiceTrades.findByUserIdOrderByExecutedAtAsc(userId)
+        val notional = shares.multiply(stock.price).setScale(2, RoundingMode.HALF_UP)
+        val cash = trades.fold(STARTING_VIRTUAL_CASH) { balance, trade ->
+            val amount = trade.shares.multiply(trade.price).setScale(2, RoundingMode.HALF_UP)
+            when (trade.type) { "BUY" -> balance.subtract(amount); "SELL" -> balance.add(amount); else -> balance }
+        }
+        val ownedShares = trades.filter { it.stockId == stock.id }.fold(BigDecimal.ZERO) { acc, trade ->
+            when (trade.type) { "BUY" -> acc.add(trade.shares); "SELL" -> acc.subtract(trade.shares); else -> acc }
+        }
+        return linkedMapOf(
+            "mode" to "SIMULATED",
+            "source" to "ITUNDA_DETERMINISTIC_SIMULATOR",
+            "side" to normalized,
+            "stockId" to stock.id,
+            "symbol" to stock.symbol,
+            "shares" to shares,
+            "estimatedUnitPrice" to stock.price,
+            "estimatedNotional" to notional,
+            "currency" to "RWF",
+            "feesModeled" to false,
+            "feeEstimate" to null,
+            "realOrderExecutionAvailable" to false,
+            "reservesFunds" to false,
+            "availableBalance" to cash,
+            "estimatedNotionalCovered" to (normalized != "BUY" || cash >= notional),
+            "availableShares" to ownedShares,
+            "estimatedSharesCovered" to (normalized != "SELL" || ownedShares >= shares),
+            "asOf" to Instant.now().toString(),
+            "disclaimer" to "Practice estimate only. Virtual starting cash: RWF 1,000,000. Fees are not modeled. No real money or holdings are changed.",
+        )
+    }
+
     @Transactional
     fun execute(userId: String, stockId: String, side: String, shares: BigDecimal): Map<String, Any?> {
         val normalized = side.uppercase()
