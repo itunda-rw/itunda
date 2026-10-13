@@ -54,9 +54,25 @@ class EngineeringStatusProvider(
             "GitHub returned an invalid commit SHA."
         }
 
-        val checksResponse = getJson("/repos/$repository/commits/$headSha/check-runs?per_page=100")
+        // GitHub paginates check-runs. Never publish a partial snapshot as if it were complete.
+        val allRuns = mutableListOf<JsonNode>()
+        var paginationComplete = false
+        for (page in 1..10) {
+            val response = getJson("/repos/$repository/commits/$headSha/check-runs?per_page=100&page=$page")
+            val pageRuns = response.path("check_runs")
+            require(pageRuns.isArray) { "GitHub returned a malformed check-runs response." }
+            allRuns.addAll(pageRuns)
+            if (pageRuns.size() < 100) {
+                paginationComplete = true
+                break
+            }
+        }
+        require(paginationComplete) {
+            "GitHub check-runs exceeded the supported 1,000-run snapshot limit."
+        }
+
         val now = Instant.now().toString()
-        val checks = checksResponse.path("check_runs").map { run ->
+        val checks = allRuns.map { run ->
             val status = run.path("status").asText("")
             val conclusion = run.path("conclusion").asText("")
             val result = when {
