@@ -38,6 +38,7 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
   const [results, setResults] = useState<CommerceCheckoutResult[] | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ProductSearchResult[] | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
   const [reorderingId, setReorderingId] = useState<string | null>(null);
   const [reorderError, setReorderError] = useState<string | null>(null);
@@ -122,11 +123,16 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
   // honest, not a shortcut that risks showing stale/wrong data.
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
+    const query = searchQuery.trim();
+    if (!query || searching) return;
     setSearching(true);
+    setSearchError(null);
+    setSearchResults(null);
     try {
-      setSearchResults(await searchProducts(searchQuery.trim()));
-    } catch {
-      setSearchResults([]);
+      setSearchResults(await searchProducts(query));
+    } catch (err) {
+      // A failed request is not the same as a successful search with zero matches.
+      setSearchError(err instanceof ApiError ? err.message : t('common.loadError'));
     } finally {
       setSearching(false);
     }
@@ -290,7 +296,7 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
             {searching ? '…' : 'Search'}
           </button>
           {searchResults !== null && (
-            <button type="button" className="itunda-btn itunda-btn-secondary" onClick={() => { setSearchResults(null); setSearchQuery(''); }}>
+            <button type="button" className="itunda-btn itunda-btn-secondary" onClick={() => { setSearchResults(null); setSearchError(null); setSearchQuery(''); }}>
               Clear
             </button>
           )}
@@ -326,6 +332,13 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
         </div>
       ) : view === 'WISHLIST' ? (
         <WishlistView onOpenMerchant={setSelected} />
+      ) : view === 'BROWSE' && searchError !== null ? (
+        <div role="alert" style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }}>
+          <p>{searchError}</p>
+          <button type="button" className="itunda-btn itunda-btn-secondary" onClick={(e) => { void handleSearch({ preventDefault: () => {} } as React.FormEvent); }} disabled={searching}>
+            {searching ? '…' : 'Try again'}
+          </button>
+        </div>
       ) : view === 'BROWSE' && searchResults !== null ? (
         <SearchResultsList searchQuery={searchQuery} searchResults={searchResults} onOpenSearchResult={openSearchResult} />
       ) : error ? (
