@@ -8,7 +8,12 @@ import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientException
 
 data class GeocodeResult(val latitude: Double, val longitude: Double)
-data class GeocodeSuggestion(val displayName: String, val latitude: Double, val longitude: Double)
+data class GeocodeSuggestion(
+    val displayName: String,
+    val latitude: Double,
+    val longitude: Double,
+    val alternativeNames: List<String> = emptyList(),
+)
 data class NearbyPlace(val displayName: String, val latitude: Double, val longitude: Double, val distanceKm: Double)
 
 class GeocodingUnavailableException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
@@ -70,6 +75,7 @@ class NominatimGeocodingClient(
                         .queryParam("limit", limit.toString())
                         .queryParam("countrycodes", "rw")
                         .queryParam("accept-language", searchAcceptLanguage)
+                        .queryParam("namedetails", "1")
                         .build()
                 }
                 .retrieve()
@@ -78,7 +84,15 @@ class NominatimGeocodingClient(
                 val lat = (row["lat"] as? String)?.toDoubleOrNull()
                 val lon = (row["lon"] as? String)?.toDoubleOrNull()
                 val displayName = row["display_name"] as? String
-                if (lat == null || lon == null || displayName == null) null else GeocodeSuggestion(displayName, lat, lon)
+                val nameDetails = row["namedetails"] as? Map<*, *>
+                val alternativeNames = nameDetails.orEmpty().values
+                    .filterIsInstance<String>()
+                    .map(String::trim)
+                    .filter { it.isNotEmpty() && it != displayName }
+                    .distinct()
+                if (lat == null || lon == null || displayName == null) null else {
+                    GeocodeSuggestion(displayName, lat, lon, alternativeNames)
+                }
             }
         } catch (e: RestClientException) {
             logger.warn("Nominatim search request failed: {}", e.message)
