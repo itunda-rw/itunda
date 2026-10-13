@@ -2,8 +2,6 @@ package rw.itunda.eats
 
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
-import rw.itunda.core.domain.EatsFulfillmentType
-import rw.itunda.core.domain.EatsOrder
 import rw.itunda.core.domain.EatsOrderStatus
 import rw.itunda.core.domain.EatsStampCampaign
 import rw.itunda.core.domain.EatsStampEarning
@@ -81,6 +79,10 @@ class EatsStampService(
     fun awardForCompletedOrder(orderId: String): Int {
         val order = orderRepository.findById(orderId).orElse(null) ?: return 0
         if (order.status != EatsOrderStatus.DELIVERED) return 0
+        // Lock the restaurant, not just an individual campaign: locking campaigns
+        // alone does not serialize awards when two orders race through different
+        // active campaigns for the same restaurant.
+        if (merchantRepository.findByIdForUpdate(order.restaurantId).isEmpty) return 0
         val now = clock.instant()
         val today = LocalDate.ofInstant(now, rwandaZone)
         var awarded = 0
