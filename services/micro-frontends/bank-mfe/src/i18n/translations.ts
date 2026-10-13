@@ -504,6 +504,7 @@ export type TranslationKey =
   | 'stocks.sell'
   | 'stocks.working'
   | 'stocks.addFunds'
+  | 'stocks.simulationDisclosure'
   // Real Support product-completeness pass (2026-09-08): SupportView.tsx only ever
   // used t() for generic shared error copy -- every Support-specific string was
   // hardcoded English. Scoped to the primary surface (the "Report an issue" CTA,
