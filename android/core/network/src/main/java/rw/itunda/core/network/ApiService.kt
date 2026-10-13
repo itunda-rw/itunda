@@ -2105,6 +2105,29 @@ data class PortfolioHistoryResponse(val success: Boolean, val history: List<Port
 data class StockHoldingDto(val stockId: String, val symbol: String, val name: String, val shares: Double, val avgPrice: Double, val currentPrice: Double, val value: Double, val `return`: Double)
 data class StockPortfolioDto(val totalValue: Double, val totalReturn: Double, val totalReturnPercent: Double, val holdings: List<StockHoldingDto>)
 data class StockPortfolioResponse(val success: Boolean, val portfolio: StockPortfolioDto)
+data class StockOrderPreviewRequest(val stockId: String, val side: String, val shares: Double)
+data class StockOrderPreviewDto(
+    val mode: String,
+    val source: String,
+    val side: String,
+    val stockId: String,
+    val symbol: String,
+    val shares: Double,
+    val estimatedUnitPrice: Double,
+    val estimatedNotional: Double,
+    val currency: String,
+    val feesModeled: Boolean,
+    val feeEstimate: Double?,
+    val realOrderExecutionAvailable: Boolean,
+    val reservesFunds: Boolean,
+    val availableBalance: Double?,
+    val estimatedNotionalCovered: Boolean?,
+    val availableShares: Double?,
+    val estimatedSharesCovered: Boolean?,
+    val asOf: String,
+    val disclaimer: String,
+)
+data class StockOrderPreviewResponse(val success: Boolean, val preview: StockOrderPreviewDto)
 data class TradeStockRequest(val stockId: String, val shares: Double)
 data class TradeStockResponse(val success: Boolean, val message: String)
 // Real Investment-account top-up (2026-08-04) -- found via a fresh "defined but
@@ -4394,6 +4417,9 @@ interface ApiService {
 
     @POST("api/v1/stocks/fund")
     suspend fun fundInvestmentAccount(@Header("Idempotency-Key") idempotencyKey: String, @Body request: FundInvestmentRequest): FundInvestmentResponse
+
+    @POST("api/v1/stocks/order-preview")
+    suspend fun previewStockOrder(@Body request: StockOrderPreviewRequest): StockOrderPreviewResponse
 
     @POST("api/v1/stocks/buy")
     suspend fun buyStock(@Header("Idempotency-Key") idempotencyKey: String, @Body request: TradeStockRequest): TradeStockResponse
