@@ -29,7 +29,7 @@ Acceptance: all clients use the same documented contract; upstream failures rema
 
 ## Priority 1 — search and place discovery
 
-- [x] Expose Nominatim alternate/localized names in the Maps search response when the source provides them (`namedetails=1`, optional `alternativeNames` field); clients remain backward-compatible.
+- [x] Expose Nominatim alternate/localized names in the Maps search response when the source provides them (`namedetails=1`, optional `alternativeNames` field); clients remain backward-compatible. The parser only accepts name-related tags and excludes references, brands, and operators.
 - [ ] Use alternate names for query matching/ranking; support debounced autocomplete, recent searches, typo tolerance, and transliteration.
 - [x] Add a reproducible Rwanda search-quality seed benchmark covering Kigali, secondary cities, Kinyarwanda/English terms, variants, typo cases, and expected no-result checks. Runtime baseline and local review are still required.
 - [ ] Rank results using text relevance, distance, category, popularity signals where lawful, and data confidence; expose deterministic tie-breakers.
