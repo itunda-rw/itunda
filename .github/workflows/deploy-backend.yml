@@ -38,7 +38,6 @@ jobs:
       - name: Validate production Maps endpoints
         shell: bash
         run: |
-          missing=()
           if [[ -z "${NOMINATIM_BASE_URL}" ]]; then
             echo "::error title=Missing production Maps configuration::NOMINATIM_BASE_URL is required for real place search"
             exit 1
