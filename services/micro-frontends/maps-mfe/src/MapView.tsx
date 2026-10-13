@@ -735,16 +735,18 @@ export default function MapView() {
     e.preventDefault();
     const trimmed = query.trim();
     if (!trimmed) return;
-    searchRequestIdRef.current += 1;
+    const requestId = ++searchRequestIdRef.current;
     setSearching(true);
     setError(null);
     try {
       const results = await searchPlaces(trimmed);
-      setSearchResults(results);
+      if (searchRequestIdRef.current === requestId) setSearchResults(results);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('maps.searchError'));
+      if (searchRequestIdRef.current === requestId) {
+        setError(err instanceof ApiError ? err.message : t('maps.searchError'));
+      }
     } finally {
-      setSearching(false);
+      if (searchRequestIdRef.current === requestId) setSearching(false);
     }
   };
 
