@@ -67,3 +67,29 @@ host.request('wallet', 'getBalance', () => 1200, {
 - Permissions not explicitly granted remain denied; scenario state is isolated per host.
 - The scenario runner is a development/test utility, not a network emulator and not evidence of native Android/iOS parity. Production builds must not depend on this package.
 - Contract tests cover injected failures, unsupported methods, denied permissions, successful calls, and correlation IDs. The tests must pass in CI before this change is considered verified.
+
+
+## Manifest and release-readiness checks
+
+The exported `validateMiniAppManifest(input)` helper validates the versioned manifest contract without reading files or calling a service. It checks the manifest schema version, app ID, semantic version, safe relative entrypoint, target platforms, reviewed permission names, and optional bundle-size budget.
+
+```ts
+import { isReleaseReady, validateMiniAppManifest } from '@itunda/saronite-devtools';
+
+const findings = validateMiniAppManifest({
+  schemaVersion: 1,
+  id: 'wallet-balance',
+  name: 'Wallet Balance',
+  version: '1.0.0',
+  entrypoint: 'pages/index.tsx',
+  platforms: ['android', 'ios'],
+  permissions: ['identity:read'],
+  bundle: { maxBytes: 200_000, entryBytes: 142_000 },
+});
+
+if (!isReleaseReady(findings)) {
+  throw new Error(findings.filter((item) => item.severity === 'error').map((item) => item.message).join('; '));
+}
+```
+
+Findings are machine-readable `severity` + `code` + `message`. Errors block readiness; warnings and informational findings require review but do not automatically block. Bundle size is only checked when actual `entryBytes` and an explicit `maxBytes` budget are supplied. The helper does not inspect a generated bundle, verify signatures, attest provenance, or replace Android/iOS build and security checks. A release pipeline must feed it measured build outputs and enforce the result.
