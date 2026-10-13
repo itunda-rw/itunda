@@ -5356,8 +5356,8 @@ public struct StockPortfolioDto: Decodable {
     public let totalReturn: Double
     public let totalReturnPercent: Double
     public let holdings: [StockHoldingDto]
-    public let virtualCashBalance: Double
-    public let startingVirtualCash: Double
+    public let virtualCashBalance: Double?
+    public let startingVirtualCash: Double?
 }
 public struct StockPortfolioResponse: Decodable { public let success: Bool; public let portfolio: StockPortfolioDto }
 public struct TradeStockRequest: Encodable { public let stockId: String; public let shares: Double }
