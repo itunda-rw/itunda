@@ -1138,28 +1138,62 @@ export default function MapView() {
   // stats -- shared by the initial "Directions" fetch and by tapping a real alternative
   // route chip below it (2026-07-22, see lib/maps.ts's getDirectionsAlternatives doc
   // comment), so switching which route is selected never re-fetches from OSRM.
-  const applyRoute = (result: RouteResult) => {
+  const applyRoute = (result: RouteResult): boolean => {
     const map = mapRef.current;
-    if (!map) return;
-    setRoute({ distanceKm: result.distanceKm, durationMinutes: result.durationMinutes, steps: result.steps });
-    setShowSteps(false);
+    if (!map) return false;
+
+    // Treat routing responses as untrusted input. An empty/invalid geometry previously
+    // crashed while indexing geometry[0], and out-of-range coordinates could poison
+    // the map bounds. Do not publish route metrics or replace a valid route until the
+    // complete response passes validation.
+    const geometry = result?.geometry;
+    const validGeometry = Array.isArray(geometry)
+      && geometry.length >= 2
+      && geometry.every((point) =>
+        Array.isArray(point)
+        && point.length >= 2
+        && Number.isFinite(point[0])
+        && Number.isFinite(point[1])
+        && point[0] >= -90
+        && point[0] <= 90
+        && point[1] >= -180
+        && point[1] <= 180,
+      );
+    const validMetrics = Number.isFinite(result?.distanceKm)
+      && result.distanceKm >= 0
+      && Number.isFinite(result?.durationMinutes)
+      && result.durationMinutes >= 0
+      && Array.isArray(result?.steps);
+
+    if (!validGeometry || !validMetrics) {
+      setError('The routing service returned an invalid route. Please try again.');
+      return false;
+    }
+
+    const coordinates = geometry.map(([lat, lng]) => [lng, lat] as [number, number]);
+    const bounds = coordinates.reduce(
+      (b, coordinate) => b.extend(coordinate),
+      new maplibregl.LngLatBounds(coordinates[0], coordinates[0]),
+    );
     const source = map.getSource('route') as maplibregl.GeoJSONSource | undefined;
-    source?.setData({
+    if (!source) {
+      setError('The map is still loading. Please try again.');
+      return false;
+    }
+
+    source.setData({
       type: 'FeatureCollection',
       features: [{
         type: 'Feature',
         properties: {},
-        geometry: { type: 'LineString', coordinates: result.geometry.map(([lat, lng]) => [lng, lat]) },
+        geometry: { type: 'LineString', coordinates },
       }],
     });
-    const bounds = result.geometry.reduce(
-      (b, [lat, lng]) => b.extend([lng, lat]),
-      new maplibregl.LngLatBounds(
-        [result.geometry[0][1], result.geometry[0][0]],
-        [result.geometry[0][1], result.geometry[0][0]],
-      ),
-    );
+    setRoute({ distanceKm: result.distanceKm, durationMinutes: result.durationMinutes, steps: result.steps });
+    setShowSteps(false);
+    setError(null);
     map.fitBounds(bounds, { padding: 60 });
+    return true;
   };
 
   // Real fallback for the two local-only pseudo-modes ('BUS'/'TRANSIT' aren't real
@@ -1176,11 +1210,15 @@ export default function MapView() {
     setError(null);
     try {
       const results = await getDirectionsAlternatives(origin[0], origin[1], place.latitude, place.longitude, mode);
+      if (!results.length) {
+        setError('No valid route was returned. Please try again.');
+        return;
+      }
+      if (!applyRoute(results[0])) return;
       setTravelMode(mode);
       setItineraryStops(null);
       setRouteAlternatives(results);
       setSelectedRouteIndex(0);
-      applyRoute(results[0]);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not find directions to this place.');
     } finally {
@@ -1234,11 +1272,11 @@ export default function MapView() {
         measurePoints.map(([latitude, longitude]) => ({ latitude, longitude })),
         mode,
       );
+      if (!applyRoute(result)) return;
       setTravelMode(mode);
       setRouteAlternatives(null);
       setSelectedRouteIndex(0);
       setItineraryStops(measurePoints);
-      applyRoute(result);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not find a route through these stops.');
     } finally {
@@ -1248,8 +1286,7 @@ export default function MapView() {
 
   const selectRouteAlternative = (index: number) => {
     if (!routeAlternatives || index === selectedRouteIndex) return;
-    setSelectedRouteIndex(index);
-    applyRoute(routeAlternatives[index]);
+    if (applyRoute(routeAlternatives[index])) setSelectedRouteIndex(index);
   };
 
   // Real merchant-pin enrichment lookup (2026-07-22) -- see the `merchants` state's own
