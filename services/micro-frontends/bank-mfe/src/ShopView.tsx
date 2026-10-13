@@ -43,6 +43,8 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
   // Ignore stale responses when a user edits or resubmits a search. Without this,
   // a slower earlier request can overwrite newer results or clear its loading state.
   const searchRequestId = useRef(0);
+  // Catalog filters can also resolve out of order as the debounced query changes.
+  const catalogRequestId = useRef(0);
   const [reorderingId, setReorderingId] = useState<string | null>(null);
   const [reorderError, setReorderError] = useState<string | null>(null);
   // Computed before the early returns below narrow `selected` to `null` -- TS treats
@@ -100,10 +102,18 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
   // browsing) already uses, matching how Android/iOS's own Shop tab reuses the same
   // merchant directory rather than inventing a second one.
   const load = () => {
+    const requestId = ++catalogRequestId.current;
     setError(null);
+    setMerchants(null);
     fetchShoppingCatalog(selectedCategory ?? undefined, debouncedMerchantSearch || undefined)
-      .then(setMerchants)
-      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+      .then((nextMerchants) => {
+        if (requestId === catalogRequestId.current) setMerchants(nextMerchants);
+      })
+      .catch((err) => {
+        if (requestId === catalogRequestId.current) {
+          setError(err instanceof ApiError ? err.message : t('common.loadError'));
+        }
+      });
   };
 
   useEffect(() => {
@@ -117,7 +127,13 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
     return () => clearTimeout(timer);
   }, [merchantSearchInput]);
 
-  useEffect(load, [selectedCategory, debouncedMerchantSearch]);
+  useEffect(() => {
+    load();
+    return () => {
+      // Invalidate requests on filter changes and unmount so old data/errors cannot win.
+      catalogRequestId.current += 1;
+    };
+  }, [selectedCategory, debouncedMerchantSearch]);
 
   // Real cross-merchant product search (2026-07-20) -- see lib/shopping.ts's own doc
   // comment. Opening a result reuses ProductCatalogView as-is: it only ever reads
