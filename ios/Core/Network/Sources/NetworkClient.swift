@@ -5359,6 +5359,38 @@ public struct StockPortfolioDto: Decodable {
 }
 public struct StockPortfolioResponse: Decodable { public let success: Bool; public let portfolio: StockPortfolioDto }
 public struct TradeStockRequest: Encodable { public let stockId: String; public let shares: Double }
+public struct StockOrderPreviewRequest: Encodable {
+    public let stockId: String
+    public let side: String
+    public let shares: Double
+}
+
+public struct StockOrderPreviewDto: Decodable {
+    public let mode: String
+    public let source: String
+    public let side: String
+    public let stockId: String
+    public let symbol: String
+    public let shares: Double
+    public let estimatedUnitPrice: Double
+    public let estimatedNotional: Double
+    public let currency: String
+    public let feesModeled: Bool
+    public let feeEstimate: Double?
+    public let realOrderExecutionAvailable: Bool
+    public let reservesFunds: Bool
+    public let availableBalance: Double?
+    public let estimatedNotionalCovered: Bool?
+    public let availableShares: Double?
+    public let estimatedSharesCovered: Bool?
+    public let asOf: String
+    public let disclaimer: String
+}
+
+public struct StockOrderPreviewResponse: Decodable {
+    public let success: Bool
+    public let preview: StockOrderPreviewDto
+}
 public struct TradeStockResponse: Decodable { public let success: Bool; public let message: String }
 // Real Investment-account top-up (2026-08-04) -- found via a fresh "defined but
 // uncalled" endpoint sweep: StocksService.fundInvestmentAccount (a real MAIN ->
@@ -7148,6 +7180,10 @@ extension NetworkClient {
 
     public func fundInvestmentAccount(amount: Double) async throws -> FundInvestmentResponse {
         try await authenticatedPost("api/v1/stocks/fund", body: FundInvestmentRequest(amount: amount), idempotencyKey: UUID().uuidString)
+    }
+
+    public func previewStockOrder(stockId: String, side: String, shares: Double) async throws -> StockOrderPreviewResponse {
+        try await authenticatedPost("api/v1/stocks/order-preview", body: StockOrderPreviewRequest(stockId: stockId, side: side, shares: shares))
     }
 
     public func buyStock(stockId: String, shares: Double) async throws -> TradeStockResponse {
