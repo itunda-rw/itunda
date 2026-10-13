@@ -198,6 +198,10 @@ export function StocksView() {
         ))}
       </div>
 
+      <div role="note" aria-live="polite" style={{ marginBottom: '14px', padding: '12px 14px', borderRadius: '12px', background: 'var(--itunda-grey-100)', color: 'var(--itunda-grey-700)', fontSize: 'var(--itunda-type-scale-12-size)', lineHeight: 1.5 }}>
+        {t('stocks.simulationDisclosure')}
+      </div>
+
       {error && (
         <ErrorCard message={error} onRetry={subTab === 'MARKET' ? loadMarket : subTab === 'PORTFOLIO' ? loadPortfolio : loadWatchlist} />
       )}
