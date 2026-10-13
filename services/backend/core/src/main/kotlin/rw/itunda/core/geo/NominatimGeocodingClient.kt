@@ -11,6 +11,8 @@ data class GeocodeResult(val latitude: Double, val longitude: Double)
 data class GeocodeSuggestion(val displayName: String, val latitude: Double, val longitude: Double)
 data class NearbyPlace(val displayName: String, val latitude: Double, val longitude: Double, val distanceKm: Double)
 
+class GeocodingUnavailableException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
+
 /**
  * A real client for itunda's own self-hosted Nominatim geocoder (see
  * docs/TOSS_PARITY_MATRIX.md's Maps row) -- a real Rwanda-only address index, built from
@@ -39,8 +41,22 @@ class NominatimGeocodingClient(
      * no match -- never a fabricated suggestion. Backs both the automatic single-best-
      * match `geocode` below and a real user-facing address-search endpoint.
      */
-    fun search(query: String, limit: Int = 5): List<GeocodeSuggestion> {
-        val client = restClient ?: return emptyList()
+    fun search(query: String, limit: Int = 5): List<GeocodeSuggestion> =
+        searchInternal(query, limit, failOnUnavailable = false)
+
+    /**
+     * Maps search needs to distinguish a genuine no-match response from an unavailable
+     * upstream. Other legacy consumers keep the permissive search() behavior.
+     */
+    fun searchForMaps(query: String, limit: Int = 8): List<GeocodeSuggestion> =
+        searchInternal(query, limit, failOnUnavailable = true)
+
+    private fun searchInternal(query: String, limit: Int, failOnUnavailable: Boolean): List<GeocodeSuggestion> {
+        val client = restClient ?: if (failOnUnavailable) {
+            throw GeocodingUnavailableException("Nominatim geocoder is not configured")
+        } else {
+            return emptyList()
+        }
         val trimmed = query.trim()
         if (trimmed.isEmpty()) return emptyList()
         return try {
@@ -64,6 +80,9 @@ class NominatimGeocodingClient(
             }
         } catch (e: RestClientException) {
             logger.warn("Nominatim search request failed: {}", e.message)
+            if (failOnUnavailable) {
+                throw GeocodingUnavailableException("Nominatim search is temporarily unavailable", e)
+            }
             emptyList()
         }
     }
