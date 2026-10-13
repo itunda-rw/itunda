@@ -85,7 +85,7 @@ jobs:
           .ci-venv/bin/python <<'PY'
           import cairosvg
           from pathlib import Path
-          src = Path("Assets/ItundaIcon.svg")
+          src = Path("../client/brand/itunda-icon.svg")
           out = Path("App/Resources/ItundaIcon.xcassets/ItundaIcon.appiconset/ItundaIcon.png")
           out.parent.mkdir(parents=True, exist_ok=True)
           cairosvg.svg2png(url=str(src), write_to=str(out), output_width=1024, output_height=1024)
