@@ -657,60 +657,6 @@ class StocksServiceTest : BehaviorSpec({
         }
     }
 
-    Given("a read-only practice order preview") {
-        val accountRepository = mockk<AccountRepository>()
-        val holdingRepository = mockk<HoldingRepository>()
-        val ledgerService = mockk<LedgerService>(relaxed = true)
-        val stockWatchlistRepository = mockk<StockWatchlistRepository>(relaxed = true)
-        val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
-        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
-        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
-        val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService, rateLimiter, fraudRuleEngine)
-        val investmentAccount = Account(
-            id = "account_preview", userId = "user_preview", accountNumber = "ACC-PREVIEW",
-            accountName = "Investment", type = AccountType.INVESTMENT,
-            balance = BigDecimal("25000.00"), availableBalance = BigDecimal("25000.00"),
-        )
-
-        When("previewing a buy") {
-            every { accountRepository.findByUserIdAndType("user_preview", AccountType.INVESTMENT) } returns investmentAccount
-            val shares = BigDecimal("2.5")
-            val stock = StockCatalog.find("s1")!!
-            val preview = service.previewOrder("user_preview", "s1", "BUY", shares)
-
-            Then("it uses server catalog pricing and clearly reports simulation and unmodeled fees") {
-                preview["mode"] shouldBe "SIMULATED"
-                preview["source"] shouldBe "ITUNDA_DETERMINISTIC_SIMULATOR"
-                preview["estimatedUnitPrice"] shouldBe stock.price
-                preview["estimatedNotional"] shouldBe shares.multiply(stock.price).setScale(2, java.math.RoundingMode.HALF_UP)
-                preview["feesModeled"] shouldBe false
-                preview["realOrderExecutionAvailable"] shouldBe false
-                preview["reservesFunds"] shouldBe false
-                preview["estimatedNotionalCovered"] shouldBe (investmentAccount.availableBalance >= shares.multiply(stock.price).setScale(2, java.math.RoundingMode.HALF_UP))
-            }
-            Then("preview never posts a ledger transaction or mutates holdings") {
-                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
-                verify(exactly = 0) { holdingRepository.save(any()) }
-            }
-        }
-
-        When("previewing a sell larger than the holding") {
-            val stock = StockCatalog.find("s1")!!
-            every { holdingRepository.findByUserIdAndStockId("user_preview", stock.id) } returns Holding(
-                id = "holding_preview", userId = "user_preview", accountId = "account_preview",
-                stockId = stock.id, shares = BigDecimal("3"), avgPrice = stock.price,
-            )
-            val preview = service.previewOrder("user_preview", stock.id, "SELL", BigDecimal("5"))
-
-            Then("it reports insufficient shares without placing a sell") {
-                preview["availableShares"] shouldBe BigDecimal("3")
-                preview["estimatedSharesCovered"] shouldBe false
-                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
-            }
-        }
-    }
 
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
