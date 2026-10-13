@@ -28,5 +28,13 @@ const denied = host.request('location', 'getCurrentLocation', () => 'should not 
 assert.equal(denied, undefined);
 assert.equal(host.state.calls[3]?.status, 'denied');
 
-assert.throws(() => createSaroniteScenarioHost({ id: '   ' }), /must not be empty/);
+for (const id of ['', '   ', 'Uppercase', 'has space', '../escape', 'x', `a${'x'.repeat(63)}`]) {
+  assert.throws(
+    () => createSaroniteScenarioHost({ id }),
+    /Scenario id must be 2–63 lowercase letters, digits, or hyphens and start with a letter/,
+    `expected invalid scenario ID to be rejected: ${JSON.stringify(id)}`,
+  );
+}
+assert.doesNotThrow(() => createSaroniteScenarioHost({ id: 'ab' }));
+assert.doesNotThrow(() => createSaroniteScenarioHost({ id: `a${'x'.repeat(62)}` }));
 console.log('Saronite deterministic scenario tests passed');
