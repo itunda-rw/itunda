@@ -4,7 +4,7 @@ CREATE TABLE practice_stock_trades (
     user_id     VARCHAR(64) NOT NULL,
     stock_id    VARCHAR(16) NOT NULL,
     type        VARCHAR(8) NOT NULL,
-    shares      DECIMAL(18, 4) NOT NULL,
+    shares      DECIMAL(18, 6) NOT NULL,
     price       DECIMAL(18, 2) NOT NULL,
     executed_at DATETIME(6) NOT NULL
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
