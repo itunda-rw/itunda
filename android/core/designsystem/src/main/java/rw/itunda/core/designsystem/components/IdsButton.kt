@@ -133,7 +133,11 @@ fun IdsButton(
         enabled = enabled && !loading,
         interactionSource = interactionSource,
         modifier = modifier
-            .semantics { role = Role.Button }
+            .semantics {
+                role = Role.Button
+                // Keep the action named for TalkBack while the visible label is replaced by a spinner.
+                if (loading) contentDescription = text
+            }
             .then(widthModifier)
              .scale(pressScale)
             .height(heightDp),
@@ -188,7 +192,13 @@ fun IdsIconButton(
                 indication = LocalIndication.current,
                 onClick = onClick,
             )
-            .semantics { role = Role.Button }
+            .semantics {
+                role = Role.Button
+                // The spinner replaces the icon during loading; preserve its accessible action name.
+                if (loading && !contentDescription.isNullOrBlank()) {
+                    this.contentDescription = contentDescription
+                }
+            }
             .background(
                 if (enabled) Ids.colors.surfaceSoft else Ids.colors.surfaceSoft.copy(alpha = 0.5f),
                 CircleShape,
