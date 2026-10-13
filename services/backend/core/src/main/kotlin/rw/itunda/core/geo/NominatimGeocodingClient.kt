@@ -8,8 +8,45 @@ import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientException
 
 data class GeocodeResult(val latitude: Double, val longitude: Double)
-data class GeocodeSuggestion(val displayName: String, val latitude: Double, val longitude: Double)
+data class GeocodeSuggestion(
+    val displayName: String,
+    val latitude: Double,
+    val longitude: Double,
+    val alternativeNames: List<String> = emptyList(),
+)
 data class NearbyPlace(val displayName: String, val latitude: Double, val longitude: Double, val distanceKm: Double)
+
+class GeocodingUnavailableException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
+
+/**
+ * Extract only user-facing place-name variants from Nominatim's namedetails.
+ * Its payload may also contain brand/operator/reference metadata, which must not be
+ * presented as alternate names. The display label's leading place name is omitted too.
+ */
+internal fun extractAlternativeNames(nameDetails: Map<*, *>?, displayName: String): List<String> {
+    val allowedExactTags = setOf(
+        "name", "alt_name", "official_name", "short_name", "loc_name",
+        "old_name", "int_name", "nat_name", "reg_name",
+    )
+    val displayLabels = setOf(displayName.trim(), displayName.substringBefore(",").trim())
+        .filter(String::isNotEmpty)
+        .map { it.lowercase() }
+        .toSet()
+    val seen = mutableSetOf<String>()
+
+    return nameDetails.orEmpty().entries.mapNotNull { (key, value) ->
+        val tag = key as? String ?: return@mapNotNull null
+        val isNameTag = tag in allowedExactTags ||
+            tag.startsWith("name:") ||
+            allowedExactTags.drop(1).any { tag.startsWith("$it:") }
+        if (!isNameTag) return@mapNotNull null
+
+        val name = (value as? String)?.trim()?.takeIf(String::isNotEmpty) ?: return@mapNotNull null
+        val normalized = name.lowercase()
+        if (normalized in displayLabels || !seen.add(normalized)) return@mapNotNull null
+        name
+    }
+}
 
 /**
  * A real client for itunda's own self-hosted Nominatim geocoder (see
@@ -26,6 +63,7 @@ data class NearbyPlace(val displayName: String, val latitude: Double, val longit
 @Component
 class NominatimGeocodingClient(
     @Value("\${itunda.nominatim.base-url:}") private val baseUrl: String,
+    @Value("\${itunda.maps.search.accept-language:rw,en,fr}") private val searchAcceptLanguage: String = "rw,en,fr",
 ) {
     private val logger = LoggerFactory.getLogger(NominatimGeocodingClient::class.java)
     private val restClient: RestClient? = if (baseUrl.isNotBlank()) RestClient.create(baseUrl) else null
@@ -39,8 +77,22 @@ class NominatimGeocodingClient(
      * no match -- never a fabricated suggestion. Backs both the automatic single-best-
      * match `geocode` below and a real user-facing address-search endpoint.
      */
-    fun search(query: String, limit: Int = 5): List<GeocodeSuggestion> {
-        val client = restClient ?: return emptyList()
+    fun search(query: String, limit: Int = 5): List<GeocodeSuggestion> =
+        searchInternal(query, limit, failOnUnavailable = false)
+
+    /**
+     * Maps search needs to distinguish a genuine no-match response from an unavailable
+     * upstream. Other legacy consumers keep the permissive search() behavior.
+     */
+    fun searchForMaps(query: String, limit: Int = 8): List<GeocodeSuggestion> =
+        searchInternal(query, limit, failOnUnavailable = true)
+
+    private fun searchInternal(query: String, limit: Int, failOnUnavailable: Boolean): List<GeocodeSuggestion> {
+        val client = restClient ?: if (failOnUnavailable) {
+            throw GeocodingUnavailableException("Nominatim geocoder is not configured")
+        } else {
+            return emptyList()
+        }
         val trimmed = query.trim()
         if (trimmed.isEmpty()) return emptyList()
         return try {
@@ -52,6 +104,8 @@ class NominatimGeocodingClient(
                         .queryParam("format", "json")
                         .queryParam("limit", limit.toString())
                         .queryParam("countrycodes", "rw")
+                        .queryParam("accept-language", searchAcceptLanguage)
+                        .queryParam("namedetails", "1")
                         .build()
                 }
                 .retrieve()
@@ -60,10 +114,17 @@ class NominatimGeocodingClient(
                 val lat = (row["lat"] as? String)?.toDoubleOrNull()
                 val lon = (row["lon"] as? String)?.toDoubleOrNull()
                 val displayName = row["display_name"] as? String
-                if (lat == null || lon == null || displayName == null) null else GeocodeSuggestion(displayName, lat, lon)
+                val nameDetails = row["namedetails"] as? Map<*, *>
+                val alternativeNames = extractAlternativeNames(nameDetails, displayName.orEmpty())
+                if (lat == null || lon == null || displayName == null) null else {
+                    GeocodeSuggestion(displayName, lat, lon, alternativeNames)
+                }
             }
         } catch (e: RestClientException) {
             logger.warn("Nominatim search request failed: {}", e.message)
+            if (failOnUnavailable) {
+                throw GeocodingUnavailableException("Nominatim search is temporarily unavailable", e)
+            }
             emptyList()
         }
     }

@@ -1,5 +1,7 @@
 package rw.itunda.core.network
 
+import com.google.gson.annotations.SerializedName
+
 // Extracted from ApiService.kt (itunda Maps redesign, 2026-08-28) -- that file crossed
 // its frozen file-size-lint baseline once the real transit/place-detail/weather DTOs
 // below were added. All real Maps-domain response/DTO shapes live here now; the
@@ -9,7 +11,21 @@ package rw.itunda.core.network
 // Real "search this map" + "directions" (2026-07-19) -- see rw.itunda.maps.MapsService's
 // own doc comment on the backend for why these are a new, general-purpose front door
 // onto itunda's already-deployed self-hosted Nominatim/OSRM.
-data class PlaceSearchResultDto(val displayName: String, val latitude: Double, val longitude: Double)
+data class PlaceSearchResultDto(
+    val displayName: String,
+    val latitude: Double,
+    val longitude: Double,
+    /**
+     * Gson constructs DTOs without invoking Kotlin default arguments, so an absent
+     * field can otherwise leave a non-null List as null at runtime. Keep the wire field
+     * nullable internally and expose a stable non-null list to callers.
+     */
+    @SerializedName("alternativeNames")
+    private val rawAlternativeNames: List<String>? = emptyList(),
+) {
+    val alternativeNames: List<String>
+        get() = rawAlternativeNames.orEmpty()
+}
 data class MapsSearchResponse(val success: Boolean, val results: List<PlaceSearchResultDto>)
 data class MapsReverseGeocodeResponse(val success: Boolean, val placeName: String?)
 data class RouteStepDto(val instruction: String, val distanceMeters: Double, val streetName: String?)

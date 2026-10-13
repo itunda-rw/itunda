@@ -20,6 +20,8 @@ import rw.itunda.maps.InvalidLiveLocationShareDurationException
 import rw.itunda.maps.InvalidMapsCategoryException
 import rw.itunda.maps.InvalidMapsCoordinateException
 import rw.itunda.maps.InvalidMapsItineraryException
+import rw.itunda.maps.InvalidMapsSearchQueryException
+import rw.itunda.maps.MapsGeocodingUnavailableException
 import rw.itunda.maps.LiveLocationShareEndedException
 import rw.itunda.maps.LiveLocationShareNotFoundException
 import rw.itunda.maps.LiveLocationShareRecipientNotFoundException
@@ -55,6 +57,8 @@ class MapsControllerExceptionHandlingTest : BehaviorSpec({
         Triple(LiveLocationShareEndedException("Gone"), HttpStatus.GONE, "LOCATION_SHARE_ENDED"),
         Triple(InvalidLiveLocationCoordinateException("Bad request"), HttpStatus.BAD_REQUEST, "INVALID_COORDINATES"),
         Triple(InvalidMapsCoordinateException("Bad request"), HttpStatus.BAD_REQUEST, "INVALID_COORDINATES"),
+        Triple(InvalidMapsSearchQueryException("Search query must not be empty"), HttpStatus.BAD_REQUEST, "INVALID_SEARCH_QUERY"),
+        Triple(MapsGeocodingUnavailableException("Map search is temporarily unavailable"), HttpStatus.SERVICE_UNAVAILABLE, "MAP_SEARCH_UNAVAILABLE"),
         Triple(MerchantNotFoundException("Not found"), HttpStatus.NOT_FOUND, "MERCHANT_NOT_FOUND"),
         Triple(InvalidMapsItineraryException("Bad request"), HttpStatus.BAD_REQUEST, "INVALID_ITINERARY"),
         Triple(InvalidMapsCategoryException("Bad request"), HttpStatus.BAD_REQUEST, "INVALID_CATEGORY"),
@@ -80,6 +84,8 @@ class MapsControllerExceptionHandlingTest : BehaviorSpec({
                     is LiveLocationShareEndedException -> ctl.handleLiveLocationShareEnded(exception)
                     is InvalidLiveLocationCoordinateException -> ctl.handleInvalidLiveLocationCoordinate(exception)
                     is InvalidMapsCoordinateException -> ctl.handleInvalidCoordinate(exception)
+                    is InvalidMapsSearchQueryException -> ctl.handleInvalidSearchQuery(exception)
+                    is MapsGeocodingUnavailableException -> ctl.handleMapsGeocodingUnavailable(exception)
                     is MerchantNotFoundException -> ctl.handleMerchantNotFound(exception)
                     is InvalidMapsItineraryException -> ctl.handleInvalidItinerary(exception)
                     is InvalidMapsCategoryException -> ctl.handleInvalidCategory(exception)

@@ -47,6 +47,8 @@ export interface PlaceSearchResult {
   displayName: string;
   latitude: number;
   longitude: number;
+  /** OSM alternate/localized names, when the source has them. */
+  alternativeNames?: string[];
 }
 
 export const searchPlaces = (query: string) =>

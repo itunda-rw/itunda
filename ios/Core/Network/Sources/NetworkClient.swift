@@ -4337,7 +4337,13 @@ public struct ShoppingMerchantsResponse: Decodable { public let success: Bool; p
 // onto itunda's already-deployed self-hosted Nominatim/OSRM.
 // Codable, not just Decodable (2026-07-22) -- RecentMapSearchesStore needs to encode
 // this back to JSON for local UserDefaults persistence, not just decode it from the API.
-public struct PlaceSearchResultDto: Codable {  public let displayName: String; public let latitude: Double; public let longitude: Double; public init(displayName: String, latitude: Double, longitude: Double) { self.displayName = displayName; self.latitude = latitude; self.longitude = longitude } }
+public struct PlaceSearchResultDto: Codable {
+    public let displayName: String; public let latitude: Double; public let longitude: Double; public let alternativeNames: [String]
+    public init(displayName: String, latitude: Double, longitude: Double, alternativeNames: [String] = []) { self.displayName = displayName; self.latitude = latitude; self.longitude = longitude; self.alternativeNames = alternativeNames }
+    private enum CodingKeys: String, CodingKey { case displayName, latitude, longitude, alternativeNames }
+    public init(from decoder: Decoder) throws { let c = try decoder.container(keyedBy: CodingKeys.self); displayName = try c.decode(String.self, forKey: .displayName); latitude = try c.decode(Double.self, forKey: .latitude); longitude = try c.decode(Double.self, forKey: .longitude); alternativeNames = try c.decodeIfPresent([String].self, forKey: .alternativeNames) ?? [] }
+    public func encode(to encoder: Encoder) throws { var c = encoder.container(keyedBy: CodingKeys.self); try c.encode(displayName, forKey: .displayName); try c.encode(latitude, forKey: .latitude); try c.encode(longitude, forKey: .longitude); try c.encode(alternativeNames, forKey: .alternativeNames) }
+}
 public struct MapsSearchResponse: Decodable { public let success: Bool; public let results: [PlaceSearchResultDto] }
 public struct MapsReverseGeocodeResponse: Decodable { public let success: Bool; public let placeName: String? }
 public struct RouteStepDto: Decodable { public let instruction: String; public let distanceMeters: Double; public let streetName: String? }

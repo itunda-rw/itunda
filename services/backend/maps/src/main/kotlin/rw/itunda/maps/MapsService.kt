@@ -6,6 +6,7 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.MapBookmark
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.GeocodeSuggestion
+import rw.itunda.core.geo.GeocodingUnavailableException
 import rw.itunda.core.geo.NearbyPlace
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
@@ -18,6 +19,8 @@ import java.time.Duration
 import java.util.UUID
 
 class InvalidMapsCoordinateException(message: String) : RuntimeException(message)
+class InvalidMapsSearchQueryException(message: String) : RuntimeException(message)
+class MapsGeocodingUnavailableException(message: String) : RuntimeException(message)
 class InvalidMapsItineraryException(message: String) : RuntimeException(message)
 class RouteNotFoundException(message: String) : RuntimeException(message)
 class InvalidMapsCategoryException(message: String) : RuntimeException(message)
@@ -60,8 +63,22 @@ class MapsService(
     // Real anti-spam limit -- same convention every other user-facing endpoint in this
     // codebase already has (search-as-you-type is easy to hammer otherwise).
     fun searchPlaces(userId: String, query: String): List<GeocodeSuggestion> {
+        val normalizedQuery = query.trim()
+        if (normalizedQuery.isEmpty()) {
+            throw InvalidMapsSearchQueryException("Search query must not be empty")
+        }
+        if (normalizedQuery.length > MAX_SEARCH_QUERY_LENGTH) {
+            throw InvalidMapsSearchQueryException("Search query must be $MAX_SEARCH_QUERY_LENGTH characters or fewer")
+        }
         rateLimiter.checkLimit("maps:search:$userId", limit = 60, window = Duration.ofMinutes(1))
-        return nominatimGeocodingClient.search(query, limit = 8)
+        if (!nominatimGeocodingClient.isConfigured) {
+            throw MapsGeocodingUnavailableException("Map search is temporarily unavailable")
+        }
+        return try {
+            nominatimGeocodingClient.searchForMaps(normalizedQuery, limit = 8)
+        } catch (ex: GeocodingUnavailableException) {
+            throw MapsGeocodingUnavailableException("Map search is temporarily unavailable")
+        }
     }
 
     /**
@@ -427,6 +444,7 @@ class MapsService(
     fun getMyBookmarks(userId: String): List<MapBookmark> = mapBookmarkRepository.findByUserIdOrderByCreatedAtDesc(userId)
 
     companion object {
+        const val MAX_SEARCH_QUERY_LENGTH = 120
         const val MIN_ITINERARY_WAYPOINTS = 2
         // Match NAVER Maps' documented five intermediate waypoints while retaining a
         // bounded request: origin + five waypoints + destination = seven total stops.
