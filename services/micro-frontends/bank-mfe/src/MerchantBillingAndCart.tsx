@@ -155,6 +155,7 @@ export function MultiCartView({
   const { t } = useI18n();
   const [address, setAddress] = useState('');
   const [placing, setPlacing] = useState(false);
+  const checkoutInFlightRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   // Real device binding step-up (2026-07-21) -- Commerce checkout was a real gap:
   // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but
@@ -200,8 +201,9 @@ export function MultiCartView({
   const handlePlaceOrders = async (e?: React.FormEvent) => {
     e?.preventDefault();
     // A swipe/submit can race with a second gesture before React paints the busy
-    // state. Keep one money-moving checkout loop active per cart view.
-    if (placing) return;
+    // state. A ref closes that same-tick window; state drives the visible busy UI.
+    if (checkoutInFlightRef.current) return;
+    checkoutInFlightRef.current = true;
     setPlacing(true);
     setError(null);
     setNeedsDeviceVerification(false);
@@ -215,12 +217,14 @@ export function MultiCartView({
         if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
           checkoutResumeIndexRef.current = i;
           setNeedsDeviceVerification(true);
+          checkoutInFlightRef.current = false;
           setPlacing(false);
           return;
         }
         checkoutResultsRef.current.push({ merchantId, businessName: group.businessName, success: false, error: err instanceof ApiError ? err.message : t('common.actionError') });
       }
     }
+    checkoutInFlightRef.current = false;
     setPlacing(false);
     onCheckedOut(checkoutResultsRef.current);
   };
