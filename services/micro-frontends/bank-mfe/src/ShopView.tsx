@@ -121,8 +121,7 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
   // merchant.merchantId (confirmed by reading the component directly), so a minimal
   // ShoppingMerchant built from the search result -- not a second real fetch -- is
   // honest, not a shortcut that risks showing stale/wrong data.
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const runSearch = async () => {
     const query = searchQuery.trim();
     if (!query || searching) return;
     setSearching(true);
@@ -136,6 +135,10 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
     } finally {
       setSearching(false);
     }
+  };
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    void runSearch();
   };
   const openSearchResult = async (r: ProductSearchResult) => {
     const merchant: ShoppingMerchant = {
@@ -335,7 +338,7 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
       ) : view === 'BROWSE' && searchError !== null ? (
         <div role="alert" style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }}>
           <p>{searchError}</p>
-          <button type="button" className="itunda-btn itunda-btn-secondary" onClick={(e) => { void handleSearch({ preventDefault: () => {} } as React.FormEvent); }} disabled={searching}>
+          <button type="button" className="itunda-btn itunda-btn-secondary" onClick={() => { void runSearch(); }} disabled={searching}>
             {searching ? '…' : 'Try again'}
           </button>
         </div>
