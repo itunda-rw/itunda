@@ -507,7 +507,6 @@ class EatsController(
         val order = eatsOrderService.declineDelivery(currentUser.userId, orderId)
         return ResponseEntity.ok(mapOf("success" to true, "order" to order))
     }
-
     @PostMapping("/orders/{orderId}/rider-status")
     fun updateRiderStatus(
         @PathVariable orderId: String,
