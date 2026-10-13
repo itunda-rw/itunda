@@ -103,12 +103,15 @@ class NominatimGeocodingClient(
         val maxLng = longitude + lngDelta
         return try {
             @Suppress("UNCHECKED_CAST")
+            // Nominatim Search API caps `limit` at 50. The previous limit*3 sent 60
+            // for the normal nearby endpoint (limit=20), producing HTTP 400; the catch
+            // below converted that upstream error into an empty list, making Maps appear blank.
             val response = client.get()
                 .uri { builder ->
                     builder.path("/search")
                         .queryParam("q", searchTerm)
                         .queryParam("format", "json")
-                        .queryParam("limit", (limit * 3).toString())
+                        .queryParam("limit", (limit * 3).coerceIn(1, 50).toString())
                         .queryParam("countrycodes", "rw")
                         .queryParam("viewbox", "$minLng,$maxLat,$maxLng,$minLat")
                         .queryParam("bounded", "1")
