@@ -151,3 +151,6 @@ export function installSaroniteBrowserMock(
   });
   return devtools;
 }
+
+export { permissionFor, SARONITE_CAPABILITIES, SARONITE_METHODS, supportsMethod } from './capabilities';
+export type { SaroniteCapabilityName, SaroniteMethodName } from './capabilities';
