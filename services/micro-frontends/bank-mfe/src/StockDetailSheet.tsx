@@ -31,6 +31,7 @@ export function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchT
   const [mode, setMode] = useState<'BUY' | 'SELL'>('BUY');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
   const [watching, setWatching] = useState(isWatched);
   const [watchBusy, setWatchBusy] = useState(false);
   // Real device binding step-up (2026-07-21) -- Stocks buy/sell was a real gap:
@@ -87,13 +88,25 @@ export function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchT
     }
   };
 
-  const handleTrade = async (e?: React.FormEvent) => {
+  const handleTrade = (e?: React.FormEvent) => {
     e?.preventDefault();
     setError(null);
     setNeedsDeviceVerification(false);
     const shareCount = Number(shares);
-    if (!shareCount || shareCount <= 0) {
+    if (!Number.isFinite(shareCount) || shareCount <= 0) {
       setError('Enter a real number of shares.');
+      return;
+    }
+    setReviewing(true);
+  };
+
+  const executeTrade = async () => {
+    setError(null);
+    setNeedsDeviceVerification(false);
+    const shareCount = Number(shares);
+    if (!Number.isFinite(shareCount) || shareCount <= 0) {
+      setError('Enter a real number of shares.');
+      setReviewing(false);
       return;
     }
     setSubmitting(true);
@@ -101,6 +114,7 @@ export function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchT
       if (mode === 'BUY') await buyStock(stock.id, shareCount);
       else await sellStock(stock.id, shareCount);
       setShares('');
+      setReviewing(false);
       onTraded();
       onClose();
     } catch (err) {
@@ -183,19 +197,39 @@ export function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchT
       </div>
       <form onSubmit={handleTrade} style={{ display: 'flex', gap: '10px' }}>
         <input
-          type="number" min="0.0001" step="any" value={shares} onChange={(e) => setShares(e.target.value)}
+          type="number" min="0.0001" step="any" value={shares} onChange={(e) => { setShares(e.target.value); setReviewing(false); }}
           placeholder="Shares" required
           style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
         />
         <button type="submit" className={mode === 'BUY' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn'} style={mode === 'SELL' ? { backgroundColor: 'var(--itunda-red)', color: 'white' } : undefined} disabled={submitting}>
-          {submitting ? t('stocks.working') : mode === 'BUY' ? t('stocks.buy') : t('stocks.sell')}
+          {t('stocks.reviewOrder')}
         </button>
       </form>
+      {reviewing && (
+        <div role="group" aria-label={t('stocks.reviewOrder')} style={{ marginTop: '12px', padding: '14px', borderRadius: '12px', background: 'var(--itunda-grey-100)' }}>
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, marginBottom: '8px' }}>{t('stocks.orderPreview')}</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: 'var(--itunda-type-scale-13-size)' }}>
+            <span>{mode === 'BUY' ? t('stocks.buy') : t('stocks.sell')} · {stock.symbol}</span>
+            <strong>{Number(shares).toLocaleString('en-US', { maximumFractionDigits: 6 })} {t('stocks.shares')}</strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: 'var(--itunda-type-scale-13-size)', marginTop: '6px' }}>
+            <span>{t('stocks.estimatedValue')}</span>
+            <strong>{(Number(shares) * stock.price).toLocaleString('en-US', { maximumFractionDigits: 2 })} RWF</strong>
+          </div>
+          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', lineHeight: 1.5, color: 'var(--itunda-grey-600)', marginTop: '8px' }}>{t('stocks.previewDisclaimer')}</p>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+            <button type="button" className="itunda-btn" onClick={() => setReviewing(false)} disabled={submitting}>{t('stocks.editOrder')}</button>
+            <button type="button" className={mode === 'BUY' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn'} onClick={executeTrade} disabled={submitting} style={mode === 'SELL' ? { backgroundColor: 'var(--itunda-red)', color: 'white' } : undefined}>
+              {submitting ? t('stocks.working') : t('stocks.confirmOrder')}
+            </button>
+          </div>
+        </div>
+      )}
       {needsDeviceVerification ? (
         <div style={{ marginTop: '10px' }}>
           {/* Real fix (2026-08-10) -- see TransferFlow's own identical fix for the
               full account. handleTrade resets needsDeviceVerification itself. */}
-          <DeviceStepUpPrompt onVerified={() => handleTrade()} onCancel={() => setNeedsDeviceVerification(false)} />
+          <DeviceStepUpPrompt onVerified={() => executeTrade()} onCancel={() => setNeedsDeviceVerification(false)} />
         </div>
       ) : (
         error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginTop: '10px' }} role="alert">{error}</p>
