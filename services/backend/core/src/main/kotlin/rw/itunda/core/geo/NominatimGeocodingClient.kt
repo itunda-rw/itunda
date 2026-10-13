@@ -28,6 +28,7 @@ class GeocodingUnavailableException(message: String, cause: Throwable? = null) :
 @Component
 class NominatimGeocodingClient(
     @Value("\${itunda.nominatim.base-url:}") private val baseUrl: String,
+    @Value("\${itunda.maps.search.accept-language:rw,en,fr}") private val searchAcceptLanguage: String = "rw,en,fr",
 ) {
     private val logger = LoggerFactory.getLogger(NominatimGeocodingClient::class.java)
     private val restClient: RestClient? = if (baseUrl.isNotBlank()) RestClient.create(baseUrl) else null
@@ -68,6 +69,7 @@ class NominatimGeocodingClient(
                         .queryParam("format", "json")
                         .queryParam("limit", limit.toString())
                         .queryParam("countrycodes", "rw")
+                        .queryParam("accept-language", searchAcceptLanguage)
                         .build()
                 }
                 .retrieve()
