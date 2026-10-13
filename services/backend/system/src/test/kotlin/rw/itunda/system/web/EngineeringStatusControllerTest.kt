@@ -30,7 +30,7 @@ class EngineeringStatusControllerTest : BehaviorSpec({
         }
 
         When("GitHub or configuration is unavailable") {
-            every { provider.readStatus() } throws IllegalStateException("not configured")
+            every { provider.readStatus() } throws IllegalStateException("private-upstream-detail-must-not-leak")
             val response = controller.status()
 
             Then("it returns unavailable rather than fabricated healthy data") {
@@ -38,7 +38,7 @@ class EngineeringStatusControllerTest : BehaviorSpec({
                 response.body?.get("code") shouldBe "ENGINEERING_STATUS_UNAVAILABLE"
                 response.body?.get("message") shouldBe "Engineering status is unavailable or not configured."
                 response.body?.containsKey("checks") shouldBe false
-                response.body.toString().contains("not configured") shouldBe true
+                response.body.toString().contains("private-upstream-detail-must-not-leak") shouldBe false
                 response.body.toString().contains("IllegalStateException") shouldBe false
             }
         }
