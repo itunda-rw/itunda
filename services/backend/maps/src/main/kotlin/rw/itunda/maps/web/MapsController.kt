@@ -28,6 +28,7 @@ import rw.itunda.maps.InvalidBookmarkFolderException
 import rw.itunda.maps.InvalidBookmarkNameException
 import rw.itunda.maps.InvalidMapsCategoryException
 import rw.itunda.maps.InvalidMapsCoordinateException
+import rw.itunda.maps.InvalidMapsSearchQueryException
 import rw.itunda.maps.InvalidMapsItineraryException
 import rw.itunda.maps.InvalidLiveLocationCoordinateException
 import rw.itunda.maps.InvalidLiveLocationShareDurationException
@@ -361,6 +362,10 @@ class MapsController(
     @ExceptionHandler(InvalidMapsCoordinateException::class)
     fun handleInvalidCoordinate(ex: InvalidMapsCoordinateException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_COORDINATES", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidMapsSearchQueryException::class)
+    fun handleInvalidSearchQuery(ex: InvalidMapsSearchQueryException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_SEARCH_QUERY", ex.message ?: "Bad request"))
 
     @ExceptionHandler(rw.itunda.merchant.MerchantNotFoundException::class)
     fun handleMerchantNotFound(ex: rw.itunda.merchant.MerchantNotFoundException) =
