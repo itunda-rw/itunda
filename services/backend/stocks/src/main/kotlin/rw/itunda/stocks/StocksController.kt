@@ -57,8 +57,8 @@ class StocksController(private val stocksService: StocksService, private val ide
         ),
     )
 
-    // Real price history (2026-07-19) -- see StocksService.getPriceHistory's own doc
-    // comment. Defaults to 30 days, matching a real securities app's default chart range.
+    // Deterministic simulated price history. It is not an exchange feed or a record
+    // of historical traded prices. Defaults to 30 days for the practice-market chart.
     @GetMapping("/{stockId}/history")
     fun getPriceHistory(
         @PathVariable stockId: String,
@@ -70,9 +70,8 @@ class StocksController(private val stocksService: StocksService, private val ide
     fun getPortfolio(@AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true, "portfolio" to practiceStockService.getPortfolio(currentUser.userId)))
 
-    // Real portfolio value chart (2026-07-19) -- see StocksService.getPortfolioHistory's
-    // own doc comment for the honest scoping (current holdings applied to real
-    // historical prices, not a true historical share-count reconstruction).
+    // Historical practice-portfolio value is reconstructed from practice trades and
+    // simulated catalog prices; it is never sourced from a real-money account.
     @GetMapping("/portfolio/history")
     fun getPortfolioHistory(
         @RequestParam(defaultValue = "30") days: Int,
@@ -80,9 +79,6 @@ class StocksController(private val stocksService: StocksService, private val ide
     ): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "history" to practiceStockService.getPortfolioHistory(currentUser.userId, days)))
 
-    // Real bug fix (2026-07-27) -- see StocksService.fundInvestmentAccount's own doc
-    // comment. Real money-moving internal transfer, so Idempotency-Key required, same
-    // convention as every other money-moving POST in this codebase.
     /**
      * Funding a real investment account is disabled while the only market is simulated.
      * This prevents customers from moving real wallet funds into an account that cannot
