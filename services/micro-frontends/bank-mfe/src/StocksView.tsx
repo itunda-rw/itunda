@@ -14,88 +14,13 @@ import { TrendingDown, TrendingUp } from 'lucide-react';
 import { useI18n } from './i18n/I18nContext';
 import { ApiError } from './lib/api';
 import { EmptyState, ErrorCard } from './EmptyState';
-import { DeviceStepUpPrompt } from './DeviceStepUpPrompt';
 import { Sparkline } from './Sparkline';
 import { StockDetailSheet } from './StockDetailSheet';
 import { useDeferredLoading } from './useDeferredLoading';
 import {
-  fetchMarketDataStatus, fetchPortfolio, fetchPortfolioHistory, fetchStocks, fetchWatchlist, fundInvestmentAccount,
+  fetchMarketDataStatus, fetchPortfolio, fetchPortfolioHistory, fetchStocks, fetchWatchlist,
   type MarketDataStatus, type Portfolio, type PortfolioValuePoint, type Stock,
 } from './lib/stocks';
-
-// Real Investment-account top-up (2026-08-04) -- see lib/stocks.ts's own
-// fundInvestmentAccount doc comment. Without this, a user with no pre-seeded
-// investment balance had no in-app way to ever actually buy a stock.
-function AddFundsCard({ onFunded }: { onFunded: () => void }) {
-  const { t } = useI18n();
-  const [expanded, setExpanded] = useState(false);
-  const [amount, setAmount] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
-
-  const handleFund = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    setError(null);
-    setNeedsDeviceVerification(false);
-    const value = Number(amount);
-    if (!value || value <= 0) {
-      setError('Enter a real amount.');
-      return;
-    }
-    setBusy(true);
-    try {
-      await fundInvestmentAccount(value);
-      setAmount('');
-      setExpanded(false);
-      onFunded();
-    } catch (err) {
-      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
-        setNeedsDeviceVerification(true);
-      } else {
-        setError(err instanceof ApiError ? err.message : t('common.actionError'));
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  // Real fix (2026-08-24, flat-design sweep, docs/UI_UX_GUIDELINES.md §10): dropped
-  // itunda-card -- matches Android's identical AddFundsCard composable, already
-  // flattened this session (InvestScreen.kt).
-  return (
-    <div className="itunda-flat-section">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>Investment cash</p>
-        <button onClick={() => { setExpanded(!expanded); setError(null); }} style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>
-          {expanded ? 'Cancel' : t('stocks.addFunds')}
-        </button>
-      </div>
-      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Move money from your main account into your investment account.</p>
-      {expanded && (
-        <form onSubmit={handleFund} style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-          <input
-            type="number" min="1" step="any" value={amount} onChange={(e) => setAmount(e.target.value)}
-            placeholder="Amount (RWF)" required
-            style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
-          />
-          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>
-            {busy ? 'Working…' : 'Add'}
-          </button>
-        </form>
-      )}
-      {needsDeviceVerification ? (
-        <div style={{ marginTop: '10px' }}>
-          {/* Real fix (2026-08-10) -- see TransferFlow's own identical fix for the
-              full account. handleFund resets needsDeviceVerification itself. */}
-          <DeviceStepUpPrompt onVerified={() => handleFund()} onCancel={() => setNeedsDeviceVerification(false)} />
-        </div>
-      ) : (
-        error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginTop: '10px' }} role="alert">{error}</p>
-      )}
-    </div>
-  );
-}
 
 export function StocksView() {
   const { t } = useI18n();
@@ -251,14 +176,14 @@ export function StocksView() {
                 <div>
                   <Sparkline values={portfolioHistory.map((h) => h.value)} positive={portfolio.totalReturn >= 0} />
                   <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
-                    Last 30 days -- based on your current holdings applied to real historical prices, not a full historical reconstruction
+                    Last 30 days of simulated practice-portfolio value
                   </p>
                 </div>
               )}
             </div>
-            <AddFundsCard onFunded={loadPortfolio} />
+            <p style={{ color: 'var(--text-secondary, #777)', fontSize: 12, margin: '10px 0' }}>Practice account starts with RWF 1,000,000 virtual cash. No real money moves.</p>
             {portfolio.holdings.length === 0 ? (
-              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', padding: '10px 0' }}>You don't hold any real shares yet. Browse the Market tab to buy some.</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', padding: '10px 0' }}>No practice shares yet. Browse the Market tab to place a practice order.</p>
             ) : (
               // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- entity
               // list (holdings owned), no divider needed, matching Android's identical
