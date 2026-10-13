@@ -45,7 +45,7 @@ private struct IDSButtonStyle: ButtonStyle {
             .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
     }
     private var foreground: Color {
-        switch variant { case .primary, .danger: return .white; case .secondary, .tertiary: return IDS.Colors.textBrand }
+        switch variant { case .primary: return IDS.Colors.onBrand; case .danger: return .white; case .secondary, .tertiary: return IDS.Colors.textBrand }
     }
     private var background: Color {
         switch variant { case .primary: return IDS.Colors.brand; case .danger: return IDS.Colors.error; case .secondary: return IDS.Colors.backgroundSecondary; case .tertiary: return .clear }
