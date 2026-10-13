@@ -59,7 +59,7 @@ export default function EngineeringStatusView() {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiFetch<EngineeringStatusResponse>('/api/v1/internal/engineering/status');
+      const response = await apiFetch<EngineeringStatusResponse>('/api/v1/system/engineering/status');
       const generatedAt = Date.parse(response?.generatedAt ?? '');
       if (!response || !response.headSha || !response.repository || !response.branch || !Number.isFinite(generatedAt) || Date.now() - generatedAt > FRESHNESS_LIMIT_MS || generatedAt > Date.now() + 60_000 || !Array.isArray(response.checks) || response.checks.length === 0) {
         throw new Error('The status source returned missing, stale, or incomplete data. Readiness cannot be confirmed.');
