@@ -61,6 +61,14 @@ struct StockDetailContent: View {
                 }
                 .font(.subheadline).bold().foregroundColor(positive ? .green : .red)
 
+                Text("Practice market only. Prices are simulated. Buy/sell actions can change your Itunda investment-account balance, but do not place orders on a real exchange or give you ownership of real securities. This is not a real brokerage account.")
+                    .font(.caption)
+                    .foregroundColor(IDS.Colors.textSecondary)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(IDS.Colors.chipBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
                 if let history, !history.isEmpty {
                     Sparkline(values: history.map { $0.price }, positive: positive).frame(height: 48).padding(.top, 6)
                     Text("Last 14 days -- real deterministic simulation, not live RSE data").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
