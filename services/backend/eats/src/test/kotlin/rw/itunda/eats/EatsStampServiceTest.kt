@@ -111,6 +111,20 @@ class EatsStampServiceTest : FunSpec({
         stampService.awardForCompletedOrder("order-1") shouldBe 1
     }
 
+    test("does not award a stamp before a campaign starts") {
+        val futureCampaign = campaign().copy(startsAt = now.plusSeconds(60))
+        val stampService = service(order(), listOf(futureCampaign))
+
+        stampService.awardForCompletedOrder("order-1") shouldBe 0
+    }
+
+    test("does not award a stamp at or after the campaign end instant") {
+        val endedCampaign = campaign().copy(endsAt = now)
+        val stampService = service(order(), listOf(endedCampaign))
+
+        stampService.awardForCompletedOrder("order-1") shouldBe 0
+    }
+
     test("issues a reward exactly when the completed order reaches the campaign milestone") {
         val rewards = mutableListOf<EatsStampReward>()
         val stampService = service(
