@@ -50,7 +50,7 @@ class MapsSearchValidationTest : FunSpec({
             mapsService.searchPlaces("user_1", "Kigali")
         }
         exception.message shouldBe "Map search is temporarily unavailable"
-        io.mockk.verify(exactly = 0) { geocoder.search(any(), any()) }
+        io.mockk.verify(exactly = 0) { geocoder.searchForMaps(any(), any()) }
     }
 
     test("trims a valid query before sending it to geocoding") {
@@ -64,9 +64,9 @@ class MapsSearchValidationTest : FunSpec({
             transitRoutingService = mockk<TransitRoutingService>(relaxed = true),
         )
         io.mockk.every { geocoder.isConfigured } returns true
-        io.mockk.every { geocoder.search("Kigali", limit = 8) } returns emptyList()
+        io.mockk.every { geocoder.searchForMaps("Kigali", limit = 8) } returns emptyList()
 
         mapsService.searchPlaces("user_1", "  Kigali  ") shouldBe emptyList()
-        io.mockk.verify(exactly = 1) { geocoder.search("Kigali", limit = 8) }
+        io.mockk.verify(exactly = 1) { geocoder.searchForMaps("Kigali", limit = 8) }
     }
 })
