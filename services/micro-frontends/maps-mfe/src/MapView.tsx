@@ -705,11 +705,15 @@ export default function MapView() {
   const searchRequestIdRef = useRef(0);
   useEffect(() => {
     const trimmed = query.trim();
+    // Invalidate every older request even when the new query is too short to search.
+    // Otherwise a slow previous response can repopulate stale results after the user
+    // clears the field, and its pending spinner can remain visible indefinitely.
+    const requestId = ++searchRequestIdRef.current;
     if (trimmed.length < 2) {
       setSearchResults(null);
+      setSearching(false);
       return;
     }
-    const requestId = ++searchRequestIdRef.current;
     const timer = window.setTimeout(async () => {
       setSearching(true);
       setError(null);
