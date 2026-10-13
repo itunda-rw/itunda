@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.mockk
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.geo.NominatimGeocodingClient
+import rw.itunda.core.geo.GeocodingUnavailableException
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.repository.MapBookmarkRepository
 import rw.itunda.core.weather.KigaliWeatherClient
@@ -51,6 +52,26 @@ class MapsSearchValidationTest : FunSpec({
         }
         exception.message shouldBe "Map search is temporarily unavailable"
         io.mockk.verify(exactly = 0) { geocoder.searchForMaps(any(), any()) }
+    }
+
+    test("maps an upstream geocoding failure to a typed unavailable error") {
+        val geocoder = mockk<NominatimGeocodingClient>()
+        io.mockk.every { geocoder.isConfigured } returns true
+        io.mockk.every { geocoder.searchForMaps("Kigali", limit = 8) } throws
+            GeocodingUnavailableException("Nominatim search is temporarily unavailable")
+        val mapsService = MapsService(
+            nominatimGeocodingClient = geocoder,
+            osrmRoutingClient = mockk(relaxed = true),
+            rateLimiter = mockk(relaxed = true),
+            mapBookmarkRepository = mockk(relaxed = true),
+            kigaliWeatherClient = mockk<KigaliWeatherClient>(relaxed = true),
+            transitRoutingService = mockk<TransitRoutingService>(relaxed = true),
+        )
+
+        val exception = shouldThrow<MapsGeocodingUnavailableException> {
+            mapsService.searchPlaces("user_1", "Kigali")
+        }
+        exception.message shouldBe "Map search is temporarily unavailable"
     }
 
     test("trims a valid query before sending it to geocoding") {
