@@ -34,6 +34,9 @@ const talkChatThread = read("ios/App/Sources/TalkChatThread.swift");
 const hoodMarketplaceCard = read("ios/App/Sources/HoodMarketplaceCard.swift");
 const investScreen = read("ios/Features/Wealth/Sources/InvestScreenView.swift");
 const stockDetail = read("ios/Features/Wealth/Sources/StockDetailScreen.swift");
+const rideSharedComponents = read("ios/Features/Ride/Sources/RideSharedComponents.swift");
+const rideDriverContent = read("ios/Features/Ride/Sources/RideDriverContent.swift");
+const shopBrowseComponents = read("ios/Features/Shop/Sources/ShopBrowseComponents.swift");
 const homepage = read("client/index.html");
 const techBlogStyles = read("services/blog/src/styles.css");
 const techBlogHtml = read("services/blog/index.html");
@@ -103,6 +106,9 @@ check(talkChatThread.includes("otherOnline ? IDS.Colors.success"), "online prese
 check(hoodMarketplaceCard.includes("foregroundColor(IDS.Colors.success)"), "marketplace escrow terminal states must use semantic brand success");
 check(investScreen.includes("positive ? IDS.Colors.success : .red"), "investment list positive movement must use semantic brand success");
 check(stockDetail.includes("positive ? IDS.Colors.success : .red"), "stock detail positive movement must use semantic brand success");
+check(rideSharedComponents.includes('case "COMPLETED": return IDS.Colors.success'), "completed ride status must use semantic brand success");
+check(rideDriverContent.includes("foregroundColor(IDS.Colors.success)"), "ride driver net earnings must use semantic brand success");
+check(shopBrowseComponents.includes("foregroundColor(IDS.Colors.success)"), "shop quantity-tier savings must use semantic brand success");
 
 const staleBrandAnchor = /#(?:7472F4|7675F8|9B98FF|625FE0|625FE6|F0EFFF)\b/i;
 for (const surface of activeBrandSurfaces) {
