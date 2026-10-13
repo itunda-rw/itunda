@@ -29,6 +29,20 @@ export interface PricePoint {
   price: number;
 }
 
+export interface MarketDataStatus {
+  mode: 'LIVE' | 'DELAYED' | 'SIMULATED' | 'UNAVAILABLE';
+  source: string;
+  asOfDate: string | null;
+  timezone: string;
+  currency: string;
+  liveQuotesAvailable: boolean;
+  realOrderExecutionAvailable: boolean;
+}
+
+export const fetchMarketDataStatus = () =>
+  apiFetch<{ success: boolean } & MarketDataStatus>('/api/v1/stocks/market-status').then(({ success: _success, ...status }) => status);
+
+
 export interface PortfolioValuePoint {
   date: string;
   value: number;
