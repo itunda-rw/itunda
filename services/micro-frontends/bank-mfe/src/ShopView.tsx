@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { HeartOutline } from './icons/ItundaFaceHearts';
 import { useI18n } from './i18n/I18nContext';
 import { ApiError } from './lib/api';
@@ -33,6 +33,9 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<ShoppingMerchant | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<CommerceProduct | null>(null);
+  // A fast second tap on another search result must win over an older, slower
+  // product-detail response; otherwise the first response can open the wrong item.
+  const productOpenRequestRef = useRef(0);
   const [cart, setCart] = useState<CommerceCart>({});
   const [showCart, setShowCart] = useState(false);
   const [results, setResults] = useState<CommerceCheckoutResult[] | null>(null);
@@ -141,6 +144,7 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
     void runSearch();
   };
   const openSearchResult = async (r: ProductSearchResult) => {
+    const requestId = ++productOpenRequestRef.current;
     const merchant: ShoppingMerchant = {
       merchantId: r.merchantId,
       businessName: r.merchantName,
@@ -155,7 +159,7 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
     setSelected(merchant);
     try {
       const product = await fetchProduct(r.id);
-      if (product.active && product.merchantId === r.merchantId) {
+      if (requestId === productOpenRequestRef.current && product.active && product.merchantId === r.merchantId) {
         setSelectedProduct(product);
       }
     } catch {
