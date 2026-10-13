@@ -2,11 +2,15 @@ package rw.itunda.payment.db.repository
 
 import com.itunda.payment.domain.PaymentStatus
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.SpringBootConfiguration
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
+import org.springframework.boot.autoconfigure.domain.EntityScan
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories
+import org.springframework.test.context.ContextConfiguration
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.payment.db.entity.PaymentRecordEntity
@@ -17,6 +21,7 @@ import java.time.OffsetDateTime
  * relational database, rather than relying only on the application fake repository.
  */
 @DataJpaTest
+@ContextConfiguration(classes = [JpaPaymentRecordRepositoryTest.TestApplication::class])
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class JpaPaymentRecordRepositoryTest {
@@ -61,7 +66,12 @@ class JpaPaymentRecordRepositoryTest {
             PaymentStatus.CONFIRMING,
             records.findById("integration-order-1").orElseThrow().status
         )
-        assertNotNull(records.findById("integration-order-1").orElse(null))
         records.deleteById("integration-order-1")
     }
+
+    @SpringBootConfiguration
+    @EnableAutoConfiguration
+    @EntityScan(basePackageClasses = [PaymentRecordEntity::class])
+    @EnableJpaRepositories(basePackageClasses = [JpaPaymentRecordRepository::class])
+    class TestApplication
 }
