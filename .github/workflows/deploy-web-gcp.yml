@@ -1,4 +1,5 @@
 name: Deploy Itunda Customer Web App to Google Cloud
+# Deployment follow-up: retrigger after consumer Home prototype alignment merged.
 
 on:
   push:
