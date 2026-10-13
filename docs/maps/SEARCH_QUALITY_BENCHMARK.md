@@ -26,6 +26,28 @@ Create a repeatable evaluation set before changing ranking. These are test queri
 
 Do not count a query as passing solely because it returned something. For every query, a reviewer must record whether the intended result exists in the local data, whether the top result is useful, and whether any result is misleading. For common nouns such as `ibitaro` and `farumasi`, Nominatim returns best matches rather than a complete category inventory; nearby-category search should be evaluated separately.
 
+## Search-result contract fixture
+
+The search endpoint returns `success` plus a `results` array. Each result keeps the existing `displayName`, `latitude`, and `longitude` fields and may include `alternativeNames` when the source supplies useful name variants:
+
+```json
+{
+  "displayName": "Kigali Convention Centre, Kigali, Rwanda",
+  "latitude": -1.95,
+  "longitude": 30.09,
+  "alternativeNames": [
+    "Kigali Convention Center",
+    "Centre de conventions de Kigali"
+  ]
+}
+```
+
+Compatibility rules:
+- Clients must continue to accept legacy results that omit `alternativeNames`; treat the missing field as an empty list.
+- The field is additive and must not replace `displayName` or coordinates.
+- Only place-name tags are eligible; metadata such as `brand`, `operator`, `ref`, and `wikidata` must not be exposed as alternate names.
+- Alternate names are display/search metadata, not proof that the query will match that result. Query matching and ranking still require measured evaluation against the local index.
+
 ## Metrics
 
 - **Top-1 success:** intended result is first, for queries with a verified target.
