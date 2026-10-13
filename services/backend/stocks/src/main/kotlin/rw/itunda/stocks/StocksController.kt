@@ -33,7 +33,7 @@ data class SetPriceAlertRequest(val targetPrice: BigDecimal, val direction: Stri
 
 @RestController
 @RequestMapping("/api/v1/stocks")
-class StocksController(private val stocksService: StocksService, private val idempotencyService: IdempotencyService) {
+class StocksController(private val stocksService: StocksService, private val idempotencyService: IdempotencyService, private val practiceStockService: PracticeStockService) {
 
     @GetMapping
     fun getStocks() = ResponseEntity.ok(mapOf("success" to true, "stocks" to stocksService.getStocks()))
@@ -68,7 +68,7 @@ class StocksController(private val stocksService: StocksService, private val ide
 
     @GetMapping("/portfolio")
     fun getPortfolio(@AuthenticationPrincipal currentUser: CurrentUser) =
-        ResponseEntity.ok(mapOf("success" to true, "portfolio" to stocksService.getPortfolio(currentUser.userId)))
+        ResponseEntity.ok(mapOf("success" to true, "portfolio" to practiceStockService.getPortfolio(currentUser.userId)))
 
     // Real portfolio value chart (2026-07-19) -- see StocksService.getPortfolioHistory's
     // own doc comment for the honest scoping (current holdings applied to real
@@ -109,7 +109,7 @@ class StocksController(private val stocksService: StocksService, private val ide
         ResponseEntity.ok(
             mapOf(
                 "success" to true,
-                "preview" to stocksService.previewOrder(currentUser.userId, request.stockId, request.side, request.shares),
+                "preview" to practiceStockService.preview(currentUser.userId, request.stockId, request.side, request.shares),
             ),
         )
 
@@ -120,7 +120,7 @@ class StocksController(private val stocksService: StocksService, private val ide
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/stocks/buy", idempotencyKey, request) {
-            val transaction = stocksService.buyStock(currentUser.userId, request.stockId, request.shares)
+            val transaction = practiceStockService.execute(currentUser.userId, request.stockId, "BUY", request.shares)
             200 to mapOf("success" to true, "message" to "Bought ${request.shares} shares successfully", "transaction" to transaction)
         }
         return ResponseEntity.status(status).body(body)
@@ -133,7 +133,7 @@ class StocksController(private val stocksService: StocksService, private val ide
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/stocks/sell", idempotencyKey, request) {
-            val transaction = stocksService.sellStock(currentUser.userId, request.stockId, request.shares)
+            val transaction = practiceStockService.execute(currentUser.userId, request.stockId, "SELL", request.shares)
             200 to mapOf("success" to true, "message" to "Sold ${request.shares} shares successfully", "transaction" to transaction)
         }
         return ResponseEntity.status(status).body(body)
