@@ -170,9 +170,18 @@ internal fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: (
         error = null
         coroutineScope.launch {
             try {
-                orderPreview = NetworkClient.apiService.previewStockOrder(
+                val preview = NetworkClient.apiService.previewStockOrder(
                     StockOrderPreviewRequest(stock.id, if (buyMode) "BUY" else "SELL", shareCount),
                 ).preview
+                if (preview.mode != "SIMULATED" ||
+                    preview.source != "ITUNDA_DETERMINISTIC_SIMULATOR" ||
+                    preview.realOrderExecutionAvailable ||
+                    preview.reservesFunds
+                ) {
+                    error = "Could not verify this practice-order preview."
+                    return@launch
+                }
+                orderPreview = preview
                 reviewingTrade = true
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
