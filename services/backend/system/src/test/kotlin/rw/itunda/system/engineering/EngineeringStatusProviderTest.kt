@@ -124,5 +124,29 @@ class EngineeringStatusProviderTest : BehaviorSpec({
                 server.verify()
             }
         }
+
+        When("all ten check-run pages are full") {
+            val builder = RestClient.builder()
+            val server = MockRestServiceServer.bindTo(builder).build()
+            server.expect(requestTo("https://api.github.com/repos/itunda-rw/itunda/commits/main"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""{"sha":"$headSha"}""", MediaType.APPLICATION_JSON))
+            for (page in 1..10) {
+                val pageRuns = (1..100).joinToString(",") { index ->
+                    """{"name":"check-$page-$index","status":"completed","conclusion":"success"}"""
+                }
+                server.expect(requestTo("https://api.github.com/repos/itunda-rw/itunda/commits/$headSha/check-runs?per_page=100&page=$page"))
+                    .andExpect(method(HttpMethod.GET))
+                    .andRespond(withSuccess("""{"check_runs":[$pageRuns]}""", MediaType.APPLICATION_JSON))
+            }
+            val provider = EngineeringStatusProvider(
+                ObjectMapper(), "itunda-rw/itunda", "main", "CI", "", "test", builder,
+            )
+
+            Then("it refuses to publish a potentially truncated snapshot") {
+                shouldThrow<IllegalArgumentException> { provider.readStatus() }
+                server.verify()
+            }
+        }
     }
 })
