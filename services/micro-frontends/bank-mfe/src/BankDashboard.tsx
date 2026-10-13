@@ -961,14 +961,14 @@ function HomeView({ userName, onNavigateToTab }: { userName?: string; onNavigate
         )}
         <div className="itunda-home-primary-actions">
           <button type="button" className="itunda-home-send" onClick={() => onNavigateToTab('PAY')}>Send money <IconChevronRight size={18} /></button>
-          <button type="button" className="itunda-home-topup" onClick={() => onNavigateToTab('PAY')}>Top up</button>
+          <button type="button" className="itunda-home-topup" onClick={() => onNavigateToTab('PAY')}>Open Pay</button>
         </div>
       </section>
 
       <section className="itunda-home-actions-section" aria-label="Quick actions">
         <h2>Quick actions</h2>
         <div className="itunda-home-actions">
-          {quickActions.map(({ id, label, icon: Icon }, index) => (
+          {quickActions.map(({ id, label, icon: Icon }) => (
             <button key={`${id}-${label}`} type="button" onClick={() => onNavigateToTab(id)} aria-label={label}>
               <span className="itunda-home-actions__icon" aria-hidden="true"><Icon size={20} /></span>
               <span>{label}</span>
