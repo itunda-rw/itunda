@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createSaroniteScenarioHost } from './scenario';
+import { createSaroniteScenarioHost } from './scenario.ts';
 
 const host = createSaroniteScenarioHost({
   id: 'checkout-offline',
