@@ -19,8 +19,8 @@ import { Sparkline } from './Sparkline';
 import { StockDetailSheet } from './StockDetailSheet';
 import { useDeferredLoading } from './useDeferredLoading';
 import {
-  fetchPortfolio, fetchPortfolioHistory, fetchStocks, fetchWatchlist, fundInvestmentAccount,
-  type Portfolio, type PortfolioValuePoint, type Stock,
+  fetchMarketDataStatus, fetchPortfolio, fetchPortfolioHistory, fetchStocks, fetchWatchlist, fundInvestmentAccount,
+  type MarketDataStatus, type Portfolio, type PortfolioValuePoint, type Stock,
 } from './lib/stocks';
 
 // Real Investment-account top-up (2026-08-04) -- see lib/stocks.ts's own
@@ -106,6 +106,7 @@ export function StocksView() {
   // doc comment for the full sourced account.
   const [marketFilter, setMarketFilter] = useState<'ALL' | 'RSE' | 'NASDAQ'>('ALL');
   const [stocks, setStocks] = useState<Stock[] | null>(null);
+  const [marketStatus, setMarketStatus] = useState<MarketDataStatus | null>(null);
   const showStocksSkeleton = useDeferredLoading(stocks === null);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const showPortfolioSkeleton = useDeferredLoading(portfolio === null);
@@ -131,6 +132,7 @@ export function StocksView() {
   };
 
   useEffect(() => {
+    fetchMarketDataStatus().then(setMarketStatus).catch(() => setMarketStatus(null));
     if (subTab === 'MARKET') loadMarket();
     else if (subTab === 'PORTFOLIO') loadPortfolio();
     else loadWatchlist();
@@ -201,6 +203,11 @@ export function StocksView() {
       <div role="note" aria-live="polite" style={{ marginBottom: '14px', padding: '12px 14px', borderRadius: '12px', background: 'var(--itunda-grey-100)', color: 'var(--itunda-grey-700)', fontSize: 'var(--itunda-type-scale-12-size)', lineHeight: 1.5 }}>
         {t('stocks.simulationDisclosure')}
       </div>
+      {marketStatus && (
+        <p aria-live="polite" style={{ margin: '-4px 0 14px', fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
+          Market status: {marketStatus.mode} · {marketStatus.source} · simulated for {marketStatus.asOfDate ?? 'unknown date'} ({marketStatus.timezone}) · {marketStatus.currency} · live quotes and real order execution unavailable
+        </p>
+      )}
 
       {error && (
         <ErrorCard message={error} onRetry={subTab === 'MARKET' ? loadMarket : subTab === 'PORTFOLIO' ? loadPortfolio : loadWatchlist} />
