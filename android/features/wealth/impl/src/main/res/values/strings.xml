@@ -26,4 +26,6 @@
     <string name="invest_order_preview_disclaimer">Estimate uses the simulated displayed price and excludes fees or price changes. Confirming changes only the Itunda internal investment ledger; it does not place a real market order.</string>
     <string name="invest_edit_order">Edit order</string>
     <string name="invest_confirm_practice_trade">Confirm practice trade</string>
+    <string name="invest_insufficient_practice_balance">Your available practice balance may be insufficient.</string>
+    <string name="invest_insufficient_practice_shares">You may not have enough practice shares for this sale.</string>
 </resources>
