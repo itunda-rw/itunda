@@ -47,7 +47,7 @@ export function createSaroniteMockHost(
   };
   const listeners = new Set<() => void>();
   let requestSequence = state.calls.reduce((max, call) => {
-    const match = /^mock-(\\d+)$/.exec(call.requestId);
+    const match = /^mock-(\d+)$/.exec(call.requestId);
     return match ? Math.max(max, Number(match[1])) : max;
   }, 0);
 
