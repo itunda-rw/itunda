@@ -74,9 +74,12 @@ class EngineeringStatusProvider(
 
         val now = Instant.now().toString()
         val checks = allRuns.map { run ->
+            val runHeadSha = run.path("head_sha").asText("")
             val status = run.path("status").asText("")
             val conclusion = run.path("conclusion").asText("")
+            // Do not label a check healthy unless GitHub explicitly binds it to the requested HEAD.
             val result = when {
+                !runHeadSha.equals(headSha, ignoreCase = true) -> "unknown"
                 status != "completed" -> "pending"
                 conclusion == "success" -> "success"
                 conclusion == "failure" || conclusion == "timed_out" || conclusion == "action_required" -> "failure"
@@ -87,7 +90,7 @@ class EngineeringStatusProvider(
                 "id" to run.path("name").asText("unknown"),
                 "name" to run.path("name").asText("Unnamed check"),
                 "result" to result,
-                "commitSha" to headSha,
+                "commitSha" to runHeadSha,
                 "environment" to environment,
                 "source" to "GitHub Actions check runs",
                 "observedAt" to now,
