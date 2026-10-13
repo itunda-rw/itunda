@@ -13,7 +13,7 @@
 
 - [x] Show a clear, localized disclosure on investing and stock-detail screens: practice market, simulated prices, internal demo ledger only, no real exchange orders or securities ownership.
 - [ ] Gate any production real-money stock purchase behind an approved brokerage/custody partner, real instrument identifiers, execution/settlement reconciliation, and explicit product/legal approval. Do not represent ledger-only trades as real brokerage.
-- [ ] Add machine-readable market-data status (LIVE, DELAYED, SIMULATED, UNAVAILABLE), provider timestamp, exchange timezone, currency, and source to the API.
+- [x] Add a machine-readable `GET /api/v1/stocks/market-status` contract: `mode`, `source`, simulation `asOfDate`, `timezone`, `currency`, `liveQuotesAvailable`, and `realOrderExecutionAvailable`. It explicitly reports `SIMULATED` / `ITUNDA_DETERMINISTIC_SIMULATOR` and does not misrepresent the simulation date as a live-provider timestamp. Web Invest displays the status with EN/RW/FR labels; controller test asserts the safety flags. Remaining: add provider timestamps when a real feed exists.
 - [ ] Separate simulated balances/positions from any future real brokerage account and ledger. Never migrate demo positions into a live account as if they were securities.
 - [ ] Add server-side kill switches for trading and market-data providers; fail closed if a live execution provider is unhealthy or instrument/price freshness checks fail.
 
