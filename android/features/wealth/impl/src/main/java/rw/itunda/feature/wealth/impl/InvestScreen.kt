@@ -98,6 +98,15 @@ fun InvestScreen(onBack: () -> Unit) {
                 .clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft).padding(12.dp),
         )
 
+        Text(
+            stringResource(R.string.invest_simulation_disclosure),
+            color = Ids.colors.textSecondary,
+            fontSize = 12.sp,
+            lineHeight = 17.sp,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp)
+                .clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft).padding(12.dp),
+        )
+
         if (selectedStock != null) {
             StockDetailContent(
                 stock = selectedStock!!,
