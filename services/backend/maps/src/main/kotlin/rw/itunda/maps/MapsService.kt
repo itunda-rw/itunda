@@ -18,6 +18,7 @@ import java.time.Duration
 import java.util.UUID
 
 class InvalidMapsCoordinateException(message: String) : RuntimeException(message)
+class InvalidMapsSearchQueryException(message: String) : RuntimeException(message)
 class InvalidMapsItineraryException(message: String) : RuntimeException(message)
 class RouteNotFoundException(message: String) : RuntimeException(message)
 class InvalidMapsCategoryException(message: String) : RuntimeException(message)
@@ -52,6 +53,10 @@ class MapsService(
     /** An ordered stop in an itinerary, using itunda's `[lat, lng]` convention. */
     data class ItineraryWaypoint(val latitude: Double, val longitude: Double)
 
+    companion object {
+        const val MAX_SEARCH_QUERY_LENGTH = 120
+    }
+
     // Real Kigali weather chip -- see KigaliWeatherClient's own doc comment. Null if
     // the real upstream is unreachable and there's no still-fresh cache -- never a
     // fabricated reading.
@@ -60,8 +65,15 @@ class MapsService(
     // Real anti-spam limit -- same convention every other user-facing endpoint in this
     // codebase already has (search-as-you-type is easy to hammer otherwise).
     fun searchPlaces(userId: String, query: String): List<GeocodeSuggestion> {
+        val normalizedQuery = query.trim()
+        if (normalizedQuery.isEmpty()) {
+            throw InvalidMapsSearchQueryException("Search query must not be empty")
+        }
+        if (normalizedQuery.length > MAX_SEARCH_QUERY_LENGTH) {
+            throw InvalidMapsSearchQueryException("Search query must be $MAX_SEARCH_QUERY_LENGTH characters or fewer")
+        }
         rateLimiter.checkLimit("maps:search:$userId", limit = 60, window = Duration.ofMinutes(1))
-        return nominatimGeocodingClient.search(query, limit = 8)
+        return nominatimGeocodingClient.search(normalizedQuery, limit = 8)
     }
 
     /**
