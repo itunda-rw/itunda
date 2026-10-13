@@ -231,7 +231,7 @@ export function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchT
           <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', lineHeight: 1.5, color: 'var(--itunda-grey-600)', marginTop: '8px' }}>{t('stocks.previewDisclaimer')} {orderPreview.disclaimer}</p>
           {((mode === 'BUY' && orderPreview.estimatedNotionalCovered === false) || (mode === 'SELL' && orderPreview.estimatedSharesCovered === false)) && (
             <p role="alert" style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', marginTop: '8px' }}>
-              {mode === 'BUY' ? 'Your available investment balance may be insufficient for this estimate.' : 'Your available holding may be insufficient for this quantity.'}
+              {mode === 'BUY' ? 'Your virtual practice cash may be insufficient for this estimate.' : 'Your practice holding may be insufficient for this quantity.'}
             </p>
           )}
           <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
