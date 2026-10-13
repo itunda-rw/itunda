@@ -1,0 +1,48 @@
+name: Saronite manifest contract
+
+on:
+  pull_request:
+    paths:
+      - "packages/saronite/**"
+      - ".github/workflows/saronite-manifest.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "packages/saronite/**"
+      - ".github/workflows/saronite-manifest.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: saronite-manifest-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  manifest-contract:
+    name: Manifest validation contract
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/saronite
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test manifest validator (valid and invalid cases)
+        run: npm run test:manifest
+      - name: Validate every mini-app manifest
+        shell: bash
+        run: |
+          mapfile -d '' manifests < <(find mini-apps -type f -name manifest.json -print0)
+          if [ "${#manifests[@]}" -eq 0 ]; then
+            echo "::error::No mini-app manifests found under packages/saronite/mini-apps"
+            exit 1
+          fi
+          for manifest in "${manifests[@]}"; do
+            node validate-manifest.mjs "$manifest"
+          done
