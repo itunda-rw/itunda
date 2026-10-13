@@ -26,6 +26,11 @@ def normalized_archive_paths(zf: zipfile.ZipFile) -> list[tuple[zipfile.ZipInfo,
         # allowing platform-dependent interpretation of a path.
         if "\\" in info.filename:
             raise SystemExit(f"Unsafe archive path separator: {info.filename}")
+        # Validate raw segments before PurePosixPath can normalize away "." or
+        # repeated separators. The audit must report the archive's actual names.
+        raw_parts = info.filename.split("/")
+        if any(part in ("", ".", "..") for part in raw_parts):
+            raise SystemExit(f"Unsafe archive path: {info.filename}")
         path = pathlib.PurePosixPath(info.filename)
         mode = info.external_attr >> 16
         if stat.S_ISLNK(mode):
