@@ -8,4 +8,10 @@
     <string name="invest_working">Birakora…</string>
     <string name="invest_simulation_disclosure">Isoko ryo kwitoza gusa. Ibiciro birigana isoko. Kugura cyangwa kugurisha bishobora guhindura amafaranga ari kuri konti yawe y’ishoramari ya Itunda, ariko ntibishyira komande ku isoko nyakuri kandi ntibiguha imigabane nyakuri. Iyi si konti nyakuri yo gucuruza imigabane.</string>
     <string name="invest_add_funds">Ongeramo amafaranga</string>
+    <string name="invest_review_order">Suzuma komande ry’igerageza</string>
+    <string name="invest_shares">imigabane</string>
+    <string name="invest_estimated_value">Agaciro kagereranijwe</string>
+    <string name="invest_order_preview_disclaimer">Igereranya rikoresha igiciro cy’igerageza kandi ntiribariramo amafaranga y’inyongera cyangwa ihinduka ry’igiciro. Kwemeza bihindura gusa ibaruramari ry’ishoramari rya Itunda; ntibishyira komande ku isoko nyakuri.</string>
+    <string name="invest_edit_order">Hindura komande</string>
+    <string name="invest_confirm_practice_trade">Emeza igikorwa cy’igerageza</string>
 </resources>
