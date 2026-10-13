@@ -1,4 +1,4 @@
-import { createSaroniteMockHost, type MockHostState, type MockRequestOptions, type SaroniteMockHost } from './mock';
+import { createSaroniteMockHost, type MockHostState, type MockRequestOptions, type SaroniteMockHost } from './mock.ts';
 
 export type SaroniteScenario = {
   /** Stable scenario ID used to correlate all calls in a reproducible run. */
