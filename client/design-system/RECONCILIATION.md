@@ -76,7 +76,7 @@ The design system also includes patterns already expressed in real product scree
 
 1. **Existing shipped design work is source material.** IDS v2 documents and normalizes it; it does not replace it blindly.
 2. **Primitive and semantic tokens remain separate.** Raw palettes can be retained for compatibility, while product code should consume semantic roles.
-3. **Itunda brand identity is authoritative.** The current semantic brand anchor is Itunda indigo `#7472F4`.
+3. **Itunda brand identity is authoritative.** The canonical Itunda brand v3 anchor is `#8F89FF`; on-brand foreground is `#121216`.
 4. **Platform implementations may differ where the platform requires it.** Compose, SwiftUI and Web should share intent and semantics without forcing identical layouts.
 5. **Legacy Toss-named compatibility code is migration material, not the IDS public vocabulary.** New code should use `Ids*` / `--itunda-*` / IDS semantic roles.
 6. **Product patterns are first-class design-system material.** Money movement, identity, payments, marketplace, chat, business and security flows must be documented alongside atomic components.
