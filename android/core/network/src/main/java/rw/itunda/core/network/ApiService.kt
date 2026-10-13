@@ -2103,7 +2103,7 @@ data class StockHistoryResponse(val success: Boolean, val history: List<StockPri
 data class PortfolioValuePointDto(val date: String, val value: Double)
 data class PortfolioHistoryResponse(val success: Boolean, val history: List<PortfolioValuePointDto>)
 data class StockHoldingDto(val stockId: String, val symbol: String, val name: String, val shares: Double, val avgPrice: Double, val currentPrice: Double, val value: Double, val `return`: Double)
-data class StockPortfolioDto(val totalValue: Double, val totalReturn: Double, val totalReturnPercent: Double, val holdings: List<StockHoldingDto>)
+data class StockPortfolioDto(val totalValue: Double, val totalReturn: Double, val totalReturnPercent: Double, val holdings: List<StockHoldingDto>, val virtualCashBalance: Double = 1_000_000.0, val startingVirtualCash: Double = 1_000_000.0)
 data class StockPortfolioResponse(val success: Boolean, val portfolio: StockPortfolioDto)
 data class StockOrderPreviewRequest(val stockId: String, val side: String, val shares: Double)
 data class StockOrderPreviewDto(
