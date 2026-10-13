@@ -21,7 +21,7 @@ These observations should be rechecked against the current branch and runtime be
 
 - [ ] Publish one canonical maps API contract (OpenAPI/schema) covering search, nearby places, geocode, reverse geocode, place details, routes, bookmarks, and transit where implemented.
 - [ ] Eliminate duplicated maps API clients by extracting a shared typed client or generating clients from the canonical contract. If runtime boundaries prevent sharing, enforce parity with generated fixtures and contract tests.
-- [ ] Never turn upstream timeouts, unconfigured services, or malformed responses into a successful empty result. Return typed errors, actionable retry states, request IDs, and useful telemetry.
+- [x] Maps text search now distinguishes an unconfigured/unreachable Nominatim service from a genuine zero-result response and returns a typed `503 MAP_SEARCH_UNAVAILABLE`; legacy geocoding consumers retain their existing fallback behavior. Malformed-response policy, retry states, request IDs, and telemetry remain open.
 - [ ] Verify production configuration for tile, geocoding, and routing endpoints in GCP; add health/readiness checks and alerts for missing configuration.
 - [ ] Add contract tests for Android, iOS, and web clients against the same fixtures.
 
@@ -33,7 +33,7 @@ Acceptance: all clients use the same documented contract; upstream failures rema
 - [ ] Rank results using text relevance, distance, category, popularity signals where lawful, and data confidence; expose deterministic tie-breakers.
 - [ ] Make nearby search viewport-aware and category-driven, with loading, no-results, offline, permission-denied, and retry states.
 - [ ] Build stable place identity and deduplication across OSM identifiers, local business records, and verified community submissions.
-- [ ] Localize names and UI for Kinyarwanda, English, and French; retain original names and show data provenance.
+- [x] Maps geocoding now sends configurable `accept-language` preferences, defaulting to `rw,en,fr`, for Kinyarwanda, English, and French result labels. UI localization, original-name retention, and data provenance remain open.
 - [ ] Show hours, phone, category, address, photos, reviews, and service attributes only when available and appropriately sourced.
 
 Acceptance: relevance evaluation set for Kigali and representative secondary cities; measured top-result quality; no fabricated place facts; graceful behavior with weak connectivity.
