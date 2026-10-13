@@ -940,23 +940,23 @@ function HomeView({ userName, onNavigateToTab }: { userName?: string; onNavigate
       </section>
 
       <section className="itunda-home-money" aria-label="Your money">
-        <div className="itunda-home-money__heading">
-          <h2>Your money</h2>
-          <button type="button" onClick={() => onNavigateToTab('SAVINGS')}>itunda Bank <IconChevronRight size={16} /></button>
-        </div>
         {accounts === null ? (
-          <p className="itunda-home-muted" role="status">Loading your accounts…</p>
+          <div className="itunda-home-money-loading" role="status" aria-live="polite">
+            <span className="itunda-home-money-loading__label">Loading your accounts</span>
+            <span className="itunda-home-money-loading__line" />
+            <span className="itunda-home-money-loading__line itunda-home-money-loading__line--short" />
+          </div>
         ) : (
           <div className="itunda-home-accounts">
-            <button type="button" className="itunda-home-account" onClick={() => onNavigateToTab('SAVINGS')}>
+            <button type="button" className="itunda-home-account itunda-home-account--main" onClick={() => onNavigateToTab('SAVINGS')}>
               <span className="itunda-home-account__label">itunda Bank</span>
               <strong>{accountsFailed ? 'Unavailable' : mainAccount ? money(mainAccount.availableBalance, mainAccount.currency) : 'Set up an account'}</strong>
               <span className="itunda-home-account__hint">{accountsFailed ? 'Could not load balance' : mainAccount ? 'Available balance' : 'Explore account options'}</span>
             </button>
-            <button type="button" className="itunda-home-account" onClick={() => onNavigateToTab('PAY')}>
+            <button type="button" className="itunda-home-account itunda-home-account--pay" onClick={() => onNavigateToTab('PAY')}>
               <span className="itunda-home-account__label">itunda Pay</span>
               <strong>{accountsFailed ? 'Unavailable' : payAccount ? money(payAccount.availableBalance, payAccount.currency) : 'Open itunda Pay'}</strong>
-              <span className="itunda-home-account__hint">{accountsFailed ? 'Could not load balance' : payAccount ? 'Available to pay' : 'Pay and send money'}</span>
+              <IconChevronRight size={18} aria-hidden="true" />
             </button>
           </div>
         )}
