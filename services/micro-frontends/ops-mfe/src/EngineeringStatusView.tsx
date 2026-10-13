@@ -78,10 +78,9 @@ export default function EngineeringStatusView() {
 
   const now = Date.now();
   const checks = status?.checks.map((check) => ({ ...check, displayResult: getDisplayResult(check, now) }));
-  const checksById = new Map((checks ?? []).map((check) => [check.id, check]));
   const ready = Boolean(status && status.requiredCheckIds.length > 0 && status.requiredCheckIds.every((id) => {
-    const check = checksById.get(id);
-    return check?.displayResult === 'success' && check.commitSha === status.headSha;
+    const matches = (checks ?? []).filter((check) => check.id === id);
+    return matches.length === 1 && matches[0].displayResult === 'success' && matches[0].commitSha === status.headSha;
   }));
 
   return (
