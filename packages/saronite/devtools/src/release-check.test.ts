@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { isReleaseReady, validateMiniAppManifest } from './release-check';
+import { isReleaseReady, validateMiniAppManifest } from './release-check.ts';
 
 const valid = {
   schemaVersion: 1,
