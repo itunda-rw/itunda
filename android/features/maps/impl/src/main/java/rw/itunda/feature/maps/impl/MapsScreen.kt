@@ -366,7 +366,19 @@ fun MapScreen(
             .addOnSuccessListener { location ->
                 locating = false
                 if (location != null) {
-                    myLocation = location.latitude to location.longitude
+                    // Itunda Maps is Rwanda-first. A device currently in another country
+                    // must not move the Rwanda map to that country or query the Rwanda-only
+                    // place index with out-of-country coordinates. Keep the real GPS point
+                    // only when it is inside the supported Rwanda map envelope; null makes
+                    // nearby/category search use the real Kigali map-center fallback below.
+                    val latitude = location.latitude
+                    val longitude = location.longitude
+                    if (latitude in -2.940..-0.947 && longitude in 28.761..30.999) {
+                        myLocation = latitude to longitude
+                    } else {
+                        myLocation = null
+                        error = "Itunda Maps currently shows places in Rwanda. Showing Kigali instead."
+                    }
                 } else {
                     error = "Could not access your real location right now."
                 }
