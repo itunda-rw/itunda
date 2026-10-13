@@ -63,8 +63,8 @@ export interface Portfolio {
   totalValue: number;
   totalReturn: number;
   totalReturnPercent: number;
-  virtualCashBalance: number;
-  startingVirtualCash: number;
+  virtualCashBalance?: number;
+  startingVirtualCash?: number;
   holdings: StockHolding[];
 }
 
