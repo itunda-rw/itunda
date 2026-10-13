@@ -7,5 +7,6 @@
     <string name="invest_sell">Vendre</string>
     <string name="invest_working">Traitement…</string>
     <string name="invest_simulation_disclosure">Marché de simulation uniquement. Les prix sont simulés. Acheter ou vendre met à jour le registre de démonstration interne d’Itunda ; aucun ordre n’est envoyé à une vraie bourse et aucun titre coté ne vous appartient.</string>
+    <string name="invest_simulation_disclosure">Marché de simulation uniquement. Les prix sont simulés. Acheter ou vendre met à jour le registre de démonstration interne d’Itunda ; aucun ordre n’est envoyé à une vraie bourse et aucun titre coté ne vous appartient.</string>
     <string name="invest_add_funds">Ajouter des fonds</string>
 </resources>
