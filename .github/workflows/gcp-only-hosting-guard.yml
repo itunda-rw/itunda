@@ -1,0 +1,19 @@
+name: GCP-only hosting guard
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  reject-legacy-pages-links:
+    name: Reject legacy Pages links in production-facing files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Reject pages.dev URLs
+        run: bash scripts/check-no-pages-dev-links.sh
