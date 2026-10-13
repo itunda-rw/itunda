@@ -407,7 +407,7 @@ export const rw: Record<TranslationKey, string> = {
     'stocks.sell': 'Gurisha',
     'stocks.working': 'Birakora…',
     'stocks.addFunds': 'Ongeramo amafaranga',
-    'stocks.simulationDisclosure': 'Isoko ryo kwitoza gusa. Ibiciro birigana isoko, si ibiciro nyakuri. Kugura no kugurisha bihindura gusa ibaruramari ry’igerageza rya Itunda; ntibishyira komande ku isoko nyakuri kandi ntibiguha imigabane nyakuri.',
+    'stocks.simulationDisclosure': 'Isoko ryo kwitoza gusa. Ibiciro birigana isoko. Kugura cyangwa kugurisha bishobora guhindura amafaranga ari kuri konti yawe y’ishoramari ya Itunda, ariko ntibishyira komande ku isoko nyakuri kandi ntibiguha imigabane nyakuri. Iyi si konti nyakuri yo gucuruza imigabane.',
   'stocks.marketStatusLabel': 'Imiterere y’amakuru y’isoko',
   'stocks.liveUnavailable': 'Ibiciro nyakuri n’ubucuruzi nyakuri ntibiboneka muri iri soko ryo kwitoza.',
     'support.reportIssueCta': 'Menyesha ikibazo ku ivunjisha',
