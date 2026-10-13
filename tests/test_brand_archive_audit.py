@@ -48,6 +48,16 @@ class ArchivePathValidationTests(unittest.TestCase):
             with self.assertRaisesRegex(SystemExit, "path separator"):
                 audit.normalized_archive_paths(zf)
 
+    def test_rejects_dot_segments_before_path_normalization(self) -> None:
+        with zip_with([("brand/./logo.svg", b"a", None)]) as zf:
+            with self.assertRaisesRegex(SystemExit, "Unsafe archive path"):
+                audit.normalized_archive_paths(zf)
+
+    def test_rejects_repeated_path_separators(self) -> None:
+        with zip_with([("brand//logo.svg", b"a", None)]) as zf:
+            with self.assertRaisesRegex(SystemExit, "Unsafe archive path"):
+                audit.normalized_archive_paths(zf)
+
     def test_rejects_symlinks(self) -> None:
         with zip_with([("brand/link.svg", b"target", stat.S_IFLNK | 0o777)]) as zf:
             with self.assertRaisesRegex(SystemExit, "Symlink"):
