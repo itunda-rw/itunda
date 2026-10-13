@@ -102,22 +102,19 @@ class StocksControllerTest : BehaviorSpec({
         }
     }
 
-    Given("a real investment-account funding request") {
+    Given("a funding request while live broker execution is unavailable") {
         val stocksService = mockk<StocksService>()
         val idempotencyService = mockk<IdempotencyService>()
         val ctl = controller(stocksService = stocksService, idempotencyService = idempotencyService)
         val request = FundInvestmentRequest(BigDecimal("10000"))
-        val actionSlot = slot<() -> Pair<Int, Map<String, Any?>>>()
-        every { stocksService.fundInvestmentAccount("user_1", BigDecimal("10000")) } returns mapOf("id" to "txn_1")
-        every {
-            idempotencyService.replayOrExecute("POST /api/v1/stocks/fund", "key-1", request, capture(actionSlot))
-        } answers { actionSlot.captured.invoke() }
 
-        When("funding it") {
-            ctl.fund(request, "key-1", currentUser)
-            Then("it routes through the real idempotency service scoped to the caller's own userId") {
-                verify(exactly = 1) { idempotencyService.replayOrExecute("POST /api/v1/stocks/fund", "key-1", request, any()) }
-                verify(exactly = 1) { stocksService.fundInvestmentAccount("user_1", BigDecimal("10000")) }
+        When("the client tries to fund the real investment account") {
+            val response = ctl.fund(request, "key-1", currentUser)
+            Then("it blocks the transfer rather than moving real money into simulated trading") {
+                response.statusCode shouldBe HttpStatus.CONFLICT
+                response.body?.get("success") shouldBe false
+                verify(exactly = 0) { stocksService.fundInvestmentAccount(any(), any()) }
+                verify(exactly = 0) { idempotencyService.replayOrExecute(any(), any(), any(), any()) }
             }
         }
     }
