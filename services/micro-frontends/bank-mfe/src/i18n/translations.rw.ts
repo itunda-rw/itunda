@@ -12,6 +12,8 @@ export const rw: Record<TranslationKey, string> = {
     'login.next': 'Komeza',
     'login.enterPin': 'Injiza PIN yawe',
     'login.checkingDevice': 'Kugenzura iyi terefone…',
+    'login.networkError': 'Ntibishobotse kugera kuri Itunda. Reba niba internet ikora, wongere ugerageze.',
+    'login.serverError': 'Itunda ifite ikibazo cy’igihe gito. Ntabwo ari ukubera PIN yawe. Ongera ugerageze nyuma gato.',
     'overview.netWorth': 'Umutungo wose',
     'overview.accounts': 'Konti',
     'overview.savings': "Ubwizigame: {{amount}} RWF mu migambi {{count}}",

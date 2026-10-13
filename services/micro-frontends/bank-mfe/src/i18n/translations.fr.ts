@@ -12,6 +12,8 @@ export const fr: Record<TranslationKey, string> = {
     'login.next': 'Suivant',
     'login.enterPin': 'Entrez votre code PIN',
     'login.checkingDevice': 'Vérification de cet appareil…',
+    'login.networkError': 'Connexion à Itunda impossible. Vérifiez votre connexion Internet et réessayez.',
+    'login.serverError': 'Itunda rencontre un problème temporaire. Votre code PIN n’est pas en cause. Réessayez dans un instant.',
     'overview.netWorth': 'Valeur nette',
     'overview.accounts': 'Comptes',
     'overview.savings': 'Épargne : {{amount}} RWF sur {{count}} objectif(s)',
