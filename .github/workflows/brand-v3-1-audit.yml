@@ -1,0 +1,30 @@
+name: Brand v3.1 archive audit
+
+on:
+  pull_request:
+    paths:
+      - "itunda-brand-v3.1.zip"
+      - "packages/brand-assets/canonical/itunda-brand/**"
+      - "scripts/audit-brand-v3-1-archive.py"
+      - ".github/workflows/brand-v3-1-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Compare archive and canonical tree (diagnostic)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Audit ZIP integrity, paths, and bytes
+        run: python3 scripts/audit-brand-v3-1-archive.py
+      - name: Publish audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: itunda-brand-v3-1-archive-audit
+          path: brand-v3.1-archive-audit.md
+          if-no-files-found: error
