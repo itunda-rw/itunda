@@ -40,6 +40,10 @@ jobs:
         working-directory: packages/saronite
         run: yarn install --no-immutable
 
+      - name: Run Saronite DevTools contract tests
+        working-directory: packages/saronite/devtools
+        run: yarn run contract-test
+
       - name: Typecheck web demo
         working-directory: packages/saronite/mini-apps/web-demo
         run: yarn run typecheck
@@ -47,7 +51,6 @@ jobs:
       - name: Build web demo
         working-directory: packages/saronite/mini-apps/web-demo
         run: yarn run build
-
 
       - name: Audit every generated JavaScript chunk
         working-directory: packages/saronite/mini-apps/web-demo
