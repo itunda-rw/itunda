@@ -47,7 +47,7 @@ class PracticeStockService(private val practiceTrades: PracticeStockTradeReposit
             mapOf(
                 "stockId" to stock.id, "symbol" to stock.symbol, "name" to stock.name,
                 "shares" to shares, "avgPrice" to avgPrice, "currentPrice" to stock.price,
-                "value" to value, "return" to value.subtract(shares.multiply(avgPrice)),
+                "value" to value, "return" to if (shares.multiply(avgPrice) > BigDecimal.ZERO) value.subtract(shares.multiply(avgPrice)).divide(shares.multiply(avgPrice), 4, RoundingMode.HALF_UP).multiply(BigDecimal(100)) else BigDecimal.ZERO,
             )
         }
         val totalValue = holdings.sumOf { it["value"] as BigDecimal }
