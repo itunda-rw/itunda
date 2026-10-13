@@ -900,13 +900,14 @@ function HomeView({ userName, onNavigateToTab }: { userName?: string; onNavigate
   // Home shows only the signed-in user's real account and spending data. A failed
   // request leaves the section in a calm empty state; never substitute sample money.
   const [accounts, setAccounts] = useState<Account[] | null>(null);
+  const [accountsFailed, setAccountsFailed] = useState(false);
   const [spending, setSpending] = useState<{ totalSpent: number; categories: SpendingCategory[] } | null>(null);
 
   useEffect(() => {
     let active = true;
     fetchAccounts()
       .then((result) => { if (active) setAccounts(result.filter((account) => account.isActive)); })
-      .catch(() => { if (active) setAccounts([]); });
+      .catch(() => { if (active) { setAccounts([]); setAccountsFailed(true); } });
     fetchSpendingInsight()
       .then((result) => { if (active) setSpending(result); })
       .catch(() => { if (active) setSpending(null); });
@@ -919,10 +920,10 @@ function HomeView({ userName, onNavigateToTab }: { userName?: string; onNavigate
     `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(amount)} ${currency || 'RWF'}`;
 
   const quickActions: { id: Tab; label: string; icon: ComponentType<{ size?: number }> }[] = [
-    { id: 'PAY', label: 'Send', icon: IconPay },
-    { id: 'PAY', label: 'Pay', icon: IconPay },
-    { id: 'BILLS', label: 'Bills', icon: IconExplore },
-    { id: 'EXPLORE', label: 'Explore', icon: IconYou },
+    { id: 'EXPLORE', label: 'Explore', icon: IconExplore },
+    { id: 'MESSAGES', label: 'Messages', icon: IconMessages },
+    { id: 'BILLS', label: 'Bills', icon: IconPay },
+    { id: 'YOU', label: 'You', icon: IconYou },
   ];
 
   return (
@@ -949,13 +950,13 @@ function HomeView({ userName, onNavigateToTab }: { userName?: string; onNavigate
           <div className="itunda-home-accounts">
             <button type="button" className="itunda-home-account" onClick={() => onNavigateToTab('SAVINGS')}>
               <span className="itunda-home-account__label">itunda Bank</span>
-              <strong>{mainAccount ? money(mainAccount.availableBalance, mainAccount.currency) : 'Set up an account'}</strong>
-              <span className="itunda-home-account__hint">{mainAccount ? 'Available balance' : 'Explore account options'}</span>
+              <strong>{accountsFailed ? 'Unavailable' : mainAccount ? money(mainAccount.availableBalance, mainAccount.currency) : 'Set up an account'}</strong>
+              <span className="itunda-home-account__hint">{accountsFailed ? 'Could not load balance' : mainAccount ? 'Available balance' : 'Explore account options'}</span>
             </button>
             <button type="button" className="itunda-home-account" onClick={() => onNavigateToTab('PAY')}>
               <span className="itunda-home-account__label">itunda Pay</span>
-              <strong>{payAccount ? money(payAccount.availableBalance, payAccount.currency) : 'Open itunda Pay'}</strong>
-              <span className="itunda-home-account__hint">{payAccount ? 'Available to pay' : 'Pay and send money'}</span>
+              <strong>{accountsFailed ? 'Unavailable' : payAccount ? money(payAccount.availableBalance, payAccount.currency) : 'Open itunda Pay'}</strong>
+              <span className="itunda-home-account__hint">{accountsFailed ? 'Could not load balance' : payAccount ? 'Available to pay' : 'Pay and send money'}</span>
             </button>
           </div>
         )}
