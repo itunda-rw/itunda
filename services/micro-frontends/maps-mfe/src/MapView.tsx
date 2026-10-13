@@ -1459,7 +1459,18 @@ export default function MapView() {
                   onClick={() => selectSearchResult(place)}
                   style={{ textAlign: 'left', padding: '10px 12px', borderRadius: 'var(--itunda-radius-xs)', fontSize: '13px', color: 'var(--itunda-grey-900)' }}
                 >
-                  {place.displayName}
+                  <span>{place.displayName}</span>
+                  {(() => {
+                    const aliases = [...new Set((place.alternativeNames ?? [])
+                      .map((name) => name.trim())
+                      .filter((name) => name.length > 0 && name !== place.displayName))]
+                      .slice(0, 2);
+                    return aliases.length > 0 ? (
+                      <span style={{ display: 'block', marginTop: '3px', fontSize: '11px', lineHeight: 1.35, color: MAP_CARD_TEXT_TERTIARY }}>
+                        Also known as: {aliases.join(' · ')}
+                      </span>
+                    ) : null;
+                  })()}
                 </button>
               ))
             ))}
