@@ -25,7 +25,7 @@ class EngineeringStatusController(
             ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(
                 mapOf(
                     "code" to "ENGINEERING_STATUS_UNAVAILABLE",
-                    "message" to (ex.message ?: "Engineering status is unavailable."),
+                    "message" to "Engineering status is unavailable or not configured.",
                 ),
             )
         }
