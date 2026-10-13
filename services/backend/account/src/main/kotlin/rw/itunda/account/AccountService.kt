@@ -283,7 +283,11 @@ class AccountService(
             // Releases the claim back to PENDING so the same quote can still be
             // retried, matching the pre-existing behavior (a decline never used to
             // touch quote.status at all, leaving it PENDING for a retry).
-            // The @Transactional method rolls the claim back with the provider-decline exception.
+            transferQuoteRepository.releaseClaim(
+                id = quoteId,
+                claimed = TransferQuoteRecordStatus.CLAIMED,
+                pending = TransferQuoteRecordStatus.PENDING,
+            )
             // Published via publishImmediately, not publishAfterCommit -- this
             // @Transactional method is about to roll back once the exception below
             // propagates (nothing has been written yet), so an afterCommit hook would
