@@ -54,12 +54,16 @@ export function validateMiniAppManifest(input: unknown): ReleaseFinding[] {
       findings.push({ severity: 'error', code: 'manifest.duplicate-permission', message: 'permissions must not contain duplicates.' });
     }
   }
-  if (manifest.bundle) {
-    const { maxBytes, entryBytes } = manifest.bundle;
-    if (maxBytes !== undefined && (!Number.isSafeInteger(maxBytes) || maxBytes <= 0)) findings.push({ severity: 'error', code: 'bundle.invalid-budget', message: 'bundle.maxBytes must be a positive safe integer.' });
-    if (entryBytes !== undefined && (!Number.isSafeInteger(entryBytes) || entryBytes < 0)) findings.push({ severity: 'error', code: 'bundle.invalid-size', message: 'bundle.entryBytes must be a non-negative safe integer.' });
-    if (maxBytes !== undefined && entryBytes !== undefined && entryBytes > maxBytes) findings.push({ severity: 'error', code: 'bundle.budget-exceeded', message: `Bundle entry size ${entryBytes} bytes exceeds the ${maxBytes}-byte budget.` });
-    if (maxBytes !== undefined && entryBytes !== undefined && entryBytes > maxBytes * 0.9 && entryBytes <= maxBytes) findings.push({ severity: 'warning', code: 'bundle.near-budget', message: 'Bundle entry is above 90% of its configured size budget.' });
+  if (manifest.bundle !== undefined) {
+    if (!manifest.bundle || typeof manifest.bundle !== 'object' || Array.isArray(manifest.bundle)) {
+      findings.push({ severity: 'error', code: 'bundle.invalid-shape', message: 'bundle must be an object containing size-budget metadata.' });
+    } else {
+      const { maxBytes, entryBytes } = manifest.bundle;
+      if (maxBytes !== undefined && (!Number.isSafeInteger(maxBytes) || maxBytes <= 0)) findings.push({ severity: 'error', code: 'bundle.invalid-budget', message: 'bundle.maxBytes must be a positive safe integer.' });
+      if (entryBytes !== undefined && (!Number.isSafeInteger(entryBytes) || entryBytes < 0)) findings.push({ severity: 'error', code: 'bundle.invalid-size', message: 'bundle.entryBytes must be a non-negative safe integer.' });
+      if (maxBytes !== undefined && entryBytes !== undefined && entryBytes > maxBytes) findings.push({ severity: 'error', code: 'bundle.budget-exceeded', message: `Bundle entry size ${entryBytes} bytes exceeds the ${maxBytes}-byte budget.` });
+      if (maxBytes !== undefined && entryBytes !== undefined && entryBytes > maxBytes * 0.9 && entryBytes <= maxBytes) findings.push({ severity: 'warning', code: 'bundle.near-budget', message: 'Bundle entry is above 90% of its configured size budget.' });
+    }
   }
   if (platforms && Array.isArray(platforms) && platforms.includes('android') !== platforms.includes('ios')) {
     findings.push({ severity: 'warning', code: 'platform.partial-parity', message: 'This manifest targets only one native platform; confirm the product intentionally supports a single platform.' });
