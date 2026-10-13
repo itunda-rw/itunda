@@ -57,8 +57,7 @@ class MapsSearchValidationTest : FunSpec({
     test("maps an upstream geocoding failure to a typed unavailable error") {
         val geocoder = mockk<NominatimGeocodingClient>()
         io.mockk.every { geocoder.isConfigured } returns true
-        io.mockk.every { geocoder.searchForMaps("Kigali", limit = 8) } throws
-            GeocodingUnavailableException("Nominatim search is temporarily unavailable")
+        io.mockk.every { geocoder.searchForMaps("Kigali", limit = 8) } throws GeocodingUnavailableException("Nominatim search is temporarily unavailable")
         val mapsService = MapsService(
             nominatimGeocodingClient = geocoder,
             osrmRoutingClient = mockk(relaxed = true),
