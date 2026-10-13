@@ -3569,3 +3569,96 @@ input, textarea, select {
   outline: 2px solid var(--itunda-brand);
   outline-offset: 3px;
 }
+
+
+/* Home money hierarchy: one clear primary balance, with Pay as a compact secondary row.
+   This follows the prototype's scan order and avoids two equally weighted dashboard cards. */
+.itunda-home-money > .itunda-home-accounts {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.itunda-home-account--main {
+  width: 100%;
+  padding: 10px 0 18px;
+  border-radius: 0;
+  background: transparent;
+  gap: 7px;
+}
+.itunda-home-account--main:hover,
+.itunda-home-account--main:focus-visible {
+  background: transparent;
+}
+.itunda-home-account--main .itunda-home-account__label {
+  font-size: var(--itunda-type-scale-14-size);
+  color: var(--itunda-text-secondary);
+}
+.itunda-home-account--main strong {
+  font-size: clamp(30px, 8vw, 38px);
+  line-height: 1.15;
+  letter-spacing: -.055em;
+  font-variant-numeric: tabular-nums;
+}
+.itunda-home-account--main .itunda-home-account__hint {
+  font-size: var(--itunda-type-scale-13-size);
+}
+.itunda-home-account--pay {
+  width: 100%;
+  min-height: 54px;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0;
+  border-radius: 0;
+  border-top: 1px solid var(--itunda-border-default);
+  background: transparent;
+}
+.itunda-home-account--pay:hover,
+.itunda-home-account--pay:focus-visible {
+  background: var(--itunda-surface-subtle);
+}
+.itunda-home-account--pay .itunda-home-account__label {
+  flex: 1 1 auto;
+  font-size: var(--itunda-type-scale-14-size);
+  color: var(--itunda-text-primary);
+}
+.itunda-home-account--pay strong {
+  flex: 0 1 auto;
+  font-size: var(--itunda-type-scale-14-size);
+  line-height: 1.3;
+  letter-spacing: -.02em;
+  text-align: right;
+}
+.itunda-home-account--pay > svg {
+  flex: 0 0 auto;
+  color: var(--itunda-text-tertiary);
+}
+.itunda-home-money-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0 18px;
+}
+.itunda-home-money-loading__label {
+  color: var(--itunda-text-secondary);
+  font-size: var(--itunda-type-scale-13-size);
+}
+.itunda-home-money-loading__line {
+  display: block;
+  width: min(68%, 240px);
+  height: 32px;
+  border-radius: 8px;
+  background: var(--itunda-surface-subtle);
+  animation: itunda-home-pulse 1.4s ease-in-out infinite;
+}
+.itunda-home-money-loading__line--short {
+  width: min(38%, 130px);
+  height: 12px;
+}
+@keyframes itunda-home-pulse {
+  50% { opacity: .48; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .itunda-home-money-loading__line { animation: none; }
+}
