@@ -105,7 +105,6 @@ export function createSaroniteMockHost(
     },
     clearCalls() {
       state.calls.length = 0;
-      requestSequence = 0;
       notify();
     },
     subscribe(listener) {
