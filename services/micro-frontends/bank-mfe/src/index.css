@@ -3819,3 +3819,37 @@ input, textarea, select {
     animation: none !important;
   }
 }
+
+/* Prototype (3) alignment pass: match its top inset, section rhythm, and large
+   round quick-action glyphs while retaining the canonical Itunda color tokens. */
+.itunda-home-topbar {
+  min-height: 64px;
+  padding-top: 20px;
+}
+
+.itunda-home-actions-section,
+.itunda-home-local-services,
+.itunda-home-spending,
+.itunda-home-for-you {
+  margin-top: 32px;
+}
+
+.itunda-home-actions__icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 22px;
+}
+
+@media (max-width: 520px) {
+  .itunda-home-topbar {
+    min-height: 64px;
+    padding-top: 20px;
+  }
+
+  .itunda-home-actions__icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 22px;
+  }
+}
+
