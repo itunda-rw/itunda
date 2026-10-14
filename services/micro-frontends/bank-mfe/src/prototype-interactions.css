@@ -1,29 +1,18 @@
 /* Itunda prototype-first interaction pass.
-   Grounded in the supplied clickable prototype: calm surfaces, clear action hierarchy,
-   44–60px touch targets, short press feedback, contextual overlays, theme-aware colors,
-   and reduced-motion support. This is an additive layer; feature behavior and API calls
-   remain owned by their existing screens. */
+   Based on the supplied clickable prototype: clear action hierarchy, touch-friendly
+   controls, short feedback, contextual surfaces, theme-aware tokens and reduced motion.
+   Additive only: existing screens, navigation and API behavior remain authoritative. */
 :root {
   --itunda-prototype-accent: #8F89FF;
   --itunda-prototype-accent-pressed: #7770F0;
   --itunda-prototype-on-accent: #121216;
-  --itunda-prototype-surface: #FFFFFF;
-  --itunda-prototype-surface-muted: #F4F5F8;
-  --itunda-prototype-text: #191F28;
-  --itunda-prototype-muted: #6B7684;
-  --itunda-prototype-hairline: #E5E8EB;
+  --itunda-prototype-surface: var(--itunda-surface-default, #FFFFFF);
+  --itunda-prototype-surface-muted: var(--itunda-surface-subtle, #F4F5F8);
+  --itunda-prototype-text: var(--itunda-text-primary, #191F28);
+  --itunda-prototype-muted: var(--itunda-text-tertiary, #6B7684);
+  --itunda-prototype-hairline: var(--itunda-border-default, #E5E8EB);
   --itunda-prototype-radius-control: 16px;
   --itunda-prototype-radius-surface: 22px;
-  color-scheme: light dark;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --itunda-prototype-surface: #121216;
-    --itunda-prototype-surface-muted: #25252D;
-    --itunda-prototype-text: #F4F5F7;
-    --itunda-prototype-muted: #9AA1AD;
-    --itunda-prototype-hairline: #2E2E37;
-  }
 }
 #root, .itunda-app-shell {
   background: var(--itunda-prototype-surface);
@@ -83,7 +72,7 @@ button:disabled {
 .itunda-bottom-nav button, .itunda-bottom-nav a {
   min-height: 48px;
 }
-[role="dialog"], [data-state="open"][data-overlay], .itunda-sheet {
+.itunda-sheet {
   border-radius: 26px 26px 0 0;
 }
 input, select, textarea {
