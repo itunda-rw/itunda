@@ -894,7 +894,7 @@ export function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode,
 // SavingsView ("itunda Bank"); CooperativeSavingsRail was only ever a teaser
 // linking into SavingsView's own already-complete SaccoSection/IkiminaSection, so
 // it's removed outright rather than moved -- nothing it showed was unique.
-function HomeView({ onNavigateToTab, onOpenTransfer, onOpenAddMoney, onOpenScan }: { onNavigateToTab: (tab: Tab) => void; onOpenTransfer: () => void; onOpenAddMoney: () => void; onOpenScan: () => void }) {
+function HomeView({ onNavigateToTab, onOpenTransfer, onOpenAddMoney, onOpenScan, onOpenAirtime }: { onNavigateToTab: (tab: Tab) => void; onOpenTransfer: () => void; onOpenAddMoney: () => void; onOpenScan: () => void; onOpenAirtime: () => void }) {
   useEffect(() => { recordEvent('home_view'); }, []);
 
   // Use the real signed-in user's balances and spending. Never fill missing API data
@@ -973,7 +973,7 @@ function HomeView({ onNavigateToTab, onOpenTransfer, onOpenAddMoney, onOpenScan 
         <div className="itunda-home-prototype-section-heading"><h2>Quick actions</h2></div>
         <div className="itunda-home-actions">
           {quickActions.map(({ tab, label, icon: Icon }) => (
-            <button key={label} type="button" onClick={() => { if (label === 'Send money') onOpenTransfer(); if (label === 'Scan to pay') onOpenScan(); onNavigateToTab(tab); }} aria-label={label}>
+            <button key={label} type="button" onClick={() => { if (label === 'Send money') onOpenTransfer(); if (label === 'Scan to pay') onOpenScan(); if (label === 'Airtime') onOpenAirtime(); onNavigateToTab(tab); }} aria-label={label}>
               <span className="itunda-home-actions__icon" aria-hidden="true"><Icon size={22} /></span>
               <span>{label}</span>
             </button>
@@ -2858,6 +2858,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   const [openPayAddMoney, setOpenPayAddMoney] = useState(false);
   const [openPayTransfer, setOpenPayTransfer] = useState(false);
   const [openPayScan, setOpenPayScan] = useState(false);
+  const [focusAirtime, setFocusAirtime] = useState(false);
   // Keeps `tab` deep-linkable: every real navigation both updates state and pushes a
   // real URL (?tab=X) so refresh/share/back-button all land where the user actually
   // was, not always Home. `history.pushState` (not `replaceState`) so the browser's
@@ -3141,7 +3142,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       </header>
 
       <main className="itunda-app-content">
-      {tab === 'HOME' && <HomeView onNavigateToTab={setTab} onOpenTransfer={() => setOpenPayTransfer(true)} onOpenAddMoney={() => setOpenPayAddMoney(true)} onOpenScan={() => setOpenPayScan(true)} />}
+      {tab === 'HOME' && <HomeView onNavigateToTab={setTab} onOpenTransfer={() => setOpenPayTransfer(true)} onOpenAddMoney={() => setOpenPayAddMoney(true)} onOpenScan={() => setOpenPayScan(true)} onOpenAirtime={() => setFocusAirtime(true)} />}
       {tab === 'PAY' && <PayHub onNavigateToTab={setTab} onNavigateToCard={() => setTab('CARD')} openAddMoneyOnEnter={openPayAddMoney} onAddMoneyOpened={() => setOpenPayAddMoney(false)} openTransferOnEnter={openPayTransfer} onTransferOpened={() => setOpenPayTransfer(false)} openScanOnEnter={openPayScan} onScanOpened={() => setOpenPayScan(false)} />}
       {tab === 'EXPLORE' && (
         <ExploreHub
@@ -3219,7 +3220,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
           <InsuranceView />
         </Suspense>
       )}
-      {tab === 'BILLS' && <BillsView />}
+      {tab === 'BILLS' && <BillsView focusAirtimeOnEnter={focusAirtime} onAirtimeFocused={() => setFocusAirtime(false)} />}
       {tab === 'AGENT' && <AgentOperatorView />}
       {tab === 'USSD' && <UssdSettingsView />}
       {tab === 'FOREIGN_CURRENCY' && <ForeignCurrencyView />}
