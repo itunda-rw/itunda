@@ -1,0 +1,69 @@
+/* Prototype (5) alignment layer for app.itunda.im.
+   Keeps Itunda Brand v3.1 assets and existing application flows authoritative.
+   No prototype demo balances, simulated transactions, or replacement logo artwork. */
+:root {
+  --itunda-v5-accent: #8F89FF;
+  --itunda-v5-ink: #191F28;
+  --itunda-v5-muted: #6B7684;
+  --itunda-v5-line: #E5E8EB;
+  --itunda-v5-chip: #F4F5F8;
+  --itunda-v5-control-radius: 16px;
+  --itunda-v5-surface-radius: 22px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --itunda-v5-ink: #F4F5F7;
+    --itunda-v5-muted: #9AA1AD;
+    --itunda-v5-line: #2E2E37;
+    --itunda-v5-chip: #25252D;
+  }
+}
+:root[data-theme="dark"], [data-theme="dark"] {
+  --itunda-v5-ink: #F4F5F7;
+  --itunda-v5-muted: #9AA1AD;
+  --itunda-v5-line: #2E2E37;
+  --itunda-v5-chip: #25252D;
+}
+:root[data-theme="light"], [data-theme="light"] {
+  --itunda-v5-ink: #191F28;
+  --itunda-v5-muted: #6B7684;
+  --itunda-v5-line: #E5E8EB;
+  --itunda-v5-chip: #F4F5F8;
+}
+#root button, #root [role="button"], #root a {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+#root button:not(:disabled), #root [role="button"] {
+  transition: transform 120ms ease-out, opacity 160ms ease-out, background-color 160ms ease-out;
+}
+#root button:active:not(:disabled), #root [role="button"]:active {
+  transform: scale(.975);
+}
+#root button:focus-visible, #root [role="button"]:focus-visible,
+#root a:focus-visible, #root input:focus-visible, #root select:focus-visible,
+#root textarea:focus-visible {
+  outline: 2px solid var(--itunda-v5-accent);
+  outline-offset: 3px;
+}
+#root button:disabled {
+  cursor: not-allowed;
+  opacity: .42;
+}
+#root input, #root select, #root textarea {
+  accent-color: var(--itunda-v5-accent);
+}
+#root ::selection {
+  background: color-mix(in srgb, var(--itunda-v5-accent) 28%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  #root *, #root *::before, #root *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+  #root button:active:not(:disabled), #root [role="button"]:active {
+    transform: none;
+  }
+}
