@@ -3917,3 +3917,28 @@ input, textarea, select {
     transform: none;
   }
 }
+
+
+/* ItundaFace service shortcuts: custom category artwork plus clear, lightweight
+   feedback on hover, keyboard focus, and press. */
+.itunda-home-local-services__grid > button > span:first-child {
+  transition: transform 170ms cubic-bezier(.2, .8, .2, 1), background-color 170ms ease;
+}
+.itunda-home-local-services__grid > button:hover > span:first-child,
+.itunda-home-local-services__grid > button:focus-visible > span:first-child {
+  transform: translateY(-2px) scale(1.035);
+  background: color-mix(in srgb, var(--itunda-brand) 12%, var(--itunda-grey-100));
+}
+.itunda-home-local-services__grid > button:active > span:first-child {
+  transform: scale(.96);
+}
+@media (prefers-reduced-motion: reduce) {
+  .itunda-home-local-services__grid > button > span:first-child {
+    transition: none;
+  }
+  .itunda-home-local-services__grid > button:hover > span:first-child,
+  .itunda-home-local-services__grid > button:focus-visible > span:first-child,
+  .itunda-home-local-services__grid > button:active > span:first-child {
+    transform: none;
+  }
+}
