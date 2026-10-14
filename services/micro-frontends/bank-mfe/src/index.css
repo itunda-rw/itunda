@@ -3790,3 +3790,29 @@ input, textarea, select {
   padding-top: 0;
 }
 .itunda-home-page { padding-top: 0; }
+
+
+/* IDS accessibility pass: respect the system's reduced-motion preference across the full bank surface.
+   Keep state changes and pressed feedback understandable without requiring animation.
+   This intentionally supplements component-level rules so newly added screens inherit it. */
+@media (prefers-reduced-motion: reduce) {
+  #root *,
+  #root *::before,
+  #root *::after {
+    animation-delay: 0ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  #root button:active {
+    transform: none;
+  }
+
+  #root .skeleton {
+    background-image: none;
+    animation: none !important;
+  }
+}
