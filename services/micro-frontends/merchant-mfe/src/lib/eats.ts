@@ -99,3 +99,52 @@ export const markEatsOrderItemUnavailable = (orderId: string, itemId: string) =>
   apiFetch<{ success: boolean; order: EatsOrder }>(`/api/v1/eats/orders/${orderId}/items/${itemId}/unavailable`, {
     method: 'POST',
   }).then((r) => r.order);
+
+
+// Restaurant-owned Eats stamp campaigns: rewards remain entitlements until checkout redemption exists.
+export interface EatsStampCampaign {
+  id: string;
+  restaurantId: string;
+  name: string;
+  stampsRequired: number;
+  rewardDescription: string;
+  rewardDiscountAmount: number | null;
+  startsAt: string;
+  endsAt: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EatsStampCampaignInput {
+  name: string;
+  stampsRequired: number;
+  rewardDescription: string;
+  discountAmount: number | null;
+  startsAt: string;
+  endsAt: string | null;
+  active?: boolean;
+}
+
+export const fetchEatsStampCampaigns = (restaurantId: string) =>
+  apiFetch<{ success: boolean; campaigns: EatsStampCampaign[] }>(
+    `/api/v1/eats/restaurants/${encodeURIComponent(restaurantId)}/stamp-campaigns`,
+  ).then((r) => r.campaigns);
+
+export const createEatsStampCampaign = (restaurantId: string, input: EatsStampCampaignInput) =>
+  apiFetch<{ success: boolean; campaign: EatsStampCampaign }>(
+    `/api/v1/eats/restaurants/${encodeURIComponent(restaurantId)}/stamp-campaigns`,
+    { method: 'POST', body: JSON.stringify(input) },
+  ).then((r) => r.campaign);
+
+export const updateEatsStampCampaign = (campaignId: string, input: EatsStampCampaignInput) =>
+  apiFetch<{ success: boolean; campaign: EatsStampCampaign }>(
+    `/api/v1/eats/stamp-campaigns/${encodeURIComponent(campaignId)}`,
+    { method: 'PUT', body: JSON.stringify({ ...input, active: input.active ?? true }) },
+  ).then((r) => r.campaign);
+
+export const deactivateEatsStampCampaign = (campaignId: string) =>
+  apiFetch<{ success: boolean; campaign: EatsStampCampaign }>(
+    `/api/v1/eats/stamp-campaigns/${encodeURIComponent(campaignId)}/deactivate`,
+    { method: 'POST' },
+  ).then((r) => r.campaign);
