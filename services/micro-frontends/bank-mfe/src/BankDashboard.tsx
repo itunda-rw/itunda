@@ -1012,6 +1012,7 @@ function HomeView({ onNavigateToTab, onOpenTransfer, onOpenAddMoney, onOpenScan,
       <section className="itunda-home-for-you" aria-label="For you">
         <h2>For you</h2>
         <button type="button" className="itunda-home-for-you__item" onClick={() => onNavigateToTab('SAVINGS')}>
+          <span className="itunda-home-for-you__glyph" aria-hidden="true"><MoneyBagGlyph size={30} /></span>
           <span className="itunda-home-for-you__copy">
             <strong>Start your first savings goal</strong>
             <span>Choose a target and a date to make saving easier</span>
@@ -1019,6 +1020,7 @@ function HomeView({ onNavigateToTab, onOpenTransfer, onOpenAddMoney, onOpenScan,
           <IconChevronRight size={18} />
         </button>
         <button type="button" className="itunda-home-for-you__item" onClick={() => onNavigateToTab('CREDIT_SCORE')}>
+          <span className="itunda-home-for-you__glyph itunda-home-for-you__glyph--score" aria-hidden="true"><ChartIncreasingGlyph size={30} /></span>
           <span className="itunda-home-for-you__copy">
             <strong>My credit score</strong>
             <span>Free check, alternative data</span>
