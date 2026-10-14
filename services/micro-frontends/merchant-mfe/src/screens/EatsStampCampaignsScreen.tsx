@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react';
 import { ApiError } from '../lib/api';
 import {
   createEatsStampCampaign,
@@ -16,6 +16,7 @@ type Draft = {
   discountAmount: string;
   startsAt: string;
   endsAt: string;
+  active: boolean;
 };
 
 const blankDraft = (): Draft => ({
@@ -25,6 +26,7 @@ const blankDraft = (): Draft => ({
   discountAmount: '',
   startsAt: new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 16),
   endsAt: '',
+  active: true,
 });
 
 function toLocalDateTime(value: string): string {
@@ -40,7 +42,7 @@ function toInput(draft: Draft): EatsStampCampaignInput {
     discountAmount: draft.discountAmount.trim() ? Number(draft.discountAmount) : null,
     startsAt: new Date(draft.startsAt).toISOString(),
     endsAt: draft.endsAt ? new Date(draft.endsAt).toISOString() : null,
-    active: true,
+    active: draft.active,
   };
 }
 
@@ -52,6 +54,7 @@ function fromCampaign(campaign: EatsStampCampaign): Draft {
     discountAmount: campaign.rewardDiscountAmount == null ? '' : String(campaign.rewardDiscountAmount),
     startsAt: toLocalDateTime(campaign.startsAt),
     endsAt: campaign.endsAt ? toLocalDateTime(campaign.endsAt) : '',
+    active: campaign.active,
   };
 }
 
@@ -74,7 +77,7 @@ export default function EatsStampCampaignsScreen({ restaurantId }: { restaurantI
 
   const change = (key: keyof Draft, value: string) => setDraft((current) => ({ ...current, [key]: value }));
 
-  const save = async (event: React.FormEvent<HTMLFormElement>) => {
+  const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     setNotice(null);
@@ -215,7 +218,7 @@ export default function EatsStampCampaignsScreen({ restaurantId }: { restaurantI
   );
 }
 
-const fieldStyle: React.CSSProperties = {
+const fieldStyle: CSSProperties = {
   width: '100%',
   boxSizing: 'border-box',
   padding: '12px 14px',
