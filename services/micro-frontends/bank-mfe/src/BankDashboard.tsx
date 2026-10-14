@@ -2973,6 +2973,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="itunda-prototype-app-content" style={{ padding: '20px', paddingBottom: '112px', maxWidth: '480px', margin: '0 auto' }}>
       <motion.div
+        className="itunda-prototype-header"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', padding: '0 8px' }}
