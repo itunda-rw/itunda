@@ -243,9 +243,16 @@ class OrderService(
             // price split), the same "keep it simple, not a fabricated split-pricing UX"
             // discipline this session applies elsewhere.
             val activeDeal = timeDealRepository.findActiveDealForProduct(product.id, now)
-            val unitPrice = if (activeDeal != null && activeDeal.remainingQuantity >= req.quantity) {
-                activeDeal.remainingQuantity -= req.quantity
-                timeDealRepository.save(activeDeal)
+            // The read above is for price selection only. The conditional UPDATE is
+            // the inventory authority: only one concurrent checkout can reserve the
+            // same final units. If another checkout wins first, this order uses the
+            // normal price rather than overselling or promising a stale deal.
+            val reservedDealQuantity = if (activeDeal != null && activeDeal.remainingQuantity >= req.quantity) {
+                timeDealRepository.reserveQuantityIfAvailable(activeDeal.id, req.quantity, now)
+            } else {
+                0
+            }
+            val unitPrice = if (activeDeal != null && reservedDealQuantity == 1) {
                 activeDeal.dealPrice
             } else {
                 effectiveUnitPrice(product.price, req.quantity, tiersByProduct[product.id].orEmpty())
