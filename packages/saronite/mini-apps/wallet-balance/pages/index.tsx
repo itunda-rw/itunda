@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { colors } from '../../../../../packages/ids-react-native/src/colors';
+import { colors } from '../../../packages/ids-react-native/src/colors';
 import { Button, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { createRoute } from '@granite-js/react-native';
 import { closeView, getWalletBalance, useVisibility } from '@itunda/saronite-react-native';
