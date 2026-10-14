@@ -99,7 +99,7 @@ data class UpdateEatsStampCampaignRequest(
     val name: String,
     val stampsRequired: Int,
     val rewardDescription: String,
-    val discountAmount: BigDecimal? = null,
+    val discountAmount: BigDecimal?,
     val startsAt: Instant,
     val endsAt: Instant? = null,
     val active: Boolean = true,
