@@ -89,10 +89,8 @@ jobs:
           import cairosvg
           from pathlib import Path
 
-          # canonical-itunda-brand.yml keeps client/brand/itunda-icon.svg synchronized
-          # byte-for-byte with the official Itunda symbol. Use that existing source
-          # rather than relying on an absent duplicate under ios/Assets.
-          src = Path("../client/brand/itunda-icon.svg")
+          # This file is restored from the canonical Itunda brand symbol in the default branch.
+          src = Path("Assets/ItundaIcon.svg")
           if not src.is_file() or src.stat().st_size == 0:
               raise SystemExit(f"Canonical Itunda brand symbol is missing: {src}")
           out = Path("App/Resources/ItundaIcon.xcassets/ItundaIcon.appiconset/ItundaIcon.png")
