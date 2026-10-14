@@ -13,6 +13,7 @@ import java.util.Optional
 
 interface EatsStampCampaignRepository : JpaRepository<EatsStampCampaign, String> {
     fun findByRestaurantIdAndActiveTrue(restaurantId: String): List<EatsStampCampaign>
+    fun findByRestaurantIdOrderByCreatedAtDesc(restaurantId: String): List<EatsStampCampaign>
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from EatsStampCampaign c where c.id = :id")
