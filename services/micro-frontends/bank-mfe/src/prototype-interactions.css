@@ -104,7 +104,7 @@ body {
 .itunda-prototype-app-content {
   width: 100%;
   min-height: 100svh;
-  padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
 }
 .itunda-prototype-tabbar {
   position: fixed !important;
@@ -121,10 +121,7 @@ body {
   border: 0 !important;
   border-top: 1px solid var(--itunda-prototype-hairline) !important;
   border-radius: 0 !important;
-  background: color-mix(in srgb, var(--itunda-prototype-surface) 96%, transparent) !important;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 -8px 24px rgb(25 31 40 / 3%);
+  background: var(--itunda-prototype-surface) !important;
 }
 .itunda-prototype-tabbar > button {
   flex: 1 1 0 !important;
@@ -146,15 +143,6 @@ body {
   color: var(--itunda-prototype-text) !important;
   background: transparent !important;
   font-weight: 800 !important;
-}
-.itunda-prototype-tabbar > button[aria-current="page"]::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  width: 24px;
-  height: 3px;
-  border-radius: 0 0 3px 3px;
-  background: var(--itunda-prototype-accent);
 }
 .itunda-prototype-tabbar > button > div {
   display: flex;
