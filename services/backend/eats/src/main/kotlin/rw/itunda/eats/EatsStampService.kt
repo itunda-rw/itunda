@@ -230,6 +230,15 @@ class EatsStampService(
         )
     }
 
+    @Transactional(readOnly = true)
+    fun managedCampaigns(ownerUserId: String, restaurantId: String): List<EatsStampCampaign> {
+        val restaurant = merchantRepository.findById(restaurantId).orElseThrow {
+            IllegalArgumentException("Restaurant not found")
+        }
+        require(restaurant.ownerUserId == ownerUserId) { "Only this restaurant's owner can manage its stamp campaign" }
+        return campaignRepository.findByRestaurantIdOrderByCreatedAtDesc(restaurantId)
+    }
+
     @Transactional
     fun activeCampaigns(restaurantId: String): List<EatsStampCampaign> {
         val now = clock.instant()
