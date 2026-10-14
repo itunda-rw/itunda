@@ -1,4 +1,4 @@
-import { apiFetch } from './api';
+import { ApiError, apiFetch } from './api';
 import { randomUUID } from './uuid';
 
 // Real Coupang-style multi-item commerce (rw.itunda.commerce, 2026-07-18) -- merchant
@@ -80,12 +80,89 @@ export interface CommerceOrder {
 // referralCode added for the real 쿠팡파트너스 (Coupang Partners)-style affiliate
 // program, item 229 -- see lib/affiliate.ts's own doc comment. Omitted/unknown/
 // self-referral all fall through to a normal order with no commission paid.
-export const placeOrder = (merchantId: string, items: { productId: string; quantity: number }[], deliveryAddress: string, referralCode?: string) =>
-  apiFetch<{ success: boolean; order: CommerceOrder; items: CommerceOrderItem[] }>('/api/v1/orders', {
-    method: 'POST',
-    headers: { 'Idempotency-Key': randomUUID() },
-    body: JSON.stringify({ merchantId, items, deliveryAddress, referralCode }),
+// Keep the same idempotency key when a network/5xx failure leaves the result
+// ambiguous. Previously every retry generated a new key, so a server-created order
+// whose response was lost could be charged again. The fingerprint contains no raw
+// address in storage; collisions fail closed as an idempotency conflict, never a
+// second charge. A confirmed success clears the pending key.
+const pendingOrderKeys = new Map<string, string>();
+const PENDING_ORDER_KEY_PREFIX = 'itunda_shopping_pending_order:';
+
+function orderRequestFingerprint(
+  merchantId: string,
+  items: { productId: string; quantity: number }[],
+  deliveryAddress: string,
+  referralCode?: string,
+): string {
+  const canonical = JSON.stringify({
+    merchantId,
+    items: [...items].sort((a, b) => a.productId.localeCompare(b.productId)),
+    deliveryAddress: deliveryAddress.trim(),
+    referralCode: referralCode ?? null,
   });
+  let first = 0x811c9dc5;
+  let second = 0x9e3779b9;
+  for (let i = 0; i < canonical.length; i++) {
+    const code = canonical.charCodeAt(i);
+    first = Math.imul(first ^ code, 0x01000193);
+    second = Math.imul(second ^ (code + i), 0x85ebca6b);
+  }
+  return `${(first >>> 0).toString(36)}-${(second >>> 0).toString(36)}`;
+}
+
+function getPendingOrderKey(fingerprint: string): string {
+  const storageKey = PENDING_ORDER_KEY_PREFIX + fingerprint;
+  try {
+    const existing = sessionStorage.getItem(storageKey);
+    if (existing) return existing;
+    const created = randomUUID();
+    sessionStorage.setItem(storageKey, created);
+    return created;
+  } catch {
+    const existing = pendingOrderKeys.get(fingerprint);
+    if (existing) return existing;
+    const created = randomUUID();
+    pendingOrderKeys.set(fingerprint, created);
+    return created;
+  }
+}
+
+function clearPendingOrderKey(fingerprint: string, idempotencyKey: string): void {
+  const storageKey = PENDING_ORDER_KEY_PREFIX + fingerprint;
+  try {
+    if (sessionStorage.getItem(storageKey) === idempotencyKey) sessionStorage.removeItem(storageKey);
+  } catch {
+    // The in-memory fallback below still handles non-persistent browser contexts.
+  }
+  if (pendingOrderKeys.get(fingerprint) === idempotencyKey) pendingOrderKeys.delete(fingerprint);
+}
+
+export const placeOrder = async (
+  merchantId: string,
+  items: { productId: string; quantity: number }[],
+  deliveryAddress: string,
+  referralCode?: string,
+) => {
+  const fingerprint = orderRequestFingerprint(merchantId, items, deliveryAddress, referralCode);
+  const idempotencyKey = getPendingOrderKey(fingerprint);
+  try {
+    const result = await apiFetch<{ success: boolean; order: CommerceOrder; items: CommerceOrderItem[] }>('/api/v1/orders', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify({ merchantId, items, deliveryAddress, referralCode }),
+    });
+    clearPendingOrderKey(fingerprint, idempotencyKey);
+    return result;
+  } catch (error) {
+    // Validation/auth/business 4xx responses are definitive; the user may correct
+    // the request and try again with a fresh key. Keep the key for 409 processing,
+    // rate limiting, server errors, and network failures where outcome is uncertain.
+    if (error instanceof ApiError && error.status < 500 && error.status !== 409 && error.status !== 429) {
+      clearPendingOrderKey(fingerprint, idempotencyKey);
+    }
+    throw error;
+  }
+};
 
 export const fetchOrderDetail = (orderId: string) =>
   apiFetch<{ success: boolean; order: CommerceOrder; items: CommerceOrderItem[] }>(`/api/v1/orders/${orderId}`);
