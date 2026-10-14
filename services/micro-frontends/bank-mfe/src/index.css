@@ -3853,21 +3853,19 @@ input, textarea, select {
   }
 }
 
-/* Consistent visible keyboard focus for every actionable control on the Home surface.
-   Keep the indicator outside the control so it doesn't shift the prototype's layout. */
-.itunda-home-page button:focus-visible {
+/* Consistent visible keyboard focus across the bank micro-frontend, not only Home.
+   Keep the indicator outside the control so it doesn't shift the current layout. */
+#root :is(button, a, input, textarea, select, [role="button"], [tabindex]):focus-visible {
   outline: 2px solid var(--itunda-focus, var(--itunda-brand));
   outline-offset: 3px;
-  position: relative;
-  z-index: 1;
 }
 
-.itunda-home-page button:focus:not(:focus-visible) {
+#root :is(button, a, input, textarea, select, [role="button"], [tabindex]):focus:not(:focus-visible) {
   outline: none;
 }
 
 @media (forced-colors: active) {
-  .itunda-home-page button:focus-visible {
+  #root :is(button, a, input, textarea, select, [role="button"], [tabindex]):focus-visible {
     outline: 2px solid Highlight;
   }
 }
