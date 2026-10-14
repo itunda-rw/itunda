@@ -37,7 +37,6 @@ function HostProductShell({ config }: { config: ProductConfig }) {
 
 export default function App() {
   const product = productConfigs[window.location.hostname.toLowerCase()];
-  if (product) return <HostProductShell config={product} />;
   const [tab, setTab] = useState<Tab>('bank');
   const { t } = useI18n();
   const bankTabRef = useRef<HTMLButtonElement>(null);
@@ -56,6 +55,10 @@ export default function App() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
+
+  // Keep hooks unconditional for React's render-order contract, even on product
+  // domains that render the standalone informational shell.
+  if (product) return <HostProductShell config={product} />;
 
   return (
     <div>

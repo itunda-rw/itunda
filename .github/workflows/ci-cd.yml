@@ -211,27 +211,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Real CI fix (2026-09-03): root build.gradle.kts pins `jvmTarget = "17"` for
-      # Kotlin compilation, but nothing pins compileJava's target -- it just uses
-      # whatever JDK is active. JDK 21 here caused "Inconsistent JVM-target
-      # compatibility detected for tasks 'compileJava' (21) and 'compileKotlin' (17)"
-      # on every CI run. 17 matches the project's own pin (and android-build's own
-      # JDK setup below), not an arbitrary downgrade.
-      - name: Type-check Saronite browser DevTools
+      # Saronite is an independently managed npm workspace with its own lockfile.
+      # Install it in this job before type-checking; npm workspace discovery has
+      # been unreliable with repeated --workspace name selectors on this runner.
+      - name: Install Saronite JS dependencies
         working-directory: packages/saronite
-        run: npm run typecheck --workspace=@itunda/saronite-devtools
+        run: npm ci --prefer-offline --no-audit --no-fund --ignore-scripts
 
-      - name: Type-check Saronite debug protocol
+      - name: Type-check Saronite packages
         working-directory: packages/saronite
-        run: npm run typecheck --workspace=@itunda/saronite-debug-protocol
-
-      - name: Type-check Saronite debug console
-        working-directory: packages/saronite
-        run: npm run typecheck --workspace=@itunda/saronite-debug-console
-
-      - name: Type-check Saronite debugger
-        working-directory: packages/saronite
-        run: npm run typecheck --workspace=@itunda/saronite-debugger
+        run: npm run typecheck
 
       - name: Setup JDK
         uses: actions/setup-java@v4

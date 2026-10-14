@@ -1,0 +1,184 @@
+/* Itunda prototype-first interaction pass.
+   Based on the supplied clickable prototype: clear action hierarchy, touch-friendly
+   controls, short feedback, contextual surfaces, theme-aware tokens and reduced motion.
+   Additive only: existing screens, navigation and API behavior remain authoritative. */
+:root {
+  --itunda-prototype-accent: #8F89FF;
+  --itunda-prototype-accent-pressed: #7770F0;
+  --itunda-prototype-on-accent: #121216;
+  --itunda-prototype-surface: var(--itunda-surface-default, #FFFFFF);
+  --itunda-prototype-surface-muted: var(--itunda-surface-subtle, #F4F5F8);
+  --itunda-prototype-text: var(--itunda-text-primary, #191F28);
+  --itunda-prototype-muted: var(--itunda-text-tertiary, #6B7684);
+  --itunda-prototype-hairline: var(--itunda-border-default, #E5E8EB);
+  --itunda-prototype-radius-control: 16px;
+  --itunda-prototype-radius-surface: 22px;
+}
+#root, .itunda-app-shell {
+  background: var(--itunda-prototype-surface);
+  color: var(--itunda-prototype-text);
+  min-height: 100svh;
+}
+button, [role="button"], a, input, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+button, [role="button"] {
+  touch-action: manipulation;
+}
+button:active:not(:disabled), [role="button"]:active {
+  transform: scale(.975);
+}
+button:focus-visible, [role="button"]:focus-visible, a:focus-visible,
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--itunda-prototype-accent);
+  outline-offset: 3px;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: .42;
+}
+.itunda-btn {
+  min-height: 52px;
+  border-radius: var(--itunda-prototype-radius-control);
+  font-weight: 750;
+  transition: transform 120ms ease-out, opacity 160ms ease-out, background-color 160ms ease-out;
+}
+.itunda-btn-primary {
+  background: var(--itunda-prototype-accent);
+  color: var(--itunda-prototype-on-accent);
+}
+.itunda-btn-primary:hover:not(:disabled) {
+  background: var(--itunda-prototype-accent-pressed);
+}
+.itunda-btn-secondary {
+  background: var(--itunda-prototype-surface-muted);
+  color: var(--itunda-prototype-text);
+}
+.itunda-card {
+  border-color: var(--itunda-prototype-hairline);
+}
+.itunda-app-header {
+  background: color-mix(in srgb, var(--itunda-prototype-surface) 92%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.itunda-bottom-nav {
+  background: color-mix(in srgb, var(--itunda-prototype-surface) 94%, transparent);
+  border-top: 1px solid var(--itunda-prototype-hairline);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.itunda-bottom-nav button, .itunda-bottom-nav a {
+  min-height: 48px;
+}
+.itunda-sheet {
+  border-radius: 26px 26px 0 0;
+}
+input, select, textarea {
+  accent-color: var(--itunda-prototype-accent);
+}
+::selection {
+  background: color-mix(in srgb, var(--itunda-prototype-accent) 28%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+  button:active:not(:disabled), [role="button"]:active {
+    transform: none;
+  }
+}
+
+
+/* Match the prototype's mobile app frame and persistent five-destination navigation. */
+html, body, #root {
+  min-height: 100%;
+}
+body {
+  background: var(--itunda-prototype-surface);
+}
+.itunda-prototype-app-content {
+  width: 100%;
+  min-height: 100svh;
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+}
+.itunda-prototype-tabbar {
+  position: fixed !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: 0 !important;
+  z-index: 50 !important;
+  width: min(100%, 480px) !important;
+  height: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+  margin: 0 !important;
+  padding: 0 8px env(safe-area-inset-bottom, 0px) !important;
+  gap: 0 !important;
+  transform: translateX(-50%);
+  border: 0 !important;
+  border-top: 1px solid var(--itunda-prototype-hairline) !important;
+  border-radius: 0 !important;
+  background: var(--itunda-prototype-surface) !important;
+}
+.itunda-prototype-tabbar > button {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  min-height: 64px !important;
+  height: 100% !important;
+  padding: 8px 2px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--itunda-prototype-muted) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  line-height: 16px !important;
+  gap: 4px !important;
+  transition: color 160ms ease-out, opacity 160ms ease-out;
+}
+.itunda-prototype-tabbar > button[aria-current="page"] {
+  color: var(--itunda-prototype-text) !important;
+  background: transparent !important;
+  font-weight: 800 !important;
+}
+.itunda-prototype-tabbar > button > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+}
+.itunda-prototype-tabbar > button svg {
+  width: 24px;
+  height: 24px;
+}
+@media (min-width: 600px) {
+  .itunda-prototype-app-content {
+    min-height: 100svh;
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .itunda-prototype-tabbar > button {
+    transition: none;
+  }
+}
+
+
+.itunda-prototype-header {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  min-height: 56px;
+  margin: -8px -4px 16px !important;
+  padding: max(12px, env(safe-area-inset-top, 0px)) 8px 8px !important;
+  background: color-mix(in srgb, var(--itunda-prototype-surface) 94%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.itunda-prototype-tabbar > button {
+  position: relative;
+}

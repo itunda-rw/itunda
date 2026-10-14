@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { colors } from '../../../../packages/ids-react-native/src/colors';
+import { colors } from '../../../packages/ids-react-native/src/colors';
 import {
   ActivityIndicator,
   Alert,
