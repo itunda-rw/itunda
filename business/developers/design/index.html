@@ -72,6 +72,24 @@ a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}
 @media(max-width:900px){.layout{grid-template-columns:1fr}.side{display:none}.menu{display:block}.mobile-nav{position:fixed;top:64px;left:12px;right:12px;z-index:60;display:none;padding:8px;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow-md)}.mobile-nav.open{display:grid;gap:2px}.mobile-nav a{padding:11px 12px;border-radius:10px;color:var(--secondary);font-size:13px;font-weight:650}.mobile-nav a:hover,.mobile-nav a:focus-visible{background:var(--surface-subtle);color:var(--ink)}.mobile-nav a:focus-visible{outline:0;box-shadow:var(--focus)}.wrap{padding:0 20px}.card,.card.wide,.card.third{grid-column:1/-1}.swatches{grid-template-columns:repeat(3,1fr)}.platform{grid-template-columns:1fr}}
 @media(max-width:560px){.hero{padding-top:64px}.hero h1{font-size:48px}.section{padding:64px 0}.swatches{grid-template-columns:repeat(2,1fr)}.state-grid{grid-template-columns:1fr 1fr}.head h2{font-size:30px}.card{padding:22px 0}.stage{padding:22px}.ids-btn{min-height:48px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}.ids-btn:active,.motion-dot:hover,.motion-dot:active{transform:none!important}}
+
+/* Design showcase polish: predictable focus, touch targets, and safe-area spacing. */
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{
+  outline:3px solid var(--brand,#8F89FF);
+  outline-offset:3px;
+}
+:where(button,.menu,.theme,.motion-dot,.ids-btn){min-height:44px}
+@media(max-width:560px){
+  .topin{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+  .mobile-nav{padding-bottom:max(8px,env(safe-area-inset-bottom))}
+}
+@media(prefers-reduced-motion:reduce){
+  .motion-dot:hover,.motion-dot:active{transform:none!important}
+}
+@media(forced-colors:active){
+  :where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid Highlight;outline-offset:3px}
+}
+
 </style>
 </head>
 <body><a class="skip" href="#main-content">Skip to content</a>

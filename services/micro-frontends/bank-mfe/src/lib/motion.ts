@@ -1,6 +1,6 @@
 // Real Toss motion primitives (2026-08-24), fetched directly from their own
-// published npm packages -- @toss/tds-spring-easing@0.0.1's real bundled source
-// (`npm pack @toss/tds-spring-easing`, read dist/esm/index.js), not guessed or
+// published npm packages -- @toss/ids-spring-easing@0.0.1's real bundled source
+// (`npm pack @toss/ids-spring-easing`, read dist/esm/index.js), not guessed or
 // approximated. CSS transitions can't run real spring physics (only bezier curves
 // -- see packages/design-tokens/tokens.css's --itunda-ease-* for those), so these
 // raw stiffness/damping/mass triples are for Framer Motion's own
