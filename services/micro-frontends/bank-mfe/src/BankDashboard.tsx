@@ -2980,10 +2980,10 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   // category when browsed and a different one when searched.
   const PRIMARY_TABS: { id: Tab; label: string; icon: ComponentType<{ size?: number }> }[] = [
     { id: 'HOME', label: 'Home', icon: IconHome },
-    { id: 'REWARDS', label: 'Benefits', icon: IconStar },
-    { id: 'SHOP', label: 'Shop', icon: ShoppingBagGlyph },
     { id: 'PAY', label: 'Pay', icon: IconPay },
-    { id: 'EXPLORE', label: 'All', icon: IconExplore },
+    { id: 'EXPLORE', label: 'Explore', icon: IconExplore },
+    { id: 'MESSAGES', label: 'Messages', icon: IconMessages },
+    { id: 'YOU', label: 'You', icon: IconYou },
   ];
   const EXPLORE_TAB_GROUPS: { title: string; ids: Tab[] }[] = [
     { title: 'Everyday', ids: ['SHOP', 'EATS', 'RIDES', 'MAP'] },
