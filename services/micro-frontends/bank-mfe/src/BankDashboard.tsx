@@ -964,7 +964,7 @@ function HomeView({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) 
           <IconChevronRight size={17} />
         </button>
         <div className="itunda-home-primary-actions">
-          <button type="button" className="itunda-home-send" onClick={() => onNavigateToTab('PAY')}>Send money</button>
+          <button type="button" className="itunda-home-send" onClick={() => { setOpenPayTransfer(true); onNavigateToTab('PAY'); }}>Send money</button>
           <button type="button" className="itunda-home-topup" onClick={() => { setOpenPayAddMoney(true); onNavigateToTab('PAY'); }}>Add money</button>
         </div>
       </section>
@@ -973,7 +973,7 @@ function HomeView({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) 
         <div className="itunda-home-prototype-section-heading"><h2>Quick actions</h2></div>
         <div className="itunda-home-actions">
           {quickActions.map(({ tab, label, icon: Icon }) => (
-            <button key={label} type="button" onClick={() => onNavigateToTab(tab)} aria-label={label}>
+            <button key={label} type="button" onClick={() => { if (label === 'Send money') setOpenPayTransfer(true); onNavigateToTab(tab); }} aria-label={label}>
               <span className="itunda-home-actions__icon" aria-hidden="true"><Icon size={22} /></span>
               <span>{label}</span>
             </button>
@@ -2856,6 +2856,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   const [tab, setTabState] = useState<Tab>(() => readTabFromUrl());
   // One-shot handoff from Home's Add money action into the real Pay funding flow.
   const [openPayAddMoney, setOpenPayAddMoney] = useState(false);
+  const [openPayTransfer, setOpenPayTransfer] = useState(false);
   // Keeps `tab` deep-linkable: every real navigation both updates state and pushes a
   // real URL (?tab=X) so refresh/share/back-button all land where the user actually
   // was, not always Home. `history.pushState` (not `replaceState`) so the browser's
@@ -3140,7 +3141,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
 
       <main className="itunda-app-content">
       {tab === 'HOME' && <HomeView onNavigateToTab={setTab} />}
-      {tab === 'PAY' && <PayHub onNavigateToTab={setTab} onNavigateToCard={() => setTab('CARD')} openAddMoneyOnEnter={openPayAddMoney} onAddMoneyOpened={() => setOpenPayAddMoney(false)} />}
+      {tab === 'PAY' && <PayHub onNavigateToTab={setTab} onNavigateToCard={() => setTab('CARD')} openAddMoneyOnEnter={openPayAddMoney} onAddMoneyOpened={() => setOpenPayAddMoney(false)} openTransferOnEnter={openPayTransfer} onTransferOpened={() => setOpenPayTransfer(false)} />}
       {tab === 'EXPLORE' && (
         <ExploreHub
           groups={EXPLORE_TAB_GROUPS}
