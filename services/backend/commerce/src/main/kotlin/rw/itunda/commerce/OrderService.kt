@@ -233,28 +233,7 @@ class OrderService(
             if (product.isSurplusDeal && product.surplusExpiresAt?.isAfter(now) == false) {
                 throw SurplusDealExpiredException("${product.name}'s closing deal has expired")
             }
-            // Real Coupang 타임특가 (Time Deal, item 226) -- see TimeDeal.kt's own doc
-            // comment. A real active deal with enough remaining quantity for this whole
-            // line wins over the normal price-tier resolution; anything else (no deal,
-            // expired, sold out, or not enough left for the full requested quantity)
-            // falls through to the exact same effectiveUnitPrice this checkout already
-            // used before this feature existed -- zero regression to that already-tested
-            // path. Deliberately all-or-nothing per line (no partial-deal-plus-normal-
-            // price split), the same "keep it simple, not a fabricated split-pricing UX"
-            // discipline this session applies elsewhere.
-            val activeDeal = timeDealRepository.findActiveDealForProduct(product.id, now)
-            // The read above is for price selection only. The conditional UPDATE is
-            // the inventory authority: only one concurrent checkout can reserve the
-            // same final units. If another checkout wins first, this order uses the
-            // normal price rather than overselling or promising a stale deal.
-            val reservedDealQuantity = if (activeDeal != null && activeDeal.remainingQuantity >= req.quantity) {
-                timeDealRepository.reserveQuantityIfAvailable(activeDeal.id, req.quantity, now)
-            } else {
-                0
-            }
-            val unitPrice = if (activeDeal != null && reservedDealQuantity == 1) {
-                activeDeal.dealPrice
-            } else {
+            val unitPrice = resolveTimeDealUnitPrice(timeDealRepository, product.id, req.quantity, now) {
                 effectiveUnitPrice(product.price, req.quantity, tiersByProduct[product.id].orEmpty())
             }
             Resolved(product, product.id, product.name, unitPrice, req.quantity)
