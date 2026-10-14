@@ -3790,3 +3790,155 @@ input, textarea, select {
   padding-top: 0;
 }
 .itunda-home-page { padding-top: 0; }
+
+
+/* IDS accessibility pass: respect the system's reduced-motion preference across the full bank surface.
+   Keep state changes and pressed feedback understandable without requiring animation.
+   This intentionally supplements component-level rules so newly added screens inherit it. */
+@media (prefers-reduced-motion: reduce) {
+  #root,
+  #root::before,
+  #root::after,
+  #root *,
+  #root *::before,
+  #root *::after {
+    animation-delay: 0ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  #root button:active {
+    transform: none;
+  }
+
+  #root .skeleton {
+    background-image: none;
+    animation: none !important;
+  }
+}
+
+/* Prototype (3) alignment pass: match its top inset, section rhythm, and large
+   round quick-action glyphs while retaining the canonical Itunda color tokens. */
+.itunda-home-topbar {
+  min-height: 64px;
+  padding-top: 20px;
+}
+
+.itunda-home-actions-section,
+.itunda-home-local-services,
+.itunda-home-spending,
+.itunda-home-for-you {
+  margin-top: 32px;
+}
+
+.itunda-home-actions__icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 22px;
+}
+
+@media (max-width: 520px) {
+  .itunda-home-topbar {
+    min-height: 64px;
+    padding-top: 20px;
+  }
+
+  .itunda-home-actions__icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 22px;
+  }
+}
+
+/* Consistent visible keyboard focus across the bank micro-frontend, not only Home.
+   Keep the indicator outside the control so it doesn't shift the current layout. */
+#root :is(button, a, input, textarea, select, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid var(--itunda-focus, var(--itunda-brand));
+  outline-offset: 3px;
+}
+
+#root :is(button, a, input, textarea, select, [role="button"], [tabindex]):focus:not(:focus-visible) {
+  outline: none;
+}
+
+@media (forced-colors: active) {
+  #root :is(button, a, input, textarea, select, [role="button"], [tabindex]):focus-visible {
+    outline: 2px solid Highlight;
+  }
+}
+
+
+
+/* ItundaFace recommendation art: distinct from utility icons, with a quiet
+   Itunda-indigo canvas and tactile feedback that never blocks the action. */
+.itunda-home-for-you__glyph {
+  display: grid;
+  place-items: center;
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  border-radius: 19px;
+  color: var(--itunda-text-primary);
+  background: color-mix(in srgb, var(--itunda-brand) 13%, var(--itunda-surface, white));
+  transition: transform 180ms cubic-bezier(.2, .8, .2, 1), background-color 180ms ease;
+}
+.itunda-home-for-you__glyph--score {
+  background: color-mix(in srgb, var(--itunda-brand) 20%, var(--itunda-surface, white));
+}
+.itunda-home-for-you__glyph svg {
+  display: block;
+  overflow: visible;
+}
+.itunda-home-for-you__item {
+  border-radius: 18px;
+  padding: 12px;
+  transition: background-color 160ms ease, transform 160ms ease;
+}
+.itunda-home-for-you__item:hover {
+  background: color-mix(in srgb, var(--itunda-brand) 6%, transparent);
+}
+.itunda-home-for-you__item:hover .itunda-home-for-you__glyph,
+.itunda-home-for-you__item:focus-visible .itunda-home-for-you__glyph {
+  transform: translateY(-2px) scale(1.04);
+}
+.itunda-home-for-you__item:active {
+  transform: scale(.99);
+}
+@media (prefers-reduced-motion: reduce) {
+  .itunda-home-for-you__item,
+  .itunda-home-for-you__glyph {
+    transition: none;
+  }
+  .itunda-home-for-you__item:hover .itunda-home-for-you__glyph,
+  .itunda-home-for-you__item:focus-visible .itunda-home-for-you__glyph {
+    transform: none;
+  }
+}
+
+
+/* ItundaFace service shortcuts: custom category artwork plus clear, lightweight
+   feedback on hover, keyboard focus, and press. */
+.itunda-home-local-services__grid > button > span:first-child {
+  transition: transform 170ms cubic-bezier(.2, .8, .2, 1), background-color 170ms ease;
+}
+.itunda-home-local-services__grid > button:hover > span:first-child,
+.itunda-home-local-services__grid > button:focus-visible > span:first-child {
+  transform: translateY(-2px) scale(1.035);
+  background: color-mix(in srgb, var(--itunda-brand) 12%, var(--itunda-grey-100));
+}
+.itunda-home-local-services__grid > button:active > span:first-child {
+  transform: scale(.96);
+}
+@media (prefers-reduced-motion: reduce) {
+  .itunda-home-local-services__grid > button > span:first-child {
+    transition: none;
+  }
+  .itunda-home-local-services__grid > button:hover > span:first-child,
+  .itunda-home-local-services__grid > button:focus-visible > span:first-child,
+  .itunda-home-local-services__grid > button:active > span:first-child {
+    transform: none;
+  }
+}

@@ -12,7 +12,7 @@ import { PlaceRestaurant, PlaceMarket, PlaceBusStop, PlaceItundaAgent } from './
 // Real Explore-tab icons (2026-08-29, closing [[project_itunda_pure_tossface_icons]]'s
 // "(c)" open item) -- reuses the exact same glyph choices Android's MenuScreen already
 // made and live-verified against real Toss reference screenshots, not new choices.
-import { ParkingGlyph } from './icons/ItundaFaceHome';
+import { FamilyGlyph, ParkingGlyph } from './icons/ItundaFaceHome';
 import { TravelCar, TravelHouse } from './icons/ItundaFaceTravel';
 import { BriefcaseGlyph, ChartIncreasingGlyph } from './icons/ItundaFaceWork';
 import { NatureStar, NatureGlowingStar } from './icons/ItundaFaceNature';
@@ -933,11 +933,11 @@ function HomeView({ onNavigateToTab, onOpenTransfer, onOpenAddMoney, onOpenScan,
     { label: 'Airtime', icon: Smartphone, tab: 'BILLS' },
   ];
   const localServices: { label: string; icon: ComponentType<{ size?: number }>; tab: Tab }[] = [
-    { label: 'Irembo', icon: IconHome, tab: 'BILLS' },
-    { label: 'RRA taxes', icon: Landmark, tab: 'BILLS' },
-    { label: 'REG electricity', icon: Zap, tab: 'BILLS' },
-    { label: 'WASAC water', icon: Sprout, tab: 'BILLS' },
-    { label: 'School fees', icon: Users, tab: 'BILLS' },
+    { label: 'Irembo', icon: PlaceItundaAgent, tab: 'BILLS' },
+    { label: 'RRA taxes', icon: MoneyBagGlyph, tab: 'BILLS' },
+    { label: 'REG electricity', icon: NatureGlowingStar, tab: 'BILLS' },
+    { label: 'WASAC water', icon: NatureStar, tab: 'BILLS' },
+    { label: 'School fees', icon: FamilyGlyph, tab: 'BILLS' },
   ];
 
   return (
@@ -1012,6 +1012,7 @@ function HomeView({ onNavigateToTab, onOpenTransfer, onOpenAddMoney, onOpenScan,
       <section className="itunda-home-for-you" aria-label="For you">
         <h2>For you</h2>
         <button type="button" className="itunda-home-for-you__item" onClick={() => onNavigateToTab('SAVINGS')}>
+          <span className="itunda-home-for-you__glyph" aria-hidden="true"><MoneyBagGlyph size={30} /></span>
           <span className="itunda-home-for-you__copy">
             <strong>Start your first savings goal</strong>
             <span>Choose a target and a date to make saving easier</span>
@@ -1019,6 +1020,7 @@ function HomeView({ onNavigateToTab, onOpenTransfer, onOpenAddMoney, onOpenScan,
           <IconChevronRight size={18} />
         </button>
         <button type="button" className="itunda-home-for-you__item" onClick={() => onNavigateToTab('CREDIT_SCORE')}>
+          <span className="itunda-home-for-you__glyph itunda-home-for-you__glyph--score" aria-hidden="true"><ChartIncreasingGlyph size={30} /></span>
           <span className="itunda-home-for-you__copy">
             <strong>My credit score</strong>
             <span>Free check, alternative data</span>
