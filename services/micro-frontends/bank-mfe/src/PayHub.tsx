@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { PayHubQuickActions as QuickActions } from './PayHubQuickActions';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QrCode, Receipt, Settings, Store, Wallet as AccountIcon } from 'lucide-react';
 import { IconChevronRight, IconSend } from './icons/ItundaIcons';
@@ -39,27 +40,6 @@ import { fetchNearbyMerchants, type NearbyMerchant, type CollectPaymentResult } 
 // exactly what Toss's own real "Minimum Feature" principle ("기능이 추가될수록 제품은
 // 어려워진다") asks to cut, not re-wire. See [[project_itunda_product_feel]] roadmap
 // item 7 for the sourced restraint audit this was found under.
-function QuickActions({ onCardsClick }: { onCardsClick: () => void }) {
-  const { t } = useI18n();
-
-  return (
-    <motion.div
-      whileTap={{ scale: 0.98 }}
-      className="itunda-flat-section"
-      onClick={onCardsClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCardsClick(); } }}
-      style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
-    >
-      <div style={{ width: '38px', height: '38px', borderRadius: '999px', backgroundColor: 'color-mix(in srgb, var(--itunda-indigo) 12%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <AccountIcon size={18} color="var(--itunda-indigo)" />
-      </div>
-      <span style={{ fontWeight: '600', fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)' }}>{t('quickActions.cards')}</span>
-    </motion.div>
-  );
-}
-
 function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions: Transaction[]; unusuallyLargeIds?: Set<string> }) {
   const { t } = useI18n();
   // Real Toss Pay home reference (2026-08-22): "Payment history", flat, not the
