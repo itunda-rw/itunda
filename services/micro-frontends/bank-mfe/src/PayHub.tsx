@@ -115,7 +115,7 @@ function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions:
 // The pay surface brings the real, existing money-moving flows into one predictable
 // place. It does not create another payment implementation: every action below uses
 // the established transfer, bill, merchant-code, and payment-intent components.
-export function PayHub({ onNavigateToTab, onNavigateToCard, openAddMoneyOnEnter = false, onAddMoneyOpened, openTransferOnEnter = false, onTransferOpened }: { onNavigateToTab: (tab: Tab) => void; onNavigateToCard: () => void; openAddMoneyOnEnter?: boolean; onAddMoneyOpened?: () => void; openTransferOnEnter?: boolean; onTransferOpened?: () => void }) {
+export function PayHub({ onNavigateToTab, onNavigateToCard, openAddMoneyOnEnter = false, onAddMoneyOpened, openTransferOnEnter = false, onTransferOpened, openScanOnEnter = false, onScanOpened }: { onNavigateToTab: (tab: Tab) => void; onNavigateToCard: () => void; openAddMoneyOnEnter?: boolean; onAddMoneyOpened?: () => void; openTransferOnEnter?: boolean; onTransferOpened?: () => void; openScanOnEnter?: boolean; onScanOpened?: () => void }) {
   const { t } = useI18n();
   const [account, setAccount] = useState<Account | null>(null);
   // Real swipeable funding-source cards (Pay-parity port, §240) -- see
@@ -203,6 +203,13 @@ export function PayHub({ onNavigateToTab, onNavigateToCard, openAddMoneyOnEnter 
     setShowTransfer(true);
     onTransferOpened?.();
   }, [openTransferOnEnter, account, onTransferOpened]);
+
+  // Send the Home QR shortcut to the existing scanner entry point rather than merely opening Pay.
+  useEffect(() => {
+    if (!openScanOnEnter) return;
+    document.getElementById('pay-by-code-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    onScanOpened?.();
+  }, [openScanOnEnter, onScanOpened]);
 
   // Silent when location is denied -- same pattern as fetchNearbyAds above.
   useEffect(() => {
