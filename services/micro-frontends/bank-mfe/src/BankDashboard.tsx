@@ -2942,12 +2942,12 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   // is the single source of truth for "everything else," used by both ExploreHub's
   // browsable groups and its search box, so a service can't be filed under one
   // category when browsed and a different one when searched.
-  const PRIMARY_TABS: { id: Tab; label: string; icon: typeof IconHome }[] = [
+  const PRIMARY_TABS: { id: Tab; label: string; icon: ComponentType<{ size?: number }> }[] = [
     { id: 'HOME', label: 'Home', icon: IconHome },
+    { id: 'REWARDS', label: 'Benefits', icon: IconStar },
+    { id: 'SHOP', label: 'Shop', icon: ShoppingBagGlyph },
     { id: 'PAY', label: 'Pay', icon: IconPay },
-    { id: 'EXPLORE', label: 'Explore', icon: IconExplore },
-    { id: 'MESSAGES', label: 'Messages', icon: IconMessages },
-    { id: 'YOU', label: 'You', icon: IconYou },
+    { id: 'EXPLORE', label: 'All', icon: IconExplore },
   ];
   const EXPLORE_TAB_GROUPS: { title: string; ids: Tab[] }[] = [
     { title: 'Everyday', ids: ['SHOP', 'EATS', 'RIDES', 'MAP'] },
@@ -2971,7 +2971,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   }
 
   return (
-    <div style={{ padding: '20px', paddingBottom: '100px', maxWidth: '480px', margin: '0 auto' }}>
+    <div className="itunda-prototype-app-content" style={{ padding: '20px', paddingBottom: '112px', maxWidth: '480px', margin: '0 auto' }}>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -3003,7 +3003,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         </div>
       </motion.div>
 
-      <div style={{ display: 'flex', gap: '2px', padding: '4px', marginBottom: '16px', backgroundColor: 'transparent', borderBottom: '1px solid var(--itunda-border-default)' }}>
+      <div className="itunda-prototype-tabbar" style={{ display: 'flex', gap: '2px', padding: '4px', marginBottom: '16px', backgroundColor: 'transparent', borderBottom: '1px solid var(--itunda-border-default)' }}>
         {PRIMARY_TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
