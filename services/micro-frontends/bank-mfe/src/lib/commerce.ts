@@ -149,7 +149,7 @@ export const placeOrder = async (
     const result = await apiFetch<{ success: boolean; order: CommerceOrder; items: CommerceOrderItem[] }>('/api/v1/orders', {
       method: 'POST',
       headers: { 'Idempotency-Key': idempotencyKey },
-      body: JSON.stringify({ merchantId, items: [...items].sort((a, b) => a.productId.localeCompare(b.productId)), deliveryAddress, referralCode }),
+      body: JSON.stringify({ merchantId, items: [...items].sort((a, b) => a.productId.localeCompare(b.productId)), deliveryAddress: deliveryAddress.trim(), referralCode }),
     });
     clearPendingOrderKey(fingerprint, idempotencyKey);
     return result;
