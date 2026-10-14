@@ -135,7 +135,7 @@ function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions:
 // The pay surface brings the real, existing money-moving flows into one predictable
 // place. It does not create another payment implementation: every action below uses
 // the established transfer, bill, merchant-code, and payment-intent components.
-export function PayHub({ onNavigateToTab, onNavigateToCard, openAddMoneyOnEnter = false, onAddMoneyOpened }: { onNavigateToTab: (tab: Tab) => void; onNavigateToCard: () => void; openAddMoneyOnEnter?: boolean; onAddMoneyOpened?: () => void }) {
+export function PayHub({ onNavigateToTab, onNavigateToCard, openAddMoneyOnEnter = false, onAddMoneyOpened, openTransferOnEnter = false, onTransferOpened }: { onNavigateToTab: (tab: Tab) => void; onNavigateToCard: () => void; openAddMoneyOnEnter?: boolean; onAddMoneyOpened?: () => void; openTransferOnEnter?: boolean; onTransferOpened?: () => void }) {
   const { t } = useI18n();
   const [account, setAccount] = useState<Account | null>(null);
   // Real swipeable funding-source cards (Pay-parity port, §240) -- see
@@ -216,6 +216,13 @@ export function PayHub({ onNavigateToTab, onNavigateToCard, openAddMoneyOnEnter 
     setShowAddMoney(true);
     onAddMoneyOpened?.();
   }, [openAddMoneyOnEnter, account, onAddMoneyOpened]);
+
+  // Honor Home's Send money shortcut by opening the existing transfer flow only after real account data loads.
+  useEffect(() => {
+    if (!openTransferOnEnter || !account) return;
+    setShowTransfer(true);
+    onTransferOpened?.();
+  }, [openTransferOnEnter, account, onTransferOpened]);
 
   // Silent when location is denied -- same pattern as fetchNearbyAds above.
   useEffect(() => {
