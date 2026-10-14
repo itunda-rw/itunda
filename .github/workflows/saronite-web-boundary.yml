@@ -40,6 +40,10 @@ jobs:
         working-directory: packages/saronite
         run: yarn install --no-immutable
 
+      - name: Run Saronite DevTools contract tests
+        working-directory: packages/saronite/devtools
+        run: yarn run contract-test
+
       - name: Typecheck web demo
         working-directory: packages/saronite/mini-apps/web-demo
         run: yarn run typecheck
@@ -47,6 +51,34 @@ jobs:
       - name: Build web demo
         working-directory: packages/saronite/mini-apps/web-demo
         run: yarn run build
+
+      - name: Audit every generated JavaScript chunk
+        working-directory: packages/saronite/mini-apps/web-demo
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module -e '
+            import { readFileSync, writeFileSync } from "node:fs";
+            const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+            writeFileSync("/tmp/saronite-release-audit-manifest.json", JSON.stringify({
+              schemaVersion: 1,
+              id: "saronite-web-demo",
+              name: "Saronite Web Demo",
+              version: pkg.version,
+              entrypoint: "index.html",
+              platforms: ["android", "ios"],
+              permissions: []
+            }));
+          '
+          mapfile -t bundles < <(find dist/assets -type f -name '*.js' -print | sort)
+          if [ "${#bundles[@]}" -eq 0 ]; then
+            echo "No generated JavaScript bundles found to audit." >&2
+            exit 1
+          fi
+          for bundle in "${bundles[@]}"; do
+            echo "Auditing generated chunk: ${bundle}"
+            node --experimental-strip-types ../../devtools/scripts/release-audit.mjs /tmp/saronite-release-audit-manifest.json "${bundle}" 250000
+          done
 
       - name: Verify production boundary
         working-directory: packages/saronite/mini-apps/web-demo

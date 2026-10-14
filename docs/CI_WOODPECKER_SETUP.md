@@ -51,8 +51,8 @@ creation, and exposing a new public endpoint is a real infrastructure decision.
      but route the server to a SEPARATE VM/node from `itunda-dc-a`, not onto it, for
      the resource-contention reason above.
    - A new small VM (cloud or otherwise) with its own public IP or DDNS name.
-   - A tunnel (Cloudflare Tunnel, Tailscale Funnel) fronting a machine with no
-     public IP -- simplest to stand up, but reintroduces a third-party dependency
+   - A tunnel (Tailscale Funnel) fronting a machine with no
+     public IP -- simplest to stand up, but reintroduces an external dependency
      this whole effort is partly meant to reduce; only pick this if the other two
      aren't practical.
 2. **Create a GitHub OAuth App** for that address, under the `itunda-rw`
