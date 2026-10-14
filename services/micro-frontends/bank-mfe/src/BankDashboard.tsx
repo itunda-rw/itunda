@@ -965,7 +965,7 @@ function HomeView({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) 
         </button>
         <div className="itunda-home-primary-actions">
           <button type="button" className="itunda-home-send" onClick={() => onNavigateToTab('PAY')}>Send money</button>
-          <button type="button" className="itunda-home-topup" onClick={() => onNavigateToTab('PAY')}>Add money</button>
+          <button type="button" className="itunda-home-topup" onClick={() => { setOpenPayAddMoney(true); onNavigateToTab('PAY'); }}>Add money</button>
         </div>
       </section>
 
@@ -2854,6 +2854,8 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   );
 
   const [tab, setTabState] = useState<Tab>(() => readTabFromUrl());
+  // One-shot handoff from Home's Add money action into the real Pay funding flow.
+  const [openPayAddMoney, setOpenPayAddMoney] = useState(false);
   // Keeps `tab` deep-linkable: every real navigation both updates state and pushes a
   // real URL (?tab=X) so refresh/share/back-button all land where the user actually
   // was, not always Home. `history.pushState` (not `replaceState`) so the browser's
@@ -3138,7 +3140,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
 
       <main className="itunda-app-content">
       {tab === 'HOME' && <HomeView onNavigateToTab={setTab} />}
-      {tab === 'PAY' && <PayHub onNavigateToTab={setTab} onNavigateToCard={() => setTab('CARD')} />}
+      {tab === 'PAY' && <PayHub onNavigateToTab={setTab} onNavigateToCard={() => setTab('CARD')} openAddMoneyOnEnter={openPayAddMoney} onAddMoneyOpened={() => setOpenPayAddMoney(false)} />}
       {tab === 'EXPLORE' && (
         <ExploreHub
           groups={EXPLORE_TAB_GROUPS}
