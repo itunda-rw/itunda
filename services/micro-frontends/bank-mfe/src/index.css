@@ -3870,3 +3870,50 @@ input, textarea, select {
   }
 }
 
+
+
+/* ItundaFace recommendation art: distinct from utility icons, with a quiet
+   Itunda-indigo canvas and tactile feedback that never blocks the action. */
+.itunda-home-for-you__glyph {
+  display: grid;
+  place-items: center;
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  border-radius: 19px;
+  color: var(--itunda-text-primary);
+  background: color-mix(in srgb, var(--itunda-brand) 13%, var(--itunda-surface, white));
+  transition: transform 180ms cubic-bezier(.2, .8, .2, 1), background-color 180ms ease;
+}
+.itunda-home-for-you__glyph--score {
+  background: color-mix(in srgb, var(--itunda-brand) 20%, var(--itunda-surface, white));
+}
+.itunda-home-for-you__glyph svg {
+  display: block;
+  overflow: visible;
+}
+.itunda-home-for-you__item {
+  border-radius: 18px;
+  padding: 12px;
+  transition: background-color 160ms ease, transform 160ms ease;
+}
+.itunda-home-for-you__item:hover {
+  background: color-mix(in srgb, var(--itunda-brand) 6%, transparent);
+}
+.itunda-home-for-you__item:hover .itunda-home-for-you__glyph,
+.itunda-home-for-you__item:focus-visible .itunda-home-for-you__glyph {
+  transform: translateY(-2px) scale(1.04);
+}
+.itunda-home-for-you__item:active {
+  transform: scale(.99);
+}
+@media (prefers-reduced-motion: reduce) {
+  .itunda-home-for-you__item,
+  .itunda-home-for-you__glyph {
+    transition: none;
+  }
+  .itunda-home-for-you__item:hover .itunda-home-for-you__glyph,
+  .itunda-home-for-you__item:focus-visible .itunda-home-for-you__glyph {
+    transform: none;
+  }
+}
