@@ -6,6 +6,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
@@ -44,6 +45,34 @@ class EatsStampController(
             return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "campaign" to campaign))
         }
     
+        @PutMapping("/stamp-campaigns/{campaignId}")
+        fun updateStampCampaign(
+            @PathVariable campaignId: String,
+            @RequestBody request: UpdateEatsStampCampaignRequest,
+            @AuthenticationPrincipal currentUser: CurrentUser,
+        ): ResponseEntity<Map<String, Any?>> {
+            val campaign = eatsStampService.updateCampaign(
+                ownerUserId = currentUser.userId,
+                campaignId = campaignId,
+                name = request.name,
+                stampsRequired = request.stampsRequired,
+                rewardDescription = request.rewardDescription,
+                discountAmount = request.discountAmount,
+                startsAt = request.startsAt,
+                endsAt = request.endsAt,
+                active = request.active,
+            )
+            return ResponseEntity.ok(mapOf("success" to true, "campaign" to campaign))
+        }
+
+        @PostMapping("/stamp-campaigns/{campaignId}/deactivate")
+        fun deactivateStampCampaign(
+            @PathVariable campaignId: String,
+            @AuthenticationPrincipal currentUser: CurrentUser,
+        ): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
+            mapOf("success" to true, "campaign" to eatsStampService.deactivateCampaign(currentUser.userId, campaignId)),
+        )
+
         @GetMapping("/restaurants/{restaurantId}/stamp-campaigns")
         fun getStampCampaigns(@PathVariable restaurantId: String): ResponseEntity<Map<String, Any?>> =
             ResponseEntity.ok(mapOf("success" to true, "campaigns" to eatsStampService.activeCampaigns(restaurantId)))
@@ -63,4 +92,15 @@ data class CreateEatsStampCampaignRequest(
     val discountAmount: BigDecimal? = null,
     val startsAt: Instant,
     val endsAt: Instant? = null,
+)
+
+/** Full replacement request so omitted fields cannot accidentally clear campaign terms. */
+data class UpdateEatsStampCampaignRequest(
+    val name: String,
+    val stampsRequired: Int,
+    val rewardDescription: String,
+    val discountAmount: BigDecimal? = null,
+    val startsAt: Instant,
+    val endsAt: Instant? = null,
+    val active: Boolean = true,
 )
