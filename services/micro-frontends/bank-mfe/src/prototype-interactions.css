@@ -1,0 +1,105 @@
+/* Itunda prototype-first interaction pass.
+   Grounded in the supplied clickable prototype: calm surfaces, clear action hierarchy,
+   44–60px touch targets, short press feedback, contextual overlays, theme-aware colors,
+   and reduced-motion support. This is an additive layer; feature behavior and API calls
+   remain owned by their existing screens. */
+:root {
+  --itunda-prototype-accent: #8F89FF;
+  --itunda-prototype-accent-pressed: #7770F0;
+  --itunda-prototype-on-accent: #121216;
+  --itunda-prototype-surface: #FFFFFF;
+  --itunda-prototype-surface-muted: #F4F5F8;
+  --itunda-prototype-text: #191F28;
+  --itunda-prototype-muted: #6B7684;
+  --itunda-prototype-hairline: #E5E8EB;
+  --itunda-prototype-radius-control: 16px;
+  --itunda-prototype-radius-surface: 22px;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --itunda-prototype-surface: #121216;
+    --itunda-prototype-surface-muted: #25252D;
+    --itunda-prototype-text: #F4F5F7;
+    --itunda-prototype-muted: #9AA1AD;
+    --itunda-prototype-hairline: #2E2E37;
+  }
+}
+#root, .itunda-app-shell {
+  background: var(--itunda-prototype-surface);
+  color: var(--itunda-prototype-text);
+  min-height: 100svh;
+}
+button, [role="button"], a, input, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+button, [role="button"] {
+  touch-action: manipulation;
+}
+button:active:not(:disabled), [role="button"]:active {
+  transform: scale(.975);
+}
+button:focus-visible, [role="button"]:focus-visible, a:focus-visible,
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--itunda-prototype-accent);
+  outline-offset: 3px;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: .42;
+}
+.itunda-btn {
+  min-height: 52px;
+  border-radius: var(--itunda-prototype-radius-control);
+  font-weight: 750;
+  transition: transform 120ms ease-out, opacity 160ms ease-out, background-color 160ms ease-out;
+}
+.itunda-btn-primary {
+  background: var(--itunda-prototype-accent);
+  color: var(--itunda-prototype-on-accent);
+}
+.itunda-btn-primary:hover:not(:disabled) {
+  background: var(--itunda-prototype-accent-pressed);
+}
+.itunda-btn-secondary {
+  background: var(--itunda-prototype-surface-muted);
+  color: var(--itunda-prototype-text);
+}
+.itunda-card {
+  border-color: var(--itunda-prototype-hairline);
+}
+.itunda-app-header {
+  background: color-mix(in srgb, var(--itunda-prototype-surface) 92%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.itunda-bottom-nav {
+  background: color-mix(in srgb, var(--itunda-prototype-surface) 94%, transparent);
+  border-top: 1px solid var(--itunda-prototype-hairline);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.itunda-bottom-nav button, .itunda-bottom-nav a {
+  min-height: 48px;
+}
+[role="dialog"], [data-state="open"][data-overlay], .itunda-sheet {
+  border-radius: 26px 26px 0 0;
+}
+input, select, textarea {
+  accent-color: var(--itunda-prototype-accent);
+}
+::selection {
+  background: color-mix(in srgb, var(--itunda-prototype-accent) 28%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+  button:active:not(:disabled), [role="button"]:active {
+    transform: none;
+  }
+}
