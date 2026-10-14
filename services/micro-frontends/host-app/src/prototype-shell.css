@@ -1,0 +1,37 @@
+/* Prototype-first host-shell polish for app.itunda.im.
+   Keep the home/identity destinations accessible while making the active state
+   quieter and more consistent with the supplied mobile prototype. */
+:root {
+  --itunda-host-accent: #8F89FF;
+  --itunda-host-on-accent: #121216;
+}
+.host-tabbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  gap: 8px;
+  padding: 8px 16px 0;
+  border-bottom: 1px solid var(--itunda-border-default);
+  background: color-mix(in srgb, var(--itunda-surface-default) 92%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.host-tab {
+  min-height: 48px;
+  padding: 12px 8px;
+  border-radius: 14px 14px 0 0;
+  color: var(--itunda-text-tertiary);
+  transition: color 160ms ease-out, background-color 160ms ease-out;
+}
+.host-tab-active {
+  color: var(--itunda-text-primary);
+  border-bottom: 3px solid var(--itunda-host-accent);
+  background: color-mix(in srgb, var(--itunda-host-accent) 9%, transparent);
+}
+.host-tab:focus-visible {
+  outline: 2px solid var(--itunda-host-accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .host-tab { transition: none; }
+}
