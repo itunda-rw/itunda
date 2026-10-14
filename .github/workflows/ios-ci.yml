@@ -6,11 +6,13 @@ on:
       - main
     paths:
       - "ios/**"
+      - "client/brand/itunda-icon.svg"
       - "packages/saronite/**"
       - ".github/workflows/ios-ci.yml"
   pull_request:
     paths:
       - "ios/**"
+      - "client/brand/itunda-icon.svg"
       - "packages/saronite/**"
       - ".github/workflows/ios-ci.yml"
   workflow_dispatch:
@@ -80,15 +82,24 @@ jobs:
       - name: Generate iOS app icon asset catalog
         working-directory: ios
         run: |
+          set -euo pipefail
           python3 -m venv .ci-venv
           .ci-venv/bin/python -m pip install --disable-pip-version-check cairosvg pillow
           .ci-venv/bin/python <<'PY'
           import cairosvg
           from pathlib import Path
-          src = Path("Assets/ItundaIcon.svg")
+
+          # canonical-itunda-brand.yml keeps client/brand/itunda-icon.svg synchronized
+          # byte-for-byte with the official Itunda symbol. Use that existing source
+          # rather than relying on an absent duplicate under ios/Assets.
+          src = Path("../client/brand/itunda-icon.svg")
+          if not src.is_file() or src.stat().st_size == 0:
+              raise SystemExit(f"Canonical Itunda brand symbol is missing: {src}")
           out = Path("App/Resources/ItundaIcon.xcassets/ItundaIcon.appiconset/ItundaIcon.png")
           out.parent.mkdir(parents=True, exist_ok=True)
           cairosvg.svg2png(url=str(src), write_to=str(out), output_width=1024, output_height=1024)
+          if not out.is_file() or out.stat().st_size == 0:
+              raise SystemExit("Failed to generate the 1024x1024 Itunda app icon")
           PY
           cat > App/Resources/ItundaIcon.xcassets/ItundaIcon.appiconset/Contents.json <<'JSON'
           {"images":[{"filename":"ItundaIcon.png","idiom":"universal","scale":"1x","size":"1024x1024"}],"info":{"author":"Itunda","version":1}}
@@ -106,7 +117,7 @@ jobs:
         working-directory: ios
         run: |
           set -o pipefail
-          xcodebuild             -workspace Itunda.xcworkspace             -scheme ItundaApp             -destination 'generic/platform=iOS Simulator'             -derivedDataPath "$RUNNER_TEMP/ItundaDerivedData"             -parallelizeTargets             CODE_SIGNING_ALLOWED=NO             build-for-testing
+          xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/ItundaDerivedData" -parallelizeTargets CODE_SIGNING_ALLOWED=NO build-for-testing
 
       - name: Cache build-for-testing products
         uses: actions/cache/save@v4
@@ -141,7 +152,7 @@ jobs:
             ios-saronite-node-modules-${{ runner.os }}-
 
       - name: Install Saronite dependencies
-        working-directory: packages/saronite
+        working-directory: packages/saronite/host-app
         run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Install mise
@@ -196,4 +207,4 @@ jobs:
           fi
           xcrun simctl boot "$DEVICE_ID" 2>/dev/null || true
           xcrun simctl bootstatus "$DEVICE_ID" -b
-          xcodebuild             -workspace Itunda.xcworkspace             -scheme ItundaApp             -destination "id=$DEVICE_ID"             -derivedDataPath "$RUNNER_TEMP/ItundaDerivedData"             CODE_SIGNING_ALLOWED=NO             test-without-building
+          xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp -destination "id=$DEVICE_ID" -derivedDataPath "$RUNNER_TEMP/ItundaDerivedData" CODE_SIGNING_ALLOWED=NO test-without-building
