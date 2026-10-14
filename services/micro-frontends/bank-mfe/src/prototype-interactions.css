@@ -178,3 +178,19 @@ body {
     transition: none;
   }
 }
+
+
+.itunda-prototype-header {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  min-height: 56px;
+  margin: -8px -4px 16px !important;
+  padding: max(12px, env(safe-area-inset-top, 0px)) 8px 8px !important;
+  background: color-mix(in srgb, var(--itunda-prototype-surface) 94%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.itunda-prototype-tabbar > button {
+  position: relative;
+}
