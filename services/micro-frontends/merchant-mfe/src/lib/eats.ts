@@ -128,7 +128,7 @@ export interface EatsStampCampaignInput {
 
 export const fetchEatsStampCampaigns = (restaurantId: string) =>
   apiFetch<{ success: boolean; campaigns: EatsStampCampaign[] }>(
-    `/api/v1/eats/restaurants/${encodeURIComponent(restaurantId)}/stamp-campaigns`,
+    `/api/v1/eats/restaurants/${encodeURIComponent(restaurantId)}/stamp-campaigns/manage`,
   ).then((r) => r.campaigns);
 
 export const createEatsStampCampaign = (restaurantId: string, input: EatsStampCampaignInput) =>
