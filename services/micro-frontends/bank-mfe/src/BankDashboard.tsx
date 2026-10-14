@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, type ComponentType, type ReactElement } from 'react';
 import { IconShieldCheck, IconStar, IconItundaLogo } from './icons/ItundaIcons';
 import { motion } from 'framer-motion';
-import { Bike, Check, Clock, Landmark, LogOut, Sprout, Users } from 'lucide-react';
+import { Bike, Check, Clock, Landmark, LogOut, QrCode, ReceiptText, Smartphone, Sprout, Users, Zap } from 'lucide-react';
 import { BankCardChip, CardContactlessGlyph } from './BankCardChip';import { IconBack, IconChevronRight, IconClose, IconSearch } from './icons/ItundaIcons';
 import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/ItundaIcons';
 import { GiftGlyph, GiftBox } from './icons/ItundaFaceGifts';
@@ -894,11 +894,11 @@ export function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode,
 // SavingsView ("itunda Bank"); CooperativeSavingsRail was only ever a teaser
 // linking into SavingsView's own already-complete SaccoSection/IkiminaSection, so
 // it's removed outright rather than moved -- nothing it showed was unique.
-function HomeView({ userName, onNavigateToTab }: { userName?: string; onNavigateToTab: (tab: Tab) => void }) {
+function HomeView({ onNavigateToTab, onOpenTransfer, onOpenAddMoney, onOpenScan, onOpenAirtime }: { onNavigateToTab: (tab: Tab) => void; onOpenTransfer: () => void; onOpenAddMoney: () => void; onOpenScan: () => void; onOpenAirtime: () => void }) {
   useEffect(() => { recordEvent('home_view'); }, []);
 
-  // Home shows only the signed-in user's real account and spending data. A failed
-  // request leaves the section in a calm empty state; never substitute sample money.
+  // Use the real signed-in user's balances and spending. Never fill missing API data
+  // with the clickable prototype's sample balances or simulated provider status.
   const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [accountsFailed, setAccountsFailed] = useState(false);
   const [spending, setSpending] = useState<{ totalSpent: number; categories: SpendingCategory[] } | null>(null);
@@ -917,61 +917,76 @@ function HomeView({ userName, onNavigateToTab }: { userName?: string; onNavigate
   const mainAccount = accounts?.find((account) => account.type === 'MAIN');
   const payAccount = accounts?.find((account) => account.type === 'PAY');
   const money = (amount: number, currency: string) =>
-    `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(amount)} ${currency || 'RWF'}`;
+    new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(amount) + ' ' + (currency || 'RWF');
+  const balanceLabel = (account: Account | undefined) => accountsFailed
+    ? 'Unavailable'
+    : accounts === null
+      ? 'Loading…'
+      : account
+        ? money(account.availableBalance, account.currency)
+        : 'Set up an account';
 
-  const quickActions: { id: Tab; label: string; icon: ComponentType<{ size?: number }> }[] = [
-    { id: 'EXPLORE', label: 'Explore', icon: IconExplore },
-    { id: 'MESSAGES', label: 'Messages', icon: IconMessages },
-    { id: 'BILLS', label: 'Bills', icon: IconPay },
-    { id: 'YOU', label: 'You', icon: IconYou },
+  const quickActions: { label: string; icon: ComponentType<{ size?: number }>; tab: Tab }[] = [
+    { label: 'Send money', icon: IconPay, tab: 'PAY' },
+    { label: 'Scan to pay', icon: QrCode, tab: 'PAY' },
+    { label: 'Pay bills', icon: ReceiptText, tab: 'BILLS' },
+    { label: 'Airtime', icon: Smartphone, tab: 'BILLS' },
+  ];
+  const localServices: { label: string; icon: ComponentType<{ size?: number }>; tab: Tab }[] = [
+    { label: 'Irembo', icon: IconHome, tab: 'BILLS' },
+    { label: 'RRA taxes', icon: Landmark, tab: 'BILLS' },
+    { label: 'REG electricity', icon: Zap, tab: 'BILLS' },
+    { label: 'WASAC water', icon: Sprout, tab: 'BILLS' },
+    { label: 'School fees', icon: Users, tab: 'BILLS' },
   ];
 
   return (
     <div className="itunda-home-page">
-      <section className="itunda-home-welcome" aria-labelledby="itunda-home-title">
-        <span className="itunda-home-welcome__mark" aria-hidden="true">
-          <IconItundaLogo size={34} color="var(--itunda-logo-color)" />
-        </span>
-        <div className="itunda-home-welcome__copy">
-          <p className="itunda-home-welcome__eyebrow">ITUNDA</p>
-          <h1 id="itunda-home-title">{userName ? `Welcome back, ${userName}.` : 'Welcome back.'}</h1>
-          <p>What do you need today?</p>
+      <div className="itunda-home-topbar">
+        <div className="itunda-home-topbar__brand">
+          <IconItundaLogo size={36} color="var(--itunda-logo-color)" />
+          <strong>itunda</strong>
         </div>
-      </section>
+        <button type="button" aria-label="Profile and settings" onClick={() => onNavigateToTab('YOU')}>
+          <IconYou size={23} />
+        </button>
+      </div>
 
       <section className="itunda-home-money" aria-label="Your money">
-        <div className="itunda-home-money__heading">
-          <h2>Your money</h2>
-          <button type="button" onClick={() => onNavigateToTab('SAVINGS')}>itunda Bank <IconChevronRight size={16} /></button>
-        </div>
-        {accounts === null ? (
-          <p className="itunda-home-muted" role="status">Loading your accounts…</p>
-        ) : (
-          <div className="itunda-home-accounts">
-            <button type="button" className="itunda-home-account" onClick={() => onNavigateToTab('SAVINGS')}>
-              <span className="itunda-home-account__label">itunda Bank</span>
-              <strong>{accountsFailed ? 'Unavailable' : mainAccount ? money(mainAccount.availableBalance, mainAccount.currency) : 'Set up an account'}</strong>
-              <span className="itunda-home-account__hint">{accountsFailed ? 'Could not load balance' : mainAccount ? 'Available balance' : 'Explore account options'}</span>
-            </button>
-            <button type="button" className="itunda-home-account" onClick={() => onNavigateToTab('PAY')}>
-              <span className="itunda-home-account__label">itunda Pay</span>
-              <strong>{accountsFailed ? 'Unavailable' : payAccount ? money(payAccount.availableBalance, payAccount.currency) : 'Open itunda Pay'}</strong>
-              <span className="itunda-home-account__hint">{accountsFailed ? 'Could not load balance' : payAccount ? 'Available to pay' : 'Pay and send money'}</span>
-            </button>
-          </div>
-        )}
+        <button type="button" className="itunda-home-bank-balance" onClick={() => onNavigateToTab('OVERVIEW')}>
+          <span>itunda Bank</span>
+          <strong>{balanceLabel(mainAccount)}</strong>
+          {accountsFailed && <small role="status">Could not load balance</small>}
+        </button>
+        <button type="button" className="itunda-home-pay-row" onClick={() => onNavigateToTab('PAY')}>
+          <span>itunda Pay</span>
+          <strong>{balanceLabel(payAccount)}</strong>
+          <IconChevronRight size={17} />
+        </button>
         <div className="itunda-home-primary-actions">
-          <button type="button" className="itunda-home-send" onClick={() => onNavigateToTab('PAY')}>Send money <IconChevronRight size={18} /></button>
-          <button type="button" className="itunda-home-topup" onClick={() => onNavigateToTab('PAY')}>Open Pay</button>
+          <button type="button" className="itunda-home-send" onClick={() => { onOpenTransfer(); onNavigateToTab('PAY'); }}>Send money</button>
+          <button type="button" className="itunda-home-topup" onClick={() => { onOpenAddMoney(); onNavigateToTab('PAY'); }}>Add money</button>
         </div>
       </section>
 
       <section className="itunda-home-actions-section" aria-label="Quick actions">
-        <h2>Quick actions</h2>
+        <div className="itunda-home-prototype-section-heading"><h2>Quick actions</h2></div>
         <div className="itunda-home-actions">
-          {quickActions.map(({ id, label, icon: Icon }) => (
-            <button key={`${id}-${label}`} type="button" onClick={() => onNavigateToTab(id)} aria-label={label}>
-              <span className="itunda-home-actions__icon" aria-hidden="true"><Icon size={20} /></span>
+          {quickActions.map(({ tab, label, icon: Icon }) => (
+            <button key={label} type="button" onClick={() => { if (label === 'Send money') onOpenTransfer(); if (label === 'Scan to pay') onOpenScan(); if (label === 'Airtime') onOpenAirtime(); onNavigateToTab(tab); }} aria-label={label}>
+              <span className="itunda-home-actions__icon" aria-hidden="true"><Icon size={22} /></span>
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="itunda-home-local-services" aria-label="Rwanda services">
+        <div className="itunda-home-prototype-section-heading"><h2>Rwanda services</h2><button type="button" onClick={() => onNavigateToTab('BILLS')}>View all <IconChevronRight size={15} /></button></div>
+        <div className="itunda-home-local-services__grid">
+          {localServices.map(({ tab, label, icon: Icon }) => (
+            <button key={label} type="button" onClick={() => onNavigateToTab(tab)}>
+              <span aria-hidden="true"><Icon size={23} /></span>
               <span>{label}</span>
             </button>
           ))}
@@ -980,9 +995,9 @@ function HomeView({ userName, onNavigateToTab }: { userName?: string; onNavigate
 
       {spending && spending.totalSpent > 0 && (
         <section className="itunda-home-spending" aria-label="Spending summary">
-          <div className="itunda-home-section-heading">
+          <div className="itunda-home-prototype-section-heading">
             <h2>Spending</h2>
-            <button type="button" onClick={() => onNavigateToTab('SPENDING')}>Details <IconChevronRight size={16} /></button>
+            <button type="button" onClick={() => onNavigateToTab('SPENDING')}>Details <IconChevronRight size={15} /></button>
           </div>
           <p className="itunda-home-spending__amount">{money(spending.totalSpent, mainAccount?.currency || payAccount?.currency || 'RWF')}</p>
           <p className="itunda-home-muted">Based on your recorded transactions</p>
@@ -998,15 +1013,15 @@ function HomeView({ userName, onNavigateToTab }: { userName?: string; onNavigate
         <h2>For you</h2>
         <button type="button" className="itunda-home-for-you__item" onClick={() => onNavigateToTab('SAVINGS')}>
           <span className="itunda-home-for-you__copy">
-            <strong>Start a savings goal</strong>
+            <strong>Start your first savings goal</strong>
             <span>Choose a target and a date to make saving easier</span>
           </span>
           <IconChevronRight size={18} />
         </button>
         <button type="button" className="itunda-home-for-you__item" onClick={() => onNavigateToTab('CREDIT_SCORE')}>
           <span className="itunda-home-for-you__copy">
-            <strong>Check your credit score</strong>
-            <span>Review your score and available suggestions</span>
+            <strong>My credit score</strong>
+            <span>Free check, alternative data</span>
           </span>
           <IconChevronRight size={18} />
         </button>
@@ -2839,6 +2854,11 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   );
 
   const [tab, setTabState] = useState<Tab>(() => readTabFromUrl());
+  // One-shot handoff from Home's Add money action into the real Pay funding flow.
+  const [openPayAddMoney, setOpenPayAddMoney] = useState(false);
+  const [openPayTransfer, setOpenPayTransfer] = useState(false);
+  const [openPayScan, setOpenPayScan] = useState(false);
+  const [focusAirtime, setFocusAirtime] = useState(false);
   // Keeps `tab` deep-linkable: every real navigation both updates state and pushes a
   // real URL (?tab=X) so refresh/share/back-button all land where the user actually
   // was, not always Home. `history.pushState` (not `replaceState`) so the browser's
@@ -3086,7 +3106,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
 
   return (
     <div className="itunda-app-shell">
-      <header className="itunda-app-header ids-glass-strong">
+      <header className={`itunda-app-header ids-glass-strong${tab === 'HOME' ? ' is-home-hidden' : ''}`}>
         <div className="itunda-app-brand">
           <span className="itunda-app-brand-mark" aria-hidden="true">
             <IconItundaLogo size={28} color="currentColor" />
@@ -3122,8 +3142,8 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       </header>
 
       <main className="itunda-app-content">
-      {tab === 'HOME' && <HomeView userName={user?.firstName} onNavigateToTab={setTab} />}
-      {tab === 'PAY' && <PayHub onNavigateToTab={setTab} onNavigateToCard={() => setTab('CARD')} />}
+      {tab === 'HOME' && <HomeView onNavigateToTab={setTab} onOpenTransfer={() => setOpenPayTransfer(true)} onOpenAddMoney={() => setOpenPayAddMoney(true)} onOpenScan={() => setOpenPayScan(true)} onOpenAirtime={() => setFocusAirtime(true)} />}
+      {tab === 'PAY' && <PayHub onNavigateToTab={setTab} onNavigateToCard={() => setTab('CARD')} openAddMoneyOnEnter={openPayAddMoney} onAddMoneyOpened={() => setOpenPayAddMoney(false)} openTransferOnEnter={openPayTransfer} onTransferOpened={() => setOpenPayTransfer(false)} openScanOnEnter={openPayScan} onScanOpened={() => setOpenPayScan(false)} />}
       {tab === 'EXPLORE' && (
         <ExploreHub
           groups={EXPLORE_TAB_GROUPS}
@@ -3200,7 +3220,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
           <InsuranceView />
         </Suspense>
       )}
-      {tab === 'BILLS' && <BillsView />}
+      {tab === 'BILLS' && <BillsView focusAirtimeOnEnter={focusAirtime} onAirtimeFocused={() => setFocusAirtime(false)} />}
       {tab === 'AGENT' && <AgentOperatorView />}
       {tab === 'USSD' && <UssdSettingsView />}
       {tab === 'FOREIGN_CURRENCY' && <ForeignCurrencyView />}

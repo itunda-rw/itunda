@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+import { PayHubQuickActions as QuickActions } from './PayHubQuickActions';
 import { motion, AnimatePresence } from 'framer-motion';
-import { QrCode, Receipt, Settings, Store, Wallet as AccountIcon } from 'lucide-react';
+import { QrCode, Receipt, Settings, Store } from 'lucide-react';
 import { IconChevronRight, IconSend } from './icons/ItundaIcons';
 import { TransferFlow, type Tab } from './BankDashboard';
 import { PayMoneyDetail } from './PayMoneyDetail';
@@ -39,27 +40,6 @@ import { fetchNearbyMerchants, type NearbyMerchant, type CollectPaymentResult } 
 // exactly what Toss's own real "Minimum Feature" principle ("기능이 추가될수록 제품은
 // 어려워진다") asks to cut, not re-wire. See [[project_itunda_product_feel]] roadmap
 // item 7 for the sourced restraint audit this was found under.
-function QuickActions({ onCardsClick }: { onCardsClick: () => void }) {
-  const { t } = useI18n();
-
-  return (
-    <motion.div
-      whileTap={{ scale: 0.98 }}
-      className="itunda-flat-section"
-      onClick={onCardsClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCardsClick(); } }}
-      style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
-    >
-      <div style={{ width: '38px', height: '38px', borderRadius: '999px', backgroundColor: 'color-mix(in srgb, var(--itunda-indigo) 12%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <AccountIcon size={18} color="var(--itunda-indigo)" />
-      </div>
-      <span style={{ fontWeight: '600', fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)' }}>{t('quickActions.cards')}</span>
-    </motion.div>
-  );
-}
-
 function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions: Transaction[]; unusuallyLargeIds?: Set<string> }) {
   const { t } = useI18n();
   // Real Toss Pay home reference (2026-08-22): "Payment history", flat, not the
@@ -135,7 +115,7 @@ function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions:
 // The pay surface brings the real, existing money-moving flows into one predictable
 // place. It does not create another payment implementation: every action below uses
 // the established transfer, bill, merchant-code, and payment-intent components.
-export function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: Tab) => void; onNavigateToCard: () => void }) {
+export function PayHub({ onNavigateToTab, onNavigateToCard, openAddMoneyOnEnter = false, onAddMoneyOpened, openTransferOnEnter = false, onTransferOpened, openScanOnEnter = false, onScanOpened }: { onNavigateToTab: (tab: Tab) => void; onNavigateToCard: () => void; openAddMoneyOnEnter?: boolean; onAddMoneyOpened?: () => void; openTransferOnEnter?: boolean; onTransferOpened?: () => void; openScanOnEnter?: boolean; onScanOpened?: () => void }) {
   const { t } = useI18n();
   const [account, setAccount] = useState<Account | null>(null);
   // Real swipeable funding-source cards (Pay-parity port, §240) -- see
@@ -207,6 +187,29 @@ export function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab:
     fetchRewardTasks().then(setRewardsPreview).catch(() => setRewardsPreview(null));
     fetchMyCard().then(setCard).catch(() => setCard(null));
   }, []);
+
+  // Honor the Home shortcut by opening the existing, ledger-backed Add Money flow.
+  // Wait for the real Pay account to load; never fabricate a destination account.
+  useEffect(() => {
+    if (!openAddMoneyOnEnter || !account) return;
+    setOpenAccountDetail(account);
+    setShowAddMoney(true);
+    onAddMoneyOpened?.();
+  }, [openAddMoneyOnEnter, account, onAddMoneyOpened]);
+
+  // Honor Home's Send money shortcut by opening the existing transfer flow only after real account data loads.
+  useEffect(() => {
+    if (!openTransferOnEnter || !account) return;
+    setShowTransfer(true);
+    onTransferOpened?.();
+  }, [openTransferOnEnter, account, onTransferOpened]);
+
+  // Send the Home QR shortcut to the existing scanner entry point rather than merely opening Pay.
+  useEffect(() => {
+    if (!openScanOnEnter) return;
+    document.getElementById('pay-by-code-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    onScanOpened?.();
+  }, [openScanOnEnter, onScanOpened]);
 
   // Silent when location is denied -- same pattern as fetchNearbyAds above.
   useEffect(() => {

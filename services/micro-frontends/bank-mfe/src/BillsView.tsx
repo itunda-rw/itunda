@@ -4,7 +4,7 @@
 // bill-pay/airtime client (own lib/bills.ts data layer, exactly one external call
 // site -- `{tab === 'BILLS' && <BillsView />}`).
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useI18n } from './i18n/I18nContext';
 import { ApiError } from './lib/api';
 import {
@@ -16,8 +16,9 @@ import {
 // Real bill-pay/airtime client -- see lib/bills.ts's own doc comment. Android/iOS
 // already have this via the Saronite RN mini-app bridge; bank-mfe itself never had a
 // screen for it despite the real, ledger-backed backend.
-export function BillsView() {
+export function BillsView({ focusAirtimeOnEnter = false, onAirtimeFocused }: { focusAirtimeOnEnter?: boolean; onAirtimeFocused?: () => void }) {
   const { t } = useI18n();
+  const airtimeSectionRef = useRef<HTMLDivElement>(null);
   const [providers, setProviders] = useState<BillProvider[] | null>(null);
   const [pending, setPending] = useState<PendingBill[]>([]);
   const [payingId, setPayingId] = useState<string | null>(null);
@@ -42,6 +43,13 @@ export function BillsView() {
     fetchAutoPaySettings().then(setAutoPaySettings).catch(() => setAutoPaySettings([]));
   };
   useEffect(load, []);
+
+  // Home's Airtime shortcut opens this existing purchase section directly.
+  useEffect(() => {
+    if (!focusAirtimeOnEnter) return;
+    airtimeSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    onAirtimeFocused?.();
+  }, [focusAirtimeOnEnter, onAirtimeFocused]);
 
   const handleSetAutoPay = async () => {
     const maxAmount = Number(autoPayMax);
@@ -199,7 +207,7 @@ export function BillsView() {
         </div>
       </div>
 
-      <div className="itunda-flat-section">
+      <div className="itunda-flat-section" ref={airtimeSectionRef}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Buy airtime</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <input
