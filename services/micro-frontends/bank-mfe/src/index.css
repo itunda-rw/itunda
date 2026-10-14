@@ -3569,3 +3569,214 @@ input, textarea, select {
   outline: 2px solid var(--itunda-brand);
   outline-offset: 3px;
 }
+
+
+/* Clickable-prototype home composition: one balance, one clear next action,
+   compact quick actions, and Rwanda-first service shortcuts. */
+.itunda-app-header.is-home-hidden { display: none !important; }
+.itunda-app-header.is-home-hidden + .itunda-app-content { padding-top: 0; }
+
+.itunda-home-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 52px;
+  padding: 0 24px;
+}
+.itunda-home-topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--itunda-text-primary);
+}
+.itunda-home-topbar__brand strong {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -.04em;
+}
+.itunda-home-topbar > button {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 22px;
+  color: var(--itunda-text-primary);
+}
+.itunda-home-topbar > button:hover { background: var(--itunda-surface-subtle); }
+
+.itunda-home-money {
+  margin: 10px 24px 0;
+}
+.itunda-home-bank-balance {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 8px 0 0;
+  color: var(--itunda-text-primary);
+  background: transparent;
+  text-align: left;
+}
+.itunda-home-bank-balance > span {
+  color: var(--itunda-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+.itunda-home-bank-balance > strong {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: clamp(30px, 8vw, 40px);
+  font-weight: 800;
+  line-height: 1.16;
+  letter-spacing: -.04em;
+}
+.itunda-home-bank-balance > small {
+  color: var(--itunda-text-tertiary);
+  font-size: 12px;
+}
+.itunda-home-pay-row {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  color: var(--itunda-text-secondary);
+  background: transparent;
+  text-align: left;
+  font-size: 15px;
+}
+.itunda-home-pay-row > strong {
+  margin-left: auto;
+  color: var(--itunda-text-primary);
+  font-size: 15px;
+  font-weight: 800;
+  text-align: right;
+}
+.itunda-home-pay-row > svg { flex: 0 0 auto; color: var(--itunda-text-tertiary); }
+.itunda-home-money .itunda-home-primary-actions { margin-top: 12px; }
+.itunda-home-primary-actions > button { min-height: 56px; border-radius: 18px; font-size: 16px; }
+.itunda-home-send { color: var(--itunda-button-primary-text); }
+
+.itunda-home-actions-section,
+.itunda-home-local-services,
+.itunda-home-spending,
+.itunda-home-for-you {
+  margin: 30px 24px 0;
+}
+.itunda-home-prototype-section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.itunda-home-prototype-section-heading h2,
+.itunda-home-for-you > h2 {
+  margin: 0;
+  color: var(--itunda-text-primary);
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 800;
+  letter-spacing: -.025em;
+}
+.itunda-home-prototype-section-heading > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--itunda-brand);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.itunda-home-actions-section > .itunda-home-prototype-section-heading { margin-bottom: 10px; }
+.itunda-home-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 4px;
+  margin: 0;
+}
+.itunda-home-actions > button {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--itunda-text-primary);
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 700;
+  text-align: center;
+}
+.itunda-home-actions > button:hover { background: transparent; }
+.itunda-home-actions__icon {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 22px;
+  background: var(--itunda-grey-100);
+  color: var(--itunda-text-primary);
+}
+.itunda-home-actions > button:focus-visible .itunda-home-actions__icon {
+  outline: 2px solid var(--itunda-focus);
+  outline-offset: 2px;
+}
+
+.itunda-home-local-services__grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px 4px;
+}
+.itunda-home-local-services__grid > button {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 0 1px;
+  color: var(--itunda-text-primary);
+  background: transparent;
+  font-size: 10px;
+  line-height: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+.itunda-home-local-services__grid > button > span:first-child {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20px;
+  background: var(--itunda-grey-100);
+}
+.itunda-home-local-services__grid > button:focus-visible > span:first-child {
+  outline: 2px solid var(--itunda-focus);
+  outline-offset: 2px;
+}
+.itunda-home-spending .itunda-home-prototype-section-heading { margin-bottom: 8px; }
+.itunda-home-for-you { margin-bottom: 8px; }
+.itunda-home-for-you > h2 { margin-bottom: 8px; }
+
+@media (max-width: 360px) {
+  .itunda-home-topbar,
+  .itunda-home-money { margin-left: 18px; margin-right: 18px; padding-left: 0; padding-right: 0; }
+  .itunda-home-actions-section,
+  .itunda-home-local-services,
+  .itunda-home-spending,
+  .itunda-home-for-you { margin-left: 18px; margin-right: 18px; }
+  .itunda-home-actions__icon { width: 54px; height: 54px; border-radius: 19px; }
+  .itunda-home-local-services__grid > button > span:first-child { width: 48px; height: 48px; border-radius: 17px; }
+}
