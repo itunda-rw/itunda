@@ -83,7 +83,7 @@ a:focus-visible,
 
 .itunda-btn-primary {
   background-color: var(--itunda-button-primary-fill);
-  color: var(--itunda-text-inverse);
+  color: var(--itunda-button-primary-text);
 }
 
 .itunda-btn-secondary {
