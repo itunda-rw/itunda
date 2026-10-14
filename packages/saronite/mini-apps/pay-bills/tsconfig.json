@@ -5,7 +5,7 @@
     // Was "pages" while app.tsx/require.context.ts/router.gen.ts (package
     // root, not pages/) were excluded -- now included, rootDir has to cover
     // the package root too.
-    "rootDir": "."
+    "rootDir": "../.."
   },
   // app.tsx/require.context.ts/router.gen.ts re-included (2026-07-13): the
   // real upstream TurboModuleRegistry timing bug they were blocked on is
