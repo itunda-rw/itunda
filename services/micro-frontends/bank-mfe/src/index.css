@@ -3780,3 +3780,13 @@ input, textarea, select {
   .itunda-home-actions__icon { width: 54px; height: 54px; border-radius: 19px; }
   .itunda-home-local-services__grid > button > span:first-child { width: 48px; height: 48px; border-radius: 17px; }
 }
+
+
+/* The Home screen owns its horizontal rhythm; remove the generic app-content
+   gutters so the prototype-aligned top bar and sections don't get double padding. */
+.itunda-app-content:has(.itunda-home-page) {
+  padding-left: 0;
+  padding-right: 0;
+  padding-top: 0;
+}
+.itunda-home-page { padding-top: 0; }
