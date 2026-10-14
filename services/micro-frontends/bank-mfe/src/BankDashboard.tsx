@@ -953,7 +953,7 @@ function HomeView({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) 
       </div>
 
       <section className="itunda-home-money" aria-label="Your money">
-        <button type="button" className="itunda-home-bank-balance" onClick={() => onNavigateToTab('SAVINGS')}>
+        <button type="button" className="itunda-home-bank-balance" onClick={() => onNavigateToTab('OVERVIEW')}>
           <span>itunda Bank</span>
           <strong>{balanceLabel(mainAccount)}</strong>
           {accountsFailed && <small role="status">Could not load balance</small>}
