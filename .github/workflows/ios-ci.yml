@@ -109,7 +109,7 @@ jobs:
 
       - name: Install CocoaPods
         working-directory: ios
-        run: NODE_PATH=../packages/saronite/node_modules pod install --deployment
+        run: NODE_PATH=../packages/saronite/node_modules pod install
 
       - name: Build for testing
         working-directory: ios
@@ -182,7 +182,7 @@ jobs:
 
       - name: Install CocoaPods
         working-directory: ios
-        run: NODE_PATH=../packages/saronite/node_modules pod install --deployment
+        run: NODE_PATH=../packages/saronite/node_modules pod install
 
       - name: Restore build-for-testing products
         uses: actions/cache/restore@v4
