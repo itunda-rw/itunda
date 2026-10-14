@@ -207,26 +207,31 @@ export function MultiCartView({
     setPlacing(true);
     setError(null);
     setNeedsDeviceVerification(false);
-    for (let i = checkoutResumeIndexRef.current; i < groups.length; i++) {
-      const [merchantId, group] = groups[i];
-      const items = Object.entries(group.lines).filter(([, l]) => l.quantity > 0).map(([productId, l]) => ({ productId, quantity: l.quantity }));
-      try {
-        const result = await placeOrder(merchantId, items, address.trim(), getStoredReferralCode());
-        checkoutResultsRef.current.push({ merchantId, businessName: group.businessName, success: true, order: result.order });
-      } catch (err) {
-        if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
-          checkoutResumeIndexRef.current = i;
-          setNeedsDeviceVerification(true);
-          checkoutInFlightRef.current = false;
-          setPlacing(false);
-          return;
+    try {
+      for (let i = checkoutResumeIndexRef.current; i < groups.length; i++) {
+        const [merchantId, group] = groups[i];
+        const items = Object.entries(group.lines).filter(([, l]) => l.quantity > 0).map(([productId, l]) => ({ productId, quantity: l.quantity }));
+        try {
+          const result = await placeOrder(merchantId, items, address.trim(), getStoredReferralCode());
+          checkoutResultsRef.current.push({ merchantId, businessName: group.businessName, success: true, order: result.order });
+        } catch (err) {
+          if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+            checkoutResumeIndexRef.current = i;
+            setNeedsDeviceVerification(true);
+            return;
+          }
+          checkoutResultsRef.current.push({ merchantId, businessName: group.businessName, success: false, error: err instanceof ApiError ? err.message : t('common.actionError') });
         }
-        checkoutResultsRef.current.push({ merchantId, businessName: group.businessName, success: false, error: err instanceof ApiError ? err.message : t('common.actionError') });
       }
+      onCheckedOut(checkoutResultsRef.current);
+    } catch (err) {
+      // Unexpected failures must release the checkout lock as well; otherwise the
+      // cart can remain permanently busy and every subsequent retry is ignored.
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      checkoutInFlightRef.current = false;
+      setPlacing(false);
     }
-    checkoutInFlightRef.current = false;
-    setPlacing(false);
-    onCheckedOut(checkoutResultsRef.current);
   };
 
   return (
