@@ -35,24 +35,47 @@ struct ItundaApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var showingPrivacyCover = false
 
+    /// Allows deterministic, unauthenticated navigation tests to inspect the real
+    /// SwiftUI shell without depending on a local MySQL/backend instance. Narrowly
+    /// scoped to simulator Debug builds and an explicit XCUITest launch argument.
+    private var bypassAuthenticationForUITests: Bool {
+#if DEBUG && targetEnvironment(simulator)
+        return ProcessInfo.processInfo.arguments.contains("-ui-testing-authenticated")
+#else
+        return false
+#endif
+    }
+
     var body: some Scene {
         WindowGroup {
             if isDeviceTrusted {
                 ZStack {
                     Group {
-                        switch sessionManager.sessionState {
-                        case .loggedIn:
-                            if isBiometricUnlockAvailable() && KeychainTokenStore.shared.isAppLockEnabled() && !unlockedThisProcess {
-                                AppLockScreenView(onUnlocked: { unlockedThisProcess = true })
-                            } else {
-                                ContentView()
+                        if bypassAuthenticationForUITests {
+                            // Deterministic navigation/accessibility tests only. This
+                            // bypass is compiled for the iOS Simulator Debug build and
+                            // requires an explicit UI-test launch argument; it is never
+                            // present in Release/device builds.
+                            ContentView()
+                        } else {
+                            switch sessionManager.sessionState {
+                            case .loggedIn:
+                                if isBiometricUnlockAvailable() && KeychainTokenStore.shared.isAppLockEnabled() && !unlockedThisProcess {
+                                    AppLockScreenView(onUnlocked: { unlockedThisProcess = true })
+                                } else {
+                                    ContentView()
+                                }
+                            case .loggedOut:
+                                LoginScreen(sessionManager: sessionManager)
+                                    .onAppear { unlockedThisProcess = false }
                             }
-                        case .loggedOut:
-                            LoginScreen(sessionManager: sessionManager)
-                                .onAppear { unlockedThisProcess = false }
                         }
                     }
-                    .onAppear { sessionManager.restoreSession() }
+                    .onAppear {
+                        if !bypassAuthenticationForUITests {
+                            sessionManager.restoreSession()
+                        }
+                    }
 
                     if showingPrivacyCover {
                         PrivacySnapshotCover()

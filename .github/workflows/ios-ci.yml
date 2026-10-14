@@ -193,7 +193,11 @@ jobs:
             ~/Library/Caches/CocoaPods
           key: ios-test-products-${{ github.sha }}
 
-      - name: Run iOS UI tests without rebuilding
+      # This job does not provision MySQL, the backend, or Metro. Keep its required
+      # UI gate deterministic and backend-independent. Live money-flow, offline-queue,
+      # and Saronite end-to-end tests remain in the test target, but need a separate
+      # integration runner that starts those real dependencies before running them.
+      - name: Run deterministic iOS navigation tests
         working-directory: ios
         run: |
           set -euo pipefail
@@ -205,4 +209,4 @@ jobs:
           fi
           xcrun simctl boot "$DEVICE_ID" 2>/dev/null || true
           xcrun simctl bootstatus "$DEVICE_ID" -b
-          xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp -destination "id=$DEVICE_ID" -derivedDataPath "$RUNNER_TEMP/ItundaDerivedData" CODE_SIGNING_ALLOWED=NO test-without-building
+          xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp -destination "id=$DEVICE_ID" -derivedDataPath "$RUNNER_TEMP/ItundaDerivedData" CODE_SIGNING_ALLOWED=NO -only-testing:ItundaAppUITests/FocusOrderTests test-without-building
