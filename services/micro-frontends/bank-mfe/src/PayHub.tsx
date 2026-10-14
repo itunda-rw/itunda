@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PayHubQuickActions as QuickActions } from './PayHubQuickActions';
 import { motion, AnimatePresence } from 'framer-motion';
-import { QrCode, Receipt, Settings, Store, Wallet as AccountIcon } from 'lucide-react';
+import { QrCode, Receipt, Settings, Store } from 'lucide-react';
 import { IconChevronRight, IconSend } from './icons/ItundaIcons';
 import { TransferFlow, type Tab } from './BankDashboard';
 import { PayMoneyDetail } from './PayMoneyDetail';
