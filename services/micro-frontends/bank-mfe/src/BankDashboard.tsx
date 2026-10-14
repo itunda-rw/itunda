@@ -12,7 +12,7 @@ import { PlaceRestaurant, PlaceMarket, PlaceBusStop, PlaceItundaAgent } from './
 // Real Explore-tab icons (2026-08-29, closing [[project_itunda_pure_tossface_icons]]'s
 // "(c)" open item) -- reuses the exact same glyph choices Android's MenuScreen already
 // made and live-verified against real Toss reference screenshots, not new choices.
-import { ParkingGlyph } from './icons/ItundaFaceHome';
+import { FamilyGlyph, ParkingGlyph } from './icons/ItundaFaceHome';
 import { TravelCar, TravelHouse } from './icons/ItundaFaceTravel';
 import { BriefcaseGlyph, ChartIncreasingGlyph } from './icons/ItundaFaceWork';
 import { NatureStar, NatureGlowingStar } from './icons/ItundaFaceNature';
@@ -933,11 +933,11 @@ function HomeView({ onNavigateToTab, onOpenTransfer, onOpenAddMoney, onOpenScan,
     { label: 'Airtime', icon: Smartphone, tab: 'BILLS' },
   ];
   const localServices: { label: string; icon: ComponentType<{ size?: number }>; tab: Tab }[] = [
-    { label: 'Irembo', icon: IconHome, tab: 'BILLS' },
-    { label: 'RRA taxes', icon: Landmark, tab: 'BILLS' },
-    { label: 'REG electricity', icon: Zap, tab: 'BILLS' },
-    { label: 'WASAC water', icon: Sprout, tab: 'BILLS' },
-    { label: 'School fees', icon: Users, tab: 'BILLS' },
+    { label: 'Irembo', icon: PlaceItundaAgent, tab: 'BILLS' },
+    { label: 'RRA taxes', icon: MoneyBagGlyph, tab: 'BILLS' },
+    { label: 'REG electricity', icon: NatureGlowingStar, tab: 'BILLS' },
+    { label: 'WASAC water', icon: NatureStar, tab: 'BILLS' },
+    { label: 'School fees', icon: FamilyGlyph, tab: 'BILLS' },
   ];
 
   return (
