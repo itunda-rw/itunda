@@ -894,14 +894,50 @@ export function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode,
 // SavingsView ("itunda Bank"); CooperativeSavingsRail was only ever a teaser
 // linking into SavingsView's own already-complete SaccoSection/IkiminaSection, so
 // it's removed outright rather than moved -- nothing it showed was unique.
-function HomeView() {
+function HomeView({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) {
   // Real, minimal usage signal (2026-08-10) -- see lib/analytics.ts's own doc comment.
   // Fired once per real mount of Home, the baseline every retention question in the
   // "itunda: the wedge, not the mirror" memo is measured against.
   useEffect(() => { recordEvent('home_view'); }, []);
 
+  // Prototype-led shortcuts use existing destinations only: no simulated balance,
+  // placeholder offers, or actions that imply a backend capability we do not have.
+  const shortcuts: { id: Tab; label: string; icon: ComponentType<{ size?: number }> }[] = [
+    { id: 'PAY', label: 'Pay', icon: IconPay },
+    { id: 'REWARDS', label: 'Benefits', icon: IconStar },
+    { id: 'SHOP', label: 'Shop', icon: ShoppingBagGlyph },
+    { id: 'EXPLORE', label: 'All services', icon: IconExplore },
+  ];
+
   return (
     <div>
+      <section aria-label="Quick actions" style={{ padding: '12px 0 8px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px' }}>
+          {shortcuts.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onNavigateToTab(id)}
+              style={{
+                minWidth: 0, minHeight: '88px', padding: '10px 4px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                justifyContent: 'center', gap: '8px', border: 0, borderRadius: '18px',
+                background: 'transparent', color: 'var(--itunda-text-primary)',
+                fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
+              }}
+            >
+              <span style={{
+                width: '52px', height: '52px', borderRadius: '20px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'var(--itunda-surface-subtle)', color: 'var(--itunda-text-primary)',
+              }}>
+                <Icon size={24} />
+              </span>
+              <span style={{ textAlign: 'center', lineHeight: 1.25 }}>{label}</span>
+            </button>
+          ))}
+        </div>
+      </section>
       <DiscoverSection />
     </div>
   );
@@ -3047,7 +3083,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         ))}
       </div>
 
-      {tab === 'HOME' && <HomeView />}
+      {tab === 'HOME' && <HomeView onNavigateToTab={setTab} />}
       {tab === 'PAY' && <PayHub onNavigateToTab={setTab} onNavigateToCard={() => setTab('CARD')} />}
       {tab === 'EXPLORE' && (
         <ExploreHub
