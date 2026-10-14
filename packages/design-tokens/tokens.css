@@ -90,11 +90,11 @@
      brand 3.85:1 (was 3.71:1, both above the 3:1 AA-large/UI-component threshold this
      role is actually held to), brand-vs-dark-bg 4.82:1 (was 5.00:1, both comfortably
      clear 4.5:1 AA-normal-text). */
-  --itunda-indigo: #7472F4;
+  --itunda-indigo: #8F89FF;
   /* New 2026 Itunda logo color: intentionally identical in light and dark themes. */
-  --itunda-logo-color: #7472F4;
+  --itunda-logo-color: #8F89FF;
   --itunda-indigo-active: #625FE6;
-  --itunda-indigo-light: #F0EFFF;
+  --itunda-indigo-light: #EEEDFF;
   --itunda-red: #f04452;
   /* Real gap found 2026-08-08 (Toss Simplicity21 research pass, auditing the P2P
      transfer flow): bank-mfe's scam-warning tint box hardcoded #FDECEA directly (3
@@ -197,6 +197,8 @@
   --itunda-touch-target-minimum: 44px;
   --itunda-touch-target-recommended: 48px;
   --itunda-button-primary-fill: var(--itunda-brand);
+  /* The v3.1 accent is intentionally paired with dark foreground text, as in the clickable prototype. */
+  --itunda-button-primary-text: #121216;
   --itunda-button-primary-fill-pressed: var(--itunda-brand-strong);
   --itunda-button-secondary-fill: var(--itunda-surface-brand);
   --itunda-button-secondary-text: var(--itunda-brand-strong);
@@ -371,10 +373,10 @@
  */
 @media (prefers-color-scheme: dark) {
   html:not([data-theme]) {
-    --itunda-indigo: #9B98FF;
-    --itunda-logo-color: #7472F4;
+    --itunda-indigo: #8F89FF;
+    --itunda-logo-color: #8F89FF;
     --itunda-indigo-active: #B0AEFF;
-    --itunda-indigo-light: #27244A;
+    --itunda-indigo-light: #2A2850;
     --itunda-red: #ff6b7a;
     --itunda-red-light: #3a1418;
     --itunda-green: #20d394;
@@ -406,9 +408,9 @@
 /* Explicit app-controlled light theme mirrors the canonical light semantic palette. */
 html[data-theme="light"] {
     color-scheme: light;
-    --itunda-indigo: #7472F4;
+    --itunda-indigo: #8F89FF;
     --itunda-indigo-active: #625FE6;
-    --itunda-indigo-light: #F0EFFF;
+    --itunda-indigo-light: #EEEDFF;
     --itunda-red: #f04452;
     --itunda-red-light: #ffeceb;
     --itunda-green: #05804a;
@@ -429,9 +431,9 @@ html[data-theme="light"] {
 /* Explicit app-controlled dark theme mirrors the OS dark semantic palette. */
 html[data-theme="dark"] {
     color-scheme: dark;
-    --itunda-indigo: #9B98FF;
+    --itunda-indigo: #8F89FF;
     --itunda-indigo-active: #B0AEFF;
-    --itunda-indigo-light: #27244A;
+    --itunda-indigo-light: #2A2850;
     --itunda-red: #ff6b7a;
     --itunda-red-light: #3a1418;
     --itunda-green: #20d394;
