@@ -125,6 +125,65 @@ class EatsStampServiceTest : FunSpec({
         stampService.awardForCompletedOrder("order-1") shouldBe 0
     }
 
+    test("restaurant owner can update campaign terms and deactivate it") {
+        val campaignRepo = mockk<EatsStampCampaignRepository>()
+        val earningRepo = mockk<EatsStampEarningRepository>()
+        val eventRepo = mockk<EatsStampEventRepository>()
+        val rewardRepo = mockk<EatsStampRewardRepository>()
+        val orderRepo = mockk<EatsOrderRepository>()
+        val merchantRepo = mockk<MerchantRepository>()
+        val existing = campaign()
+        val restaurant = mockk<Merchant>()
+        every { campaignRepo.findByIdForUpdate("campaign-1") } returns Optional.of(existing)
+        every { merchantRepo.findById("restaurant-1") } returns Optional.of(restaurant)
+        every { restaurant.ownerUserId } returns "owner-1"
+        every { campaignRepo.save(any()) } answers { firstArg() }
+        val stampService = EatsStampService(
+            campaignRepo, earningRepo, eventRepo, rewardRepo, orderRepo, merchantRepo,
+            java.time.Clock.fixed(now, ZoneId.of("UTC")),
+        )
+
+        val updated = stampService.updateCampaign(
+            ownerUserId = "owner-1",
+            campaignId = "campaign-1",
+            name = "Weekend stamps",
+            stampsRequired = 4,
+            rewardDescription = "Free drink",
+            discountAmount = BigDecimal("1200"),
+            startsAt = Instant.parse("2026-10-01T00:00:00Z"),
+            endsAt = Instant.parse("2026-12-01T00:00:00Z"),
+            active = true,
+        )
+        updated.name shouldBe "Weekend stamps"
+        updated.stampsRequired shouldBe 4
+        updated.rewardDescription shouldBe "Free drink"
+        updated.rewardDiscountAmount shouldBe BigDecimal("1200")
+        updated.updatedAt shouldBe now
+
+        stampService.deactivateCampaign("owner-1", "campaign-1").active shouldBe false
+    }
+
+    test("a different user cannot update another restaurant's stamp campaign") {
+        val campaignRepo = mockk<EatsStampCampaignRepository>()
+        val earningRepo = mockk<EatsStampEarningRepository>()
+        val eventRepo = mockk<EatsStampEventRepository>()
+        val rewardRepo = mockk<EatsStampRewardRepository>()
+        val orderRepo = mockk<EatsOrderRepository>()
+        val merchantRepo = mockk<MerchantRepository>()
+        val restaurant = mockk<Merchant>()
+        every { campaignRepo.findByIdForUpdate("campaign-1") } returns Optional.of(campaign())
+        every { merchantRepo.findById("restaurant-1") } returns Optional.of(restaurant)
+        every { restaurant.ownerUserId } returns "real-owner"
+        val stampService = EatsStampService(
+            campaignRepo, earningRepo, eventRepo, rewardRepo, orderRepo, merchantRepo,
+            java.time.Clock.fixed(now, ZoneId.of("UTC")),
+        )
+
+        runCatching {
+            stampService.deactivateCampaign("other-user", "campaign-1")
+        }.exceptionOrNull()?.message shouldBe "Only this restaurant's owner can manage its stamp campaign"
+    }
+
     test("issues a reward exactly when the completed order reaches the campaign milestone") {
         val rewards = mutableListOf<EatsStampReward>()
         val stampService = service(
