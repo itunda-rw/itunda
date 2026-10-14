@@ -219,7 +219,7 @@ export const SaroniteBrownfieldModule: SaroniteBrownfieldModuleSpec = new Proxy(
         const capability = CAPABILITY_BY_METHOD[property] ?? 'runtime';
         const requestPayload = sanitizeSaroniteDebugValue(args);
         inspector?.record({ direction: 'request', capability, method: property, payload: requestPayload });
-        emitNativeDebug({ id: `native-${started}`, timestamp: started, direction: 'request', capability, method: property, payload: requestPayload });
+        emitNativeDebug({ type: 'log', id: `native-${started}`, timestamp: started, direction: 'request', capability, method: property, payload: requestPayload });
         const result = (value as (...input: unknown[]) => unknown).apply(target, args);
         if (result && typeof (result as Promise<unknown>).then === 'function') {
           return (result as Promise<unknown>).then(
@@ -227,14 +227,14 @@ export const SaroniteBrownfieldModule: SaroniteBrownfieldModuleSpec = new Proxy(
               const durationMs = Date.now() - started;
               const responsePayload = sanitizeSaroniteDebugValue(response);
               inspector?.record({ direction: 'response', capability, method: property, payload: responsePayload, durationMs });
-              emitNativeDebug({ id: `native-${started}-response`, timestamp: Date.now(), direction: 'response', capability, method: property, payload: responsePayload, durationMs });
+              emitNativeDebug({ type: 'log', id: `native-${started}-response`, timestamp: Date.now(), direction: 'response', capability, method: property, payload: responsePayload, durationMs });
               return response;
             },
             (error) => {
               const message = error instanceof Error ? error.message : String(error);
               const durationMs = Date.now() - started;
               inspector?.record({ direction: 'response', capability, method: property, durationMs, error: message });
-              emitNativeDebug({ id: `native-${started}-error`, timestamp: Date.now(), direction: 'response', capability, method: property, durationMs, error: String(sanitizeSaroniteDebugValue(message)) });
+              emitNativeDebug({ type: 'log', id: `native-${started}-error`, timestamp: Date.now(), direction: 'response', capability, method: property, durationMs, error: String(sanitizeSaroniteDebugValue(message)) });
               throw error;
             },
           );
@@ -242,7 +242,7 @@ export const SaroniteBrownfieldModule: SaroniteBrownfieldModuleSpec = new Proxy(
         const durationMs = Date.now() - started;
         const responsePayload = sanitizeSaroniteDebugValue(result);
         inspector?.record({ direction: 'response', capability, method: property, payload: responsePayload, durationMs });
-        emitNativeDebug({ id: `native-${started}-response`, timestamp: Date.now(), direction: 'response', capability, method: property, payload: responsePayload, durationMs });
+        emitNativeDebug({ type: 'log', id: `native-${started}-response`, timestamp: Date.now(), direction: 'response', capability, method: property, payload: responsePayload, durationMs });
         return result;
       };
     },
