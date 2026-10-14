@@ -39,14 +39,17 @@ class EatsStampServiceTest : FunSpec({
         status = status,
     )
 
-    fun campaign() = EatsStampCampaign(
+    fun campaign(
+        startsAt: Instant = Instant.parse("2026-01-01T00:00:00Z"),
+        endsAt: Instant? = Instant.parse("2027-01-01T00:00:00Z"),
+    ) = EatsStampCampaign(
         id = "campaign-1",
         restaurantId = "restaurant-1",
         name = "Lunch stamps",
         stampsRequired = 5,
         rewardDescription = "Free side",
-        startsAt = Instant.parse("2026-01-01T00:00:00Z"),
-        endsAt = Instant.parse("2027-01-01T00:00:00Z"),
+        startsAt = startsAt,
+        endsAt = endsAt,
     )
 
     fun service(
@@ -112,14 +115,14 @@ class EatsStampServiceTest : FunSpec({
     }
 
     test("does not award a stamp before a campaign starts") {
-        val futureCampaign = campaign().copy(startsAt = now.plusSeconds(60))
+        val futureCampaign = campaign(startsAt = now.plusSeconds(60))
         val stampService = service(order(), listOf(futureCampaign))
 
         stampService.awardForCompletedOrder("order-1") shouldBe 0
     }
 
     test("does not award a stamp at or after the campaign end instant") {
-        val endedCampaign = campaign().copy(endsAt = now)
+        val endedCampaign = campaign(endsAt = now)
         val stampService = service(order(), listOf(endedCampaign))
 
         stampService.awardForCompletedOrder("order-1") shouldBe 0
