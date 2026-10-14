@@ -92,3 +92,89 @@ input, select, textarea {
     transform: none;
   }
 }
+
+
+/* Match the prototype's mobile app frame and persistent five-destination navigation. */
+html, body, #root {
+  min-height: 100%;
+}
+body {
+  background: var(--itunda-prototype-surface);
+}
+.itunda-prototype-app-content {
+  width: 100%;
+  min-height: 100svh;
+  padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px)) !important;
+}
+.itunda-prototype-tabbar {
+  position: fixed !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: 0 !important;
+  z-index: 50 !important;
+  width: min(100%, 480px) !important;
+  height: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+  margin: 0 !important;
+  padding: 0 8px env(safe-area-inset-bottom, 0px) !important;
+  gap: 0 !important;
+  transform: translateX(-50%);
+  border: 0 !important;
+  border-top: 1px solid var(--itunda-prototype-hairline) !important;
+  border-radius: 0 !important;
+  background: color-mix(in srgb, var(--itunda-prototype-surface) 96%, transparent) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 -8px 24px rgb(25 31 40 / 3%);
+}
+.itunda-prototype-tabbar > button {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  min-height: 64px !important;
+  height: 100% !important;
+  padding: 8px 2px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--itunda-prototype-muted) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  line-height: 16px !important;
+  gap: 4px !important;
+  transition: color 160ms ease-out, opacity 160ms ease-out;
+}
+.itunda-prototype-tabbar > button[aria-current="page"] {
+  color: var(--itunda-prototype-text) !important;
+  background: transparent !important;
+  font-weight: 800 !important;
+}
+.itunda-prototype-tabbar > button[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 24px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--itunda-prototype-accent);
+}
+.itunda-prototype-tabbar > button > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+}
+.itunda-prototype-tabbar > button svg {
+  width: 24px;
+  height: 24px;
+}
+@media (min-width: 600px) {
+  .itunda-prototype-app-content {
+    min-height: 100svh;
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .itunda-prototype-tabbar > button {
+    transition: none;
+  }
+}
