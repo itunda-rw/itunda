@@ -73,6 +73,14 @@ class EatsStampController(
             mapOf("success" to true, "campaign" to eatsStampService.deactivateCampaign(currentUser.userId, campaignId)),
         )
 
+        @GetMapping("/restaurants/{restaurantId}/stamp-campaigns/manage")
+        fun getManagedStampCampaigns(
+            @PathVariable restaurantId: String,
+            @AuthenticationPrincipal currentUser: CurrentUser,
+        ): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
+            mapOf("success" to true, "campaigns" to eatsStampService.managedCampaigns(currentUser.userId, restaurantId)),
+        )
+
         @GetMapping("/restaurants/{restaurantId}/stamp-campaigns")
         fun getStampCampaigns(@PathVariable restaurantId: String): ResponseEntity<Map<String, Any?>> =
             ResponseEntity.ok(mapOf("success" to true, "campaigns" to eatsStampService.activeCampaigns(restaurantId)))
