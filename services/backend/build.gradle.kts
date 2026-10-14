@@ -36,7 +36,7 @@ subprojects {
     // Spring Boot 3.3.x is supported by springdoc 2.6.x.
     plugins.withId("org.springframework.boot") {
         dependencies {
-            implementation("org.springdoc:springdoc-openapi-starter-webmvc-api:2.6.0")
+            add("implementation", "org.springdoc:springdoc-openapi-starter-webmvc-api:2.6.0")
         }
     }
 }
