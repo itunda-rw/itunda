@@ -3942,3 +3942,68 @@ input, textarea, select {
     transform: none;
   }
 }
+
+
+/* Prototype (3) interaction parity: give every Home shortcut a clear, quiet
+   response to hover and press without changing its action or adding chrome. */
+.itunda-home-bank-balance,
+.itunda-home-pay-row,
+.itunda-home-primary-actions > button,
+.itunda-home-actions > button,
+.itunda-home-local-services__grid > button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.itunda-home-bank-balance,
+.itunda-home-pay-row,
+.itunda-home-primary-actions > button {
+  transition: transform 140ms ease, background-color 140ms ease;
+}
+
+.itunda-home-primary-actions > button:active {
+  transform: scale(.985);
+}
+
+.itunda-home-bank-balance:active,
+.itunda-home-pay-row:active {
+  transform: scale(.995);
+}
+
+.itunda-home-actions > button .itunda-home-actions__icon {
+  transition: transform 160ms ease, background-color 160ms ease;
+}
+
+@media (hover: hover) {
+  .itunda-home-actions > button:hover .itunda-home-actions__icon {
+    background: color-mix(in srgb, var(--itunda-brand) 10%, var(--itunda-grey-100));
+    transform: translateY(-2px);
+  }
+
+  .itunda-home-local-services__grid > button:hover > span:first-child {
+    background: color-mix(in srgb, var(--itunda-brand) 12%, var(--itunda-grey-100));
+  }
+}
+
+.itunda-home-actions > button:active .itunda-home-actions__icon,
+.itunda-home-local-services__grid > button:active > span:first-child {
+  transform: scale(.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itunda-home-bank-balance,
+  .itunda-home-pay-row,
+  .itunda-home-primary-actions > button,
+  .itunda-home-actions > button .itunda-home-actions__icon {
+    transition: none;
+  }
+
+  .itunda-home-bank-balance:active,
+  .itunda-home-pay-row:active,
+  .itunda-home-primary-actions > button:active,
+  .itunda-home-actions > button:hover .itunda-home-actions__icon,
+  .itunda-home-actions > button:active .itunda-home-actions__icon,
+  .itunda-home-local-services__grid > button:active > span:first-child {
+    transform: none;
+  }
+}
