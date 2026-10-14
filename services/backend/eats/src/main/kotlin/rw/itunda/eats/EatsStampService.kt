@@ -75,6 +75,64 @@ class EatsStampService(
         )
     }
 
+    /**
+     * Update an existing campaign without allowing a restaurant owner to mutate another
+     * restaurant's campaign. The row lock serializes edits with stamp awards.
+     */
+    @Transactional
+    fun updateCampaign(
+        ownerUserId: String,
+        campaignId: String,
+        name: String,
+        stampsRequired: Int,
+        rewardDescription: String,
+        discountAmount: BigDecimal?,
+        startsAt: Instant,
+        endsAt: Instant?,
+        active: Boolean,
+    ): EatsStampCampaign {
+        val campaign = campaignRepository.findByIdForUpdate(campaignId).orElseThrow {
+            IllegalArgumentException("Stamp campaign not found")
+        }
+        val restaurant = merchantRepository.findById(campaign.restaurantId).orElseThrow {
+            IllegalArgumentException("Restaurant not found")
+        }
+        require(restaurant.ownerUserId == ownerUserId) { "Only this restaurant's owner can manage its stamp campaign" }
+        require(name.isNotBlank() && name.length <= 100) { "Campaign name must be 1-100 characters" }
+        require(stampsRequired in 2..50) { "Stamps required must be between 2 and 50" }
+        require(rewardDescription.isNotBlank() && rewardDescription.length <= 240) { "Reward description must be 1-240 characters" }
+        require(discountAmount == null || discountAmount > BigDecimal.ZERO) { "Discount amount must be positive" }
+        require(endsAt == null || endsAt > startsAt) { "Campaign end must be after its start" }
+
+        campaign.name = name.trim()
+        campaign.stampsRequired = stampsRequired
+        campaign.rewardDescription = rewardDescription.trim()
+        campaign.rewardDiscountAmount = discountAmount
+        campaign.startsAt = startsAt
+        campaign.endsAt = endsAt
+        campaign.active = active
+        campaign.updatedAt = clock.instant()
+        return campaignRepository.save(campaign)
+    }
+
+    /** Deactivation is reversible through updateCampaign; existing rewards are untouched. */
+    @Transactional
+    fun deactivateCampaign(ownerUserId: String, campaignId: String): EatsStampCampaign {
+        val campaign = campaignRepository.findByIdForUpdate(campaignId).orElseThrow {
+            IllegalArgumentException("Stamp campaign not found")
+        }
+        val restaurant = merchantRepository.findById(campaign.restaurantId).orElseThrow {
+            IllegalArgumentException("Restaurant not found")
+        }
+        require(restaurant.ownerUserId == ownerUserId) { "Only this restaurant's owner can manage its stamp campaign" }
+        if (campaign.active) {
+            campaign.active = false
+            campaign.updatedAt = clock.instant()
+            return campaignRepository.save(campaign)
+        }
+        return campaign
+    }
+
     @Transactional
     fun awardForCompletedOrder(orderId: String): Int {
         val order = orderRepository.findById(orderId).orElse(null) ?: return 0
