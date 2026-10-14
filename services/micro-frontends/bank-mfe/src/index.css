@@ -156,7 +156,7 @@ input, textarea, select {
 
 .itunda-btn-primary {
   background-color: var(--itunda-brand);
-  color: var(--itunda-surface-default);
+  color: var(--itunda-button-primary-text);
 }
 
 .itunda-btn-secondary {
