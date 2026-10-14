@@ -135,7 +135,7 @@ function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions:
 // The pay surface brings the real, existing money-moving flows into one predictable
 // place. It does not create another payment implementation: every action below uses
 // the established transfer, bill, merchant-code, and payment-intent components.
-export function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: Tab) => void; onNavigateToCard: () => void }) {
+export function PayHub({ onNavigateToTab, onNavigateToCard, openAddMoneyOnEnter = false, onAddMoneyOpened }: { onNavigateToTab: (tab: Tab) => void; onNavigateToCard: () => void; openAddMoneyOnEnter?: boolean; onAddMoneyOpened?: () => void }) {
   const { t } = useI18n();
   const [account, setAccount] = useState<Account | null>(null);
   // Real swipeable funding-source cards (Pay-parity port, §240) -- see
@@ -207,6 +207,15 @@ export function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab:
     fetchRewardTasks().then(setRewardsPreview).catch(() => setRewardsPreview(null));
     fetchMyCard().then(setCard).catch(() => setCard(null));
   }, []);
+
+  // Honor the Home shortcut by opening the existing, ledger-backed Add Money flow.
+  // Wait for the real Pay account to load; never fabricate a destination account.
+  useEffect(() => {
+    if (!openAddMoneyOnEnter || !account) return;
+    setOpenAccountDetail(account);
+    setShowAddMoney(true);
+    onAddMoneyOpened?.();
+  }, [openAddMoneyOnEnter, account, onAddMoneyOpened]);
 
   // Silent when location is denied -- same pattern as fetchNearbyAds above.
   useEffect(() => {
