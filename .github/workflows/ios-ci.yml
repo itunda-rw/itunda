@@ -152,7 +152,7 @@ jobs:
             ios-saronite-node-modules-${{ runner.os }}-
 
       - name: Install Saronite dependencies
-        working-directory: packages/saronite/host-app
+        working-directory: packages/saronite
         run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Install mise
