@@ -45,6 +45,7 @@ import rw.itunda.core.designsystem.theme.Ids
 @Composable
 internal fun HomeAccountHeroCard(
     account: rw.itunda.core.network.Account,
+    payAccount: rw.itunda.core.network.Account?,
     onOpenBank: () -> Unit,
     onOpenPay: () -> Unit,
 ) {
@@ -71,7 +72,7 @@ internal fun HomeAccountHeroCard(
                 maxLines = 1,
             )
         }
-        Row(
+        if (payAccount != null) Row(
             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
                 .pressScaleClickable(onClick = onOpenPay)
                 .padding(vertical = 10.dp),
@@ -84,7 +85,7 @@ internal fun HomeAccountHeroCard(
             )
             Spacer(modifier = Modifier.weight(1f))
             Text(
-                String.format(Locale.US, "%,.0f", account.balance) + " " + account.currency,
+                String.format(Locale.US, "%,.0f", payAccount!!.balance) + " " + payAccount.currency,
                 color = Ids.colors.textPrimary,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
