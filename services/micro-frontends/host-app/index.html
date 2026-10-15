@@ -7,22 +7,43 @@
     <meta name="theme-color" content="#8F89FF" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#090B0F" media="(prefers-color-scheme: dark)" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="description" content="Itunda connects everyday money and services in one simple, secure experience." />
+    <meta name="description" content="Itunda — the clickable consumer experience, aligned to the canonical v66 prototype." />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Itunda — Everyday life, connected</title>
+    <title>Itunda</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body, #prototype-root { width: 100%; height: 100%; min-height: 100%; margin: 0; overflow: hidden; }
+      body { background: #E9EBF0; }
+      #prototype-frame { display: block; width: 100%; height: 100%; height: 100dvh; border: 0; }
+      #itunda-launch-splash { position: fixed; inset: 0; z-index: 10000; background: #fff; display: grid; place-items: center; opacity: 1; transition: opacity .28s ease; pointer-events: auto; }
+      #itunda-launch-splash.is-hidden { opacity: 0; pointer-events: none; }
+      #itunda-launch-splash img { width: 100%; height: 100%; object-fit: cover; }
+      @media (prefers-color-scheme: dark) { body { background: #0A0A0D; } #itunda-launch-splash { background: #090B0F; } }
+      @media (prefers-reduced-motion: reduce) { #itunda-launch-splash { transition: none; } }
+    </style>
   </head>
   <body>
-    <style>
-      #itunda-launch-splash{position:fixed;inset:0;z-index:10000;background:#fff;display:grid;place-items:center;opacity:1;transition:opacity .28s ease;pointer-events:auto}
-      #itunda-launch-splash.is-hidden{opacity:0;pointer-events:none}
-      #itunda-launch-splash picture,#itunda-launch-splash img{width:100%;height:100%;display:block}
-      #itunda-launch-splash img{object-fit:cover}
-      @media (prefers-color-scheme:dark){#itunda-launch-splash{background:#090B0F}}
-      @media (prefers-reduced-motion:reduce){#itunda-launch-splash{transition:none}}
-    </style>
-    <div id="itunda-launch-splash" aria-label="itunda" role="status"><picture><source media="(prefers-color-scheme: dark)" srcset="/brand/itunda-splash-dark.svg" /><img src="/brand/itunda-splash-light.svg" alt="" /></picture></div>
-    <script>window.addEventListener("load",function(){var s=document.getElementById("itunda-launch-splash");if(!s)return;var hide=function(){s.classList.add("is-hidden");setTimeout(function(){s.remove()},320)};setTimeout(hide,520)},{once:true});</script>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <div id="itunda-launch-splash" aria-label="Itunda" role="status">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="/brand/itunda-splash-dark.svg" />
+        <img src="/brand/itunda-splash-light.svg" alt="" />
+      </picture>
+    </div>
+    <main id="prototype-root">
+      <iframe id="prototype-frame" src="/itunda-prototype-v66.html" title="Itunda consumer app prototype" allow="clipboard-read; clipboard-write"></iframe>
+    </main>
+    <script>
+      (function () {
+        var splash = document.getElementById("itunda-launch-splash");
+        var frame = document.getElementById("prototype-frame");
+        var hide = function () {
+          if (!splash) return;
+          splash.classList.add("is-hidden");
+          window.setTimeout(function () { splash.remove(); }, 320);
+        };
+        frame.addEventListener("load", function () { window.setTimeout(hide, 180); }, { once: true });
+        window.setTimeout(hide, 1800);
+      })();
+    </script>
   </body>
 </html>
