@@ -1795,5 +1795,454 @@ if(c){const e=c.querySelector('.t,.pn'),n=((e||c).textContent||'').trim().split(
 return _s6.apply(this,arguments)};
 })();
 </script>
+
+<script>
+/* ITUNDA_REAL_BACKEND_V1
+ * Connect the approved v66 experience to the canonical Itunda API.
+ * Never fabricate a successful auth or money movement when the API fails.
+ */
+(function () {
+  'use strict';
+  const API = 'https://api.itunda.im';
+  const ACCESS = 'itunda_bank_access_token';
+  const REFRESH = 'itunda_bank_refresh_token';
+  const USER = 'itunda_bank_user';
+  const DEVICE = 'itunda_web_device_id';
+  let mainAccount = null;
+  let payAccount = null;
+  let accountDataLoaded = false;
+  let spendingSummary = null;
+  let recentTransactions = [];
+  let refreshing = null;
+  let transferBusy = false;
+
+  const deviceId = () => {
+    let id = localStorage.getItem(DEVICE);
+    if (!id) {
+      id = (crypto.randomUUID ? crypto.randomUUID() : 'web-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+      localStorage.setItem(DEVICE, id);
+    }
+    return id;
+  };
+  const phoneE164 = value => {
+    const compact = String(value || '').replace(/[\s()-]/g, '');
+    if (compact.startsWith('+')) return compact;
+    if (compact.startsWith('250') && compact.length === 12) return '+' + compact;
+    if (compact.startsWith('0') && compact.length === 10) return '+250' + compact.slice(1);
+    if (/^\d{9}$/.test(compact)) return '+250' + compact;
+    return compact;
+  };
+  async function bodyOf(response) {
+    try { return await response.json(); } catch (_) { return {}; }
+  }
+  async function refreshSession() {
+    if (refreshing) return refreshing;
+    const token = localStorage.getItem(REFRESH);
+    if (!token) return false;
+    refreshing = (async () => {
+      try {
+        const r = await fetch(API + '/api/v1/auth/refresh', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({refreshToken: token})
+        });
+        const b = await bodyOf(r);
+        if (!r.ok || !b.accessToken || !b.refreshToken) return false;
+        localStorage.setItem(ACCESS, b.accessToken);
+        localStorage.setItem(REFRESH, b.refreshToken);
+        if (b.user) localStorage.setItem(USER, JSON.stringify(b.user));
+        return true;
+      } catch (_) { return false; }
+      finally { refreshing = null; }
+    })();
+    return refreshing;
+  }
+  async function api(path, options = {}, retry = true) {
+    const headers = {'Content-Type':'application/json', ...(options.headers || {})};
+    const token = localStorage.getItem(ACCESS);
+    if (token) headers.Authorization = 'Bearer ' + token;
+    let response;
+    try { response = await fetch(API + path, {...options, headers}); }
+    catch (_) { throw new Error('Could not connect to Itunda. Check your connection and try again.'); }
+    if (response.status === 401 && retry && path !== '/api/v1/auth/refresh' && await refreshSession()) {
+      return api(path, options, false);
+    }
+    const data = await bodyOf(response);
+    if (!response.ok) throw new Error(data.message || data.error || ('Request failed (' + response.status + ')'));
+    return data;
+  }
+  const saveSession = data => {
+    if (!data || !data.accessToken || !data.refreshToken || !data.user) throw new Error('The server returned an incomplete session. Please try again.');
+    localStorage.setItem(ACCESS, data.accessToken);
+    localStorage.setItem(REFRESH, data.refreshToken);
+    localStorage.setItem(USER, JSON.stringify(data.user));
+    S.name = [data.user.firstName, data.user.lastName].filter(Boolean).join(' ') || data.user.phoneNumber;
+    S.ob.ph = String(data.user.phoneNumber || '').replace(/^\+250/, '');
+  };
+  const number = value => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  };
+  function accountBalance(account) {
+    for (const key of ['availableBalance','balance','currentBalance','ledgerBalance']) {
+      const n = number(account && account[key]);
+      if (n !== null) return n;
+    }
+    return null;
+  }
+  async function syncRealData() {
+    const [profileResult, accountResult, txResult, spendingResult] = await Promise.allSettled([
+      api('/api/v1/auth/profile'),
+      api('/api/v1/account'),
+      api('/api/v1/account/transactions'),
+      api('/api/v1/account/spending')
+    ]);
+    if (profileResult.status === 'fulfilled' && profileResult.value.user) {
+      const user = profileResult.value.user;
+      localStorage.setItem(USER, JSON.stringify(user));
+      S.name = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.phoneNumber || S.name;
+    }
+    if (accountResult.status === 'fulfilled' && Array.isArray(accountResult.value.accounts)) {
+      const accounts = accountResult.value.accounts;
+      mainAccount = accounts.find(a => String(a.accountType || a.type || '').toUpperCase() === 'MAIN')
+        || accounts.find(a => !/PAY/i.test(String(a.accountType || a.type || a.name || a.nickname || '')))
+        || accounts[0] || null;
+      payAccount = accounts.find(a => String(a.accountType || a.type || '').toUpperCase() === 'PAY') || null;
+      accountDataLoaded = Boolean(mainAccount);
+      if (mainAccount) {
+        const balance = accountBalance(mainAccount);
+        if (balance !== null) S.bank = balance;
+      }
+      S.pay = payAccount ? (accountBalance(payAccount) ?? 0) : 0;
+    }
+    if (txResult.status === 'fulfilled' && Array.isArray(txResult.value.transactions)) {
+      recentTransactions = txResult.value.transactions;
+    }
+    if (spendingResult.status === 'fulfilled') spendingSummary = spendingResult.value;
+    return {profile:profileResult.status === 'fulfilled', accounts:accountResult.status === 'fulfilled', transactions:txResult.status === 'fulfilled', spending:spendingResult.status === 'fulfilled'};
+  }
+  function notifyError(error) {
+    const message = (error && error.message) || 'Something went wrong. Please try again.';
+    if (typeof window.toast === 'function') window.toast(message);
+    else alert(message);
+  }
+
+  // A returning user is identified by the real public phone-check endpoint.
+  const originalPhoneNext = window.obPhoneNext;
+  window.obPhoneNext = async function () {
+    const o = S.ob;
+    if (!o || String(o.ph || '').replace(/\D/g, '').length < 9) return;
+    const button = document.getElementById('obnext');
+    if (button) { button.disabled = true; button.textContent = 'Checking…'; }
+    try {
+      const phoneNumber = phoneE164(o.ph);
+      const result = await api('/api/v1/auth/check-phone', {
+        method:'POST', body:JSON.stringify({phoneNumber})
+      }, false);
+      o.phoneE164 = phoneNumber;
+      o.mode = result.exists ? 'login' : 'register';
+      if (result.exists) {
+        o.pin = '';
+        obGo('obPin');
+      } else {
+        obGo('obNotFound');
+      }
+    } catch (error) {
+      if (button) { button.disabled = false; button.textContent = 'Next'; }
+      notifyError(error);
+    }
+  };
+
+  // Keep the prototype's consent UI aligned with the backend's real terms catalog:
+  // Terms of Service + Privacy Policy are required; marketing is optional. The prototype
+  // previously marked its third credit-data row as mandatory even though the API's
+  // registration contract only requires the two catalog IDs above.
+  screens.obTerms = function () {
+    const o = S.ob;
+    const all = o.t && o.p;
+    const row = (key, label, required) => `<div class="row tap" onclick="tcTog('${key}')"><div class="cb ${o[key] ? 'on' : ''}">${o[key] ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#121216" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>' : ''}</div><div style="flex:1"><div class="t" style="font-size:15px">${label}</div></div><span class="sm" style="color:${required ? 'var(--lk)' : 'var(--mu)'};font-weight:700">${required ? t('o_req') : ({rw:'Bihitamo',fr:'Facultatif',en:'Optional'}[S.lang] || 'Optional')}</span></div>`;
+    return `${obbar()}<div class="pad" style="padding-top:16px"><div class="h1">${t('o_terms_h')}</div><div class="mu" style="font-size:16px;margin-top:8px">${t('o_terms_s')}</div></div><div class="pad" style="padding-top:22px"><div class="row tap" style="background:var(--chip);border-radius:16px;padding:14px 16px" onclick="tcAll()"><div class="cb ${all && o.m ? 'on' : ''}">${all && o.m ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#121216" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>' : ''}</div><div class="t" style="font-size:16px">${({rw:'Hitamo byose',fr:'Tout sélectionner',en:'Select all'}[S.lang] || 'Select all')}</div></div><div style="padding-top:8px">${row('t', t('s_terms'), true)}${row('p', t('s_priv'), true)}${row('m', 'Marketing communications', false)}</div></div><div class="cta"><button id="obnext" class="btn" ${all ? '' : 'disabled'} onclick="obGo('obPin')">${t('nx')}</button></div>`;
+  };
+  // Select-all respects the optional marketing choice: select required consents and
+  // marketing together, but never make marketing a prerequisite for account creation.
+  window.tcAll = function () {
+    const allSelected = S.ob.t && S.ob.p && S.ob.m;
+    const next = !allSelected;
+    S.ob.t = next;
+    S.ob.p = next;
+    S.ob.m = next;
+    render('fade-none');
+  };
+
+  // Reuse the existing PIN keypad and visual language, but submit the entered PIN to
+  // the real auth service for existing accounts instead of walking through fake signup.
+  const originalPinScreen = screens.obPin;
+  screens.obPin = function () {
+    let html = originalPinScreen();
+    if (S.ob && S.ob.mode === 'login') {
+      const copy = ({
+        en: ['Enter your 6-digit PIN', 'Sign in securely to your itunda account'],
+        rw: ['Andika PIN yawe y’imibare 6', 'Injira neza muri konti yawe ya Itunda'],
+        fr: ['Saisissez votre code PIN à 6 chiffres', 'Connectez-vous en toute sécurité à votre compte Itunda']
+      })[S.lang] || ['Enter your 6-digit PIN', 'Sign in securely to your itunda account'];
+      html = html.replace(t('o_pin_h'), copy[0]).replace(t('o_pin_s'), copy[1]);
+    }
+    return html;
+  };
+  const originalObKey = window.obKey;
+  window.obKey = function (digit) {
+    if (!(S.ob && S.ob.mode === 'login' && S.obStep === 'obPin')) return originalObKey(digit);
+    const o = S.ob;
+    o.pin = digit === 'del' ? o.pin.slice(0, -1) : (o.pin.length < 6 ? o.pin + digit : o.pin);
+    const dots = document.querySelector('#pd');
+    if (dots) dots.innerHTML = [0,1,2,3,4,5].map(i => '<i class="' + (i < o.pin.length ? 'on' : '') + '"></i>').join('');
+    if (o.pin.length === 6) {
+      (async () => {
+        const pad = document.querySelector('.keys');
+        if (pad) pad.style.pointerEvents = 'none';
+        try {
+          const response = await api('/api/v1/auth/login', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({phoneNumber:o.phoneE164 || phoneE164(o.ph), password:o.pin, deviceId:deviceId(), deviceName:'Web browser'})
+          }, false);
+          saveSession(response);
+          o.mode = '';
+          S.auth = true; S.stack = []; S.tab = 'home'; S.obStep = null;
+          await syncRealData();
+          render('fade');
+          if (typeof window.toast === 'function') window.toast('You’re signed in');
+        } catch (error) {
+          o.pin = '';
+          notifyError(error);
+          render('fade-none');
+        } finally {
+          const nextPad = document.querySelector('.keys');
+          if (nextPad) nextPad.style.pointerEvents = '';
+        }
+      })();
+    }
+  };
+
+  // Registration creates a real backend user only after both required consents have
+  // been checked. Optional marketing consent remains opt-in.
+  const originalObCreate = window.obCreate;
+  window.obCreate = async function () {
+    const o = S.ob;
+    if (!o.t || !o.p) {
+      notifyError(new Error('Please accept the Terms of Service and Privacy Policy to continue.'));
+      return;
+    }
+    const button = document.getElementById('obnext');
+    if (button) { button.disabled = true; button.textContent = 'Creating account…'; }
+    try {
+      const acceptedTermsIds = ['terms_of_service','privacy_policy'];
+      if (o.m) acceptedTermsIds.push('marketing_communications');
+      const response = await api('/api/v1/auth/register', {
+        method:'POST',
+        body:JSON.stringify({
+          phoneNumber:o.phoneE164 || phoneE164(o.ph), email:null,
+          firstName:o.first.trim(), lastName:o.last.trim(), password:o.pin,
+          deviceId:deviceId(), deviceName:'Web browser', acceptedTermsIds
+        })
+      }, false);
+      saveSession(response);
+      o.mode = '';
+      S.obStep = 'obDone';
+      S.auth = false;
+      render('push');
+    } catch (error) {
+      if (button) { button.disabled = false; button.textContent = t('o_create'); }
+      notifyError(error);
+    }
+  };
+
+  const originalObStart = window.obStart;
+  window.obStart = async function () {
+    if (!localStorage.getItem(ACCESS)) return originalObStart();
+    S.auth = true; S.obStep = null; S.stack = []; S.tab = 'home';
+    try { await syncRealData(); } catch (error) { notifyError(error); }
+    render('fade');
+  };
+
+  // On returning to the app with a stored session, validate it against the server.
+  // Invalid sessions are not treated as signed in.
+  window.addEventListener('load', async () => {
+    if (!localStorage.getItem(ACCESS)) return;
+    try {
+      const result = await api('/api/v1/auth/profile');
+      if (!result.user) throw new Error('Session is no longer valid.');
+      S.name = [result.user.firstName, result.user.lastName].filter(Boolean).join(' ') || result.user.phoneNumber;
+      S.auth = true; S.obStep = null; S.stack = []; S.tab = 'home';
+      await syncRealData();
+      render('fade-none');
+    } catch (_) {
+      localStorage.removeItem(ACCESS); localStorage.removeItem(REFRESH); localStorage.removeItem(USER);
+    }
+  });
+
+  // Never allow the prototype's old skip-sign-in shortcut to create a fake session.
+  window.obSkip = function () {
+    notifyError(new Error('Sign in or create an account to continue.'));
+  };
+  const originalDoneScreen = screens.obDone;
+  screens.obDone = function () {
+    return originalDoneScreen().replace('Your itunda account is ready. This is a prototype, so no real account was created.', 'Your Itunda account has been created securely.')
+      .replace('Your itunda account is ready. This is a prototype, so no real account was created.', 'Your Itunda account has been created securely.');
+  };
+
+  // Logout revokes the real server session before clearing local credentials.
+  const originalLogout = window.logOut;
+  window.logOut = async function () {
+    const access = localStorage.getItem(ACCESS);
+    const refresh = localStorage.getItem(REFRESH);
+    try {
+      if (access) await fetch(API + '/api/v1/auth/logout', {
+        method:'POST', headers:{'Content-Type':'application/json', Authorization:'Bearer '+access},
+        body:JSON.stringify({refreshToken:refresh})
+      });
+    } catch (_) { /* Local logout must still work when offline. */ }
+    localStorage.removeItem(ACCESS); localStorage.removeItem(REFRESH); localStorage.removeItem(USER);
+    mainAccount = null; recentTransactions = [];
+    return originalLogout();
+  };
+
+  // Real money movement is deliberately two-step: request a server quote, show the
+  // exact phone, amount, fee and total debit, then require a second explicit confirmation.
+  // The prototype's contact list is sample UI, so never silently send on its first tap.
+  let pendingTransferQuote = null;
+  let pendingTransferRecipient = '';
+  let pendingTransferAmount = 0;
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  window.finish = async function () {
+    if (!localStorage.getItem(ACCESS)) {
+      notifyError(new Error('Sign in to make a real transfer.'));
+      return;
+    }
+    if (transferBusy) return;
+    const amount = Number(S.amt);
+    const recipient = phoneE164(S.to);
+    if (!S.to || !Number.isFinite(amount) || amount <= 0) {
+      notifyError(new Error('Enter a valid recipient and amount.'));
+      return;
+    }
+    if (!/^\\+250\\d{9}$/.test(recipient)) {
+      notifyError(new Error('Enter a valid Rwanda mobile number before sending.'));
+      return;
+    }
+    transferBusy = true;
+    try {
+      const quoted = await api('/api/v1/account/transfer/quote', {
+        method:'POST',
+        body:JSON.stringify({amount, recipient, fromAccountId:mainAccount && mainAccount.id})
+      });
+      const quote = quoted.quote || {};
+      const quoteId = quote.id || quote.quoteId;
+      if (!quoteId) throw new Error('The server did not return a transfer quote. No money was moved.');
+      pendingTransferQuote = quote;
+      pendingTransferRecipient = recipient;
+      pendingTransferAmount = amount;
+      const fee = number(quote.fee);
+      const total = number(quote.totalDebit);
+      const currency = escapeHtml(quote.currency || 'RWF');
+      const quoteExpires = quote.expiresAt ? new Date(quote.expiresAt).toLocaleTimeString() : '';
+      $('#layer').innerHTML = '<div class="sheetbg" onclick="cancelRealTransfer()"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="real-transfer-title">' +
+        '<div class="h1" id="real-transfer-title" style="font-size:22px">Confirm real transfer</div>' +
+        '<div class="mu" style="font-size:14px;margin:8px 0 20px">Review the recipient and final debit from Itunda’s server before sending.</div>' +
+        '<div class="ar"><div class="t">Recipient</div><div class="r" style="font-weight:800">' + escapeHtml(recipient) + '</div></div>' +
+        '<div class="ar"><div class="t">Amount</div><div class="r" style="font-weight:800">' + fmt(number(quote.amount) ?? amount) + ' ' + currency + '</div></div>' +
+        '<div class="ar"><div class="t">Transfer fee</div><div class="r" style="font-weight:800">' + (fee === null ? 'Not provided' : fmt(fee) + ' ' + currency) + '</div></div>' +
+        '<div class="ar"><div class="t">Total debit</div><div class="r" style="font-weight:800">' + (total === null ? 'Not provided' : fmt(total) + ' ' + currency) + '</div></div>' +
+        (quoteExpires ? '<div class="sm mu" style="margin:8px 0 16px">Quote expires at ' + escapeHtml(quoteExpires) + '</div>' : '') +
+        '<button class="btn" style="margin-top:18px" onclick="confirmRealTransfer()">Confirm and send real money</button>' +
+        '<button class="btn sec2" style="margin-top:10px" onclick="cancelRealTransfer()">Cancel</button></div>';
+    } catch (error) {
+      notifyError(error);
+    } finally {
+      transferBusy = false;
+    }
+  };
+  window.cancelRealTransfer = function () {
+    pendingTransferQuote = null;
+    pendingTransferRecipient = '';
+    pendingTransferAmount = 0;
+    closeSheet();
+  };
+  window.confirmRealTransfer = async function () {
+    if (!pendingTransferQuote || !pendingTransferQuote.id || transferBusy) {
+      notifyError(new Error('This transfer quote is missing or expired. Request a new quote.'));
+      return;
+    }
+    transferBusy = true;
+    try {
+      const result = await api('/api/v1/account/transfer/confirm', {
+        method:'POST',
+        headers:{'Idempotency-Key':crypto.randomUUID ? crypto.randomUUID() : 'web-' + Date.now() + '-' + Math.random().toString(36).slice(2)},
+        body:JSON.stringify({quoteId:pendingTransferQuote.id})
+      });
+      S.to = pendingTransferRecipient;
+      S.sentAmt = pendingTransferAmount;
+      pendingTransferQuote = null;
+      pendingTransferRecipient = '';
+      pendingTransferAmount = 0;
+      await syncRealData();
+      closeSheet();
+      S.stack = ['sent'];
+      render('push');
+      if (typeof window.toast === 'function') window.toast(result.message || 'Transfer completed');
+    } catch (error) {
+      notifyError(error);
+    } finally {
+      transferBusy = false;
+    }
+  };
+
+  // Home balances, spending, and recent activity come from the authenticated APIs.
+  const originalHomeScreen = screens.home;
+  screens.home = function () {
+    let html = originalHomeScreen();
+    html = html.replace('MTN MoMo and Airtel Money are working normally',
+      accountDataLoaded ? 'Account balance synced from Itunda' : 'Account data unavailable — retry to refresh');
+    const totalSpent = spendingSummary ? number(spendingSummary.totalSpent) : null;
+    html = html.replace('312,000 RWF', totalSpent === null ? '—' : fmt(totalSpent) + ' RWF');
+    html = html.replace('Spent this period, mostly on food',
+      totalSpent === null ? 'Spending data not available' : 'Actual spending from your Itunda account');
+    // This bill status is still prototype data; never present it as a real bill.
+    html = html.replace('Upcoming, due Friday', 'Bill provider not connected')
+               .replace('18,500 RWF', 'Not available');
+    if (recentTransactions.length) {
+      const activity = recentTransactions.slice(0, 3).map(tx => {
+        const title = escapeHtml(tx.description || tx.title || tx.merchantName || tx.type || 'Account activity');
+        const date = escapeHtml(String(tx.createdAt || tx.date || '').slice(0, 10));
+        return row('cash', title, date || 'Recent transaction', '', '');
+      }).join('');
+      html = html.replace('<div class="sec"><div class="sech">For you</div>',
+        '<div class="sec"><div class="sech">Recent activity</div>' + activity + '</div><div class="sec"><div class="sech">For you</div>');
+    }
+    return html;
+  };
+
+  // The existing account screen is hydrated from real accounts/ledger transactions.
+  const originalBankScreen = screens.bank;
+  if (originalBankScreen) screens.bank = function () {
+    let html = originalBankScreen();
+    if (mainAccount) {
+      const b = accountBalance(mainAccount);
+      if (b !== null) html = html.replace(/(<div class="bdb">)[\s\S]*?(<\/div>)/, '$1' + fmt(b) + '$2');
+    }
+    if (recentTransactions.length) {
+      const items = recentTransactions.slice(0,5).map(tx => {
+        const title = String(tx.description || tx.title || tx.type || tx.category || 'Account activity').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+        const amount = number(tx.amount ?? tx.value);
+        const value = amount === null ? '' : (amount < 0 ? '−' : '+') + fmt(Math.abs(amount)) + ' RWF';
+        return '<div class="row" style="padding:12px 24px"><div class="ico">↔</div><div style="flex:1;min-width:0"><div class="t">' + title + '</div><div class="s">' + String(tx.createdAt || tx.date || '').slice(0,10) + '</div></div><div class="r">' + value + '</div></div>';
+      }).join('');
+      html = html.replace(/(<div class="sech">Recent activity<\/div>)[\s\S]*?(?=<\/div>\s*<div class="sec"|$)/, '$1' + items);
+    }
+    return html;
+  };
+})();
+</script>
+
 </body>
 </html>
