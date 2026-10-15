@@ -8,6 +8,9 @@
     <string name="home_demo_balance_unavailable">Amafaranga y\'ikigeragezo ntabwo aboneka</string>
     <string name="home_dismiss_recommendation">Ivanaho</string>
     <string name="home_feed_title">Kuri wowe</string>
+    <string name="home_recent_activity">Ibikorwa biheruka</string>
+    <string name="home_see_all">Reba byose</string>
+    <string name="home_no_recent_activity">Nta bikorwa biheruka.</string>
     <string name="home_link_another_account">+ Ongeramo indi konti</string>
     <string name="home_offline_banner">Nturi kuri interineti. Turerekana amakuru macye, atari ay\'igihe nyacyo.</string>
     <string name="home_pay_shortcut">itunda Pay</string>
