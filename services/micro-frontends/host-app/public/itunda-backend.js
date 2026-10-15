@@ -7,6 +7,7 @@
   let mainAccountId = null;
   let liveTransactions = [];
   let liveUser = null;
+  let lastTransaction = null;
   let busy = false;
   let refreshInFlight = null;
 
@@ -151,6 +152,12 @@
       (rows || '<div class="fine" style="padding:12px 0">No account transactions yet.</div>') +
       '<div class="fine" style="padding-top:8px">Loaded from your itunda account ledger.</div></div>';
   };
+  const previousSentScreen = screens.sent;
+  screens.sent = function () {
+    let html = previousSentScreen();
+    const reference = lastTransaction && lastTransaction.referenceNumber ? String(lastTransaction.referenceNumber) : '—';
+    return html.replace('IT-20481-7', reference.replace(/[<>&"]/g, ''));
+  };
   const previousProfileScreen = screens.profile;
   screens.profile = function () {
     let html = previousProfileScreen();
@@ -219,6 +226,7 @@
         body: JSON.stringify({ quoteId: quote.quote.id })
       });
       S.sentAmt = amount;
+      lastTransaction = result.transaction || null;
       if (result.newBalance !== undefined) S.bank = Number(result.newBalance);
       // Confirmation is the commit point. A later refresh failure must not make a
       // completed transfer look unsuccessful to the customer.
