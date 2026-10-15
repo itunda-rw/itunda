@@ -121,7 +121,7 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
     {
       id: 'route-line', type: 'line', source: 'route',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#7472F4', 'line-width': 5, 'line-opacity': 0.9 },
+      paint: { 'line-color': '#8F89FF', 'line-width': 5, 'line-opacity': 0.95 },
     },
     // Real distance-measurement (ruler) tool line (2026-07-22) -- dashed, and a
     // deliberately different color from the real drawn route above, so the two are never
