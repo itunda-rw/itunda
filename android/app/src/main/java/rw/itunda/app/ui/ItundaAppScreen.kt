@@ -1834,6 +1834,7 @@ fun ItundaAppScreen(
                         val homeIsOffline by viewModel.isOffline.collectAsState()
                         val homePrimaryAccount by viewModel.primaryAccount.collectAsState()
                         val homePayAccount by viewModel.payAccount.collectAsState()
+                        val homeSavingsGoals by viewModel.savingsGoals.collectAsState()
                         val homeTransactions by viewModel.transactions.collectAsState()
                         val homeProfile by viewModel.profile.collectAsState()
                         val homeIsRefreshing by viewModel.isRefreshing.collectAsState()
@@ -1843,6 +1844,7 @@ fun ItundaAppScreen(
                         isOffline = homeIsOffline,
                         primaryAccount = homePrimaryAccount,
                         payAccount = homePayAccount,
+                        savingsGoals = homeSavingsGoals,
                         recentTransactions = homeTransactions,
                         neighborhoodSet = homeProfile?.neighborhood != null,
                         isRefreshing = homeIsRefreshing,
