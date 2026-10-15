@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,6 +60,7 @@ import java.util.UUID
 
 internal enum class EatsCheckoutMode { DELIVERY, PICKUP, DINE_IN }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun EatsCheckoutView(
     restaurant: ShoppingMerchantDto,
