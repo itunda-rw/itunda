@@ -9,6 +9,8 @@
     <string name="home_dismiss_recommendation">Ivanaho</string>
     <string name="home_feed_title">Kuri wowe</string>
     <string name="home_recent_activity">Ibikorwa biheruka</string>
+    <string name="home_connection_online">Itunda serivisi zirahari</string>
+    <string name="home_connection_offline">Nta murongo — amakuru ashobora kuba ashaje</string>
     <string name="home_spending">Ikoreshwa ry’amafaranga</string>
     <string name="home_spending_empty">Nta bikorwa by’amafaranga biragaragara</string>
     <string name="home_spending_activity">Reba ibikorwa bya konti</string>
