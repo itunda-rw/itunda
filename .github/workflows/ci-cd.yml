@@ -8,6 +8,7 @@ concurrency:
 
 permissions:
   contents: read
+  pull-requests: read
 
 
 on:
@@ -22,6 +23,27 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Keep native build lanes out of consumer-web-only changes. The repo-wide checks
+  # remain intact; Android/iOS builds run only when native app or Saronite bridge
+  # inputs changed (or when a maintainer explicitly dispatches this workflow).
+  changed-files:
+    runs-on: ubuntu-latest
+    outputs:
+      mobile: ${{ steps.filter.outputs.mobile }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          filters: |
+            mobile:
+              - 'android/**'
+              - 'ios/**'
+              - 'packages/saronite/**'
+              - 'packages/brick-codegen/**'
+              - 'scripts/ios-silo-boundary-check.py'
+
   # Root Yarn workspace: packages/shared-utils, services/micro-frontends/*, services/api-gateway
   lint-and-typecheck:
     runs-on: ubuntu-latest
@@ -282,6 +304,8 @@ jobs:
   # android/: native Kotlin/Compose app (verified compiling and running on-device --
   # see docs/ARCHITECTURE.md §3).
   android-build:
+    needs: [changed-files]
+    if: github.event_name == 'workflow_dispatch' || needs.changed-files.outputs.mobile == 'true'
     runs-on: ubuntu-latest
     # Real CI fix (2026-09-03): the first-ever run to get this far (everything
     # before it was blocked by the two fixes below) silently ran ~64 minutes then
@@ -362,6 +386,8 @@ jobs:
   # `tuist generate` -- see ios/Podfile's own comment) -- this is the first time
   # that's been a real, run green check instead of an untested claim.
   ios-build:
+    needs: [changed-files]
+    if: github.event_name == 'workflow_dispatch' || needs.changed-files.outputs.mobile == 'true'
     runs-on: macos-15-intel
     timeout-minutes: 45
     steps:

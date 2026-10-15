@@ -1,0 +1,48 @@
+name: Consumer Web Maps MFE
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "services/micro-frontends/maps-mfe/**"
+      - "packages/design-tokens/**"
+      - "yarn.lock"
+      - ".github/workflows/web-maps-check.yml"
+  push:
+    branches: [main, develop]
+    paths:
+      - "services/micro-frontends/maps-mfe/**"
+      - "packages/design-tokens/**"
+      - "yarn.lock"
+      - ".github/workflows/web-maps-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  maps-web-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install web workspace dependencies
+        run: yarn install --immutable
+
+      - name: Typecheck Maps web MFE
+        run: yarn workspace maps-mfe typecheck
+
+      - name: Lint Maps web MFE
+        run: yarn workspace maps-mfe lint
+
+      - name: Build Maps web MFE
+        run: yarn workspace maps-mfe build

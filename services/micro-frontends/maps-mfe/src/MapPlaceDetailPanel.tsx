@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { fetchMapPlaceDetail, toggleMerchantUpdateLike, EATS_GOOD_POINT_LABELS, type MapPlaceDetail } from './lib/maps';
 
-const TEXT = '#191F28';
-const TEXT_SECONDARY = '#4E5968';
-const TEXT_TERTIARY = '#636E7C';
-const DIVIDER = '#D1D6DB';
+const TEXT = 'var(--itunda-text-primary, #191F28)';
+const TEXT_SECONDARY = 'var(--itunda-text-secondary, #4E5968)';
+const TEXT_TERTIARY = 'var(--itunda-text-tertiary, #636E7C)';
+const DIVIDER = 'var(--itunda-border-default, #D1D6DB)';
 
 type Tab = 'HOME' | 'MENU' | 'REVIEWS' | 'PHOTOS' | 'NEWS' | 'INFO';
 
@@ -21,11 +21,14 @@ export function MapPlaceDetailPanel({ merchantId, onClose }: { merchantId: strin
   const [tab, setTab] = useState<Tab>('HOME');
 
   useEffect(() => {
+    let active = true;
     setDetail(null);
     setError(null);
+    setTab('HOME');
     fetchMapPlaceDetail(merchantId)
-      .then(setDetail)
-      .catch(() => setError("Couldn't load this place right now."));
+      .then((nextDetail) => { if (active) setDetail(nextDetail); })
+      .catch(() => { if (active) setError("Couldn't load this place right now."); });
+    return () => { active = false; };
   }, [merchantId]);
 
   const tabs: { id: Tab; label: string }[] = [
@@ -38,9 +41,9 @@ export function MapPlaceDetailPanel({ merchantId, onClose }: { merchantId: strin
   ];
 
   return (
-    <div style={{ position: 'absolute', inset: 0, background: '#fff', zIndex: 20, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', borderBottom: `1px solid ${DIVIDER}` }}>
-        <button type="button" onClick={onClose} aria-label="Back" style={{ fontSize: '20px', color: TEXT }}>
+    <div style={{ position: 'absolute', inset: 0, background: 'var(--itunda-surface-default, #fff)', color: TEXT, zIndex: 20, display: 'flex', flexDirection: 'column', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderBottom: `1px solid ${DIVIDER}`, minHeight: '56px' }}>
+        <button type="button" onClick={onClose} aria-label="Back to map" style={{ fontSize: '20px', color: TEXT, width: '44px', height: '44px', borderRadius: '12px', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
           ←
         </button>
         <p style={{ fontSize: '16px', fontWeight: 700, color: TEXT, flex: 1 }}>{detail?.businessName ?? 'Place'}</p>
@@ -55,14 +58,34 @@ export function MapPlaceDetailPanel({ merchantId, onClose }: { merchantId: strin
           {detail.photoUrl && (
             <img src={detail.photoUrl} alt="" style={{ width: '100%', height: '160px', objectFit: 'cover' }} />
           )}
-          <div style={{ display: 'flex', overflowX: 'auto', borderBottom: `1px solid ${DIVIDER}` }}>
+          <div role="tablist" aria-label="Place information" style={{ display: 'flex', overflowX: 'auto', borderBottom: `1px solid ${DIVIDER}` }}>
             {tabs.map((t) => (
               <button
                 key={t.id}
                 type="button"
+                role="tab"
+                id={`place-tab-${t.id.toLowerCase()}`}
+                aria-selected={tab === t.id}
+                aria-controls="place-detail-tabpanel"
+                tabIndex={tab === t.id ? 0 : -1}
                 onClick={() => setTab(t.id)}
+                onKeyDown={(event) => {
+                  const currentIndex = tabs.findIndex((item) => item.id === t.id);
+                  let nextIndex: number | null = null;
+                  if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabs.length;
+                  else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+                  else if (event.key === 'Home') nextIndex = 0;
+                  else if (event.key === 'End') nextIndex = tabs.length - 1;
+                  if (nextIndex !== null) {
+                    event.preventDefault();
+                    setTab(tabs[nextIndex].id);
+                    event.currentTarget.parentElement
+                      ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[nextIndex]
+                      ?.focus();
+                  }
+                }}
                 style={{
-                  padding: '10px 14px', fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap',
+                  padding: '10px 14px', minHeight: '48px', fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap',
                   color: tab === t.id ? 'var(--itunda-indigo)' : TEXT_SECONDARY,
                   borderBottom: tab === t.id ? '2px solid var(--itunda-indigo)' : '2px solid transparent',
                 }}
@@ -71,7 +94,7 @@ export function MapPlaceDetailPanel({ merchantId, onClose }: { merchantId: strin
               </button>
             ))}
           </div>
-          <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div id="place-detail-tabpanel" role="tabpanel" aria-labelledby={`place-tab-${tab.toLowerCase()}`} tabIndex={0} style={{ flex: 1, overflowY: 'auto', padding: '14px 16px calc(24px + env(safe-area-inset-bottom, 0px))', display: 'flex', flexDirection: 'column', gap: '10px', outlineOffset: '-2px' }}>
             {tab === 'HOME' && <HomeTab detail={detail} />}
             {tab === 'MENU' && <MenuTab detail={detail} />}
             {tab === 'REVIEWS' && <ReviewsTab detail={detail} />}
