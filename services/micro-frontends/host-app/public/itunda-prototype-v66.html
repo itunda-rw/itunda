@@ -2044,6 +2044,16 @@ return _s6.apply(this,arguments)};
     }
   });
 
+  // Never allow the prototype's old skip-sign-in shortcut to create a fake session.
+  window.obSkip = function () {
+    notifyError(new Error('Sign in or create an account to continue.'));
+  };
+  const originalDoneScreen = screens.obDone;
+  screens.obDone = function () {
+    return originalDoneScreen().replace('Your itunda account is ready. This is a prototype, so no real account was created.', 'Your Itunda account has been created securely.')
+      .replace('Your itunda account is ready. This is a prototype, so no real account was created.', 'Your Itunda account has been created securely.');
+  };
+
   // Logout revokes the real server session before clearing local credentials.
   const originalLogout = window.logOut;
   window.logOut = async function () {
