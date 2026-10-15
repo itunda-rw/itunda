@@ -24,10 +24,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.ShoppingCart
-import androidx.compose.material3.Icon
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -514,69 +511,16 @@ fun CommerceShopContent(
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Box(
-                    modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp))
-                        .background(Ids.colors.surface).pressScaleClickable { onBack() },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Outlined.ArrowBack, contentDescription = "Back", tint = Ids.colors.textPrimary)
-                }
-                Box(modifier = Modifier.weight(1f)) {
-                    IdsTextField(
-                        value = productSearchInput,
-                        onValueChange = { productSearchInput = it },
-                        label = "Search products",
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                Box(
-                    modifier = Modifier.size(40.dp).clip(RoundedCornerShape(12.dp))
-                        .background(Ids.colors.surface)
-                        .pressScaleClickable(enabled = !productSearching && productSearchInput.isNotBlank()) { searchProducts() },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Outlined.Search, contentDescription = "Search products", tint = Ids.colors.textPrimary)
-                }
-                Box(
-                    modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp))
-                        .background(Ids.colors.surface)
-                        .pressScaleClickable { showCart = true },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Outlined.ShoppingCart, contentDescription = "Cart", tint = Ids.colors.textPrimary)
-                    if (totalItems > 0) {
-                        Box(
-                            modifier = Modifier.align(Alignment.TopEnd).padding(2.dp)
-                                .clip(RoundedCornerShape(9.dp)).background(Ids.colors.brand)
-                                .padding(horizontal = 5.dp, vertical = 2.dp),
-                            contentAlignment = Alignment.Center,
-                        ) { Text(totalItems.toString(), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
-                    }
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-                    .background(Ids.colors.surface).padding(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Box(
-                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(11.dp))
-                        .background(Ids.colors.brand).pressScaleClickable { view = CommerceView.BROWSE }
-                        .padding(vertical = 11.dp),
-                    contentAlignment = Alignment.Center,
-                ) { Text("Shop", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
-                Box(
-                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(11.dp))
-                        .pressScaleClickable { onOpenEats() }.padding(vertical = 11.dp),
-                    contentAlignment = Alignment.Center,
-                ) { Text("Eats", color = Ids.colors.textSecondary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp) }
-            }
+            ShopPrototypeHeader(
+                searchInput = productSearchInput,
+                onSearchInputChange = { productSearchInput = it },
+                onSearch = ::searchProducts,
+                searchEnabled = !productSearching && productSearchInput.isNotBlank(),
+                totalItems = totalItems,
+                onCart = { showCart = true },
+                onBack = onBack,
+                onOpenEats = onOpenEats,
+            )
         }
         item {
             // No TabHeader here (2026-07-24, was `TabHeader("Shop")`): the bottom
