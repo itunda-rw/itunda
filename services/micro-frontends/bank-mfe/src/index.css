@@ -4007,3 +4007,117 @@ input, textarea, select {
     transform: none;
   }
 }
+
+/* Prototype-parity pass: preserve the native-app rhythm on narrow screens while
+   making the shell safe on gesture-navigation devices, keyboards, and desktop.
+   These are additive overrides; product-specific screen layouts remain untouched. */
+:root {
+  color-scheme: light dark;
+  -webkit-tap-highlight-color: transparent;
+  text-size-adjust: 100%;
+  scroll-padding-top: 16px;
+  scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}
+
+html {
+  min-height: 100%;
+  overscroll-behavior-y: contain;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100%;
+  overscroll-behavior-x: none;
+}
+
+#root {
+  min-height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+button,
+[role="button"],
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+.itunda-btn,
+.itunda-bottom-nav__item {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.itunda-bottom-nav {
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+}
+
+.itunda-app-content {
+  scroll-margin-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .itunda-btn:not(:disabled):hover {
+    filter: brightness(.98);
+  }
+
+  .itunda-bottom-nav__item:hover {
+    background-color: color-mix(in srgb, var(--itunda-brand) 6%, transparent);
+  }
+}
+
+@media (max-width: 359px) {
+  .itunda-auth-surface {
+    padding: 22px 18px;
+    border-radius: 22px;
+  }
+
+  .itunda-auth-page {
+    padding-inline: 12px;
+  }
+}
+
+@media (min-width: 481px) {
+  body {
+    background: var(--itunda-surface-subtle);
+  }
+
+  #root {
+    min-height: 100dvh;
+    border-inline: 1px solid color-mix(in srgb, var(--itunda-border-default) 45%, transparent);
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .itunda-auth-page {
+    place-items: start center;
+    overflow-y: auto;
+    padding-block: 16px;
+  }
+
+  .itunda-auth-intro {
+    padding-block: 24px 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
