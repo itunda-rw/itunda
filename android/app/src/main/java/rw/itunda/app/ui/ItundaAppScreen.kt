@@ -1838,6 +1838,7 @@ fun ItundaAppScreen(
                         val homeTransactions by viewModel.transactions.collectAsState()
                         val homeProfile by viewModel.profile.collectAsState()
                         val homeIsRefreshing by viewModel.isRefreshing.collectAsState()
+                        val homeContext = androidx.compose.ui.platform.LocalContext.current
                         HomeEntryPoint(
                         discoverItems = homeDiscoverItems,
                         unreadNotificationCount = homeUnreadNotificationCount,
@@ -1850,6 +1851,7 @@ fun ItundaAppScreen(
                         isRefreshing = homeIsRefreshing,
                         onRetry = { viewModel.retry() },
                         onOpenPay = { selectedTab = ItundaTab.Pay },
+                        onOpenBills = { homeContext.startActivity(android.content.Intent(homeContext, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java)) },
                         onOpenSend = { showTransferHub = false; transferStep = TransferStep.Recipient; transferFromAccount = null },
                         onOpenNotifications = { showNotificationsFeed = true },
                         onOpenOverview = { showOverview = true },
