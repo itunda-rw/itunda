@@ -53,4 +53,15 @@
     <string name="transaction_history_filter_paid">Byishyuwe</string>
     <string name="transaction_history_empty">Nta bikorwa biraboneka. Kohereza, kwakira no kwishyura bizagaragara hano.</string>
     <string name="transaction_history_no_matches">Nta bihuye n\'ibyo ushakishije.</string>
+    <string name="transaction_detail_status">Imiterere</string>
+    <string name="transaction_detail_type">Ubwoko</string>
+    <string name="transaction_detail_date">Itariki</string>
+    <string name="transaction_detail_to">Kuri</string>
+    <string name="transaction_detail_from">Bivuye kuri</string>
+    <string name="transaction_detail_itunda_account">Konti ya Itunda</string>
+    <string name="transaction_detail_fee">Ikiguzi</string>
+    <string name="transaction_detail_reference">Nomero iranga igikorwa</string>
+    <string name="transaction_detail_real_data_note">Amakuru yavuye mu gikorwa cyawe nyacyo.</string>
+    <string name="transaction_detail_close">Funga</string>
+    <string name="transaction_detail_copy">Koporora amakuru</string>
 </resources>
