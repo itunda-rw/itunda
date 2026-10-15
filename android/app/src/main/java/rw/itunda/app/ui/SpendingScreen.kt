@@ -36,6 +36,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import rw.itunda.core.network.BudgetViewDto
 import rw.itunda.core.network.NetworkClient
@@ -44,6 +45,7 @@ import rw.itunda.core.network.SpendingCategoryDto
 import rw.itunda.core.network.SpendingInsightResponse
 import java.math.BigDecimal
 import rw.itunda.core.designsystem.components.EmptyState
+import rw.itunda.core.designsystem.theme.Ids
 
 // Real Kakao Pay 소비 리포트-style spending categorization (rw.itunda.account.
 // AccountService.getSpendingInsight, real since 2026-07-13) -- first Android client for
@@ -55,13 +57,15 @@ import rw.itunda.core.designsystem.components.EmptyState
 fun SpendingScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     var insight by remember { mutableStateOf<SpendingInsightResponse?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf(false) }
+    var loadAttempt by remember { mutableStateOf(0) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(loadAttempt) {
+        error = false
         try {
             insight = NetworkClient.apiService.getSpendingInsight()
         } catch (_: Exception) {
-            error = "Could not load your spending."
+            error = true
         }
     }
 
@@ -70,7 +74,28 @@ fun SpendingScreen(onBack: () -> Unit) {
             BackTopBar(title = "Spending", onBack = onBack)
         }
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
+            if (error) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                stringResource(R.string.spending_load_error),
+                                color = Ids.colors.textPrimary,
+                            )
+                            IdsButton(
+                                text = stringResource(R.string.spending_retry),
+                                onClick = { loadAttempt += 1 },
+                            )
+                        }
+                    }
+                }
+            }
             val current = insight
             if (current == null) {
                 if (error == null) item { SkeletonBlock() }
