@@ -594,7 +594,7 @@ fun TransferAmountScreen(
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    if (isGift) "Review your gift before sending" else "Check the details before sending",
+                    if (isGift) stringResource(R.string.transfer_review_gift) else stringResource(R.string.transfer_review_before_send),
                     color = Ids.colors.textSecondary,
                     fontSize = 14.sp,
                     modifier = Modifier.padding(top = 6.dp, bottom = 18.dp),
