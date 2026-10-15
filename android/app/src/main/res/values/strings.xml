@@ -264,6 +264,10 @@
     <string name="account_detail_top_up">Top up</string>
     <string name="account_detail_get_interest">Get interest</string>
     <string name="account_detail_interest_prefix">Interest</string>
+    <string name="account_ledger_search_placeholder">Search transactions</string>
+    <string name="account_ledger_filter_all">All</string>
+    <string name="account_ledger_filter_in">Money in</string>
+    <string name="account_ledger_filter_out">Money out</string>
     <string name="account_detail_empty">No transactions yet</string>
     <string name="loading">Loading…</string>
     <string name="bucket_fill">Fill</string>
