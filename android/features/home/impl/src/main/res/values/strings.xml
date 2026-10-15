@@ -39,6 +39,9 @@
     <string name="home_search_section_property">Property</string>
     <string name="home_trending_title">Trending nearby</string>
     <string name="home_feed_title">For you</string>
+    <string name="home_recent_activity">Recent activity</string>
+    <string name="home_see_all">See all</string>
+    <string name="home_no_recent_activity">No recent activity yet.</string>
     <string name="home_discover">Discover</string>
     <string name="home_new_badge">NEW</string>
     <string name="home_recommendation_cta_named">%1$s, %2$s</string>
