@@ -210,8 +210,14 @@ fun HomeTab(
             // Prototype parity: the account is the first content card after the top bar,
             // not a secondary tile buried below recommendations and search.
             if (primaryAccount != null) {
-                item { HomeAccountHeroCard(primaryAccount, onOpenBank = onOpenBank, onOpenPay = onOpenPay) }
-                if (payAccount != null) item { HomePayBalanceRow(payAccount!!, onOpenPay = onOpenPay) }
+                item {
+                    HomeAccountHeroCard(
+                        account = primaryAccount,
+                        payAccount = payAccount,
+                        onOpenBank = onOpenBank,
+                        onOpenPay = onOpenPay,
+                    )
+                }
             }
             item {
                 HomePrimaryActions(onSend = onOpenPay, onAddMoney = onOpenPay)
@@ -220,10 +226,11 @@ fun HomeTab(
                 HomeQuickActions(
                     onSend = onOpenPay,
                     onScanToPay = onOpenPay,
-                    onShop = onOpenShop,
-                    onCommunity = onOpenCommunity,
+                    onPayBills = onOpenPay,
+                    onAirtime = onOpenPay,
                 )
             }
+            item { HomeRwandaServices(onOpenService = onOpenPay) }
         item {
             HomeSearchBar(
                 query = searchQuery,
