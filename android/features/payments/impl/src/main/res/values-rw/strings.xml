@@ -45,4 +45,12 @@
     <string name="transfer_send_anyway">Ohereza uko biri</string>
     <string name="transfer_review_gift">Ongera urebe impano mbere yo kohereza</string>
     <string name="transfer_review_before_send">Genzura amakuru mbere yo kohereza</string>
+    <string name="transaction_history_spent_label">Amafaranga yakoreshejwe muri uku kwezi</string>
+    <string name="transaction_history_search">Shakisha ibikorwa</string>
+    <string name="transaction_history_filter_all">Byose</string>
+    <string name="transaction_history_filter_sent">Byoherejwe</string>
+    <string name="transaction_history_filter_received">Byakiriwe</string>
+    <string name="transaction_history_filter_paid">Byishyuwe</string>
+    <string name="transaction_history_empty">Nta bikorwa biraboneka. Kohereza, kwakira no kwishyura bizagaragara hano.</string>
+    <string name="transaction_history_no_matches">Nta bihuye n'ibyo ushakishije.</string>
 </resources>
