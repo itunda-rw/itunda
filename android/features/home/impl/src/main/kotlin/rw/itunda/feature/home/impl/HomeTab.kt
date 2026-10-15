@@ -71,6 +71,7 @@ fun HomeTab(
     isRefreshing: Boolean,
     onRetry: () -> Unit,
     onOpenPay: () -> Unit = {},
+    onOpenBills: () -> Unit = onOpenPay,
     onOpenSend: () -> Unit = onOpenPay,
     onOpenNotifications: () -> Unit = {},
     onOpenOverview: () -> Unit = {},
@@ -152,11 +153,11 @@ fun HomeTab(
                 HomeQuickActions(
                     onSend = onOpenSend,
                     onScanToPay = onOpenPay,
-                    onPayBills = onOpenPay,
+                    onPayBills = onOpenBills,
                     onAirtime = onOpenPay,
                 )
             }
-            item { HomeRwandaServices(onOpenService = onOpenPay) }
+            item { HomeRwandaServices(onOpenService = onOpenBills) }
             item {
                 Text(
                     stringResource(R.string.home_spending),
@@ -308,6 +309,7 @@ fun HomeEntryPoint(
         isRefreshing = isRefreshing,
         onRetry = onRetry,
         onOpenPay = onOpenPay,
+        onOpenBills = onOpenBills,
         onOpenSend = onOpenSend,
         onOpenNotifications = onOpenNotifications,
         onOpenOverview = onOpenOverview,
