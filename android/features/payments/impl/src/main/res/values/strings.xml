@@ -49,4 +49,6 @@
     <string name="transfer_confirm_fee">Fee</string>
     <string name="transfer_confirm">Confirm</string>
     <string name="transfer_send_anyway">Send anyway</string>
+    <string name="transfer_review_gift">Review your gift before sending</string>
+    <string name="transfer_review_before_send">Check the details before sending</string>
 </resources>
