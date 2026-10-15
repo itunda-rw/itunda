@@ -197,6 +197,7 @@ object SessionManager {
     }
 
     private suspend fun runAuthCall(call: suspend () -> AuthResponse): AuthResult {
+        return try {
         val response = call()
         NetworkClient.currentTokenStore().saveSession(response.user.id, response.accessToken, response.refreshToken)
         _sessionState.value = SessionState.LoggedIn(response.user.id)
