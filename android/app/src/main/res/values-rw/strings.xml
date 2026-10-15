@@ -171,6 +171,7 @@
     <string name="account_ledger_filter_all">Byose</string>
     <string name="account_ledger_filter_in">Amafaranga yinjiye</string>
     <string name="account_ledger_filter_out">Amafaranga yasohotse</string>
+    <string name="account_detail_no_matching_transactions">Nta bikorwa bihuye n’ishakisha</string>
     <string name="account_detail_empty">Nta bikorwa by\'amafaranga urabona</string>
     <string name="account_detail_get_interest">Bona inyungu</string>
     <string name="account_detail_interest_prefix">Inyungu</string>
