@@ -2236,7 +2236,7 @@ private fun AccountDetailScreen(
                 )
             }
             if (visibleTransactions.isEmpty()) {
-                item { EmptyState(if (withBalance.isEmpty()) stringResource(R.string.account_detail_empty) else "No matching transactions") }
+                item { EmptyState(if (withBalance.isEmpty()) stringResource(R.string.account_detail_empty) else stringResource(R.string.account_detail_no_matching_transactions)) }
             } else {
                 visibleGrouped.forEach { (dateHeader, rows) ->
                     item {
