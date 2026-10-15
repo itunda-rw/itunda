@@ -70,6 +70,7 @@ fun HomeTab(
     unreadNotificationCount: Int,
     isOffline: Boolean,
     primaryAccount: rw.itunda.core.network.Account?,
+    recentTransactions: List<rw.itunda.core.network.TransactionDto>,
     neighborhoodSet: Boolean,
     isRefreshing: Boolean,
     onRetry: () -> Unit,
@@ -80,6 +81,7 @@ fun HomeTab(
     onOpenIdentity: () -> Unit = {},
     onOpenLoans: () -> Unit = {},
     onOpenAccountDetail: () -> Unit = {},
+    onOpenActivity: () -> Unit = {},
     onOpenMarketplace: () -> Unit = {},
     onOpenCommunity: () -> Unit = {},
     onOpenJobs: () -> Unit = {},
@@ -231,6 +233,13 @@ fun HomeTab(
                 )
             }
             item { HomeRwandaServices(onOpenService = onOpenPay) }
+            item {
+                HomeRecentActivity(
+                    transactions = recentTransactions,
+                    onSeeAll = onOpenActivity,
+                    onOpenTransaction = onOpenActivity,
+                )
+            }
         item {
             HomeSearchBar(
                 query = searchQuery,
@@ -393,6 +402,7 @@ fun HomeEntryPoint(
     unreadNotificationCount: Int,
     isOffline: Boolean,
     primaryAccount: rw.itunda.core.network.Account?,
+    recentTransactions: List<rw.itunda.core.network.TransactionDto>,
     neighborhoodSet: Boolean,
     isRefreshing: Boolean,
     onRetry: () -> Unit,
@@ -403,6 +413,7 @@ fun HomeEntryPoint(
     onOpenIdentity: () -> Unit = {},
     onOpenLoans: () -> Unit = {},
     onOpenAccountDetail: () -> Unit = {},
+    onOpenActivity: () -> Unit = {},
     onOpenMarketplace: () -> Unit = {},
     onOpenCommunity: () -> Unit = {},
     onOpenJobs: () -> Unit = {},
@@ -415,6 +426,7 @@ fun HomeEntryPoint(
         unreadNotificationCount = unreadNotificationCount,
         isOffline = isOffline,
         primaryAccount = primaryAccount,
+        recentTransactions = recentTransactions,
         neighborhoodSet = neighborhoodSet,
         isRefreshing = isRefreshing,
         onRetry = onRetry,
@@ -425,6 +437,7 @@ fun HomeEntryPoint(
         onOpenIdentity = onOpenIdentity,
         onOpenLoans = onOpenLoans,
         onOpenAccountDetail = onOpenAccountDetail,
+        onOpenActivity = onOpenActivity,
         onOpenMarketplace = onOpenMarketplace,
         onOpenCommunity = onOpenCommunity,
         onOpenJobs = onOpenJobs,
