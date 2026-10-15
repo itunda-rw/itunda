@@ -43,4 +43,10 @@
     <string name="transfer_amount_insufficient">Not enough balance — you have RWF %1$s</string>
     <string name="transfer_send">Send</string>
     <string name="transfer_delete_digit">Delete</string>
+    <string name="transfer_confirm_identity">Confirm it’s you</string>
+    <string name="transfer_confirm_recipient">Recipient</string>
+    <string name="transfer_confirm_amount">Amount</string>
+    <string name="transfer_confirm_fee">Fee</string>
+    <string name="transfer_confirm">Confirm</string>
+    <string name="transfer_send_anyway">Send anyway</string>
 </resources>
