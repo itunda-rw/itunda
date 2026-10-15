@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.CircularProgressIndicator
@@ -41,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import java.util.Locale
 import kotlinx.coroutines.launch
 import rw.itunda.core.designsystem.components.EmptyState
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 
 // Moved here from :app's ItundaAppScreen.kt (2026-09-02, Home Feature-module
@@ -199,6 +201,11 @@ fun HomeTab(
             verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
         ) {
             item { HomeTopBar(onOpenPay = onOpenPay, onOpenNotifications = onOpenNotifications, onOpenOverview = onOpenOverview, onOpenAccountDetail = onOpenAccountDetail, unreadCount = unreadNotificationCount) }
+            // Prototype parity: the account is the first content card after the top bar,
+            // not a secondary tile buried below recommendations and search.
+            if (primaryAccount != null) {
+                item { HomeAccountHeroCard(primaryAccount, onOpenBank = onOpenBank, onOpenPay = onOpenPay) }
+            }
         item {
             HomeSearchBar(
                 query = searchQuery,
@@ -300,8 +307,9 @@ fun HomeTab(
         // fetched) plus real RSE stock ticker chips, matching Naver's own weather/
         // stock-index widget row structurally without inventing weather data itunda
         // has no source for.
-        if (primaryAccount != null || stocks.isNotEmpty()) {
-            item { HomeMarketWidgetRow(primaryAccount, stocks, onOpenBank = onOpenBank, onOpenInvest = onOpenInvest) }
+        if (stocks.isNotEmpty()) {
+            // The live account balance now lives in the prototype-matched hero card above.
+            item { HomeMarketWidgetRow(null, stocks, onOpenBank = onOpenBank, onOpenInvest = onOpenInvest) }
         }
         // Real Toss/Kakao/Naver hub-organization fix (2026-08-29) -- an account with
         // no neighborhood set silently left the entire bottom two-thirds of Home
@@ -347,6 +355,73 @@ fun HomeTab(
     }
 }
 
+
+/**
+ * Home's primary account card, aligned to the clickable prototype's large balance-first
+ * account row. The displayed balance comes from the authenticated account response;
+ * actions navigate to existing product screens rather than simulating transactions.
+ */
+@Composable
+private fun HomeAccountHeroCard(
+    account: rw.itunda.core.network.Account,
+    onOpenBank: () -> Unit,
+    onOpenPay: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(Ids.colors.surface)
+            .pressScaleClickable(onClick = onOpenBank)
+            .padding(horizontal = 18.dp, vertical = 18.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(Ids.colors.chip),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Outlined.AccountBalanceWallet,
+                contentDescription = null,
+                tint = Ids.colors.textPrimary,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+        Spacer(modifier = Modifier.width(14.dp))
+        androidx.compose.foundation.layout.Column(modifier = Modifier.weight(1f)) {
+            Text(
+                String.format(Locale.US, "%,.0f %s", account.balance, account.currency),
+                color = Ids.colors.textPrimary,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
+            )
+            Text(
+                stringResource(R.string.bank_account_account),
+                color = Ids.colors.textSecondary,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(Ids.colors.brandTint)
+                .pressScaleClickable(onClick = onOpenPay)
+                .padding(horizontal = 16.dp, vertical = 11.dp),
+        ) {
+            Text(
+                stringResource(R.string.home_pay_shortcut),
+                color = Ids.colors.brand,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
 
 /**
  * Public composition entry point for the Home feature.
