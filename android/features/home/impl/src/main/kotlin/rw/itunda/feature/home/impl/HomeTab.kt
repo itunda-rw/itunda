@@ -16,6 +16,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.outlined.QrCodeScanner
+import androidx.compose.material.icons.outlined.Send
+import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.CircularProgressIndicator
@@ -205,6 +209,18 @@ fun HomeTab(
             // not a secondary tile buried below recommendations and search.
             if (primaryAccount != null) {
                 item { HomeAccountHeroCard(primaryAccount, onOpenBank = onOpenBank, onOpenPay = onOpenPay) }
+                item { HomePayBalanceRow(primaryAccount, onOpenPay = onOpenPay) }
+            }
+            item {
+                HomePrimaryActions(onSend = onOpenPay, onAddMoney = onOpenPay)
+            }
+            item {
+                HomeQuickActions(
+                    onSend = onOpenPay,
+                    onScanToPay = onOpenPay,
+                    onShop = onOpenShop,
+                    onCommunity = onOpenCommunity,
+                )
             }
         item {
             HomeSearchBar(
@@ -420,6 +436,153 @@ private fun HomeAccountHeroCard(
                 fontWeight = FontWeight.Bold,
             )
         }
+    }
+}
+
+/**
+ * Prototype's secondary Pay row: a distinct live balance with a clear next action.
+ * Values are sourced from the account response, never local demo data.
+ */
+@Composable
+private fun HomePayBalanceRow(
+    account: rw.itunda.core.network.Account,
+    onOpenPay: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .pressScaleClickable(onClick = onOpenPay)
+            .padding(horizontal = 4.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            stringResource(R.string.home_pay_shortcut),
+            color = Ids.colors.textSecondary,
+            fontSize = 15.sp,
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        Text(
+            String.format(Locale.US, "%,.0f %s", account.balance, account.currency),
+            color = Ids.colors.textPrimary,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Icon(
+            androidx.compose.material.icons.Icons.Outlined.AccountBalanceWallet,
+            contentDescription = null,
+            tint = Ids.colors.textTertiary,
+            modifier = Modifier.size(16.dp),
+        )
+    }
+}
+
+/** Primary two-button row follows the prototype's send/add-money hierarchy. */
+@Composable
+private fun HomePrimaryActions(
+    onSend: () -> Unit,
+    onAddMoney: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Ids.colors.brand)
+                .pressScaleClickable(onClick = onSend)
+                .padding(vertical = 15.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                stringResource(R.string.home_send_money),
+                color = Ids.colors.onBrand,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Ids.colors.chip)
+                .pressScaleClickable(onClick = onAddMoney)
+                .padding(vertical = 15.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                stringResource(R.string.home_add_money),
+                color = Ids.colors.textPrimary,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeQuickActions(
+    onSend: () -> Unit,
+    onScanToPay: () -> Unit,
+    onShop: () -> Unit,
+    onCommunity: () -> Unit,
+) {
+    androidx.compose.foundation.layout.Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            stringResource(R.string.home_quick_actions),
+            color = Ids.colors.textPrimary,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            HomeQuickAction(Icons.Outlined.Send, stringResource(R.string.home_send_money), onSend)
+            HomeQuickAction(Icons.Outlined.QrCodeScanner, stringResource(R.string.home_scan_to_pay), onScanToPay)
+            HomeQuickAction(Icons.Outlined.Storefront, stringResource(R.string.home_shop), onShop)
+            HomeQuickAction(Icons.Outlined.Forum, stringResource(R.string.home_community), onCommunity)
+        }
+    }
+}
+
+@Composable
+private fun HomeQuickAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    androidx.compose.foundation.layout.Column(
+        modifier = Modifier
+            .width(72.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .pressScaleClickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(52.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(Ids.colors.chip),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = Ids.colors.textPrimary, modifier = Modifier.size(23.dp))
+        }
+        Text(
+            label,
+            color = Ids.colors.textSecondary,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 2,
+        )
     }
 }
 
