@@ -206,6 +206,13 @@ fun HomeTab(
                 }
             }
             item {
+                HomeRecentActivity(
+                    transactions = recentTransactions,
+                    onSeeAll = onOpenActivity,
+                    onOpenTransaction = onOpenActivity,
+                )
+            }
+            item {
                 Text(
                     stringResource(R.string.home_for_you),
                     color = Ids.colors.textPrimary,
