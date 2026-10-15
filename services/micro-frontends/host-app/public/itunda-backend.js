@@ -105,7 +105,7 @@
       '<div id="web-login-error" role="alert" style="color:var(--er);min-height:20px;text-align:center;font-size:13px"></div>' +
       '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px">' + keys + '</div>' +
       '<button class="btn" style="margin-top:18px" ' + (pin.length === 6 && !busy ? '' : 'disabled') + ' onclick="backendLogin()">Sign in securely</button>' +
-      '<button class="btn sec2" style="margin-top:10px" onclick="S.obStep=\'obNotFound\';S.ob.pin=\'\';render(\'push\')">Create a new account</button></div>';
+      '<button class="btn sec2" style="margin-top:10px" onclick="S.obStep=\'obName\';S.ob.pin=\'\';render(\'push\')">Create a new account</button></div>';
   };
   window.backendPinKey = function (key) {
     if (key === 'del') S.ob.pin = (S.ob.pin || '').slice(0, -1);
