@@ -1,3 +1,4 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package rw.itunda.feature.payments.impl
 
 import androidx.compose.foundation.LocalIndication
